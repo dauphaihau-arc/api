@@ -4,5 +4,5 @@ export class CreateShopDto {
   @IsString()
   @MinLength(3)
   @MaxLength(20)
-  shopName!: string;
+  shop_name!: string;
 }

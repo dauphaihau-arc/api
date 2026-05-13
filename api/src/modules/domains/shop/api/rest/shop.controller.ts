@@ -26,7 +26,9 @@ export class ShopController {
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() body: CreateShopDto
   ): Promise<ShopSummary> {
-    return this.createShopUseCase.execute(currentUser, body)
+    return this.createShopUseCase.execute(currentUser, {
+      shopName: body.shop_name,
+    })
       .then((result) => resolveOrThrow(result, mapShopAppErrorToHttpException));
   }
 
