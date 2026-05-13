@@ -10,7 +10,9 @@ import { ProductState } from '../domain/enums/product-state.enum';
 import { ProductRepository } from '../app/ports/product.repository';
 import type {
   CreateProductDraftRepositoryInput,
+  ListShopProductsInput,
   ListPublicProductsInput,
+  PublicProductDetail,
   ProductDraftSummary,
   PublicProductListItem,
   PublicProductListResult,
@@ -19,7 +21,9 @@ import type {
   ReplaceProductImagesRepositoryResult,
   ReplaceProductInventoryRepositoryInput,
   ReplaceProductShippingRepositoryInput,
-  ReplaceProductVariantsRepositoryInput
+  ReplaceProductVariantsRepositoryInput,
+  ShopProductListResult,
+  UpdateProductDetailsRepositoryInput
 } from '../app/product.types';
 import { ProductImageEntity } from './persistence/entities/product-image.entity';
 import { ProductAttributeValueEntity } from './persistence/entities/product-attribute-value.entity';
@@ -60,6 +64,61 @@ export class MikroOrmProductRepository implements ProductRepository {
     );
 
     return product ? this.toDraftSummary(product) : null;
+  }
+
+  async findPublicById(id: string): Promise<PublicProductDetail | null> {
+    const repository = this.entityManager.fork().getRepository(ProductEntity);
+    const product = await repository.findOne(
+      {
+        id,
+        state: ProductState.ACTIVE,
+      },
+      {
+        populate: [...MikroOrmProductRepository.summaryPopulate],
+      }
+    );
+
+    return product ? this.toPublicDetail(product) : null;
+  }
+
+  async listByShop(
+    input: ListShopProductsInput
+  ): Promise<ShopProductListResult> {
+    const repository = this.entityManager.fork().getRepository(ProductEntity);
+    const products = await repository.find(
+      {
+        shop: input.shopId,
+        ...(input.state ? { state: input.state } : {}),
+        ...(input.categoryId ? { category: input.categoryId } : {}),
+      },
+      {
+        populate: [...MikroOrmProductRepository.summaryPopulate],
+      }
+    );
+
+    const normalizedSearch = input.search?.trim().toLowerCase();
+    const filteredProducts = products.filter((product) => {
+      if (!normalizedSearch) {
+        return true;
+      }
+
+      const haystack = `${product.title} ${product.slug} ${product.description}`
+        .toLowerCase();
+
+      return haystack.includes(normalizedSearch);
+    });
+
+    const sortedProducts = filteredProducts.sort(
+      (left, right) => right.updatedAt.getTime() - left.updatedAt.getTime()
+    );
+    const total = sortedProducts.length;
+    const start = (input.page - 1) * input.limit;
+    const pagedProducts = sortedProducts.slice(start, start + input.limit);
+
+    return {
+      items: pagedProducts.map((product) => this.toDraftSummary(product)),
+      meta: buildPaginationMeta(input.page, input.limit, total),
+    };
   }
 
   async listPublic(
@@ -362,6 +421,36 @@ export class MikroOrmProductRepository implements ProductRepository {
     return this.toDraftSummary(product);
   }
 
+  async updateDetails(
+    input: UpdateProductDetailsRepositoryInput
+  ): Promise<ProductDraftSummary | null> {
+    const entityManager = this.entityManager.fork();
+    const repository = entityManager.getRepository(ProductEntity);
+    const product = await repository.findOne(
+      { id: input.productId },
+      {
+        populate: [...MikroOrmProductRepository.summaryPopulate],
+      }
+    );
+
+    if (!product) {
+      return null;
+    }
+
+    product.title = input.title;
+    product.slug = input.slug;
+    product.description = input.description;
+    product.whoMade = input.whoMade;
+    product.isDigital = input.isDigital;
+    product.nonTaxable = input.nonTaxable;
+    product.variantGroupName = input.variantGroupName;
+    product.variantSubGroupName = input.variantSubGroupName;
+
+    await entityManager.persistAndFlush(product);
+
+    return this.toDraftSummary(product);
+  }
+
   async publish(productId: string): Promise<ProductDraftSummary | null> {
     const entityManager = this.entityManager.fork();
     const repository = entityManager.getRepository(ProductEntity);
@@ -507,6 +596,85 @@ export class MikroOrmProductRepository implements ProductRepository {
           id: product.shippingProfiles[0].id,
           originCountry: product.shippingProfiles[0].originCountry,
           originZip: product.shippingProfiles[0].originZip,
+          processTimeLabel: product.shippingProfiles[0].processTimeLabel,
+          destinations: product.shippingProfiles[0].destinations
+            .getItems()
+            .sort((left, right) => left.rank - right.rank)
+            .map((destination) => ({
+              id: destination.id,
+              countryCode: destination.countryCode,
+              deliveryTimeLabel: destination.deliveryTimeLabel,
+              service: destination.service,
+              chargeType: destination.chargeType,
+              rank: destination.rank,
+            })),
+        }
+        : undefined,
+    };
+  }
+
+  private toPublicDetail(product: ProductEntity): PublicProductDetail {
+    return {
+      id: product.id,
+      shop: {
+        id: product.shop.id,
+        shopName: product.shop.shopName,
+      },
+      categoryId: product.category?.id,
+      title: product.title,
+      slug: product.slug,
+      description: product.description,
+      whoMade: product.whoMade,
+      isDigital: product.isDigital,
+      variantType: product.variantType,
+      variantGroupName: product.variantGroupName,
+      variantSubGroupName: product.variantSubGroupName,
+      images: product.images
+        .getItems()
+        .sort((left, right) => left.rank - right.rank)
+        .map((image) => ({
+          id: image.id,
+          storageKey: image.storageKey,
+          url: this.storageService.getPublicUrl(image.storageKey),
+          rank: image.rank,
+        })),
+      variants: product.variants
+        .getItems()
+        .sort((left, right) => left.rank - right.rank)
+        .map((variant) => ({
+          id: variant.id,
+          name: variant.name,
+          optionValue1: variant.optionValue1,
+          optionValue2: variant.optionValue2,
+          imageStorageKey: variant.imageStorageKey,
+          rank: variant.rank,
+        })),
+      inventory: product.inventoryRecords
+        .getItems()
+        .sort((left, right) => {
+          if (!left.productVariant && !right.productVariant) {
+            return 0;
+          }
+          if (!left.productVariant) {
+            return -1;
+          }
+          if (!right.productVariant) {
+            return 1;
+          }
+          return left.productVariant.rank - right.productVariant.rank;
+        })
+        .map((inventoryRecord) => ({
+          id: inventoryRecord.id,
+          productVariantId: inventoryRecord.productVariant?.id,
+          sku: inventoryRecord.sku,
+          stock: inventoryRecord.stock,
+          price: Number(inventoryRecord.price),
+          salePrice: inventoryRecord.salePrice !== undefined
+            ? Number(inventoryRecord.salePrice)
+            : undefined,
+        })),
+      shipping: product.shippingProfiles.length > 0
+        ? {
           processTimeLabel: product.shippingProfiles[0].processTimeLabel,
           destinations: product.shippingProfiles[0].destinations
             .getItems()

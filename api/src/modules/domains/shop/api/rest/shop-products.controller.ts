@@ -6,8 +6,10 @@ import {
   Header,
   NotFoundException,
   Param,
+  Patch,
   Post,
   Put,
+  Query,
   UploadedFiles,
   UseGuards,
   UseInterceptors
@@ -23,6 +25,7 @@ import {
   type CreateProductDraftInput
 } from '~/modules/domains/product/app/use-cases/create-product-draft.use-case';
 import { GetProductByIdUseCase } from '~/modules/domains/product/app/use-cases/get-product-by-id.use-case';
+import { ListShopProductsUseCase } from '~/modules/domains/product/app/use-cases/list-shop-products.use-case';
 import { PublishProductUseCase } from '~/modules/domains/product/app/use-cases/publish-product.use-case';
 import {
   SetProductImagesUseCase,
@@ -32,12 +35,18 @@ import { SetProductAttributesUseCase } from '~/modules/domains/product/app/use-c
 import { SetProductInventoryUseCase } from '~/modules/domains/product/app/use-cases/set-product-inventory.use-case';
 import { SetProductShippingUseCase } from '~/modules/domains/product/app/use-cases/set-product-shipping.use-case';
 import { SetProductVariantsUseCase } from '~/modules/domains/product/app/use-cases/set-product-variants.use-case';
-import type { ProductDraftSummary } from '~/modules/domains/product/app/product.types';
+import { UpdateProductDetailsUseCase } from '~/modules/domains/product/app/use-cases/update-product-details.use-case';
+import type {
+  ProductDraftSummary,
+  ShopProductListResult
+} from '~/modules/domains/product/app/product.types';
 import { CreateProductDto } from '~/modules/domains/product/api/rest/dto/create-product.dto';
+import { ListShopProductsQueryDto } from '~/modules/domains/product/api/rest/dto/list-shop-products.query.dto';
 import { SetProductAttributesDto } from '~/modules/domains/product/api/rest/dto/set-product-attributes.dto';
 import { SetProductInventoryDto } from '~/modules/domains/product/api/rest/dto/set-product-inventory.dto';
 import { SetProductShippingDto } from '~/modules/domains/product/api/rest/dto/set-product-shipping.dto';
 import { SetProductVariantsDto } from '~/modules/domains/product/api/rest/dto/set-product-variants.dto';
+import { UpdateProductDto } from '~/modules/domains/product/api/rest/dto/update-product.dto';
 import { mapProductAppErrorToHttpException } from '~/modules/domains/product/api/rest/product-http-error-mapper';
 import { ShopRepository } from '../../app/ports/shop.repository';
 
@@ -48,13 +57,34 @@ export class ShopProductsController {
     private readonly shopRepository: ShopRepository,
     private readonly createProductDraftUseCase: CreateProductDraftUseCase,
     private readonly getProductByIdUseCase: GetProductByIdUseCase,
+    private readonly listShopProductsUseCase: ListShopProductsUseCase,
     private readonly publishProductUseCase: PublishProductUseCase,
     private readonly setProductImagesUseCase: SetProductImagesUseCase,
     private readonly setProductAttributesUseCase: SetProductAttributesUseCase,
     private readonly setProductVariantsUseCase: SetProductVariantsUseCase,
     private readonly setProductInventoryUseCase: SetProductInventoryUseCase,
-    private readonly setProductShippingUseCase: SetProductShippingUseCase
+    private readonly setProductShippingUseCase: SetProductShippingUseCase,
+    private readonly updateProductDetailsUseCase: UpdateProductDetailsUseCase
   ) {}
+
+  @Get()
+  @Header('Cache-Control', 'private, no-cache')
+  async products(
+    @Param('shopId') shopId: string,
+    @Query() query: ListShopProductsQueryDto,
+    @CurrentUser() currentUser: AuthenticatedUser
+  ): Promise<ShopProductListResult> {
+    await this.assertActorCanManageShop(currentUser, shopId);
+
+    return this.listShopProductsUseCase.execute({
+      shopId,
+      page: query.page,
+      limit: query.limit,
+      state: query.state,
+      categoryId: query.categoryId,
+      search: query.search,
+    });
+  }
 
   @Get(':id')
   @Header('Cache-Control', 'private, no-cache')
@@ -83,6 +113,22 @@ export class ShopProductsController {
     };
 
     return this.createProductDraftUseCase.execute(currentUser, input)
+      .then((result) =>
+        resolveOrThrow(result, mapProductAppErrorToHttpException)
+      );
+  }
+
+  @Patch(':id')
+  @Header('Cache-Control', 'private, no-store')
+  async updateProduct(
+    @Param('shopId') shopId: string,
+    @Param('id') id: string,
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Body() body: UpdateProductDto
+  ): Promise<ProductDraftSummary> {
+    await this.assertActorCanManageProductShop(currentUser, shopId, id);
+
+    return this.updateProductDetailsUseCase.execute(currentUser, id, body)
       .then((result) =>
         resolveOrThrow(result, mapProductAppErrorToHttpException)
       );

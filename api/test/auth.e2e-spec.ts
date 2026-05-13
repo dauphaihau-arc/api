@@ -69,6 +69,7 @@ describe('Auth flow (e2e)', () => {
     if (corsAllowedOrigins.length > 0) {
       app.enableCors({
         origin: corsAllowedOrigins,
+        credentials: true,
       });
     }
 

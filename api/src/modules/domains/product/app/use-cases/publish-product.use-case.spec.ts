@@ -1,6 +1,7 @@
 import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
 import { UserStatus } from '~/modules/domains/auth/domain/enums/user-status.enum';
 import { ProductState } from '../../domain/enums/product-state.enum';
+import { ProductShippingCharge } from '../../domain/enums/product-shipping-charge.enum';
 import type { ShopRepository } from '~/modules/domains/shop/app/ports/shop.repository';
 import type { ProductRepository } from '../ports/product.repository';
 import type { ProductDraftSummary } from '../product.types';
@@ -49,7 +50,7 @@ describe('PublishProductUseCase', () => {
           countryCode: 'US',
           deliveryTimeLabel: '3-5 business days',
           service: 'USPS',
-          chargeType: 'free_shipping' as const,
+          chargeType: ProductShippingCharge.FREE_SHIPPING,
           rank: 1,
         },
       ],
@@ -60,11 +61,15 @@ describe('PublishProductUseCase', () => {
     const productRepository: jest.Mocked<ProductRepository> = {
       createDraft: jest.fn(),
       findById: jest.fn().mockResolvedValue(product),
+      findPublicById: jest.fn(),
+      listByShop: jest.fn(),
+      listPublic: jest.fn(),
       replaceImages: jest.fn(),
       replaceAttributeValues: jest.fn(),
       replaceVariants: jest.fn(),
       replaceInventory: jest.fn(),
       replaceShipping: jest.fn(),
+      updateDetails: jest.fn(),
       publish: jest.fn().mockResolvedValue({
         ...product,
         state: ProductState.ACTIVE,
@@ -73,7 +78,10 @@ describe('PublishProductUseCase', () => {
     };
 
     const shopRepository: jest.Mocked<ShopRepository> = {
+      create: jest.fn(),
       findById: jest.fn(),
+      findByOwnerUserId: jest.fn(),
+      findByShopName: jest.fn(),
       findOwnedById: jest.fn().mockResolvedValue({
         id: 'shop-1',
         ownerUserId: actor.userId,

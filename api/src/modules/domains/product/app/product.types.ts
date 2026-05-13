@@ -152,6 +152,33 @@ export interface ReplaceProductShippingRepositoryInput {
   };
 }
 
+export interface UpdateProductDetailsRepositoryInput {
+  productId: string;
+  title: string;
+  slug: string;
+  description: string;
+  whoMade: ProductWhoMade;
+  isDigital: boolean;
+  nonTaxable: boolean;
+  variantGroupName?: string;
+  variantSubGroupName?: string;
+}
+
+export const SHOP_PRODUCT_LIST_DEFAULT_PAGE = 1;
+export const SHOP_PRODUCT_LIST_DEFAULT_LIMIT = 20;
+export const SHOP_PRODUCT_LIST_MAX_LIMIT = 50;
+
+export interface ListShopProductsInput {
+  shopId: string;
+  page: number;
+  limit: number;
+  state?: ProductState;
+  categoryId?: string;
+  search?: string;
+}
+
+export type ShopProductListResult = PaginatedResult<ProductDraftSummary>;
+
 export const PRODUCT_PUBLIC_LIST_DEFAULT_PAGE = 1;
 export const PRODUCT_PUBLIC_LIST_DEFAULT_LIMIT = 12;
 export const PRODUCT_PUBLIC_LIST_MAX_LIMIT = 50;
@@ -179,6 +206,41 @@ export interface PublicProductListItem {
     sku?: string;
   };
   createdAt: Date;
+}
+
+export interface PublicProductInventorySummary {
+  id: string;
+  productVariantId?: string;
+  sku?: string;
+  stock: number;
+  price: number;
+  salePrice?: number;
+}
+
+export interface PublicProductShippingSummary {
+  processTimeLabel: string;
+  destinations: ProductShippingDestinationSummary[];
+}
+
+export interface PublicProductDetail {
+  id: string;
+  shop: {
+    id: string;
+    shopName: string;
+  };
+  categoryId?: string;
+  title: string;
+  slug: string;
+  description: string;
+  whoMade: ProductWhoMade;
+  isDigital: boolean;
+  variantType?: ProductVariantType;
+  variantGroupName?: string;
+  variantSubGroupName?: string;
+  images: ProductImageSummary[];
+  variants: ProductVariantSummary[];
+  inventory: PublicProductInventorySummary[];
+  shipping?: PublicProductShippingSummary;
 }
 
 export interface ListPublicProductsInput {

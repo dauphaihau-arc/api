@@ -72,6 +72,7 @@ describe('Commerce flow (e2e)', () => {
     if (corsAllowedOrigins.length > 0) {
       app.enableCors({
         origin: corsAllowedOrigins,
+        credentials: true,
       });
     }
 
@@ -176,10 +177,9 @@ describe('Commerce flow (e2e)', () => {
     };
 
     const createProductResponse = await request(app.getHttpServer())
-      .post(`${API_PREFIX}/products`)
+      .post(`${API_PREFIX}/shops/${shopBody.id}/products`)
       .set('Authorization', `Bearer ${accessToken}`)
       .send({
-        shopId: shopBody.id,
         categoryId: categoryBody.id,
         title: 'Handmade Mug',
         description: 'Wheel-thrown ceramic mug',
@@ -202,8 +202,34 @@ describe('Commerce flow (e2e)', () => {
 
     const productId = productBody.id;
 
+    const updateProductResponse = await request(app.getHttpServer())
+      .patch(`${API_PREFIX}/shops/${shopBody.id}/products/${productId}`)
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({
+        title: 'Better Mug',
+        description: 'Refined ceramic mug',
+        whoMade: ProductWhoMade.COLLECTIVE,
+        isDigital: true,
+        nonTaxable: true,
+      })
+      .expect(200);
+
+    expect(updateProductResponse.body).toMatchObject({
+      id: productId,
+      title: 'Better Mug',
+      slug: 'better-mug',
+      description: 'Refined ceramic mug',
+      whoMade: ProductWhoMade.COLLECTIVE,
+      isDigital: true,
+      nonTaxable: true,
+    });
+
+    await request(app.getHttpServer())
+      .get(`${API_PREFIX}/products/${productId}`)
+      .expect(404);
+
     const setImagesResponse = await request(app.getHttpServer())
-      .put(`${API_PREFIX}/products/${productId}/images`)
+      .put(`${API_PREFIX}/shops/${shopBody.id}/products/${productId}/images`)
       .set('Authorization', `Bearer ${accessToken}`)
       .attach('images', Buffer.from('fake-image-content'), {
         filename: 'mug.jpg',
@@ -214,7 +240,7 @@ describe('Commerce flow (e2e)', () => {
     expect(setImagesResponse.body.images).toHaveLength(1);
 
     const setAttributesResponse = await request(app.getHttpServer())
-      .put(`${API_PREFIX}/products/${productId}/attributes`)
+      .put(`${API_PREFIX}/shops/${shopBody.id}/products/${productId}/attributes`)
       .set('Authorization', `Bearer ${accessToken}`)
       .send({
         attributes: [
@@ -234,7 +260,7 @@ describe('Commerce flow (e2e)', () => {
     });
 
     const setInventoryResponse = await request(app.getHttpServer())
-      .put(`${API_PREFIX}/products/${productId}/inventory`)
+      .put(`${API_PREFIX}/shops/${shopBody.id}/products/${productId}/inventory`)
       .set('Authorization', `Bearer ${accessToken}`)
       .send({
         inventory: [
@@ -250,7 +276,7 @@ describe('Commerce flow (e2e)', () => {
     expect(setInventoryResponse.body.inventory).toHaveLength(1);
 
     const setShippingResponse = await request(app.getHttpServer())
-      .put(`${API_PREFIX}/products/${productId}/shipping`)
+      .put(`${API_PREFIX}/shops/${shopBody.id}/products/${productId}/shipping`)
       .set('Authorization', `Bearer ${accessToken}`)
       .send({
         originCountry: 'US',
@@ -271,14 +297,38 @@ describe('Commerce flow (e2e)', () => {
     expect(setShippingResponse.body.shipping.destinations).toHaveLength(1);
 
     const publishResponse = await request(app.getHttpServer())
-      .post(`${API_PREFIX}/products/${productId}/publish`)
+      .post(`${API_PREFIX}/shops/${shopBody.id}/products/${productId}/publish`)
       .set('Authorization', `Bearer ${accessToken}`)
       .expect(201);
 
     expect(publishResponse.body.state).toBe('active');
 
-    const getProductResponse = await request(app.getHttpServer())
+    const getPublicProductResponse = await request(app.getHttpServer())
       .get(`${API_PREFIX}/products/${productId}`)
+      .expect(200);
+
+    expect(getPublicProductResponse.body).toMatchObject({
+      id: productId,
+      shop: {
+        id: shopBody.id,
+        shopName: shopBody.shopName,
+      },
+      categoryId: categoryBody.id,
+      title: 'Better Mug',
+      slug: 'better-mug',
+      description: 'Refined ceramic mug',
+      whoMade: ProductWhoMade.COLLECTIVE,
+      isDigital: true,
+      variantType: ProductVariantType.NONE,
+      shipping: {
+        processTimeLabel: '1-3 business days',
+      },
+    });
+    expect(getPublicProductResponse.body.images).toHaveLength(1);
+    expect(getPublicProductResponse.body.inventory).toHaveLength(1);
+
+    const getProductResponse = await request(app.getHttpServer())
+      .get(`${API_PREFIX}/shops/${shopBody.id}/products/${productId}`)
       .set('Authorization', `Bearer ${accessToken}`)
       .expect(200);
 
@@ -287,6 +337,12 @@ describe('Commerce flow (e2e)', () => {
       state: 'active',
       shopId: shopBody.id,
       categoryId: categoryBody.id,
+      title: 'Better Mug',
+      slug: 'better-mug',
+      description: 'Refined ceramic mug',
+      whoMade: ProductWhoMade.COLLECTIVE,
+      isDigital: true,
+      nonTaxable: true,
       attributes: [
         {
           categoryAttributeId: materialAttribute.id,
@@ -298,6 +354,81 @@ describe('Commerce flow (e2e)', () => {
     expect(getProductResponse.body.images).toHaveLength(1);
     expect(getProductResponse.body.inventory).toHaveLength(1);
     expect(getProductResponse.body.shipping.destinations).toHaveLength(1);
+
+    const secondProductResponse = await request(app.getHttpServer())
+      .post(`${API_PREFIX}/shops/${shopBody.id}/products`)
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({
+        categoryId: categoryBody.id,
+        title: 'Draft Mug',
+        description: 'Unpublished draft mug',
+        whoMade: ProductWhoMade.I_DID,
+        variantType: ProductVariantType.NONE,
+      })
+      .expect(201);
+
+    const otherUserEmail = `commerce-other-${Date.now()}@example.com`;
+    const otherRegisterResponse = await request(app.getHttpServer())
+      .post(`${API_PREFIX}/auth/register`)
+      .send({
+        email: otherUserEmail,
+        password: 'password123',
+        displayName: 'Other Commerce Owner',
+      })
+      .expect(201);
+    const otherAccessToken = (otherRegisterResponse.body as AuthResponse).accessToken;
+
+    const otherShopResponse = await request(app.getHttpServer())
+      .post(`${API_PREFIX}/shops`)
+      .set('Authorization', `Bearer ${otherAccessToken}`)
+      .send({
+        shopName: `shop${Date.now().toString().slice(-5)}x`,
+      })
+      .expect(201);
+    const otherShopBody = otherShopResponse.body as { id: string };
+
+    await request(app.getHttpServer())
+      .post(`${API_PREFIX}/shops/${otherShopBody.id}/products`)
+      .set('Authorization', `Bearer ${otherAccessToken}`)
+      .send({
+        categoryId: categoryBody.id,
+        title: 'Other Shop Mug',
+        description: 'Different shop product',
+        whoMade: ProductWhoMade.I_DID,
+        variantType: ProductVariantType.NONE,
+      })
+      .expect(201);
+
+    const listProductsResponse = await request(app.getHttpServer())
+      .get(`${API_PREFIX}/shops/${shopBody.id}/products`)
+      .set('Authorization', `Bearer ${accessToken}`)
+      .query({
+        state: 'active',
+        search: 'better',
+        page: 1,
+        limit: 5,
+      })
+      .expect(200);
+
+    expect(listProductsResponse.body.meta).toMatchObject({
+      page: 1,
+      limit: 5,
+      total: 1,
+      totalPages: 1,
+      hasNextPage: false,
+      hasPreviousPage: false,
+    });
+    expect(listProductsResponse.body.items).toHaveLength(1);
+    expect(listProductsResponse.body.items[0]).toMatchObject({
+      id: productId,
+      shopId: shopBody.id,
+      state: 'active',
+      title: 'Better Mug',
+      slug: 'better-mug',
+    });
+    expect(listProductsResponse.body.items[0].id).not.toBe(
+      secondProductResponse.body.id
+    );
   });
 });
 

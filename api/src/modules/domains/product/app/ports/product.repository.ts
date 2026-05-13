@@ -1,14 +1,18 @@
 import type {
   CreateProductDraftRepositoryInput,
+  ListShopProductsInput,
   ListPublicProductsInput,
+  PublicProductDetail,
   ProductDraftSummary,
+  ShopProductListResult,
   PublicProductListResult,
   ReplaceProductAttributeValuesRepositoryInput,
   ReplaceProductImagesRepositoryInput,
   ReplaceProductImagesRepositoryResult,
   ReplaceProductInventoryRepositoryInput,
   ReplaceProductShippingRepositoryInput,
-  ReplaceProductVariantsRepositoryInput
+  ReplaceProductVariantsRepositoryInput,
+  UpdateProductDetailsRepositoryInput
 } from '../product.types';
 
 export abstract class ProductRepository {
@@ -17,6 +21,12 @@ export abstract class ProductRepository {
   ): Promise<ProductDraftSummary>;
 
   abstract findById(id: string): Promise<ProductDraftSummary | null>;
+
+  abstract findPublicById(id: string): Promise<PublicProductDetail | null>;
+
+  abstract listByShop(
+    input: ListShopProductsInput
+  ): Promise<ShopProductListResult>;
 
   abstract listPublic(
     input: ListPublicProductsInput
@@ -40,6 +50,10 @@ export abstract class ProductRepository {
 
   abstract replaceShipping(
     input: ReplaceProductShippingRepositoryInput
+  ): Promise<ProductDraftSummary | null>;
+
+  abstract updateDetails(
+    input: UpdateProductDetailsRepositoryInput
   ): Promise<ProductDraftSummary | null>;
 
   abstract publish(productId: string): Promise<ProductDraftSummary | null>;

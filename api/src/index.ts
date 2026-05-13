@@ -19,6 +19,7 @@ async function bootstrap() {
   if (corsAllowedOrigins.length > 0) {
     app.enableCors({
       origin: corsAllowedOrigins,
+      credentials: true,
     });
   }
   app.enableShutdownHooks();

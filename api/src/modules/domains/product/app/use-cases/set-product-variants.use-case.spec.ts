@@ -39,6 +39,9 @@ describe('SetProductVariantsUseCase', () => {
     const productRepository: jest.Mocked<ProductRepository> = {
       createDraft: jest.fn(),
       findById: jest.fn().mockResolvedValue(product),
+      findPublicById: jest.fn(),
+      listByShop: jest.fn(),
+      listPublic: jest.fn(),
       replaceImages: jest.fn(),
       replaceAttributeValues: jest.fn(),
       replaceVariants: jest.fn().mockResolvedValue({
@@ -54,12 +57,16 @@ describe('SetProductVariantsUseCase', () => {
       }),
       replaceInventory: jest.fn(),
       replaceShipping: jest.fn(),
+      updateDetails: jest.fn(),
       publish: jest.fn(),
       findByShopIdAndSlug: jest.fn(),
     };
 
     const shopRepository: jest.Mocked<ShopRepository> = {
+      create: jest.fn(),
       findById: jest.fn(),
+      findByOwnerUserId: jest.fn(),
+      findByShopName: jest.fn(),
       findOwnedById: jest.fn().mockResolvedValue({
         id: 'shop-1',
         ownerUserId: actor.userId,
