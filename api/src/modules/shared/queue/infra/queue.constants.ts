@@ -1,0 +1,1 @@
+export const BULLMQ_CONNECTION = Symbol('BULLMQ_CONNECTION');

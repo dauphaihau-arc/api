@@ -1,0 +1,40 @@
+# OS
+.DS_Store
+
+# Node / TypeScript
+node_modules/
+dist/
+coverage/
+build/
+**/node_modules/
+**/dist/
+**/coverage/
+**/build/
+*.tsbuildinfo
+package-lock.json
+
+# Environment files
+.env
+.env.local
+.env.*.local
+**/.env
+**/.env.local
+**/.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Editors
+.idea/
+.vscode/
+
+# Temporary ignore
+docs/
+
+# Keep the main app migration snapshot tracked; ignore transient snapshots.
+api/database/migrations/.snapshot-*.json
+!api/database/migrations/.snapshot-app.json
