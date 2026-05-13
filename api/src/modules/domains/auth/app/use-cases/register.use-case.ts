@@ -1,7 +1,9 @@
+import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
 import { err, Result } from '../../../../../common/application/result';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { UserCreatedEvent } from '../../../../../common/events/user-created.event';
+import { normalizeMarketPreferences } from '../../../../../config/marketplace.config';
 import {
   AuthResponse,
   RegisterUserInput
@@ -17,6 +19,7 @@ import { PasswordHash } from '../../domain/value-objects/password-hash';
 import { RoleKey } from '../../domain/value-objects/role-key';
 import { PasswordHasher } from '../ports/password-hasher';
 import { AuthUserRepository } from '../ports/auth-user.repository';
+import { UserPreferenceRepository } from '../ports/user-preference.repository';
 import { IssueSessionUseCase } from './shared/issue-session.use-case';
 
 const defaultRole = {
@@ -28,7 +31,9 @@ const defaultRole = {
 @Injectable()
 export class RegisterUseCase {
   constructor(
+    private readonly entityManager: EntityManager,
     private readonly authUserRepository: AuthUserRepository,
+    private readonly userPreferenceRepository: UserPreferenceRepository,
     private readonly passwordHasher: PasswordHasher,
     private readonly issueSessionUseCase: IssueSessionUseCase,
     private readonly eventEmitter: EventEmitter2
@@ -47,19 +52,42 @@ export class RegisterUseCase {
       return err(new EmailAlreadyRegisteredError());
     }
 
-    await this.authUserRepository.ensureRole(defaultRole);
+    const passwordHash = PasswordHash.fromPersisted(
+      await this.passwordHasher.hash(input.password)
+    );
+    const marketPreferences = normalizeMarketPreferences(
+      input.market_preferences
+    );
+    const user = await this.entityManager.transactional(async (entityManager) => {
+      await this.authUserRepository.ensureRole(defaultRole, entityManager);
 
-    const user = await this.authUserRepository.create({
-      email,
-      displayName: input.displayName?.trim() || undefined,
-      status: UserStatus.ACTIVE,
-      passwordHash: PasswordHash.fromPersisted(
-        await this.passwordHasher.hash(input.password)
-      ),
-      passwordUpdatedAt: new Date(),
+      const createdUser = await this.authUserRepository.create(
+        {
+          email,
+          displayName: input.displayName?.trim() || undefined,
+          status: UserStatus.ACTIVE,
+          passwordHash,
+          passwordUpdatedAt: new Date(),
+        },
+        entityManager
+      );
+
+      await this.userPreferenceRepository.create(
+        {
+          userId: createdUser.id,
+          ...marketPreferences,
+        },
+        entityManager
+      );
+
+      await this.authUserRepository.assignRole(
+        createdUser.id,
+        defaultRole.key,
+        entityManager
+      );
+
+      return createdUser;
     });
-
-    await this.authUserRepository.assignRole(user.id, defaultRole.key);
 
     const authResponse = await this.issueSessionUseCase.execute(user.id);
 

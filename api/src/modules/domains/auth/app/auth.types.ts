@@ -1,3 +1,4 @@
+import type { MarketPreferencesInput } from '~/config/marketplace.config';
 import type { UserStatus } from '../domain/enums/user-status.enum';
 
 export interface AuthenticatedUser {
@@ -30,6 +31,7 @@ export interface RegisterUserInput {
   email: string;
   password: string;
   displayName?: string;
+  market_preferences?: MarketPreferencesInput;
 }
 
 export interface LoginUserInput {

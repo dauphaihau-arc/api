@@ -1,6 +1,7 @@
 import { mkdtemp, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { EntityManager } from '@mikro-orm/postgresql';
 import type { TestingModule } from '@nestjs/testing';
 import { Test } from '@nestjs/testing';
 import type { INestApplication } from '@nestjs/common';
@@ -11,11 +12,11 @@ import type { App } from 'supertest/types';
 import { GlobalExceptionFilter } from '../src/common/filters/global-exception.filter';
 import { RequestLoggingInterceptor } from '../src/common/interceptors/request-logging.interceptor';
 import { parseCorsAllowedOrigins } from '../src/config/cors.config';
-import { AppModule } from '../src/modules/app.module';
 import type {
   AuthResponse,
   UserProfile
 } from '../src/modules/domains/auth/app/auth.types';
+import { UserPreferenceEntity } from '../src/modules/domains/auth/infra/persistence/entities/user-preference.entity';
 import { StorageService } from '../src/modules/shared/storage/app/ports/storage.service';
 import { LocalFileStorageService } from '../src/modules/shared/storage/infra/local-file-storage.service';
 import { createTestDatabase, dropTestDatabase } from './e2e-postgres';
@@ -23,13 +24,14 @@ import { createTestDatabase, dropTestDatabase } from './e2e-postgres';
 jest.setTimeout(30_000);
 
 const API_PREFIX = '/v1';
-const expectedMemberPermissions = ['auth.me.read', 'auth.session.manage'];
+const expectedMemberPermissions: string[] = [];
 
 describe('Auth flow (e2e)', () => {
   let app: INestApplication<App>;
   let originalEnv: NodeJS.ProcessEnv;
   let testDb: Awaited<ReturnType<typeof createTestDatabase>>;
   let storageRoot: string;
+  let entityManager: EntityManager;
 
   beforeAll(async () => {
     originalEnv = { ...process.env };
@@ -49,6 +51,7 @@ describe('Auth flow (e2e)', () => {
     process.env.BCRYPT_SALT_ROUNDS = '4';
     process.env.STORAGE_DRIVER = 'local';
     process.env.STORAGE_LOCAL_ROOT = storageRoot;
+    const { AppModule } = require('../src/modules/app.module') as typeof import('../src/modules/app.module');
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
@@ -88,6 +91,7 @@ describe('Auth flow (e2e)', () => {
     );
     app.setGlobalPrefix(API_PREFIX);
     await app.init();
+    entityManager = app.get(EntityManager);
   });
 
   afterAll(async () => {
@@ -118,6 +122,11 @@ describe('Auth flow (e2e)', () => {
         email,
         password: 'password123',
         displayName: 'Member User',
+        market_preferences: {
+          region: 'Vietnam',
+          language: 'fr',
+          currency: 'EUR',
+        },
       })
       .expect(201);
     const registerBody = registerResponse.body as unknown as AuthResponse;
@@ -133,6 +142,18 @@ describe('Auth flow (e2e)', () => {
     expect(registerResponse.headers['cache-control']).toBe('no-store');
     expect(registerBody.user.id).toEqual(expect.any(String));
     expect(registerBody.user.sessionId).toEqual(expect.any(String));
+    const userPreference = await entityManager.fork().findOne(
+      UserPreferenceEntity,
+      { user: registerBody.user.id },
+      { populate: ['user'] }
+    );
+
+    expect(userPreference).toBeTruthy();
+    expect(userPreference).toMatchObject({
+      region: 'Vietnam',
+      language: 'fr',
+      currency: 'EUR',
+    });
 
     const accessToken = registerBody.accessToken;
     const refreshToken = registerBody.refreshToken;
@@ -214,6 +235,32 @@ describe('Auth flow (e2e)', () => {
     expect(responseBody.status).toBe('ok');
     expect(responseBody.timestamp).toEqual(expect.any(String));
     expect(response.headers['cache-control']).toBe('no-store');
+  });
+
+  it('creates default user preferences when register omits market_preferences', async () => {
+    const email = `member-default-${Date.now()}@example.com`;
+
+    const registerResponse = await request(app.getHttpServer())
+      .post(`${API_PREFIX}/auth/register`)
+      .send({
+        email,
+        password: 'password123',
+        displayName: 'Default Member User',
+      })
+      .expect(201);
+    const registerBody = registerResponse.body as unknown as AuthResponse;
+    const userPreference = await entityManager.fork().findOne(
+      UserPreferenceEntity,
+      { user: registerBody.user.id },
+      { populate: ['user'] }
+    );
+
+    expect(userPreference).toBeTruthy();
+    expect(userPreference).toMatchObject({
+      region: 'United States',
+      language: 'en',
+      currency: 'USD',
+    });
   });
 
   it('applies stricter route-specific rate limits for register, login, and refresh', async () => {

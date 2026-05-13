@@ -10,6 +10,7 @@ import { AuthTokenService } from './app/ports/auth-token.service';
 import { AuthUserRepository } from './app/ports/auth-user.repository';
 import { PasswordHasher } from './app/ports/password-hasher';
 import { TokenHasher } from './app/ports/token-hasher';
+import { UserPreferenceRepository } from './app/ports/user-preference.repository';
 import { GetCurrentUserUseCase } from './app/use-cases/get-current-user.use-case';
 import { LoadAuthenticatedUserUseCase } from './app/use-cases/load-authenticated-user.use-case';
 import { LoginUseCase } from './app/use-cases/login.use-case';
@@ -31,6 +32,8 @@ import { PermissionEntity } from './infra/persistence/entities/permission.entity
 import { PasswordResetTokenEntity } from './infra/persistence/entities/password-reset-token.entity';
 import { RoleEntity } from './infra/persistence/entities/role.entity';
 import { RolePermissionEntity } from './infra/persistence/entities/role-permission.entity';
+import { UserPreferenceEntity } from './infra/persistence/entities/user-preference.entity';
+import { MikroOrmUserPreferenceRepository } from './infra/persistence/mikro-orm-user-preference.repository';
 import { BcryptPasswordHasher } from './infra/security/bcrypt-password-hasher';
 import { JwtAuthTokenService } from './infra/security/jwt-auth-token.service';
 import { Sha256TokenHasher } from './infra/security/sha256-token-hasher';
@@ -48,6 +51,7 @@ const authEntities = [
   PermissionEntity,
   UserRoleEntity,
   RolePermissionEntity,
+  UserPreferenceEntity,
 ];
 
 @Module({
@@ -90,6 +94,10 @@ const authEntities = [
     {
       provide: PasswordHasher,
       useClass: BcryptPasswordHasher,
+    },
+    {
+      provide: UserPreferenceRepository,
+      useClass: MikroOrmUserPreferenceRepository,
     },
     {
       provide: TokenHasher,

@@ -1,3 +1,4 @@
+import type { EntityManager } from '@mikro-orm/postgresql';
 import type { UserStatus } from '../../domain/enums/user-status.enum';
 import type { RoleDefinition } from '../../domain/models/role-definition';
 import type { UserAccount } from '../../domain/models/user-account';
@@ -30,8 +31,18 @@ export class UserAccountVersionConflictError extends Error {
 export abstract class AuthUserRepository {
   abstract findByEmail(email: Email): Promise<UserAccount | null>;
   abstract findById(id: string): Promise<UserAccount | null>;
-  abstract create(input: CreateUserAccountInput): Promise<UserAccount>;
+  abstract create(
+    input: CreateUserAccountInput,
+    entityManager?: EntityManager
+  ): Promise<UserAccount>;
   abstract update(id: string, input: UpdateUserAccountInput): Promise<UserAccount | null>;
-  abstract assignRole(userId: string, roleKey: RoleKey): Promise<void>;
-  abstract ensureRole(role: RoleDefinition): Promise<void>;
+  abstract assignRole(
+    userId: string,
+    roleKey: RoleKey,
+    entityManager?: EntityManager
+  ): Promise<void>;
+  abstract ensureRole(
+    role: RoleDefinition,
+    entityManager?: EntityManager
+  ): Promise<void>;
 }
