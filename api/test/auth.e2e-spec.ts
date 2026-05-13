@@ -12,10 +12,7 @@ import type { App } from 'supertest/types';
 import { GlobalExceptionFilter } from '../src/common/filters/global-exception.filter';
 import { RequestLoggingInterceptor } from '../src/common/interceptors/request-logging.interceptor';
 import { parseCorsAllowedOrigins } from '../src/config/cors.config';
-import type {
-  AuthResponse,
-  UserProfile
-} from '../src/modules/domains/auth/app/auth.types';
+import type { AuthUserResponse, UserProfile } from '../src/modules/domains/auth/app/auth.types';
 import { UserPreferenceEntity } from '../src/modules/domains/auth/infra/persistence/entities/user-preference.entity';
 import { StorageService } from '../src/modules/shared/storage/app/ports/storage.service';
 import { LocalFileStorageService } from '../src/modules/shared/storage/infra/local-file-storage.service';
@@ -115,8 +112,9 @@ describe('Auth flow (e2e)', () => {
 
   it('registers, authenticates, refreshes, and revokes a session', async () => {
     const email = `member-${Date.now()}@example.com`;
+    const agent = request.agent(app.getHttpServer());
 
-    const registerResponse = await request(app.getHttpServer())
+    const registerResponse = await agent
       .post(`${API_PREFIX}/auth/register`)
       .send({
         email,
@@ -129,10 +127,9 @@ describe('Auth flow (e2e)', () => {
         },
       })
       .expect(201);
-    const registerBody = registerResponse.body as unknown as AuthResponse;
+    const registerBody = registerResponse.body as unknown as AuthUserResponse;
+    const registerCookies = expectAuthCookies(registerResponse.headers['set-cookie']);
 
-    expect(registerBody.accessToken).toEqual(expect.any(String));
-    expect(registerBody.refreshToken).toEqual(expect.any(String));
     expect(registerBody.user).toMatchObject({
       email,
       displayName: 'Member User',
@@ -155,13 +152,10 @@ describe('Auth flow (e2e)', () => {
       currency: 'EUR',
     });
 
-    const accessToken = registerBody.accessToken;
-    const refreshToken = registerBody.refreshToken;
     const sessionId = registerBody.user.sessionId;
 
-    const meResponse = await request(app.getHttpServer())
+    const meResponse = await agent
       .get(`${API_PREFIX}/auth/me`)
-      .set('Authorization', `Bearer ${accessToken}`)
       .expect(200);
     const meBody = meResponse.body as unknown as UserProfile;
 
@@ -174,52 +168,59 @@ describe('Auth flow (e2e)', () => {
     });
     expect(meResponse.headers['cache-control']).toBe('no-store');
 
-    const loginResponse = await request(app.getHttpServer())
+    const loginResponse = await agent
       .post(`${API_PREFIX}/auth/login`)
       .send({
         email,
         password: 'password123',
       })
       .expect(200);
-    const loginBody = loginResponse.body as unknown as AuthResponse;
+    const loginBody = loginResponse.body as unknown as AuthUserResponse;
+    const loginCookies = expectAuthCookies(loginResponse.headers['set-cookie']);
 
     expect(loginResponse.headers['cache-control']).toBe('no-store');
     expect(loginBody.user.email).toBe(email);
     expect(loginBody.user.sessionId).not.toBe(sessionId);
+    expect(loginCookies.refreshToken.value).not.toBe(
+      registerCookies.refreshToken.value
+    );
 
-    const refreshResponse = await request(app.getHttpServer())
+    const refreshResponse = await agent
       .post(`${API_PREFIX}/auth/refresh`)
-      .send({ refreshToken })
-      .expect(200);
-    const refreshBody = refreshResponse.body as unknown as AuthResponse;
+      .expect(204);
+    const refreshCookies = expectAuthCookies(refreshResponse.headers['set-cookie']);
 
     expect(refreshResponse.headers['cache-control']).toBe('no-store');
-    expect(refreshBody.accessToken).toEqual(expect.any(String));
-    expect(refreshBody.refreshToken).toEqual(expect.any(String));
-    expect(refreshBody.user.email).toBe(email);
-    expect(refreshBody.user.sessionId).toBe(sessionId);
-    expect(refreshBody.refreshToken).not.toBe(refreshToken);
+    expect(refreshResponse.body).toEqual({});
+    expect(refreshCookies.refreshToken.value).not.toBe(loginCookies.refreshToken.value);
 
     await request(app.getHttpServer())
       .post(`${API_PREFIX}/auth/refresh`)
-      .send({ refreshToken })
+      .set(
+        'Cookie',
+        `${loginCookies.refreshToken.name}=${loginCookies.refreshToken.value}`
+      )
       .expect(401);
 
-    const logoutResponse = await request(app.getHttpServer())
+    const logoutResponse = await agent
       .post(`${API_PREFIX}/auth/logout`)
-      .set('Authorization', `Bearer ${refreshBody.accessToken}`)
       .expect(204);
+    const clearedCookies = expectAuthCookies(logoutResponse.headers['set-cookie']);
 
     expect(logoutResponse.headers['cache-control']).toBe('no-store');
+    expect(clearedCookies.accessToken.raw).toContain(
+      'Expires=Thu, 01 Jan 1970 00:00:00 GMT'
+    );
+    expect(clearedCookies.refreshToken.raw).toContain(
+      'Expires=Thu, 01 Jan 1970 00:00:00 GMT'
+    );
 
-    await request(app.getHttpServer())
+    await agent
       .get(`${API_PREFIX}/auth/me`)
-      .set('Authorization', `Bearer ${refreshBody.accessToken}`)
       .expect(401);
 
-    await request(app.getHttpServer())
+    await agent
       .post(`${API_PREFIX}/auth/refresh`)
-      .send({ refreshToken: refreshBody.refreshToken })
       .expect(401);
   });
 
@@ -248,7 +249,7 @@ describe('Auth flow (e2e)', () => {
         displayName: 'Default Member User',
       })
       .expect(201);
-    const registerBody = registerResponse.body as unknown as AuthResponse;
+    const registerBody = registerResponse.body as unknown as AuthUserResponse;
     const userPreference = await entityManager.fork().findOne(
       UserPreferenceEntity,
       { user: registerBody.user.id },
@@ -329,18 +330,14 @@ describe('Auth flow (e2e)', () => {
       await request(app.getHttpServer())
         .post(`${API_PREFIX}/auth/refresh`)
         .set('X-Forwarded-For', refreshIp)
-        .send({
-          refreshToken: 'invalid-refresh-token-value-1234567890',
-        })
+        .set('Cookie', 'refreshToken=invalid-refresh-token-value-1234567890')
         .expect(401);
     }
 
     const blockedRefreshResponse = await request(app.getHttpServer())
       .post(`${API_PREFIX}/auth/refresh`)
       .set('X-Forwarded-For', refreshIp)
-      .send({
-        refreshToken: 'invalid-refresh-token-value-1234567890',
-      })
+      .set('Cookie', 'refreshToken=invalid-refresh-token-value-1234567890')
       .expect(429);
 
     expect(blockedRefreshResponse.body).toMatchObject({
@@ -366,4 +363,43 @@ function restoreProcessEnv(originalEnv: NodeJS.ProcessEnv) {
 
     process.env[key] = value;
   }
+}
+
+type CookieAssertion = {
+  name: string;
+  raw: string;
+  value: string;
+};
+
+function expectAuthCookies(setCookieHeader?: string[]): {
+  accessToken: CookieAssertion;
+  refreshToken: CookieAssertion;
+} {
+  return {
+    accessToken: parseCookieAssertion(setCookieHeader, 'accessToken'),
+    refreshToken: parseCookieAssertion(setCookieHeader, 'refreshToken'),
+  };
+}
+
+function parseCookieAssertion(
+  setCookieHeader: string[] | undefined,
+  cookieName: string
+): CookieAssertion {
+  const rawCookie = setCookieHeader?.find((cookie) =>
+    cookie.startsWith(`${cookieName}=`)
+  );
+
+  expect(rawCookie).toBeDefined();
+
+  const [nameValue] = rawCookie!.split(';');
+  const separatorIndex = nameValue.indexOf('=');
+
+  expect(rawCookie).toContain('HttpOnly');
+  expect(rawCookie).toContain('Path=/');
+
+  return {
+    name: nameValue.slice(0, separatorIndex),
+    raw: rawCookie!,
+    value: nameValue.slice(separatorIndex + 1),
+  };
 }

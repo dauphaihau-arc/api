@@ -23,6 +23,7 @@ import { JwtAuthGuard } from './api/guard/jwt-auth.guard';
 import { PermissionsGuard } from './api/guard/permissions.guard';
 import { AuthHttpExceptionFilter } from './api/rest/auth-http-exception.filter';
 import { JwtStrategy } from './infra/jwt.strategy';
+import { AuthCookieService } from './api/rest/auth-cookie.utils';
 import { CurrentUserEntity } from './infra/persistence/entities/current-user.entity';
 import { CurrentUserCredentialEntity } from './infra/persistence/entities/current-user-credential.entity';
 import { EmailVerificationTokenEntity } from './infra/persistence/entities/email-verification-token.entity';
@@ -115,6 +116,7 @@ const authEntities = [
     LoadAuthenticatedUserUseCase,
     IssueSessionUseCase,
     AuthHttpExceptionFilter,
+    AuthCookieService,
     JwtStrategy,
     JwtAuthGuard,
     PermissionsGuard,

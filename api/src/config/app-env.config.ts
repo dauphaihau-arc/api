@@ -45,6 +45,14 @@ const appEnvBaseSchema = z.object({
   JWT_REFRESH_SECRET: z.string().trim().min(1),
   JWT_ACCESS_TTL: z.string().trim().min(1),
   JWT_REFRESH_TTL: z.string().trim().min(1),
+  AUTH_COOKIE_ACCESS_NAME: z.string().trim().min(1).default('accessToken'),
+  AUTH_COOKIE_REFRESH_NAME: z.string().trim().min(1).default('refreshToken'),
+  AUTH_COOKIE_DOMAIN: z.string().trim().min(1).optional(),
+  AUTH_COOKIE_PATH: z.string().trim().min(1).default('/'),
+  AUTH_COOKIE_SAME_SITE: z
+    .enum(['strict', 'lax', 'none'])
+    .default('lax'),
+  AUTH_COOKIE_SECURE: z.enum(['true', 'false']).default('false'),
   BCRYPT_SALT_ROUNDS: positiveIntegerString.default('12'),
   RATE_LIMIT_DRIVER: z.enum(['memory', 'redis']).optional(),
   RATE_LIMIT_LIMIT: positiveIntegerString.default('20'),
@@ -97,6 +105,15 @@ const appEnvSchema = appEnvBaseSchema.superRefine((env, context) => {
         });
       }
     }
+  }
+
+  if (env.AUTH_COOKIE_SAME_SITE === 'none' && env.AUTH_COOKIE_SECURE !== 'true') {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['AUTH_COOKIE_SECURE'],
+      message:
+        'Expected AUTH_COOKIE_SECURE=true when AUTH_COOKIE_SAME_SITE is none.',
+    });
   }
 });
 

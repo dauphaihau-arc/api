@@ -6,6 +6,7 @@ import { RequestContextService } from '../../../shared/request-context/request-c
 import { AUTH_CONFIG } from '../../../../config/auth.config';
 import type { AuthConfig } from '../../../../config/auth.config';
 import { mapAuthAppErrorToHttpException } from '../api/rest/auth-error-mapper';
+import { extractCookieValue } from '../api/rest/auth-cookie.utils';
 import { LoadAuthenticatedUserUseCase } from '../app/use-cases/load-authenticated-user.use-case';
 import { AccessTokenPayload, AuthenticatedUser } from '../app/auth.types';
 
@@ -17,7 +18,12 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     private readonly requestContextService: RequestContextService
   ) {
     super({
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      jwtFromRequest: ExtractJwt.fromExtractors([
+        (request) =>
+          request
+            ? extractCookieValue(request, authConfig.accessCookieName)
+            : null,
+      ]),
       ignoreExpiration: false,
       secretOrKey: authConfig.jwtAccessSecret,
     });

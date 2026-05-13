@@ -5,17 +5,20 @@ import {
   Header,
   HttpCode,
   Post,
+  Req,
+  Res,
   UseInterceptors,
   UseFilters,
   UseGuards
 } from '@nestjs/common';
+import type { Request, Response } from 'express';
 import { Throttle } from '@nestjs/throttler';
 import { Idempotent } from '../../../../../common/decorators/idempotent.decorator';
 import { resolveOrThrow } from '../../../../../common/application/result';
 import { parseDurationToMilliseconds } from '../../../../../libs/duration';
 import type {
-  AuthResponse,
   AuthenticatedUser,
+  AuthUserResponse,
   UserProfile
 } from '../../app/auth.types';
 import { GetCurrentUserUseCase } from '../../app/use-cases/get-current-user.use-case';
@@ -28,8 +31,8 @@ import { JwtAuthGuard } from '../guard/jwt-auth.guard';
 import { PermissionsGuard } from '../guard/permissions.guard';
 import { mapAuthAppErrorToHttpException } from './auth-error-mapper';
 import { AuthHttpExceptionFilter } from './auth-http-exception.filter';
+import { AuthCookieService } from './auth-cookie.utils';
 import { LoginDto } from './dto/login.dto';
-import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { RegisterDto } from './dto/register.dto';
 import { IdempotencyKeyInterceptor } from '../../../../../common/interceptors/idempotency-key.interceptor';
 
@@ -59,7 +62,8 @@ export class AuthController {
     private readonly loginUseCase: LoginUseCase,
     private readonly refreshSessionUseCase: RefreshSessionUseCase,
     private readonly logoutUseCase: LogoutUseCase,
-    private readonly getCurrentUserUseCase: GetCurrentUserUseCase
+    private readonly getCurrentUserUseCase: GetCurrentUserUseCase,
+    private readonly authCookieService: AuthCookieService
   ) {}
 
   @Post('register')
@@ -71,11 +75,20 @@ export class AuthController {
   @Idempotent({
     scope: 'auth:register',
   })
-  async register(@Body() body: RegisterDto): Promise<AuthResponse> {
-    return resolveOrThrow(
+  async register(
+    @Body() body: RegisterDto,
+    @Res({ passthrough: true }) response: Response
+  ): Promise<AuthUserResponse> {
+    const authResponse = resolveOrThrow(
       await this.registerUseCase.execute(body),
       mapAuthAppErrorToHttpException
     );
+
+    this.authCookieService.setAuthCookies(response, authResponse);
+
+    return {
+      user: authResponse.user,
+    };
   }
 
   @Post('login')
@@ -84,11 +97,20 @@ export class AuthController {
   })
   @Header('Cache-Control', 'no-store')
   @HttpCode(200)
-  async login(@Body() body: LoginDto): Promise<AuthResponse> {
-    return resolveOrThrow(
+  async login(
+    @Body() body: LoginDto,
+    @Res({ passthrough: true }) response: Response
+  ): Promise<AuthUserResponse> {
+    const authResponse = resolveOrThrow(
       await this.loginUseCase.execute(body),
       mapAuthAppErrorToHttpException
     );
+
+    this.authCookieService.setAuthCookies(response, authResponse);
+
+    return {
+      user: authResponse.user,
+    };
   }
 
   @Post('refresh')
@@ -96,20 +118,31 @@ export class AuthController {
     default: authRouteRateLimits.refresh,
   })
   @Header('Cache-Control', 'no-store')
-  @HttpCode(200)
-  async refresh(@Body() body: RefreshTokenDto): Promise<AuthResponse> {
-    return resolveOrThrow(
-      await this.refreshSessionUseCase.execute(body.refreshToken),
+  @HttpCode(204)
+  async refresh(
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response
+  ): Promise<void> {
+    const authResponse = resolveOrThrow(
+      await this.refreshSessionUseCase.execute(
+        this.authCookieService.extractRefreshToken(request)
+      ),
       mapAuthAppErrorToHttpException
     );
+
+    this.authCookieService.setAuthCookies(response, authResponse);
   }
 
   @Post('logout')
   @Header('Cache-Control', 'no-store')
   @HttpCode(204)
   @UseGuards(JwtAuthGuard, PermissionsGuard)
-  async logout(@CurrentUser() currentUser: AuthenticatedUser): Promise<void> {
+  async logout(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Res({ passthrough: true }) response: Response
+  ): Promise<void> {
     await this.logoutUseCase.execute(currentUser);
+    this.authCookieService.clearAuthCookies(response);
   }
 
   @Get('me')

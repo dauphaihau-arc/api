@@ -12,7 +12,7 @@ import { GlobalExceptionFilter } from '../src/common/filters/global-exception.fi
 import { RequestLoggingInterceptor } from '../src/common/interceptors/request-logging.interceptor';
 import { parseCorsAllowedOrigins } from '../src/config/cors.config';
 import { AppModule } from '../src/modules/app.module';
-import type { AuthResponse } from '../src/modules/domains/auth/app/auth.types';
+import type { AuthUserResponse } from '../src/modules/domains/auth/app/auth.types';
 import { ProductShippingCharge } from '../src/modules/domains/product/domain/enums/product-shipping-charge.enum';
 import { ProductVariantType } from '../src/modules/domains/product/domain/enums/product-variant-type.enum';
 import { ProductWhoMade } from '../src/modules/domains/product/domain/enums/product-who-made.enum';
@@ -114,8 +114,9 @@ describe('Commerce flow (e2e)', () => {
 
   it('creates a shop and category, configures a product, and publishes it', async () => {
     const email = `commerce-${Date.now()}@example.com`;
+    const ownerAgent = request.agent(app.getHttpServer());
 
-    const registerResponse = await request(app.getHttpServer())
+    const registerResponse = await ownerAgent
       .post(`${API_PREFIX}/auth/register`)
       .send({
         email,
@@ -123,12 +124,10 @@ describe('Commerce flow (e2e)', () => {
         displayName: 'Commerce Owner',
       })
       .expect(201);
-    const registerBody = registerResponse.body as unknown as AuthResponse;
-    const accessToken = registerBody.accessToken;
+    const registerBody = registerResponse.body as unknown as AuthUserResponse;
 
-    const shopResponse = await request(app.getHttpServer())
+    const shopResponse = await ownerAgent
       .post(`${API_PREFIX}/shops`)
-      .set('Authorization', `Bearer ${accessToken}`)
       .send({
         shopName: `shop${Date.now().toString().slice(-6)}`,
       })
@@ -143,9 +142,8 @@ describe('Commerce flow (e2e)', () => {
     expect(shopBody.id).toEqual(expect.any(String));
     expect(shopBody.ownerUserId).toBe(registerBody.user.id);
 
-    const categoryResponse = await request(app.getHttpServer())
+    const categoryResponse = await ownerAgent
       .post(`${API_PREFIX}/categories`)
-      .set('Authorization', `Bearer ${accessToken}`)
       .send({
         name: 'Mugs',
         rank: 1,
@@ -160,9 +158,8 @@ describe('Commerce flow (e2e)', () => {
     expect(categoryBody.name).toBe('Mugs');
     expect(categoryBody.attributes).toEqual([]);
 
-    const categoryAttributeResponse = await request(app.getHttpServer())
+    const categoryAttributeResponse = await ownerAgent
       .post(`${API_PREFIX}/categories/${categoryBody.id}/attributes`)
-      .set('Authorization', `Bearer ${accessToken}`)
       .send({
         name: 'Material',
         inputType: 'select',
@@ -176,9 +173,8 @@ describe('Commerce flow (e2e)', () => {
       options: Array<{ id: string; value: string }>;
     };
 
-    const createProductResponse = await request(app.getHttpServer())
+    const createProductResponse = await ownerAgent
       .post(`${API_PREFIX}/shops/${shopBody.id}/products`)
-      .set('Authorization', `Bearer ${accessToken}`)
       .send({
         categoryId: categoryBody.id,
         title: 'Handmade Mug',
@@ -202,9 +198,8 @@ describe('Commerce flow (e2e)', () => {
 
     const productId = productBody.id;
 
-    const updateProductResponse = await request(app.getHttpServer())
+    const updateProductResponse = await ownerAgent
       .patch(`${API_PREFIX}/shops/${shopBody.id}/products/${productId}`)
-      .set('Authorization', `Bearer ${accessToken}`)
       .send({
         title: 'Better Mug',
         description: 'Refined ceramic mug',
@@ -228,9 +223,8 @@ describe('Commerce flow (e2e)', () => {
       .get(`${API_PREFIX}/products/${productId}`)
       .expect(404);
 
-    const setImagesResponse = await request(app.getHttpServer())
+    const setImagesResponse = await ownerAgent
       .put(`${API_PREFIX}/shops/${shopBody.id}/products/${productId}/images`)
-      .set('Authorization', `Bearer ${accessToken}`)
       .attach('images', Buffer.from('fake-image-content'), {
         filename: 'mug.jpg',
         contentType: 'image/jpeg',
@@ -239,9 +233,8 @@ describe('Commerce flow (e2e)', () => {
 
     expect(setImagesResponse.body.images).toHaveLength(1);
 
-    const setAttributesResponse = await request(app.getHttpServer())
+    const setAttributesResponse = await ownerAgent
       .put(`${API_PREFIX}/shops/${shopBody.id}/products/${productId}/attributes`)
-      .set('Authorization', `Bearer ${accessToken}`)
       .send({
         attributes: [
           {
@@ -259,9 +252,8 @@ describe('Commerce flow (e2e)', () => {
       selectedOptionValue: 'Ceramic',
     });
 
-    const setInventoryResponse = await request(app.getHttpServer())
+    const setInventoryResponse = await ownerAgent
       .put(`${API_PREFIX}/shops/${shopBody.id}/products/${productId}/inventory`)
-      .set('Authorization', `Bearer ${accessToken}`)
       .send({
         inventory: [
           {
@@ -275,9 +267,8 @@ describe('Commerce flow (e2e)', () => {
 
     expect(setInventoryResponse.body.inventory).toHaveLength(1);
 
-    const setShippingResponse = await request(app.getHttpServer())
+    const setShippingResponse = await ownerAgent
       .put(`${API_PREFIX}/shops/${shopBody.id}/products/${productId}/shipping`)
-      .set('Authorization', `Bearer ${accessToken}`)
       .send({
         originCountry: 'US',
         originZip: '10001',
@@ -296,9 +287,8 @@ describe('Commerce flow (e2e)', () => {
     expect(setShippingResponse.body.shipping).toBeDefined();
     expect(setShippingResponse.body.shipping.destinations).toHaveLength(1);
 
-    const publishResponse = await request(app.getHttpServer())
+    const publishResponse = await ownerAgent
       .post(`${API_PREFIX}/shops/${shopBody.id}/products/${productId}/publish`)
-      .set('Authorization', `Bearer ${accessToken}`)
       .expect(201);
 
     expect(publishResponse.body.state).toBe('active');
@@ -327,9 +317,8 @@ describe('Commerce flow (e2e)', () => {
     expect(getPublicProductResponse.body.images).toHaveLength(1);
     expect(getPublicProductResponse.body.inventory).toHaveLength(1);
 
-    const getProductResponse = await request(app.getHttpServer())
+    const getProductResponse = await ownerAgent
       .get(`${API_PREFIX}/shops/${shopBody.id}/products/${productId}`)
-      .set('Authorization', `Bearer ${accessToken}`)
       .expect(200);
 
     expect(getProductResponse.body).toMatchObject({
@@ -355,9 +344,8 @@ describe('Commerce flow (e2e)', () => {
     expect(getProductResponse.body.inventory).toHaveLength(1);
     expect(getProductResponse.body.shipping.destinations).toHaveLength(1);
 
-    const secondProductResponse = await request(app.getHttpServer())
+    const secondProductResponse = await ownerAgent
       .post(`${API_PREFIX}/shops/${shopBody.id}/products`)
-      .set('Authorization', `Bearer ${accessToken}`)
       .send({
         categoryId: categoryBody.id,
         title: 'Draft Mug',
@@ -368,7 +356,8 @@ describe('Commerce flow (e2e)', () => {
       .expect(201);
 
     const otherUserEmail = `commerce-other-${Date.now()}@example.com`;
-    const otherRegisterResponse = await request(app.getHttpServer())
+    const otherAgent = request.agent(app.getHttpServer());
+    await otherAgent
       .post(`${API_PREFIX}/auth/register`)
       .send({
         email: otherUserEmail,
@@ -376,20 +365,17 @@ describe('Commerce flow (e2e)', () => {
         displayName: 'Other Commerce Owner',
       })
       .expect(201);
-    const otherAccessToken = (otherRegisterResponse.body as AuthResponse).accessToken;
 
-    const otherShopResponse = await request(app.getHttpServer())
+    const otherShopResponse = await otherAgent
       .post(`${API_PREFIX}/shops`)
-      .set('Authorization', `Bearer ${otherAccessToken}`)
       .send({
         shopName: `shop${Date.now().toString().slice(-5)}x`,
       })
       .expect(201);
     const otherShopBody = otherShopResponse.body as { id: string };
 
-    await request(app.getHttpServer())
+    await otherAgent
       .post(`${API_PREFIX}/shops/${otherShopBody.id}/products`)
-      .set('Authorization', `Bearer ${otherAccessToken}`)
       .send({
         categoryId: categoryBody.id,
         title: 'Other Shop Mug',
@@ -399,9 +385,8 @@ describe('Commerce flow (e2e)', () => {
       })
       .expect(201);
 
-    const listProductsResponse = await request(app.getHttpServer())
+    const listProductsResponse = await ownerAgent
       .get(`${API_PREFIX}/shops/${shopBody.id}/products`)
-      .set('Authorization', `Bearer ${accessToken}`)
       .query({
         state: 'active',
         search: 'better',
