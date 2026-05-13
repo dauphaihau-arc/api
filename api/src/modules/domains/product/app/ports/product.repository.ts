@@ -1,0 +1,51 @@
+import type {
+  CreateProductDraftRepositoryInput,
+  ListPublicProductsInput,
+  ProductDraftSummary,
+  PublicProductListResult,
+  ReplaceProductAttributeValuesRepositoryInput,
+  ReplaceProductImagesRepositoryInput,
+  ReplaceProductImagesRepositoryResult,
+  ReplaceProductInventoryRepositoryInput,
+  ReplaceProductShippingRepositoryInput,
+  ReplaceProductVariantsRepositoryInput
+} from '../product.types';
+
+export abstract class ProductRepository {
+  abstract createDraft(
+    input: CreateProductDraftRepositoryInput
+  ): Promise<ProductDraftSummary>;
+
+  abstract findById(id: string): Promise<ProductDraftSummary | null>;
+
+  abstract listPublic(
+    input: ListPublicProductsInput
+  ): Promise<PublicProductListResult>;
+
+  abstract replaceImages(
+    input: ReplaceProductImagesRepositoryInput
+  ): Promise<ReplaceProductImagesRepositoryResult | null>;
+
+  abstract replaceAttributeValues(
+    input: ReplaceProductAttributeValuesRepositoryInput
+  ): Promise<ProductDraftSummary | null>;
+
+  abstract replaceVariants(
+    input: ReplaceProductVariantsRepositoryInput
+  ): Promise<ProductDraftSummary | null>;
+
+  abstract replaceInventory(
+    input: ReplaceProductInventoryRepositoryInput
+  ): Promise<ProductDraftSummary | null>;
+
+  abstract replaceShipping(
+    input: ReplaceProductShippingRepositoryInput
+  ): Promise<ProductDraftSummary | null>;
+
+  abstract publish(productId: string): Promise<ProductDraftSummary | null>;
+
+  abstract findByShopIdAndSlug(
+    shopId: string,
+    slug: string
+  ): Promise<ProductDraftSummary | null>;
+}
