@@ -1,0 +1,40 @@
+import { MikroOrmModule } from '@mikro-orm/nestjs';
+import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+import { CategoryRepository } from './app/ports/category.repository';
+import { CreateCategoryAttributeUseCase } from './app/use-cases/create-category-attribute.use-case';
+import { CreateCategoryUseCase } from './app/use-cases/create-category.use-case';
+import { ListCategoriesUseCase } from './app/use-cases/list-categories.use-case';
+import { CategoryController } from './api/rest/category.controller';
+import { MikroOrmCategoryRepository } from './infra/mikro-orm-category.repository';
+import { CategoryAttributeOptionEntity } from './infra/persistence/entities/category-attribute-option.entity';
+import { CategoryAttributeEntity } from './infra/persistence/entities/category-attribute.entity';
+import { CategoryEntity } from './infra/persistence/entities/category.entity';
+
+@Module({
+  imports: [
+    ConfigModule,
+    MikroOrmModule.forFeature([
+      CategoryEntity,
+      CategoryAttributeEntity,
+      CategoryAttributeOptionEntity,
+    ]),
+  ],
+  controllers: [CategoryController],
+  providers: [
+    {
+      provide: CategoryRepository,
+      useClass: MikroOrmCategoryRepository,
+    },
+    CreateCategoryUseCase,
+    ListCategoriesUseCase,
+    CreateCategoryAttributeUseCase,
+  ],
+  exports: [
+    CategoryRepository,
+    CreateCategoryUseCase,
+    ListCategoriesUseCase,
+    CreateCategoryAttributeUseCase,
+  ],
+})
+export class CategoryModule {}

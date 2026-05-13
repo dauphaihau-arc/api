@@ -1,0 +1,48 @@
+import {
+  Collection,
+  Entity,
+  Index,
+  ManyToOne,
+  OneToMany,
+  Property,
+  Unique
+} from '@mikro-orm/core';
+import { AbstractBaseEntity } from '~/common/database/abstract-base.entity';
+import { ProductAttributeValueEntity } from '~/modules/domains/product/infra/persistence/entities/product-attribute-value.entity';
+import { CategoryAttributeOptionEntity } from './category-attribute-option.entity';
+import { CategoryEntity } from './category.entity';
+
+@Entity({ tableName: 'category_attributes' })
+@Index({ properties: ['category'] })
+@Unique({ properties: ['category', 'name'] })
+export class CategoryAttributeEntity extends AbstractBaseEntity {
+  @ManyToOne(() => CategoryEntity, {
+    fieldName: 'category_id',
+    deleteRule: 'cascade',
+  })
+  category!: CategoryEntity;
+
+  @Property({ fieldName: 'name', length: 255 })
+  name!: string;
+
+  @Property({ fieldName: 'input_type', length: 30 })
+  inputType = 'select';
+
+  @Property({ fieldName: 'is_required' })
+  isRequired = false;
+
+  @Property({ fieldName: 'rank' })
+  rank = 1;
+
+  @OneToMany(
+    () => CategoryAttributeOptionEntity,
+    (option) => option.categoryAttribute
+  )
+  options = new Collection<CategoryAttributeOptionEntity>(this);
+
+  @OneToMany(
+    () => ProductAttributeValueEntity,
+    (attributeValue) => attributeValue.categoryAttribute
+  )
+  productAttributeValues = new Collection<ProductAttributeValueEntity>(this);
+}
