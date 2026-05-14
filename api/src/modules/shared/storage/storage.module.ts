@@ -5,6 +5,7 @@ import {
   buildStorageConfig
 } from '../../../config/storage.config';
 import { StorageService } from './app/ports/storage.service';
+import { StorageBootstrapService } from './storage-bootstrap.service';
 import { LocalFileStorageService } from './infra/local-file-storage.service';
 import { MinioStorageService } from './infra/minio-storage.service';
 
@@ -25,6 +26,7 @@ import { MinioStorageService } from './infra/minio-storage.service';
           ? new MinioStorageService(storageConfig)
           : new LocalFileStorageService(storageConfig),
     },
+    StorageBootstrapService,
   ],
   exports: [STORAGE_CONFIG, StorageService],
 })

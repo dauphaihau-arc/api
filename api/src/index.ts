@@ -1,4 +1,8 @@
-import { ClassSerializerInterceptor, ValidationPipe } from '@nestjs/common';
+import {
+  ClassSerializerInterceptor,
+  RequestMethod,
+  ValidationPipe
+} from '@nestjs/common';
 import { NestFactory, Reflector } from '@nestjs/core';
 import express from 'express';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
@@ -36,7 +40,14 @@ async function bootstrap() {
     new ClassSerializerInterceptor(app.get(Reflector)),
     new RequestLoggingInterceptor()
   );
-  app.setGlobalPrefix(API_PREFIX);
+  app.setGlobalPrefix(API_PREFIX, {
+    exclude: [
+      {
+        path: 'health',
+        method: RequestMethod.GET,
+      },
+    ],
+  });
 
   await app.listen(process.env.PORT ?? 3000);
 }

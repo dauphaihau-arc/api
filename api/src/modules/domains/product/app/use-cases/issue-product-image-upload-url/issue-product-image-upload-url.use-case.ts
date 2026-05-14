@@ -18,6 +18,7 @@ import { createPublicId } from '~/common/ids/public-id';
 import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
 import { buildStorageObjectKey, resolveImageExtension, resolveStorageEnvironmentSegment } from '~/modules/shared/storage/app/storage-key-builder';
 import type { StorageAssetType } from '~/modules/shared/storage/app/storage-key.types';
+import { StorageService } from '~/modules/shared/storage/app/ports/storage.service';
 import { ProductRepository } from '../../ports/product.repository';
 import { ShopRepository } from '~/modules/domains/shop/app/ports/shop.repository';
 
@@ -41,7 +42,8 @@ export class IssueProductImageUploadUrlUseCase {
     @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
     private readonly shopRepository: ShopRepository,
     private readonly productRepository: ProductRepository,
-    @Inject(STORAGE_CONFIG) private readonly storageConfig: StorageConfig
+    @Inject(STORAGE_CONFIG) private readonly storageConfig: StorageConfig,
+    private readonly storageService: StorageService
   ) {}
 
   async execute(
@@ -80,6 +82,8 @@ export class IssueProductImageUploadUrlUseCase {
     });
 
     if (this.storageConfig.driver === 'minio') {
+      await this.storageService.ping();
+
       const client = new S3Client({
         region: this.storageConfig.region,
         endpoint: this.storageConfig.endpoint,
