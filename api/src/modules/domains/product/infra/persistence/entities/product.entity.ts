@@ -9,6 +9,7 @@ import {
   Unique
 } from '@mikro-orm/core';
 import { AbstractBaseEntity } from '~/common/database/abstract-base.entity';
+import { createPublicId } from '~/common/ids/public-id';
 import { CategoryEntity } from '~/modules/domains/category/infra/persistence/entities/category.entity';
 import { ShopEntity } from '~/modules/domains/shop/infra/persistence/entities/shop.entity';
 import { ProductState } from '~/modules/domains/product/domain/enums/product-state.enum';
@@ -26,6 +27,10 @@ import { ProductVariantEntity } from './product-variant.entity';
 @Index({ properties: ['shop', 'state'] })
 @Unique({ properties: ['shop', 'slug'] })
 export class ProductEntity extends AbstractBaseEntity {
+  @Property({ fieldName: 'public_id', length: 12 })
+  @Unique()
+  publicId: string = createPublicId();
+
   @ManyToOne(() => ShopEntity, {
     fieldName: 'shop_id',
     deleteRule: 'restrict',

@@ -18,7 +18,9 @@ describe('SetProductImagesUseCase', () => {
 
   const product: ProductDraftSummary = {
     id: 'product-1',
+    publicId: 'productpub01',
     shopId: 'shop-owner-1',
+    shopPublicId: 'shoppub0001',
     categoryId: 'category-1',
     title: 'Handmade Mug',
     slug: 'handmade-mug',
@@ -66,7 +68,7 @@ describe('SetProductImagesUseCase', () => {
 
     const storageService: jest.Mocked<StorageService> = {
       putObject: jest.fn().mockResolvedValue({
-        key: 'products/product-1/images/a.jpg',
+        key: 'dev/public/shops/shoppub0001/products/productpub01/images/original/a.jpg',
         size: 12,
         contentType: 'image/jpeg',
       }),
@@ -84,6 +86,7 @@ describe('SetProductImagesUseCase', () => {
       findByShopName: jest.fn(),
       findOwnedById: jest.fn().mockResolvedValue({
         id: 'shop-owner-1',
+        publicId: 'shoppub0001',
         ownerUserId: actor.userId,
         shopName: 'owner-shop',
         status: 'active',
@@ -117,6 +120,13 @@ describe('SetProductImagesUseCase', () => {
 
     expect(result.isOk).toBe(true);
     expect(storageService.putObject).toHaveBeenCalledTimes(1);
+    expect(storageService.putObject).toHaveBeenCalledWith(
+      expect.objectContaining({
+        key: expect.stringContaining(
+          'shops/shoppub0001/products/productpub01/images/original/'
+        ),
+      })
+    );
     expect(productRepository.replaceImages).toHaveBeenCalledTimes(1);
     expect(storageService.deleteObject).toHaveBeenCalledWith(
       'products/product-1/images/old.jpg'

@@ -2654,6 +2654,22 @@
           "comment": null,
           "enumItems": [],
           "mappedType": "datetime"
+        },
+        "public_id": {
+          "name": "public_id",
+          "type": "varchar(12)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": true,
+          "length": 12,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "string"
         }
       },
       "name": "products",
@@ -2678,6 +2694,26 @@
           "keyName": "products_pkey",
           "unique": true,
           "primary": true
+        },
+        {
+          "columnNames": [
+            "public_id"
+          ],
+          "composite": false,
+          "constraint": false,
+          "keyName": "products_public_id_index",
+          "unique": false,
+          "primary": false
+        },
+        {
+          "columnNames": [
+            "public_id"
+          ],
+          "composite": false,
+          "constraint": true,
+          "keyName": "products_public_id_unique",
+          "unique": true,
+          "primary": false
         },
         {
           "columnNames": [
@@ -3125,6 +3161,22 @@
           "comment": null,
           "enumItems": [],
           "mappedType": "string"
+        },
+        "public_id": {
+          "name": "public_id",
+          "type": "varchar(12)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": true,
+          "length": 12,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "string"
         }
       },
       "name": "shops",
@@ -3149,6 +3201,26 @@
           "keyName": "shops_pkey",
           "unique": true,
           "primary": true
+        },
+        {
+          "columnNames": [
+            "public_id"
+          ],
+          "composite": false,
+          "constraint": false,
+          "keyName": "shops_public_id_index",
+          "unique": false,
+          "primary": false
+        },
+        {
+          "columnNames": [
+            "public_id"
+          ],
+          "composite": false,
+          "constraint": true,
+          "keyName": "shops_public_id_unique",
+          "unique": true,
+          "primary": false
         },
         {
           "columnNames": [

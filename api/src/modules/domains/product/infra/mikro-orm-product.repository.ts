@@ -317,6 +317,7 @@ export class MikroOrmProductRepository implements ProductRepository {
     }
 
     await entityManager.persistAndFlush(product);
+    await entityManager.populate(product, ['shop']);
 
     return this.toDraftSummary(product);
   }
@@ -521,7 +522,9 @@ export class MikroOrmProductRepository implements ProductRepository {
   private toDraftSummary(product: ProductEntity): ProductDraftSummary {
     return {
       id: product.id,
+      publicId: product.publicId,
       shopId: product.shop.id,
+      shopPublicId: product.shop.publicId,
       categoryId: product.category?.id,
       title: product.title,
       slug: product.slug,
@@ -618,6 +621,7 @@ export class MikroOrmProductRepository implements ProductRepository {
       id: product.id,
       shop: {
         id: product.shop.id,
+        publicId: product.shop.publicId,
         shopName: product.shop.shopName,
       },
       categoryId: product.category?.id,
@@ -703,6 +707,7 @@ export class MikroOrmProductRepository implements ProductRepository {
       id: product.id,
       shop: {
         id: product.shop.id,
+        publicId: product.shop.publicId,
         shopName: product.shop.shopName,
       },
       categoryId: product.category?.id,

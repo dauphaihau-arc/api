@@ -1,9 +1,9 @@
-import path from 'node:path';
-import { randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
+import { createPublicId } from '~/common/ids/public-id';
 import { err, ok, type Result } from '~/common/application/result';
 import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
 import { ShopRepository } from '~/modules/domains/shop/app/ports/shop.repository';
+import { buildStorageObjectKey, resolveImageExtension, resolveStorageEnvironmentSegment } from '~/modules/shared/storage/app/storage-key-builder';
 import { StorageService } from '~/modules/shared/storage/app/ports/storage.service';
 import { ProductRepository } from '../ports/product.repository';
 import type { ProductDraftSummary } from '../product.types';
@@ -64,7 +64,11 @@ export class SetProductImagesUseCase {
       const storedImages = await Promise.all(
         input.files.map(async (file, index) => {
           const storedObject = await this.storageService.putObject({
-            key: this.buildImageKey(productId, file.originalname),
+            key: this.buildImageKey(
+              existingProduct.shopPublicId ?? existingProduct.shopId,
+              existingProduct.publicId ?? existingProduct.id,
+              file.mimetype
+            ),
             body: file.buffer,
             contentType: file.mimetype,
           });
@@ -97,9 +101,23 @@ export class SetProductImagesUseCase {
     }
   }
 
-  private buildImageKey(productId: string, originalName: string): string {
-    const extension = path.extname(originalName).toLowerCase();
-    return `products/${productId}/images/${randomUUID()}${extension}`;
+  private buildImageKey(
+    shopId: string,
+    productId: string,
+    contentType: string
+  ): string {
+    return buildStorageObjectKey({
+      env: resolveStorageEnvironmentSegment(process.env.NODE_ENV),
+      visibility: 'public',
+      path: [
+        { domain: 'shops', id: shopId },
+        { domain: 'products', id: productId },
+      ],
+      collection: 'images',
+      assetType: 'original',
+      extension: resolveImageExtension(contentType),
+      filename: createPublicId(),
+    });
   }
 
   private async deleteObjects(keys: string[]): Promise<void> {

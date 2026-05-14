@@ -70,6 +70,7 @@ export class MikroOrmShopRepository implements ShopRepository {
   private toSummary(shop: ShopEntity): ShopSummary {
     return {
       id: shop.id,
+      publicId: shop.publicId,
       ownerUserId: shop.ownerUser.id,
       shopName: shop.shopName,
       status: shop.status,

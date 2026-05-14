@@ -2,7 +2,7 @@ import { OptionalProps, PrimaryKey, Property } from '@mikro-orm/core';
 import { randomUUID } from 'node:crypto';
 
 export abstract class AbstractBaseEntity {
-  [OptionalProps]?: 'createdAt' | 'updatedAt';
+  [OptionalProps]?: 'createdAt' | 'updatedAt' | 'publicId';
 
   @PrimaryKey({ type: 'uuid' })
   id: string = randomUUID();

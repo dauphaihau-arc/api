@@ -6,7 +6,9 @@ import type { PaginatedResult } from '~/common/application/pagination';
 
 export interface ProductDraftSummary {
   id: string;
+  publicId?: string;
   shopId: string;
+  shopPublicId?: string;
   categoryId?: string;
   title: string;
   slug: string;
@@ -189,6 +191,7 @@ export interface PublicProductListItem {
   id: string;
   shop: {
     id: string;
+    publicId?: string;
     shopName: string;
   };
   categoryId?: string;
@@ -226,6 +229,7 @@ export interface PublicProductDetail {
   id: string;
   shop: {
     id: string;
+    publicId?: string;
     shopName: string;
   };
   categoryId?: string;
