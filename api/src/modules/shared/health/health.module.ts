@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { MikroOrmModule } from '@mikro-orm/nestjs';
-import { StorageModule } from '../../shared/storage/storage.module';
+import { StorageModule } from '../storage/storage.module';
 import { HealthController } from './health.controller';
 import { HealthService } from './health.service';
 
