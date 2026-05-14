@@ -6,7 +6,7 @@ export type CategorySeedAttribute = {
 export type CategorySeedNode = {
   name: string;
   rank: number;
-  imageStorageKey?: string;
+  imageFilename?: string;
   attributes?: CategorySeedAttribute[];
   children?: CategorySeedNode[];
 };
@@ -59,12 +59,12 @@ export const categorySeedData: CategorySeedNode[] = [
   {
     name: 'Clothing',
     rank: 1,
-    imageStorageKey: 'categories/clothing.jpg',
+    imageFilename: 'categories/clothing.jpg',
     children: [
       {
         name: 'Man Fashion',
         rank: 1,
-        imageStorageKey: 'categories/man-fasion.jpg',
+        imageFilename: 'categories/man-fasion.jpg',
         children: [
           {
             name: 'Sweaters',
@@ -86,7 +86,7 @@ export const categorySeedData: CategorySeedNode[] = [
       {
         name: "Women's Fashion",
         rank: 2,
-        imageStorageKey: 'categories/women-fasion.jpg',
+        imageFilename: 'categories/women-fasion.jpg',
         children: [
           {
             name: 'Sweaters',
@@ -132,18 +132,18 @@ export const categorySeedData: CategorySeedNode[] = [
   {
     name: 'Accessories',
     rank: 2,
-    imageStorageKey: 'categories/accessories.jpeg',
+    imageFilename: 'categories/accessories.jpeg',
     children: [
       {
         name: 'Hat & Cap',
         rank: 1,
-        imageStorageKey: 'categories/hat.webp',
+        imageFilename: 'categories/hat.webp',
         attributes: attributesAccessoriesHatCommon,
       },
       {
         name: 'Bag',
         rank: 2,
-        imageStorageKey: 'categories/bag.webp',
+        imageFilename: 'categories/bag.webp',
         children: [
           {
             name: 'Totes',
@@ -162,24 +162,24 @@ export const categorySeedData: CategorySeedNode[] = [
   {
     name: 'Electronics',
     rank: 3,
-    imageStorageKey: 'categories/electronics.jpg',
+    imageFilename: 'categories/electronics.jpg',
     children: [
       {
         name: 'Camera',
         rank: 1,
-        imageStorageKey: 'categories/camera.webp',
+        imageFilename: 'categories/camera.webp',
         attributes: attributesElectronicsCommon,
       },
       {
         name: 'Ebook Readers',
         rank: 2,
-        imageStorageKey: 'categories/ebook-reader.webp',
+        imageFilename: 'categories/ebook-reader.webp',
         attributes: attributesElectronicsCommon,
       },
       {
         name: 'Headphones',
         rank: 3,
-        imageStorageKey: 'categories/headphone.jpg',
+        imageFilename: 'categories/headphone.jpg',
         attributes: attributesElectronicsCommon,
       },
     ],
@@ -187,18 +187,18 @@ export const categorySeedData: CategorySeedNode[] = [
   {
     name: 'Art',
     rank: 4,
-    imageStorageKey: 'categories/art.jpg',
+    imageFilename: 'categories/art.jpg',
     children: [
       {
         name: 'Crafting',
         rank: 1,
-        imageStorageKey: 'categories/crafting.webp',
+        imageFilename: 'categories/crafting.webp',
         attributes: attributesArtCommon,
       },
       {
         name: 'Painting',
         rank: 2,
-        imageStorageKey: 'categories/painting.webp',
+        imageFilename: 'categories/painting.webp',
         attributes: attributesArtCommon,
       },
     ],
@@ -206,17 +206,17 @@ export const categorySeedData: CategorySeedNode[] = [
   {
     name: 'Home',
     rank: 5,
-    imageStorageKey: 'categories/home.jpg',
+    imageFilename: 'categories/home.jpg',
     children: [
       {
         name: 'Furniture',
         rank: 1,
-        imageStorageKey: 'categories/furniture.webp',
+        imageFilename: 'categories/furniture.webp',
         children: [
           {
             name: 'Table',
             rank: 1,
-            imageStorageKey: 'categories/table.jpg',
+            imageFilename: 'categories/table.jpg',
             attributes: [
               {
                 name: 'Material',
@@ -229,12 +229,12 @@ export const categorySeedData: CategorySeedNode[] = [
       {
         name: 'Bathroom',
         rank: 2,
-        imageStorageKey: 'categories/bathroom.jpg',
+        imageFilename: 'categories/bathroom.jpg',
         children: [
           {
             name: 'Towel',
             rank: 1,
-            imageStorageKey: 'categories/towel.jpg',
+            imageFilename: 'categories/towel.jpg',
           },
         ],
       },
@@ -243,12 +243,12 @@ export const categorySeedData: CategorySeedNode[] = [
   {
     name: 'Toys & Games',
     rank: 6,
-    imageStorageKey: 'categories/toy-video-games.webp',
+    imageFilename: 'categories/toy-video-games.webp',
     children: [
       {
         name: 'Games',
         rank: 1,
-        imageStorageKey: 'categories/toy-video-games.webp',
+        imageFilename: 'categories/toy-video-games.webp',
         children: [
           {
             name: 'Videos game',
@@ -281,7 +281,7 @@ export const categorySeedData: CategorySeedNode[] = [
       {
         name: 'Puppets',
         rank: 2,
-        imageStorageKey: 'categories/puppets.webp',
+        imageFilename: 'categories/puppets.webp',
         attributes: [
           { name: 'Material', options: ['Paper', 'Plastic', 'Wood'] },
         ],

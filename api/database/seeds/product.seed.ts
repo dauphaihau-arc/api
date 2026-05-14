@@ -1,10 +1,16 @@
-import { EntityManager } from '@mikro-orm/postgresql';
+import type { EntityManager } from '@mikro-orm/postgresql';
+import { basename, extname } from 'node:path';
+import * as path from 'node:path';
 import { CategoryAttributeEntity } from '../../src/modules/domains/category/infra/persistence/entities/category-attribute.entity';
 import { CategoryEntity } from '../../src/modules/domains/category/infra/persistence/entities/category.entity';
 import { ProductState } from '../../src/modules/domains/product/domain/enums/product-state.enum';
 import { ProductShippingCharge } from '../../src/modules/domains/product/domain/enums/product-shipping-charge.enum';
 import { ProductVariantType } from '../../src/modules/domains/product/domain/enums/product-variant-type.enum';
 import { ProductWhoMade } from '../../src/modules/domains/product/domain/enums/product-who-made.enum';
+import {
+  buildStorageObjectKey,
+  resolveStorageEnvironmentSegment,
+} from '../../src/modules/shared/storage/app/storage-key-builder';
 import { ProductAttributeValueEntity } from '../../src/modules/domains/product/infra/persistence/entities/product-attribute-value.entity';
 import { ProductImageEntity } from '../../src/modules/domains/product/infra/persistence/entities/product-image.entity';
 import { ProductInventoryEntity } from '../../src/modules/domains/product/infra/persistence/entities/product-inventory.entity';
@@ -12,137 +18,17 @@ import { ProductShippingDestinationEntity } from '../../src/modules/domains/prod
 import { ProductShippingProfileEntity } from '../../src/modules/domains/product/infra/persistence/entities/product-shipping-profile.entity';
 import { ProductVariantEntity } from '../../src/modules/domains/product/infra/persistence/entities/product-variant.entity';
 import { ProductEntity } from '../../src/modules/domains/product/infra/persistence/entities/product.entity';
-import { ShopEntity } from '../../src/modules/domains/shop/infra/persistence/entities/shop.entity';
+import type { ShopEntity } from '../../src/modules/domains/shop/infra/persistence/entities/shop.entity';
+import { productSeeds, type ProductSeed } from './product.data';
+import {
+  resolveSeedProductImagePaths,
+  slugifySeedValue,
+} from './product-seed-image-resolver';
 
-type ProductSeed = {
-  shopName: string;
-  categoryPath: string[];
-  title: string;
-  description: string;
-  whoMade: ProductWhoMade;
-  variantType: ProductVariantType;
-  variantGroupName?: string;
-  variantSubGroupName?: string;
-  images: string[];
-  inventory: Array<{
-    sku: string;
-    stock: number;
-    price: number;
-    salePrice?: number;
-    optionValue1?: string;
-    optionValue2?: string;
-  }>;
-};
-
-const productSeeds: ProductSeed[] = [
-  {
-    shopName: 'Olive Atelier',
-    categoryPath: ['Clothing', "Women's Fashion", 'Dresses'],
-    title: 'Linen Weekend Dress',
-    description:
-      'Relaxed linen dress with a lightweight drape and clean everyday silhouette.',
-    whoMade: ProductWhoMade.I_DID,
-    variantType: ProductVariantType.SINGLE,
-    variantGroupName: 'Color',
-    images: [
-      'shop/olive-atelier/linen-weekend-dress/1.jpg',
-      'shop/olive-atelier/linen-weekend-dress/2.jpg',
-    ],
-    inventory: [
-      { sku: 'OA-DRESS-BLK', stock: 14, price: 82, salePrice: 74, optionValue1: 'Black' },
-      { sku: 'OA-DRESS-RED', stock: 9, price: 82, optionValue1: 'Red' },
-    ],
-  },
-  {
-    shopName: 'Olive Atelier',
-    categoryPath: ['Accessories', 'Bag', 'Totes'],
-    title: 'Canvas Market Tote',
-    description:
-      'Structured carryall with reinforced straps sized for a daily market run.',
-    whoMade: ProductWhoMade.COLLECTIVE,
-    variantType: ProductVariantType.NONE,
-    images: [
-      'shop/olive-atelier/canvas-market-tote/1.jpg',
-      'shop/olive-atelier/canvas-market-tote/2.jpg',
-    ],
-    inventory: [{ sku: 'OA-TOTE-STD', stock: 21, price: 48 }],
-  },
-  {
-    shopName: 'Reed Workshop',
-    categoryPath: ['Clothing', 'Man Fashion', 'Hoodies'],
-    title: 'Studio Pullover Hoodie',
-    description:
-      'Heavyweight hoodie built for cool mornings with a soft brushed interior.',
-    whoMade: ProductWhoMade.I_DID,
-    variantType: ProductVariantType.COMBINE,
-    variantGroupName: 'Color',
-    variantSubGroupName: 'Size',
-    images: [
-      'shop/reed-workshop/studio-pullover-hoodie/1.jpg',
-      'shop/reed-workshop/studio-pullover-hoodie/2.jpg',
-    ],
-    inventory: [
-      { sku: 'RW-HOOD-BLK-S', stock: 6, price: 68, optionValue1: 'Black', optionValue2: 'S' },
-      { sku: 'RW-HOOD-BLK-M', stock: 8, price: 68, optionValue1: 'Black', optionValue2: 'M' },
-      { sku: 'RW-HOOD-RED-S', stock: 4, price: 68, salePrice: 61, optionValue1: 'Red', optionValue2: 'S' },
-      { sku: 'RW-HOOD-RED-M', stock: 7, price: 68, optionValue1: 'Red', optionValue2: 'M' },
-    ],
-  },
-  {
-    shopName: 'Reed Workshop',
-    categoryPath: ['Electronics', 'Headphones'],
-    title: 'Walnut Desk Headphones Stand',
-    description:
-      'Hand-finished wood display stand designed to keep over-ear headphones organized.',
-    whoMade: ProductWhoMade.SOMEONE_ELSE,
-    variantType: ProductVariantType.NONE,
-    images: [
-      'shop/reed-workshop/walnut-desk-headphones-stand/1.jpg',
-      'shop/reed-workshop/walnut-desk-headphones-stand/2.jpg',
-    ],
-    inventory: [{ sku: 'RW-STAND-WAL', stock: 11, price: 36 }],
-  },
-  {
-    shopName: 'Sage Studio',
-    categoryPath: ['Art', 'Painting'],
-    title: 'Minimal Horizon Print',
-    description:
-      'Archival print with a muted color palette and a wide matte-ready aspect ratio.',
-    whoMade: ProductWhoMade.I_DID,
-    variantType: ProductVariantType.NONE,
-    images: [
-      'shop/sage-studio/minimal-horizon-print/1.jpg',
-      'shop/sage-studio/minimal-horizon-print/2.jpg',
-    ],
-    inventory: [{ sku: 'SS-PRINT-HZN', stock: 17, price: 54 }],
-  },
-  {
-    shopName: 'Sage Studio',
-    categoryPath: ['Home', 'Furniture', 'Table'],
-    title: 'Oak Side Table',
-    description:
-      'Compact side table with rounded edges and a natural oil finish for small spaces.',
-    whoMade: ProductWhoMade.COLLECTIVE,
-    variantType: ProductVariantType.SINGLE,
-    variantGroupName: 'Finish',
-    images: [
-      'shop/sage-studio/oak-side-table/1.jpg',
-      'shop/sage-studio/oak-side-table/2.jpg',
-    ],
-    inventory: [
-      { sku: 'SS-TABLE-OAK', stock: 3, price: 140, optionValue1: 'Oak' },
-      { sku: 'SS-TABLE-WAL', stock: 2, price: 155, optionValue1: 'Walnut' },
-    ],
-  },
-];
+const DEFAULT_PRODUCT_SEED_ASSETS_DIR = path.resolve(__dirname, '../../../seed-assets/products');
 
 function slugify(value: string): string {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .replace(/-{2,}/g, '-');
+  return slugifySeedValue(value);
 }
 
 async function findCategoryByPath(em: EntityManager, path: string[]): Promise<CategoryEntity> {
@@ -166,15 +52,40 @@ async function findCategoryByPath(em: EntityManager, path: string[]): Promise<Ca
 
 async function syncProductImages(
   em: EntityManager,
+  shop: ShopEntity,
   product: ProductEntity,
-  images: string[]
+  imageFilenames: string[]
 ): Promise<void> {
   for (const image of await em.find(ProductImageEntity, { product })) {
     em.remove(image);
   }
   await em.flush();
 
-  images.forEach((storageKey, index) => {
+  imageFilenames.forEach((imageFilename, index) => {
+    const normalizedFilename = basename(imageFilename.trim());
+    const extension = extname(normalizedFilename).replace(/^\./, '').toLowerCase();
+    const filenameWithoutExtension = normalizedFilename.slice(
+      0,
+      normalizedFilename.length - extension.length - 1
+    );
+
+    if (!extension || !filenameWithoutExtension) {
+      throw new Error(`Invalid product image filename "${imageFilename}".`);
+    }
+
+    const storageKey = buildStorageObjectKey({
+      env: resolveStorageEnvironmentSegment(process.env.NODE_ENV),
+      visibility: 'public',
+      path: [
+        { domain: 'shops', id: shop.publicId },
+        { domain: 'products', id: product.publicId },
+      ],
+      collection: 'images',
+      assetType: 'original',
+      extension,
+      filename: filenameWithoutExtension,
+    });
+
     em.persist(em.create(ProductImageEntity, { product, storageKey, rank: index + 1 }));
   });
   await em.flush();
@@ -378,7 +289,15 @@ export async function seedProducts(
     em.persist(product);
     await em.flush();
 
-    await syncProductImages(em, product, productSeed.images);
+    const imageFilenames = resolveSeedProductImagePaths(
+      process.env.SEED_ASSETS_PRODUCTS_DIR
+        ? path.resolve(process.cwd(), process.env.SEED_ASSETS_PRODUCTS_DIR)
+        : DEFAULT_PRODUCT_SEED_ASSETS_DIR,
+      productSeed.shopName,
+      productSeed.title
+    );
+
+    await syncProductImages(em, shop, product, imageFilenames);
     await syncProductAttributes(em, product, category);
     const variantsByKey = await syncProductVariants(
       em,

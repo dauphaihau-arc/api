@@ -1,12 +1,43 @@
-import { EntityManager } from '@mikro-orm/postgresql';
+import type { EntityManager } from '@mikro-orm/postgresql';
+import { basename, extname } from 'node:path';
 import { CategoryAttributeOptionEntity } from '~/modules/domains/category/infra/persistence/entities/category-attribute-option.entity';
 import { CategoryAttributeEntity } from '~/modules/domains/category/infra/persistence/entities/category-attribute.entity';
 import { CategoryEntity } from '~/modules/domains/category/infra/persistence/entities/category.entity';
+import {
+  buildStorageObjectKey,
+  resolveStorageEnvironmentSegment,
+} from '~/modules/shared/storage/app/storage-key-builder';
 import {
   categorySeedData,
   type CategorySeedAttribute,
   type CategorySeedNode,
 } from './category.data';
+
+function buildCategoryImageStorageKey(
+  categoryId: string,
+  imageFilename: string
+): string {
+  const normalizedFilename = basename(imageFilename.trim());
+  const extension = extname(normalizedFilename).replace(/^\./, '').toLowerCase();
+  const filenameWithoutExtension = normalizedFilename.slice(
+    0,
+    normalizedFilename.length - extension.length - 1
+  );
+
+  if (!extension || !filenameWithoutExtension) {
+    throw new Error(`Invalid category image filename "${imageFilename}".`);
+  }
+
+  return buildStorageObjectKey({
+    env: resolveStorageEnvironmentSegment(process.env.NODE_ENV),
+    visibility: 'public',
+    path: [{ domain: 'categories', id: categoryId }],
+    collection: 'images',
+    assetType: 'original',
+    extension,
+    filename: filenameWithoutExtension,
+  });
+}
 
 async function syncCategoryAttributeOptions(
   em: EntityManager,
@@ -72,11 +103,14 @@ async function upsertCategory(
       name: node.name,
       parent,
       rank: node.rank,
-      imageStorageKey: node.imageStorageKey,
     });
 
   category.rank = node.rank;
-  category.imageStorageKey = node.imageStorageKey;
+  em.persist(category);
+  await em.flush();
+  category.imageStorageKey = node.imageFilename
+    ? buildCategoryImageStorageKey(category.id, node.imageFilename)
+    : undefined;
   em.persist(category);
   await em.flush();
 
