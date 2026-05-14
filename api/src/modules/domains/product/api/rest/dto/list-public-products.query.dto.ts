@@ -63,9 +63,17 @@ export class ListPublicProductsQueryDto {
   categoryId?: string;
 
   @IsOptional()
+  @IsUUID()
+  category_id?: string;
+
+  @IsOptional()
   @IsString()
   @Transform(({ value, obj: source }) => value ?? source.s)
   search?: string;
+
+  @IsOptional()
+  @IsString()
+  s?: string;
 
   @IsOptional()
   @IsString()
@@ -77,6 +85,11 @@ export class ListPublicProductsQueryDto {
   )
   @IsBoolean()
   isDigital?: boolean;
+
+  @IsOptional()
+  @Transform(({ value }) => toOptionalBoolean(value))
+  @IsBoolean()
+  is_digital?: boolean;
 
   @IsOptional()
   @IsEnum(ProductWhoMade)
