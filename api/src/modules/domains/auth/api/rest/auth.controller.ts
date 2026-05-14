@@ -21,11 +21,11 @@ import type {
   AuthUserResponse,
   UserProfile
 } from '../../app/auth.types';
-import { GetCurrentUserUseCase } from '../../app/use-cases/get-current-user.use-case';
-import { LoginUseCase } from '../../app/use-cases/login.use-case';
-import { LogoutUseCase } from '../../app/use-cases/logout.use-case';
-import { RefreshSessionUseCase } from '../../app/use-cases/refresh-session.use-case';
-import { RegisterUseCase } from '../../app/use-cases/register.use-case';
+import { GetCurrentUserUseCase } from '../../app/use-cases/get-current-user/get-current-user.use-case';
+import { LoginUseCase } from '../../app/use-cases/login/login.use-case';
+import { LogoutUseCase } from '../../app/use-cases/logout/logout.use-case';
+import { RefreshSessionUseCase } from '../../app/use-cases/refresh-session/refresh-session.use-case';
+import { RegisterUseCase } from '../../app/use-cases/register/register.use-case';
 import { CurrentUser } from '../../../../../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../guard/jwt-auth.guard';
 import { PermissionsGuard } from '../guard/permissions.guard';

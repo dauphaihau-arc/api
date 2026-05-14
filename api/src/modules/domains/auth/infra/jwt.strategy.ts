@@ -7,7 +7,7 @@ import { AUTH_CONFIG } from '../../../../config/auth.config';
 import type { AuthConfig } from '../../../../config/auth.config';
 import { mapAuthAppErrorToHttpException } from '../api/rest/auth-error-mapper';
 import { extractCookieValue } from '../api/rest/auth-cookie.utils';
-import { LoadAuthenticatedUserUseCase } from '../app/use-cases/load-authenticated-user.use-case';
+import { LoadAuthenticatedUserUseCase } from '../app/use-cases/load-authenticated-user/load-authenticated-user.use-case';
 import { AccessTokenPayload, AuthenticatedUser } from '../app/auth.types';
 
 @Injectable()

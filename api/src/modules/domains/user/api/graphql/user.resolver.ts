@@ -13,9 +13,9 @@ import { RequirePermissions } from '../../../../../common/decorators/require-per
 import { PermissionsGuard } from '../../../auth/api/guard/permissions.guard';
 import type { AuthenticatedUser } from '../../../auth/app/auth.types';
 import { JwtAuthGuard } from '../../../auth/api/guard/jwt-auth.guard';
-import { CreateUserUseCase } from '../../app/use-cases/create-user.use-case';
-import { GetUserByIdUseCase } from '../../app/use-cases/get-user-by-id.use-case';
-import { ListUsersUseCase } from '../../app/use-cases/list-users.use-case';
+import { CreateUserUseCase } from '../../app/use-cases/create-user/create-user.use-case';
+import { GetUserByIdUseCase } from '../../app/use-cases/get-user-by-id/get-user-by-id.use-case';
+import { ListUsersUseCase } from '../../app/use-cases/list-users/list-users.use-case';
 import {
   buildListUsersQuery,
   DEFAULT_USER_LIST_SORT,

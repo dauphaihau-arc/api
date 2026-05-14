@@ -5,8 +5,8 @@ import type {
   PublicProductDetail,
   PublicProductListResult
 } from '../../app/product.types';
-import { GetPublicProductByIdUseCase } from '../../app/use-cases/get-public-product-by-id.use-case';
-import { ListPublicProductsUseCase } from '../../app/use-cases/list-public-products.use-case';
+import { GetPublicProductByIdUseCase } from '../../app/use-cases/get-public-product-by-id/get-public-product-by-id.use-case';
+import { ListPublicProductsUseCase } from '../../app/use-cases/list-public-products/list-public-products.use-case';
 import { ListPublicProductsQueryDto } from './dto/list-public-products.query.dto';
 
 @Controller('products')

@@ -20,14 +20,14 @@ import { CurrentUser } from '~/common/decorators/current-user.decorator';
 import { RequirePermissions } from '~/common/decorators/require-permissions.decorator';
 import { ParseSortPipe } from '~/common/pipes/parse-sort.pipe';
 import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
-import { CreateUserUseCase } from '~/modules/domains/user/app/use-cases/create-user.use-case';
-import { GetUserByIdUseCase } from '~/modules/domains/user/app/use-cases/get-user-by-id.use-case';
-import { ListUsersUseCase } from '~/modules/domains/user/app/use-cases/list-users.use-case';
+import { CreateUserUseCase } from '~/modules/domains/user/app/use-cases/create-user/create-user.use-case';
+import { GetUserByIdUseCase } from '~/modules/domains/user/app/use-cases/get-user-by-id/get-user-by-id.use-case';
+import { ListUsersUseCase } from '~/modules/domains/user/app/use-cases/list-users/list-users.use-case';
 import { PermissionsGuard } from '~/modules/domains/auth/api/guard/permissions.guard';
 import {
   type UploadedAvatarFile,
   UpdateUserUseCase
-} from '~/modules/domains/user/app/use-cases/update-user.use-case';
+} from '~/modules/domains/user/app/use-cases/update-user/update-user.use-case';
 import {
   buildListUsersQuery,
   DEFAULT_USER_LIST_SORT,

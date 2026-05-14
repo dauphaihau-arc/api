@@ -14,8 +14,8 @@ import { CurrentUser } from '~/common/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
 import { JwtAuthGuard } from '~/modules/domains/auth/api/guard/jwt-auth.guard';
 import { PermissionsGuard } from '~/modules/domains/auth/api/guard/permissions.guard';
-import { ConsumeProductImageUploadTicketUseCase } from '../../app/use-cases/consume-product-image-upload-ticket.use-case';
-import { IssueProductImageUploadUrlUseCase } from '../../app/use-cases/issue-product-image-upload-url.use-case';
+import { ConsumeProductImageUploadTicketUseCase } from '../../app/use-cases/consume-product-image-upload-ticket/consume-product-image-upload-ticket.use-case';
+import { IssueProductImageUploadUrlUseCase } from '../../app/use-cases/issue-product-image-upload-url/issue-product-image-upload-url.use-case';
 import { IssueProductImageUploadDto } from './dto/issue-product-image-upload.dto';
 
 interface UploadUrlResponse {

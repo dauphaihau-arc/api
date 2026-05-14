@@ -14,10 +14,10 @@ import { CurrentUser } from '~/common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '~/modules/domains/auth/api/guard/jwt-auth.guard';
 import { PermissionsGuard } from '~/modules/domains/auth/api/guard/permissions.guard';
 import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
-import { AddCartItemUseCase } from '../../app/use-cases/add-cart-item.use-case';
-import { GetCartUseCase } from '../../app/use-cases/get-cart.use-case';
-import { RemoveCartItemUseCase } from '../../app/use-cases/remove-cart-item.use-case';
-import { UpdateCartItemUseCase } from '../../app/use-cases/update-cart-item.use-case';
+import { AddCartItemUseCase } from '../../app/use-cases/add-cart-item/add-cart-item.use-case';
+import { GetCartUseCase } from '../../app/use-cases/get-cart/get-cart.use-case';
+import { RemoveCartItemUseCase } from '../../app/use-cases/remove-cart-item/remove-cart-item.use-case';
+import { UpdateCartItemUseCase } from '../../app/use-cases/update-cart-item/update-cart-item.use-case';
 import {
   buildCartResponse,
   type CartResponse

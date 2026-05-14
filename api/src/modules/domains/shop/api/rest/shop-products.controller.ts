@@ -22,24 +22,24 @@ import { IdempotencyKeyInterceptor } from '~/common/interceptors/idempotency-key
 import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
 import { JwtAuthGuard } from '~/modules/domains/auth/api/guard/jwt-auth.guard';
 import { PermissionsGuard } from '~/modules/domains/auth/api/guard/permissions.guard';
-import { CreateProductDraftFacadeUseCase } from '~/modules/domains/product/app/use-cases/create-product-draft-facade.use-case';
+import { CreateProductDraftFacadeUseCase } from '~/modules/domains/product/app/use-cases/create-product-draft-facade/create-product-draft-facade.use-case';
 import {
   CreateProductDraftUseCase,
   type CreateProductDraftInput
-} from '~/modules/domains/product/app/use-cases/create-product-draft.use-case';
-import { GetProductByIdUseCase } from '~/modules/domains/product/app/use-cases/get-product-by-id.use-case';
-import { ListShopProductsUseCase } from '~/modules/domains/product/app/use-cases/list-shop-products.use-case';
-import { PublishProductUseCase } from '~/modules/domains/product/app/use-cases/publish-product.use-case';
+} from '~/modules/domains/product/app/use-cases/create-product-draft/create-product-draft.use-case';
+import { GetProductByIdUseCase } from '~/modules/domains/product/app/use-cases/get-product-by-id/get-product-by-id.use-case';
+import { ListShopProductsUseCase } from '~/modules/domains/product/app/use-cases/list-shop-products/list-shop-products.use-case';
+import { PublishProductUseCase } from '~/modules/domains/product/app/use-cases/publish-product/publish-product.use-case';
 import {
   SetProductImagesUseCase,
   type UploadedProductImageFile
-} from '~/modules/domains/product/app/use-cases/set-product-images.use-case';
-import { SetProductAttributesUseCase } from '~/modules/domains/product/app/use-cases/set-product-attributes.use-case';
-import { SetProductImagesByKeysUseCase } from '~/modules/domains/product/app/use-cases/set-product-images-by-keys.use-case';
-import { SetProductInventoryUseCase } from '~/modules/domains/product/app/use-cases/set-product-inventory.use-case';
-import { SetProductShippingUseCase } from '~/modules/domains/product/app/use-cases/set-product-shipping.use-case';
-import { SetProductVariantsUseCase } from '~/modules/domains/product/app/use-cases/set-product-variants.use-case';
-import { UpdateProductDetailsUseCase } from '~/modules/domains/product/app/use-cases/update-product-details.use-case';
+} from '~/modules/domains/product/app/use-cases/set-product-images/set-product-images.use-case';
+import { SetProductAttributesUseCase } from '~/modules/domains/product/app/use-cases/set-product-attributes/set-product-attributes.use-case';
+import { SetProductImagesByKeysUseCase } from '~/modules/domains/product/app/use-cases/set-product-images-by-keys/set-product-images-by-keys.use-case';
+import { SetProductInventoryUseCase } from '~/modules/domains/product/app/use-cases/set-product-inventory/set-product-inventory.use-case';
+import { SetProductShippingUseCase } from '~/modules/domains/product/app/use-cases/set-product-shipping/set-product-shipping.use-case';
+import { SetProductVariantsUseCase } from '~/modules/domains/product/app/use-cases/set-product-variants/set-product-variants.use-case';
+import { UpdateProductDetailsUseCase } from '~/modules/domains/product/app/use-cases/update-product-details/update-product-details.use-case';
 import type {
   ProductDraftSummary,
   ShopProductListResult

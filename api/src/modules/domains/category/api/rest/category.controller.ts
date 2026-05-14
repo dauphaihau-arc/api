@@ -4,11 +4,11 @@ import {
 import { resolveOrThrow } from '~/common/application/result';
 import { JwtAuthGuard } from '~/modules/domains/auth/api/guard/jwt-auth.guard';
 import { PermissionsGuard } from '~/modules/domains/auth/api/guard/permissions.guard';
-import { CreateCategoryAttributeUseCase } from '../../app/use-cases/create-category-attribute.use-case';
-import { CreateCategoryUseCase } from '../../app/use-cases/create-category.use-case';
-import { GetCategoryAttributesUseCase } from '../../app/use-cases/get-category-attributes.use-case';
-import { ListCategoriesUseCase } from '../../app/use-cases/list-categories.use-case';
-import { SearchCategoriesUseCase } from '../../app/use-cases/search-categories.use-case';
+import { CreateCategoryAttributeUseCase } from '../../app/use-cases/create-category-attribute/create-category-attribute.use-case';
+import { CreateCategoryUseCase } from '../../app/use-cases/create-category/create-category.use-case';
+import { GetCategoryAttributesUseCase } from '../../app/use-cases/get-category-attributes/get-category-attributes.use-case';
+import { ListCategoriesUseCase } from '../../app/use-cases/list-categories/list-categories.use-case';
+import { SearchCategoriesUseCase } from '../../app/use-cases/search-categories/search-categories.use-case';
 import type {
   CategoryAttributeSummary,
   CategorySearchSuggestion,

@@ -9,10 +9,10 @@ import { ProductEntity } from '../product/infra/persistence/entities/product.ent
 import { ProductVariantEntity } from '../product/infra/persistence/entities/product-variant.entity';
 import { ShopEntity } from '../shop/infra/persistence/entities/shop.entity';
 import { CartRepository } from './app/ports/cart.repository';
-import { AddCartItemUseCase } from './app/use-cases/add-cart-item.use-case';
-import { GetCartUseCase } from './app/use-cases/get-cart.use-case';
-import { RemoveCartItemUseCase } from './app/use-cases/remove-cart-item.use-case';
-import { UpdateCartItemUseCase } from './app/use-cases/update-cart-item.use-case';
+import { AddCartItemUseCase } from './app/use-cases/add-cart-item/add-cart-item.use-case';
+import { GetCartUseCase } from './app/use-cases/get-cart/get-cart.use-case';
+import { RemoveCartItemUseCase } from './app/use-cases/remove-cart-item/remove-cart-item.use-case';
+import { UpdateCartItemUseCase } from './app/use-cases/update-cart-item/update-cart-item.use-case';
 import { CartController } from './api/rest/cart.controller';
 import { MikroOrmCartRepository } from './infra/mikro-orm-cart.repository';
 import { CartEntity } from './infra/persistence/entities/cart.entity';
