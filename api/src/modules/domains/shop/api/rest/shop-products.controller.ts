@@ -17,9 +17,12 @@ import {
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { resolveOrThrow } from '~/common/application/result';
 import { CurrentUser } from '~/common/decorators/current-user.decorator';
+import { Idempotent } from '~/common/decorators/idempotent.decorator';
+import { IdempotencyKeyInterceptor } from '~/common/interceptors/idempotency-key.interceptor';
 import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
 import { JwtAuthGuard } from '~/modules/domains/auth/api/guard/jwt-auth.guard';
 import { PermissionsGuard } from '~/modules/domains/auth/api/guard/permissions.guard';
+import { CreateProductDraftFacadeUseCase } from '~/modules/domains/product/app/use-cases/create-product-draft-facade.use-case';
 import {
   CreateProductDraftUseCase,
   type CreateProductDraftInput
@@ -32,6 +35,7 @@ import {
   type UploadedProductImageFile
 } from '~/modules/domains/product/app/use-cases/set-product-images.use-case';
 import { SetProductAttributesUseCase } from '~/modules/domains/product/app/use-cases/set-product-attributes.use-case';
+import { SetProductImagesByKeysUseCase } from '~/modules/domains/product/app/use-cases/set-product-images-by-keys.use-case';
 import { SetProductInventoryUseCase } from '~/modules/domains/product/app/use-cases/set-product-inventory.use-case';
 import { SetProductShippingUseCase } from '~/modules/domains/product/app/use-cases/set-product-shipping.use-case';
 import { SetProductVariantsUseCase } from '~/modules/domains/product/app/use-cases/set-product-variants.use-case';
@@ -40,9 +44,11 @@ import type {
   ProductDraftSummary,
   ShopProductListResult
 } from '~/modules/domains/product/app/product.types';
+import { CreateProductDraftFacadeDto } from '~/modules/domains/product/api/rest/dto/create-product-draft-facade.dto';
 import { CreateProductDto } from '~/modules/domains/product/api/rest/dto/create-product.dto';
 import { ListShopProductsQueryDto } from '~/modules/domains/product/api/rest/dto/list-shop-products.query.dto';
 import { SetProductAttributesDto } from '~/modules/domains/product/api/rest/dto/set-product-attributes.dto';
+import { SetProductImagesByKeysDto } from '~/modules/domains/product/api/rest/dto/set-product-images-by-keys.dto';
 import { SetProductInventoryDto } from '~/modules/domains/product/api/rest/dto/set-product-inventory.dto';
 import { SetProductShippingDto } from '~/modules/domains/product/api/rest/dto/set-product-shipping.dto';
 import { SetProductVariantsDto } from '~/modules/domains/product/api/rest/dto/set-product-variants.dto';
@@ -55,10 +61,12 @@ import { ShopRepository } from '../../app/ports/shop.repository';
 export class ShopProductsController {
   constructor(
     private readonly shopRepository: ShopRepository,
+    private readonly createProductDraftFacadeUseCase: CreateProductDraftFacadeUseCase,
     private readonly createProductDraftUseCase: CreateProductDraftUseCase,
     private readonly getProductByIdUseCase: GetProductByIdUseCase,
     private readonly listShopProductsUseCase: ListShopProductsUseCase,
     private readonly publishProductUseCase: PublishProductUseCase,
+    private readonly setProductImagesByKeysUseCase: SetProductImagesByKeysUseCase,
     private readonly setProductImagesUseCase: SetProductImagesUseCase,
     private readonly setProductAttributesUseCase: SetProductAttributesUseCase,
     private readonly setProductVariantsUseCase: SetProductVariantsUseCase,
@@ -118,6 +126,25 @@ export class ShopProductsController {
       );
   }
 
+  @Post('drafts')
+  @Header('Cache-Control', 'private, no-store')
+  @UseInterceptors(IdempotencyKeyInterceptor)
+  @Idempotent({
+    scope: 'product:create-draft-facade',
+  })
+  createProductDraftFacade(
+    @Param('shopId') shopId: string,
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Body() body: CreateProductDraftFacadeDto
+  ): Promise<ProductDraftSummary> {
+    return this.createProductDraftFacadeUseCase.execute(currentUser, {
+      shopId,
+      ...body,
+    }).then((result) =>
+      resolveOrThrow(result, mapProductAppErrorToHttpException)
+    );
+  }
+
   @Patch(':id')
   @Header('Cache-Control', 'private, no-store')
   async updateProduct(
@@ -167,6 +194,22 @@ export class ShopProductsController {
     }).then((result) =>
       resolveOrThrow(result, mapProductAppErrorToHttpException)
     );
+  }
+
+  @Put(':id/images-by-keys')
+  @Header('Cache-Control', 'private, no-store')
+  async setProductImagesByKeys(
+    @Param('shopId') shopId: string,
+    @Param('id') id: string,
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Body() body: SetProductImagesByKeysDto
+  ): Promise<ProductDraftSummary> {
+    await this.assertActorCanManageProductShop(currentUser, shopId, id);
+
+    return this.setProductImagesByKeysUseCase.execute(currentUser, id, body)
+      .then((result) =>
+        resolveOrThrow(result, mapProductAppErrorToHttpException)
+      );
   }
 
   @Put(':id/attributes')

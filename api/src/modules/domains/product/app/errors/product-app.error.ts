@@ -47,3 +47,18 @@ export class ProductNotReadyToPublishError extends ProductAppError {
     super(message);
   }
 }
+
+export class ProductDraftIncompleteError extends ProductAppError {
+  constructor(
+    public readonly productId: string,
+    public readonly failedStep:
+      | 'images'
+      | 'attributes'
+      | 'variants'
+      | 'inventory'
+      | 'shipping',
+    message: string
+  ) {
+    super(message);
+  }
+}

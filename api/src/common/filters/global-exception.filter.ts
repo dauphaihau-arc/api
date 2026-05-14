@@ -74,18 +74,24 @@ function buildErrorResponse(
     && !Array.isArray(exceptionResponse)
   ) {
     const responsePayload = exceptionResponse as Record<string, unknown>;
+    const {
+      error,
+      message,
+      ...extraPayload
+    } = responsePayload;
 
     return {
       ...baseResponse,
       error:
-        typeof responsePayload.error === 'string'
-          ? responsePayload.error
+        typeof error === 'string'
+          ? error
           : exception.name,
       message:
-        typeof responsePayload.message === 'string'
-        || Array.isArray(responsePayload.message)
-          ? responsePayload.message
+        typeof message === 'string'
+        || Array.isArray(message)
+          ? message
           : exception.message,
+      ...extraPayload,
     };
   }
 

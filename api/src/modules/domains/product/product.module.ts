@@ -1,15 +1,21 @@
 import { MikroOrmModule } from '@mikro-orm/nestjs';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { IdempotencyModule } from '../../shared/idempotency/idempotency.module';
+import { CacheModule } from '../../shared/cache/cache.module';
 import { StorageModule } from '../../shared/storage/storage.module';
 import { CategoryModule } from '../category/category.module';
 import { ShopModule } from '../shop/shop.module';
+import { CreateProductDraftFacadeUseCase } from './app/use-cases/create-product-draft-facade.use-case';
+import { ConsumeProductImageUploadTicketUseCase } from './app/use-cases/consume-product-image-upload-ticket.use-case';
 import { CreateProductDraftUseCase } from './app/use-cases/create-product-draft.use-case';
 import { GetProductByIdUseCase } from './app/use-cases/get-product-by-id.use-case';
 import { GetPublicProductByIdUseCase } from './app/use-cases/get-public-product-by-id.use-case';
+import { IssueProductImageUploadUrlUseCase } from './app/use-cases/issue-product-image-upload-url.use-case';
 import { ListPublicProductsUseCase } from './app/use-cases/list-public-products.use-case';
 import { ListShopProductsUseCase } from './app/use-cases/list-shop-products.use-case';
 import { PublishProductUseCase } from './app/use-cases/publish-product.use-case';
+import { SetProductImagesByKeysUseCase } from './app/use-cases/set-product-images-by-keys.use-case';
 import { SetProductImagesUseCase } from './app/use-cases/set-product-images.use-case';
 import { SetProductAttributesUseCase } from './app/use-cases/set-product-attributes.use-case';
 import { SetProductInventoryUseCase } from './app/use-cases/set-product-inventory.use-case';
@@ -18,6 +24,7 @@ import { SetProductVariantsUseCase } from './app/use-cases/set-product-variants.
 import { UpdateProductDetailsUseCase } from './app/use-cases/update-product-details.use-case';
 import { ProductRepository } from './app/ports/product.repository';
 import { ProductController } from './api/rest/product.controller';
+import { ProductUploadController } from './api/rest/product-upload.controller';
 import { ShopProductsController } from '../shop/api/rest/shop-products.controller';
 import { MikroOrmProductRepository } from './infra/mikro-orm-product.repository';
 import { ProductAttributeValueEntity } from './infra/persistence/entities/product-attribute-value.entity';
@@ -32,6 +39,8 @@ import { ProductEntity } from './infra/persistence/entities/product.entity';
 @Module({
   imports: [
     ConfigModule,
+    CacheModule,
+    IdempotencyModule,
     ShopModule,
     CategoryModule,
     StorageModule,
@@ -46,18 +55,22 @@ import { ProductEntity } from './infra/persistence/entities/product.entity';
       ProductShippingDestinationEntity,
     ]),
   ],
-  controllers: [ProductController, ShopProductsController],
+  controllers: [ProductController, ProductUploadController, ShopProductsController],
   providers: [
     {
       provide: ProductRepository,
       useClass: MikroOrmProductRepository,
     },
+    ConsumeProductImageUploadTicketUseCase,
+    CreateProductDraftFacadeUseCase,
     CreateProductDraftUseCase,
     GetProductByIdUseCase,
     GetPublicProductByIdUseCase,
+    IssueProductImageUploadUrlUseCase,
     ListPublicProductsUseCase,
     ListShopProductsUseCase,
     PublishProductUseCase,
+    SetProductImagesByKeysUseCase,
     SetProductImagesUseCase,
     SetProductAttributesUseCase,
     SetProductInventoryUseCase,
@@ -67,12 +80,16 @@ import { ProductEntity } from './infra/persistence/entities/product.entity';
   ],
   exports: [
     ProductRepository,
+    ConsumeProductImageUploadTicketUseCase,
+    CreateProductDraftFacadeUseCase,
     CreateProductDraftUseCase,
     GetProductByIdUseCase,
     GetPublicProductByIdUseCase,
+    IssueProductImageUploadUrlUseCase,
     ListPublicProductsUseCase,
     ListShopProductsUseCase,
     PublishProductUseCase,
+    SetProductImagesByKeysUseCase,
     SetProductImagesUseCase,
     SetProductAttributesUseCase,
     SetProductInventoryUseCase,

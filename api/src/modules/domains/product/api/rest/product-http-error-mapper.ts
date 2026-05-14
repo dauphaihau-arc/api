@@ -3,7 +3,8 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
-  NotFoundException
+  NotFoundException,
+  UnprocessableEntityException
 } from '@nestjs/common';
 import {
   ActorCannotCreateProductDraftError,
@@ -11,6 +12,7 @@ import {
   InvalidProductAttributeSelectionError,
   InvalidProductVariantConfigurationError,
   ProductAppError,
+  ProductDraftIncompleteError,
   ProductNotFoundError,
   ProductNotReadyToPublishError,
   ProductSlugAlreadyExistsError
@@ -49,6 +51,16 @@ export function mapProductAppErrorToHttpException(
 
   if (error instanceof ProductNotReadyToPublishError) {
     return new BadRequestException(error.message);
+  }
+
+  if (error instanceof ProductDraftIncompleteError) {
+    return new UnprocessableEntityException({
+      error: 'Unprocessable Entity',
+      message: error.message,
+      code: error.code,
+      productId: error.productId,
+      failedStep: error.failedStep,
+    });
   }
 
   return new BadRequestException(error.message);
