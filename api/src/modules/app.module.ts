@@ -11,6 +11,7 @@ import { SendWelcomeEmailOnUserCreatedListener } from '../common/listeners/send-
 import { validateAppEnv } from '../config/app-env.config';
 import { buildDatabaseConfig } from '../config/database.config';
 import { AuthModule } from './domains/auth/auth.module';
+import { CartModule } from './domains/cart/cart.module';
 import { CategoryModule } from './domains/category/category.module';
 import { ProductModule } from './domains/product/product.module';
 import { ShopModule } from './domains/shop/shop.module';
@@ -57,6 +58,7 @@ import { StorageModule } from './shared/storage/storage.module';
     ShopModule,
     CategoryModule,
     ProductModule,
+    CartModule,
   ],
   providers: [
     InvalidateUserCacheOnUserCreatedListener,
