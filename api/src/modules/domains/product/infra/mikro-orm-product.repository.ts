@@ -679,6 +679,7 @@ export class MikroOrmProductRepository implements ProductRepository {
         })),
       shipping: product.shippingProfiles.length > 0
         ? {
+          originCountry: product.shippingProfiles[0].originCountry,
           processTimeLabel: product.shippingProfiles[0].processTimeLabel,
           destinations: product.shippingProfiles[0].destinations
             .getItems()

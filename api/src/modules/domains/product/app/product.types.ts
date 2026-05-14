@@ -221,6 +221,7 @@ export interface PublicProductInventorySummary {
 }
 
 export interface PublicProductShippingSummary {
+  originCountry: string;
   processTimeLabel: string;
   destinations: ProductShippingDestinationSummary[];
 }
