@@ -13,6 +13,7 @@ describe('CreateCategoryUseCase', () => {
       createAttribute: jest.fn(),
       findAllByParentId: jest.fn(),
       findById: jest.fn().mockResolvedValue(null),
+      searchSuggestions: jest.fn(),
     };
   }
 

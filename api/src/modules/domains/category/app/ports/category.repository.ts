@@ -1,4 +1,5 @@
 import type {
+  CategorySearchSuggestion,
   CategorySummary,
   CreateCategoryAttributeInput,
   CreateCategoryInput
@@ -11,4 +12,8 @@ export abstract class CategoryRepository {
   ): Promise<CategorySummary | null>;
   abstract findAllByParentId(parentId?: string): Promise<CategorySummary[]>;
   abstract findById(id: string): Promise<CategorySummary | null>;
+  abstract searchSuggestions(
+    name: string,
+    limit: number
+  ): Promise<CategorySearchSuggestion[]>;
 }

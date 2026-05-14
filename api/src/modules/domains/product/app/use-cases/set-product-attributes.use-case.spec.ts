@@ -101,6 +101,7 @@ describe('SetProductAttributesUseCase', () => {
           },
         ],
       }),
+      searchSuggestions: jest.fn(),
     };
 
     return {

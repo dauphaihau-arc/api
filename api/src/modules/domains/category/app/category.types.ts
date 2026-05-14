@@ -22,6 +22,12 @@ export interface CategoryAttributeOptionSummary {
   rank: number;
 }
 
+export interface CategorySearchSuggestion {
+  id: string;
+  lastNameCategory: string;
+  categoriesRelated: string[];
+}
+
 export interface CreateCategoryInput {
   parentId?: string;
   name: string;
