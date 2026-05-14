@@ -415,6 +415,223 @@ describe('Commerce flow (e2e)', () => {
       secondProductResponse.body.id
     );
   });
+
+  it('supports persistent carts and temp carts through the legacy-compatible user cart contract', async () => {
+    const email = `commerce-cart-${Date.now()}@example.com`;
+    const agent = request.agent(app.getHttpServer());
+
+    await agent
+      .post(`${API_PREFIX}/auth/register`)
+      .send({
+        email,
+        password: 'password123',
+        displayName: 'Cart Owner',
+      })
+      .expect(201);
+
+    const shopResponse = await agent
+      .post(`${API_PREFIX}/shops`)
+      .send({
+        shopName: `cartshop${Date.now().toString().slice(-6)}`,
+      })
+      .expect(201);
+    const shopBody = shopResponse.body as { id: string; shopName: string };
+
+    const categoryResponse = await agent
+      .post(`${API_PREFIX}/categories`)
+      .send({
+        name: 'Bowls',
+        rank: 1,
+      })
+      .expect(201);
+    const categoryBody = categoryResponse.body as { id: string };
+
+    const productResponse = await agent
+      .post(`${API_PREFIX}/shops/${shopBody.id}/products`)
+      .send({
+        categoryId: categoryBody.id,
+        title: 'Soup Bowl',
+        description: 'Stoneware bowl',
+        whoMade: ProductWhoMade.I_DID,
+        variantType: ProductVariantType.NONE,
+      })
+      .expect(201);
+    const productId = productResponse.body.id as string;
+
+    await agent
+      .put(`${API_PREFIX}/shops/${shopBody.id}/products/${productId}/images`)
+      .attach('images', Buffer.from('fake-image-content'), {
+        filename: 'bowl.jpg',
+        contentType: 'image/jpeg',
+      })
+      .expect(200);
+
+    const inventoryResponse = await agent
+      .put(`${API_PREFIX}/shops/${shopBody.id}/products/${productId}/inventory`)
+      .send({
+        inventory: [
+          {
+            sku: 'BOWL-001',
+            stock: 8,
+            price: 12.5,
+          },
+        ],
+      })
+      .expect(200);
+    const inventoryId = inventoryResponse.body.inventory[0].id as string;
+
+    await agent
+      .put(`${API_PREFIX}/shops/${shopBody.id}/products/${productId}/shipping`)
+      .send({
+        originCountry: 'US',
+        originZip: '10001',
+        processTimeLabel: '1-3 business days',
+        destinations: [
+          {
+            countryCode: 'US',
+            deliveryTimeLabel: '3-5 business days',
+            service: 'USPS',
+            chargeType: ProductShippingCharge.FREE_SHIPPING,
+          },
+        ],
+      })
+      .expect(200);
+
+    await agent
+      .post(`${API_PREFIX}/shops/${shopBody.id}/products/${productId}/publish`)
+      .expect(201);
+
+    const addCartResponse = await agent
+      .post(`${API_PREFIX}/user/cart`)
+      .send({
+        inventory_id: inventoryId,
+        quantity: 2,
+      })
+      .expect(201);
+
+    expect(addCartResponse.body.cart).toMatchObject({
+      user_id: expect.any(String),
+      summary_cart: {
+        total_products: 2,
+      },
+    });
+    expect(addCartResponse.body.cart.shop_carts).toHaveLength(1);
+    expect(addCartResponse.body.cart.shop_carts[0]).toMatchObject({
+      shop: {
+        id: shopBody.id,
+        shop_name: shopBody.shopName,
+      },
+      total_shipping_fee: 0,
+      total_price: 25,
+    });
+    expect(addCartResponse.body.summary_order).toMatchObject({
+      subtotal_price: 25,
+      total_price: 25,
+      total_products: 2,
+    });
+
+    const getCartResponse = await agent
+      .get(`${API_PREFIX}/user/cart`)
+      .expect(200);
+
+    expect(getCartResponse.body.cart.shop_carts[0].products[0]).toMatchObject({
+      quantity: 2,
+      is_select_order: true,
+      product: {
+        id: productId,
+        title: 'Soup Bowl',
+        variant_type: ProductVariantType.NONE,
+      },
+      inventory: {
+        id: inventoryId,
+        price: 12.5,
+        stock: 8,
+        sku: 'BOWL-001',
+      },
+    });
+
+    const uncheckedCartResponse = await agent
+      .patch(`${API_PREFIX}/user/cart`)
+      .send({
+        inventory_id: inventoryId,
+        is_select_order: false,
+      })
+      .expect(200);
+
+    expect(uncheckedCartResponse.body.summary_order).toMatchObject({
+      subtotal_price: 0,
+      total_price: 0,
+      total_products: 0,
+    });
+    expect(uncheckedCartResponse.body.cart.shop_carts[0].products[0].is_select_order)
+      .toBe(false);
+
+    const updatedCartResponse = await agent
+      .patch(`${API_PREFIX}/user/cart`)
+      .send({
+        inventory_id: inventoryId,
+        quantity: 3,
+        is_select_order: true,
+      })
+      .expect(200);
+
+    expect(updatedCartResponse.body.summary_order).toMatchObject({
+      subtotal_price: 37.5,
+      total_price: 37.5,
+      total_products: 3,
+    });
+    expect(updatedCartResponse.body.cart.shop_carts[0].products[0].quantity)
+      .toBe(3);
+
+    const tempCartResponse = await agent
+      .post(`${API_PREFIX}/user/cart`)
+      .send({
+        inventory_id: inventoryId,
+        quantity: 1,
+        is_temp: true,
+      })
+      .expect(201);
+
+    const tempCartId = tempCartResponse.body.cart.cart_id as string;
+    expect(tempCartResponse.body.summary_order.total_price).toBe(12.5);
+
+    const getTempCartResponse = await agent
+      .get(`${API_PREFIX}/user/cart`)
+      .query({
+        cart_id: tempCartId,
+      })
+      .expect(200);
+
+    expect(getTempCartResponse.body.cart.cart_id).toBe(tempCartId);
+    expect(getTempCartResponse.body.cart.shop_carts[0].products[0].quantity).toBe(1);
+
+    const updatedTempCartResponse = await agent
+      .patch(`${API_PREFIX}/user/cart`)
+      .send({
+        cart_id: tempCartId,
+        inventory_id: inventoryId,
+        quantity: 2,
+      })
+      .expect(200);
+
+    expect(updatedTempCartResponse.body.summary_order.total_price).toBe(25);
+    expect(updatedTempCartResponse.body.cart.cart_id).toBe(tempCartId);
+
+    const deletedRegularCartResponse = await agent
+      .delete(`${API_PREFIX}/user/cart`)
+      .query({
+        inventory_id: inventoryId,
+      })
+      .expect(200);
+
+    expect(deletedRegularCartResponse.body).toMatchObject({
+      cart: null,
+      summary_order: {
+        total_price: 0,
+        total_products: 0,
+      },
+    });
+  });
 });
 
 function restoreProcessEnv(originalEnv: NodeJS.ProcessEnv) {
