@@ -12,10 +12,12 @@ import { MikroOrmCategoryRepository } from './infra/mikro-orm-category.repositor
 import { CategoryAttributeOptionEntity } from './infra/persistence/entities/category-attribute-option.entity';
 import { CategoryAttributeEntity } from './infra/persistence/entities/category-attribute.entity';
 import { CategoryEntity } from './infra/persistence/entities/category.entity';
+import { StorageModule } from '../../shared/storage/storage.module';
 
 @Module({
   imports: [
     ConfigModule,
+    StorageModule,
     MikroOrmModule.forFeature([
       CategoryEntity,
       CategoryAttributeEntity,

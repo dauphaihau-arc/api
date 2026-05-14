@@ -1,5 +1,6 @@
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
+import { StorageService } from '~/modules/shared/storage/app/ports/storage.service';
 import { CategoryRepository } from '../app/ports/category.repository';
 import type {
   CategorySearchSuggestion,
@@ -13,7 +14,10 @@ import { CategoryEntity } from './persistence/entities/category.entity';
 
 @Injectable()
 export class MikroOrmCategoryRepository implements CategoryRepository {
-  constructor(private readonly entityManager: EntityManager) {}
+  constructor(
+    private readonly entityManager: EntityManager,
+    private readonly storageService: StorageService
+  ) {}
 
   async create(input: CreateCategoryInput): Promise<CategorySummary> {
     const entityManager = this.entityManager.fork();
@@ -194,6 +198,9 @@ export class MikroOrmCategoryRepository implements CategoryRepository {
       name: category.name,
       rank: category.rank,
       imageStorageKey: category.imageStorageKey,
+      imageUrl: category.imageStorageKey
+        ? this.storageService.getPublicUrl(category.imageStorageKey)
+        : undefined,
       attributes: category.attributes
         .getItems()
         .sort((left, right) => left.rank - right.rank)

@@ -1,10 +1,14 @@
 import { randomUUID } from 'node:crypto';
-import path from 'node:path';
 import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { err, ok, type Result } from '~/common/application/result';
 import { UserUpdatedEvent } from '~/common/events/user-updated.event';
 import { StorageService } from '~/modules/shared/storage/app/ports/storage.service';
+import {
+  buildStorageObjectKey,
+  resolveImageExtension,
+  resolveStorageEnvironmentSegment,
+} from '~/modules/shared/storage/app/storage-key-builder';
 import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
 import type { UserAccount } from '~/modules/domains/auth/domain/models/user-account';
 import {
@@ -66,7 +70,7 @@ export class UpdateUserUseCase {
 
     if (input.avatarFile) {
       const storedAvatar = await this.storageService.putObject({
-        key: this.buildAvatarKey(userId, input.avatarFile.originalname),
+        key: this.buildAvatarKey(userId, input.avatarFile.mimetype),
         body: input.avatarFile.buffer,
         contentType: input.avatarFile.mimetype,
       });
@@ -116,9 +120,16 @@ export class UpdateUserUseCase {
     return ok(this.toUserSummary(updatedUser));
   }
 
-  private buildAvatarKey(userId: string, originalName: string): string {
-    const extension = path.extname(originalName).toLowerCase();
-    return `avatars/users/${userId}/${randomUUID()}${extension}`;
+  private buildAvatarKey(userId: string, contentType: string): string {
+    return buildStorageObjectKey({
+      env: resolveStorageEnvironmentSegment(process.env.NODE_ENV),
+      visibility: 'public',
+      path: [{ domain: 'users', id: userId }],
+      collection: 'images',
+      assetType: 'original',
+      extension: resolveImageExtension(contentType),
+      filename: randomUUID(),
+    });
   }
 
   private toUserSummary(user: {

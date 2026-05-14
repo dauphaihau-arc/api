@@ -36,7 +36,7 @@ describe('UpdateUserUseCase', () => {
     version: 3,
     email: Email.create('member@example.com'),
     displayName: 'Member User',
-    avatar: 'avatars/users/user-1/original.png',
+    avatar: 'test/public/users/user-1/images/original/original.png',
     status: UserStatus.ACTIVE,
     roles: [RoleKey.create('member')],
     permissions: [],
@@ -46,7 +46,7 @@ describe('UpdateUserUseCase', () => {
     ...existingUser,
     version: 4,
     displayName: 'Updated Member',
-    avatar: 'avatars/users/user-1/new.png',
+    avatar: 'test/public/users/user-1/images/original/new.png',
     status: UserStatus.DISABLED,
   };
 
@@ -111,7 +111,9 @@ describe('UpdateUserUseCase', () => {
 
     expect(storageService.putObject).toHaveBeenCalledWith(
       expect.objectContaining({
-        key: expect.stringMatching(/^avatars\/users\/user-1\/.+\.png$/),
+        key: expect.stringMatching(
+          /^test\/public\/users\/user-1\/images\/original\/.+\.png$/
+        ),
         contentType: 'image/png',
       })
     );
@@ -125,7 +127,7 @@ describe('UpdateUserUseCase', () => {
       })
     );
     expect(storageService.deleteObject).toHaveBeenCalledWith(
-      'avatars/users/user-1/original.png'
+      'test/public/users/user-1/images/original/original.png'
     );
     expect(eventEmitter.emit).toHaveBeenCalledWith(
       'user.updated',
@@ -140,7 +142,8 @@ describe('UpdateUserUseCase', () => {
         version: 4,
         email: 'member@example.com',
         displayName: 'Updated Member',
-        avatar: 'https://cdn.example.com/avatars/users/user-1/new.png',
+        avatar:
+          'https://cdn.example.com/test/public/users/user-1/images/original/new.png',
         status: UserStatus.DISABLED,
       },
     });

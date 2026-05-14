@@ -4,6 +4,7 @@ export interface CategorySummary {
   name: string;
   rank: number;
   imageStorageKey?: string;
+  imageUrl?: string;
   attributes: CategoryAttributeSummary[];
 }
 

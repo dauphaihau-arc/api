@@ -1,6 +1,6 @@
 export type StorageVisibility = 'public' | 'private';
 
-export type StoragePathDomain = 'shops' | 'products' | 'categories';
+export type StoragePathDomain = 'shops' | 'products' | 'categories' | 'users';
 
 export type StorageCollection = 'images';
 
