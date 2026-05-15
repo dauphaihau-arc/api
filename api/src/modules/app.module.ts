@@ -13,6 +13,8 @@ import { buildDatabaseConfig } from '../config/database.config';
 import { AuthModule } from './domains/auth/auth.module';
 import { CartModule } from './domains/cart/cart.module';
 import { CategoryModule } from './domains/category/category.module';
+import { CouponModule } from './domains/coupon/coupon.module';
+import { OrderModule } from './domains/order/order.module';
 import { ProductModule } from './domains/product/product.module';
 import { ShopModule } from './domains/shop/shop.module';
 import { UserModule } from './domains/user/user.module';
@@ -22,6 +24,7 @@ import { MailModule } from './shared/mail/mail.module';
 import { QueueModule } from './shared/queue/queue.module';
 import { RateLimitModule } from './shared/rate-limit/rate-limit.module';
 import { StorageModule } from './shared/storage/storage.module';
+import { PaymentModule } from './shared/payment/payment.module';
 
 @Module({
   imports: [
@@ -47,6 +50,7 @@ import { StorageModule } from './shared/storage/storage.module';
     MikroOrmModule.forMiddleware(),
     CacheModule,
     MailModule,
+    PaymentModule,
     QueueModule,
     RateLimitModule,
     StorageModule,
@@ -58,7 +62,9 @@ import { StorageModule } from './shared/storage/storage.module';
     ShopModule,
     CategoryModule,
     ProductModule,
+    CouponModule,
     CartModule,
+    OrderModule,
   ],
   providers: [
     InvalidateUserCacheOnUserCreatedListener,

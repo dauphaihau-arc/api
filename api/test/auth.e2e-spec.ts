@@ -48,7 +48,7 @@ describe('Auth flow (e2e)', () => {
     process.env.BCRYPT_SALT_ROUNDS = '4';
     process.env.STORAGE_DRIVER = 'local';
     process.env.STORAGE_LOCAL_ROOT = storageRoot;
-    const { AppModule } = require('../src/modules/app.module') as typeof import('../src/modules/app.module');
+    const { AppModule } = await import('../src/modules/app.module');
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],

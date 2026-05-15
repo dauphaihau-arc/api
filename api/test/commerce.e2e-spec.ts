@@ -24,6 +24,8 @@ jest.setTimeout(30_000);
 
 const API_PREFIX = '/v1';
 
+// This integration suite stays in one file because the setup and assertions share state heavily.
+// eslint-disable-next-line max-lines-per-function
 describe('Commerce flow (e2e)', () => {
   let app: INestApplication<App>;
   let originalEnv: NodeJS.ProcessEnv;

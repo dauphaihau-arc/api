@@ -7,7 +7,7 @@ import { StorageService } from '~/modules/shared/storage/app/ports/storage.servi
 import {
   buildStorageObjectKey,
   resolveImageExtension,
-  resolveStorageEnvironmentSegment,
+  resolveStorageEnvironmentSegment
 } from '~/modules/shared/storage/app/storage-key-builder';
 import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
 import type { UserAccount } from '~/modules/domains/auth/domain/models/user-account';

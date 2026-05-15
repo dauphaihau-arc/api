@@ -95,7 +95,10 @@ export interface CartResponse {
   };
 }
 
-export function buildCartResponse(cart: CartSnapshot | null): CartResponse {
+export function buildCartResponse(
+  cart: CartSnapshot | null,
+  summaryOverride?: CartResponse['summary']
+): CartResponse {
   const emptySummary = {
     subtotalPrice: 0,
     totalDiscount: 0,
@@ -109,7 +112,7 @@ export function buildCartResponse(cart: CartSnapshot | null): CartResponse {
   if (!cart || cart.items.length === 0) {
     return {
       cart: null,
-      summary: emptySummary,
+      summary: summaryOverride ?? emptySummary,
     };
   }
 
@@ -190,7 +193,7 @@ export function buildCartResponse(cart: CartSnapshot | null): CartResponse {
       })),
       totalQuantity,
     },
-    summary: {
+    summary: summaryOverride ?? {
       subtotalPrice,
       totalDiscount: 0,
       subtotalAfterDiscount: subtotalPrice,

@@ -1,11 +1,11 @@
+import type { HttpException } from '@nestjs/common';
 import {
   BadRequestException,
-  HttpException,
   NotFoundException,
   UnprocessableEntityException
 } from '@nestjs/common';
+import type { CartAppError } from '../../app/errors/cart-app.error';
 import {
-  CartAppError,
   CartItemNotFoundError,
   CartNotFoundError,
   CartQuantityExceedsStockError,

@@ -1,5 +1,7 @@
 import { Type } from 'class-transformer';
-import { IsOptional, IsString, Max, Min } from 'class-validator';
+import {
+  IsOptional, IsString, Max, Min 
+} from 'class-validator';
 import { CATEGORY_SEARCH_DEFAULT_LIMIT } from '../../../app/use-cases/search-categories/search-categories.use-case';
 
 export class SearchCategoriesQueryDto {

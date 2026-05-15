@@ -73,6 +73,8 @@ export class ListPublicProductsQueryDto {
 
   @IsOptional()
   @IsString()
+  // `s` is a public query alias kept for backward-compatible API input.
+  // eslint-disable-next-line id-length
   s?: string;
 
   @IsOptional()

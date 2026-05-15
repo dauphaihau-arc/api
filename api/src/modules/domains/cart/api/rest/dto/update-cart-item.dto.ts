@@ -1,5 +1,7 @@
 import { Transform, Type } from 'class-transformer';
-import { IsArray, IsBoolean, IsOptional, IsString, IsUUID, Max, Min, ValidateNested } from 'class-validator';
+import {
+  IsArray, IsBoolean, IsOptional, IsString, IsUUID, Max, Min, ValidateNested 
+} from 'class-validator';
 
 class AdditionInfoTempCartDto {
   @IsOptional()
@@ -13,12 +15,12 @@ class AdditionInfoTempCartDto {
 }
 
 class AdditionInfoShopCartDto {
-  @Transform(({ value, obj }) => value ?? obj.shop_id)
+  @Transform(({ value, obj: source }) => value ?? source.shop_id)
   @IsUUID()
   shopId!: string;
 
   @IsOptional()
-  @Transform(({ value, obj }) => value ?? obj.promo_codes)
+  @Transform(({ value, obj: source }) => value ?? source.promo_codes)
   @IsArray()
   @IsString({ each: true })
   promoCodes?: string[];
@@ -30,12 +32,12 @@ class AdditionInfoShopCartDto {
 
 export class UpdateCartItemDto {
   @IsOptional()
-  @Transform(({ value, obj }) => value ?? obj.cart_id)
+  @Transform(({ value, obj: source }) => value ?? source.cart_id)
   @IsUUID()
   cartId?: string;
 
   @IsOptional()
-  @Transform(({ value, obj }) => value ?? obj.inventory_id)
+  @Transform(({ value, obj: source }) => value ?? source.inventory_id)
   @IsUUID()
   inventoryId?: string;
 
@@ -46,18 +48,18 @@ export class UpdateCartItemDto {
   quantity?: number;
 
   @IsOptional()
-  @Transform(({ value, obj }) => value ?? obj.is_select_order)
+  @Transform(({ value, obj: source }) => value ?? source.is_select_order)
   @IsBoolean()
   isSelected?: boolean;
 
   @IsOptional()
-  @Transform(({ value, obj }) => value ?? obj.addition_info_temp_cart)
+  @Transform(({ value, obj: source }) => value ?? source.addition_info_temp_cart)
   @ValidateNested()
   @Type(() => AdditionInfoTempCartDto)
   additionInfoTempCart?: AdditionInfoTempCartDto;
 
   @IsOptional()
-  @Transform(({ value, obj }) => value ?? obj.addition_info_shop_carts)
+  @Transform(({ value, obj: source }) => value ?? source.addition_info_shop_carts)
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => AdditionInfoShopCartDto)

@@ -62,6 +62,8 @@ const appEnvBaseSchema = z.object({
   MAIL_DEFAULT_FROM_EMAIL: z.email().default('noreply@example.com'),
   MAIL_DEFAULT_FROM_NAME: z.string().trim().min(1).default('Nest Template'),
   RESEND_API_KEY: z.string().trim().min(1).optional(),
+  STRIPE_SECRET_KEY: z.string().trim().min(1).optional(),
+  STRIPE_WEBHOOK_SECRET_KEY: z.string().trim().min(1).optional(),
   STORAGE_DRIVER: z.enum(['local', 'minio']).default('local'),
   STORAGE_LOCAL_ROOT: z.string().trim().min(1).default('./storage'),
   STORAGE_PUBLIC_BASE_URL: z.url().optional(),
@@ -85,6 +87,15 @@ const appEnvSchema = appEnvBaseSchema.superRefine((env, context) => {
       code: z.ZodIssueCode.custom,
       path: ['RESEND_API_KEY'],
       message: 'Expected RESEND_API_KEY when MAIL_DRIVER is resend.',
+    });
+  }
+
+  if (env.STRIPE_SECRET_KEY && !env.STRIPE_WEBHOOK_SECRET_KEY) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['STRIPE_WEBHOOK_SECRET_KEY'],
+      message:
+        'Expected STRIPE_WEBHOOK_SECRET_KEY when STRIPE_SECRET_KEY is set.',
     });
   }
 

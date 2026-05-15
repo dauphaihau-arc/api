@@ -19,9 +19,18 @@ import { CreateUserUseCase } from './app/use-cases/create-user/create-user.use-c
 import { GetUserByIdUseCase } from './app/use-cases/get-user-by-id/get-user-by-id.use-case';
 import { ListUsersUseCase } from './app/use-cases/list-users/list-users.use-case';
 import { UpdateUserUseCase } from './app/use-cases/update-user/update-user.use-case';
+import { CreateMyAddressUseCase } from './app/use-cases/create-my-address/create-my-address.use-case';
+import { DeleteMyAddressUseCase } from './app/use-cases/delete-my-address/delete-my-address.use-case';
+import { GetMyAddressUseCase } from './app/use-cases/get-my-address/get-my-address.use-case';
+import { ListMyAddressesUseCase } from './app/use-cases/list-my-addresses/list-my-addresses.use-case';
+import { UpdateMyAddressUseCase } from './app/use-cases/update-my-address/update-my-address.use-case';
 import { UserResolver } from './api/graphql/user.resolver';
+import { MeAddressesController } from './api/rest/me-addresses.controller';
 import { UserController } from './api/rest/user.controller';
+import { UserAddressRepository } from './app/ports/user-address.repository';
+import { MikroOrmUserAddressRepository } from './infra/mikro-orm-user-address.repository';
 import { MikroOrmUserRepository } from './infra/mikro-orm-user.repository';
+import { UserAddressEntity } from './infra/persistence/entities/user-address.entity';
 
 @Module({
   imports: [
@@ -35,9 +44,10 @@ import { MikroOrmUserRepository } from './infra/mikro-orm-user.repository';
       PermissionEntity,
       UserRoleEntity,
       RolePermissionEntity,
+      UserAddressEntity,
     ]),
   ],
-  controllers: [UserController],
+  controllers: [UserController, MeAddressesController],
   providers: [
     {
       provide: AUTH_CONFIG,
@@ -57,11 +67,21 @@ import { MikroOrmUserRepository } from './infra/mikro-orm-user.repository';
       provide: UserRepository,
       useClass: MikroOrmUserRepository,
     },
+    {
+      provide: UserAddressRepository,
+      useClass: MikroOrmUserAddressRepository,
+    },
     CreateUserUseCase,
     GetUserByIdUseCase,
     ListUsersUseCase,
     UpdateUserUseCase,
+    ListMyAddressesUseCase,
+    CreateMyAddressUseCase,
+    GetMyAddressUseCase,
+    UpdateMyAddressUseCase,
+    DeleteMyAddressUseCase,
     UserResolver,
   ],
+  exports: [GetMyAddressUseCase],
 })
 export class UserModule {}

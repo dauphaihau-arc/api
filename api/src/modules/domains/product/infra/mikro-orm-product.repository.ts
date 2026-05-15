@@ -590,7 +590,7 @@ export class MikroOrmProductRepository implements ProductRepository {
           sku: inventoryRecord.sku,
           stock: inventoryRecord.stock,
           price: Number(inventoryRecord.price),
-          salePrice: inventoryRecord.salePrice !== undefined
+          salePrice: inventoryRecord.salePrice != null
             ? Number(inventoryRecord.salePrice)
             : undefined,
         })),
@@ -673,7 +673,7 @@ export class MikroOrmProductRepository implements ProductRepository {
           sku: inventoryRecord.sku,
           stock: inventoryRecord.stock,
           price: Number(inventoryRecord.price),
-          salePrice: inventoryRecord.salePrice !== undefined
+          salePrice: inventoryRecord.salePrice != null
             ? Number(inventoryRecord.salePrice)
             : undefined,
         })),
@@ -724,7 +724,7 @@ export class MikroOrmProductRepository implements ProductRepository {
       inventory: primaryInventory
         ? {
           price: Number(primaryInventory.price),
-          salePrice: primaryInventory.salePrice !== undefined
+          salePrice: primaryInventory.salePrice != null
             ? Number(primaryInventory.salePrice)
             : undefined,
           stock: primaryInventory.stock,

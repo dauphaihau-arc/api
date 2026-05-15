@@ -1,6 +1,6 @@
 import { UserStatus } from '~/modules/domains/auth/domain/enums/user-status.enum';
 import { AddCartItemUseCase } from './add-cart-item.use-case';
-import { CartRepository } from '../../ports/cart.repository';
+import type { CartRepository } from '../../ports/cart.repository';
 
 describe('AddCartItemUseCase', () => {
   const actor = {

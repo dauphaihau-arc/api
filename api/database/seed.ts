@@ -4,6 +4,8 @@ import { buildDatabaseConfig } from '../src/config/database.config';
 import { CategoryAttributeOptionEntity } from '../src/modules/domains/category/infra/persistence/entities/category-attribute-option.entity';
 import { CategoryAttributeEntity } from '../src/modules/domains/category/infra/persistence/entities/category-attribute.entity';
 import { CategoryEntity } from '../src/modules/domains/category/infra/persistence/entities/category.entity';
+import { CouponUsageEntity } from '../src/modules/domains/coupon/infra/persistence/entities/coupon-usage.entity';
+import { CouponEntity } from '../src/modules/domains/coupon/infra/persistence/entities/coupon.entity';
 import { CurrentUserCredentialEntity } from '../src/modules/domains/auth/infra/persistence/entities/current-user-credential.entity';
 import { CurrentUserEntity } from '../src/modules/domains/auth/infra/persistence/entities/current-user.entity';
 import { EmailVerificationTokenEntity } from '../src/modules/domains/auth/infra/persistence/entities/email-verification-token.entity';
@@ -24,6 +26,7 @@ import { ProductEntity } from '../src/modules/domains/product/infra/persistence/
 import { ShopEntity } from '../src/modules/domains/shop/infra/persistence/entities/shop.entity';
 import { seedAuth } from './seeds/auth.seed';
 import { seedCategories } from './seeds/category.seed';
+import { seedCoupons } from './seeds/coupon.seed';
 import { seedProducts } from './seeds/product.seed';
 import { seedShops } from './seeds/shop.seed';
 
@@ -43,6 +46,8 @@ async function main() {
       CategoryEntity,
       CategoryAttributeEntity,
       CategoryAttributeOptionEntity,
+      CouponEntity,
+      CouponUsageEntity,
       ShopEntity,
       ProductEntity,
       ProductImageEntity,
@@ -64,6 +69,7 @@ async function main() {
     await seedCategories(em);
     const shopsByName = await seedShops(em, usersByEmail);
     await seedProducts(em, shopsByName);
+    await seedCoupons(em, shopsByName);
 
     console.log('Seed completed');
     console.log('Users:');

@@ -27,7 +27,11 @@ async function bootstrap() {
     });
   }
   app.enableShutdownHooks();
-  app.use(express.json());
+  app.use(express.json({
+    verify: (req, _res, buffer) => {
+      (req as express.Request & { rawBody?: Buffer }).rawBody = Buffer.from(buffer);
+    },
+  }));
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,

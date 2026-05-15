@@ -147,4 +147,38 @@ describe('buildCartResponse', () => {
       },
     });
   });
+
+  it('falls back to price when sale price is absent', () => {
+    const cart: CartSnapshot = {
+      id: 'cart-2',
+      userId: 'user-2',
+      isTemp: false,
+      items: [
+        {
+          id: 'item-3',
+          quantity: 1,
+          isSelectOrder: true,
+          updatedAt: new Date('2026-05-15T08:00:00.000Z'),
+          inventory: {
+            inventoryId: 'inventory-3',
+            productId: 'product-3',
+            shopId: 'shop-2',
+            shopName: 'Reed Workshop',
+            title: 'Studio Pullover Hoodie',
+            variantType: 'single',
+            stock: 2,
+            price: 42,
+            salePrice: undefined,
+            productState: 'active',
+          },
+        },
+      ],
+    };
+
+    const response = buildCartResponse(cart);
+
+    expect(response.cart?.shopGroups[0]?.totalPrice).toBe(42);
+    expect(response.summary.subtotalPrice).toBe(42);
+    expect(response.summary.totalPrice).toBe(42);
+  });
 });

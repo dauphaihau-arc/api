@@ -14,6 +14,7 @@ import { CurrentUser } from '~/common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '~/modules/domains/auth/api/guard/jwt-auth.guard';
 import { PermissionsGuard } from '~/modules/domains/auth/api/guard/permissions.guard';
 import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
+import { CouponPricingService } from '~/modules/domains/coupon/app/coupon-pricing.service';
 import { AddCartItemUseCase } from '../../app/use-cases/add-cart-item/add-cart-item.use-case';
 import { GetCartUseCase } from '../../app/use-cases/get-cart/get-cart.use-case';
 import { RemoveCartItemUseCase } from '../../app/use-cases/remove-cart-item/remove-cart-item.use-case';
@@ -32,6 +33,7 @@ import { UpdateCartItemDto } from './dto/update-cart-item.dto';
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 export class CartController {
   constructor(
+    private readonly couponPricingService: CouponPricingService,
     private readonly getCartUseCase: GetCartUseCase,
     private readonly addCartItemUseCase: AddCartItemUseCase,
     private readonly updateCartItemUseCase: UpdateCartItemUseCase,
@@ -74,7 +76,28 @@ export class CartController {
   ): Promise<CartResponse> {
     if (!body.inventoryId) {
       const cart = await this.getCartUseCase.execute(currentUser, body.cartId);
-      return buildCartResponse(cart);
+      const priced = cart
+        ? await this.couponPricingService.priceCart({
+          userId: currentUser.userId,
+          cart,
+          shopAdjustments: body.additionInfoShopCarts,
+        })
+        : null;
+
+      return buildCartResponse(
+        cart,
+        priced
+          ? {
+            subtotalPrice: priced.subtotalPrice,
+            totalDiscount: priced.totalDiscount,
+            subtotalAfterDiscount: priced.subtotalAfterDiscount,
+            totalShippingFee: priced.totalShippingFee,
+            totalPrice: priced.totalPrice,
+            totalSelectedQuantity: priced.totalSelectedQuantity,
+            totalQuantity: priced.totalQuantity,
+          }
+          : undefined
+      );
     }
 
     const cart = resolveOrThrow(
@@ -86,8 +109,24 @@ export class CartController {
       }),
       mapCartAppErrorToHttpException
     );
+    if (!cart) {
+      return buildCartResponse(null);
+    }
+    const priced = await this.couponPricingService.priceCart({
+      userId: currentUser.userId,
+      cart,
+      shopAdjustments: body.additionInfoShopCarts,
+    });
 
-    return buildCartResponse(cart);
+    return buildCartResponse(cart, {
+      subtotalPrice: priced.subtotalPrice,
+      totalDiscount: priced.totalDiscount,
+      subtotalAfterDiscount: priced.subtotalAfterDiscount,
+      totalShippingFee: priced.totalShippingFee,
+      totalPrice: priced.totalPrice,
+      totalSelectedQuantity: priced.totalSelectedQuantity,
+      totalQuantity: priced.totalQuantity,
+    });
   }
 
   @Delete()

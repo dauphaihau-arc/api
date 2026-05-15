@@ -359,7 +359,7 @@ export class MikroOrmCartRepository implements CartRepository {
       variantName: inventory.productVariant?.name,
       stock: inventory.stock,
       price: Number(inventory.price),
-      salePrice: inventory.salePrice !== undefined
+      salePrice: inventory.salePrice != null
         ? Number(inventory.salePrice)
         : undefined,
       sku: inventory.sku,

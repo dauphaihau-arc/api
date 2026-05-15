@@ -90,7 +90,9 @@ describe('IssueProductImageUploadUrlUseCase', () => {
   }
 
   it('issues a local upload ticket when object storage is disabled', async () => {
-    const { cacheManager, shopRepository, productRepository, storageConfig } = buildDeps();
+    const {
+      cacheManager, shopRepository, productRepository, storageConfig, 
+    } = buildDeps();
     const useCase = new IssueProductImageUploadUrlUseCase(
       cacheManager as Cache,
       shopRepository,
@@ -115,7 +117,9 @@ describe('IssueProductImageUploadUrlUseCase', () => {
     const mockedGetSignedUrl = jest.mocked(getSignedUrl);
     mockedGetSignedUrl.mockResolvedValueOnce('http://localhost:9000/bucket/signed');
 
-    const { cacheManager, shopRepository, productRepository, storageConfig } = buildDeps({
+    const {
+      cacheManager, shopRepository, productRepository, storageConfig, 
+    } = buildDeps({
       driver: 'minio',
       endpoint: 'http://localhost:9000',
       region: 'us-east-1',
