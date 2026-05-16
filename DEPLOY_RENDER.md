@@ -6,7 +6,6 @@ This repo includes a Render Blueprint at [render.yaml](./render.yaml).
 
 - `arc-api`: public web service
 - `arc-worker`: background worker
-- `arc-redis`: Render Key Value instance
 - `arc-postgres`: Render Postgres database
 
 ## Before you create the Blueprint
@@ -19,6 +18,10 @@ Prepare these values:
   Example: `https://app.example.com`
 - `AUTH_COOKIE_DOMAIN`
   Example: `.example.com`
+- `REDIS_URL`
+  Your external Redis connection URL
+- `QUEUE_REDIS_URL`
+  Usually the same value as `REDIS_URL`
 - `STRIPE_SECRET_KEY`
   Only if Stripe checkout is enabled
 - `STRIPE_WEBHOOK_SECRET_KEY`
@@ -43,7 +46,6 @@ Prepare these values:
 5. Review the resources Render detects:
    - one web service
    - one worker
-   - one Key Value instance
    - one Postgres database
 6. Fill the prompted `sync: false` environment variables for both `arc-api` and `arc-worker`.
 7. Create the Blueprint.
@@ -57,6 +59,15 @@ CORS_ALLOWED_ORIGINS=https://app.example.com
 APP_BASE_URL=https://app.example.com
 AUTH_COOKIE_DOMAIN=.example.com
 ```
+
+For Redis, also set:
+
+```env
+REDIS_URL=redis://...
+QUEUE_REDIS_URL=redis://...
+```
+
+Use the same URL for both unless you intentionally separate general Redis access from queue Redis access.
 
 If Stripe is enabled:
 
@@ -89,7 +100,6 @@ STORAGE_PUBLIC_BASE_URL=https://pub-<id>.r2.dev
 - Web health check: `/health`
 - Pre-deploy migration command: `pnpm db:migration:up`
 - Shared DB wiring from Render Postgres
-- Shared Redis wiring from Render Key Value
 - Generated JWT secrets for both services
 - Shared object-storage configuration shape for both services
 
@@ -146,6 +156,11 @@ QUEUE_DRIVER=redis
 ```
 
 That means background jobs are expected to be processed by `arc-worker`.
+
+This Blueprint expects Redis to come from your external provider via:
+
+- `REDIS_URL`
+- `QUEUE_REDIS_URL`
 
 ## After the first deploy
 
