@@ -5,7 +5,7 @@ import type { PaymentConfig } from '~/config/payment.config';
 import { PaymentGateway } from '../app/ports/payment-gateway';
 import type {
   CreateStripeCheckoutSessionInput,
-  StripeCheckoutLineItemInput,
+  StripeCheckoutLineItemInput
 } from '../app/ports/payment-gateway';
 
 const ZERO_DECIMAL_CURRENCIES = ['JPY', 'KRW', 'VND'] as const;
@@ -150,8 +150,8 @@ export class StripePaymentGateway extends PaymentGateway {
       throw new InternalServerErrorException('Failed to fetch exchange rates');
     }
 
-    const data = await response.json() as { rates?: Record<string, number> };
-    const exchangeRate = data.rates?.[currency];
+    const exchangeRatesResponse = await response.json() as { rates?: Record<string, number> };
+    const exchangeRate = exchangeRatesResponse.rates?.[currency];
 
     if (!exchangeRate) {
       throw new BadRequestException('Unsupported currency');

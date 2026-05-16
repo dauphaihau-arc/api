@@ -2,7 +2,7 @@ import {
   Controller,
   Headers,
   Post,
-  Req,
+  Req
 } from '@nestjs/common';
 import type { Request } from 'express';
 import { PaymentGateway } from '~/modules/shared/payment/app/ports/payment-gateway';

@@ -12,8 +12,8 @@ export const PAYMENT_CONFIG = Symbol('PAYMENT_CONFIG');
 export function buildPaymentConfig(
   configService: Pick<ConfigService, 'get'>
 ): PaymentConfig {
-  const appBaseUrl = configService.get<string>('APP_BASE_URL')
-    ?? parseCorsAllowedOrigins({
+  const appBaseUrl = configService.get<string>('APP_BASE_URL') ??
+    parseCorsAllowedOrigins({
       CORS_ALLOWED_ORIGINS: configService.get<string>('CORS_ALLOWED_ORIGINS'),
     })[0];
 
