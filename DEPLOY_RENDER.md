@@ -45,7 +45,7 @@ Prepare these values:
    - one worker
    - one Key Value instance
    - one Postgres database
-6. Fill the prompted `sync: false` environment variables.
+6. Fill the prompted `sync: false` environment variables for both `arc-api` and `arc-worker`.
 7. Create the Blueprint.
 
 ## First values to enter
@@ -107,13 +107,15 @@ STORAGE_OBJECT_STORAGE_FORCE_PATH_STYLE=false
 
 This app uses the `minio` driver name for S3-compatible object storage, including Cloudflare R2 and AWS S3.
 
-You must still provide these secrets during initial Blueprint creation:
+You must still provide these values during initial Blueprint creation:
 
 - `STORAGE_OBJECT_STORAGE_ENDPOINT`
 - `STORAGE_OBJECT_STORAGE_BUCKET`
 - `STORAGE_OBJECT_STORAGE_ACCESS_KEY`
 - `STORAGE_OBJECT_STORAGE_SECRET_KEY`
 - optionally `STORAGE_PUBLIC_BASE_URL`
+
+These are defined at the service level in the Blueprint so Render should prompt for them during setup.
 
 Cloudflare R2 is usually the cleanest fit on Render because there is no local persistent disk dependency.
 
