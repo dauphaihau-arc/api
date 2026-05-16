@@ -186,23 +186,32 @@ export class MinioStorageService implements StorageService {
       return;
     }
 
-    await this.client.send(new PutBucketPolicyCommand({
-      Bucket: this.storageConfig.bucket,
-      Policy: JSON.stringify({
-        Version: '2012-10-17',
-        Statement: [
-          {
-            Sid: 'PublicReadObjects',
-            Effect: 'Allow',
-            Principal: '*',
-            Action: ['s3:GetObject'],
-            Resource: [
-              `arn:aws:s3:::${this.storageConfig.bucket}/*`,
-            ],
-          },
-        ],
-      }),
-    }));
+    try {
+      await this.client.send(new PutBucketPolicyCommand({
+        Bucket: this.storageConfig.bucket,
+        Policy: JSON.stringify({
+          Version: '2012-10-17',
+          Statement: [
+            {
+              Sid: 'PublicReadObjects',
+              Effect: 'Allow',
+              Principal: '*',
+              Action: ['s3:GetObject'],
+              Resource: [
+                `arn:aws:s3:::${this.storageConfig.bucket}/*`,
+              ],
+            },
+          ],
+        }),
+      }));
+    }
+    catch (error) {
+      if (this.isUnsupportedBucketPolicyError(error)) {
+        return;
+      }
+
+      throw error;
+    }
   }
 
   private isMissingBucketError(error: unknown): boolean {
@@ -244,6 +253,39 @@ export class MinioStorageService implements StorageService {
         && 'name' in error
         && error.name === 'NotFound'
       );
+  }
+
+  private isUnsupportedBucketPolicyError(error: unknown): boolean {
+    return (
+      error instanceof S3ServiceException
+      && error.$metadata.httpStatusCode === 501
+    ) || (
+      typeof error === 'object'
+      && error !== null
+      && 'name' in error
+      && error.name === 'NotImplemented'
+      && this.getHttpStatusCode(error) === 501
+    );
+  }
+
+  private getHttpStatusCode(error: object): number | undefined {
+    if (!('$metadata' in error)) {
+      return undefined;
+    }
+
+    const metadata = error.$metadata;
+
+    if (typeof metadata !== 'object' || metadata === null) {
+      return undefined;
+    }
+
+    if (!('httpStatusCode' in metadata)) {
+      return undefined;
+    }
+
+    return typeof metadata.httpStatusCode === 'number'
+      ? metadata.httpStatusCode
+      : undefined;
   }
 
   private async readBodyAsBuffer(body: unknown): Promise<Buffer> {
