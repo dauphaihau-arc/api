@@ -37,7 +37,7 @@ services:
     plan: starter
     region: singapore
     rootDir: api
-    buildCommand: pnpm install && pnpm build
+    buildCommand: pnpm install --prod=false && pnpm build
     preDeployCommand: pnpm db:migration:up
     startCommand: pnpm start:prod
     healthCheckPath: /health
@@ -129,7 +129,7 @@ services:
     plan: starter
     region: singapore
     rootDir: api
-    buildCommand: pnpm install && pnpm build
+    buildCommand: pnpm install --prod=false && pnpm build
     startCommand: pnpm start:worker:prod
     autoDeployTrigger: commit
     envVars:
