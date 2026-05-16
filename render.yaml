@@ -1,0 +1,229 @@
+envVarGroups:
+  - name: arc-shared-config
+    envVars:
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_ACCESS_TTL
+        value: 15m
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_TTL
+        value: 7d
+      - key: BCRYPT_SALT_ROUNDS
+        value: "12"
+      - key: MAIL_DRIVER
+        value: logger
+      - key: MAIL_DEFAULT_FROM_EMAIL
+        value: noreply@example.com
+      - key: MAIL_DEFAULT_FROM_NAME
+        value: Nest Template
+      - key: AUTH_COOKIE_PATH
+        value: /
+      - key: AUTH_COOKIE_SAME_SITE
+        value: lax
+      - key: AUTH_COOKIE_SECURE
+        value: "true"
+      - key: STORAGE_DRIVER
+        value: minio
+      - key: STORAGE_OBJECT_STORAGE_REGION
+        value: auto
+      - key: STORAGE_OBJECT_STORAGE_FORCE_PATH_STYLE
+        value: "false"
+      - key: STORAGE_OBJECT_STORAGE_ENDPOINT
+        sync: false
+      - key: STORAGE_OBJECT_STORAGE_BUCKET
+        sync: false
+      - key: STORAGE_OBJECT_STORAGE_ACCESS_KEY
+        sync: false
+      - key: STORAGE_OBJECT_STORAGE_SECRET_KEY
+        sync: false
+
+services:
+  - name: arc-api
+    type: web
+    runtime: node
+    plan: starter
+    region: singapore
+    rootDir: api
+    buildCommand: pnpm install && pnpm build
+    preDeployCommand: pnpm db:migration:up
+    startCommand: pnpm start:prod
+    healthCheckPath: /health
+    autoDeployTrigger: commit
+    envVars:
+      - fromGroup: arc-shared-config
+      - key: NODE_ENV
+        value: production
+      - key: TRUST_PROXY
+        value: "true"
+      - key: DB_HOST
+        fromDatabase:
+          name: arc-postgres
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: arc-postgres
+          property: port
+      - key: DB_USER
+        fromDatabase:
+          name: arc-postgres
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: arc-postgres
+          property: password
+      - key: DB_NAME
+        fromDatabase:
+          name: arc-postgres
+          property: database
+      - key: REDIS_URL
+        fromService:
+          name: arc-redis
+          type: keyvalue
+          property: connectionString
+      - key: CACHE_DRIVER
+        value: redis
+      - key: CACHE_TTL
+        value: 60s
+      - key: RATE_LIMIT_DRIVER
+        value: redis
+      - key: RATE_LIMIT_LIMIT
+        value: "20"
+      - key: RATE_LIMIT_TTL
+        value: 60s
+      - key: RATE_LIMIT_BLOCK_DURATION
+        value: 60s
+      - key: QUEUE_DRIVER
+        value: redis
+      - key: QUEUE_NAME
+        value: default
+      - key: QUEUE_PREFIX
+        value: nest-template
+      - key: QUEUE_REDIS_URL
+        fromService:
+          name: arc-redis
+          type: keyvalue
+          property: connectionString
+      - key: QUEUE_JOB_ATTEMPTS
+        value: "5"
+      - key: QUEUE_JOB_BACKOFF
+        value: 5s
+      - key: QUEUE_REMOVE_COMPLETED_AFTER
+        value: 1d
+      - key: QUEUE_REMOVE_FAILED_AFTER
+        value: 7d
+      - key: QUEUE_WORKER_CONCURRENCY
+        value: "10"
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
+      - key: APP_BASE_URL
+        sync: false
+      - key: AUTH_COOKIE_DOMAIN
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET_KEY
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: STORAGE_PUBLIC_BASE_URL
+        sync: false
+
+  - name: arc-worker
+    type: worker
+    runtime: node
+    plan: starter
+    region: singapore
+    rootDir: api
+    buildCommand: pnpm install && pnpm build
+    startCommand: pnpm start:worker:prod
+    autoDeployTrigger: commit
+    envVars:
+      - fromGroup: arc-shared-config
+      - key: NODE_ENV
+        value: production
+      - key: DB_HOST
+        fromDatabase:
+          name: arc-postgres
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: arc-postgres
+          property: port
+      - key: DB_USER
+        fromDatabase:
+          name: arc-postgres
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: arc-postgres
+          property: password
+      - key: DB_NAME
+        fromDatabase:
+          name: arc-postgres
+          property: database
+      - key: REDIS_URL
+        fromService:
+          name: arc-redis
+          type: keyvalue
+          property: connectionString
+      - key: CACHE_DRIVER
+        value: redis
+      - key: CACHE_TTL
+        value: 60s
+      - key: RATE_LIMIT_DRIVER
+        value: redis
+      - key: RATE_LIMIT_LIMIT
+        value: "20"
+      - key: RATE_LIMIT_TTL
+        value: 60s
+      - key: RATE_LIMIT_BLOCK_DURATION
+        value: 60s
+      - key: QUEUE_DRIVER
+        value: redis
+      - key: QUEUE_NAME
+        value: default
+      - key: QUEUE_PREFIX
+        value: nest-template
+      - key: QUEUE_REDIS_URL
+        fromService:
+          name: arc-redis
+          type: keyvalue
+          property: connectionString
+      - key: QUEUE_JOB_ATTEMPTS
+        value: "5"
+      - key: QUEUE_JOB_BACKOFF
+        value: 5s
+      - key: QUEUE_REMOVE_COMPLETED_AFTER
+        value: 1d
+      - key: QUEUE_REMOVE_FAILED_AFTER
+        value: 7d
+      - key: QUEUE_WORKER_CONCURRENCY
+        value: "10"
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
+      - key: APP_BASE_URL
+        sync: false
+      - key: AUTH_COOKIE_DOMAIN
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET_KEY
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: STORAGE_PUBLIC_BASE_URL
+        sync: false
+
+  - name: arc-redis
+    type: keyvalue
+    plan: free
+    region: singapore
+    ipAllowList: []
+    maxmemoryPolicy: allkeys-lru
+
+databases:
+  - name: arc-postgres
+    plan: basic-256mb
+    region: singapore
+    databaseName: app
