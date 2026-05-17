@@ -29,7 +29,10 @@ export class CreateShopCouponUseCase {
       throw new NotFoundException('Shop not found');
     }
 
-    if (shop.ownerUser.id !== actor.userId) {
+    if (
+      shop.ownerUser.id !== actor.userId
+      && !actor.roles.includes('admin')
+    ) {
       throw new ForbiddenException('You do not own this shop');
     }
 

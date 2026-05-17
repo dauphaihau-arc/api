@@ -23,7 +23,10 @@ export class DeleteShopCouponUseCase {
       throw new NotFoundException('Coupon not found');
     }
 
-    if (coupon.shop.ownerUser.id !== actor.userId) {
+    if (
+      coupon.shop.ownerUser.id !== actor.userId
+      && !actor.roles.includes('admin')
+    ) {
       throw new ForbiddenException('You do not own this shop');
     }
 

@@ -2,7 +2,7 @@ import { AUTH_REQUIRED_PERMISSIONS_KEY } from '~/common/decorators/require-permi
 import { ShopController } from './shop.controller';
 
 describe('ShopController authorization metadata', () => {
-  it('does not require an explicit permission to create a shop', () => {
+  it('requires explicit permissions for shop endpoints', () => {
     expect(
       Reflect.getMetadata(AUTH_REQUIRED_PERMISSIONS_KEY, ShopController)
     ).toBeUndefined();
@@ -11,6 +11,12 @@ describe('ShopController authorization metadata', () => {
         AUTH_REQUIRED_PERMISSIONS_KEY,
         ShopController.prototype.createShop
       )
-    ).toBeUndefined();
+    ).toEqual(['shops.create']);
+    expect(
+      Reflect.getMetadata(
+        AUTH_REQUIRED_PERMISSIONS_KEY,
+        ShopController.prototype.myShop
+      )
+    ).toEqual(['shops.manage']);
   });
 });

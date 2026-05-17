@@ -9,17 +9,20 @@ import { ShopEntity } from './persistence/entities/shop.entity';
 export class MikroOrmShopRepository implements ShopRepository {
   constructor(private readonly entityManager: EntityManager) {}
 
-  async create(input: CreateShopInput): Promise<ShopSummary> {
-    const entityManager = this.entityManager.fork();
-    const repository = entityManager.getRepository(ShopEntity);
+  async create(
+    input: CreateShopInput,
+    entityManager?: EntityManager
+  ): Promise<ShopSummary> {
+    const em = entityManager ?? this.entityManager.fork();
+    const repository = em.getRepository(ShopEntity);
     const shop = repository.create({
-      ownerUser: entityManager.getReference(CurrentUserEntity, input.ownerUserId),
+      ownerUser: em.getReference(CurrentUserEntity, input.ownerUserId),
       shopName: input.shopName,
       status: 'active',
     });
 
-    await entityManager.persistAndFlush(shop);
-    await entityManager.populate(shop, ['ownerUser']);
+    await em.persistAndFlush(shop);
+    await em.populate(shop, ['ownerUser']);
 
     return this.toSummary(shop);
   }

@@ -1,6 +1,7 @@
 import { MikroOrmModule } from '@mikro-orm/nestjs';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { AuthModule } from '../auth/auth.module';
 import { CouponEntity } from '../coupon/infra/persistence/entities/coupon.entity';
 import { ShopRepository } from './app/ports/shop.repository';
 import { CreateShopCouponUseCase } from './app/use-cases/create-shop-coupon/create-shop-coupon.use-case';
@@ -16,6 +17,7 @@ import { ShopEntity } from './infra/persistence/entities/shop.entity';
 @Module({
   imports: [
     ConfigModule,
+    AuthModule,
     MikroOrmModule.forFeature([ShopEntity, CouponEntity]),
   ],
   controllers: [ShopController, ShopCouponsController],

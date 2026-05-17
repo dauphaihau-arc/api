@@ -1,6 +1,7 @@
 import {
   Body, Controller, Get, Header, NotFoundException, Post, UseGuards 
 } from '@nestjs/common';
+import { RequirePermissions } from '~/common/decorators/require-permissions.decorator';
 import { resolveOrThrow } from '~/common/application/result';
 import { CurrentUser } from '~/common/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
@@ -22,6 +23,7 @@ export class ShopController {
 
   @Post()
   @Header('Cache-Control', 'private, no-store')
+  @RequirePermissions('shops.create')
   createShop(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() body: CreateShopDto
@@ -34,6 +36,7 @@ export class ShopController {
 
   @Get('me')
   @Header('Cache-Control', 'private, no-cache')
+  @RequirePermissions('shops.manage')
   async myShop(
     @CurrentUser() currentUser: AuthenticatedUser
   ): Promise<ShopSummary> {

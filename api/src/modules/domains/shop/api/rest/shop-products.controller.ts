@@ -14,6 +14,7 @@ import {
   UseGuards,
   UseInterceptors
 } from '@nestjs/common';
+import { RequirePermissions } from '~/common/decorators/require-permissions.decorator';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { resolveOrThrow } from '~/common/application/result';
 import { CurrentUser } from '~/common/decorators/current-user.decorator';
@@ -58,6 +59,7 @@ import { ShopRepository } from '../../app/ports/shop.repository';
 
 @Controller('shops/:shopId/products')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
+@RequirePermissions('shops.manage')
 export class ShopProductsController {
   constructor(
     private readonly shopRepository: ShopRepository,

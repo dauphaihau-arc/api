@@ -121,6 +121,6 @@ const authEntities = [
     JwtAuthGuard,
     PermissionsGuard,
   ],
-  exports: [JwtAuthGuard, PermissionsGuard],
+  exports: [AuthUserRepository, JwtAuthGuard, PermissionsGuard],
 })
 export class AuthModule {}

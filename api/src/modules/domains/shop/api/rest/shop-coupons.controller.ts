@@ -8,6 +8,7 @@ import {
   Query,
   UseGuards
 } from '@nestjs/common';
+import { RequirePermissions } from '~/common/decorators/require-permissions.decorator';
 import { CurrentUser } from '~/common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '~/modules/domains/auth/api/guard/jwt-auth.guard';
 import { PermissionsGuard } from '~/modules/domains/auth/api/guard/permissions.guard';
@@ -24,6 +25,7 @@ import {
 
 @Controller('shops/:shopId/coupons')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
+@RequirePermissions('shops.manage')
 export class ShopCouponsController {
   constructor(
     private readonly createShopCouponUseCase: CreateShopCouponUseCase,

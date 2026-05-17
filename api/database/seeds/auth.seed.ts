@@ -19,14 +19,19 @@ type UserSeed = {
 
 const roles = [
   {
-    key: 'admin',
-    name: 'Administrator',
-    description: 'Full system administration access',
+    key: 'customer',
+    name: 'Customer',
+    description: 'Buys products',
   },
   {
-    key: 'member',
-    name: 'Member',
-    description: 'Default application member role',
+    key: 'seller',
+    name: 'Seller',
+    description: 'Lists and sells products',
+  },
+  {
+    key: 'admin',
+    name: 'Admin',
+    description: 'Manages platform operations',
   },
 ] as const;
 
@@ -40,6 +45,16 @@ const permissions = [
     key: 'auth.session.manage',
     name: 'Manage Auth Sessions',
     description: 'Refresh and revoke authentication sessions',
+  },
+  {
+    key: 'shops.create',
+    name: 'Create Shops',
+    description: 'Create a shop account',
+  },
+  {
+    key: 'shops.manage',
+    name: 'Manage Shops',
+    description: 'Manage owned shop resources such as products and coupons',
   },
   {
     key: 'users.read',
@@ -65,7 +80,8 @@ const permissions = [
 
 const rolePermissionMap: Record<string, string[]> = {
   admin: permissions.map((permission) => permission.key),
-  member: ['auth.me.read', 'auth.session.manage'],
+  customer: ['auth.me.read', 'auth.session.manage', 'shops.create'],
+  seller: ['auth.me.read', 'auth.session.manage', 'shops.manage'],
 };
 
 const userSeeds: UserSeed[] = [
@@ -80,28 +96,28 @@ const userSeeds: UserSeed[] = [
     email: 'member@example.com',
     displayName: 'Default Member',
     password: 'password123',
-    roleKey: 'member',
+    roleKey: 'customer',
     emailVerified: true,
   },
   {
     email: 'maker.olive@example.com',
     displayName: 'Olive Hart',
     password: 'password123',
-    roleKey: 'member',
+    roleKey: 'seller',
     emailVerified: true,
   },
   {
     email: 'maker.mason@example.com',
     displayName: 'Mason Reed',
     password: 'password123',
-    roleKey: 'member',
+    roleKey: 'seller',
     emailVerified: true,
   },
   {
     email: 'maker.sage@example.com',
     displayName: 'Sage Lane',
     password: 'password123',
-    roleKey: 'member',
+    roleKey: 'seller',
     emailVerified: true,
   },
 ];
