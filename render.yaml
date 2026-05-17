@@ -6,7 +6,7 @@ services:
     region: singapore
     rootDir: api
     buildCommand: pnpm install --prod=false && pnpm build
-    startCommand: pnpm exec infisical run --projectId="$INFISICAL_PROJECT_ID" --env="$INFISICAL_ENV" --token="$INFISICAL_TOKEN" --command='pnpm db:migration:up && pnpm start:prod'
+    startCommand: pnpm exec infisical run --projectId="$INFISICAL_PROJECT_ID" --env="$INFISICAL_ENV" --token="$INFISICAL_TOKEN" -- sh -lc 'pnpm db:migration:up && exec pnpm start:prod'
     healthCheckPath: /health
     autoDeployTrigger: commit
     envVars:
