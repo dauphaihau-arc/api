@@ -22,9 +22,23 @@ export function buildDatabaseConfig(
   const connectionUrl = env.DATABASE_URL?.trim();
 
   if (connectionUrl) {
+    const parsedUrl = new URL(connectionUrl);
+    const sslMode = parsedUrl.searchParams.get('sslmode');
+
     return {
       driver: PostgreSqlDriver,
       clientUrl: connectionUrl,
+      ...(sslMode === 'require'
+        ? {
+          driverOptions: {
+            connection: {
+              ssl: {
+                rejectUnauthorized: false,
+              },
+            },
+          },
+        }
+        : {}),
       debug: env.NODE_ENV !== 'production',
       ...(includeEntityGlobs
         ? {
