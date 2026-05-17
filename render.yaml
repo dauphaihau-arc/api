@@ -38,8 +38,7 @@ services:
     region: singapore
     rootDir: api
     buildCommand: pnpm install --prod=false && pnpm build
-    preDeployCommand: pnpm db:migration:up
-    startCommand: pnpm start:prod
+    startCommand: pnpm db:migration:up && pnpm start:prod
     healthCheckPath: /health
     autoDeployTrigger: commit
     envVars:
