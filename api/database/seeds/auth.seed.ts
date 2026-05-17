@@ -109,6 +109,7 @@ const userSeeds: UserSeed[] = [
 export async function seedAuth(
   em: EntityManager
 ): Promise<{ usersByEmail: Map<string, CurrentUserEntity> }> {
+  const { roleByKey } = await seedAuthReferenceData(em);
   const passwordService = new BcryptPasswordHasher(
     buildAuthConfig({
       get(key: string) {
@@ -116,61 +117,6 @@ export async function seedAuth(
       },
     })
   );
-
-  const roleByKey = new Map<string, RoleEntity>();
-  for (const roleSeed of roles) {
-    const role =
-      (await em.findOne(RoleEntity, { key: roleSeed.key })) ??
-      em.create(RoleEntity, roleSeed);
-
-    role.name = roleSeed.name;
-    role.description = roleSeed.description;
-    roleByKey.set(role.key, role);
-    em.persist(role);
-  }
-
-  const permissionByKey = new Map<string, PermissionEntity>();
-  for (const permissionSeed of permissions) {
-    const permission =
-      (await em.findOne(PermissionEntity, { key: permissionSeed.key })) ??
-      em.create(PermissionEntity, permissionSeed);
-
-    permission.name = permissionSeed.name;
-    permission.description = permissionSeed.description;
-    permissionByKey.set(permission.key, permission);
-    em.persist(permission);
-  }
-
-  await em.flush();
-
-  for (const [roleKey, permissionKeys] of Object.entries(rolePermissionMap)) {
-    const role = roleByKey.get(roleKey);
-
-    if (!role) {
-      throw new Error(`Missing seed role: ${roleKey}`);
-    }
-
-    for (const permissionKey of permissionKeys) {
-      const permission = permissionByKey.get(permissionKey);
-
-      if (!permission) {
-        throw new Error(`Missing seed permission: ${permissionKey}`);
-      }
-
-      const existing = await em.findOne(RolePermissionEntity, { role, permission });
-      if (!existing) {
-        em.persist(
-          em.create(RolePermissionEntity, {
-            role,
-            permission,
-            grantedAt: new Date(),
-          })
-        );
-      }
-    }
-  }
-
-  await em.flush();
 
   const usersByEmail = new Map<string, CurrentUserEntity>();
   for (const userSeed of userSeeds) {
@@ -230,4 +176,68 @@ export async function seedAuth(
   }
 
   return { usersByEmail };
+}
+
+export async function seedAuthReferenceData(
+  em: EntityManager
+): Promise<{
+  roleByKey: Map<string, RoleEntity>;
+  permissionByKey: Map<string, PermissionEntity>;
+}> {
+  const roleByKey = new Map<string, RoleEntity>();
+  for (const roleSeed of roles) {
+    const role =
+      (await em.findOne(RoleEntity, { key: roleSeed.key })) ??
+      em.create(RoleEntity, roleSeed);
+
+    role.name = roleSeed.name;
+    role.description = roleSeed.description;
+    roleByKey.set(role.key, role);
+    em.persist(role);
+  }
+
+  const permissionByKey = new Map<string, PermissionEntity>();
+  for (const permissionSeed of permissions) {
+    const permission =
+      (await em.findOne(PermissionEntity, { key: permissionSeed.key })) ??
+      em.create(PermissionEntity, permissionSeed);
+
+    permission.name = permissionSeed.name;
+    permission.description = permissionSeed.description;
+    permissionByKey.set(permission.key, permission);
+    em.persist(permission);
+  }
+
+  await em.flush();
+
+  for (const [roleKey, permissionKeys] of Object.entries(rolePermissionMap)) {
+    const role = roleByKey.get(roleKey);
+
+    if (!role) {
+      throw new Error(`Missing seed role: ${roleKey}`);
+    }
+
+    for (const permissionKey of permissionKeys) {
+      const permission = permissionByKey.get(permissionKey);
+
+      if (!permission) {
+        throw new Error(`Missing seed permission: ${permissionKey}`);
+      }
+
+      const existing = await em.findOne(RolePermissionEntity, { role, permission });
+      if (!existing) {
+        em.persist(
+          em.create(RolePermissionEntity, {
+            role,
+            permission,
+            grantedAt: new Date(),
+          })
+        );
+      }
+    }
+  }
+
+  await em.flush();
+
+  return { roleByKey, permissionByKey };
 }
