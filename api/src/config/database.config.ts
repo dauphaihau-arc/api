@@ -22,15 +22,9 @@ export function buildDatabaseConfig(
   const connectionUrl = env.DATABASE_URL?.trim();
 
   if (connectionUrl) {
-    const parsedUrl = new URL(connectionUrl);
-
     return {
       driver: PostgreSqlDriver,
-      host: parsedUrl.hostname,
-      port: Number(parsedUrl.port || 5432),
-      user: decodeURIComponent(parsedUrl.username),
-      password: decodeURIComponent(parsedUrl.password),
-      dbName: parsedUrl.pathname.replace(/^\//, '') || 'app',
+      clientUrl: connectionUrl,
       debug: env.NODE_ENV !== 'production',
       ...(includeEntityGlobs
         ? {
