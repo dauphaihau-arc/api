@@ -1,35 +1,3 @@
-envVarGroups:
-  - name: arc-shared-config
-    envVars:
-      - key: JWT_ACCESS_SECRET
-        generateValue: true
-      - key: JWT_ACCESS_TTL
-        value: 15m
-      - key: JWT_REFRESH_SECRET
-        generateValue: true
-      - key: JWT_REFRESH_TTL
-        value: 7d
-      - key: BCRYPT_SALT_ROUNDS
-        value: "12"
-      - key: MAIL_DRIVER
-        value: logger
-      - key: MAIL_DEFAULT_FROM_EMAIL
-        value: noreply@example.com
-      - key: MAIL_DEFAULT_FROM_NAME
-        value: Nest Template
-      - key: AUTH_COOKIE_PATH
-        value: /
-      - key: AUTH_COOKIE_SAME_SITE
-        value: lax
-      - key: AUTH_COOKIE_SECURE
-        value: "true"
-      - key: STORAGE_DRIVER
-        value: minio
-      - key: STORAGE_OBJECT_STORAGE_REGION
-        value: auto
-      - key: STORAGE_OBJECT_STORAGE_FORCE_PATH_STYLE
-        value: "false"
-
 services:
   - name: arc-api
     type: web
@@ -38,19 +6,22 @@ services:
     region: singapore
     rootDir: api
     buildCommand: pnpm install --prod=false && pnpm build
-    startCommand: pnpm db:migration:up && pnpm start:prod
+    startCommand: pnpm exec infisical run --projectId="$INFISICAL_PROJECT_ID" --env="$INFISICAL_ENV" --token="$INFISICAL_TOKEN" --command='pnpm db:migration:up && pnpm start:prod'
     healthCheckPath: /health
     autoDeployTrigger: commit
     envVars:
-      - fromGroup: arc-shared-config
+      - key: INFISICAL_PROJECT_ID
+        sync: false
+      - key: INFISICAL_ENV
+        value: prod
+      - key: INFISICAL_TOKEN
+        sync: false
+      - key: INFISICAL_DISABLE_UPDATE_CHECK
+        value: "true"
       - key: NODE_ENV
         value: production
       - key: TRUST_PROXY
         value: "true"
-      - key: DATABASE_URL
-        sync: false
-      - key: REDIS_URL
-        sync: false
       - key: CACHE_DRIVER
         value: redis
       - key: CACHE_TTL
@@ -69,8 +40,6 @@ services:
         value: default
       - key: QUEUE_PREFIX
         value: nest-template
-      - key: QUEUE_REDIS_URL
-        sync: false
       - key: QUEUE_JOB_ATTEMPTS
         value: "5"
       - key: QUEUE_JOB_BACKOFF
@@ -81,25 +50,3 @@ services:
         value: 7d
       - key: QUEUE_WORKER_CONCURRENCY
         value: "10"
-      - key: CORS_ALLOWED_ORIGINS
-        sync: false
-      - key: APP_BASE_URL
-        sync: false
-      - key: AUTH_COOKIE_DOMAIN
-        sync: false
-      - key: STRIPE_SECRET_KEY
-        sync: false
-      - key: STRIPE_WEBHOOK_SECRET_KEY
-        sync: false
-      - key: RESEND_API_KEY
-        sync: false
-      - key: STORAGE_OBJECT_STORAGE_ENDPOINT
-        sync: false
-      - key: STORAGE_OBJECT_STORAGE_BUCKET
-        sync: false
-      - key: STORAGE_OBJECT_STORAGE_ACCESS_KEY
-        sync: false
-      - key: STORAGE_OBJECT_STORAGE_SECRET_KEY
-        sync: false
-      - key: STORAGE_PUBLIC_BASE_URL
-        sync: false
