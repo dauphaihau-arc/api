@@ -24,11 +24,12 @@ const appEnvBaseSchema = z.object({
       'Expected a comma-separated list without empty entries.'
     )
     .optional(),
-  DB_HOST: z.string().trim().min(1),
+  DATABASE_URL: z.url().optional(),
+  DB_HOST: z.string().trim().min(1).optional(),
   DB_PORT: positiveIntegerString.default('5432'),
-  DB_USER: z.string().trim().min(1),
-  DB_PASSWORD: z.string().trim().min(1),
-  DB_NAME: z.string().trim().min(1),
+  DB_USER: z.string().trim().min(1).optional(),
+  DB_PASSWORD: z.string().trim().min(1).optional(),
+  DB_NAME: z.string().trim().min(1).optional(),
   REDIS_URL: z.url().default('redis://127.0.0.1:6379'),
   CACHE_DRIVER: z.enum(['memory', 'redis']).optional(),
   CACHE_TTL: z.string().trim().min(1).default('60s'),
@@ -82,6 +83,21 @@ const appEnvBaseSchema = z.object({
 });
 
 const appEnvSchema = appEnvBaseSchema.superRefine((env, context) => {
+  if (
+    !env.DATABASE_URL
+    && (!env.DB_HOST || !env.DB_USER || !env.DB_PASSWORD || !env.DB_NAME)
+  ) {
+    for (const field of ['DB_HOST', 'DB_USER', 'DB_PASSWORD', 'DB_NAME'] as const) {
+      if (!env[field]) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [field],
+          message: `Expected ${field} when DATABASE_URL is not set.`,
+        });
+      }
+    }
+  }
+
   if (env.MAIL_DRIVER === 'resend' && !env.RESEND_API_KEY) {
     context.addIssue({
       code: z.ZodIssueCode.custom,

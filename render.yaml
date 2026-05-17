@@ -47,26 +47,8 @@ services:
         value: production
       - key: TRUST_PROXY
         value: "true"
-      - key: DB_HOST
-        fromDatabase:
-          name: arc-postgres
-          property: host
-      - key: DB_PORT
-        fromDatabase:
-          name: arc-postgres
-          property: port
-      - key: DB_USER
-        fromDatabase:
-          name: arc-postgres
-          property: user
-      - key: DB_PASSWORD
-        fromDatabase:
-          name: arc-postgres
-          property: password
-      - key: DB_NAME
-        fromDatabase:
-          name: arc-postgres
-          property: database
+      - key: DATABASE_URL
+        sync: false
       - key: REDIS_URL
         sync: false
       - key: CACHE_DRIVER
@@ -121,9 +103,3 @@ services:
         sync: false
       - key: STORAGE_PUBLIC_BASE_URL
         sync: false
-
-databases:
-  - name: arc-postgres
-    plan: free
-    region: singapore
-    databaseName: app
