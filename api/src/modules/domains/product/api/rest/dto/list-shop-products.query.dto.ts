@@ -1,4 +1,4 @@
-import { Transform, Type } from 'class-transformer';
+import { Expose, Transform, Type } from 'class-transformer';
 import {
   IsEnum,
   IsOptional,
@@ -31,6 +31,7 @@ export class ListShopProductsQueryDto {
   state?: ProductState;
 
   @IsOptional()
+  @Expose({ name: 'category_id' })
   @Transform(({ value, obj: source }) => value ?? source.category_id)
   @IsUUID()
   categoryId?: string;

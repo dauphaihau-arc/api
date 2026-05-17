@@ -70,8 +70,8 @@ export class MeAddressesController {
   ) {
     const address = await this.createMyAddressUseCase.execute(currentUser, {
       fullName: body.full_name,
-      address1: body.address1,
-      address2: body.address2,
+      address1: body.address_1,
+      address2: body.address_2,
       city: body.city,
       state: body.state,
       zip: body.zip,
@@ -107,8 +107,8 @@ export class MeAddressesController {
   ) {
     const address = await this.updateMyAddressUseCase.execute(currentUser, id, {
       fullName: body.full_name,
-      address1: body.address1,
-      address2: body.address2,
+      address1: body.address_1,
+      address2: body.address_2,
       city: body.city,
       state: body.state,
       zip: body.zip,

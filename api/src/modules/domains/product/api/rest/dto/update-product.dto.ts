@@ -1,3 +1,4 @@
+import { Expose, Transform } from 'class-transformer';
 import {
   IsBoolean,
   IsEnum,
@@ -19,23 +20,33 @@ export class UpdateProductDto {
   description?: string;
 
   @IsOptional()
+  @Expose({ name: 'who_made' })
+  @Transform(({ value, obj: source }) => value ?? source.who_made)
   @IsEnum(ProductWhoMade)
   whoMade?: ProductWhoMade;
 
   @IsOptional()
+  @Expose({ name: 'is_digital' })
+  @Transform(({ value, obj: source }) => value ?? source.is_digital)
   @IsBoolean()
   isDigital?: boolean;
 
   @IsOptional()
+  @Expose({ name: 'non_taxable' })
+  @Transform(({ value, obj: source }) => value ?? source.non_taxable)
   @IsBoolean()
   nonTaxable?: boolean;
 
   @IsOptional()
+  @Expose({ name: 'variant_group_name' })
+  @Transform(({ value, obj: source }) => value ?? source.variant_group_name)
   @IsString()
   @MinLength(1)
   variantGroupName?: string;
 
   @IsOptional()
+  @Expose({ name: 'variant_sub_group_name' })
+  @Transform(({ value, obj: source }) => value ?? source.variant_sub_group_name)
   @IsString()
   @MinLength(1)
   variantSubGroupName?: string;

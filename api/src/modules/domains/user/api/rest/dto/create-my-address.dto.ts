@@ -10,14 +10,15 @@ export class CreateMyAddressDto {
   @MaxLength(255)
   full_name!: string;
 
+  // Keep numbered address fields in snake_case at the HTTP boundary.
   @IsString()
   @MaxLength(255)
-  address1!: string;
+  address_1!: string;
 
   @IsOptional()
   @IsString()
   @MaxLength(255)
-  address2?: string;
+  address_2?: string;
 
   @IsString()
   @MaxLength(255)

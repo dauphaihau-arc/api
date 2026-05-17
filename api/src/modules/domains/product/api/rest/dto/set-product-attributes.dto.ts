@@ -7,17 +7,23 @@ import {
   MaxLength,
   ValidateNested
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Expose, Transform, Type } from 'class-transformer';
 
 export class SetProductAttributeValueDto {
+  @Expose({ name: 'category_attribute_id' })
+  @Transform(({ value, obj: source }) => value ?? source.category_attribute_id)
   @IsUUID()
   categoryAttributeId!: string;
 
   @IsOptional()
+  @Expose({ name: 'selected_option_id' })
+  @Transform(({ value, obj: source }) => value ?? source.selected_option_id)
   @IsUUID()
   selectedOptionId?: string;
 
   @IsOptional()
+  @Expose({ name: 'selected_text' })
+  @Transform(({ value, obj: source }) => value ?? source.selected_text)
   @IsString()
   @MaxLength(255)
   selectedText?: string;

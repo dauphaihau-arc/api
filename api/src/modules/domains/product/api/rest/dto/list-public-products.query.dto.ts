@@ -1,4 +1,4 @@
-import { Transform, Type } from 'class-transformer';
+import { Expose, Transform, Type } from 'class-transformer';
 import {
   IsBoolean,
   IsEnum,
@@ -58,13 +58,10 @@ export class ListPublicProductsQueryDto {
   limit: number = PRODUCT_PUBLIC_LIST_DEFAULT_LIMIT;
 
   @IsOptional()
+  @Expose({ name: 'category_id' })
   @Transform(({ value, obj: source }) => value ?? source.category_id)
   @IsUUID()
   categoryId?: string;
-
-  @IsOptional()
-  @IsUUID()
-  category_id?: string;
 
   @IsOptional()
   @IsString()
@@ -82,6 +79,7 @@ export class ListPublicProductsQueryDto {
   title?: string;
 
   @IsOptional()
+  @Expose({ name: 'is_digital' })
   @Transform(({ value, obj: source }) =>
     toOptionalBoolean(value ?? source.is_digital)
   )
@@ -89,11 +87,8 @@ export class ListPublicProductsQueryDto {
   isDigital?: boolean;
 
   @IsOptional()
-  @Transform(({ value }) => toOptionalBoolean(value))
-  @IsBoolean()
-  is_digital?: boolean;
-
-  @IsOptional()
+  @Expose({ name: 'who_made' })
+  @Transform(({ value, obj: source }) => value ?? source.who_made)
   @IsEnum(ProductWhoMade)
   whoMade?: ProductWhoMade;
 

@@ -58,8 +58,8 @@ export function mapProductAppErrorToHttpException(
       error: 'Unprocessable Entity',
       message: error.message,
       code: error.code,
-      productId: error.productId,
-      failedStep: error.failedStep,
+      product_id: error.productId,
+      failed_step: error.failedStep,
     });
   }
 

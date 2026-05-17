@@ -1,3 +1,4 @@
+import { Expose, Transform } from 'class-transformer';
 import {
   ArrayMinSize,
   IsArray,
@@ -13,11 +14,15 @@ export class CreateCategoryAttributeDto {
   name!: string;
 
   @IsOptional()
+  @Expose({ name: 'input_type' })
+  @Transform(({ value, obj: source }) => value ?? source.input_type)
   @IsString()
   @MinLength(1)
   inputType?: string;
 
   @IsOptional()
+  @Expose({ name: 'is_required' })
+  @Transform(({ value, obj: source }) => value ?? source.is_required)
   @IsBoolean()
   isRequired?: boolean;
 

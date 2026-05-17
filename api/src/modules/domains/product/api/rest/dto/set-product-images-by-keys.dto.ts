@@ -8,9 +8,11 @@ import {
   MinLength,
   ValidateNested
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Expose, Transform, Type } from 'class-transformer';
 
 export class ProductImageByKeyDto {
+  @Expose({ name: 'storage_key' })
+  @Transform(({ value, obj: source }) => value ?? source.storage_key)
   @IsString()
   @MinLength(1)
   storageKey!: string;

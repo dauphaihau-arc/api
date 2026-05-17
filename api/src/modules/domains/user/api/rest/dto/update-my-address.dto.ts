@@ -14,12 +14,12 @@ export class UpdateMyAddressDto {
   @IsOptional()
   @IsString()
   @MaxLength(255)
-  address1?: string;
+  address_1?: string;
 
   @IsOptional()
   @IsString()
   @MaxLength(255)
-  address2?: string;
+  address_2?: string;
 
   @IsOptional()
   @IsString()

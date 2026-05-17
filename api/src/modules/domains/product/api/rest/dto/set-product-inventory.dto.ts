@@ -11,10 +11,12 @@ import {
   MinLength,
   ValidateNested
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Expose, Transform, Type } from 'class-transformer';
 
 export class ProductInventoryRowDto {
   @IsOptional()
+  @Expose({ name: 'product_variant_id' })
+  @Transform(({ value, obj: source }) => value ?? source.product_variant_id)
   @IsUUID()
   productVariantId?: string;
 
@@ -34,6 +36,8 @@ export class ProductInventoryRowDto {
   price!: number;
 
   @IsOptional()
+  @Expose({ name: 'sale_price' })
+  @Transform(({ value, obj: source }) => value ?? source.sale_price)
   @IsNumber()
   @Min(0)
   @Max(50000)

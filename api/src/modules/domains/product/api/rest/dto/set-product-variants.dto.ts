@@ -7,14 +7,18 @@ import {
   MinLength,
   ValidateNested
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Expose, Transform, Type } from 'class-transformer';
 
 export class ProductVariantRowDto {
+  @Expose({ name: 'option_value_1' })
+  @Transform(({ value, obj: source }) => value ?? source.option_value_1)
   @IsString()
   @MinLength(1)
   optionValue1!: string;
 
   @IsOptional()
+  @Expose({ name: 'option_value_2' })
+  @Transform(({ value, obj: source }) => value ?? source.option_value_2)
   @IsString()
   @MinLength(1)
   optionValue2?: string;

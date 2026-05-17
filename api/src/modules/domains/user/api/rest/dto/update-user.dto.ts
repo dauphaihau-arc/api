@@ -1,4 +1,4 @@
-import { Type } from 'class-transformer';
+import { Expose, Transform, Type } from 'class-transformer';
 import {
   IsEnum, IsInt, IsOptional, IsString, Min 
 } from 'class-validator';
@@ -11,6 +11,8 @@ export class UpdateUserDto {
   version!: number;
 
   @IsOptional()
+  @Expose({ name: 'display_name' })
+  @Transform(({ value, obj: source }) => value ?? source.display_name)
   @IsString()
   displayName?: string;
 
