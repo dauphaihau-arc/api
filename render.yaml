@@ -34,7 +34,7 @@ services:
   - name: arc-api
     type: web
     runtime: node
-    plan: starter
+    plan: free
     region: singapore
     rootDir: api
     buildCommand: pnpm install --prod=false && pnpm build
@@ -123,96 +123,8 @@ services:
       - key: STORAGE_PUBLIC_BASE_URL
         sync: false
 
-  - name: arc-worker
-    type: worker
-    runtime: node
-    plan: starter
-    region: singapore
-    rootDir: api
-    buildCommand: pnpm install --prod=false && pnpm build
-    startCommand: pnpm start:worker:prod
-    autoDeployTrigger: commit
-    envVars:
-      - fromGroup: arc-shared-config
-      - key: NODE_ENV
-        value: production
-      - key: DB_HOST
-        fromDatabase:
-          name: arc-postgres
-          property: host
-      - key: DB_PORT
-        fromDatabase:
-          name: arc-postgres
-          property: port
-      - key: DB_USER
-        fromDatabase:
-          name: arc-postgres
-          property: user
-      - key: DB_PASSWORD
-        fromDatabase:
-          name: arc-postgres
-          property: password
-      - key: DB_NAME
-        fromDatabase:
-          name: arc-postgres
-          property: database
-      - key: REDIS_URL
-        sync: false
-      - key: CACHE_DRIVER
-        value: redis
-      - key: CACHE_TTL
-        value: 60s
-      - key: RATE_LIMIT_DRIVER
-        value: redis
-      - key: RATE_LIMIT_LIMIT
-        value: "20"
-      - key: RATE_LIMIT_TTL
-        value: 60s
-      - key: RATE_LIMIT_BLOCK_DURATION
-        value: 60s
-      - key: QUEUE_DRIVER
-        value: redis
-      - key: QUEUE_NAME
-        value: default
-      - key: QUEUE_PREFIX
-        value: nest-template
-      - key: QUEUE_REDIS_URL
-        sync: false
-      - key: QUEUE_JOB_ATTEMPTS
-        value: "5"
-      - key: QUEUE_JOB_BACKOFF
-        value: 5s
-      - key: QUEUE_REMOVE_COMPLETED_AFTER
-        value: 1d
-      - key: QUEUE_REMOVE_FAILED_AFTER
-        value: 7d
-      - key: QUEUE_WORKER_CONCURRENCY
-        value: "10"
-      - key: CORS_ALLOWED_ORIGINS
-        sync: false
-      - key: APP_BASE_URL
-        sync: false
-      - key: AUTH_COOKIE_DOMAIN
-        sync: false
-      - key: STRIPE_SECRET_KEY
-        sync: false
-      - key: STRIPE_WEBHOOK_SECRET_KEY
-        sync: false
-      - key: RESEND_API_KEY
-        sync: false
-      - key: STORAGE_OBJECT_STORAGE_ENDPOINT
-        sync: false
-      - key: STORAGE_OBJECT_STORAGE_BUCKET
-        sync: false
-      - key: STORAGE_OBJECT_STORAGE_ACCESS_KEY
-        sync: false
-      - key: STORAGE_OBJECT_STORAGE_SECRET_KEY
-        sync: false
-      - key: STORAGE_PUBLIC_BASE_URL
-        sync: false
-
 databases:
   - name: arc-postgres
-    plan: basic-256mb
+    plan: free
     region: singapore
     databaseName: app
