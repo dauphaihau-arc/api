@@ -30,10 +30,11 @@ api-up:
   set +a && \
   pnpm start:dev
 
-api-up-infisical project_id env_name:
+api-up-infisical project_id *env_name:
   cd {{ api_dir }} && \
   test -n "$INFISICAL_TOKEN" && \
-  pnpm exec infisical run --projectId="{{ project_id }}" --env="{{ env_name }}" --token="$INFISICAL_TOKEN" -- pnpm start:dev
+  ENV_ARG='{{ if env_name != "" { "--env=" + env_name } else { "" } }}' && \
+  pnpm exec infisical run --projectId="{{ project_id }}" $ENV_ARG --token="$INFISICAL_TOKEN" -- pnpm start:dev
 
 api-worker-up:
   cd {{ api_dir }} && \
@@ -44,11 +45,18 @@ api-worker-up:
   set +a && \
   pnpm start:worker:dev
 
-api-worker-up-infisical project_id env_name:
+api-worker-up-infisical project_id *env_name:
   cd {{ api_dir }} && \
   test -n "$INFISICAL_TOKEN" && \
-  pnpm exec infisical run --projectId="{{ project_id }}" --env="{{ env_name }}" --token="$INFISICAL_TOKEN" -- pnpm start:worker:dev
+  ENV_ARG='{{ if env_name != "" { "--env=" + env_name } else { "" } }}' && \
+  pnpm exec infisical run --projectId="{{ project_id }}" $ENV_ARG --token="$INFISICAL_TOKEN" -- pnpm start:worker:dev
 
+# List environment variables from Infisical
+api-env-infisical project_id *env_name:
+  cd {{ api_dir }} && \
+  test -n "$INFISICAL_TOKEN" && \
+  ENV_ARG='{{ if env_name != "" { "--env=" + env_name } else { "" } }}' && \
+  pnpm exec infisical run --projectId="{{ project_id }}" $ENV_ARG --token="$INFISICAL_TOKEN" -- env | sort
 
 
 # --------- Migrations
@@ -61,10 +69,11 @@ api-migration-up:
   set +a && \
   pnpm db:migration:up
 
-api-migration-up-infisical project_id env_name:
+api-migration-up-infisical project_id *env_name:
   cd {{ api_dir }} && \
   test -n "$INFISICAL_TOKEN" && \
-  pnpm exec infisical run --projectId="{{ project_id }}" --env="{{ env_name }}" --token="$INFISICAL_TOKEN" -- pnpm db:migration:up
+  ENV_ARG='{{ if env_name != "" { "--env=" + env_name } else { "" } }}' && \
+  pnpm exec infisical run --projectId="{{ project_id }}" $ENV_ARG --token="$INFISICAL_TOKEN" -- pnpm db:migration:up
 
 api-migration-down:
   cd {{ api_dir }} && \
@@ -74,10 +83,11 @@ api-migration-down:
   set +a && \
   pnpm db:migration:down
 
-api-migration-down-infisical project_id env_name:
+api-migration-down-infisical project_id *env_name:
   cd {{ api_dir }} && \
   test -n "$INFISICAL_TOKEN" && \
-  pnpm exec infisical run --projectId="{{ project_id }}" --env="{{ env_name }}" --token="$INFISICAL_TOKEN" -- pnpm db:migration:down
+  ENV_ARG='{{ if env_name != "" { "--env=" + env_name } else { "" } }}' && \
+  pnpm exec infisical run --projectId="{{ project_id }}" $ENV_ARG --token="$INFISICAL_TOKEN" -- pnpm db:migration:down
   
 
 
@@ -102,16 +112,19 @@ api-seed:
 
 # Example:
 # export INFISICAL_TOKEN="your-token"
+# just api-seed-demo-infisical your-project-id
 # just api-seed-demo-infisical your-project-id prod
-api-seed-demo-infisical project_id env_name:
+api-seed-demo-infisical project_id *env_name:
   cd {{ api_dir }} && \
   test -n "$INFISICAL_TOKEN" && \
-  pnpm exec infisical run --projectId="{{ project_id }}" --env="{{ env_name }}" --token="$INFISICAL_TOKEN" -- pnpm db:seed:demo
+  ENV_ARG='{{ if env_name != "" { "--env=" + env_name } else { "" } }}' && \
+  pnpm exec infisical run --projectId="{{ project_id }}" $ENV_ARG --token="$INFISICAL_TOKEN" -- pnpm db:seed:demo
 
-api-seed-infisical project_id env_name:
+api-seed-infisical project_id *env_name:
   cd {{ api_dir }} && \
   test -n "$INFISICAL_TOKEN" && \
-  pnpm exec infisical run --projectId="{{ project_id }}" --env="{{ env_name }}" --token="$INFISICAL_TOKEN" -- pnpm db:seed
+  ENV_ARG='{{ if env_name != "" { "--env=" + env_name } else { "" } }}' && \
+  pnpm exec infisical run --projectId="{{ project_id }}" $ENV_ARG --token="$INFISICAL_TOKEN" -- pnpm db:seed
 
 api-db-clear:
   docker compose -f {{ compose_file }} up -d postgres
@@ -148,10 +161,11 @@ upload-assets:
   set +a && \
   pnpm ts-node -r tsconfig-paths/register ./scripts/upload-minio-assets.ts
 
-upload-assets-infisical project_id env_name:
+upload-assets-infisical project_id *env_name:
   cd {{ api_dir }} && \
   test -n "$INFISICAL_TOKEN" && \
-  pnpm exec infisical run --projectId="{{ project_id }}" --env="{{ env_name }}" --token="$INFISICAL_TOKEN" -- pnpm ts-node -r tsconfig-paths/register ./scripts/upload-minio-assets.ts
+  ENV_ARG='{{ if env_name != "" { "--env=" + env_name } else { "" } }}' && \
+  pnpm exec infisical run --projectId="{{ project_id }}" $ENV_ARG --token="$INFISICAL_TOKEN" -- pnpm ts-node -r tsconfig-paths/register ./scripts/upload-minio-assets.ts
 
 # Convenience recipe for local/dev flows: seed demo data, then upload seed assets.
 seed-with-assets: api-seed-demo
