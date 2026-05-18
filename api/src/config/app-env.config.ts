@@ -48,7 +48,7 @@ const appEnvBaseSchema = z.object({
   JWT_REFRESH_TTL: z.string().trim().min(1),
   AUTH_COOKIE_ACCESS_NAME: z.string().trim().min(1).default('accessToken'),
   AUTH_COOKIE_REFRESH_NAME: z.string().trim().min(1).default('refreshToken'),
-  AUTH_COOKIE_DOMAIN: z.string().trim().min(1).optional(),
+  AUTH_COOKIE_DOMAIN: z.string().trim().optional(),
   AUTH_COOKIE_PATH: z.string().trim().min(1).default('/'),
   AUTH_COOKIE_SAME_SITE: z
     .enum(['strict', 'lax', 'none'])
