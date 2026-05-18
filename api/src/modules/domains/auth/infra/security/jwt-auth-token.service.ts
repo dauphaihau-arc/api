@@ -20,10 +20,7 @@ export class JwtAuthTokenService implements AuthTokenService {
   issueAccessToken(user: AuthenticatedUser): Promise<string> {
     const payload: AccessTokenPayload = {
       sub: user.userId,
-      email: user.email,
       sessionId: user.sessionId,
-      roles: user.roles,
-      permissions: user.permissions,
       type: 'access',
     };
 

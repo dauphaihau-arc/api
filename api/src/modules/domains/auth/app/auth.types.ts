@@ -13,10 +13,7 @@ export interface AuthenticatedUser {
 
 export interface AccessTokenPayload {
   sub: string;
-  email: string;
   sessionId: string;
-  roles: string[];
-  permissions: string[];
   type: 'access';
 }
 
