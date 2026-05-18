@@ -110,6 +110,25 @@ export class MikroOrmAuthUserRepository implements AuthUserRepository {
     }
   }
 
+  async updatePassword(input: {
+    userId: string;
+    passwordHash: PasswordHash;
+    passwordUpdatedAt: Date;
+  }): Promise<void> {
+    const entityManager = this.entityManager.fork();
+    const credentialRepository = entityManager.getRepository(
+      CurrentUserCredentialEntity
+    );
+    const credential = await credentialRepository.findOneOrFail({
+      user: input.userId,
+    });
+
+    credential.passwordHash = input.passwordHash.toString();
+    credential.passwordUpdatedAt = input.passwordUpdatedAt;
+
+    await entityManager.flush();
+  }
+
   async assignRole(
     userId: string,
     roleKey: RoleKey,

@@ -59,3 +59,15 @@ export class RefreshTokenMismatchError extends AuthAppError {
     super('Refresh token does not match session');
   }
 }
+
+export class InvalidPasswordResetTokenError extends AuthAppError {
+  constructor() {
+    super('Invalid password reset token');
+  }
+}
+
+export class PasswordResetTokenExpiredError extends AuthAppError {
+  constructor() {
+    super('Password reset token has expired');
+  }
+}

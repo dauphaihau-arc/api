@@ -9,7 +9,9 @@ import {
   EmailAlreadyRegisteredError,
   InactiveUserError,
   InvalidCredentialsError,
+  InvalidPasswordResetTokenError,
   InvalidRefreshTokenError,
+  PasswordResetTokenExpiredError,
   RefreshSessionInactiveError,
   RefreshSessionNotFoundError,
   RefreshTokenMismatchError,
@@ -29,6 +31,8 @@ export function mapAuthAppErrorToHttpException(
     || error instanceof SessionNotActiveError
     || error instanceof UserNotFoundError
     || error instanceof InvalidRefreshTokenError
+    || error instanceof InvalidPasswordResetTokenError
+    || error instanceof PasswordResetTokenExpiredError
     || error instanceof RefreshSessionNotFoundError
     || error instanceof RefreshSessionInactiveError
     || error instanceof RefreshTokenMismatchError

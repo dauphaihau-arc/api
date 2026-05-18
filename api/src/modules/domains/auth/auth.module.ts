@@ -9,15 +9,19 @@ import { AuthSessionRepository } from './app/ports/auth-session.repository';
 import { AuthTokenService } from './app/ports/auth-token.service';
 import { AuthUserRepository } from './app/ports/auth-user.repository';
 import { PasswordHasher } from './app/ports/password-hasher';
+import { PasswordResetTokenRepository } from './app/ports/password-reset-token.repository';
 import { TokenHasher } from './app/ports/token-hasher';
 import { UserPreferenceRepository } from './app/ports/user-preference.repository';
 import { GetCurrentUserUseCase } from './app/use-cases/get-current-user/get-current-user.use-case';
 import { LoadAuthenticatedUserUseCase } from './app/use-cases/load-authenticated-user/load-authenticated-user.use-case';
 import { LoginUseCase } from './app/use-cases/login/login.use-case';
 import { LogoutUseCase } from './app/use-cases/logout/logout.use-case';
+import { RequestPasswordResetUseCase } from './app/use-cases/request-password-reset/request-password-reset.use-case';
 import { RefreshSessionUseCase } from './app/use-cases/refresh-session/refresh-session.use-case';
+import { ResetPasswordUseCase } from './app/use-cases/reset-password/reset-password.use-case';
 import { RegisterUseCase } from './app/use-cases/register/register.use-case';
 import { IssueSessionUseCase } from './app/use-cases/issue-session/issue-session.use-case';
+import { VerifyResetPasswordTokenUseCase } from './app/use-cases/verify-reset-password-token/verify-reset-password-token.use-case';
 import { AuthController } from './api/rest/auth.controller';
 import { JwtAuthGuard } from './api/guard/jwt-auth.guard';
 import { PermissionsGuard } from './api/guard/permissions.guard';
@@ -29,6 +33,7 @@ import { CurrentUserCredentialEntity } from './infra/persistence/entities/curren
 import { EmailVerificationTokenEntity } from './infra/persistence/entities/email-verification-token.entity';
 import { MikroOrmAuthSessionRepository } from './infra/persistence/mikro-orm-auth-session.repository';
 import { MikroOrmAuthUserRepository } from './infra/persistence/mikro-orm-auth-user.repository';
+import { MikroOrmPasswordResetTokenRepository } from './infra/persistence/mikro-orm-password-reset-token.repository';
 import { PermissionEntity } from './infra/persistence/entities/permission.entity';
 import { PasswordResetTokenEntity } from './infra/persistence/entities/password-reset-token.entity';
 import { RoleEntity } from './infra/persistence/entities/role.entity';
@@ -41,6 +46,7 @@ import { Sha256TokenHasher } from './infra/security/sha256-token-hasher';
 import { UserSessionEntity } from './infra/persistence/entities/user-session.entity';
 import { UserRoleEntity } from './infra/persistence/entities/user-role.entity';
 import { IdempotencyModule } from '../../shared/idempotency/idempotency.module';
+import { QueueModule } from '../../shared/queue/queue.module';
 
 const authEntities = [
   CurrentUserEntity,
@@ -60,6 +66,7 @@ const authEntities = [
     ConfigModule,
     CacheModule,
     IdempotencyModule,
+    QueueModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
       inject: [ConfigService],
@@ -97,6 +104,10 @@ const authEntities = [
       useClass: BcryptPasswordHasher,
     },
     {
+      provide: PasswordResetTokenRepository,
+      useClass: MikroOrmPasswordResetTokenRepository,
+    },
+    {
       provide: UserPreferenceRepository,
       useClass: MikroOrmUserPreferenceRepository,
     },
@@ -112,6 +123,9 @@ const authEntities = [
     LoginUseCase,
     RefreshSessionUseCase,
     LogoutUseCase,
+    RequestPasswordResetUseCase,
+    VerifyResetPasswordTokenUseCase,
+    ResetPasswordUseCase,
     GetCurrentUserUseCase,
     LoadAuthenticatedUserUseCase,
     IssueSessionUseCase,

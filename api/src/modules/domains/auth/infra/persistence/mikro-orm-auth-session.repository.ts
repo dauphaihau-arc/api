@@ -58,6 +58,27 @@ export class MikroOrmAuthSessionRepository implements AuthSessionRepository {
     await entityManager.flush();
   }
 
+  async revokeAllForUser(userId: string): Promise<void> {
+    const entityManager = this.entityManager.fork();
+    const sessionRepository = entityManager.getRepository(UserSessionEntity);
+    const activeSessions = await sessionRepository.find({
+      user: userId,
+      revokedAt: null,
+    });
+
+    if (activeSessions.length === 0) {
+      return;
+    }
+
+    const revokedAt = new Date();
+
+    for (const session of activeSessions) {
+      session.revokedAt = revokedAt;
+    }
+
+    await entityManager.flush();
+  }
+
   private toUserSession(session: UserSessionEntity): UserSession {
     return {
       id: session.id,

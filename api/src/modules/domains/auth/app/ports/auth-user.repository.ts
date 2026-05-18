@@ -36,6 +36,11 @@ export abstract class AuthUserRepository {
     entityManager?: EntityManager
   ): Promise<UserAccount>;
   abstract update(id: string, input: UpdateUserAccountInput): Promise<UserAccount | null>;
+  abstract updatePassword(input: {
+    userId: string;
+    passwordHash: PasswordHash;
+    passwordUpdatedAt: Date;
+  }): Promise<void>;
   abstract assignRole(
     userId: string,
     roleKey: RoleKey,

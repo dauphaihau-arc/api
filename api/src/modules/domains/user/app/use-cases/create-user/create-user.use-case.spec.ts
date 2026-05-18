@@ -45,6 +45,7 @@ describe('CreateUserUseCase', () => {
       findById: jest.fn(),
       create: jest.fn().mockResolvedValue(createdUser),
       update: jest.fn(),
+      updatePassword: jest.fn(),
       assignRole: jest.fn().mockResolvedValue(undefined),
       ensureRole: jest.fn().mockResolvedValue(undefined),
     };

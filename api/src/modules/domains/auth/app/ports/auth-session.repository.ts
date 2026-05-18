@@ -12,4 +12,5 @@ export abstract class AuthSessionRepository {
   abstract findById(id: string): Promise<UserSession | null>;
   abstract create(input: CreateUserSessionInput): Promise<UserSession>;
   abstract save(session: UserSession): Promise<void>;
+  abstract revokeAllForUser(userId: string): Promise<void>;
 }

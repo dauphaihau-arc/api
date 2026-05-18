@@ -63,6 +63,7 @@ describe('UpdateUserUseCase', () => {
           status: input.status ?? existingUser.status,
         })
       ),
+      updatePassword: jest.fn(),
       assignRole: jest.fn(),
       ensureRole: jest.fn(),
     };
