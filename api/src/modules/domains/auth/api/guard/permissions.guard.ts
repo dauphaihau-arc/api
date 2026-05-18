@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { GqlExecutionContext } from '@nestjs/graphql';
-import { AUTH_REQUIRED_PERMISSIONS_KEY } from '../../../../../common/decorators/require-permissions.decorator';
+import { AUTH_REQUIRED_PERMISSIONS_KEY } from '~/common/decorators/require-permissions.decorator';
 import { AuthenticatedUser } from '../../app/auth.types';
 
 @Injectable()

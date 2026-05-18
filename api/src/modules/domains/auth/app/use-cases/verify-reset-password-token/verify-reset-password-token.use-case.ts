@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { err, ok, Result } from '../../../../../../common/application/result';
+import { err, ok, Result } from '~/common/application/result';
 import {
   InvalidPasswordResetTokenError,
   PasswordResetTokenExpiredError

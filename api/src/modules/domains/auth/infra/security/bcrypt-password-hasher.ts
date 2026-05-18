@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { compare, hash } from 'bcryptjs';
-import { AUTH_CONFIG } from '../../../../../config/auth.config';
-import type { AuthConfig } from '../../../../../config/auth.config';
+import { AUTH_CONFIG } from '~/config/auth.config';
+import type { AuthConfig } from '~/config/auth.config';
 import { PasswordHasher } from '../../app/ports/password-hasher';
 
 @Injectable()

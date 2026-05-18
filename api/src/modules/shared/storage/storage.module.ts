@@ -3,7 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import {
   STORAGE_CONFIG,
   buildStorageConfig
-} from '../../../config/storage.config';
+} from '~/config/storage.config';
 import { StorageService } from './app/ports/storage.service';
 import { StorageBootstrapService } from './storage-bootstrap.service';
 import { LocalFileStorageService } from './infra/local-file-storage.service';

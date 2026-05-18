@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { err, Result, ok } from '../../../../../../common/application/result';
+import { err, Result, ok } from '~/common/application/result';
 import { AuthenticatedUser } from '../../auth.types';
 import {
   InactiveUserError,

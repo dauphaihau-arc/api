@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { MAIL_CONFIG } from '../../../../config/mail.config';
-import type { MailConfig } from '../../../../config/mail.config';
+import { MAIL_CONFIG } from '~/config/mail.config';
+import type { MailConfig } from '~/config/mail.config';
 import { MailSender } from '../app/ports/mail-sender';
 import { MailAddress, SendMailInput } from '../app/mail.types';
 

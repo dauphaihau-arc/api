@@ -1,12 +1,12 @@
 import { randomBytes } from 'node:crypto';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { appJobName } from '../../../../../../common/jobs/job.types';
+import { appJobName } from '~/common/jobs/job.types';
 import { Email } from '../../../domain/value-objects/email';
 import { AuthUserRepository } from '../../ports/auth-user.repository';
 import { PasswordResetTokenRepository } from '../../ports/password-reset-token.repository';
 import { TokenHasher } from '../../ports/token-hasher';
-import { JobDispatcher } from '../../../../../shared/queue/app/ports/job-dispatcher';
+import { JobDispatcher } from '~/modules/shared/queue/app/ports/job-dispatcher';
 
 const PASSWORD_RESET_TOKEN_BYTES = 32;
 const PASSWORD_RESET_TOKEN_TTL_MS = 60 * 60 * 1000;

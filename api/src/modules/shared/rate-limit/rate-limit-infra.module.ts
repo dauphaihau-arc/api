@@ -8,7 +8,7 @@ import { createClient } from 'redis';
 import {
   RATE_LIMIT_CONFIG,
   buildRateLimitConfig
-} from '../../../config/rate-limit.config';
+} from '~/config/rate-limit.config';
 import { RedisRateLimitStorage } from './infra/redis-rate-limit.storage';
 import { RATE_LIMIT_STORAGE } from './rate-limit.constants';
 

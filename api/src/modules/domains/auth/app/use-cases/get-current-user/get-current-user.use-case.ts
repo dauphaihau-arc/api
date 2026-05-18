@@ -1,6 +1,6 @@
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
-import { ShopEntity } from '../../../../shop/infra/persistence/entities/shop.entity';
+import { ShopEntity } from '~/modules/domains/shop/infra/persistence/entities/shop.entity';
 import { UserPreferenceRepository } from '../../ports/user-preference.repository';
 import { AuthenticatedUser, UserProfile } from '../../auth.types';
 

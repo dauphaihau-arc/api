@@ -1,8 +1,8 @@
 import type { Request, Response } from 'express';
 import { Inject, Injectable } from '@nestjs/common';
 import type { CookieOptions } from 'express';
-import { AUTH_CONFIG } from '../../../../../config/auth.config';
-import type { AuthConfig } from '../../../../../config/auth.config';
+import { AUTH_CONFIG } from '~/config/auth.config';
+import type { AuthConfig } from '~/config/auth.config';
 import type { AuthResponse } from '../../app/auth.types';
 
 function parseCookieHeader(cookieHeader?: string): Record<string, string> {

@@ -1,8 +1,8 @@
 import { randomUUID } from 'crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { AUTH_CONFIG } from '../../../../../config/auth.config';
-import type { AuthConfig } from '../../../../../config/auth.config';
+import { AUTH_CONFIG } from '~/config/auth.config';
+import type { AuthConfig } from '~/config/auth.config';
 import { AuthTokenService } from '../../app/ports/auth-token.service';
 import {
   AccessTokenPayload,

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { err, ok, Result } from '../../../../../../common/application/result';
-import { RequestContextService } from '../../../../../shared/request-context/request-context.service';
+import { err, ok, Result } from '~/common/application/result';
+import { RequestContextService } from '~/modules/shared/request-context/request-context.service';
 import {
   AuthResponse,
   AuthenticatedUser

@@ -1,5 +1,5 @@
 import { Logger } from '@nestjs/common';
-import type { MailConfig } from '../../../../config/mail.config';
+import type { MailConfig } from '~/config/mail.config';
 import type { MailSender } from '../app/ports/mail-sender';
 import type { MailAddress, SendMailInput } from '../app/mail.types';
 

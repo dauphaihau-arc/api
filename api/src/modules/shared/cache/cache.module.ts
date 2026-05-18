@@ -4,7 +4,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import {
   buildCacheConfig,
   buildCacheModuleOptions
-} from '../../../config/cache.config';
+} from '~/config/cache.config';
 
 @Module({
   imports: [

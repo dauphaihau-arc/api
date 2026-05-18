@@ -1,9 +1,9 @@
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
-import { err, Result } from '../../../../../../common/application/result';
+import { err, Result } from '~/common/application/result';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { UserCreatedEvent } from '../../../../../../common/events/user-created.event';
-import { normalizeUserPreferences } from '../../../../../../config/marketplace.config';
+import { UserCreatedEvent } from '~/common/events/user-created.event';
+import { normalizeUserPreferences } from '~/config/marketplace.config';
 import {
   AuthResponse,
   RegisterUserInput

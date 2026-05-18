@@ -2,7 +2,7 @@ import type { ConfigService } from '@nestjs/config';
 import type { AuthUserRepository } from '../../ports/auth-user.repository';
 import type { PasswordResetTokenRepository } from '../../ports/password-reset-token.repository';
 import type { TokenHasher } from '../../ports/token-hasher';
-import type { JobDispatcher } from '../../../../../shared/queue/app/ports/job-dispatcher';
+import type { JobDispatcher } from '~/modules/shared/queue/app/ports/job-dispatcher';
 import { UserStatus } from '../../../domain/enums/user-status.enum';
 import { Email } from '../../../domain/value-objects/email';
 import { RoleKey } from '../../../domain/value-objects/role-key';

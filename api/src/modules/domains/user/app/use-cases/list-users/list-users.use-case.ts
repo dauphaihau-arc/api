@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { buildPaginationMeta } from '../../../../../../common/application/pagination';
+import { buildPaginationMeta } from '~/common/application/pagination';
 import { UserRepository } from '../../ports/user.repository';
 import type { ListUsersQuery, UserListResult } from '../../user.types';
 

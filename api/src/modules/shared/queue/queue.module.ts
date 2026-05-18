@@ -4,11 +4,11 @@ import {
   QueueConfig,
   QUEUE_CONFIG,
   buildQueueConfig
-} from '../../../config/queue.config';
+} from '~/config/queue.config';
 import { MailModule } from '../mail/mail.module';
 import Redis from 'ioredis';
-import { SendPasswordResetEmailJob } from '../../../common/jobs/send-password-reset-email.job';
-import { SendWelcomeEmailJob } from '../../../common/jobs/send-welcome-email.job';
+import { SendPasswordResetEmailJob } from '~/common/jobs/send-password-reset-email.job';
+import { SendWelcomeEmailJob } from '~/common/jobs/send-welcome-email.job';
 import { JobDispatcher } from './app/ports/job-dispatcher';
 import { AppJobRunner } from './infra/app-job-runner';
 import { BullMqConnectionManager } from './infra/bullmq-connection-manager';

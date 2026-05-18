@@ -1,7 +1,7 @@
 import { MikroOrmModule } from '@mikro-orm/nestjs';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { AUTH_CONFIG, buildAuthConfig } from '../../../config/auth.config';
+import { AUTH_CONFIG, buildAuthConfig } from '~/config/auth.config';
 import { CacheModule } from '../../shared/cache/cache.module';
 import { StorageModule } from '../../shared/storage/storage.module';
 import { CurrentUserEntity } from '../auth/infra/persistence/entities/current-user.entity';

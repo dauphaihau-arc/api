@@ -1,13 +1,13 @@
-import { EntityManager } from '@mikro-orm/postgresql';
-import { buildAuthConfig } from '../../src/config/auth.config';
-import { UserStatus } from '../../src/modules/domains/auth/domain/enums/user-status.enum';
-import { CurrentUserCredentialEntity } from '../../src/modules/domains/auth/infra/persistence/entities/current-user-credential.entity';
-import { CurrentUserEntity } from '../../src/modules/domains/auth/infra/persistence/entities/current-user.entity';
-import { PermissionEntity } from '../../src/modules/domains/auth/infra/persistence/entities/permission.entity';
-import { RoleEntity } from '../../src/modules/domains/auth/infra/persistence/entities/role.entity';
-import { RolePermissionEntity } from '../../src/modules/domains/auth/infra/persistence/entities/role-permission.entity';
-import { UserRoleEntity } from '../../src/modules/domains/auth/infra/persistence/entities/user-role.entity';
-import { BcryptPasswordHasher } from '../../src/modules/domains/auth/infra/security/bcrypt-password-hasher';
+import type { EntityManager } from '@mikro-orm/postgresql';
+import { buildAuthConfig } from '~/config/auth.config';
+import { UserStatus } from '~/modules/domains/auth/domain/enums/user-status.enum';
+import { CurrentUserCredentialEntity } from '~/modules/domains/auth/infra/persistence/entities/current-user-credential.entity';
+import { CurrentUserEntity } from '~/modules/domains/auth/infra/persistence/entities/current-user.entity';
+import { PermissionEntity } from '~/modules/domains/auth/infra/persistence/entities/permission.entity';
+import { RoleEntity } from '~/modules/domains/auth/infra/persistence/entities/role.entity';
+import { RolePermissionEntity } from '~/modules/domains/auth/infra/persistence/entities/role-permission.entity';
+import { UserRoleEntity } from '~/modules/domains/auth/infra/persistence/entities/user-role.entity';
+import { BcryptPasswordHasher } from '~/modules/domains/auth/infra/security/bcrypt-password-hasher';
 
 type UserSeed = {
   email: string;

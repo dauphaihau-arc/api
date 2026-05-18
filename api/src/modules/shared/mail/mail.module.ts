@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { MAIL_CONFIG, buildMailConfig } from '../../../config/mail.config';
+import { MAIL_CONFIG, buildMailConfig } from '~/config/mail.config';
 import { MailSender } from './app/ports/mail-sender';
 import { LoggerMailSender } from './infra/logger-mail.sender';
 import { ResendMailSender } from './infra/resend-mail.sender';

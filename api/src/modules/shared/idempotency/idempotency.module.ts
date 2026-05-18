@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { createClient } from 'redis';
-import { IdempotencyKeyInterceptor } from '../../../common/interceptors/idempotency-key.interceptor';
-import { IDEMPOTENCY_REDIS } from '../../../common/interceptors/idempotency.constants';
-import { buildCacheConfig } from '../../../config/cache.config';
+import { IdempotencyKeyInterceptor } from '~/common/interceptors/idempotency-key.interceptor';
+import { IDEMPOTENCY_REDIS } from '~/common/interceptors/idempotency.constants';
+import { buildCacheConfig } from '~/config/cache.config';
 import { CacheModule } from '../cache/cache.module';
 
 @Module({

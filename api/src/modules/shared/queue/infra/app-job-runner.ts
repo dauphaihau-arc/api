@@ -3,9 +3,9 @@ import {
   appJobName,
   AppJobName,
   AppJobPayloadMap
-} from '../../../../common/jobs/job.types';
-import { SendPasswordResetEmailJob } from '../../../../common/jobs/send-password-reset-email.job';
-import { SendWelcomeEmailJob } from '../../../../common/jobs/send-welcome-email.job';
+} from '~/common/jobs/job.types';
+import { SendPasswordResetEmailJob } from '~/common/jobs/send-password-reset-email.job';
+import { SendWelcomeEmailJob } from '~/common/jobs/send-welcome-email.job';
 
 @Injectable()
 export class AppJobRunner {

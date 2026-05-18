@@ -2,7 +2,7 @@ import {
   access, mkdir, readFile, rm, stat, writeFile 
 } from 'node:fs/promises';
 import path from 'node:path';
-import type { LocalStorageConfig } from '../../../../config/storage.config';
+import type { LocalStorageConfig } from '~/config/storage.config';
 import type { StorageService } from '../app/ports/storage.service';
 import type { PutStorageObjectInput, StoredObject } from '../app/storage.types';
 import { normalizeStorageKey } from './storage-key.util';

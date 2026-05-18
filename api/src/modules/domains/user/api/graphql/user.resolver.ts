@@ -6,10 +6,10 @@ import {
   Query,
   Resolver
 } from '@nestjs/graphql';
-import { resolveOrThrow } from '../../../../../common/application/result';
-import { parseSortValue } from '../../../../../common/application/sort';
-import { CurrentUser } from '../../../../../common/decorators/current-user.decorator';
-import { RequirePermissions } from '../../../../../common/decorators/require-permissions.decorator';
+import { resolveOrThrow } from '~/common/application/result';
+import { parseSortValue } from '~/common/application/sort';
+import { CurrentUser } from '~/common/decorators/current-user.decorator';
+import { RequirePermissions } from '~/common/decorators/require-permissions.decorator';
 import { PermissionsGuard } from '../../../auth/api/guard/permissions.guard';
 import type { AuthenticatedUser } from '../../../auth/app/auth.types';
 import { JwtAuthGuard } from '../../../auth/api/guard/jwt-auth.guard';

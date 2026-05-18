@@ -7,7 +7,7 @@ import {
 import {
   RATE_LIMIT_CONFIG,
   type RateLimitConfig
-} from '../../../config/rate-limit.config';
+} from '~/config/rate-limit.config';
 import { RateLimitInfraModule } from './rate-limit-infra.module';
 import { RATE_LIMIT_STORAGE } from './rate-limit.constants';
 import { GraphqlThrottlerGuard } from './graphql-throttler.guard';

@@ -3,7 +3,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
-import { AUTH_CONFIG, buildAuthConfig } from '../../../config/auth.config';
+import { AUTH_CONFIG, buildAuthConfig } from '~/config/auth.config';
 import { CacheModule } from '../../shared/cache/cache.module';
 import { AuthSessionRepository } from './app/ports/auth-session.repository';
 import { AuthTokenService } from './app/ports/auth-token.service';

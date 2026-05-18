@@ -14,9 +14,9 @@ import {
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { Throttle } from '@nestjs/throttler';
-import { Idempotent } from '../../../../../common/decorators/idempotent.decorator';
-import { resolveOrThrow } from '../../../../../common/application/result';
-import { parseDurationToMilliseconds } from '../../../../../libs/duration';
+import { Idempotent } from '~/common/decorators/idempotent.decorator';
+import { resolveOrThrow } from '~/common/application/result';
+import { parseDurationToMilliseconds } from '~/libs/duration';
 import type { AuthenticatedUser } from '../../app/auth.types';
 import { GetCurrentUserUseCase } from '../../app/use-cases/get-current-user/get-current-user.use-case';
 import { LoginUseCase } from '../../app/use-cases/login/login.use-case';
@@ -26,7 +26,7 @@ import { RefreshSessionUseCase } from '../../app/use-cases/refresh-session/refre
 import { ResetPasswordUseCase } from '../../app/use-cases/reset-password/reset-password.use-case';
 import { RegisterUseCase } from '../../app/use-cases/register/register.use-case';
 import { VerifyResetPasswordTokenUseCase } from '../../app/use-cases/verify-reset-password-token/verify-reset-password-token.use-case';
-import { CurrentUser } from '../../../../../common/decorators/current-user.decorator';
+import { CurrentUser } from '~/common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../guard/jwt-auth.guard';
 import { PermissionsGuard } from '../guard/permissions.guard';
 import { mapAuthAppErrorToHttpException } from './auth-error-mapper';
@@ -37,7 +37,7 @@ import { LoginDto } from './dto/login.dto';
 import { AuthUserResponseDto, MeResponseDto } from './dto/me-response.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { RegisterDto } from './dto/register.dto';
-import { IdempotencyKeyInterceptor } from '../../../../../common/interceptors/idempotency-key.interceptor';
+import { IdempotencyKeyInterceptor } from '~/common/interceptors/idempotency-key.interceptor';
 import { TokenQueryDto } from './dto/token-query.dto';
 import { VerifyTokenDto } from './dto/verify-token.dto';
 
