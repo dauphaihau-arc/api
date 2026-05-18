@@ -30,6 +30,63 @@ describe('CategoryController', () => {
     expect(Reflect.getMetadata(METHOD_METADATA, handler)).toBe(RequestMethod.GET);
   });
 
+  it('returns listed categories in snake_case for the HTTP boundary', async () => {
+    listCategoriesUseCase.execute.mockResolvedValue([
+      {
+        id: 'category-1',
+        parentId: undefined,
+        name: 'Clothing',
+        rank: 1,
+        imageStorageKey: 'categories/clothing.jpg',
+        imageUrl: 'https://cdn.example.com/categories/clothing.jpg',
+        attributes: [
+          {
+            id: 'attribute-1',
+            name: 'Material',
+            inputType: 'select',
+            isRequired: true,
+            rank: 1,
+            options: [
+              {
+                id: 'option-1',
+                value: 'Cotton',
+                rank: 1,
+              },
+            ],
+          },
+        ],
+      },
+    ]);
+
+    await expect(controller.categories({ parentId: undefined })).resolves.toEqual([
+      {
+        id: 'category-1',
+        parent_id: undefined,
+        name: 'Clothing',
+        rank: 1,
+        image_storage_key: 'categories/clothing.jpg',
+        image_url: 'https://cdn.example.com/categories/clothing.jpg',
+        attributes: [
+          {
+            id: 'attribute-1',
+            name: 'Material',
+            input_type: 'select',
+            is_required: true,
+            rank: 1,
+            options: [
+              {
+                id: 'option-1',
+                value: 'Cotton',
+                rank: 1,
+              },
+            ],
+          },
+        ],
+      },
+    ]);
+    expect(listCategoriesUseCase.execute).toHaveBeenCalledWith(undefined);
+  });
+
   it('returns the category attributes for an existing category', async () => {
     getCategoryAttributesUseCase.execute.mockResolvedValue(ok([
       {
@@ -53,8 +110,8 @@ describe('CategoryController', () => {
         {
           id: 'attribute-1',
           name: 'Material',
-          inputType: 'select',
-          isRequired: false,
+          input_type: 'select',
+          is_required: false,
           rank: 1,
           options: [
             {
