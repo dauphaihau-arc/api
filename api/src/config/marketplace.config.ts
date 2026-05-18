@@ -23,30 +23,30 @@ export type MarketplaceRegion = (typeof MARKETPLACE_REGIONS)[number];
 export type MarketplaceLanguage = (typeof MARKETPLACE_LANGUAGES)[number];
 export type MarketplaceCurrency = (typeof MARKETPLACE_CURRENCIES)[number];
 
-export interface MarketPreferencesInput {
+export interface UserPreferencesInput {
   region?: MarketplaceRegion;
   language?: MarketplaceLanguage;
   currency?: MarketplaceCurrency;
 }
 
-export interface MarketPreferences {
+export interface UserPreferences {
   region: MarketplaceRegion;
   language: MarketplaceLanguage;
   currency: MarketplaceCurrency;
 }
 
-export const DEFAULT_MARKET_PREFERENCES: MarketPreferences = {
+export const DEFAULT_USER_PREFERENCES: UserPreferences = {
   region: 'United States',
   language: 'en',
   currency: 'USD',
 };
 
-export function normalizeMarketPreferences(
-  input?: MarketPreferencesInput
-): MarketPreferences {
+export function normalizeUserPreferences(
+  input?: UserPreferencesInput
+): UserPreferences {
   return {
-    region: input?.region ?? DEFAULT_MARKET_PREFERENCES.region,
-    language: input?.language ?? DEFAULT_MARKET_PREFERENCES.language,
-    currency: input?.currency ?? DEFAULT_MARKET_PREFERENCES.currency,
+    region: input?.region ?? DEFAULT_USER_PREFERENCES.region,
+    language: input?.language ?? DEFAULT_USER_PREFERENCES.language,
+    currency: input?.currency ?? DEFAULT_USER_PREFERENCES.currency,
   };
 }

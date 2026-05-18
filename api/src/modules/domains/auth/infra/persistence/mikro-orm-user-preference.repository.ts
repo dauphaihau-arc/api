@@ -1,8 +1,8 @@
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
 import {
-  normalizeMarketPreferences,
-  type MarketPreferences
+  normalizeUserPreferences,
+  type UserPreferences
 } from '~/config/marketplace.config';
 import {
   CreateUserPreferenceInput,
@@ -33,7 +33,7 @@ export class MikroOrmUserPreferenceRepository implements UserPreferenceRepositor
     await em.persistAndFlush(userPreference);
   }
 
-  async findByUserId(userId: string): Promise<MarketPreferences | null> {
+  async findByUserId(userId: string): Promise<UserPreferences | null> {
     const repository = this.entityManager.fork().getRepository(UserPreferenceEntity);
     const preference = await repository.findOne({ user: userId });
 
@@ -41,7 +41,7 @@ export class MikroOrmUserPreferenceRepository implements UserPreferenceRepositor
       return null;
     }
 
-    return normalizeMarketPreferences({
+    return normalizeUserPreferences({
       region: preference.region,
       language: preference.language,
       currency: preference.currency,

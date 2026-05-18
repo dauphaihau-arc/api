@@ -120,7 +120,7 @@ describe('Auth flow (e2e)', () => {
         email,
         password: 'password123',
         displayName: 'Member User',
-        market_preferences: {
+        preferences: {
           region: 'Vietnam',
           language: 'fr',
           currency: 'EUR',
@@ -238,7 +238,7 @@ describe('Auth flow (e2e)', () => {
     expect(response.headers['cache-control']).toBe('no-store');
   });
 
-  it('creates default user preferences when register omits market_preferences', async () => {
+  it('creates default user preferences when register omits preferences', async () => {
     const email = `member-default-${Date.now()}@example.com`;
 
     const registerResponse = await request(app.getHttpServer())

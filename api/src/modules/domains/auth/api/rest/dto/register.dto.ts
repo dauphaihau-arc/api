@@ -13,7 +13,7 @@ import {
   MARKETPLACE_REGIONS
 } from '~/config/marketplace.config';
 
-class MarketPreferencesDto {
+class UserPreferencesDto {
   @IsOptional()
   @IsIn(MARKETPLACE_REGIONS)
   region?: (typeof MARKETPLACE_REGIONS)[number];
@@ -44,6 +44,6 @@ export class RegisterDto {
 
   @IsOptional()
   @ValidateNested()
-  @Type(() => MarketPreferencesDto)
-  market_preferences?: MarketPreferencesDto;
+  @Type(() => UserPreferencesDto)
+  preferences?: UserPreferencesDto;
 }

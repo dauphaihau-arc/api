@@ -3,7 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { err, Result } from '../../../../../../common/application/result';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { UserCreatedEvent } from '../../../../../../common/events/user-created.event';
-import { normalizeMarketPreferences } from '../../../../../../config/marketplace.config';
+import { normalizeUserPreferences } from '../../../../../../config/marketplace.config';
 import {
   AuthResponse,
   RegisterUserInput
@@ -55,8 +55,8 @@ export class RegisterUseCase {
     const passwordHash = PasswordHash.fromPersisted(
       await this.passwordHasher.hash(input.password)
     );
-    const marketPreferences = normalizeMarketPreferences(
-      input.market_preferences
+    const userPreferences = normalizeUserPreferences(
+      input.preferences
     );
     const user = await this.entityManager.transactional(async (entityManager) => {
       await this.authUserRepository.ensureRole(defaultRole, entityManager);
@@ -75,7 +75,7 @@ export class RegisterUseCase {
       await this.userPreferenceRepository.create(
         {
           userId: createdUser.id,
-          ...marketPreferences,
+          ...userPreferences,
         },
         entityManager
       );

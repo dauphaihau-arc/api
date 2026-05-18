@@ -1,6 +1,6 @@
 import type { EntityManager } from '@mikro-orm/postgresql';
 import type { EventEmitter2 } from '@nestjs/event-emitter';
-import type { MarketPreferences } from '~/config/marketplace.config';
+import type { UserPreferences } from '~/config/marketplace.config';
 import type { UserCreatedEvent } from '~/common/events/user-created.event';
 import { UserStatus } from '../../../domain/enums/user-status.enum';
 import type { UserAccount } from '../../../domain/models/user-account';
@@ -38,11 +38,13 @@ describe('RegisterUseCase', () => {
       findById: jest.fn(),
       create: jest.fn().mockResolvedValue(createdUser),
       update: jest.fn(),
+      updatePassword: jest.fn(),
       assignRole: jest.fn().mockResolvedValue(undefined),
       ensureRole: jest.fn().mockResolvedValue(undefined),
     };
     const userPreferenceRepository: jest.Mocked<UserPreferenceRepository> = {
       create: jest.fn().mockResolvedValue(undefined),
+      findByUserId: jest.fn(),
     };
     const passwordHasher: jest.Mocked<PasswordHasher> = {
       hash: jest
@@ -88,7 +90,7 @@ describe('RegisterUseCase', () => {
         email: 'member@example.com',
         password: 'password123',
         displayName: 'Member User',
-        market_preferences: {
+        preferences: {
           region: 'Vietnam',
           language: 'fr',
           currency: 'EUR',
@@ -103,7 +105,7 @@ describe('RegisterUseCase', () => {
         region: 'Vietnam',
         language: 'fr',
         currency: 'EUR',
-      } satisfies MarketPreferences & { userId: string },
+      } satisfies UserPreferences & { userId: string },
       expect.anything()
     );
 
@@ -117,7 +119,7 @@ describe('RegisterUseCase', () => {
     );
   });
 
-  it('creates default user preferences when market_preferences is omitted', async () => {
+  it('creates default user preferences when preferences is omitted', async () => {
     const entityManager = {
       transactional: jest.fn(async (callback: (em: EntityManager) => Promise<UserAccount>) =>
         callback({} as EntityManager)),
@@ -139,11 +141,13 @@ describe('RegisterUseCase', () => {
         permissions: [],
       }),
       update: jest.fn(),
+      updatePassword: jest.fn(),
       assignRole: jest.fn().mockResolvedValue(undefined),
       ensureRole: jest.fn().mockResolvedValue(undefined),
     };
     const userPreferenceRepository: jest.Mocked<UserPreferenceRepository> = {
       create: jest.fn().mockResolvedValue(undefined),
+      findByUserId: jest.fn(),
     };
     const passwordHasher: jest.Mocked<PasswordHasher> = {
       hash: jest
