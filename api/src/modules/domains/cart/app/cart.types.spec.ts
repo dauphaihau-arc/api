@@ -50,9 +50,9 @@ describe('buildCartResponse', () => {
     expect(buildCartResponse(cart)).toEqual({
       cart: {
         id: 'cart-1',
-        userId: 'user-1',
-        isTemp: false,
-        shopGroups: [
+        user_id: 'user-1',
+        is_temp: false,
+        shop_groups: [
           {
             shop: {
               id: 'shop-1',
@@ -62,88 +62,88 @@ describe('buildCartResponse', () => {
               {
                 id: 'item-1',
                 quantity: 2,
-                isSelected: true,
-                unitPrice: 15,
+                is_selected: true,
+                unit_price: 15,
                 product: {
                   id: 'product-1',
                   title: 'Mug',
-                  variantType: 'none',
-                  variantGroupName: undefined,
-                  variantSubGroupName: undefined,
-                  imageUrl: 'dev/public/mug.jpg',
+                  variant_type: 'none',
+                  variant_group_name: undefined,
+                  variant_sub_group_name: undefined,
+                  image_url: 'dev/public/mug.jpg',
                 },
                 inventory: {
                   id: 'inventory-1',
                   price: 20,
-                  salePrice: 15,
+                  sale_price: 15,
                   stock: 9,
                   sku: undefined,
-                  variantName: undefined,
+                  variant_name: undefined,
                 },
               },
               {
                 id: 'item-2',
                 quantity: 1,
-                isSelected: false,
-                unitPrice: 18,
+                is_selected: false,
+                unit_price: 18,
                 product: {
                   id: 'product-2',
                   title: 'Bowl',
-                  variantType: 'single',
-                  variantGroupName: undefined,
-                  variantSubGroupName: undefined,
-                  imageUrl: undefined,
+                  variant_type: 'single',
+                  variant_group_name: undefined,
+                  variant_sub_group_name: undefined,
+                  image_url: undefined,
                 },
                 inventory: {
                   id: 'inventory-2',
                   price: 18,
-                  salePrice: undefined,
+                  sale_price: undefined,
                   stock: 4,
                   sku: undefined,
-                  variantName: 'Large',
+                  variant_name: 'Large',
                 },
               },
             ],
-            totalPrice: 30,
-            totalShippingFee: 0,
+            total_price: 30,
+            total_shipping_fee: 0,
           },
         ],
-        recentItems: [
+        recent_items: [
           {
-            itemId: 'item-1',
+            item_id: 'item-1',
             product: {
               id: 'product-1',
               title: 'Mug',
-              imageUrl: 'dev/public/mug.jpg',
+              image_url: 'dev/public/mug.jpg',
             },
             inventory: {
-              variantName: undefined,
+              variant_name: undefined,
             },
             quantity: 2,
           },
           {
-            itemId: 'item-2',
+            item_id: 'item-2',
             product: {
               id: 'product-2',
               title: 'Bowl',
-              imageUrl: undefined,
+              image_url: undefined,
             },
             inventory: {
-              variantName: 'Large',
+              variant_name: 'Large',
             },
             quantity: 1,
           },
         ],
-        totalQuantity: 3,
+        total_quantity: 3,
       },
       summary: {
-        subtotalPrice: 30,
-        totalDiscount: 0,
-        subtotalAfterDiscount: 30,
-        totalShippingFee: 0,
-        totalPrice: 30,
-        totalSelectedQuantity: 2,
-        totalQuantity: 3,
+        subtotal_price: 30,
+        total_discount: 0,
+        subtotal_after_discount: 30,
+        total_shipping_fee: 0,
+        total_price: 30,
+        total_selected_quantity: 2,
+        total_quantity: 3,
       },
     });
   });
@@ -177,8 +177,8 @@ describe('buildCartResponse', () => {
 
     const response = buildCartResponse(cart);
 
-    expect(response.cart?.shopGroups[0]?.totalPrice).toBe(42);
-    expect(response.summary.subtotalPrice).toBe(42);
-    expect(response.summary.totalPrice).toBe(42);
+    expect(response.cart?.shop_groups[0]?.total_price).toBe(42);
+    expect(response.summary.subtotal_price).toBe(42);
+    expect(response.summary.total_price).toBe(42);
   });
 });

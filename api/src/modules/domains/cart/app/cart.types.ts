@@ -34,23 +34,23 @@ export interface CartSnapshot {
 export interface CartProductItemResponse {
   id: string;
   quantity: number;
-  isSelected: boolean;
-  unitPrice: number;
+  is_selected: boolean;
+  unit_price: number;
   product: {
     id: string;
     title: string;
-    variantType: string;
-    variantGroupName?: string;
-    variantSubGroupName?: string;
-    imageUrl?: string;
+    variant_type: string;
+    variant_group_name?: string;
+    variant_sub_group_name?: string;
+    image_url?: string;
   };
   inventory: {
     id: string;
     price: number;
-    salePrice?: number;
+    sale_price?: number;
     stock: number;
     sku?: string;
-    variantName?: string;
+    variant_name?: string;
   };
 }
 
@@ -60,38 +60,38 @@ export interface CartShopGroupResponse {
     name: string;
   };
   items: CartProductItemResponse[];
-  totalPrice: number;
-  totalShippingFee: number;
+  total_price: number;
+  total_shipping_fee: number;
 }
 
 export interface CartResponse {
   cart: {
     id: string;
-    userId: string;
-    isTemp: boolean;
-    shopGroups: CartShopGroupResponse[];
-    recentItems: Array<{
-      itemId: string;
+    user_id: string;
+    is_temp: boolean;
+    shop_groups: CartShopGroupResponse[];
+    recent_items: Array<{
+      item_id: string;
       product: {
         id: string;
         title: string;
-        imageUrl?: string;
+        image_url?: string;
       };
       inventory: {
-        variantName?: string;
+        variant_name?: string;
       };
       quantity: number;
     }>;
-    totalQuantity: number;
+    total_quantity: number;
   } | null;
   summary: {
-    subtotalPrice: number;
-    totalDiscount: number;
-    subtotalAfterDiscount: number;
-    totalShippingFee: number;
-    totalPrice: number;
-    totalSelectedQuantity: number;
-    totalQuantity: number;
+    subtotal_price: number;
+    total_discount: number;
+    subtotal_after_discount: number;
+    total_shipping_fee: number;
+    total_price: number;
+    total_selected_quantity: number;
+    total_quantity: number;
   };
 }
 
@@ -100,13 +100,13 @@ export function buildCartResponse(
   summaryOverride?: CartResponse['summary']
 ): CartResponse {
   const emptySummary = {
-    subtotalPrice: 0,
-    totalDiscount: 0,
-    subtotalAfterDiscount: 0,
-    totalShippingFee: 0,
-    totalPrice: 0,
-    totalSelectedQuantity: 0,
-    totalQuantity: 0,
+    subtotal_price: 0,
+    total_discount: 0,
+    subtotal_after_discount: 0,
+    total_shipping_fee: 0,
+    total_price: 0,
+    total_selected_quantity: 0,
+    total_quantity: 0,
   };
 
   if (!cart || cart.items.length === 0) {
@@ -139,35 +139,35 @@ export function buildCartResponse(
         name: item.inventory.shopName,
       },
       items: [],
-      totalPrice: 0,
-      totalShippingFee: 0,
+      total_price: 0,
+      total_shipping_fee: 0,
     };
 
     existingShopGroup.items.push({
       id: item.id,
       quantity: item.quantity,
-      isSelected: item.isSelectOrder,
-      unitPrice,
+      is_selected: item.isSelectOrder,
+      unit_price: unitPrice,
       product: {
         id: item.inventory.productId,
         title: item.inventory.title,
-        variantType: item.inventory.variantType,
-        variantGroupName: item.inventory.variantGroupName,
-        variantSubGroupName: item.inventory.variantSubGroupName,
-        imageUrl: item.inventory.imageStorageKey,
+        variant_type: item.inventory.variantType,
+        variant_group_name: item.inventory.variantGroupName,
+        variant_sub_group_name: item.inventory.variantSubGroupName,
+        image_url: item.inventory.imageStorageKey,
       },
       inventory: {
         id: item.inventory.inventoryId,
         price: item.inventory.price,
-        salePrice: item.inventory.salePrice,
+        sale_price: item.inventory.salePrice,
         stock: item.inventory.stock,
         sku: item.inventory.sku,
-        variantName: item.inventory.variantName,
+        variant_name: item.inventory.variantName,
       },
     });
 
     if (item.isSelectOrder) {
-      existingShopGroup.totalPrice += unitPrice * item.quantity;
+      existingShopGroup.total_price += unitPrice * item.quantity;
     }
 
     groupedByShop.set(item.inventory.shopId, existingShopGroup);
@@ -176,33 +176,33 @@ export function buildCartResponse(
   return {
     cart: {
       id: cart.id,
-      userId: cart.userId,
-      isTemp: cart.isTemp,
-      shopGroups: Array.from(groupedByShop.values()),
-      recentItems: sortedItems.slice(0, 6).map((item) => ({
-        itemId: item.id,
+      user_id: cart.userId,
+      is_temp: cart.isTemp,
+      shop_groups: Array.from(groupedByShop.values()),
+      recent_items: sortedItems.slice(0, 6).map((item) => ({
+        item_id: item.id,
         product: {
           id: item.inventory.productId,
           title: item.inventory.title,
-          imageUrl: item.inventory.imageStorageKey,
+          image_url: item.inventory.imageStorageKey,
         },
         inventory: {
-          variantName: item.inventory.variantName,
+          variant_name: item.inventory.variantName,
         },
         quantity: item.quantity,
       })),
-      totalQuantity,
+      total_quantity: totalQuantity,
     },
     summary: summaryOverride ?? {
-      subtotalPrice,
-      totalDiscount: 0,
-      subtotalAfterDiscount: subtotalPrice,
-      totalShippingFee: 0,
-      totalPrice: subtotalPrice,
-      totalSelectedQuantity: cart.items
+      subtotal_price: subtotalPrice,
+      total_discount: 0,
+      subtotal_after_discount: subtotalPrice,
+      total_shipping_fee: 0,
+      total_price: subtotalPrice,
+      total_selected_quantity: cart.items
         .filter((item) => item.isSelectOrder)
         .reduce((sum, item) => sum + item.quantity, 0),
-      totalQuantity,
+      total_quantity: totalQuantity,
     },
   };
 }

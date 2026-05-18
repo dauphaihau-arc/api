@@ -88,13 +88,13 @@ export class CartController {
         cart,
         priced
           ? {
-            subtotalPrice: priced.subtotalPrice,
-            totalDiscount: priced.totalDiscount,
-            subtotalAfterDiscount: priced.subtotalAfterDiscount,
-            totalShippingFee: priced.totalShippingFee,
-            totalPrice: priced.totalPrice,
-            totalSelectedQuantity: priced.totalSelectedQuantity,
-            totalQuantity: priced.totalQuantity,
+            subtotal_price: priced.subtotalPrice,
+            total_discount: priced.totalDiscount,
+            subtotal_after_discount: priced.subtotalAfterDiscount,
+            total_shipping_fee: priced.totalShippingFee,
+            total_price: priced.totalPrice,
+            total_selected_quantity: priced.totalSelectedQuantity,
+            total_quantity: priced.totalQuantity,
           }
           : undefined
       );
@@ -119,13 +119,13 @@ export class CartController {
     });
 
     return buildCartResponse(cart, {
-      subtotalPrice: priced.subtotalPrice,
-      totalDiscount: priced.totalDiscount,
-      subtotalAfterDiscount: priced.subtotalAfterDiscount,
-      totalShippingFee: priced.totalShippingFee,
-      totalPrice: priced.totalPrice,
-      totalSelectedQuantity: priced.totalSelectedQuantity,
-      totalQuantity: priced.totalQuantity,
+      subtotal_price: priced.subtotalPrice,
+      total_discount: priced.totalDiscount,
+      subtotal_after_discount: priced.subtotalAfterDiscount,
+      total_shipping_fee: priced.totalShippingFee,
+      total_price: priced.totalPrice,
+      total_selected_quantity: priced.totalSelectedQuantity,
+      total_quantity: priced.totalQuantity,
     });
   }
 
