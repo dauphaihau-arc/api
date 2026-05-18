@@ -47,6 +47,18 @@ export interface UserProfile {
   sessionId: string;
   roles: string[];
   permissions: string[];
+  preferences?: {
+    region: string;
+    language: string;
+    currency: string;
+  };
+  shop?: {
+    id: string;
+    publicId?: string;
+    ownerUserId: string;
+    shopName: string;
+    status: string;
+  };
 }
 
 export interface AuthResponse {

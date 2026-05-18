@@ -4,6 +4,11 @@ import {
   Property,
   Unique
 } from '@mikro-orm/core';
+import type {
+  MarketplaceCurrency,
+  MarketplaceLanguage,
+  MarketplaceRegion
+} from '~/config/marketplace.config';
 import { AbstractAuthEntity } from './abstract-auth.entity';
 import { CurrentUserEntity } from './current-user.entity';
 
@@ -18,11 +23,11 @@ export class UserPreferenceEntity extends AbstractAuthEntity {
   user!: CurrentUserEntity;
 
   @Property({ fieldName: 'region', length: 100 })
-  region!: string;
+  region!: MarketplaceRegion;
 
   @Property({ fieldName: 'language', length: 10 })
-  language!: string;
+  language!: MarketplaceLanguage;
 
   @Property({ fieldName: 'currency', length: 10 })
-  currency!: string;
+  currency!: MarketplaceCurrency;
 }

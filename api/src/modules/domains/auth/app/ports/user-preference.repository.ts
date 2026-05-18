@@ -10,4 +10,5 @@ export abstract class UserPreferenceRepository {
     input: CreateUserPreferenceInput,
     entityManager?: EntityManager
   ): Promise<void>;
+  abstract findByUserId(userId: string): Promise<MarketPreferences | null>;
 }
