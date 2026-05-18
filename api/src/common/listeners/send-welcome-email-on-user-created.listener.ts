@@ -22,7 +22,7 @@ export class SendWelcomeEmailOnUserCreatedListener {
         displayName: event.displayName,
       },
       {
-        deduplicationKey: `${appJobName.sendWelcomeEmail}:${event.userId}`,
+        deduplicationKey: `${appJobName.sendWelcomeEmail}--${event.userId}`,
       }
     );
 

@@ -23,7 +23,7 @@ describe('SendWelcomeEmailOnUserCreatedListener', () => {
         displayName: 'Member User',
       },
       {
-        deduplicationKey: 'user.send-welcome-email:user-1',
+        deduplicationKey: 'user.send-welcome-email--user-1',
       }
     );
   });
