@@ -7,12 +7,14 @@ import {
 } from '../../../config/queue.config';
 import { MailModule } from '../mail/mail.module';
 import Redis from 'ioredis';
+import { SendPasswordResetEmailJob } from '../../../common/jobs/send-password-reset-email.job';
 import { SendWelcomeEmailJob } from '../../../common/jobs/send-welcome-email.job';
 import { JobDispatcher } from './app/ports/job-dispatcher';
 import { AppJobRunner } from './infra/app-job-runner';
 import { BullMqConnectionManager } from './infra/bullmq-connection-manager';
 import { BullMqJobDispatcher } from './infra/bullmq-job-dispatcher';
 import { InlineJobDispatcher } from './infra/inline-job-dispatcher';
+import { QueueConfigLoggerService } from './infra/queue-config-logger.service';
 import { BULLMQ_CONNECTION } from './infra/queue.constants';
 
 @Module({
@@ -39,8 +41,10 @@ import { BULLMQ_CONNECTION } from './infra/queue.constants';
       },
     },
     BullMqConnectionManager,
+    QueueConfigLoggerService,
     AppJobRunner,
     SendWelcomeEmailJob,
+    SendPasswordResetEmailJob,
     {
       provide: JobDispatcher,
       inject: [QUEUE_CONFIG, BULLMQ_CONNECTION, AppJobRunner],

@@ -1,5 +1,6 @@
 export const appJobName = {
   sendWelcomeEmail: 'user.send-welcome-email',
+  sendPasswordResetEmail: 'user.send-password-reset-email',
 } as const;
 
 export interface AppJobPayloadMap {
@@ -7,6 +8,12 @@ export interface AppJobPayloadMap {
     userId: string;
     email: string;
     displayName?: string;
+  };
+  [appJobName.sendPasswordResetEmail]: {
+    userId: string;
+    email: string;
+    displayName?: string;
+    resetUrl: string;
   };
 }
 
