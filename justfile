@@ -21,47 +21,63 @@ infra-fresh:
 api-install:
   @cd {{ api_dir }} && pnpm install
 
-api-up environment='':
-  env_file="{{ if environment == "" { ".env" } else { ".env." + environment } }}"; \
+api-up:
   cd {{ api_dir }} && \
-  if [ ! -f "$env_file" ] && [ "$env_file" = ".env" ] && [ -f ".env.example" ]; then cp ".env.example" "$env_file"; fi && \
-  test -f "$env_file" && \
+  if [ ! -f ".env" ] && [ -f ".env.example" ]; then cp ".env.example" ".env"; fi && \
+  test -f ".env" && \
   set -a && \
-  . "$env_file" && \
+  . ".env" && \
   set +a && \
   pnpm start:dev
 
-api-worker-up environment='':
-  env_file="{{ if environment == "" { ".env" } else { ".env." + environment } }}"; \
+api-up-infisical project_id env_name:
   cd {{ api_dir }} && \
-  if [ ! -f "$env_file" ] && [ "$env_file" = ".env" ] && [ -f ".env.example" ]; then cp ".env.example" "$env_file"; fi && \
-  test -f "$env_file" && \
+  test -n "$INFISICAL_TOKEN" && \
+  pnpm exec infisical run --projectId="{{ project_id }}" --env="{{ env_name }}" --token="$INFISICAL_TOKEN" -- pnpm start:dev
+
+api-worker-up:
+  cd {{ api_dir }} && \
+  if [ ! -f ".env" ] && [ -f ".env.example" ]; then cp ".env.example" ".env"; fi && \
+  test -f ".env" && \
   set -a && \
-  . "$env_file" && \
+  . ".env" && \
   set +a && \
   pnpm start:worker:dev
+
+api-worker-up-infisical project_id env_name:
+  cd {{ api_dir }} && \
+  test -n "$INFISICAL_TOKEN" && \
+  pnpm exec infisical run --projectId="{{ project_id }}" --env="{{ env_name }}" --token="$INFISICAL_TOKEN" -- pnpm start:worker:dev
 
 
 
 # --------- Migrations
 
-api-migration-up environment='':
-  env_file="{{ if environment == "" { ".env" } else { ".env." + environment } }}"; \
+api-migration-up:
   cd {{ api_dir }} && \
-  test -f "$env_file" && \
+  test -f ".env" && \
   set -a && \
-  . "$env_file" && \
+  . ".env" && \
   set +a && \
   pnpm db:migration:up
 
-api-migration-down environment='':
-  env_file="{{ if environment == "" { ".env" } else { ".env." + environment } }}"; \
+api-migration-up-infisical project_id env_name:
   cd {{ api_dir }} && \
-  test -f "$env_file" && \
+  test -n "$INFISICAL_TOKEN" && \
+  pnpm exec infisical run --projectId="{{ project_id }}" --env="{{ env_name }}" --token="$INFISICAL_TOKEN" -- pnpm db:migration:up
+
+api-migration-down:
+  cd {{ api_dir }} && \
+  test -f ".env" && \
   set -a && \
-  . "$env_file" && \
+  . ".env" && \
   set +a && \
   pnpm db:migration:down
+
+api-migration-down-infisical project_id env_name:
+  cd {{ api_dir }} && \
+  test -n "$INFISICAL_TOKEN" && \
+  pnpm exec infisical run --projectId="{{ project_id }}" --env="{{ env_name }}" --token="$INFISICAL_TOKEN" -- pnpm db:migration:down
   
 
 
