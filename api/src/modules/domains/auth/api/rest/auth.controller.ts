@@ -16,11 +16,7 @@ import { Throttle } from '@nestjs/throttler';
 import { Idempotent } from '../../../../../common/decorators/idempotent.decorator';
 import { resolveOrThrow } from '../../../../../common/application/result';
 import { parseDurationToMilliseconds } from '../../../../../libs/duration';
-import type {
-  AuthenticatedUser,
-  AuthUserResponse,
-  UserProfile
-} from '../../app/auth.types';
+import type { AuthenticatedUser } from '../../app/auth.types';
 import { GetCurrentUserUseCase } from '../../app/use-cases/get-current-user/get-current-user.use-case';
 import { LoginUseCase } from '../../app/use-cases/login/login.use-case';
 import { LogoutUseCase } from '../../app/use-cases/logout/logout.use-case';
@@ -33,6 +29,7 @@ import { mapAuthAppErrorToHttpException } from './auth-error-mapper';
 import { AuthHttpExceptionFilter } from './auth-http-exception.filter';
 import { AuthCookieService } from './auth-cookie.utils';
 import { LoginDto } from './dto/login.dto';
+import { AuthUserResponseDto, MeResponseDto } from './dto/me-response.dto';
 import { RegisterDto } from './dto/register.dto';
 import { IdempotencyKeyInterceptor } from '../../../../../common/interceptors/idempotency-key.interceptor';
 
@@ -78,7 +75,7 @@ export class AuthController {
   async register(
     @Body() body: RegisterDto,
     @Res({ passthrough: true }) response: Response
-  ): Promise<AuthUserResponse> {
+  ): Promise<AuthUserResponseDto> {
     const authResponse = resolveOrThrow(
       await this.registerUseCase.execute(body),
       mapAuthAppErrorToHttpException
@@ -86,9 +83,7 @@ export class AuthController {
 
     this.authCookieService.setAuthCookies(response, authResponse);
 
-    return {
-      user: authResponse.user,
-    };
+    return AuthUserResponseDto.fromUserProfile(authResponse.user);
   }
 
   @Post('login')
@@ -100,7 +95,7 @@ export class AuthController {
   async login(
     @Body() body: LoginDto,
     @Res({ passthrough: true }) response: Response
-  ): Promise<AuthUserResponse> {
+  ): Promise<AuthUserResponseDto> {
     const authResponse = resolveOrThrow(
       await this.loginUseCase.execute(body),
       mapAuthAppErrorToHttpException
@@ -108,9 +103,7 @@ export class AuthController {
 
     this.authCookieService.setAuthCookies(response, authResponse);
 
-    return {
-      user: authResponse.user,
-    };
+    return AuthUserResponseDto.fromUserProfile(authResponse.user);
   }
 
   @Post('refresh')
@@ -150,7 +143,9 @@ export class AuthController {
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   async me(
     @CurrentUser() currentUser: AuthenticatedUser
-  ): Promise<UserProfile> {
-    return this.getCurrentUserUseCase.execute(currentUser);
+  ): Promise<MeResponseDto> {
+    return MeResponseDto.fromUserProfile(
+      await this.getCurrentUserUseCase.execute(currentUser)
+    );
   }
 }
