@@ -20,6 +20,10 @@ function getProductAssetDirectory(rootDir: string, shopSlug: string, productTitl
   );
 }
 
+function normalizeRootDirs(rootDirOrDirs: string | string[]): string[] {
+  return Array.isArray(rootDirOrDirs) ? rootDirOrDirs : [rootDirOrDirs];
+}
+
 function isSupportedImageFile(filename: string): boolean {
   return IMAGE_EXTENSIONS.has(path.extname(filename).toLowerCase());
 }
@@ -46,16 +50,29 @@ function getImageRank(filename: string): [number, string] {
   return [2, normalized];
 }
 
+export function resolveSeedProductAssetDirectory(
+  rootDirOrDirs: string | string[],
+  shopSlug: string,
+  productTitle: string
+): string {
+  const candidateDirs = normalizeRootDirs(rootDirOrDirs).map((rootDir) =>
+    getProductAssetDirectory(rootDir, shopSlug, productTitle)
+  );
+  const existingDir = candidateDirs.find((candidateDir) => existsSync(candidateDir));
+
+  if (!existingDir) {
+    throw new Error(`Missing product asset directory. Tried: ${candidateDirs.join(', ')}`);
+  }
+
+  return existingDir;
+}
+
 export function resolveSeedProductImagePaths(
-  rootDir: string,
+  rootDirOrDirs: string | string[],
   shopSlug: string,
   productTitle: string
 ): string[] {
-  const productAssetDir = getProductAssetDirectory(rootDir, shopSlug, productTitle);
-
-  if (!existsSync(productAssetDir)) {
-    throw new Error(`Missing product asset directory: ${productAssetDir}`);
-  }
+  const productAssetDir = resolveSeedProductAssetDirectory(rootDirOrDirs, shopSlug, productTitle);
 
   const imageFilenames = readdirSync(productAssetDir)
     .filter((filename) => !filename.startsWith('.'))

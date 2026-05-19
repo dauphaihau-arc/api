@@ -20,12 +20,11 @@ import { ProductVariantEntity } from '../../src/modules/domains/product/infra/pe
 import { ProductEntity } from '../../src/modules/domains/product/infra/persistence/entities/product.entity';
 import type { ShopEntity } from '../../src/modules/domains/shop/infra/persistence/entities/shop.entity';
 import { productSeeds, type ProductSeed } from './product.data';
+import { PRODUCT_IMAGE_ROOT_DIRS } from './product-seed-paths';
 import {
   resolveSeedProductImagePaths,
   slugifySeedValue,
 } from './product-seed-image-resolver';
-
-const DEFAULT_PRODUCT_SEED_ASSETS_DIR = path.resolve(__dirname, '../../../seed-data/images/products');
 
 function slugify(value: string): string {
   return slugifySeedValue(value);
@@ -291,8 +290,8 @@ export async function seedProducts(
 
     const imageFilenames = resolveSeedProductImagePaths(
       process.env.SEED_ASSETS_PRODUCTS_DIR
-        ? path.resolve(process.cwd(), process.env.SEED_ASSETS_PRODUCTS_DIR)
-        : DEFAULT_PRODUCT_SEED_ASSETS_DIR,
+        ? [path.resolve(process.cwd(), process.env.SEED_ASSETS_PRODUCTS_DIR)]
+        : PRODUCT_IMAGE_ROOT_DIRS,
       productSeed.shopSlug,
       productSeed.title
     );

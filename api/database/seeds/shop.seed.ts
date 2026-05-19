@@ -1,8 +1,8 @@
 import type { EntityManager } from '@mikro-orm/postgresql';
-import * as path from 'node:path';
 import type { CurrentUserEntity } from '../../src/modules/domains/auth/infra/persistence/entities/current-user.entity';
 import { ShopEntity } from '../../src/modules/domains/shop/infra/persistence/entities/shop.entity';
-import { readTsvRows } from './shared/read-tsv-rows';
+import { SHOPS_LOCAL_TSV_PATH, SHOPS_TSV_PATH } from './product-seed-paths';
+import { readOptionalTsvRows, readTsvRows } from './shared/read-tsv-rows';
 
 type ShopSeed = {
   shopSlug: string;
@@ -18,10 +18,11 @@ type ShopCsvRow = {
   description: string;
 };
 
-const SHOPS_TSV_PATH = path.resolve(__dirname, '../../../seed-data/shops.tsv');
-
 function loadShopSeeds(): ShopSeed[] {
-  return readTsvRows<ShopCsvRow>(SHOPS_TSV_PATH).map((row, index) => {
+  return [
+    ...readTsvRows<ShopCsvRow>(SHOPS_TSV_PATH),
+    ...readOptionalTsvRows<ShopCsvRow>(SHOPS_LOCAL_TSV_PATH),
+  ].map((row, index) => {
     const shopKey = `${row.shop_slug}::${row.owner_email}::${row.shop_name}#${index + 2}`;
 
     if (!row.shop_slug.trim()) {

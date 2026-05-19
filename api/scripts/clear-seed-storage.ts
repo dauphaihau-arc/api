@@ -7,7 +7,6 @@ import {
 } from '@aws-sdk/client-s3';
 import { TableNotFoundException } from '@mikro-orm/core';
 import { MikroORM } from '@mikro-orm/postgresql';
-import { readFileSync } from 'node:fs';
 import * as path from 'node:path';
 import { buildDatabaseConfig } from '../src/config/database.config';
 import { CategoryEntity } from '../src/modules/domains/category/infra/persistence/entities/category.entity';
@@ -15,7 +14,13 @@ import { ProductImageEntity } from '../src/modules/domains/product/infra/persist
 import { ProductEntity } from '../src/modules/domains/product/infra/persistence/entities/product.entity';
 import { ShopEntity } from '../src/modules/domains/shop/infra/persistence/entities/shop.entity';
 import { slugifySeedValue } from '../database/seeds/product-seed-image-resolver';
-import { readTsvRows } from '../database/seeds/shared/read-tsv-rows';
+import {
+  PRODUCT_LOCAL_TSV_PATH,
+  PRODUCT_TSV_PATH,
+  SHOPS_LOCAL_TSV_PATH,
+  SHOPS_TSV_PATH,
+} from '../database/seeds/product-seed-paths';
+import { readOptionalTsvRows, readTsvRows } from '../database/seeds/shared/read-tsv-rows';
 
 type ShopCsvRow = {
   shop_slug: string;
@@ -24,6 +29,12 @@ type ShopCsvRow = {
 
 type MinimalProductSeed = {
   shopSlug: string;
+  title: string;
+};
+
+type ProductCsvRow = {
+  shop_slug: string;
+  category_path: string;
   title: string;
 };
 
@@ -94,9 +105,10 @@ async function bucketExists(client: S3Client, bucket: string): Promise<boolean> 
 }
 
 function loadShopNamesBySlug(): Map<string, string> {
-  const rows = readTsvRows<ShopCsvRow>(
-    path.resolve(__dirname, '../../seed-data/shops.tsv')
-  );
+  const rows = [
+    ...readTsvRows<ShopCsvRow>(SHOPS_TSV_PATH),
+    ...readOptionalTsvRows<ShopCsvRow>(SHOPS_LOCAL_TSV_PATH),
+  ];
 
   return new Map(
     rows.map((row) => [row.shop_slug.trim(), row.shop_name.trim()])
@@ -104,22 +116,21 @@ function loadShopNamesBySlug(): Map<string, string> {
 }
 
 function loadProductSeedsMinimal(): MinimalProductSeed[] {
-  const filePath = path.resolve(__dirname, '../../seed-data/products.tsv');
-  const lines = readFileSync(filePath, 'utf8')
-    .split(/\r?\n/)
-    .filter((line) => line.length > 0);
+  const rows = [
+    ...readTsvRows<ProductCsvRow>(PRODUCT_TSV_PATH),
+    ...readOptionalTsvRows<ProductCsvRow>(PRODUCT_LOCAL_TSV_PATH),
+  ];
 
-  return lines.slice(1).map((line, index) => {
-    const columns = line.split('\t');
-    if (columns.length < 3) {
+  return rows.map((row, index) => {
+    if (!row.shop_slug.trim() || !row.category_path.trim() || !row.title.trim()) {
       throw new Error(
-        `products.tsv row ${index + 2} must include at least shop_slug, category_path, and title`
+        `Product seed row ${index + 2} must include shop_slug, category_path, and title`
       );
     }
 
     return {
-      shopSlug: columns[0].trim(),
-      title: columns[2].trim(),
+      shopSlug: row.shop_slug.trim(),
+      title: row.title.trim(),
     };
   });
 }

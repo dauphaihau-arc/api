@@ -1,7 +1,12 @@
-import * as path from 'node:path';
 import { ProductVariantType } from '../../src/modules/domains/product/domain/enums/product-variant-type.enum';
 import { ProductWhoMade } from '../../src/modules/domains/product/domain/enums/product-who-made.enum';
-import { readTsvRows } from './shared/read-tsv-rows';
+import {
+  PRODUCT_INVENTORY_LOCAL_TSV_PATH,
+  PRODUCT_INVENTORY_TSV_PATH,
+  PRODUCT_LOCAL_TSV_PATH,
+  PRODUCT_TSV_PATH,
+} from './product-seed-paths';
+import { readOptionalTsvRows, readTsvRows } from './shared/read-tsv-rows';
 
 export type ProductSeed = {
   shopSlug: string;
@@ -43,12 +48,6 @@ type InventoryCsvRow = {
   option_value_1: string;
   option_value_2: string;
 };
-
-const PRODUCT_TSV_PATH = path.resolve(__dirname, '../../../seed-data/products.tsv');
-const PRODUCT_INVENTORY_TSV_PATH = path.resolve(
-  __dirname,
-  '../../../seed-data/product-inventory.tsv'
-);
 
 function parseCategoryPath(value: string, productKey: string): string[] {
   const categoryPath = value
@@ -121,8 +120,14 @@ function buildProductKey(shopSlug: string, title: string): string {
 }
 
 function loadProductSeeds(): ProductSeed[] {
-  const productRows = readTsvRows<ProductCsvRow>(PRODUCT_TSV_PATH);
-  const inventoryRows = readTsvRows<InventoryCsvRow>(PRODUCT_INVENTORY_TSV_PATH);
+  const productRows = [
+    ...readTsvRows<ProductCsvRow>(PRODUCT_TSV_PATH),
+    ...readOptionalTsvRows<ProductCsvRow>(PRODUCT_LOCAL_TSV_PATH),
+  ];
+  const inventoryRows = [
+    ...readTsvRows<InventoryCsvRow>(PRODUCT_INVENTORY_TSV_PATH),
+    ...readOptionalTsvRows<InventoryCsvRow>(PRODUCT_INVENTORY_LOCAL_TSV_PATH),
+  ];
 
   const inventoryByProductKey = new Map<ProductSeed['shopSlug'], ProductSeed['inventory']>();
 

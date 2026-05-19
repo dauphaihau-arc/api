@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 
 function parseTsv(content: string): string[][] {
   const rows: string[][] = [];
@@ -74,4 +74,12 @@ export function readTsvRows<T extends Record<string, string>>(filePath: string):
       headerRow.map((header, columnIndex) => [header, row[columnIndex] ?? ''])
     ) as T;
   });
+}
+
+export function readOptionalTsvRows<T extends Record<string, string>>(filePath: string): T[] {
+  if (!existsSync(filePath)) {
+    return [];
+  }
+
+  return readTsvRows<T>(filePath);
 }
