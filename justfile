@@ -61,7 +61,7 @@ api-env-infisical project_id *env_name:
 
 # --------- Migrations
 
-api-migration-up:
+db-migration-up:
   cd {{ api_dir }} && \
   test -f ".env" && \
   set -a && \
@@ -69,13 +69,13 @@ api-migration-up:
   set +a && \
   pnpm db:migration:up
 
-api-migration-up-infisical project_id *env_name:
+db-migration-up-infisical project_id *env_name:
   cd {{ api_dir }} && \
   test -n "$INFISICAL_TOKEN" && \
   ENV_ARG='{{ if env_name != "" { "--env=" + env_name } else { "" } }}' && \
   pnpm exec infisical run --projectId="{{ project_id }}" $ENV_ARG --token="$INFISICAL_TOKEN" -- pnpm db:migration:up
 
-api-migration-down:
+db-migration-down:
   cd {{ api_dir }} && \
   test -f ".env" && \
   set -a && \
@@ -83,7 +83,7 @@ api-migration-down:
   set +a && \
   pnpm db:migration:down
 
-api-migration-down-infisical project_id *env_name:
+db-migration-down-infisical project_id *env_name:
   cd {{ api_dir }} && \
   test -n "$INFISICAL_TOKEN" && \
   ENV_ARG='{{ if env_name != "" { "--env=" + env_name } else { "" } }}' && \
@@ -91,10 +91,10 @@ api-migration-down-infisical project_id *env_name:
   
 
 
-# --------- Seeding
+# -------------------- Seeding
 # See docs/seeding.md for seed mode guidance and command examples.
 
-api-seed-demo:
+db-seed-demo:
   cd {{ api_dir }} && \
   test -f ".env" && \
   set -a && \
@@ -102,7 +102,7 @@ api-seed-demo:
   set +a && \
   pnpm db:seed:demo
 
-api-seed:
+db-seed:
   cd {{ api_dir }} && \
   test -f ".env" && \
   set -a && \
@@ -112,48 +112,72 @@ api-seed:
 
 # Example:
 # export INFISICAL_TOKEN="your-token"
-# just api-seed-demo-infisical your-project-id
-# just api-seed-demo-infisical your-project-id prod
-api-seed-demo-infisical project_id *env_name:
+# just db-seed-demo-infisical your-project-id
+# just db-seed-demo-infisical your-project-id prod
+db-seed-demo-infisical project_id *env_name:
   cd {{ api_dir }} && \
   test -n "$INFISICAL_TOKEN" && \
   ENV_ARG='{{ if env_name != "" { "--env=" + env_name } else { "" } }}' && \
   pnpm exec infisical run --projectId="{{ project_id }}" $ENV_ARG --token="$INFISICAL_TOKEN" -- pnpm db:seed:demo
 
-api-seed-infisical project_id *env_name:
+db-seed-infisical project_id *env_name:
   cd {{ api_dir }} && \
   test -n "$INFISICAL_TOKEN" && \
   ENV_ARG='{{ if env_name != "" { "--env=" + env_name } else { "" } }}' && \
   pnpm exec infisical run --projectId="{{ project_id }}" $ENV_ARG --token="$INFISICAL_TOKEN" -- pnpm db:seed
 
-api-db-clear:
-  docker compose -f {{ compose_file }} up -d postgres
-  docker compose -f {{ compose_file }} exec -T postgres psql -U postgres -d app -c "DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;"
-
-# Resets Postgres only, then reruns demo seed. MinIO and Redis remain intact.
-api-db-fresh-demo: api-db-clear
+db-clear:
   cd {{ api_dir }} && \
   test -f ".env" && \
   set -a && \
   . ".env" && \
   set +a && \
-  pnpm db:seed:demo
+  pnpm db:clear
 
-# Resets Postgres only, then reruns reference-data seed. MinIO and Redis remain intact.
-api-db-fresh: api-db-clear
+db-clear-infisical project_id *env_name:
+  cd {{ api_dir }} && \
+  test -n "$INFISICAL_TOKEN" && \
+  ENV_ARG='{{ if env_name != "" { "--env=" + env_name } else { "" } }}' && \
+  pnpm exec infisical run --projectId="{{ project_id }}" $ENV_ARG --token="$INFISICAL_TOKEN" -- pnpm db:clear
+
+# Clears schema, reruns migrations via the seed script, then seeds reference data.
+db-fresh: db-clear
+  just db-seed
+
+# Clears schema, reruns migrations via the seed script, then seeds the full demo dataset.
+db-fresh-demo: db-clear
+  just db-seed-demo
+
+# Clears schema, reruns migrations via the seed script, then seeds reference data.
+db-fresh-infisical project_id *env_name:
+  just db-clear-infisical {{project_id}} {{env_name}}
+  just db-seed-infisical {{project_id}} {{env_name}}
+
+# Clears schema, reruns migrations via the seed script, then seeds the full demo dataset.
+db-fresh-demo-infisical project_id *env_name:
+  just db-clear-infisical {{project_id}} {{env_name}}
+  just db-seed-demo-infisical {{project_id}} {{env_name}}
+
+
+redis-clear:
   cd {{ api_dir }} && \
   test -f ".env" && \
   set -a && \
   . ".env" && \
   set +a && \
-  pnpm db:seed
+  pnpm redis:clear
+
+redis-clear-infisical project_id *env_name:
+  cd {{ api_dir }} && \
+  test -n "$INFISICAL_TOKEN" && \
+  ENV_ARG='{{ if env_name != "" { "--env=" + env_name } else { "" } }}' && \
+  pnpm exec infisical run --projectId="{{ project_id }}" $ENV_ARG --token="$INFISICAL_TOKEN" -- pnpm redis:clear
 
 
 # Upload seed images to the configured object storage.
 # Default env (`.env`) is intended for local MinIO.
-# `production` can point to R2 via `.env.production`.
 # Requires seeded categories/shops/products to already exist in the database.
-upload-assets:
+storage-seed:
   cd {{ api_dir }} && \
   test -f ".env" && \
   set -a && \
@@ -161,12 +185,29 @@ upload-assets:
   set +a && \
   pnpm ts-node -r tsconfig-paths/register ./scripts/upload-minio-assets.ts
 
-upload-assets-infisical project_id *env_name:
+storage-seed-infisical project_id *env_name:
   cd {{ api_dir }} && \
   test -n "$INFISICAL_TOKEN" && \
   ENV_ARG='{{ if env_name != "" { "--env=" + env_name } else { "" } }}' && \
   pnpm exec infisical run --projectId="{{ project_id }}" $ENV_ARG --token="$INFISICAL_TOKEN" -- pnpm ts-node -r tsconfig-paths/register ./scripts/upload-minio-assets.ts
 
-# Convenience recipe for local/dev flows: seed demo data, then upload seed assets.
-seed-with-assets: api-seed-demo
-  just upload-assets
+storage-clear:
+  cd {{ api_dir }} && \
+  test -f ".env" && \
+  set -a && \
+  . ".env" && \
+  set +a && \
+  pnpm storage:clear
+
+storage-clear-infisical project_id *env_name:
+  cd {{ api_dir }} && \
+  test -n "$INFISICAL_TOKEN" && \
+  ENV_ARG='{{ if env_name != "" { "--env=" + env_name } else { "" } }}' && \
+  pnpm exec infisical run --projectId="{{ project_id }}" $ENV_ARG --token="$INFISICAL_TOKEN" -- pnpm storage:clear
+
+storage-fresh: storage-clear
+  just storage-seed
+
+storage-fresh-infisical project_id *env_name:
+  just storage-clear-infisical {{project_id}} {{env_name}}
+  just storage-seed-infisical {{project_id}} {{env_name}}

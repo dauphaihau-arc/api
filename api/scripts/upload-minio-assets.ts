@@ -8,21 +8,32 @@ import {
   S3Client
 } from '@aws-sdk/client-s3';
 import { MikroORM } from '@mikro-orm/postgresql';
+import { readFileSync } from 'node:fs';
 import { buildDatabaseConfig } from '../src/config/database.config';
 import { CategoryEntity } from '../src/modules/domains/category/infra/persistence/entities/category.entity';
 import { ProductImageEntity } from '../src/modules/domains/product/infra/persistence/entities/product-image.entity';
 import { ProductEntity } from '../src/modules/domains/product/infra/persistence/entities/product.entity';
 import { ShopEntity } from '../src/modules/domains/shop/infra/persistence/entities/shop.entity';
-import { productSeeds } from '../database/seeds/product.data';
 import {
   resolveSeedProductImagePaths,
   slugifySeedValue,
 } from '../database/seeds/product-seed-image-resolver';
+import { readTsvRows } from '../database/seeds/shared/read-tsv-rows';
+
+type ShopCsvRow = {
+  shop_slug: string;
+  shop_name: string;
+};
+
+type MinimalProductSeed = {
+  shopSlug: string;
+  title: string;
+};
 
 const ROOT_DIR = path.resolve(__dirname, '../..');
-const SEED_ASSETS_DIR = path.join(ROOT_DIR, 'seed-assets');
-const CATEGORY_ASSETS_DIR = path.join(SEED_ASSETS_DIR, 'categories');
-const PRODUCT_ASSETS_DIR = path.join(SEED_ASSETS_DIR, 'products');
+const SEED_ASSETS_DIR = path.join(ROOT_DIR, 'seed-data');
+const CATEGORY_ASSETS_DIR = path.join(SEED_ASSETS_DIR, 'images', 'categories');
+const PRODUCT_ASSETS_DIR = path.join(SEED_ASSETS_DIR, 'images', 'products');
 
 function assertFileExists(filePath: string): void {
   if (!existsSync(filePath)) {
@@ -68,6 +79,37 @@ async function uploadObject(
       ContentType: resolveContentType(filePath),
     })
   );
+}
+
+function loadShopNamesBySlug(): Map<string, string> {
+  const rows = readTsvRows<ShopCsvRow>(
+    path.resolve(__dirname, '../../seed-data/shops.tsv')
+  );
+
+  return new Map(
+    rows.map((row) => [row.shop_slug.trim(), row.shop_name.trim()])
+  );
+}
+
+function loadProductSeedsMinimal(): MinimalProductSeed[] {
+  const filePath = path.resolve(__dirname, '../../seed-data/products.tsv');
+  const lines = readFileSync(filePath, 'utf8')
+    .split(/\r?\n/)
+    .filter((line) => line.length > 0);
+
+  return lines.slice(1).map((line, index) => {
+    const columns = line.split('\t');
+    if (columns.length < 3) {
+      throw new Error(
+        `products.tsv row ${index + 2} must include at least shop_slug, category_path, and title`
+      );
+    }
+
+    return {
+      shopSlug: columns[0].trim(),
+      title: columns[2].trim(),
+    };
+  });
 }
 
 async function main(): Promise<void> {
@@ -134,6 +176,8 @@ async function main(): Promise<void> {
 
   try {
     const em = orm.em.fork();
+    const shopNamesBySlug = loadShopNamesBySlug();
+    const productSeeds = loadProductSeedsMinimal();
 
     const categories = await em.find(
       CategoryEntity,
@@ -155,16 +199,21 @@ async function main(): Promise<void> {
     }
 
     for (const productSeed of productSeeds) {
+      const shopName = shopNamesBySlug.get(productSeed.shopSlug);
+      if (!shopName) {
+        throw new Error(`Missing shop seed mapping for slug: ${productSeed.shopSlug}`);
+      }
+
       const imageFilenames = resolveSeedProductImagePaths(
         PRODUCT_ASSETS_DIR,
-        productSeed.shopName,
+        productSeed.shopSlug,
         productSeed.title
       );
 
-      const shop = await em.findOne(ShopEntity, { shopName: productSeed.shopName });
+      const shop = await em.findOne(ShopEntity, { shopName });
       if (!shop) {
         throw new Error(
-          `Missing seeded shop: ${productSeed.shopName}. Run the database seed first with "just api-seed" (or the combined recipe "just seed-with-assets"), then rerun "just upload-assets".`
+          `Missing seeded shop: ${shopName}. Run the database seed first with "just db-seed" (or "just db-seed-demo"), then rerun "just storage-seed".`
         );
       }
 
@@ -176,7 +225,7 @@ async function main(): Promise<void> {
 
       if (!product) {
         throw new Error(
-          `Missing seeded product: ${productSeed.title}. Run the database seed first with "just api-seed" (or the combined recipe "just seed-with-assets"), then rerun "just upload-assets".`
+          `Missing seeded product: ${productSeed.title}. Run the database seed first with "just db-seed" (or "just db-seed-demo"), then rerun "just storage-seed".`
         );
       }
 

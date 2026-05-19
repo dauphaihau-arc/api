@@ -19,44 +19,119 @@ This project has two seed modes:
 Reference data only:
 
 ```sh
-just api-seed
+just db-seed
 ```
 
 Full fake/demo dataset:
 
 ```sh
-just api-seed-demo
+just db-seed-demo
 ```
 
 Reset local DB, then seed reference data:
 
 ```sh
-just api-db-fresh
+just db-fresh
 ```
 
 Reset local DB, then seed full fake/demo data:
 
 ```sh
-just api-db-fresh-demo
+just db-fresh-demo
+```
+
+Upload seeded assets to object storage:
+
+```sh
+just storage-seed
+```
+
+Clear seeded assets from object storage:
+
+```sh
+just storage-clear
+```
+
+Flush the configured Redis database:
+
+```sh
+just redis-clear
+```
+
+Clear and re-upload seeded assets:
+
+```sh
+just storage-fresh
 ```
 
 ## Infisical commands
+
+Clear the target database schema:
+
+```sh
+export INFISICAL_TOKEN="your-token"
+just db-clear-infisical your-project-id prod
+```
+
+Clear, migrate, then seed reference data:
+
+```sh
+export INFISICAL_TOKEN="your-token"
+just db-fresh-infisical your-project-id prod
+```
+
+Clear, migrate, then seed full fake/demo data:
+
+```sh
+export INFISICAL_TOKEN="your-token"
+just db-fresh-demo-infisical your-project-id prod
+```
 
 Reference data only:
 
 ```sh
 export INFISICAL_TOKEN="your-token"
-just api-seed-infisical your-project-id prod
+just db-seed-infisical your-project-id prod
 ```
 
 Full fake/demo dataset:
 
 ```sh
 export INFISICAL_TOKEN="your-token"
-just api-seed-demo-infisical your-project-id prod
+just db-seed-demo-infisical your-project-id prod
+```
+
+Upload seeded assets to object storage:
+
+```sh
+export INFISICAL_TOKEN="your-token"
+just storage-seed-infisical your-project-id prod
+```
+
+Clear seeded assets from object storage:
+
+```sh
+export INFISICAL_TOKEN="your-token"
+just storage-clear-infisical your-project-id prod
+```
+
+Flush the configured Redis database:
+
+```sh
+export INFISICAL_TOKEN="your-token"
+just redis-clear-infisical your-project-id prod
+```
+
+Clear and re-upload seeded assets:
+
+```sh
+export INFISICAL_TOKEN="your-token"
+just storage-fresh-infisical your-project-id prod
 ```
 
 ## Notes
 
 - `db:seed` is dataset-based naming, not environment-based naming.
 - `db:seed:demo` is acceptable for staging or production if you intentionally want fake/demo data for a learning or showcase deployment.
+- `redis-clear` flushes the selected Redis database, including cache, queue, and rate-limit state.
+- `storage-clear` deletes only seeded asset objects resolved from the current seeded categories and products, not every object in the bucket.

@@ -18,9 +18,11 @@
     "db:migration:create": "mikro-orm migration:create",
     "db:migration:down": "mikro-orm migration:down",
     "db:migration:up": "mikro-orm migration:up",
+    "db:clear": "ts-node -r tsconfig-paths/register ./database/clear.ts",
     "db:seed:demo": "ts-node -r tsconfig-paths/register ./database/seed.ts",
     "db:seed": "ts-node -r tsconfig-paths/register ./database/seed-reference.ts",
     "format": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
+    "redis:clear": "ts-node -r tsconfig-paths/register ./scripts/clear-redis.ts",
     "start": "node -r tsconfig-paths/register ./node_modules/@nestjs/cli/bin/nest.js start",
     "start:dev": "node -r tsconfig-paths/register ./node_modules/@nestjs/cli/bin/nest.js start --watch",
     "start:debug": "node -r tsconfig-paths/register ./node_modules/@nestjs/cli/bin/nest.js start --debug --watch",
@@ -33,7 +35,8 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json"
+    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "storage:clear": "ts-node -r tsconfig-paths/register ./scripts/clear-seed-storage.ts"
   },
   "dependencies": {
     "@apollo/server": "^5.0.0",
