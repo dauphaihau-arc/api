@@ -4,6 +4,7 @@ import {
   Post,
   Req
 } from '@nestjs/common';
+import { SkipThrottle } from '@nestjs/throttler';
 import type { Request } from 'express';
 import { PaymentGateway } from '~/modules/shared/payment/app/ports/payment-gateway';
 import { HandleStripeWebhookUseCase } from '../../app/use-cases/handle-stripe-webhook/handle-stripe-webhook.use-case';
@@ -16,6 +17,7 @@ export class OrderWebhookController {
   ) {}
 
   @Post()
+  @SkipThrottle()
   async handle(
     @Req() request: Request & { rawBody?: Buffer },
     @Headers('stripe-signature') signature?: string

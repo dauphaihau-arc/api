@@ -1,6 +1,7 @@
 import {
   Controller, Get, Header, NotFoundException, Param, Query 
 } from '@nestjs/common';
+import { SkipThrottle } from '@nestjs/throttler';
 import type {
   PublicProductDetail,
   PublicProductListResult
@@ -127,6 +128,7 @@ export class ProductController {
   ) {}
 
   @Get()
+  @SkipThrottle()
   @Header('Cache-Control', 'public, max-age=60')
   listProducts(
     @Query() query: ListPublicProductsQueryDto
@@ -135,6 +137,7 @@ export class ProductController {
   }
 
   @Get(':id')
+  @SkipThrottle()
   @Header('Cache-Control', 'public, max-age=60')
   async product(@Param('id') id: string): Promise<PublicProductDetailResponse> {
     const product = await this.getPublicProductByIdUseCase.execute(id);

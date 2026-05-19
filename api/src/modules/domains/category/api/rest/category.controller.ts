@@ -1,6 +1,7 @@
 import {
   Body, Controller, Get, Header, Param, Post, Query, UseGuards 
 } from '@nestjs/common';
+import { SkipThrottle } from '@nestjs/throttler';
 import { resolveOrThrow } from '~/common/application/result';
 import { JwtAuthGuard } from '~/modules/domains/auth/api/guard/jwt-auth.guard';
 import { PermissionsGuard } from '~/modules/domains/auth/api/guard/permissions.guard';
@@ -114,6 +115,7 @@ export class CategoryController {
   }
 
   @Get()
+  @SkipThrottle()
   @Header('Cache-Control', 'private, no-cache')
   categories(
     @Query() query: ListCategoriesQueryDto
@@ -123,6 +125,7 @@ export class CategoryController {
   }
 
   @Get(':id/attributes')
+  @SkipThrottle()
   @Header('Cache-Control', 'private, no-cache')
   getCategoryAttributes(
     @Param('id') id: string
