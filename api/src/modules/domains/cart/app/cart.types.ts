@@ -7,7 +7,7 @@ export interface CartInventoryCandidate {
   variantType: string;
   variantGroupName?: string;
   variantSubGroupName?: string;
-  imageStorageKey?: string;
+  imageUrl?: string;
   variantName?: string;
   stock: number;
   price: number;
@@ -154,7 +154,7 @@ export function buildCartResponse(
         variant_type: item.inventory.variantType,
         variant_group_name: item.inventory.variantGroupName,
         variant_sub_group_name: item.inventory.variantSubGroupName,
-        image_url: item.inventory.imageStorageKey,
+        image_url: item.inventory.imageUrl,
       },
       inventory: {
         id: item.inventory.inventoryId,
@@ -184,7 +184,7 @@ export function buildCartResponse(
         product: {
           id: item.inventory.productId,
           title: item.inventory.title,
-          image_url: item.inventory.imageStorageKey,
+          image_url: item.inventory.imageUrl,
         },
         inventory: {
           variant_name: item.inventory.variantName,

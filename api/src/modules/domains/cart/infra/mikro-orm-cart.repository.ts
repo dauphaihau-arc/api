@@ -4,6 +4,7 @@ import { CurrentUserEntity } from '~/modules/domains/auth/infra/persistence/enti
 import { ProductImageEntity } from '~/modules/domains/product/infra/persistence/entities/product-image.entity';
 import { ProductInventoryEntity } from '~/modules/domains/product/infra/persistence/entities/product-inventory.entity';
 import { ProductVariantType } from '~/modules/domains/product/domain/enums/product-variant-type.enum';
+import { StorageService } from '~/modules/shared/storage/app/ports/storage.service';
 import { CartRepository, type DeleteOwnedCartItemInput, type UpdateOwnedCartItemInput } from '../app/ports/cart.repository';
 import type {
   CartInventoryCandidate,
@@ -23,7 +24,10 @@ export class MikroOrmCartRepository implements CartRepository {
     'items.productInventory.productVariant',
   ] as const;
 
-  constructor(private readonly entityManager: EntityManager) {}
+  constructor(
+    private readonly entityManager: EntityManager,
+    private readonly storageService: StorageService
+  ) {}
 
   async findInventoryCandidateById(
     inventoryId: string
@@ -355,7 +359,9 @@ export class MikroOrmCartRepository implements CartRepository {
       variantType: variantType ?? inventory.product.variantType ?? ProductVariantType.NONE,
       variantGroupName: variantGroupName ?? inventory.product.variantGroupName,
       variantSubGroupName: variantSubGroupName ?? inventory.product.variantSubGroupName,
-      imageStorageKey: image?.storageKey,
+      imageUrl: image?.storageKey
+        ? this.storageService.getPublicUrl(image.storageKey)
+        : undefined,
       variantName: inventory.productVariant?.name,
       stock: inventory.stock,
       price: Number(inventory.price),

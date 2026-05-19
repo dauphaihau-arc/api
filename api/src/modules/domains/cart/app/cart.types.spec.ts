@@ -23,7 +23,7 @@ describe('buildCartResponse', () => {
             price: 20,
             salePrice: 15,
             productState: 'active',
-            imageStorageKey: 'dev/public/mug.jpg',
+            imageUrl: 'https://cdn.example.com/dev/public/mug.jpg',
           },
         },
         {
@@ -70,7 +70,7 @@ describe('buildCartResponse', () => {
                   variant_type: 'none',
                   variant_group_name: undefined,
                   variant_sub_group_name: undefined,
-                  image_url: 'dev/public/mug.jpg',
+                  image_url: 'https://cdn.example.com/dev/public/mug.jpg',
                 },
                 inventory: {
                   id: 'inventory-1',
@@ -114,7 +114,7 @@ describe('buildCartResponse', () => {
             product: {
               id: 'product-1',
               title: 'Mug',
-              image_url: 'dev/public/mug.jpg',
+              image_url: 'https://cdn.example.com/dev/public/mug.jpg',
             },
             inventory: {
               variant_name: undefined,

@@ -1,6 +1,7 @@
 import { MikroOrmModule } from '@mikro-orm/nestjs';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { StorageModule } from '../../shared/storage/storage.module';
 import { AuthModule } from '../auth/auth.module';
 import { CouponModule } from '../coupon/coupon.module';
 import { CurrentUserEntity } from '../auth/infra/persistence/entities/current-user.entity';
@@ -24,6 +25,7 @@ import { CartItemEntity } from './infra/persistence/entities/cart-item.entity';
     ConfigModule,
     AuthModule,
     CouponModule,
+    StorageModule,
     MikroOrmModule.forFeature([
       CartEntity,
       CartItemEntity,

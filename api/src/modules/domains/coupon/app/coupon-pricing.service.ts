@@ -104,7 +104,7 @@ export class CouponPricingService {
         shopId: item.inventory.shopId,
         shopName: item.inventory.shopName,
         title: item.inventory.title,
-        imageUrl: item.inventory.imageStorageKey,
+        imageUrl: item.inventory.imageUrl,
         quantity: item.quantity,
         variantGroupName: item.inventory.variantGroupName,
         variantSubGroupName: item.inventory.variantSubGroupName,
