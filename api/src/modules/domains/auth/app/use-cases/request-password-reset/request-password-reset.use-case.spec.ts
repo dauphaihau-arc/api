@@ -17,7 +17,7 @@ describe('RequestPasswordResetUseCase', () => {
         email: Email.create('member@example.com'),
         displayName: 'Member User',
         status: UserStatus.ACTIVE,
-        roles: [RoleKey.create('member')],
+        roles: [RoleKey.create('customer')],
         permissions: [],
       }),
       findById: jest.fn(),

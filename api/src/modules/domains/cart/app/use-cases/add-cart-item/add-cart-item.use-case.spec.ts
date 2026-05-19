@@ -9,7 +9,7 @@ describe('AddCartItemUseCase', () => {
     displayName: 'Cart User',
     status: UserStatus.ACTIVE,
     sessionId: 'session-1',
-    roles: ['member'],
+    roles: ['customer'],
     permissions: [],
   };
 

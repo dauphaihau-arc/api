@@ -23,9 +23,9 @@ import { UserPreferenceRepository } from '../../ports/user-preference.repository
 import { IssueSessionUseCase } from '../issue-session/issue-session.use-case';
 
 const defaultRole = {
-  key: RoleKey.create('member'),
-  name: 'Member',
-  description: 'Default application member role',
+  key: RoleKey.create('customer'),
+  name: 'Customer',
+  description: 'Default application customer role',
 } as const;
 
 @Injectable()

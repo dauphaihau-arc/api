@@ -35,7 +35,7 @@ describe('CreateUserUseCase', () => {
       '$2b$04$123456789012345678901u8QTs4lJx0pK7ydjXfQ6PS/UPTzQ0zQG'
     ),
     passwordUpdatedAt: new Date('2026-01-01T00:00:00.000Z'),
-    roles: [RoleKey.create('member')],
+    roles: [RoleKey.create('customer')],
     permissions: [],
   };
 
@@ -68,7 +68,7 @@ describe('CreateUserUseCase', () => {
     };
   }
 
-  it('creates a member user when requested by an admin', async () => {
+  it('creates a customer user when requested by an admin', async () => {
     const { authUserRepository, passwordHasher, eventEmitter } = buildDeps();
     const useCase = new CreateUserUseCase(
       authUserRepository,
@@ -119,7 +119,7 @@ describe('CreateUserUseCase', () => {
     const result = await useCase.execute(
       {
         ...adminActor,
-        roles: ['member'],
+        roles: ['customer'],
       },
       {
         email: 'member@example.com',

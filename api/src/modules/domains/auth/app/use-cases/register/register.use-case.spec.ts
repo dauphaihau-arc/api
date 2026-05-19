@@ -25,7 +25,7 @@ describe('RegisterUseCase', () => {
         '$2b$04$123456789012345678901u8QTs4lJx0pK7ydjXfQ6PS/UPTzQ0zQG'
       ),
       passwordUpdatedAt: new Date('2026-01-01T00:00:00.000Z'),
-      roles: [RoleKey.create('member')],
+      roles: [RoleKey.create('customer')],
       permissions: [],
     };
     const entityManager = {
@@ -66,7 +66,7 @@ describe('RegisterUseCase', () => {
             displayName: 'Member User',
             status: UserStatus.ACTIVE,
             sessionId: 'session-1',
-            roles: ['member'],
+            roles: ['customer'],
             permissions: [],
           },
         },
@@ -137,7 +137,7 @@ describe('RegisterUseCase', () => {
           '$2b$04$123456789012345678901u8QTs4lJx0pK7ydjXfQ6PS/UPTzQ0zQG'
         ),
         passwordUpdatedAt: new Date('2026-01-01T00:00:00.000Z'),
-        roles: [RoleKey.create('member')],
+        roles: [RoleKey.create('customer')],
         permissions: [],
       }),
       update: jest.fn(),
@@ -169,7 +169,7 @@ describe('RegisterUseCase', () => {
             displayName: 'Member User',
             status: UserStatus.ACTIVE,
             sessionId: 'session-1',
-            roles: ['member'],
+            roles: ['customer'],
             permissions: [],
           },
         },

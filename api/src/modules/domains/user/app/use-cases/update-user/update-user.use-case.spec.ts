@@ -38,7 +38,7 @@ describe('UpdateUserUseCase', () => {
     displayName: 'Member User',
     avatar: 'test/public/users/user-1/images/original/original.png',
     status: UserStatus.ACTIVE,
-    roles: [RoleKey.create('member')],
+    roles: [RoleKey.create('customer')],
     permissions: [],
   };
 
@@ -161,7 +161,7 @@ describe('UpdateUserUseCase', () => {
     const result = await useCase.execute(
       {
         ...adminActor,
-        roles: ['member'],
+        roles: ['customer'],
       },
       'user-1',
       { version: 3 }

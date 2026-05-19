@@ -74,10 +74,10 @@ async function main() {
     console.log('Seed completed');
     console.log('Users:');
     console.log('- admin@example.com / password123 (admin)');
-    console.log('- member@example.com / password123 (member)');
-    console.log('- maker.olive@example.com / password123 (member)');
-    console.log('- maker.mason@example.com / password123 (member)');
-    console.log('- maker.sage@example.com / password123 (member)');
+    console.log('- member@example.com / password123 (customer)');
+    console.log('- maker.olive@example.com / password123 (seller)');
+    console.log('- maker.mason@example.com / password123 (seller)');
+    console.log('- maker.sage@example.com / password123 (seller)');
   } finally {
     await orm.close(true);
   }

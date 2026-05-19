@@ -9,7 +9,7 @@ describe('CreateMyAddressUseCase', () => {
     displayName: 'Address User',
     status: UserStatus.ACTIVE,
     sessionId: 'session-1',
-    roles: ['member'],
+    roles: ['customer'],
     permissions: [],
   };
 
