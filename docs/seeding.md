@@ -135,3 +135,4 @@ just storage-fresh-infisical your-project-id prod
 - `db:seed:demo` is acceptable for staging or production if you intentionally want fake/demo data for a learning or showcase deployment.
 - `redis-clear` flushes the selected Redis database, including cache, queue, and rate-limit state.
 - `storage-clear` deletes only seeded asset objects resolved from the current seeded categories and products, not every object in the bucket.
+- For local-only heavy seed data, use `seed-data/shops.local.tsv`, `seed-data/products.local.tsv`, `seed-data/product-inventory.local.tsv`, and `seed-data/images/products-local/`, then ignore them with `.git/info/exclude`.
