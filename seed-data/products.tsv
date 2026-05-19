@@ -1,0 +1,13 @@
+shop_slug	category_path	title	description	who_made	variant_type	variant_group_name	variant_sub_group_name
+olive-atelier	Fashion > Women's Fashion > Dresses	Linen Weekend Dress	Relaxed linen dress with a lightweight drape and clean everyday silhouette.	i_did	none		
+olive-atelier	Fashion > Bags & Purses > Totes	Canvas Market Tote	Structured everyday tote reimagined in durable canvas for a clothing-focused lifestyle collection.	collective	none		
+reed-workshop	Electronics > Headphones	Yamaha HPH-MT7 Studio Monitor Headphones	Closed-back over-ear studio monitor headphones with 40 mm drivers, 15 Hz to 25 kHz response, strong isolation, and a fatigue-reducing fit for extended sessions.	i_did	combine	Color	Size
+reed-workshop	Electronics > Headphones	Sony WH-1000XM6 Wireless Headphones	Silver over-ear wireless headphones with Bluetooth 5.3, adaptive noise cancelling, clear call microphones, foldable travel-friendly design, and up to 40 hours playback without ANC or 30 hours with ANC.	someone_else	none		
+sage-studio	Art > Painting	Minimal Horizon Print	Archival print with a muted color palette and a wide matte-ready aspect ratio.	i_did	none		
+sage-studio	Art > Painting	Oak Side Table	Compact studio display piece presented as part of an art-focused interior collection.	collective	single	Finish	
+rowan-menswear	Fashion > Man Fashion > Tees	AW23 / 11 —J23-029 Ripple Tornado Pullover	The front has a large zipper pocket, unified storage space, and a low-burden fit.	i_did	none		
+rowan-menswear	Fashion > Man Fashion > Pants	S26-S1-P / Visor Structure Pants	Inspiration from armor architecture, this design explores the juxtaposition of symmetrical and asymmetrical paneling.	i_did	none		
+hazel-home	Home & Living > Furniture > Table	Solid Oak Console Table	Compact solid oak console table with rounded corners and a natural oil finish for entryways and living spaces.	collective	single	Finish	
+hazel-home	Home & Living > Furniture > Table	Walnut Accent Side Table	Space-saving walnut side table designed for lamps, books, and everyday living room essentials.	collective	single	Finish	
+juno-console	Toys & Games > Games > Console game > Xbox	Xbox Wireless Controller	Official-style wireless controller with textured grip, responsive triggers, and low-latency pairing for console sessions.	someone_else	none		
+juno-console	Toys & Games > Games > Console game > Playstation	PlayStation DualSense Wireless Controller	Adaptive-trigger wireless controller with haptic feedback and USB-C charging for immersive console play.	someone_else	none		

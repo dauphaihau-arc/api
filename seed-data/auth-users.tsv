@@ -1,0 +1,9 @@
+email	display_name	password	role_key	email_verified
+admin@example.com	System Admin	password123	admin	true
+member@example.com	Default Member	password123	customer	true
+maker.olive@example.com	Olive Hart	password123	seller	true
+maker.mason@example.com	Mason Reed	password123	seller	true
+maker.sage@example.com	Sage Lane	password123	seller	true
+maker.rowan@example.com	Rowan Cole	password123	seller	true
+maker.hazel@example.com	Hazel Quinn	password123	seller	true
+maker.juno@example.com	Juno Park	password123	seller	true

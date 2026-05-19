@@ -1,0 +1,16 @@
+shop_slug	code	type	applies_to	amount_off	percent_off	max_uses	max_uses_per_user	min_order_type	min_order_value	min_products	is_active	is_auto_sale	start_date	end_date
+olive-atelier	OLIVE-FS	free_ship	all			100	3	number_of_products		2	true	false	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
+olive-atelier	OLIVE-FA	fixed_amount	specific	8		75	2	order_total	40		true	false	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
+olive-atelier	OLIVE-PC11	percentage	all		11	120	3	order_total	60		true	false	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
+olive-atelier	OLIVE-PC	percentage	all		10	999	5	none			true	true	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
+olive-atelier	OLIVE-PC-OIS	percentage	specific		14	999	5	none			true	true	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
+reed-workshop	REED-FS	free_ship	all			100	3	number_of_products		2	true	false	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
+reed-workshop	REED-FA	fixed_amount	specific	6		80	2	order_total	30		true	false	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
+reed-workshop	REED-PC11	percentage	all		11	120	3	order_total	60		true	false	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
+reed-workshop	REED-PC	percentage	all		12	999	5	none			true	true	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
+reed-workshop	REED-PC-OIS	percentage	specific		15	999	5	none			true	true	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
+sage-studio	SAGE-FS	free_ship	all			100	3	number_of_products		2	true	false	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
+sage-studio	SAGE-FA	fixed_amount	specific	7		80	2	order_total	35		true	false	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
+sage-studio	SAGE-PC11	percentage	all		11	120	3	order_total	60		true	false	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
+sage-studio	SAGE-PC	percentage	all		9	999	5	none			true	true	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
+sage-studio	SAGE-PC-OIS	percentage	specific		13	999	5	none			true	true	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z

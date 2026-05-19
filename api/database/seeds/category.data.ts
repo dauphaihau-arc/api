@@ -11,7 +11,7 @@ export type CategorySeedNode = {
   children?: CategorySeedNode[];
 };
 
-const attributesClothingCommon: CategorySeedAttribute[] = [
+const attributesFashionCommon: CategorySeedAttribute[] = [
   { name: 'Material', options: ['Cotton', 'Linen'] },
   { name: 'Style', options: ['Sport', 'Minimal', 'Retro', 'Classic'] },
 ];
@@ -57,9 +57,9 @@ const attributesElectronicsCommon: CategorySeedAttribute[] = [
 
 export const categorySeedData: CategorySeedNode[] = [
   {
-    name: 'Clothing',
+    name: 'Fashion',
     rank: 1,
-    imageFilename: 'categories/clothing.jpg',
+    imageFilename: 'categories/fashion.jpg',
     children: [
       {
         name: 'Man Fashion',
@@ -69,17 +69,22 @@ export const categorySeedData: CategorySeedNode[] = [
           {
             name: 'Sweaters',
             rank: 1,
-            attributes: attributesClothingCommon,
+            attributes: attributesFashionCommon,
           },
           {
             name: 'Tees',
             rank: 2,
-            attributes: attributesClothingCommon,
+            attributes: attributesFashionCommon,
           },
           {
             name: 'Hoodies',
             rank: 3,
-            attributes: attributesClothingCommon,
+            attributes: attributesFashionCommon,
+          },
+          {
+            name: 'Pants',
+            rank: 4,
+            attributes: attributesFashionCommon,
           },
         ],
       },
@@ -91,12 +96,12 @@ export const categorySeedData: CategorySeedNode[] = [
           {
             name: 'Sweaters',
             rank: 1,
-            attributes: attributesClothingCommon,
+            attributes: attributesFashionCommon,
           },
           {
             name: 'Dresses',
             rank: 2,
-            attributes: attributesClothingCommon,
+            attributes: attributesFashionCommon,
           },
           {
             name: 'Tees',
@@ -109,50 +114,75 @@ export const categorySeedData: CategorySeedNode[] = [
                   {
                     name: 'Graphic Tee',
                     rank: 1,
-                    attributes: attributesClothingCommon,
+                    attributes: attributesFashionCommon,
                   },
                 ],
               },
               {
                 name: 'Polos',
                 rank: 2,
-                attributes: attributesClothingCommon,
+                attributes: attributesFashionCommon,
               },
             ],
           },
           {
             name: 'Skirts',
             rank: 4,
-            attributes: attributesClothingCommon,
+            attributes: attributesFashionCommon,
           },
         ],
       },
-    ],
-  },
-  {
-    name: 'Accessories',
-    rank: 2,
-    imageFilename: 'categories/accessories.jpeg',
-    children: [
       {
-        name: 'Hat & Cap',
-        rank: 1,
-        imageFilename: 'categories/hat.webp',
-        attributes: attributesAccessoriesHatCommon,
+        name: 'Accessories',
+        rank: 3,
+        imageFilename: 'categories/accessories.jpeg',
+        children: [
+          {
+            name: 'Hat & Cap',
+            rank: 1,
+            imageFilename: 'categories/hat.webp',
+            attributes: attributesAccessoriesHatCommon,
+          },
+        ],
       },
       {
-        name: 'Bag',
-        rank: 2,
-        imageFilename: 'categories/bag.webp',
+        name: 'Shoes',
+        rank: 4,
+        imageFilename: 'categories/shoes.jpeg',
+        children: [
+          {
+            name: 'Sneakers',
+            rank: 1,
+            attributes: attributesFashionCommon,
+          },
+          {
+            name: 'Boots',
+            rank: 2,
+            attributes: attributesFashionCommon,
+          },
+        ],
+      },
+      {
+        name: 'Bags & Purses',
+        rank: 5,
+        imageFilename: 'categories/bags-purses.png',
         children: [
           {
             name: 'Totes',
             rank: 1,
+            imageFilename: 'categories/totes.png',
             attributes: attributesAccessoriesBagCommon,
           },
           {
-            name: 'Wallet',
+            name: 'Handbags',
             rank: 2,
+            imageFilename: 'categories/handbags.png',
+            attributes: attributesAccessoriesBagCommon,
+          },
+          {
+            name: 'Wallets',
+            rank: 3,
+            imageFilename: 'categories/wallets.png',
             attributes: attributesAccessoriesBagCommon,
           },
         ],
@@ -186,7 +216,7 @@ export const categorySeedData: CategorySeedNode[] = [
   },
   {
     name: 'Art',
-    rank: 4,
+    rank: 3,
     imageFilename: 'categories/art.jpg',
     children: [
       {
@@ -204,9 +234,9 @@ export const categorySeedData: CategorySeedNode[] = [
     ],
   },
   {
-    name: 'Home',
-    rank: 5,
-    imageFilename: 'categories/home.jpg',
+    name: 'Home & Living',
+    rank: 4,
+    imageFilename: 'categories/home-living.jpg',
     children: [
       {
         name: 'Furniture',
@@ -242,7 +272,7 @@ export const categorySeedData: CategorySeedNode[] = [
   },
   {
     name: 'Toys & Games',
-    rank: 6,
+    rank: 5,
     imageFilename: 'categories/toy-video-games.webp',
     children: [
       {

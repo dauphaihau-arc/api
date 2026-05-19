@@ -25,7 +25,7 @@ import {
   slugifySeedValue,
 } from './product-seed-image-resolver';
 
-const DEFAULT_PRODUCT_SEED_ASSETS_DIR = path.resolve(__dirname, '../../../seed-assets/products');
+const DEFAULT_PRODUCT_SEED_ASSETS_DIR = path.resolve(__dirname, '../../../seed-data/images/products');
 
 function slugify(value: string): string {
   return slugifySeedValue(value);
@@ -250,12 +250,12 @@ async function syncProductShipping(
 
 export async function seedProducts(
   em: EntityManager,
-  shopsByName: Map<string, ShopEntity>
+  shopsBySlug: Map<string, ShopEntity>
 ): Promise<void> {
   for (const productSeed of productSeeds) {
-    const shop = shopsByName.get(productSeed.shopName);
+    const shop = shopsBySlug.get(productSeed.shopSlug);
     if (!shop) {
-      throw new Error(`Missing seeded shop: ${productSeed.shopName}`);
+      throw new Error(`Missing seeded shop: ${productSeed.shopSlug}`);
     }
 
     const category = await findCategoryByPath(em, productSeed.categoryPath);
@@ -293,7 +293,7 @@ export async function seedProducts(
       process.env.SEED_ASSETS_PRODUCTS_DIR
         ? path.resolve(process.cwd(), process.env.SEED_ASSETS_PRODUCTS_DIR)
         : DEFAULT_PRODUCT_SEED_ASSETS_DIR,
-      productSeed.shopName,
+      productSeed.shopSlug,
       productSeed.title
     );
 

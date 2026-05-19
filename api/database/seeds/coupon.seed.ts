@@ -6,13 +6,13 @@ import { couponSeeds } from './coupon.data';
 
 export async function seedCoupons(
   em: EntityManager,
-  shopsByName: Map<string, ShopEntity>
+  shopsBySlug: Map<string, ShopEntity>
 ): Promise<void> {
   for (const couponSeed of couponSeeds) {
-    const shop = shopsByName.get(couponSeed.shopName);
+    const shop = shopsBySlug.get(couponSeed.shopSlug);
 
     if (!shop) {
-      throw new Error(`Missing seeded shop for coupon: ${couponSeed.shopName}`);
+      throw new Error(`Missing seeded shop for coupon: ${couponSeed.shopSlug}`);
     }
 
     const appliesProductIds: string[] = [];

@@ -67,9 +67,9 @@ async function main() {
 
     const { usersByEmail } = await seedAuth(em);
     await seedCategories(em);
-    const shopsByName = await seedShops(em, usersByEmail);
-    await seedProducts(em, shopsByName);
-    await seedCoupons(em, shopsByName);
+    const { shopsBySlug } = await seedShops(em, usersByEmail);
+    await seedProducts(em, shopsBySlug);
+    await seedCoupons(em, shopsBySlug);
 
     console.log('Seed completed');
     console.log('Users:');

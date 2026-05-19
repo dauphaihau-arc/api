@@ -1,0 +1,4 @@
+key	name	description
+customer	Customer	Buys products
+seller	Seller	Lists and sells products
+admin	Admin	Manages platform operations

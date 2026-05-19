@@ -12,10 +12,10 @@ export function slugifySeedValue(value: string): string {
     .replace(/-{2,}/g, '-');
 }
 
-function getProductAssetDirectory(rootDir: string, shopName: string, productTitle: string): string {
+function getProductAssetDirectory(rootDir: string, shopSlug: string, productTitle: string): string {
   return path.join(
     rootDir,
-    slugifySeedValue(shopName),
+    shopSlug,
     slugifySeedValue(productTitle)
   );
 }
@@ -31,7 +31,15 @@ function getImageRank(filename: string): [number, string] {
     return [0, normalized];
   }
 
+  if (normalized.startsWith('main.')) {
+    return [0, normalized];
+  }
+
   if (normalized.startsWith('detail-')) {
+    return [1, normalized];
+  }
+
+  if (normalized.startsWith('with-model.')) {
     return [1, normalized];
   }
 
@@ -40,10 +48,10 @@ function getImageRank(filename: string): [number, string] {
 
 export function resolveSeedProductImagePaths(
   rootDir: string,
-  shopName: string,
+  shopSlug: string,
   productTitle: string
 ): string[] {
-  const productAssetDir = getProductAssetDirectory(rootDir, shopName, productTitle);
+  const productAssetDir = getProductAssetDirectory(rootDir, shopSlug, productTitle);
 
   if (!existsSync(productAssetDir)) {
     throw new Error(`Missing product asset directory: ${productAssetDir}`);
@@ -67,13 +75,18 @@ export function resolveSeedProductImagePaths(
     throw new Error(`No product images found in: ${productAssetDir}`);
   }
 
-  if (!imageFilenames.some((filename) => filename.toLowerCase().startsWith('hero.'))) {
-    throw new Error(`Missing hero image in: ${productAssetDir}`);
+  if (
+    !imageFilenames.some((filename) => {
+      const normalized = filename.toLowerCase();
+      return normalized.startsWith('hero.') || normalized.startsWith('main.');
+    })
+  ) {
+    throw new Error(`Missing hero/main image in: ${productAssetDir}`);
   }
 
   return imageFilenames.map((filename) =>
     path.posix.join(
-      slugifySeedValue(shopName),
+      shopSlug,
       slugifySeedValue(productTitle),
       filename
     )

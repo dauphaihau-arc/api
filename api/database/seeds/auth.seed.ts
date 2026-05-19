@@ -1,4 +1,5 @@
 import type { EntityManager } from '@mikro-orm/postgresql';
+import * as path from 'node:path';
 import { buildAuthConfig } from '~/config/auth.config';
 import { UserStatus } from '~/modules/domains/auth/domain/enums/user-status.enum';
 import { CurrentUserCredentialEntity } from '~/modules/domains/auth/infra/persistence/entities/current-user-credential.entity';
@@ -8,6 +9,7 @@ import { RoleEntity } from '~/modules/domains/auth/infra/persistence/entities/ro
 import { RolePermissionEntity } from '~/modules/domains/auth/infra/persistence/entities/role-permission.entity';
 import { UserRoleEntity } from '~/modules/domains/auth/infra/persistence/entities/user-role.entity';
 import { BcryptPasswordHasher } from '~/modules/domains/auth/infra/security/bcrypt-password-hasher';
+import { readTsvRows } from './shared/read-tsv-rows';
 
 type UserSeed = {
   email: string;
@@ -17,110 +19,94 @@ type UserSeed = {
   emailVerified: boolean;
 };
 
-const roles = [
-  {
-    key: 'customer',
-    name: 'Customer',
-    description: 'Buys products',
-  },
-  {
-    key: 'seller',
-    name: 'Seller',
-    description: 'Lists and sells products',
-  },
-  {
-    key: 'admin',
-    name: 'Admin',
-    description: 'Manages platform operations',
-  },
-] as const;
-
-const permissions = [
-  {
-    key: 'auth.me.read',
-    name: 'Read Current Auth Profile',
-    description: 'Read the current authenticated user profile',
-  },
-  {
-    key: 'auth.session.manage',
-    name: 'Manage Auth Sessions',
-    description: 'Refresh and revoke authentication sessions',
-  },
-  {
-    key: 'shops.create',
-    name: 'Create Shops',
-    description: 'Create a shop account',
-  },
-  {
-    key: 'shops.manage',
-    name: 'Manage Shops',
-    description: 'Manage owned shop resources such as products and coupons',
-  },
-  {
-    key: 'users.read',
-    name: 'Read Users',
-    description: 'View user records',
-  },
-  {
-    key: 'users.manage',
-    name: 'Manage Users',
-    description: 'Create, update, or disable users',
-  },
-  {
-    key: 'roles.read',
-    name: 'Read Roles',
-    description: 'View role definitions',
-  },
-  {
-    key: 'roles.manage',
-    name: 'Manage Roles',
-    description: 'Create or update roles and assignments',
-  },
-] as const;
-
-const rolePermissionMap: Record<string, string[]> = {
-  admin: permissions.map((permission) => permission.key),
-  customer: ['auth.me.read', 'auth.session.manage', 'shops.create'],
-  seller: ['auth.me.read', 'auth.session.manage', 'shops.manage'],
+type RoleSeed = {
+  key: string;
+  name: string;
+  description?: string;
 };
 
-const userSeeds: UserSeed[] = [
-  {
-    email: 'admin@example.com',
-    displayName: 'System Admin',
-    password: 'password123',
-    roleKey: 'admin',
-    emailVerified: true,
-  },
-  {
-    email: 'member@example.com',
-    displayName: 'Default Member',
-    password: 'password123',
-    roleKey: 'customer',
-    emailVerified: true,
-  },
-  {
-    email: 'maker.olive@example.com',
-    displayName: 'Olive Hart',
-    password: 'password123',
-    roleKey: 'seller',
-    emailVerified: true,
-  },
-  {
-    email: 'maker.mason@example.com',
-    displayName: 'Mason Reed',
-    password: 'password123',
-    roleKey: 'seller',
-    emailVerified: true,
-  },
-  {
-    email: 'maker.sage@example.com',
-    displayName: 'Sage Lane',
-    password: 'password123',
-    roleKey: 'seller',
-    emailVerified: true,
-  },
-];
+type PermissionSeed = {
+  key: string;
+  name: string;
+  description?: string;
+};
+
+type RolePermissionSeed = {
+  roleKey: string;
+  permissionKey: string;
+};
+
+type RoleCsvRow = {
+  key: string;
+  name: string;
+  description: string;
+};
+
+type PermissionCsvRow = {
+  key: string;
+  name: string;
+  description: string;
+};
+
+type RolePermissionCsvRow = {
+  role_key: string;
+  permission_key: string;
+};
+
+type UserCsvRow = {
+  email: string;
+  display_name: string;
+  password: string;
+  role_key: string;
+  email_verified: string;
+};
+
+const ROLES_TSV_PATH = path.resolve(__dirname, '../../../seed-data/auth-roles.tsv');
+const PERMISSIONS_TSV_PATH = path.resolve(__dirname, '../../../seed-data/auth-permissions.tsv');
+const ROLE_PERMISSIONS_TSV_PATH = path.resolve(
+  __dirname,
+  '../../../seed-data/auth-role-permissions.tsv'
+);
+const USERS_TSV_PATH = path.resolve(__dirname, '../../../seed-data/auth-users.tsv');
+
+function parseBoolean(value: string, filePath: string, rowNumber: number): boolean {
+  const normalized = value.trim().toLowerCase();
+  if (normalized === 'true') {
+    return true;
+  }
+  if (normalized === 'false') {
+    return false;
+  }
+  throw new Error(`Invalid boolean "${value}" in ${filePath} row ${rowNumber}`);
+}
+
+const roles: RoleSeed[] = readTsvRows<RoleCsvRow>(ROLES_TSV_PATH).map((row, index) => ({
+  key: row.key.trim(),
+  name: row.name.trim(),
+  description: row.description.trim() || undefined,
+}));
+
+const permissions: PermissionSeed[] = readTsvRows<PermissionCsvRow>(PERMISSIONS_TSV_PATH).map(
+  (row) => ({
+    key: row.key.trim(),
+    name: row.name.trim(),
+    description: row.description.trim() || undefined,
+  })
+);
+
+const rolePermissionSeeds: RolePermissionSeed[] =
+  readTsvRows<RolePermissionCsvRow>(ROLE_PERMISSIONS_TSV_PATH).map((row) => ({
+    roleKey: row.role_key.trim(),
+    permissionKey: row.permission_key.trim(),
+  }));
+
+const userSeeds: UserSeed[] = readTsvRows<UserCsvRow>(USERS_TSV_PATH).map((row, index) => ({
+  email: row.email.trim(),
+  displayName: row.display_name.trim(),
+  password: row.password,
+  roleKey: row.role_key.trim(),
+  emailVerified: parseBoolean(row.email_verified, USERS_TSV_PATH, index + 2),
+}));
 
 export async function seedAuth(
   em: EntityManager
@@ -226,30 +212,28 @@ export async function seedAuthReferenceData(
 
   await em.flush();
 
-  for (const [roleKey, permissionKeys] of Object.entries(rolePermissionMap)) {
-    const role = roleByKey.get(roleKey);
+  for (const rolePermissionSeed of rolePermissionSeeds) {
+    const role = roleByKey.get(rolePermissionSeed.roleKey);
 
     if (!role) {
-      throw new Error(`Missing seed role: ${roleKey}`);
+      throw new Error(`Missing seed role: ${rolePermissionSeed.roleKey}`);
     }
 
-    for (const permissionKey of permissionKeys) {
-      const permission = permissionByKey.get(permissionKey);
+    const permission = permissionByKey.get(rolePermissionSeed.permissionKey);
 
-      if (!permission) {
-        throw new Error(`Missing seed permission: ${permissionKey}`);
-      }
+    if (!permission) {
+      throw new Error(`Missing seed permission: ${rolePermissionSeed.permissionKey}`);
+    }
 
-      const existing = await em.findOne(RolePermissionEntity, { role, permission });
-      if (!existing) {
-        em.persist(
-          em.create(RolePermissionEntity, {
-            role,
-            permission,
-            grantedAt: new Date(),
-          })
-        );
-      }
+    const existing = await em.findOne(RolePermissionEntity, { role, permission });
+    if (!existing) {
+      em.persist(
+        em.create(RolePermissionEntity, {
+          role,
+          permission,
+          grantedAt: new Date(),
+        })
+      );
     }
   }
 

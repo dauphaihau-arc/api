@@ -1,0 +1,15 @@
+role_key	permission_key
+admin	auth.me.read
+admin	auth.session.manage
+admin	shops.create
+admin	shops.manage
+admin	users.read
+admin	users.manage
+admin	roles.read
+admin	roles.manage
+customer	auth.me.read
+customer	auth.session.manage
+customer	shops.create
+seller	auth.me.read
+seller	auth.session.manage
+seller	shops.manage
