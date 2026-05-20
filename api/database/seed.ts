@@ -8,6 +8,8 @@ import { CouponUsageEntity } from '../src/modules/domains/coupon/infra/persisten
 import { CouponEntity } from '../src/modules/domains/coupon/infra/persistence/entities/coupon.entity';
 import { CurrentUserCredentialEntity } from '../src/modules/domains/auth/infra/persistence/entities/current-user-credential.entity';
 import { CurrentUserEntity } from '../src/modules/domains/auth/infra/persistence/entities/current-user.entity';
+import { CartEntity } from '../src/modules/domains/cart/infra/persistence/entities/cart.entity';
+import { CartItemEntity } from '../src/modules/domains/cart/infra/persistence/entities/cart-item.entity';
 import { EmailVerificationTokenEntity } from '../src/modules/domains/auth/infra/persistence/entities/email-verification-token.entity';
 import { PasswordResetTokenEntity } from '../src/modules/domains/auth/infra/persistence/entities/password-reset-token.entity';
 import { PermissionEntity } from '../src/modules/domains/auth/infra/persistence/entities/permission.entity';
@@ -23,10 +25,13 @@ import { ProductShippingDestinationEntity } from '../src/modules/domains/product
 import { ProductShippingProfileEntity } from '../src/modules/domains/product/infra/persistence/entities/product-shipping-profile.entity';
 import { ProductVariantEntity } from '../src/modules/domains/product/infra/persistence/entities/product-variant.entity';
 import { ProductEntity } from '../src/modules/domains/product/infra/persistence/entities/product.entity';
+import { OrderEntity } from '../src/modules/domains/order/infra/persistence/entities/order.entity';
+import { OrderItemEntity } from '../src/modules/domains/order/infra/persistence/entities/order-item.entity';
 import { ShopEntity } from '../src/modules/domains/shop/infra/persistence/entities/shop.entity';
 import { seedAuth } from './seeds/auth.seed';
 import { seedCategories } from './seeds/category.seed';
 import { seedCoupons } from './seeds/coupon.seed';
+import { seedOrderCartDemo } from './seeds/order-cart.seed';
 import { seedProducts } from './seeds/product.seed';
 import { seedShops } from './seeds/shop.seed';
 
@@ -43,11 +48,15 @@ async function main() {
       PermissionEntity,
       UserRoleEntity,
       RolePermissionEntity,
+      CartEntity,
+      CartItemEntity,
       CategoryEntity,
       CategoryAttributeEntity,
       CategoryAttributeOptionEntity,
       CouponEntity,
       CouponUsageEntity,
+      OrderEntity,
+      OrderItemEntity,
       ShopEntity,
       ProductEntity,
       ProductImageEntity,
@@ -70,14 +79,15 @@ async function main() {
     const { shopsBySlug } = await seedShops(em, usersByEmail);
     await seedProducts(em, shopsBySlug);
     await seedCoupons(em, shopsBySlug);
+    await seedOrderCartDemo(em, usersByEmail);
 
     console.log('Seed completed');
     console.log('Users:');
-    console.log('- admin@example.com / password123 (admin)');
-    console.log('- member@example.com / password123 (customer)');
-    console.log('- maker.olive@example.com / password123 (seller)');
-    console.log('- maker.mason@example.com / password123 (seller)');
-    console.log('- maker.sage@example.com / password123 (seller)');
+    console.log('- admin@example.com / Password123! (admin)');
+    console.log('- member@example.com / Password123! (customer)');
+    console.log('- maker.olive@example.com / Password123! (seller)');
+    console.log('- maker.mason@example.com / Password123! (seller)');
+    console.log('- maker.sage@example.com / Password123! (seller)');
   } finally {
     await orm.close(true);
   }
