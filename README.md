@@ -42,6 +42,7 @@ Top-level structure:
 ### Data Management
 
 - **Structured persistence** - MikroORM-based data access with explicit migrations and seed flows
+- **Transactional outbox** - durable outbox events decouple committed state changes from external side effects such as payment checkout session creation, enabling safe retry after commit. See [`docs/outbox-pattern.md`](docs/outbox-pattern.md)
 - **Idempotency keys** - repeated client requests can be deduplicated safely through request-scoped idempotency handling and cached response replay
 - **Structured storage keys** - object keys are generated from environment, visibility, domain path, collection, and asset type segments to keep uploaded assets predictable and organized. See [`docs/structured-storage-keys.md`](docs/structured-storage-keys.md)
 - **Optimistic locking** - entity versioning protects concurrent updates by rejecting stale writes against the latest persisted state
@@ -129,7 +130,9 @@ cd api && pnpm test
 
 ## Additional Docs
 
+- [`docs/checkout-transactional-outbox.md`](docs/checkout-transactional-outbox.md)
 - [`docs/layered-error-model.md`](docs/layered-error-model.md)
+- [`docs/outbox-pattern.md`](docs/outbox-pattern.md)
 - [`docs/seeding.md`](docs/seeding.md)
 - [`docs/structured-storage-keys.md`](docs/structured-storage-keys.md)
 - [`seed-data/README.md`](seed-data/README.md)
