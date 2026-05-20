@@ -22,7 +22,9 @@ import { ResetPasswordUseCase } from './app/use-cases/reset-password/reset-passw
 import { RegisterUseCase } from './app/use-cases/register/register.use-case';
 import { IssueSessionUseCase } from './app/use-cases/issue-session/issue-session.use-case';
 import { VerifyResetPasswordTokenUseCase } from './app/use-cases/verify-reset-password-token/verify-reset-password-token.use-case';
+import { UpdateCurrentUserPreferencesUseCase } from './app/use-cases/update-current-user-preferences/update-current-user-preferences.use-case';
 import { AuthController } from './api/rest/auth.controller';
+import { MeController } from './api/rest/me.controller';
 import { JwtAuthGuard } from './api/guard/jwt-auth.guard';
 import { PermissionsGuard } from './api/guard/permissions.guard';
 import { AuthHttpExceptionFilter } from './api/rest/auth-http-exception.filter';
@@ -83,7 +85,7 @@ const authEntities = [
     }),
     MikroOrmModule.forFeature(authEntities),
   ],
-  controllers: [AuthController],
+  controllers: [AuthController, MeController],
   providers: [
     {
       provide: AUTH_CONFIG,
@@ -127,6 +129,7 @@ const authEntities = [
     VerifyResetPasswordTokenUseCase,
     ResetPasswordUseCase,
     GetCurrentUserUseCase,
+    UpdateCurrentUserPreferencesUseCase,
     LoadAuthenticatedUserUseCase,
     IssueSessionUseCase,
     AuthHttpExceptionFilter,

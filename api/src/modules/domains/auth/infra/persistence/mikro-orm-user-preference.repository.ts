@@ -6,6 +6,7 @@ import {
 } from '~/config/marketplace.config';
 import {
   CreateUserPreferenceInput,
+  SaveUserPreferenceInput,
   UserPreferenceRepository
 } from '../../app/ports/user-preference.repository';
 import { CurrentUserEntity } from './entities/current-user.entity';
@@ -23,6 +24,34 @@ export class MikroOrmUserPreferenceRepository implements UserPreferenceRepositor
     const userRepository = em.getRepository(CurrentUserEntity);
     const userPreferenceRepository = em.getRepository(UserPreferenceEntity);
     const user = await userRepository.findOneOrFail({ id: input.userId });
+    const userPreference = userPreferenceRepository.create({
+      user,
+      region: input.region,
+      language: input.language,
+      currency: input.currency,
+    });
+
+    await em.persistAndFlush(userPreference);
+  }
+
+  async save(
+    input: SaveUserPreferenceInput,
+    entityManager?: EntityManager
+  ): Promise<void> {
+    const em = entityManager ?? this.entityManager.fork();
+    const userRepository = em.getRepository(CurrentUserEntity);
+    const userPreferenceRepository = em.getRepository(UserPreferenceEntity);
+    const user = await userRepository.findOneOrFail({ id: input.userId });
+    const existingPreference = await userPreferenceRepository.findOne({ user: input.userId });
+
+    if (existingPreference) {
+      existingPreference.region = input.region;
+      existingPreference.language = input.language;
+      existingPreference.currency = input.currency;
+      await em.flush();
+      return;
+    }
+
     const userPreference = userPreferenceRepository.create({
       user,
       region: input.region,
