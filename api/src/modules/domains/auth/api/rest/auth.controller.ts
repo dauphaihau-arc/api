@@ -4,6 +4,7 @@ import {
   Get,
   Header,
   HttpCode,
+  Inject,
   Post,
   Query,
   Req,
@@ -17,6 +18,8 @@ import { Throttle } from '@nestjs/throttler';
 import { Idempotent } from '~/common/decorators/idempotent.decorator';
 import { resolveOrThrow } from '~/common/application/result';
 import { parseDurationToMilliseconds } from '~/libs/duration';
+import type { AuthConfig } from '~/config/auth.config';
+import { AUTH_CONFIG } from '~/config/auth.config';
 import type { AuthenticatedUser } from '../../app/auth.types';
 import { GetCurrentUserUseCase } from '../../app/use-cases/get-current-user/get-current-user.use-case';
 import { LoginUseCase } from '../../app/use-cases/login/login.use-case';
@@ -35,6 +38,7 @@ import { AuthCookieService } from './auth-cookie.utils';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { LoginDto } from './dto/login.dto';
 import { AuthUserResponseDto, MeResponseDto } from './dto/me-response.dto';
+import { AuthClientConfigResponseDto } from './dto/auth-client-config-response.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { RegisterDto } from './dto/register.dto';
 import { IdempotencyKeyInterceptor } from '~/common/interceptors/idempotency-key.interceptor';
@@ -76,7 +80,9 @@ export class AuthController {
     private readonly requestPasswordResetUseCase: RequestPasswordResetUseCase,
     private readonly verifyResetPasswordTokenUseCase: VerifyResetPasswordTokenUseCase,
     private readonly resetPasswordUseCase: ResetPasswordUseCase,
-    private readonly authCookieService: AuthCookieService
+    private readonly authCookieService: AuthCookieService,
+    @Inject(AUTH_CONFIG)
+    private readonly authConfig: AuthConfig
   ) {}
 
   @Post('register')
@@ -150,6 +156,13 @@ export class AuthController {
   @HttpCode(204)
   async forgotPassword(@Body() body: ForgotPasswordDto): Promise<void> {
     await this.requestPasswordResetUseCase.execute(body.email);
+  }
+
+  @Get('client-config')
+  @Header('Cache-Control', 'public, max-age=300, stale-while-revalidate=86400')
+  @HttpCode(200)
+  getClientConfig(): AuthClientConfigResponseDto {
+    return AuthClientConfigResponseDto.create(this.authConfig);
   }
 
   @Get('verify-token')

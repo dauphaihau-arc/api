@@ -12,6 +12,7 @@ import {
   MARKETPLACE_LANGUAGES,
   MARKETPLACE_REGIONS
 } from '~/config/marketplace.config';
+import { IsAuthPassword } from '../validation/password-validation';
 
 class UserPreferencesDto {
   @IsOptional()
@@ -32,7 +33,7 @@ export class RegisterDto {
   email!: string;
 
   @IsString()
-  @MinLength(8)
+  @IsAuthPassword()
   password!: string;
 
   @IsOptional()
