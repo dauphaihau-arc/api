@@ -49,8 +49,10 @@ Top-level structure:
 
 ### Operations
 
+- **Audit logging** - high-value product mutations can be persisted with actor and request metadata for business traceability
 - **Local-first infrastructure** - Docker Compose setup for Postgres, Redis, and MinIO
 - **Queue processing** - BullMQ-backed worker process for async jobs
+- **Structured logging with correlation IDs** - request and error logs include request, actor, and session context to make API and async flows traceable across the system
 - **Health checks** - dedicated health endpoints support local verification and runtime readiness monitoring
 - **Seeded environments** - reference and demo datasets for reproducible local setup
 
