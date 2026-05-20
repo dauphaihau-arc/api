@@ -7,10 +7,16 @@ import {
   Logger
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
+import { RequestContextService } from '~/modules/shared/request-context/request-context.service';
+import { buildStructuredLog } from '../utils/structured-log';
 
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
   private readonly logger = new Logger(GlobalExceptionFilter.name);
+
+  constructor(
+    private readonly requestContextService: RequestContextService
+  ) {}
 
   catch(exception: unknown, host: ArgumentsHost) {
     const context = host.switchToHttp();
@@ -27,10 +33,33 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         : HttpStatus.INTERNAL_SERVER_ERROR;
 
     const responseBody = buildErrorResponse(exception, statusCode, request.url);
+    const requestContext = this.requestContextService.get();
+
+    if (requestContext.requestId) {
+      response.setHeader('X-Request-Id', requestContext.requestId);
+    }
 
     if (statusCode >= 500) {
       this.logger.error(
-        `${request.method} ${request.url} failed with ${statusCode}`,
+        buildStructuredLog({
+          event: 'http.request.exception',
+          requestId: requestContext.requestId,
+          actorId: requestContext.actorId,
+          actorEmail: requestContext.actorEmail,
+          sessionId: requestContext.sessionId,
+          errorName: exception instanceof Error ? exception.name : 'UnknownError',
+          errorMessage:
+            exception instanceof Error
+              ? exception.message
+              : 'Unknown error',
+          http: {
+            method: request.method,
+            path: request.url,
+            statusCode,
+            ipAddress: requestContext.ipAddress,
+            userAgent: requestContext.userAgent,
+          },
+        }),
         exception instanceof Error ? exception.stack : undefined
       );
     }

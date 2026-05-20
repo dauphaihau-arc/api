@@ -9,6 +9,7 @@ import { GlobalExceptionFilter } from './common/filters/global-exception.filter'
 import { RequestLoggingInterceptor } from './common/interceptors/request-logging.interceptor';
 import { parseCorsAllowedOrigins } from './config/cors.config';
 import { AppModule } from './modules/app.module';
+import { RequestContextService } from './modules/shared/request-context/request-context.service';
 
 const API_PREFIX = 'v1';
 
@@ -39,10 +40,12 @@ async function bootstrap() {
       forbidNonWhitelisted: true,
     })
   );
-  app.useGlobalFilters(new GlobalExceptionFilter());
+  app.useGlobalFilters(
+    new GlobalExceptionFilter(app.get(RequestContextService))
+  );
   app.useGlobalInterceptors(
     new ClassSerializerInterceptor(app.get(Reflector)),
-    new RequestLoggingInterceptor()
+    new RequestLoggingInterceptor(app.get(RequestContextService))
   );
   app.setGlobalPrefix(API_PREFIX, {
     exclude: [
