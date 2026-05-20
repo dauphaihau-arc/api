@@ -1,5 +1,6 @@
 import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
 import { UserStatus } from '~/modules/domains/auth/domain/enums/user-status.enum';
+import type { AuditLogService } from '~/modules/shared/audit/app/audit-log.service';
 import { ProductState } from '../../../domain/enums/product-state.enum';
 import { ProductShippingCharge } from '../../../domain/enums/product-shipping-charge.enum';
 import type { ShopRepository } from '~/modules/domains/shop/app/ports/shop.repository';
@@ -95,35 +96,48 @@ describe('PublishProductUseCase', () => {
     return {
       productRepository,
       shopRepository,
+      auditLogService: {
+        record: jest.fn().mockResolvedValue(undefined),
+      } as unknown as jest.Mocked<AuditLogService>,
     };
   }
 
   it('publishes a product when all required slices are present', async () => {
-    const { productRepository, shopRepository } = buildDeps();
+    const { productRepository, shopRepository, auditLogService } = buildDeps();
     const useCase = new PublishProductUseCase(
       productRepository,
-      shopRepository
+      shopRepository,
+      auditLogService
     );
 
     const result = await useCase.execute(actor, readyProduct.id);
 
     expect(result.isOk).toBe(true);
     expect(productRepository.publish).toHaveBeenCalledWith(readyProduct.id);
+    expect(auditLogService.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'product.published',
+        entityType: 'product',
+        entityId: readyProduct.id,
+      })
+    );
   });
 
   it('rejects publishing when shipping is missing', async () => {
-    const { productRepository, shopRepository } = buildDeps({
+    const { productRepository, shopRepository, auditLogService } = buildDeps({
       ...readyProduct,
       shipping: undefined,
     });
     const useCase = new PublishProductUseCase(
       productRepository,
-      shopRepository
+      shopRepository,
+      auditLogService
     );
 
     const result = await useCase.execute(actor, readyProduct.id);
 
     expect(result.isOk).toBe(false);
     expect(productRepository.publish).not.toHaveBeenCalled();
+    expect(auditLogService.record).not.toHaveBeenCalled();
   });
 });

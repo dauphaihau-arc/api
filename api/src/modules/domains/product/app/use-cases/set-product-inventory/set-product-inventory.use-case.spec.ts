@@ -1,6 +1,7 @@
 import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
 import { UserStatus } from '~/modules/domains/auth/domain/enums/user-status.enum';
 import type { ShopRepository } from '~/modules/domains/shop/app/ports/shop.repository';
+import type { AuditLogService } from '~/modules/shared/audit/app/audit-log.service';
 import { ProductVariantType } from '../../../domain/enums/product-variant-type.enum';
 import type { ProductRepository } from '../../ports/product.repository';
 import type { ProductDraftSummary } from '../../product.types';
@@ -88,14 +89,18 @@ describe('SetProductInventoryUseCase', () => {
     return {
       productRepository,
       shopRepository,
+      auditLogService: {
+        record: jest.fn().mockResolvedValue(undefined),
+      } as unknown as jest.Mocked<AuditLogService>,
     };
   }
 
   it('replaces inventory for a variant-backed product', async () => {
-    const { productRepository, shopRepository } = buildDeps();
+    const { productRepository, shopRepository, auditLogService } = buildDeps();
     const useCase = new SetProductInventoryUseCase(
       productRepository,
-      shopRepository
+      shopRepository,
+      auditLogService
     );
 
     const result = await useCase.execute(actor, variantProduct.id, {
@@ -123,13 +128,20 @@ describe('SetProductInventoryUseCase', () => {
         },
       ],
     });
+    expect(auditLogService.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'product.inventory.updated',
+        entityId: variantProduct.id,
+      })
+    );
   });
 
   it('rejects missing variant references for variant-backed products', async () => {
-    const { productRepository, shopRepository } = buildDeps();
+    const { productRepository, shopRepository, auditLogService } = buildDeps();
     const useCase = new SetProductInventoryUseCase(
       productRepository,
-      shopRepository
+      shopRepository,
+      auditLogService
     );
 
     const result = await useCase.execute(actor, variantProduct.id, {
@@ -144,5 +156,6 @@ describe('SetProductInventoryUseCase', () => {
 
     expect(result.isOk).toBe(false);
     expect(productRepository.replaceInventory).not.toHaveBeenCalled();
+    expect(auditLogService.record).not.toHaveBeenCalled();
   });
 });

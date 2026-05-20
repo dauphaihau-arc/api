@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { err, ok, type Result } from '~/common/application/result';
 import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
 import { ShopRepository } from '~/modules/domains/shop/app/ports/shop.repository';
+import { AuditLogService } from '~/modules/shared/audit/app/audit-log.service';
 import { ProductState } from '../../../domain/enums/product-state.enum';
 import { ProductVariantType } from '../../../domain/enums/product-variant-type.enum';
 import {
@@ -21,7 +22,8 @@ type PublishProductError =
 export class PublishProductUseCase {
   constructor(
     private readonly productRepository: ProductRepository,
-    private readonly shopRepository: ShopRepository
+    private readonly shopRepository: ShopRepository,
+    private readonly auditLogService: AuditLogService
   ) {}
 
   async execute(
@@ -58,6 +60,22 @@ export class PublishProductUseCase {
     if (!publishedProduct) {
       return err(new ProductNotFoundError(productId));
     }
+
+    await this.auditLogService.record({
+      action: 'product.published',
+      entityType: 'product',
+      entityId: publishedProduct.id,
+      summary: {
+        shopId: publishedProduct.shopId,
+        state: publishedProduct.state,
+        title: publishedProduct.title,
+      },
+      actor: {
+        actorId: actor.userId,
+        actorEmail: actor.email,
+        sessionId: actor.sessionId,
+      },
+    });
 
     return ok(publishedProduct);
   }

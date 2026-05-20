@@ -3,6 +3,7 @@ import { err, ok, type Result } from '~/common/application/result';
 import { toSlug } from '~/common/utils/slugify';
 import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
 import { ShopRepository } from '~/modules/domains/shop/app/ports/shop.repository';
+import { AuditLogService } from '~/modules/shared/audit/app/audit-log.service';
 import { ProductVariantType } from '../../../domain/enums/product-variant-type.enum';
 import {
   ActorCannotCreateProductDraftError,
@@ -33,7 +34,8 @@ type UpdateProductDetailsError =
 export class UpdateProductDetailsUseCase {
   constructor(
     private readonly productRepository: ProductRepository,
-    private readonly shopRepository: ShopRepository
+    private readonly shopRepository: ShopRepository,
+    private readonly auditLogService: AuditLogService
   ) {}
 
   async execute(
@@ -106,6 +108,24 @@ export class UpdateProductDetailsUseCase {
     if (!product) {
       return err(new ProductNotFoundError(productId));
     }
+
+    await this.auditLogService.record({
+      action: 'product.details.updated',
+      entityType: 'product',
+      entityId: product.id,
+      summary: {
+        shopId: product.shopId,
+        title: product.title,
+        slug: product.slug,
+        isDigital: product.isDigital,
+        nonTaxable: product.nonTaxable,
+      },
+      actor: {
+        actorId: actor.userId,
+        actorEmail: actor.email,
+        sessionId: actor.sessionId,
+      },
+    });
 
     return ok(product);
   }

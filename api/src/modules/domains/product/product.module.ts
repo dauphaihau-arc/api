@@ -4,6 +4,7 @@ import { ConfigModule } from '@nestjs/config';
 import { IdempotencyModule } from '../../shared/idempotency/idempotency.module';
 import { CacheModule } from '../../shared/cache/cache.module';
 import { StorageModule } from '../../shared/storage/storage.module';
+import { AuditModule } from '../../shared/audit/audit.module';
 import { CategoryModule } from '../category/category.module';
 import { ShopModule } from '../shop/shop.module';
 import { CreateProductDraftFacadeUseCase } from './app/use-cases/create-product-draft-facade/create-product-draft-facade.use-case';
@@ -44,6 +45,7 @@ import { ProductEntity } from './infra/persistence/entities/product.entity';
     ShopModule,
     CategoryModule,
     StorageModule,
+    AuditModule,
     MikroOrmModule.forFeature([
       ProductEntity,
       ProductImageEntity,

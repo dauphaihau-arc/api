@@ -1,6 +1,7 @@
 import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
 import { UserStatus } from '~/modules/domains/auth/domain/enums/user-status.enum';
 import type { ShopRepository } from '~/modules/domains/shop/app/ports/shop.repository';
+import type { AuditLogService } from '~/modules/shared/audit/app/audit-log.service';
 import { ProductVariantType } from '../../../domain/enums/product-variant-type.enum';
 import type { ProductRepository } from '../../ports/product.repository';
 import type { ProductDraftSummary } from '../../product.types';
@@ -80,14 +81,18 @@ describe('UpdateProductDetailsUseCase', () => {
     return {
       productRepository,
       shopRepository,
+      auditLogService: {
+        record: jest.fn().mockResolvedValue(undefined),
+      } as unknown as jest.Mocked<AuditLogService>,
     };
   }
 
   it('updates base fields and regenerates the slug from title', async () => {
-    const { productRepository, shopRepository } = buildDeps();
+    const { productRepository, shopRepository, auditLogService } = buildDeps();
     const useCase = new UpdateProductDetailsUseCase(
       productRepository,
-      shopRepository
+      shopRepository,
+      auditLogService
     );
 
     const result = await useCase.execute(actor, product.id, {
@@ -114,17 +119,24 @@ describe('UpdateProductDetailsUseCase', () => {
       variantGroupName: 'Finish',
       variantSubGroupName: undefined,
     });
+    expect(auditLogService.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'product.details.updated',
+        entityId: product.id,
+      })
+    );
   });
 
   it('rejects variant labels for products without variants', async () => {
-    const { productRepository, shopRepository } = buildDeps({
+    const { productRepository, shopRepository, auditLogService } = buildDeps({
       ...product,
       variantType: ProductVariantType.NONE,
       variantGroupName: undefined,
     });
     const useCase = new UpdateProductDetailsUseCase(
       productRepository,
-      shopRepository
+      shopRepository,
+      auditLogService
     );
 
     const result = await useCase.execute(actor, product.id, {
@@ -133,5 +145,6 @@ describe('UpdateProductDetailsUseCase', () => {
 
     expect(result.isOk).toBe(false);
     expect(productRepository.updateDetails).not.toHaveBeenCalled();
+    expect(auditLogService.record).not.toHaveBeenCalled();
   });
 });
