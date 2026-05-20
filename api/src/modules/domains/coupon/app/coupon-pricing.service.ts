@@ -103,6 +103,7 @@ export class CouponPricingService {
         productId: item.inventory.productId,
         shopId: item.inventory.shopId,
         shopName: item.inventory.shopName,
+        shopSlug: item.inventory.shopSlug,
         title: item.inventory.title,
         imageUrl: item.inventory.imageUrl,
         quantity: item.quantity,
