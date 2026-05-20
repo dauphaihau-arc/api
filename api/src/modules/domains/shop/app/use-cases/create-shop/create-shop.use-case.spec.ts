@@ -22,11 +22,13 @@ describe('CreateShopUseCase', () => {
         id: 'shop-1',
         ownerUserId: actor.userId,
         shopName: 'arc-shop',
+        slug: 'arc-shop',
         status: 'active',
       }),
       findById: jest.fn(),
       findByOwnerUserId: jest.fn().mockResolvedValue(null),
       findByShopName: jest.fn().mockResolvedValue(null),
+      findBySlug: jest.fn().mockResolvedValue(null),
       findOwnedById: jest.fn(),
     };
   }
@@ -67,6 +69,7 @@ describe('CreateShopUseCase', () => {
       {
         ownerUserId: actor.userId,
         shopName: 'arc-shop',
+        slug: 'arc-shop',
       },
       expect.anything()
     );

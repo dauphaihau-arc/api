@@ -5,7 +5,7 @@ import { SkipThrottle } from '@nestjs/throttler';
 import type {
   PublicProductListResult
 } from '../../app/product.types';
-import { GetPublicProductByIdUseCase } from '../../app/use-cases/get-public-product-by-id/get-public-product-by-id.use-case';
+import { GetPublicProductBySlugsUseCase } from '../../app/use-cases/get-public-product-by-slugs/get-public-product-by-slugs.use-case';
 import { ListPublicProductsUseCase } from '../../app/use-cases/list-public-products/list-public-products.use-case';
 import { ListPublicProductsQueryDto } from './dto/list-public-products.query.dto';
 import { toPublicProductDetailResponse } from './public-product-detail.presenter';
@@ -15,7 +15,7 @@ import type { PublicProductDetailResponse } from './public-product-detail.respon
 export class ProductController {
   constructor(
     private readonly listPublicProductsUseCase: ListPublicProductsUseCase,
-    private readonly getPublicProductByIdUseCase: GetPublicProductByIdUseCase
+    private readonly getPublicProductBySlugsUseCase: GetPublicProductBySlugsUseCase
   ) {}
 
   @Get()
@@ -27,11 +27,17 @@ export class ProductController {
     return this.listPublicProductsUseCase.execute(query);
   }
 
-  @Get(':id')
+  @Get('by-slug/:shopSlug/:productSlug')
   @SkipThrottle()
   @Header('Cache-Control', 'public, max-age=60')
-  async product(@Param('id') id: string): Promise<PublicProductDetailResponse> {
-    const product = await this.getPublicProductByIdUseCase.execute(id);
+  async productBySlugs(
+    @Param('shopSlug') shopSlug: string,
+    @Param('productSlug') productSlug: string
+  ): Promise<PublicProductDetailResponse> {
+    const product = await this.getPublicProductBySlugsUseCase.execute(
+      shopSlug,
+      productSlug
+    );
 
     if (!product) {
       throw new NotFoundException('Product was not found');

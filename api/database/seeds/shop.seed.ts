@@ -62,15 +62,17 @@ export async function seedShops(
     }
 
     const shop =
-      (await em.findOne(ShopEntity, { shopName: shopSeed.shopName })) ??
+      (await em.findOne(ShopEntity, { slug: shopSeed.shopSlug })) ??
       em.create(ShopEntity, {
         ownerUser: owner,
         shopName: shopSeed.shopName,
+        slug: shopSeed.shopSlug,
         description: shopSeed.description,
         status: 'active',
       });
 
     shop.ownerUser = owner;
+    shop.slug = shopSeed.shopSlug;
     shop.description = shopSeed.description;
     shop.status = 'active';
     em.persist(shop);

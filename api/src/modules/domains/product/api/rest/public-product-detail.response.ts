@@ -6,6 +6,7 @@ export type PublicProductDetailResponse = {
     id: string;
     public_id?: string;
     shop_name: string;
+    slug: string;
   };
   category_id?: string;
   title: string;

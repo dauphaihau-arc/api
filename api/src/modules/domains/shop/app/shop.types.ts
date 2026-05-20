@@ -3,6 +3,7 @@ export interface ShopSummary {
   publicId?: string;
   ownerUserId: string;
   shopName: string;
+  slug: string;
   status: string;
 }
 
@@ -40,4 +41,5 @@ export interface ShopCouponListResult {
 export interface CreateShopInput {
   ownerUserId: string;
   shopName: string;
+  slug: string;
 }

@@ -21,8 +21,10 @@ export abstract class ProductRepository {
   ): Promise<ProductDraftSummary>;
 
   abstract findById(id: string): Promise<ProductDraftSummary | null>;
-
-  abstract findPublicById(id: string): Promise<PublicProductDetail | null>;
+  abstract findPublicByShopSlugAndProductSlug(
+    shopSlug: string,
+    productSlug: string
+  ): Promise<PublicProductDetail | null>;
 
   abstract listByShop(
     input: ListShopProductsInput

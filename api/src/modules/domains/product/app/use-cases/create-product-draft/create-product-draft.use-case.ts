@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { err, ok, Result } from '~/common/application/result';
+import { toSlug } from '~/common/utils/slugify';
 import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
 import { CategoryRepository } from '~/modules/domains/category/app/ports/category.repository';
 import { ShopRepository } from '~/modules/domains/shop/app/ports/shop.repository';
@@ -68,7 +69,7 @@ export class CreateProductDraftUseCase {
       return err(variantValidationError);
     }
 
-    const slug = slugify(input.title);
+    const slug = toSlug(input.title);
     const existingProduct = await this.productRepository.findByShopIdAndSlug(
       input.shopId,
       slug
@@ -132,13 +133,4 @@ export class CreateProductDraftUseCase {
 
     return null;
   }
-}
-
-function slugify(value: string): string {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .replace(/-{2,}/g, '-');
 }

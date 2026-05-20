@@ -10,7 +10,7 @@ import { CreateProductDraftFacadeUseCase } from './app/use-cases/create-product-
 import { ConsumeProductImageUploadTicketUseCase } from './app/use-cases/consume-product-image-upload-ticket/consume-product-image-upload-ticket.use-case';
 import { CreateProductDraftUseCase } from './app/use-cases/create-product-draft/create-product-draft.use-case';
 import { GetProductByIdUseCase } from './app/use-cases/get-product-by-id/get-product-by-id.use-case';
-import { GetPublicProductByIdUseCase } from './app/use-cases/get-public-product-by-id/get-public-product-by-id.use-case';
+import { GetPublicProductBySlugsUseCase } from './app/use-cases/get-public-product-by-slugs/get-public-product-by-slugs.use-case';
 import { IssueProductImageUploadUrlUseCase } from './app/use-cases/issue-product-image-upload-url/issue-product-image-upload-url.use-case';
 import { ListPublicProductsUseCase } from './app/use-cases/list-public-products/list-public-products.use-case';
 import { ListShopProductsUseCase } from './app/use-cases/list-shop-products/list-shop-products.use-case';
@@ -65,7 +65,7 @@ import { ProductEntity } from './infra/persistence/entities/product.entity';
     CreateProductDraftFacadeUseCase,
     CreateProductDraftUseCase,
     GetProductByIdUseCase,
-    GetPublicProductByIdUseCase,
+    GetPublicProductBySlugsUseCase,
     IssueProductImageUploadUrlUseCase,
     ListPublicProductsUseCase,
     ListShopProductsUseCase,
@@ -84,7 +84,7 @@ import { ProductEntity } from './infra/persistence/entities/product.entity';
     CreateProductDraftFacadeUseCase,
     CreateProductDraftUseCase,
     GetProductByIdUseCase,
-    GetPublicProductByIdUseCase,
+    GetPublicProductBySlugsUseCase,
     IssueProductImageUploadUrlUseCase,
     ListPublicProductsUseCase,
     ListShopProductsUseCase,

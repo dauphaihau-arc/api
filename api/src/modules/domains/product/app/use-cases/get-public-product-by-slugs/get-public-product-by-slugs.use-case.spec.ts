@@ -1,13 +1,14 @@
 import type { ProductRepository } from '../../ports/product.repository';
 import type { PublicProductDetail } from '../../product.types';
-import { GetPublicProductByIdUseCase } from './get-public-product-by-id.use-case';
+import { GetPublicProductBySlugsUseCase } from './get-public-product-by-slugs.use-case';
 
-describe('GetPublicProductByIdUseCase', () => {
+describe('GetPublicProductBySlugsUseCase', () => {
   const product: PublicProductDetail = {
     id: 'product-1',
     shop: {
       id: 'shop-1',
       shopName: 'owner-shop',
+      slug: 'owner-shop',
     },
     categoryId: 'category-1',
     title: 'Handmade Mug',
@@ -25,7 +26,7 @@ describe('GetPublicProductByIdUseCase', () => {
     return {
       createDraft: jest.fn(),
       findById: jest.fn(),
-      findPublicById: jest.fn().mockResolvedValue(product),
+      findPublicByShopSlugAndProductSlug: jest.fn().mockResolvedValue(product),
       listByShop: jest.fn(),
       listPublic: jest.fn(),
       replaceImages: jest.fn(),
@@ -39,13 +40,16 @@ describe('GetPublicProductByIdUseCase', () => {
     };
   }
 
-  it('returns the public product when found', async () => {
+  it('returns the public product when found by slugs', async () => {
     const repository = buildRepository();
-    const useCase = new GetPublicProductByIdUseCase(repository);
+    const useCase = new GetPublicProductBySlugsUseCase(repository);
 
-    const result = await useCase.execute(product.id);
+    const result = await useCase.execute(product.shop.slug, product.slug);
 
-    expect(repository.findPublicById).toHaveBeenCalledWith(product.id);
+    expect(repository.findPublicByShopSlugAndProductSlug).toHaveBeenCalledWith(
+      product.shop.slug,
+      product.slug
+    );
     expect(result).toEqual(product);
   });
 });

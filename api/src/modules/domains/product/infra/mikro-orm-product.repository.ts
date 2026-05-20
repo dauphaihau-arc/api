@@ -66,12 +66,18 @@ export class MikroOrmProductRepository implements ProductRepository {
     return product ? this.toDraftSummary(product) : null;
   }
 
-  async findPublicById(id: string): Promise<PublicProductDetail | null> {
+  async findPublicByShopSlugAndProductSlug(
+    shopSlug: string,
+    productSlug: string
+  ): Promise<PublicProductDetail | null> {
     const repository = this.entityManager.fork().getRepository(ProductEntity);
     const product = await repository.findOne(
       {
-        id,
+        slug: productSlug,
         state: ProductState.ACTIVE,
+        shop: {
+          slug: shopSlug,
+        },
       },
       {
         populate: [...MikroOrmProductRepository.summaryPopulate],
@@ -623,6 +629,7 @@ export class MikroOrmProductRepository implements ProductRepository {
         id: product.shop.id,
         publicId: product.shop.publicId,
         shopName: product.shop.shopName,
+        slug: product.shop.slug,
       },
       categoryId: product.category?.id,
       title: product.title,
@@ -710,6 +717,7 @@ export class MikroOrmProductRepository implements ProductRepository {
         id: product.shop.id,
         publicId: product.shop.publicId,
         shopName: product.shop.shopName,
+        slug: product.shop.slug,
       },
       categoryId: product.category?.id,
       title: product.title,

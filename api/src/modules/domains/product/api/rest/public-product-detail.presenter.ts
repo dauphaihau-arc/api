@@ -9,6 +9,7 @@ export const toPublicProductDetailResponse = (
     id: product.shop.id,
     public_id: product.shop.publicId,
     shop_name: product.shop.shopName,
+    slug: product.shop.slug,
   },
   category_id: product.categoryId,
   title: product.title,

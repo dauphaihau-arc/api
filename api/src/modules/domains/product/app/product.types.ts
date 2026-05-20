@@ -193,6 +193,7 @@ export interface PublicProductListItem {
     id: string;
     publicId?: string;
     shopName: string;
+    slug: string;
   };
   categoryId?: string;
   title: string;
@@ -232,6 +233,7 @@ export interface PublicProductDetail {
     id: string;
     publicId?: string;
     shopName: string;
+    slug: string;
   };
   categoryId?: string;
   title: string;

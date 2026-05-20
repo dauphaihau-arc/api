@@ -29,6 +29,10 @@ export class ShopEntity extends AbstractBaseEntity {
   @Unique()
   shopName!: string;
 
+  @Property({ fieldName: 'slug', length: 255 })
+  @Unique()
+  slug!: string;
+
   @Property({ fieldName: 'description', nullable: true })
   description?: string;
 

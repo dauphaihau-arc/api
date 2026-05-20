@@ -18,6 +18,7 @@ export class MikroOrmShopRepository implements ShopRepository {
     const shop = repository.create({
       ownerUser: em.getReference(CurrentUserEntity, input.ownerUserId),
       shopName: input.shopName,
+      slug: input.slug,
       status: 'active',
     });
 
@@ -54,6 +55,16 @@ export class MikroOrmShopRepository implements ShopRepository {
     return shop ? this.toSummary(shop) : null;
   }
 
+  async findBySlug(slug: string): Promise<ShopSummary | null> {
+    const repository = this.entityManager.fork().getRepository(ShopEntity);
+    const shop = await repository.findOne(
+      { slug },
+      { populate: ['ownerUser'] }
+    );
+
+    return shop ? this.toSummary(shop) : null;
+  }
+
   async findOwnedById(
     id: string,
     ownerUserId: string
@@ -76,6 +87,7 @@ export class MikroOrmShopRepository implements ShopRepository {
       publicId: shop.publicId,
       ownerUserId: shop.ownerUser.id,
       shopName: shop.shopName,
+      slug: shop.slug,
       status: shop.status,
     };
   }
