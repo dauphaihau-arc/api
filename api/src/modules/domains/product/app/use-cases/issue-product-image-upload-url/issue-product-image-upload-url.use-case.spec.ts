@@ -38,11 +38,13 @@ describe('IssueProductImageUploadUrlUseCase', () => {
       findById: jest.fn(),
       findByOwnerUserId: jest.fn(),
       findByShopName: jest.fn(),
+      findBySlug: jest.fn(),
       findOwnedById: jest.fn().mockResolvedValue({
         id: 'shop-1',
         publicId: 'shoppub0001',
         ownerUserId: actor.userId,
         shopName: 'owner-shop',
+        slug: 'owner-shop',
         status: 'active',
       }),
     };
@@ -68,7 +70,7 @@ describe('IssueProductImageUploadUrlUseCase', () => {
         variants: [],
         inventory: [],
       }),
-      findPublicById: jest.fn(),
+      findPublicByShopSlugAndProductSlug: jest.fn(),
       listByShop: jest.fn(),
       listPublic: jest.fn(),
       replaceImages: jest.fn(),

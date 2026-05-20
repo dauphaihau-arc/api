@@ -231,6 +231,7 @@ export class OrderCheckoutService {
           id: order.id,
           shopId: order.shop.id,
           shopName: order.shop.shopName,
+          shopSlug: order.shop.slug,
         })),
       };
     });

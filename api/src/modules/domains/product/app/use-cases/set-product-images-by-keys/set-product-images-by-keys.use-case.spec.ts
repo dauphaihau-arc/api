@@ -37,7 +37,7 @@ describe('SetProductImagesByKeysUseCase', () => {
     const productRepository: jest.Mocked<ProductRepository> = {
       createDraft: jest.fn(),
       findById: jest.fn().mockResolvedValue(product),
-      findPublicById: jest.fn(),
+      findPublicByShopSlugAndProductSlug: jest.fn(),
       listByShop: jest.fn(),
       listPublic: jest.fn(),
       replaceImages: jest.fn().mockResolvedValue({
@@ -68,10 +68,12 @@ describe('SetProductImagesByKeysUseCase', () => {
       findById: jest.fn(),
       findByOwnerUserId: jest.fn(),
       findByShopName: jest.fn(),
+      findBySlug: jest.fn(),
       findOwnedById: jest.fn().mockResolvedValue({
         id: 'shop-owner-1',
         ownerUserId: actor.userId,
         shopName: 'owner-shop',
+        slug: 'owner-shop',
         status: 'active',
       }),
     };

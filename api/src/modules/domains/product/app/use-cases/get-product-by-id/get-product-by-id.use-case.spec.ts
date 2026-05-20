@@ -25,7 +25,7 @@ describe('GetProductByIdUseCase', () => {
     return {
       createDraft: jest.fn(),
       findById: jest.fn().mockResolvedValue(product),
-      findPublicById: jest.fn(),
+      findPublicByShopSlugAndProductSlug: jest.fn(),
       listByShop: jest.fn(),
       listPublic: jest.fn(),
       replaceImages: jest.fn(),

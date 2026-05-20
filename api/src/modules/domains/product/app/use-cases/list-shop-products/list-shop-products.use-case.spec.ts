@@ -26,7 +26,7 @@ describe('ListShopProductsUseCase', () => {
     return {
       createDraft: jest.fn(),
       findById: jest.fn(),
-      findPublicById: jest.fn(),
+      findPublicByShopSlugAndProductSlug: jest.fn(),
       listByShop: jest.fn().mockResolvedValue({
         items: [draftProduct],
         meta: {

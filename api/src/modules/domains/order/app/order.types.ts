@@ -19,6 +19,7 @@ export interface CreatedOrderShopRef {
   id: string;
   shopId: string;
   shopName: string;
+  shopSlug: string;
 }
 
 export interface CreateOrderResult {
@@ -29,6 +30,7 @@ export interface CreateOrderResult {
 export interface OrderListProduct {
   id: string;
   title: string;
+  slug: string;
   imageUrl?: string;
   quantity: number;
   price: number;
@@ -37,6 +39,7 @@ export interface OrderListProduct {
   variantGroupName?: string;
   variantSubGroupName?: string;
   productId: string;
+  shopSlug: string;
   percentCouponPercent: number | null;
 }
 
@@ -44,6 +47,7 @@ export interface OrderListShop {
   id: string;
   shopId: string;
   shopName: string;
+  shopSlug: string;
   paymentType: string;
   products: OrderListProduct[];
   promoCodes: string[];
@@ -76,6 +80,7 @@ export interface PricedCartItem {
   productId: string;
   shopId: string;
   shopName: string;
+  shopSlug: string;
   title: string;
   imageUrl?: string;
   quantity: number;

@@ -336,7 +336,9 @@ export class MikroOrmCartRepository implements CartRepository {
         item.product.variantType ?? ProductVariantType.NONE,
         item.product.variantGroupName,
         item.product.variantSubGroupName,
-        item.shop.shopName
+        item.shop.shopName,
+        item.product.slug,
+        item.shop.slug
       ),
     };
   }
@@ -348,13 +350,17 @@ export class MikroOrmCartRepository implements CartRepository {
     variantType?: string,
     variantGroupName?: string,
     variantSubGroupName?: string,
-    shopName?: string
+    shopName?: string,
+    productSlug?: string,
+    shopSlug?: string
   ): CartInventoryCandidate {
     return {
       inventoryId: inventory.id,
       productId: inventory.product.id,
+      productSlug: productSlug ?? inventory.product.slug,
       shopId: inventory.shop.id,
       shopName: shopName ?? inventory.shop.shopName,
+      shopSlug: shopSlug ?? inventory.shop.slug,
       title: title ?? inventory.product.title,
       variantType: variantType ?? inventory.product.variantType ?? ProductVariantType.NONE,
       variantGroupName: variantGroupName ?? inventory.product.variantGroupName,

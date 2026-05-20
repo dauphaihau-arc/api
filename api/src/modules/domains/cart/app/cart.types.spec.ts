@@ -15,8 +15,10 @@ describe('buildCartResponse', () => {
           inventory: {
             inventoryId: 'inventory-1',
             productId: 'product-1',
+            productSlug: 'mug',
             shopId: 'shop-1',
             shopName: 'Clay House',
+            shopSlug: 'clay-house',
             title: 'Mug',
             variantType: 'none',
             stock: 9,
@@ -34,8 +36,10 @@ describe('buildCartResponse', () => {
           inventory: {
             inventoryId: 'inventory-2',
             productId: 'product-2',
+            productSlug: 'bowl',
             shopId: 'shop-1',
             shopName: 'Clay House',
+            shopSlug: 'clay-house',
             title: 'Bowl',
             variantType: 'single',
             variantName: 'Large',
@@ -66,6 +70,10 @@ describe('buildCartResponse', () => {
                 unit_price: 15,
                 product: {
                   id: 'product-1',
+                  slug: 'mug',
+                  shop: {
+                    slug: 'clay-house',
+                  },
                   title: 'Mug',
                   variant_type: 'none',
                   variant_group_name: undefined,
@@ -88,6 +96,10 @@ describe('buildCartResponse', () => {
                 unit_price: 18,
                 product: {
                   id: 'product-2',
+                  slug: 'bowl',
+                  shop: {
+                    slug: 'clay-house',
+                  },
                   title: 'Bowl',
                   variant_type: 'single',
                   variant_group_name: undefined,
@@ -113,6 +125,10 @@ describe('buildCartResponse', () => {
             item_id: 'item-1',
             product: {
               id: 'product-1',
+              slug: 'mug',
+              shop: {
+                slug: 'clay-house',
+              },
               title: 'Mug',
               image_url: 'https://cdn.example.com/dev/public/mug.jpg',
             },
@@ -125,6 +141,10 @@ describe('buildCartResponse', () => {
             item_id: 'item-2',
             product: {
               id: 'product-2',
+              slug: 'bowl',
+              shop: {
+                slug: 'clay-house',
+              },
               title: 'Bowl',
               image_url: undefined,
             },
@@ -162,8 +182,10 @@ describe('buildCartResponse', () => {
           inventory: {
             inventoryId: 'inventory-3',
             productId: 'product-3',
+            productSlug: 'studio-pullover-hoodie',
             shopId: 'shop-2',
             shopName: 'Reed Workshop',
+            shopSlug: 'reed-workshop',
             title: 'Studio Pullover Hoodie',
             variantType: 'single',
             stock: 2,

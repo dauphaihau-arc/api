@@ -1,8 +1,10 @@
 export interface CartInventoryCandidate {
   inventoryId: string;
   productId: string;
+  productSlug: string;
   shopId: string;
   shopName: string;
+  shopSlug: string;
   title: string;
   variantType: string;
   variantGroupName?: string;
@@ -38,6 +40,10 @@ export interface CartProductItemResponse {
   unit_price: number;
   product: {
     id: string;
+    slug: string;
+    shop: {
+      slug: string;
+    };
     title: string;
     variant_type: string;
     variant_group_name?: string;
@@ -74,6 +80,10 @@ export interface CartResponse {
       item_id: string;
       product: {
         id: string;
+        slug: string;
+        shop: {
+          slug: string;
+        };
         title: string;
         image_url?: string;
       };
@@ -150,6 +160,10 @@ export function buildCartResponse(
       unit_price: unitPrice,
       product: {
         id: item.inventory.productId,
+        slug: item.inventory.productSlug,
+        shop: {
+          slug: item.inventory.shopSlug,
+        },
         title: item.inventory.title,
         variant_type: item.inventory.variantType,
         variant_group_name: item.inventory.variantGroupName,
@@ -183,6 +197,10 @@ export function buildCartResponse(
         item_id: item.id,
         product: {
           id: item.inventory.productId,
+          slug: item.inventory.productSlug,
+          shop: {
+            slug: item.inventory.shopSlug,
+          },
           title: item.inventory.title,
           image_url: item.inventory.imageUrl,
         },

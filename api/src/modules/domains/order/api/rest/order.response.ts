@@ -11,6 +11,7 @@ export function toCreateOrderResponse(result: CreateOrderResult) {
       shop: {
         id: orderShop.shopId,
         shop_name: orderShop.shopName,
+        slug: orderShop.shopSlug,
       },
     })),
   };
@@ -21,6 +22,7 @@ export function toCheckoutSessionOrderResponse(result: CreateOrderResult) {
     order_shops: result.orderShops.map((orderShop) => ({
       shop: {
         shop_name: orderShop.shopName,
+        slug: orderShop.shopSlug,
       },
     })),
   };
@@ -33,6 +35,7 @@ export function toOrderListResponse(result: OrderListResult) {
       shop: {
         id: orderShop.shopId,
         shop_name: orderShop.shopName,
+        slug: orderShop.shopSlug,
       },
       payment: {
         type: orderShop.paymentType,
@@ -40,6 +43,10 @@ export function toOrderListResponse(result: OrderListResult) {
       products: orderShop.products.map((product) => ({
         product: {
           id: product.productId,
+          slug: product.slug,
+          shop: {
+            slug: product.shopSlug,
+          },
           variant_group_name: product.variantGroupName,
           variant_sub_group_name: product.variantSubGroupName,
           shipping: {},
