@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  ForbiddenException,
   Get,
   Header,
   NotFoundException,
@@ -303,9 +304,17 @@ export class ShopProductsController {
 
     const shop = await this.shopRepository.findOwnedById(shopId, currentUser.userId);
 
-    if (!shop) {
+    if (shop) {
+      return;
+    }
+
+    const existingShop = await this.shopRepository.findById(shopId);
+
+    if (!existingShop) {
       throw new NotFoundException('Shop was not found');
     }
+
+    throw new ForbiddenException('You do not own this shop');
   }
 
   private async getProductOrThrow(
