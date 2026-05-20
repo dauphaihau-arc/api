@@ -19,6 +19,8 @@ import { CreateOrderFromCartUseCase } from './app/use-cases/create-order-from-ca
 import { GetOrdersByCheckoutSessionUseCase } from './app/use-cases/get-orders-by-checkout-session/get-orders-by-checkout-session.use-case';
 import { HandleStripeWebhookUseCase } from './app/use-cases/handle-stripe-webhook/handle-stripe-webhook.use-case';
 import { ListOrdersUseCase } from './app/use-cases/list-orders/list-orders.use-case';
+import { OrderCheckoutOutboxService } from './app/order-checkout-outbox.service';
+import { OutboxEventEntity } from './infra/persistence/entities/outbox-event.entity';
 import { OrderEntity } from './infra/persistence/entities/order.entity';
 import { OrderItemEntity } from './infra/persistence/entities/order-item.entity';
 import { PaymentModule } from '../../shared/payment/payment.module';
@@ -33,6 +35,7 @@ import { UserModule } from '../user/user.module';
     PaymentModule,
     UserModule,
     MikroOrmModule.forFeature([
+      OutboxEventEntity,
       OrderEntity,
       OrderItemEntity,
       CouponUsageEntity,
@@ -46,6 +49,7 @@ import { UserModule } from '../user/user.module';
   controllers: [OrderController, OrderWebhookController],
   providers: [
     OrderCheckoutService,
+    OrderCheckoutOutboxService,
     OrderPaymentService,
     CreateOrderFromCartUseCase,
     CreateOrderForBuyNowUseCase,
@@ -53,5 +57,6 @@ import { UserModule } from '../user/user.module';
     HandleStripeWebhookUseCase,
     ListOrdersUseCase,
   ],
+  exports: [OrderCheckoutOutboxService],
 })
 export class OrderModule {}

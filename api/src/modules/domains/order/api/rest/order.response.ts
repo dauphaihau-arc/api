@@ -6,6 +6,7 @@ import type {
 export function toCreateOrderResponse(result: CreateOrderResult) {
   return {
     checkout_session_url: result.checkoutSessionUrl,
+    checkout_pending: result.checkoutPending ?? false,
     order_shops: result.orderShops.map((orderShop) => ({
       id: orderShop.id,
       shop: {

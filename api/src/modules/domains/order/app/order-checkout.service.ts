@@ -12,12 +12,12 @@ import { CouponUsageEntity } from '../../coupon/infra/persistence/entities/coupo
 import { ProductInventoryEntity } from '../../product/infra/persistence/entities/product-inventory.entity';
 import { ProductEntity } from '../../product/infra/persistence/entities/product.entity';
 import { ShopEntity } from '../../shop/infra/persistence/entities/shop.entity';
-import { PaymentGateway } from '~/modules/shared/payment/app/ports/payment-gateway';
 import { PaymentType } from '../domain/enums/payment-type.enum';
 import { OrderShippingStatus } from '../domain/enums/order-shipping-status.enum';
 import { OrderStatus } from '../domain/enums/order-status.enum';
 import { OrderEntity } from '../infra/persistence/entities/order.entity';
 import { OrderItemEntity } from '../infra/persistence/entities/order-item.entity';
+import { OrderCheckoutOutboxService } from './order-checkout-outbox.service';
 import type {
   CreateOrderResult,
   ShippingAddressInput,
@@ -30,7 +30,7 @@ export class OrderCheckoutService {
   constructor(
     private readonly entityManager: EntityManager,
     private readonly couponPricingService: CouponPricingService,
-    private readonly paymentGateway: PaymentGateway
+    private readonly orderCheckoutOutboxService: OrderCheckoutOutboxService
   ) {}
 
   async createOrders(
@@ -61,14 +61,13 @@ export class OrderCheckoutService {
       throw new BadRequestException('No selected cart items to order');
     }
 
-    return this.entityManager.transactional(async (entityManager) => {
+    const result = await this.entityManager.transactional(async (entityManager) => {
       const inventoryRepository = entityManager.getRepository(ProductInventoryEntity);
       const orderRepository = entityManager.getRepository(OrderEntity);
       const orderItemRepository = entityManager.getRepository(OrderItemEntity);
       const usageRepository = entityManager.getRepository(CouponUsageEntity);
-      let checkoutSessionUrl: string | undefined;
-
       const createdOrders: OrderEntity[] = [];
+      let checkoutOutboxEventId: string | undefined;
 
       for (const shop of pricedCart.shops) {
         const shopEntity = await entityManager.getRepository(ShopEntity).findOne({ id: shop.shopId });
@@ -82,7 +81,7 @@ export class OrderCheckoutService {
           paymentType: input.paymentType,
           status: input.paymentType === PaymentType.CASH
             ? OrderStatus.PENDING
-            : OrderStatus.AWAITING_PAYMENT,
+            : OrderStatus.CHECKOUT_PENDING,
           shippingStatus: OrderShippingStatus.PRE_TRANSIT,
           currency,
           subtotal: shop.subtotal,
@@ -182,51 +181,45 @@ export class OrderCheckoutService {
       }
 
       if (input.paymentType === PaymentType.CARD) {
-        const checkoutSession = await this.paymentGateway.createStripeCheckoutSession({
-          customerEmail: userEmail,
-          currency,
-          metadata: {
-            user_id: userId,
-            cart_id: cartId,
-          },
-          lineItems: pricedCart.shops.flatMap((shop) =>
-            shop.items.map((item) => ({
-              name: item.title,
-              imageUrl: item.imageUrl,
-              unitAmount: item.effectiveUnitPrice,
-              quantity: item.quantity,
-            }))
-          ),
-          shippingAmount: pricedCart.totalShippingFee,
-          discountAmount: pricedCart.totalDiscount,
-          shippingAddress: {
-            fullName: input.shippingAddress.fullName,
-            address1: input.shippingAddress.address1,
-            address2: input.shippingAddress.address2,
-            city: input.shippingAddress.city,
-            country: input.shippingAddress.country,
-            state: input.shippingAddress.state,
-            zip: input.shippingAddress.zip,
-            phone: input.shippingAddress.phone,
-          },
-        });
+        const outboxEvent = await this.orderCheckoutOutboxService.createCheckoutSessionRequestedEvent(
+          entityManager,
+          {
+            userId,
+            userEmail,
+            cartId,
+            orderIds: createdOrders.map((order) => order.id),
+            currency,
+            lineItems: pricedCart.shops.flatMap((shop) =>
+              shop.items.map((item) => ({
+                name: item.title,
+                imageUrl: item.imageUrl,
+                unitAmount: item.effectiveUnitPrice,
+                quantity: item.quantity,
+              }))
+            ),
+            shippingAmount: pricedCart.totalShippingFee,
+            discountAmount: pricedCart.totalDiscount,
+            shippingAddress: {
+              fullName: input.shippingAddress.fullName,
+              address1: input.shippingAddress.address1,
+              address2: input.shippingAddress.address2,
+              city: input.shippingAddress.city,
+              country: input.shippingAddress.country,
+              state: input.shippingAddress.state,
+              zip: input.shippingAddress.zip,
+              phone: input.shippingAddress.phone,
+            },
+          }
+        );
 
-        for (const order of createdOrders) {
-          order.paymentDetails = {
-            ...order.paymentDetails,
-            checkout_session_id: checkoutSession.id,
-            checkout_session_url: checkoutSession.url,
-            checkout_session_expires_at: checkoutSession.expiresAt?.toISOString(),
-          };
-        }
-
-        checkoutSessionUrl = checkoutSession.url;
+        checkoutOutboxEventId = outboxEvent.id;
       }
 
       await entityManager.flush();
 
       return {
-        checkoutSessionUrl,
+        checkoutPending: input.paymentType === PaymentType.CARD,
+        checkoutOutboxEventId,
         orderShops: createdOrders.map((order) => ({
           id: order.id,
           shopId: order.shop.id,
@@ -235,5 +228,15 @@ export class OrderCheckoutService {
         })),
       };
     });
+
+    const checkoutSessionUrl = result.checkoutOutboxEventId
+      ? await this.orderCheckoutOutboxService.processEventById(result.checkoutOutboxEventId)
+      : undefined;
+
+    return {
+      checkoutPending: result.checkoutPending && !checkoutSessionUrl,
+      checkoutSessionUrl,
+      orderShops: result.orderShops,
+    };
   }
 }

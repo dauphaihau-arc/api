@@ -25,6 +25,7 @@ export interface CreatedOrderShopRef {
 export interface CreateOrderResult {
   orderShops: CreatedOrderShopRef[];
   checkoutSessionUrl?: string;
+  checkoutPending?: boolean;
 }
 
 export interface OrderListProduct {
