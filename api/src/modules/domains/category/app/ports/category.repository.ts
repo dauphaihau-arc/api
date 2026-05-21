@@ -1,5 +1,5 @@
 import type {
-  CategorySearchSuggestion,
+  CategorySuggestion,
   CategorySummary,
   CreateCategoryAttributeInput,
   CreateCategoryInput
@@ -15,5 +15,5 @@ export abstract class CategoryRepository {
   abstract searchSuggestions(
     name: string,
     limit: number
-  ): Promise<CategorySearchSuggestion[]>;
+  ): Promise<CategorySuggestion[]>;
 }

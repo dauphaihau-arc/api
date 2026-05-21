@@ -23,7 +23,7 @@ export interface CategoryAttributeOptionSummary {
   rank: number;
 }
 
-export interface CategorySearchSuggestion {
+export interface CategorySuggestion {
   id: string;
   lastNameCategory: string;
   categoriesRelated: string[];

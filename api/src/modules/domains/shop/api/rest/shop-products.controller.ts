@@ -5,6 +5,8 @@ import {
   ForbiddenException,
   Get,
   Header,
+  HttpCode,
+  HttpStatus,
   NotFoundException,
   Param,
   Patch,
@@ -149,19 +151,18 @@ export class ShopProductsController {
   }
 
   @Patch(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
   @Header('Cache-Control', 'private, no-store')
   async updateProduct(
     @Param('shopId') shopId: string,
     @Param('id') id: string,
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() body: UpdateProductDto
-  ): Promise<ProductDraftSummary> {
+  ): Promise<void> {
     await this.assertActorCanManageProductShop(currentUser, shopId, id);
 
-    return this.updateProductDetailsUseCase.execute(currentUser, id, body)
-      .then((result) =>
-        resolveOrThrow(result, mapProductAppErrorToHttpException)
-      );
+    const result = await this.updateProductDetailsUseCase.execute(currentUser, id, body);
+    resolveOrThrow(result, mapProductAppErrorToHttpException);
   }
 
   @Post(':id/publish')
@@ -180,6 +181,7 @@ export class ShopProductsController {
   }
 
   @Put(':id/images')
+  @HttpCode(HttpStatus.NO_CONTENT)
   @Header('Cache-Control', 'private, no-store')
   @UseInterceptors(FilesInterceptor('images', 10))
   async setProductImages(
@@ -188,95 +190,89 @@ export class ShopProductsController {
     @CurrentUser() currentUser: AuthenticatedUser,
     @UploadedFiles() imageFiles: UploadedProductImageFile[] = [],
     @Body() _body: unknown
-  ): Promise<ProductDraftSummary> {
+  ): Promise<void> {
     await this.assertActorCanManageProductShop(currentUser, shopId, id);
     this.validateImageFiles(imageFiles);
 
-    return this.setProductImagesUseCase.execute(currentUser, id, {
+    const result = await this.setProductImagesUseCase.execute(currentUser, id, {
       files: imageFiles,
-    }).then((result) =>
-      resolveOrThrow(result, mapProductAppErrorToHttpException)
-    );
+    });
+    resolveOrThrow(result, mapProductAppErrorToHttpException);
   }
 
   @Put(':id/images-by-keys')
+  @HttpCode(HttpStatus.NO_CONTENT)
   @Header('Cache-Control', 'private, no-store')
   async setProductImagesByKeys(
     @Param('shopId') shopId: string,
     @Param('id') id: string,
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() body: SetProductImagesByKeysDto
-  ): Promise<ProductDraftSummary> {
+  ): Promise<void> {
     await this.assertActorCanManageProductShop(currentUser, shopId, id);
 
-    return this.setProductImagesByKeysUseCase.execute(currentUser, id, body)
-      .then((result) =>
-        resolveOrThrow(result, mapProductAppErrorToHttpException)
-      );
+    const result = await this.setProductImagesByKeysUseCase.execute(currentUser, id, body);
+    resolveOrThrow(result, mapProductAppErrorToHttpException);
   }
 
   @Put(':id/attributes')
+  @HttpCode(HttpStatus.NO_CONTENT)
   @Header('Cache-Control', 'private, no-store')
   async setProductAttributes(
     @Param('shopId') shopId: string,
     @Param('id') id: string,
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() body: SetProductAttributesDto
-  ): Promise<ProductDraftSummary> {
+  ): Promise<void> {
     await this.assertActorCanManageProductShop(currentUser, shopId, id);
 
-    return this.setProductAttributesUseCase.execute(currentUser, id, body)
-      .then((result) =>
-        resolveOrThrow(result, mapProductAppErrorToHttpException)
-      );
+    const result = await this.setProductAttributesUseCase.execute(currentUser, id, body);
+    resolveOrThrow(result, mapProductAppErrorToHttpException);
   }
 
   @Put(':id/variants')
+  @HttpCode(HttpStatus.NO_CONTENT)
   @Header('Cache-Control', 'private, no-store')
   async setProductVariants(
     @Param('shopId') shopId: string,
     @Param('id') id: string,
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() body: SetProductVariantsDto
-  ): Promise<ProductDraftSummary> {
+  ): Promise<void> {
     await this.assertActorCanManageProductShop(currentUser, shopId, id);
 
-    return this.setProductVariantsUseCase.execute(currentUser, id, body)
-      .then((result) =>
-        resolveOrThrow(result, mapProductAppErrorToHttpException)
-      );
+    const result = await this.setProductVariantsUseCase.execute(currentUser, id, body);
+    resolveOrThrow(result, mapProductAppErrorToHttpException);
   }
 
   @Put(':id/inventory')
+  @HttpCode(HttpStatus.NO_CONTENT)
   @Header('Cache-Control', 'private, no-store')
   async setProductInventory(
     @Param('shopId') shopId: string,
     @Param('id') id: string,
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() body: SetProductInventoryDto
-  ): Promise<ProductDraftSummary> {
+  ): Promise<void> {
     await this.assertActorCanManageProductShop(currentUser, shopId, id);
 
-    return this.setProductInventoryUseCase.execute(currentUser, id, body)
-      .then((result) =>
-        resolveOrThrow(result, mapProductAppErrorToHttpException)
-      );
+    const result = await this.setProductInventoryUseCase.execute(currentUser, id, body);
+    resolveOrThrow(result, mapProductAppErrorToHttpException);
   }
 
   @Put(':id/shipping')
+  @HttpCode(HttpStatus.NO_CONTENT)
   @Header('Cache-Control', 'private, no-store')
   async setProductShipping(
     @Param('shopId') shopId: string,
     @Param('id') id: string,
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() body: SetProductShippingDto
-  ): Promise<ProductDraftSummary> {
+  ): Promise<void> {
     await this.assertActorCanManageProductShop(currentUser, shopId, id);
 
-    return this.setProductShippingUseCase.execute(currentUser, id, body)
-      .then((result) =>
-        resolveOrThrow(result, mapProductAppErrorToHttpException)
-      );
+    const result = await this.setProductShippingUseCase.execute(currentUser, id, body);
+    resolveOrThrow(result, mapProductAppErrorToHttpException);
   }
 
   private async assertActorCanManageProductShop(

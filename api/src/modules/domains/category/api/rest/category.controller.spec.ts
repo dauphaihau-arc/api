@@ -5,18 +5,18 @@ import { CategoryNotFoundError } from '../../app/errors/category-app.error';
 import { CategoryController } from './category.controller';
 
 describe('CategoryController', () => {
-  const createCategoryUseCase = { execute: jest.fn() } as never;
-  const listCategoriesUseCase = { execute: jest.fn() } as never;
-  const createCategoryAttributeUseCase = { execute: jest.fn() } as never;
-  const getCategoryAttributesUseCase = { execute: jest.fn() } as never;
-  const searchCategoriesUseCase = { execute: jest.fn() } as never;
+  const createCategoryUseCase = { execute: jest.fn() };
+  const listCategoriesUseCase = { execute: jest.fn() };
+  const createCategoryAttributeUseCase = { execute: jest.fn() };
+  const getCategoryAttributesUseCase = { execute: jest.fn() };
+  const suggestCategoriesUseCase = { execute: jest.fn() };
 
   const controller = new CategoryController(
     createCategoryUseCase,
     listCategoriesUseCase,
     createCategoryAttributeUseCase,
     getCategoryAttributesUseCase,
-    searchCategoriesUseCase
+    suggestCategoriesUseCase
   );
 
   beforeEach(() => {
@@ -27,6 +27,13 @@ describe('CategoryController', () => {
     const handler = CategoryController.prototype.getCategoryAttributes;
 
     expect(Reflect.getMetadata(PATH_METADATA, handler)).toBe(':id/attributes');
+    expect(Reflect.getMetadata(METHOD_METADATA, handler)).toBe(RequestMethod.GET);
+  });
+
+  it('registers GET suggestions on the controller method', () => {
+    const handler = CategoryController.prototype.suggestCategories;
+
+    expect(Reflect.getMetadata(PATH_METADATA, handler)).toBe('suggestions');
     expect(Reflect.getMetadata(METHOD_METADATA, handler)).toBe(RequestMethod.GET);
   });
 
@@ -85,6 +92,27 @@ describe('CategoryController', () => {
       },
     ]);
     expect(listCategoriesUseCase.execute).toHaveBeenCalledWith(undefined);
+  });
+
+  it('returns suggested categories in snake_case for the HTTP boundary', async () => {
+    suggestCategoriesUseCase.execute.mockResolvedValue([
+      {
+        id: 'category-1',
+        lastNameCategory: 'Mugs',
+        categoriesRelated: ['Home', 'Kitchen', 'Mugs'],
+      },
+    ]);
+
+    await expect(controller.suggestCategories({ name: 'mug', limit: 3 })).resolves.toEqual({
+      categories: [
+        {
+          id: 'category-1',
+          last_name_category: 'Mugs',
+          categories_related: ['Home', 'Kitchen', 'Mugs'],
+        },
+      ],
+    });
+    expect(suggestCategoriesUseCase.execute).toHaveBeenCalledWith('mug', 3);
   });
 
   it('returns the category attributes for an existing category', async () => {

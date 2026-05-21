@@ -1,17 +1,17 @@
 import { Injectable } from '@nestjs/common';
 import { CategoryRepository } from '../../ports/category.repository';
-import type { CategorySearchSuggestion } from '../../category.types';
+import type { CategorySuggestion } from '../../category.types';
 
-export const CATEGORY_SEARCH_DEFAULT_LIMIT = 6;
+export const CATEGORY_SUGGESTIONS_DEFAULT_LIMIT = 6;
 
 @Injectable()
-export class SearchCategoriesUseCase {
+export class SuggestCategoriesUseCase {
   constructor(private readonly categoryRepository: CategoryRepository) {}
 
   async execute(
     name: string,
-    limit: number = CATEGORY_SEARCH_DEFAULT_LIMIT
-  ): Promise<CategorySearchSuggestion[]> {
+    limit: number = CATEGORY_SUGGESTIONS_DEFAULT_LIMIT
+  ): Promise<CategorySuggestion[]> {
     const trimmedName = name.trim();
 
     if (!trimmedName) {

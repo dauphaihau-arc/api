@@ -3,7 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { StorageService } from '~/modules/shared/storage/app/ports/storage.service';
 import { CategoryRepository } from '../app/ports/category.repository';
 import type {
-  CategorySearchSuggestion,
+  CategorySuggestion,
   CategorySummary,
   CreateCategoryAttributeInput,
   CreateCategoryInput
@@ -108,7 +108,7 @@ export class MikroOrmCategoryRepository implements CategoryRepository {
   async searchSuggestions(
     name: string,
     limit: number
-  ): Promise<CategorySearchSuggestion[]> {
+  ): Promise<CategorySuggestion[]> {
     const repository = this.entityManager.fork().getRepository(CategoryEntity);
     const categories = await repository.findAll({
       populate: ['parent'],
@@ -142,7 +142,7 @@ export class MikroOrmCategoryRepository implements CategoryRepository {
     const matches = categories
       .filter((category) => category.name.toLowerCase().includes(normalizedQuery))
       .slice(0, limit);
-    const results: CategorySearchSuggestion[] = [];
+    const results: CategorySuggestion[] = [];
     const seenCategoryIds = new Set<string>();
 
     for (const match of matches) {
@@ -244,14 +244,14 @@ export class MikroOrmCategoryRepository implements CategoryRepository {
     pathToCategory: string[],
     childrenByParentId: Map<string, CategoryEntity[]>,
     limit: number
-  ): CategorySearchSuggestion[] {
+  ): CategorySuggestion[] {
     const directChildren = childrenByParentId.get(category.id) ?? [];
 
     if (directChildren.length === 0 || limit <= 0) {
       return [];
     }
 
-    const results: CategorySearchSuggestion[] = [];
+    const results: CategorySuggestion[] = [];
     const queue = directChildren.map((child) => ({
       category: child,
       path: [...pathToCategory, child.name],

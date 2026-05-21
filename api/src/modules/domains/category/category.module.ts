@@ -6,7 +6,7 @@ import { CreateCategoryAttributeUseCase } from './app/use-cases/create-category-
 import { CreateCategoryUseCase } from './app/use-cases/create-category/create-category.use-case';
 import { GetCategoryAttributesUseCase } from './app/use-cases/get-category-attributes/get-category-attributes.use-case';
 import { ListCategoriesUseCase } from './app/use-cases/list-categories/list-categories.use-case';
-import { SearchCategoriesUseCase } from './app/use-cases/search-categories/search-categories.use-case';
+import { SuggestCategoriesUseCase } from './app/use-cases/suggest-categories/suggest-categories.use-case';
 import { CategoryController } from './api/rest/category.controller';
 import { MikroOrmCategoryRepository } from './infra/mikro-orm-category.repository';
 import { CategoryAttributeOptionEntity } from './infra/persistence/entities/category-attribute-option.entity';
@@ -34,7 +34,7 @@ import { StorageModule } from '../../shared/storage/storage.module';
     ListCategoriesUseCase,
     CreateCategoryAttributeUseCase,
     GetCategoryAttributesUseCase,
-    SearchCategoriesUseCase,
+    SuggestCategoriesUseCase,
   ],
   exports: [
     CategoryRepository,
@@ -42,7 +42,7 @@ import { StorageModule } from '../../shared/storage/storage.module';
     ListCategoriesUseCase,
     CreateCategoryAttributeUseCase,
     GetCategoryAttributesUseCase,
-    SearchCategoriesUseCase,
+    SuggestCategoriesUseCase,
   ],
 })
 export class CategoryModule {}

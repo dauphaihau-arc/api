@@ -1,7 +1,7 @@
 import type { CategoryRepository } from '../../ports/category.repository';
-import { SearchCategoriesUseCase } from './search-categories.use-case';
+import { SuggestCategoriesUseCase } from './suggest-categories.use-case';
 
-describe('SearchCategoriesUseCase', () => {
+describe('SuggestCategoriesUseCase', () => {
   function buildRepository(): jest.Mocked<CategoryRepository> {
     return {
       create: jest.fn(),
@@ -20,7 +20,7 @@ describe('SearchCategoriesUseCase', () => {
 
   it('trims the query before delegating to the repository', async () => {
     const repository = buildRepository();
-    const useCase = new SearchCategoriesUseCase(repository);
+    const useCase = new SuggestCategoriesUseCase(repository);
 
     const result = await useCase.execute('  mug  ', 3);
 
@@ -36,7 +36,7 @@ describe('SearchCategoriesUseCase', () => {
 
   it('returns an empty list for blank queries', async () => {
     const repository = buildRepository();
-    const useCase = new SearchCategoriesUseCase(repository);
+    const useCase = new SuggestCategoriesUseCase(repository);
 
     await expect(useCase.execute('   ')).resolves.toEqual([]);
     expect(repository.searchSuggestions).not.toHaveBeenCalled();
