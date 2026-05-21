@@ -10,7 +10,7 @@ import { ProductEntity } from '../product/infra/persistence/entities/product.ent
 import { ProductInventoryEntity } from '../product/infra/persistence/entities/product-inventory.entity';
 import { ProductVariantEntity } from '../product/infra/persistence/entities/product-variant.entity';
 import { ShopEntity } from '../shop/infra/persistence/entities/shop.entity';
-import { OrderController } from './api/rest/order.controller';
+import { MeOrderController } from './api/rest/me-order.controller';
 import { OrderWebhookController } from './api/rest/order-webhook.controller';
 import { OrderCheckoutService } from './app/order-checkout.service';
 import { OrderPaymentService } from './app/order-payment.service';
@@ -46,7 +46,7 @@ import { UserModule } from '../user/user.module';
       ProductVariantEntity,
     ]),
   ],
-  controllers: [OrderController, OrderWebhookController],
+  controllers: [MeOrderController, OrderWebhookController],
   providers: [
     OrderCheckoutService,
     OrderCheckoutOutboxService,

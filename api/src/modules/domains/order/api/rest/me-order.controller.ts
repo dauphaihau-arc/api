@@ -24,9 +24,9 @@ import {
   toOrderListResponse
 } from './order.response';
 
-@Controller('user/orders')
+@Controller('me/orders')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
-export class OrderController {
+export class MeOrderController {
   constructor(
     private readonly listOrdersUseCase: ListOrdersUseCase,
     private readonly createOrderFromCartUseCase: CreateOrderFromCartUseCase,
