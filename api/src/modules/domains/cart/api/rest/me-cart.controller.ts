@@ -29,9 +29,9 @@ import { DeleteCartItemQueryDto } from './dto/delete-cart-item.query.dto';
 import { GetCartQueryDto } from './dto/get-cart.query.dto';
 import { UpdateCartItemDto } from './dto/update-cart-item.dto';
 
-@Controller('user/cart')
+@Controller('me/cart')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
-export class CartController {
+export class MeCartController {
   constructor(
     private readonly couponPricingService: CouponPricingService,
     private readonly getCartUseCase: GetCartUseCase,
