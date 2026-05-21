@@ -23,7 +23,7 @@ export class CouponPricingService {
   constructor(private readonly entityManager: EntityManager) {}
 
   async priceCart(input: {
-    userId: string;
+    userId?: string;
     cart: CartSnapshot;
     shopAdjustments?: ShopAdjustmentInput[];
     shippingAddress?: ShippingAddressInput;
@@ -44,7 +44,7 @@ export class CouponPricingService {
       : [];
     const couponUsageCounts = new Map<string, number>();
 
-    if (coupons.length > 0) {
+    if (coupons.length > 0 && input.userId) {
       const usages = await usageRepository.find({ coupon: { $in: coupons.map((coupon) => coupon.id) }, user: input.userId });
       for (const usage of usages) {
         couponUsageCounts.set(

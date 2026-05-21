@@ -607,8 +607,8 @@
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
-          "nullable": false,
-          "unique": false,
+          "nullable": true,
+          "unique": true,
           "length": null,
           "precision": null,
           "scale": null,
@@ -632,11 +632,97 @@
           "comment": null,
           "enumItems": [],
           "mappedType": "boolean"
+        },
+        "guest_session_id": {
+          "name": "guest_session_id",
+          "type": "varchar(255)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": true,
+          "length": 255,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "string"
+        },
+        "kind": {
+          "name": "kind",
+          "type": "varchar(50)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": false,
+          "length": 50,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "string"
+        },
+        "merged_at": {
+          "name": "merged_at",
+          "type": "timestamptz(6)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": 6,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "datetime"
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamptz(6)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": 6,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "datetime"
         }
       },
       "name": "carts",
       "schema": "public",
       "indexes": [
+        {
+          "columnNames": [
+            "guest_session_id"
+          ],
+          "composite": false,
+          "constraint": false,
+          "keyName": "carts_guest_active_unique",
+          "unique": true,
+          "primary": false,
+          "expression": "CREATE UNIQUE INDEX carts_guest_active_unique ON public.carts USING btree (guest_session_id) WHERE ((guest_session_id IS NOT NULL) AND ((kind)::text = 'active'::text) AND (merged_at IS NULL))"
+        },
+        {
+          "columnNames": [
+            "guest_session_id",
+            "kind"
+          ],
+          "composite": true,
+          "constraint": false,
+          "keyName": "carts_guest_session_id_kind_index",
+          "unique": false,
+          "primary": false
+        },
         {
           "columnNames": [
             "id"
@@ -649,12 +735,23 @@
         },
         {
           "columnNames": [
+            "user_id"
+          ],
+          "composite": false,
+          "constraint": false,
+          "keyName": "carts_user_active_unique",
+          "unique": true,
+          "primary": false,
+          "expression": "CREATE UNIQUE INDEX carts_user_active_unique ON public.carts USING btree (user_id) WHERE ((user_id IS NOT NULL) AND ((kind)::text = 'active'::text) AND (merged_at IS NULL))"
+        },
+        {
+          "columnNames": [
             "user_id",
-            "is_temp"
+            "kind"
           ],
           "composite": true,
           "constraint": false,
-          "keyName": "carts_user_id_is_temp_index",
+          "keyName": "carts_user_id_kind_index",
           "unique": false,
           "primary": false
         }

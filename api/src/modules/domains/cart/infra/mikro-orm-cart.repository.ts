@@ -1,16 +1,24 @@
 import { EntityManager } from '@mikro-orm/postgresql';
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
+import { CART_CONFIG } from '~/config/cart.config';
+import type { CartConfig } from '~/config/cart.config';
 import { CurrentUserEntity } from '~/modules/domains/auth/infra/persistence/entities/current-user.entity';
 import { ProductImageEntity } from '~/modules/domains/product/infra/persistence/entities/product-image.entity';
 import { ProductInventoryEntity } from '~/modules/domains/product/infra/persistence/entities/product-inventory.entity';
 import { ProductVariantType } from '~/modules/domains/product/domain/enums/product-variant-type.enum';
 import { StorageService } from '~/modules/shared/storage/app/ports/storage.service';
-import { CartRepository, type DeleteOwnedCartItemInput, type UpdateOwnedCartItemInput } from '../app/ports/cart.repository';
+import {
+  CartRepository,
+  type DeleteOwnedCartItemInput,
+  type UpdateOwnedCartItemInput,
+} from '../app/ports/cart.repository';
 import type {
+  CartActor,
   CartInventoryCandidate,
   CartItemSnapshot,
-  CartSnapshot
+  CartSnapshot,
 } from '../app/cart.types';
+import { CartKind } from '../domain/enums/cart-kind.enum';
 import { CartEntity } from './persistence/entities/cart.entity';
 import { CartItemEntity } from './persistence/entities/cart-item.entity';
 
@@ -26,7 +34,8 @@ export class MikroOrmCartRepository implements CartRepository {
 
   constructor(
     private readonly entityManager: EntityManager,
-    private readonly storageService: StorageService
+    private readonly storageService: StorageService,
+    @Inject(CART_CONFIG) private readonly cartConfig: CartConfig
   ) {}
 
   async findInventoryCandidateById(
@@ -43,13 +52,13 @@ export class MikroOrmCartRepository implements CartRepository {
     return inventory ? this.toInventoryCandidate(inventory) : null;
   }
 
-  async findOwnedCartById(
-    userId: string,
+  async findCartByIdForActor(
+    actor: CartActor,
     cartId: string
   ): Promise<CartSnapshot | null> {
     const repository = this.entityManager.fork().getRepository(CartEntity);
     const cart = await repository.findOne(
-      { id: cartId, user: userId },
+      { id: cartId, ...this.actorFilter(actor), mergedAt: null },
       {
         populate: [...MikroOrmCartRepository.cartPopulate],
       }
@@ -58,10 +67,10 @@ export class MikroOrmCartRepository implements CartRepository {
     return cart ? this.toCartSnapshot(cart) : null;
   }
 
-  async findActiveCartByUserId(userId: string): Promise<CartSnapshot | null> {
+  async findActiveCart(actor: CartActor): Promise<CartSnapshot | null> {
     const repository = this.entityManager.fork().getRepository(CartEntity);
     const cart = await repository.findOne(
-      { user: userId, isTemp: false },
+      { ...this.actorFilter(actor), kind: CartKind.ACTIVE, mergedAt: null },
       {
         populate: [...MikroOrmCartRepository.cartPopulate],
         orderBy: {
@@ -74,7 +83,7 @@ export class MikroOrmCartRepository implements CartRepository {
   }
 
   async addItemToActiveCart(
-    userId: string,
+    actor: CartActor,
     inventoryId: string,
     quantity: number
   ): Promise<CartSnapshot> {
@@ -91,15 +100,14 @@ export class MikroOrmCartRepository implements CartRepository {
     );
 
     const existingCart = await cartRepository.findOne(
-      { user: userId, isTemp: false },
+      { ...this.actorFilter(actor), kind: CartKind.ACTIVE, mergedAt: null },
       {
         populate: ['items'],
       }
     );
-    const cart = existingCart ?? cartRepository.create({
-      user: entityManager.getReference(CurrentUserEntity, userId),
-      isTemp: false,
-    });
+    const cart = existingCart ?? cartRepository.create(
+      this.createCartOwner(actor, entityManager, CartKind.ACTIVE)
+    );
 
     if (!existingCart) {
       entityManager.persist(cart);
@@ -139,8 +147,8 @@ export class MikroOrmCartRepository implements CartRepository {
     return this.toCartSnapshot(hydratedCart);
   }
 
-  async createTempCart(
-    userId: string,
+  async createBuyNowCart(
+    actor: CartActor,
     inventoryId: string,
     quantity: number
   ): Promise<CartSnapshot> {
@@ -155,10 +163,9 @@ export class MikroOrmCartRepository implements CartRepository {
       }
     );
 
-    const cart = cartRepository.create({
-      user: entityManager.getReference(CurrentUserEntity, userId),
-      isTemp: true,
-    });
+    const cart = cartRepository.create(
+      this.createCartOwner(actor, entityManager, CartKind.BUY_NOW)
+    );
     const item = itemRepository.create({
       cart,
       shop: inventory.shop,
@@ -183,14 +190,14 @@ export class MikroOrmCartRepository implements CartRepository {
     return this.toCartSnapshot(hydratedCart);
   }
 
-  async updateOwnedCartItem(
+  async updateCartItem(
     input: UpdateOwnedCartItemInput
   ): Promise<CartSnapshot | null> {
     const entityManager = this.entityManager.fork();
     const cartRepository = entityManager.getRepository(CartEntity);
     const itemRepository = entityManager.getRepository(CartItemEntity);
 
-    const cart = await this.findCartForMutation(entityManager, input.userId, input.cartId);
+    const cart = await this.findCartForMutation(entityManager, input.actor, input.cartId);
 
     if (!cart) {
       return null;
@@ -250,13 +257,13 @@ export class MikroOrmCartRepository implements CartRepository {
     return this.toCartSnapshot(hydratedCart);
   }
 
-  async deleteOwnedCartItem(
+  async deleteCartItem(
     input: DeleteOwnedCartItemInput
   ): Promise<CartSnapshot | null> {
     const entityManager = this.entityManager.fork();
     const cartRepository = entityManager.getRepository(CartEntity);
     const itemRepository = entityManager.getRepository(CartItemEntity);
-    const cart = await this.findCartForMutation(entityManager, input.userId, input.cartId);
+    const cart = await this.findCartForMutation(entityManager, input.actor, input.cartId);
 
     if (!cart) {
       return null;
@@ -297,25 +304,128 @@ export class MikroOrmCartRepository implements CartRepository {
     return this.toCartSnapshot(hydratedCart);
   }
 
+  async mergeGuestCartIntoUser(
+    guestSessionId: string,
+    userId: string
+  ): Promise<CartSnapshot | null> {
+    const entityManager = this.entityManager.fork();
+    const cartRepository = entityManager.getRepository(CartEntity);
+    const itemRepository = entityManager.getRepository(CartItemEntity);
+
+    const guestCart = await cartRepository.findOne(
+      {
+        guestSessionId,
+        kind: CartKind.ACTIVE,
+        mergedAt: null,
+      },
+      {
+        populate: [...MikroOrmCartRepository.cartPopulate, 'items.shop', 'items.product'],
+      }
+    );
+
+    if (!guestCart) {
+      return this.findActiveCart({ type: 'user', userId });
+    }
+
+    const userCart = await cartRepository.findOne(
+      {
+        user: userId,
+        kind: CartKind.ACTIVE,
+        mergedAt: null,
+      },
+      {
+        populate: [...MikroOrmCartRepository.cartPopulate, 'items.shop', 'items.product'],
+      }
+    );
+
+    if (!userCart) {
+      guestCart.user = entityManager.getReference(CurrentUserEntity, userId);
+      guestCart.guestSessionId = undefined;
+      guestCart.expiresAt = undefined;
+      await entityManager.flush();
+
+      const hydratedTransferredCart = await cartRepository.findOneOrFail(
+        { id: guestCart.id },
+        { populate: [...MikroOrmCartRepository.cartPopulate] }
+      );
+
+      return this.toCartSnapshot(hydratedTransferredCart);
+    }
+
+    for (const guestItem of guestCart.items.getItems()) {
+      const existingUserItem = userCart.items
+        .getItems()
+        .find(item => item.productInventory.id === guestItem.productInventory.id);
+
+      const cappedQuantity = Math.min(
+        guestItem.quantity,
+        guestItem.productInventory.stock
+      );
+
+      if (cappedQuantity <= 0 || guestItem.product.state !== 'active') {
+        continue;
+      }
+
+      if (existingUserItem) {
+        existingUserItem.quantity = Math.min(
+          existingUserItem.quantity + cappedQuantity,
+          existingUserItem.productInventory.stock
+        );
+        existingUserItem.isSelectOrder = existingUserItem.isSelectOrder || guestItem.isSelectOrder;
+        entityManager.persist(existingUserItem);
+        continue;
+      }
+
+      const item = itemRepository.create({
+        cart: userCart,
+        shop: guestItem.shop,
+        product: guestItem.product,
+        productInventory: guestItem.productInventory,
+        quantity: cappedQuantity,
+        isSelectOrder: guestItem.isSelectOrder,
+      });
+      userCart.items.add(item);
+      entityManager.persist(item);
+    }
+
+    guestCart.mergedAt = new Date();
+    guestCart.expiresAt = new Date();
+    await entityManager.flush();
+
+    const hydratedUserCart = await cartRepository.findOneOrFail(
+      { id: userCart.id },
+      { populate: [...MikroOrmCartRepository.cartPopulate] }
+    );
+
+    return this.toCartSnapshot(hydratedUserCart);
+  }
+
   private async findCartForMutation(
     entityManager: EntityManager,
-    userId: string,
+    actor: CartActor,
     cartId?: string
   ): Promise<CartEntity | null> {
     const cartRepository = entityManager.getRepository(CartEntity);
 
     if (cartId) {
-      return cartRepository.findOne({ id: cartId, user: userId }, { populate: ['items'] });
+      return cartRepository.findOne(
+        { id: cartId, ...this.actorFilter(actor), mergedAt: null },
+        { populate: ['items'] }
+      );
     }
 
-    return cartRepository.findOne({ user: userId, isTemp: false }, { populate: ['items'] });
+    return cartRepository.findOne(
+      { ...this.actorFilter(actor), kind: CartKind.ACTIVE, mergedAt: null },
+      { populate: ['items'] }
+    );
   }
 
   private toCartSnapshot(cart: CartEntity): CartSnapshot {
     return {
       id: cart.id,
-      userId: cart.user.id,
-      isTemp: cart.isTemp,
+      userId: cart.user?.id ?? null,
+      guestSessionId: cart.guestSessionId ?? null,
+      kind: cart.kind,
       items: cart.items
         .getItems()
         .map((item) => this.toCartItemSnapshot(item))
@@ -365,17 +475,40 @@ export class MikroOrmCartRepository implements CartRepository {
       variantType: variantType ?? inventory.product.variantType ?? ProductVariantType.NONE,
       variantGroupName: variantGroupName ?? inventory.product.variantGroupName,
       variantSubGroupName: variantSubGroupName ?? inventory.product.variantSubGroupName,
-      imageUrl: image?.storageKey
-        ? this.storageService.getPublicUrl(image.storageKey)
-        : undefined,
+      imageUrl: image ? this.storageService.getPublicUrl(image.storageKey) : undefined,
       variantName: inventory.productVariant?.name,
       stock: inventory.stock,
-      price: Number(inventory.price),
-      salePrice: inventory.salePrice != null
-        ? Number(inventory.salePrice)
-        : undefined,
+      price: inventory.price,
+      salePrice: inventory.salePrice,
       sku: inventory.sku,
       productState: inventory.product.state,
+    };
+  }
+
+  private actorFilter(actor: CartActor) {
+    if (actor.type === 'user') {
+      return { user: actor.userId };
+    }
+
+    return { guestSessionId: actor.guestSessionId };
+  }
+
+  private createCartOwner(
+    actor: CartActor,
+    entityManager: EntityManager,
+    kind: CartKind
+  ) {
+    if (actor.type === 'user') {
+      return {
+        user: entityManager.getReference(CurrentUserEntity, actor.userId),
+        kind,
+      };
+    }
+
+    return {
+      guestSessionId: actor.guestSessionId,
+      kind,
+      expiresAt: new Date(Date.now() + this.cartConfig.guestCartSessionTtlMs),
     };
   }
 }

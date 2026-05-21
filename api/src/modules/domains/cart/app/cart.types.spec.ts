@@ -1,11 +1,13 @@
 import { buildCartResponse, type CartSnapshot } from './cart.types';
+import { CartKind } from '../domain/enums/cart-kind.enum';
 
 describe('buildCartResponse', () => {
   it('groups items by shop and computes summary from selected items', () => {
     const cart: CartSnapshot = {
       id: 'cart-1',
       userId: 'user-1',
-      isTemp: false,
+      guestSessionId: null,
+      kind: CartKind.ACTIVE,
       items: [
         {
           id: 'item-1',
@@ -156,6 +158,8 @@ describe('buildCartResponse', () => {
         ],
         total_quantity: 3,
       },
+      cart_owner_type: 'user',
+      requires_sign_in_for_checkout: false,
       summary: {
         subtotal_price: 30,
         total_discount: 0,
@@ -172,7 +176,8 @@ describe('buildCartResponse', () => {
     const cart: CartSnapshot = {
       id: 'cart-2',
       userId: 'user-2',
-      isTemp: false,
+      guestSessionId: null,
+      kind: CartKind.ACTIVE,
       items: [
         {
           id: 'item-3',

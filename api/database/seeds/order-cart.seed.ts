@@ -1,5 +1,6 @@
 import type { EntityManager } from '@mikro-orm/postgresql';
 import type { CurrentUserEntity } from '~/modules/domains/auth/infra/persistence/entities/current-user.entity';
+import { CartKind } from '~/modules/domains/cart/domain/enums/cart-kind.enum';
 import { CartEntity } from '~/modules/domains/cart/infra/persistence/entities/cart.entity';
 import { CartItemEntity } from '~/modules/domains/cart/infra/persistence/entities/cart-item.entity';
 import { CouponUsageEntity } from '~/modules/domains/coupon/infra/persistence/entities/coupon-usage.entity';
@@ -141,7 +142,7 @@ export async function seedOrderCartDemo(
 
   const cart = em.create(CartEntity, {
     user,
-    isTemp: false,
+    kind: CartKind.ACTIVE,
   });
   em.persist(cart);
   await em.flush();

@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { err, ok, type Result } from '~/common/application/result';
-import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
 import {
   CartQuantityExceedsStockError,
   ProductInventoryNotFoundError,
@@ -8,7 +7,7 @@ import {
   type CartAppError
 } from '../../errors/cart-app.error';
 import { CartRepository } from '../../ports/cart.repository';
-import type { CartSnapshot } from '../../cart.types';
+import type { CartActor, CartSnapshot } from '../../cart.types';
 
 export interface AddCartItemInput {
   inventoryId: string;
@@ -21,7 +20,7 @@ export class AddCartItemUseCase {
   constructor(private readonly cartRepository: CartRepository) {}
 
   async execute(
-    actor: AuthenticatedUser,
+    actor: CartActor,
     input: AddCartItemInput
   ): Promise<Result<CartSnapshot, CartAppError>> {
     const inventory = await this.cartRepository.findInventoryCandidateById(
@@ -41,13 +40,13 @@ export class AddCartItemUseCase {
     }
 
     const cart = input.isTemp
-      ? await this.cartRepository.createTempCart(
-        actor.userId,
+      ? await this.cartRepository.createBuyNowCart(
+        actor,
         input.inventoryId,
         input.quantity
       )
       : await this.cartRepository.addItemToActiveCart(
-        actor.userId,
+        actor,
         input.inventoryId,
         input.quantity
       );

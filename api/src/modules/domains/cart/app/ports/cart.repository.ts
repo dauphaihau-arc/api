@@ -1,10 +1,11 @@
 import type {
+  CartActor,
   CartInventoryCandidate,
   CartSnapshot
 } from '../cart.types';
 
 export interface UpdateOwnedCartItemInput {
-  userId: string;
+  actor: CartActor;
   cartId?: string;
   inventoryId: string;
   quantity?: number;
@@ -12,7 +13,7 @@ export interface UpdateOwnedCartItemInput {
 }
 
 export interface DeleteOwnedCartItemInput {
-  userId: string;
+  actor: CartActor;
   cartId?: string;
   inventoryId: string;
 }
@@ -22,30 +23,35 @@ export abstract class CartRepository {
     inventoryId: string
   ): Promise<CartInventoryCandidate | null>;
 
-  abstract findOwnedCartById(
-    userId: string,
+  abstract findCartByIdForActor(
+    actor: CartActor,
     cartId: string
   ): Promise<CartSnapshot | null>;
 
-  abstract findActiveCartByUserId(userId: string): Promise<CartSnapshot | null>;
+  abstract findActiveCart(actor: CartActor): Promise<CartSnapshot | null>;
 
   abstract addItemToActiveCart(
-    userId: string,
+    actor: CartActor,
     inventoryId: string,
     quantity: number
   ): Promise<CartSnapshot>;
 
-  abstract createTempCart(
-    userId: string,
+  abstract createBuyNowCart(
+    actor: CartActor,
     inventoryId: string,
     quantity: number
   ): Promise<CartSnapshot>;
 
-  abstract updateOwnedCartItem(
+  abstract updateCartItem(
     input: UpdateOwnedCartItemInput
   ): Promise<CartSnapshot | null>;
 
-  abstract deleteOwnedCartItem(
+  abstract deleteCartItem(
     input: DeleteOwnedCartItemInput
+  ): Promise<CartSnapshot | null>;
+
+  abstract mergeGuestCartIntoUser(
+    guestSessionId: string,
+    userId: string
   ): Promise<CartSnapshot | null>;
 }

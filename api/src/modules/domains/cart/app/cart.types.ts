@@ -1,3 +1,11 @@
+import { CartKind } from '../domain/enums/cart-kind.enum';
+
+export type CartOwnerType = 'guest' | 'user';
+
+export type CartActor =
+  | { type: 'user'; userId: string }
+  | { type: 'guest'; guestSessionId: string };
+
 export interface CartInventoryCandidate {
   inventoryId: string;
   productId: string;
@@ -28,8 +36,9 @@ export interface CartItemSnapshot {
 
 export interface CartSnapshot {
   id: string;
-  userId: string;
-  isTemp: boolean;
+  userId: string | null;
+  guestSessionId: string | null;
+  kind: CartKind;
   items: CartItemSnapshot[];
 }
 
@@ -94,6 +103,8 @@ export interface CartResponse {
     }>;
     total_quantity: number;
   } | null;
+  cart_owner_type?: CartOwnerType;
+  requires_sign_in_for_checkout?: boolean;
   summary: {
     subtotal_price: number;
     total_discount: number;
@@ -107,7 +118,11 @@ export interface CartResponse {
 
 export function buildCartResponse(
   cart: CartSnapshot | null,
-  summaryOverride?: CartResponse['summary']
+  summaryOverride?: CartResponse['summary'],
+  options?: {
+    ownerType?: CartOwnerType;
+    requiresSignInForCheckout?: boolean;
+  }
 ): CartResponse {
   const emptySummary = {
     subtotal_price: 0,
@@ -119,9 +134,14 @@ export function buildCartResponse(
     total_quantity: 0,
   };
 
+  const ownerType = options?.ownerType ?? (cart?.userId ? 'user' : 'guest');
+  const requiresSignInForCheckout = options?.requiresSignInForCheckout ?? (ownerType === 'guest');
+
   if (!cart || cart.items.length === 0) {
     return {
       cart: null,
+      cart_owner_type: ownerType,
+      requires_sign_in_for_checkout: requiresSignInForCheckout,
       summary: summaryOverride ?? emptySummary,
     };
   }
@@ -190,8 +210,8 @@ export function buildCartResponse(
   return {
     cart: {
       id: cart.id,
-      user_id: cart.userId,
-      is_temp: cart.isTemp,
+      user_id: cart.userId ?? '',
+      is_temp: cart.kind === CartKind.BUY_NOW,
       shop_groups: Array.from(groupedByShop.values()),
       recent_items: sortedItems.slice(0, 6).map((item) => ({
         item_id: item.id,
@@ -211,6 +231,8 @@ export function buildCartResponse(
       })),
       total_quantity: totalQuantity,
     },
+    cart_owner_type: ownerType,
+    requires_sign_in_for_checkout: requiresSignInForCheckout,
     summary: summaryOverride ?? {
       subtotal_price: subtotalPrice,
       total_discount: 0,

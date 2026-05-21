@@ -14,7 +14,10 @@ export class CreateOrderFromCartUseCase {
   ) {}
 
   async execute(actor: AuthenticatedUser, body: CreateOrderFromCartDto) {
-    const cart = await this.cartRepository.findActiveCartByUserId(actor.userId);
+    const cart = await this.cartRepository.findActiveCart({
+      type: 'user',
+      userId: actor.userId,
+    });
 
     if (!cart) {
       throw new NotFoundException('Cart not found');

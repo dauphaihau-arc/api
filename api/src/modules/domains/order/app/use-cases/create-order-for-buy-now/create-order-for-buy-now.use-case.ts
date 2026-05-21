@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
 import { CartRepository } from '~/modules/domains/cart/app/ports/cart.repository';
+import { CartKind } from '~/modules/domains/cart/domain/enums/cart-kind.enum';
 import { GetMyAddressUseCase } from '~/modules/domains/user/app/use-cases/get-my-address/get-my-address.use-case';
 import type { CreateOrderForBuyNowDto } from '../../../api/rest/dto/create-order-for-buy-now.dto';
 import { OrderCheckoutService } from '../../order-checkout.service';
@@ -14,9 +15,12 @@ export class CreateOrderForBuyNowUseCase {
   ) {}
 
   async execute(actor: AuthenticatedUser, body: CreateOrderForBuyNowDto) {
-    const cart = await this.cartRepository.findOwnedCartById(actor.userId, body.cartId);
+    const cart = await this.cartRepository.findCartByIdForActor(
+      { type: 'user', userId: actor.userId },
+      body.cartId
+    );
 
-    if (!cart || !cart.isTemp) {
+    if (!cart || cart.kind !== CartKind.BUY_NOW) {
       throw new NotFoundException('Temporary cart not found');
     }
 

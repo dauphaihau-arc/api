@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { err, ok, type Result } from '~/common/application/result';
-import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
 import {
   CartItemNotFoundError,
   CartNotFoundError,
@@ -10,7 +9,7 @@ import {
   type CartAppError
 } from '../../errors/cart-app.error';
 import { CartRepository } from '../../ports/cart.repository';
-import type { CartSnapshot } from '../../cart.types';
+import type { CartActor, CartSnapshot } from '../../cart.types';
 
 export interface UpdateCartItemInput {
   cartId?: string;
@@ -24,7 +23,7 @@ export class UpdateCartItemUseCase {
   constructor(private readonly cartRepository: CartRepository) {}
 
   async execute(
-    actor: AuthenticatedUser,
+    actor: CartActor,
     input: UpdateCartItemInput
   ): Promise<Result<CartSnapshot | null, CartAppError>> {
     const inventory = await this.cartRepository.findInventoryCandidateById(
@@ -48,8 +47,8 @@ export class UpdateCartItemUseCase {
     }
 
     const existingCart = input.cartId
-      ? await this.cartRepository.findOwnedCartById(actor.userId, input.cartId)
-      : await this.cartRepository.findActiveCartByUserId(actor.userId);
+      ? await this.cartRepository.findCartByIdForActor(actor, input.cartId)
+      : await this.cartRepository.findActiveCart(actor);
 
     if (!existingCart) {
       return err(new CartNotFoundError());
@@ -63,8 +62,8 @@ export class UpdateCartItemUseCase {
       return err(new CartItemNotFoundError());
     }
 
-    const cart = await this.cartRepository.updateOwnedCartItem({
-      userId: actor.userId,
+    const cart = await this.cartRepository.updateCartItem({
+      actor,
       cartId: input.cartId,
       inventoryId: input.inventoryId,
       quantity: input.quantity,

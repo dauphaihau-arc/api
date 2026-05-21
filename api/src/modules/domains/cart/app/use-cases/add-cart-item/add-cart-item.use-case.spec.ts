@@ -1,23 +1,19 @@
-import { UserStatus } from '~/modules/domains/auth/domain/enums/user-status.enum';
 import { AddCartItemUseCase } from './add-cart-item.use-case';
 import type { CartRepository } from '../../ports/cart.repository';
+import { CartKind } from '../../../domain/enums/cart-kind.enum';
 
 describe('AddCartItemUseCase', () => {
   const actor = {
+    type: 'user' as const,
     userId: 'user-1',
-    email: 'cart@example.com',
-    displayName: 'Cart User',
-    status: UserStatus.ACTIVE,
-    sessionId: 'session-1',
-    roles: ['customer'],
-    permissions: [],
   };
 
   it('creates a temp cart when requested', async () => {
     const createTempCart = jest.fn().mockResolvedValue({
       id: 'cart-1',
       userId: actor.userId,
-      isTemp: true,
+      guestSessionId: null,
+      kind: CartKind.BUY_NOW,
       items: [],
     });
 
@@ -33,12 +29,12 @@ describe('AddCartItemUseCase', () => {
         price: 10,
         productState: 'active',
       }),
-      findOwnedCartById: jest.fn(),
-      findActiveCartByUserId: jest.fn(),
+      findCartByIdForActor: jest.fn(),
+      findActiveCart: jest.fn(),
       addItemToActiveCart: jest.fn(),
-      createTempCart,
-      updateOwnedCartItem: jest.fn(),
-      deleteOwnedCartItem: jest.fn(),
+      createBuyNowCart: createTempCart,
+      updateCartItem: jest.fn(),
+      deleteCartItem: jest.fn(),
     } as unknown as CartRepository);
 
     const result = await useCase.execute(actor, {
@@ -48,7 +44,7 @@ describe('AddCartItemUseCase', () => {
     });
 
     expect(result.isOk).toBe(true);
-    expect(createTempCart).toHaveBeenCalledWith(actor.userId, 'inventory-1', 2);
+    expect(createTempCart).toHaveBeenCalledWith(actor, 'inventory-1', 2);
   });
 
   it('rejects quantity that exceeds stock', async () => {
@@ -64,12 +60,12 @@ describe('AddCartItemUseCase', () => {
         price: 10,
         productState: 'active',
       }),
-      findOwnedCartById: jest.fn(),
-      findActiveCartByUserId: jest.fn(),
+      findCartByIdForActor: jest.fn(),
+      findActiveCart: jest.fn(),
       addItemToActiveCart: jest.fn(),
-      createTempCart: jest.fn(),
-      updateOwnedCartItem: jest.fn(),
-      deleteOwnedCartItem: jest.fn(),
+      createBuyNowCart: jest.fn(),
+      updateCartItem: jest.fn(),
+      deleteCartItem: jest.fn(),
     } as unknown as CartRepository);
 
     const result = await useCase.execute(actor, {
