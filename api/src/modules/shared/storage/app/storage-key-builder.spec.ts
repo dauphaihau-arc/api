@@ -14,13 +14,13 @@ describe('storage key builder', () => {
         { domain: 'products', id: 'product-1' },
       ],
       collection: 'images',
-      assetType: 'original',
+      assetPath: ['image-1'],
       extension: 'webp',
-      filename: 'asset-1',
+      filename: 'card_1x1',
     });
 
     expect(key).toBe(
-      'prod/public/shops/shop-1/products/product-1/images/original/asset-1.webp'
+      'prod/public/shops/shop-1/products/product-1/images/image-1/card_1x1.webp'
     );
   });
 

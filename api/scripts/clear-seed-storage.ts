@@ -2,41 +2,10 @@ import 'reflect-metadata';
 import {
   DeleteObjectsCommand,
   HeadBucketCommand,
+  ListObjectsV2Command,
   NoSuchBucket,
   S3Client,
 } from '@aws-sdk/client-s3';
-import { TableNotFoundException } from '@mikro-orm/core';
-import { MikroORM } from '@mikro-orm/postgresql';
-import * as path from 'node:path';
-import { buildDatabaseConfig } from '../src/config/database.config';
-import { CategoryEntity } from '../src/modules/domains/category/infra/persistence/entities/category.entity';
-import { ProductImageEntity } from '../src/modules/domains/product/infra/persistence/entities/product-image.entity';
-import { ProductEntity } from '../src/modules/domains/product/infra/persistence/entities/product.entity';
-import { ShopEntity } from '../src/modules/domains/shop/infra/persistence/entities/shop.entity';
-import { slugifySeedValue } from '../database/seeds/product-seed-image-resolver';
-import {
-  PRODUCT_LOCAL_TSV_PATH,
-  PRODUCT_TSV_PATH,
-  SHOPS_LOCAL_TSV_PATH,
-  SHOPS_TSV_PATH,
-} from '../database/seeds/product-seed-paths';
-import { readOptionalTsvRows, readTsvRows } from '../database/seeds/shared/read-tsv-rows';
-
-type ShopCsvRow = {
-  shop_slug: string;
-  shop_name: string;
-};
-
-type MinimalProductSeed = {
-  shopSlug: string;
-  title: string;
-};
-
-type ProductCsvRow = {
-  shop_slug: string;
-  category_path: string;
-  title: string;
-};
 
 function buildStorageConfig() {
   const driver = process.env.STORAGE_DRIVER ?? 'local';
@@ -104,37 +73,6 @@ async function bucketExists(client: S3Client, bucket: string): Promise<boolean> 
   }
 }
 
-function loadShopNamesBySlug(): Map<string, string> {
-  const rows = [
-    ...readTsvRows<ShopCsvRow>(SHOPS_TSV_PATH),
-    ...readOptionalTsvRows<ShopCsvRow>(SHOPS_LOCAL_TSV_PATH),
-  ];
-
-  return new Map(
-    rows.map((row) => [row.shop_slug.trim(), row.shop_name.trim()])
-  );
-}
-
-function loadProductSeedsMinimal(): MinimalProductSeed[] {
-  const rows = [
-    ...readTsvRows<ProductCsvRow>(PRODUCT_TSV_PATH),
-    ...readOptionalTsvRows<ProductCsvRow>(PRODUCT_LOCAL_TSV_PATH),
-  ];
-
-  return rows.map((row, index) => {
-    if (!row.shop_slug.trim() || !row.category_path.trim() || !row.title.trim()) {
-      throw new Error(
-        `Product seed row ${index + 2} must include shop_slug, category_path, and title`
-      );
-    }
-
-    return {
-      shopSlug: row.shop_slug.trim(),
-      title: row.title.trim(),
-    };
-  });
-}
-
 async function main(): Promise<void> {
   const storageConfig = buildStorageConfig();
   const client = new S3Client({
@@ -153,97 +91,52 @@ async function main(): Promise<void> {
     return;
   }
 
-  const orm = await MikroORM.init({
-    ...buildDatabaseConfig(process.env),
-    entities: [CategoryEntity, ShopEntity, ProductEntity, ProductImageEntity],
-  });
+  const keys: string[] = [];
+  let continuationToken: string | undefined;
 
-  try {
-    const em = orm.em.fork();
-    const keys = new Set<string>();
-    const shopNamesBySlug = loadShopNamesBySlug();
-    const productSeeds = loadProductSeedsMinimal();
-    let categories: Array<{ imageStorageKey?: string | null }>;
-
-    try {
-      categories = await em.find(
-        CategoryEntity,
-        { imageStorageKey: { $ne: null } },
-        { fields: ['imageStorageKey'] }
-      );
-    } catch (error) {
-      if (error instanceof TableNotFoundException) {
-        console.log('Seed tables not found, nothing to clear from storage');
-        return;
-      }
-
-      throw error;
-    }
-
-    for (const category of categories) {
-      if (category.imageStorageKey) {
-        keys.add(category.imageStorageKey);
-      }
-    }
-
-    for (const productSeed of productSeeds) {
-      const shopName = shopNamesBySlug.get(productSeed.shopSlug);
-      if (!shopName) {
-        continue;
-      }
-
-      const shop = await em.findOne(
-        ShopEntity,
-        { shopName },
-        { fields: ['id'] }
-      );
-
-      if (!shop) {
-        continue;
-      }
-
-      const product = await em.findOne(
-        ProductEntity,
-        { shop, slug: slugifySeedValue(productSeed.title) },
-        { populate: ['images'] }
-      );
-
-      if (!product) {
-        continue;
-      }
-
-      for (const image of product.images.getItems()) {
-        keys.add(image.storageKey);
-      }
-    }
-
-    if (keys.size === 0) {
-      console.log('No seeded storage objects found to clear');
-      return;
-    }
-
-    const objects = Array.from(keys).map((key) => ({ Key: key }));
-    const batchSize = 1000;
-
-    for (let index = 0; index < objects.length; index += batchSize) {
-      const batch = objects.slice(index, index + batchSize);
-      await client.send(
-        new DeleteObjectsCommand({
-          Bucket: storageConfig.bucket,
-          Delete: {
-            Objects: batch,
-            Quiet: false,
-          },
-        })
-      );
-    }
-
-    console.log(
-      `Seeded storage objects cleared (${objects.length}) from bucket ${storageConfig.bucket}`
+  do {
+    const response = await client.send(
+      new ListObjectsV2Command({
+        Bucket: storageConfig.bucket,
+        ContinuationToken: continuationToken,
+      })
     );
-  } finally {
-    await orm.close(true);
+
+    for (const object of response.Contents ?? []) {
+      if (object.Key) {
+        keys.push(object.Key);
+      }
+    }
+
+    continuationToken = response.IsTruncated
+      ? response.NextContinuationToken
+      : undefined;
+  } while (continuationToken);
+
+  if (keys.length === 0) {
+    console.log(`No storage objects found to clear in bucket ${storageConfig.bucket}`);
+    return;
   }
+
+  const objects = keys.map((key) => ({ Key: key }));
+  const batchSize = 1000;
+
+  for (let index = 0; index < objects.length; index += batchSize) {
+    const batch = objects.slice(index, index + batchSize);
+    await client.send(
+      new DeleteObjectsCommand({
+        Bucket: storageConfig.bucket,
+        Delete: {
+          Objects: batch,
+          Quiet: false,
+        },
+      })
+    );
+  }
+
+  console.log(
+    `Storage objects cleared (${objects.length}) from bucket ${storageConfig.bucket}`
+  );
 }
 
 void main().catch((error) => {

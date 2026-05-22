@@ -4,7 +4,7 @@ export type StoragePathDomain = 'shops' | 'products' | 'categories' | 'users';
 
 export type StorageCollection = 'images';
 
-export type StorageAssetType = 'original' | 'thumbnail' | 'medium' | 'large';
+export type StorageAssetPath = string[];
 
 export interface StoragePathNode {
   domain: StoragePathDomain;
@@ -16,7 +16,7 @@ export interface BuildStorageObjectKeyInput {
   visibility: StorageVisibility;
   path: StoragePathNode[];
   collection: StorageCollection;
-  assetType: StorageAssetType;
+  assetPath: StorageAssetPath;
   extension: string;
-  filename?: string;
+  filename: string;
 }

@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import type { BuildStorageObjectKeyInput } from './storage-key.types';
 
 export function buildStorageObjectKey(
@@ -6,10 +5,14 @@ export function buildStorageObjectKey(
 ): string {
   const env = resolveStorageEnvironmentSegment(input.env);
   const extension = normalizeExtension(input.extension);
-  const filename = (input.filename?.trim() || randomUUID()).replace(/\.+/g, '');
+  const filename = input.filename.trim().replace(/\.+/g, '');
 
   if (input.path.length === 0) {
     throw new Error('Storage path must include at least one domain node.');
+  }
+
+  if (input.assetPath.length === 0) {
+    throw new Error('Storage asset path must include at least one segment.');
   }
 
   const pathSegments = input.path.flatMap((node) => {
@@ -27,7 +30,7 @@ export function buildStorageObjectKey(
     input.visibility,
     ...pathSegments,
     input.collection,
-    input.assetType,
+    ...input.assetPath.map((segment) => segment.trim()).filter(Boolean),
     `${filename}.${extension}`,
   ].join('/');
 }

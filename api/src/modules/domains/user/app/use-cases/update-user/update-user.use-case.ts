@@ -126,7 +126,7 @@ export class UpdateUserUseCase {
       visibility: 'public',
       path: [{ domain: 'users', id: userId }],
       collection: 'images',
-      assetType: 'original',
+      assetPath: ['original'],
       extension: resolveImageExtension(contentType),
       filename: randomUUID(),
     });
