@@ -4,6 +4,7 @@ import * as path from 'node:path';
 import { CategoryAttributeEntity } from '../../src/modules/domains/category/infra/persistence/entities/category-attribute.entity';
 import { CategoryEntity } from '../../src/modules/domains/category/infra/persistence/entities/category.entity';
 import { ProductState } from '../../src/modules/domains/product/domain/enums/product-state.enum';
+import { ProductImageVariantStatus } from '../../src/modules/domains/product/domain/enums/product-image-variant-status.enum';
 import { ProductShippingCharge } from '../../src/modules/domains/product/domain/enums/product-shipping-charge.enum';
 import { ProductVariantType } from '../../src/modules/domains/product/domain/enums/product-variant-type.enum';
 import { ProductWhoMade } from '../../src/modules/domains/product/domain/enums/product-who-made.enum';
@@ -85,7 +86,12 @@ async function syncProductImages(
       filename: 'original',
     });
 
-    em.persist(em.create(ProductImageEntity, { product, storageKey, rank: index + 1 }));
+    em.persist(em.create(ProductImageEntity, {
+      product,
+      storageKey,
+      rank: index + 1,
+      variantStatus: ProductImageVariantStatus.PENDING,
+    }));
   });
   await em.flush();
 }

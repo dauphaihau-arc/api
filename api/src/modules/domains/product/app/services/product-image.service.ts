@@ -5,6 +5,7 @@ import { ImageTransformService } from '~/modules/shared/image/app/ports/image-tr
 import { StorageService } from '~/modules/shared/storage/app/ports/storage.service';
 import { PRODUCT_IMAGE_VARIANT_SPECS } from '../config/product-image-variant.config';
 import { ProductImageVariant } from '../../domain/enums/product-image-variant.enum';
+import { ProductImageVariantStatus } from '../../domain/enums/product-image-variant-status.enum';
 import { ProductImageVariantEntity } from '../../infra/persistence/entities/product-image-variant.entity';
 import { ProductEntity } from '../../infra/persistence/entities/product.entity';
 import type { ProductImageEntity } from '../../infra/persistence/entities/product-image.entity';
@@ -31,7 +32,26 @@ export class ProductImageService {
     }
 
     for (const image of product.images.getItems()) {
-      await this.generateVariantsForImage(entityManager, product, image);
+      image.variantStatus = ProductImageVariantStatus.PROCESSING;
+      image.variantError = undefined;
+      image.variantsGeneratedAt = undefined;
+    }
+
+    await entityManager.flush();
+
+    for (const image of product.images.getItems()) {
+      try {
+        await this.generateVariantsForImage(entityManager, product, image);
+        image.variantStatus = ProductImageVariantStatus.READY;
+        image.variantError = undefined;
+        image.variantsGeneratedAt = new Date();
+      }
+      catch (error) {
+        image.variantStatus = ProductImageVariantStatus.FAILED;
+        image.variantError = error instanceof Error
+          ? error.message.slice(0, 1000)
+          : 'Unknown variant generation error';
+      }
     }
 
     await entityManager.flush();

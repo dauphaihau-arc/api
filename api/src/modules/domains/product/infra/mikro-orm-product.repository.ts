@@ -8,6 +8,7 @@ import { CategoryEntity } from '~/modules/domains/category/infra/persistence/ent
 import { ShopEntity } from '~/modules/domains/shop/infra/persistence/entities/shop.entity';
 import { ProductState } from '../domain/enums/product-state.enum';
 import { ProductImageVariant } from '../domain/enums/product-image-variant.enum';
+import { ProductImageVariantStatus } from '../domain/enums/product-image-variant-status.enum';
 import { ProductRepository } from '../app/ports/product.repository';
 import type {
   CreateProductDraftRepositoryInput,
@@ -231,6 +232,7 @@ export class MikroOrmProductRepository implements ProductRepository {
         product,
         storageKey: image.storageKey,
         rank: image.rank,
+        variantStatus: ProductImageVariantStatus.PENDING,
       });
       product.images.add(imageEntity);
       entityManager.persist(imageEntity);
@@ -561,6 +563,9 @@ export class MikroOrmProductRepository implements ProductRepository {
           storageKey: image.storageKey,
           url: this.storageService.getPublicUrl(image.storageKey),
           rank: image.rank,
+          variantStatus: image.variantStatus,
+          variantError: image.variantError,
+          variantsGeneratedAt: image.variantsGeneratedAt,
           variants: image.variants
             .getItems()
             .map((variant) => ({
@@ -670,6 +675,9 @@ export class MikroOrmProductRepository implements ProductRepository {
           storageKey: image.storageKey,
           url: this.storageService.getPublicUrl(image.storageKey),
           rank: image.rank,
+          variantStatus: image.variantStatus,
+          variantError: image.variantError,
+          variantsGeneratedAt: image.variantsGeneratedAt,
           variants: image.variants
             .getItems()
             .map((variant) => ({

@@ -9,11 +9,13 @@ import {
   PutObjectCommand,
   S3Client
 } from '@aws-sdk/client-s3';
+import { TableNotFoundException } from '@mikro-orm/core';
 import { MikroORM } from '@mikro-orm/postgresql';
 import { buildDatabaseConfig } from '../src/config/database.config';
 import { CategoryEntity } from '../src/modules/domains/category/infra/persistence/entities/category.entity';
 import { PRODUCT_IMAGE_VARIANT_SPECS } from '../src/modules/domains/product/app/config/product-image-variant.config';
 import { ProductImageVariant } from '../src/modules/domains/product/domain/enums/product-image-variant.enum';
+import { ProductImageVariantStatus } from '../src/modules/domains/product/domain/enums/product-image-variant-status.enum';
 import { ProductImageEntity } from '../src/modules/domains/product/infra/persistence/entities/product-image.entity';
 import { ProductImageVariantEntity } from '../src/modules/domains/product/infra/persistence/entities/product-image-variant.entity';
 import { ProductEntity } from '../src/modules/domains/product/infra/persistence/entities/product.entity';
@@ -223,11 +225,23 @@ async function main(): Promise<void> {
     const em = orm.em.fork();
     const shopNamesBySlug = loadShopNamesBySlug();
     const productSeeds = loadProductSeedsMinimal();
+    let categories: CategoryEntity[];
 
-    const categories = await em.find(
-      CategoryEntity,
-      { imageStorageKey: { $ne: null } }
-    );
+    try {
+      categories = await em.find(
+        CategoryEntity,
+        { imageStorageKey: { $ne: null } }
+      );
+    }
+    catch (error) {
+      if (error instanceof TableNotFoundException) {
+        throw new Error(
+          'Seed tables not found. Run "just db-seed" or "just db-seed-demo" before "just storage-seed".'
+        );
+      }
+
+      throw error;
+    }
 
     for (const category of categories) {
       if (!category.imageStorageKey) {
@@ -350,6 +364,11 @@ async function main(): Promise<void> {
 
           console.log(`Uploaded product asset variant -> ${variantKey}`);
         }
+
+        image.variantStatus = ProductImageVariantStatus.READY;
+        image.variantError = undefined;
+        image.variantsGeneratedAt = new Date();
+        em.persist(image);
       }
     }
 

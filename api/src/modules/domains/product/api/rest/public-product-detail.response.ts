@@ -22,6 +22,9 @@ export type PublicProductDetailResponse = {
     storage_key: string;
     url?: string;
     rank: number;
+    variant_status: string;
+    variant_error?: string;
+    variants_generated_at?: Date;
     variants?: Record<string, {
       storage_key: string;
       url?: string;

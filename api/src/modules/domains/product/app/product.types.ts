@@ -46,6 +46,9 @@ export interface ProductImageSummary {
   storageKey: string;
   url?: string;
   rank: number;
+  variantStatus: string;
+  variantError?: string;
+  variantsGeneratedAt?: Date;
   variants?: ProductImageVariantSummary[];
 }
 

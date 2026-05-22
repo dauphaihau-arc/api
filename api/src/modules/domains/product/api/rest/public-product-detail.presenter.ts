@@ -25,6 +25,9 @@ export const toPublicProductDetailResponse = (
     storage_key: image.storageKey,
     url: image.url,
     rank: image.rank,
+    variant_status: image.variantStatus,
+    variant_error: image.variantError,
+    variants_generated_at: image.variantsGeneratedAt,
     variants: image.variants
       ? Object.fromEntries(
           image.variants.map((variant) => [
