@@ -14,6 +14,7 @@ export type ProductSeed = {
   title: string;
   description: string;
   whoMade: ProductWhoMade;
+  state: 'active' | 'draft' | 'inactive';
   variantType: ProductVariantType;
   variantGroupName?: string;
   variantSubGroupName?: string;
@@ -33,6 +34,7 @@ type ProductCsvRow = {
   title: string;
   description: string;
   who_made: string;
+  state: string;
   variant_type: string;
   variant_group_name: string;
   variant_sub_group_name: string;
@@ -88,6 +90,27 @@ function parseVariantType(value: string, productKey: string): ProductVariantType
   }
 
   throw new Error(`Invalid variant_type "${value}" for product seed ${productKey}`);
+}
+
+function parseState(
+  value: string | undefined,
+  productKey: string
+): ProductSeed['state'] {
+  const normalized = value?.trim() ?? '';
+
+  if (normalized === '' || normalized === 'active') {
+    return 'active';
+  }
+
+  if (normalized === 'draft') {
+    return 'draft';
+  }
+
+  if (normalized === 'inactive') {
+    return 'inactive';
+  }
+
+  throw new Error(`Invalid state "${value}" for product seed ${productKey}`);
 }
 
 function parseOptionalNumber(
@@ -163,6 +186,7 @@ function loadProductSeeds(): ProductSeed[] {
       title: row.title,
       description: row.description,
       whoMade: parseWhoMade(row.who_made, productKey),
+      state: parseState(row.state, productKey),
       variantType: parseVariantType(row.variant_type, productKey),
       variantGroupName: row.variant_group_name.trim() || undefined,
       variantSubGroupName: row.variant_sub_group_name.trim() || undefined,

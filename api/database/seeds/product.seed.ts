@@ -23,6 +23,7 @@ import type { ShopEntity } from '../../src/modules/domains/shop/infra/persistenc
 import { productSeeds, type ProductSeed } from './product.data';
 import { PRODUCT_IMAGE_ROOT_DIRS } from './product-seed-paths';
 import {
+  resolveOptionalSeedProductImagePaths,
   resolveSeedProductImagePaths,
   slugifySeedValue,
 } from './product-seed-image-resolver';
@@ -272,7 +273,7 @@ export async function seedProducts(
         slug,
         title: productSeed.title,
         description: productSeed.description,
-        state: ProductState.ACTIVE,
+        state: productSeed.state as ProductState,
         whoMade: productSeed.whoMade,
         isDigital: false,
         nonTaxable: false,
@@ -283,24 +284,33 @@ export async function seedProducts(
     product.category = category;
     product.title = productSeed.title;
     product.description = productSeed.description;
-    product.state = ProductState.ACTIVE;
+    product.state = productSeed.state as ProductState;
     product.whoMade = productSeed.whoMade;
     product.variantType = productSeed.variantType;
     product.variantGroupName = productSeed.variantGroupName;
     product.variantSubGroupName = productSeed.variantSubGroupName;
-    product.publishedAt = new Date();
+    product.publishedAt =
+      product.state === ProductState.ACTIVE ? new Date() : undefined;
     product.views = 0;
     product.ratingAverage = 0;
     em.persist(product);
     await em.flush();
 
-    const imageFilenames = resolveSeedProductImagePaths(
-      process.env.SEED_ASSETS_PRODUCTS_DIR
-        ? [path.resolve(process.cwd(), process.env.SEED_ASSETS_PRODUCTS_DIR)]
-        : PRODUCT_IMAGE_ROOT_DIRS,
-      productSeed.shopSlug,
-      productSeed.title
-    );
+    const imageRootDirs = process.env.SEED_ASSETS_PRODUCTS_DIR
+      ? [path.resolve(process.cwd(), process.env.SEED_ASSETS_PRODUCTS_DIR)]
+      : PRODUCT_IMAGE_ROOT_DIRS;
+    const imageFilenames =
+      product.state === ProductState.DRAFT
+        ? resolveOptionalSeedProductImagePaths(
+          imageRootDirs,
+          productSeed.shopSlug,
+          productSeed.title
+        )
+        : resolveSeedProductImagePaths(
+          imageRootDirs,
+          productSeed.shopSlug,
+          productSeed.title
+        );
 
     await syncProductImages(em, shop, product, imageFilenames);
     await syncProductAttributes(em, product, category);

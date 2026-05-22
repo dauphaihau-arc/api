@@ -67,6 +67,18 @@ export function resolveSeedProductAssetDirectory(
   return existingDir;
 }
 
+export function resolveOptionalSeedProductAssetDirectory(
+  rootDirOrDirs: string | string[],
+  shopSlug: string,
+  productTitle: string
+): string | undefined {
+  const candidateDirs = normalizeRootDirs(rootDirOrDirs).map((rootDir) =>
+    getProductAssetDirectory(rootDir, shopSlug, productTitle)
+  );
+
+  return candidateDirs.find((candidateDir) => existsSync(candidateDir));
+}
+
 export function resolveSeedProductImagePaths(
   rootDirOrDirs: string | string[],
   shopSlug: string,
@@ -108,4 +120,22 @@ export function resolveSeedProductImagePaths(
       filename
     )
   );
+}
+
+export function resolveOptionalSeedProductImagePaths(
+  rootDirOrDirs: string | string[],
+  shopSlug: string,
+  productTitle: string
+): string[] {
+  const productAssetDir = resolveOptionalSeedProductAssetDirectory(
+    rootDirOrDirs,
+    shopSlug,
+    productTitle
+  );
+
+  if (!productAssetDir) {
+    return [];
+  }
+
+  return resolveSeedProductImagePaths(rootDirOrDirs, shopSlug, productTitle);
 }

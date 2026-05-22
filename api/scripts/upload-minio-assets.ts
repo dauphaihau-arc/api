@@ -23,6 +23,8 @@ import { ShopEntity } from '../src/modules/domains/shop/infra/persistence/entiti
 import { SharpImageTransformService } from '../src/modules/shared/image/infra/sharp-image-transform.service';
 import { buildStorageObjectKey, resolveStorageEnvironmentSegment } from '../src/modules/shared/storage/app/storage-key-builder';
 import {
+  resolveOptionalSeedProductAssetDirectory,
+  resolveOptionalSeedProductImagePaths,
   resolveSeedProductAssetDirectory,
   resolveSeedProductImagePaths,
   slugifySeedValue,
@@ -44,12 +46,14 @@ type ShopCsvRow = {
 type MinimalProductSeed = {
   shopSlug: string;
   title: string;
+  state: 'active' | 'draft' | 'inactive';
 };
 
 type ProductCsvRow = {
   shop_slug: string;
   category_path: string;
   title: string;
+  state?: string;
 };
 
 const ROOT_DIR = path.resolve(__dirname, '../..');
@@ -147,6 +151,7 @@ function loadProductSeedsMinimal(): MinimalProductSeed[] {
     return {
       shopSlug: row.shop_slug.trim(),
       title: row.title.trim(),
+      state: row.state?.trim() === 'draft' ? 'draft' : row.state?.trim() === 'inactive' ? 'inactive' : 'active',
     };
   });
 }
@@ -263,17 +268,6 @@ async function main(): Promise<void> {
         throw new Error(`Missing shop seed mapping for slug: ${productSeed.shopSlug}`);
       }
 
-      const imageFilenames = resolveSeedProductImagePaths(
-        PRODUCT_IMAGE_ROOT_DIRS,
-        productSeed.shopSlug,
-        productSeed.title
-      );
-      const assetDirectory = resolveSeedProductAssetDirectory(
-        PRODUCT_IMAGE_ROOT_DIRS,
-        productSeed.shopSlug,
-        productSeed.title
-      );
-
       const shop = await em.findOne(ShopEntity, { shopName });
       if (!shop) {
         throw new Error(
@@ -293,11 +287,45 @@ async function main(): Promise<void> {
         );
       }
 
+      const imageFilenames =
+        productSeed.state === 'draft'
+          ? resolveOptionalSeedProductImagePaths(
+            PRODUCT_IMAGE_ROOT_DIRS,
+            productSeed.shopSlug,
+            productSeed.title
+          )
+          : resolveSeedProductImagePaths(
+            PRODUCT_IMAGE_ROOT_DIRS,
+            productSeed.shopSlug,
+            productSeed.title
+          );
+      const assetDirectory =
+        productSeed.state === 'draft'
+          ? resolveOptionalSeedProductAssetDirectory(
+            PRODUCT_IMAGE_ROOT_DIRS,
+            productSeed.shopSlug,
+            productSeed.title
+          )
+          : resolveSeedProductAssetDirectory(
+            PRODUCT_IMAGE_ROOT_DIRS,
+            productSeed.shopSlug,
+            productSeed.title
+          );
       const images = product.images.getItems().sort((a, b) => a.rank - b.rank);
+
+      if (!assetDirectory && images.length === 0) {
+        continue;
+      }
 
       if (images.length !== imageFilenames.length) {
         throw new Error(
           `Image count mismatch for seeded product "${productSeed.title}".`
+        );
+      }
+
+      if (!assetDirectory) {
+        throw new Error(
+          `Missing product asset directory for seeded product "${productSeed.title}".`
         );
       }
 
