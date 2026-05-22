@@ -46,6 +46,17 @@ export interface ProductImageSummary {
   storageKey: string;
   url?: string;
   rank: number;
+  variants?: ProductImageVariantSummary[];
+}
+
+export interface ProductImageVariantSummary {
+  id: string;
+  variant: string;
+  storageKey: string;
+  url?: string;
+  width?: number;
+  height?: number;
+  format?: string;
 }
 
 export interface ReplaceProductImagesRepositoryInput {
@@ -201,6 +212,11 @@ export interface PublicProductListItem {
   image?: {
     storageKey: string;
     url?: string;
+    variant?: string;
+    variants?: Record<string, {
+      storageKey: string;
+      url?: string;
+    }>;
   };
   variantType?: ProductVariantType;
   inventory?: {

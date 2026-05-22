@@ -25,6 +25,20 @@ export const toPublicProductDetailResponse = (
     storage_key: image.storageKey,
     url: image.url,
     rank: image.rank,
+    variants: image.variants
+      ? Object.fromEntries(
+          image.variants.map((variant) => [
+            variant.variant,
+            {
+              storage_key: variant.storageKey,
+              url: variant.url,
+              width: variant.width,
+              height: variant.height,
+              format: variant.format,
+            },
+          ])
+        )
+      : undefined,
   })),
   variants: product.variants.map((variant) => ({
     id: variant.id,

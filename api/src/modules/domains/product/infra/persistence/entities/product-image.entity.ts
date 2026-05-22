@@ -1,8 +1,9 @@
 import {
-  Entity, Index, ManyToOne, Property, Unique 
+  Collection, Entity, Index, ManyToOne, OneToMany, Property, Unique 
 } from '@mikro-orm/core';
 import { AbstractBaseEntity } from '~/common/database/abstract-base.entity';
 import { ProductEntity } from './product.entity';
+import { ProductImageVariantEntity } from './product-image-variant.entity';
 
 @Entity({ tableName: 'product_images' })
 @Index({ properties: ['product'] })
@@ -19,4 +20,7 @@ export class ProductImageEntity extends AbstractBaseEntity {
 
   @Property({ fieldName: 'rank' })
   rank!: number;
+
+  @OneToMany(() => ProductImageVariantEntity, (variant) => variant.image)
+  variants = new Collection<ProductImageVariantEntity>(this);
 }

@@ -4,6 +4,7 @@ import type { ShopRepository } from '~/modules/domains/shop/app/ports/shop.repos
 import type { StorageService } from '~/modules/shared/storage/app/ports/storage.service';
 import type { ProductRepository } from '../../ports/product.repository';
 import type { ProductDraftSummary } from '../../product.types';
+import type { ProductImageService } from '../../services/product-image.service';
 import { SetProductImagesUseCase } from './set-product-images.use-case';
 
 describe('SetProductImagesUseCase', () => {
@@ -68,7 +69,7 @@ describe('SetProductImagesUseCase', () => {
 
     const storageService: jest.Mocked<StorageService> = {
       putObject: jest.fn().mockResolvedValue({
-        key: 'dev/public/shops/shoppub0001/products/productpub01/images/original/a.jpg',
+        key: 'dev/public/shops/shoppub0001/products/productpub01/images/image-1/original.jpg',
         size: 12,
         contentType: 'image/jpeg',
       }),
@@ -95,19 +96,25 @@ describe('SetProductImagesUseCase', () => {
       }),
     };
 
+    const productImageService: jest.Mocked<ProductImageService> = {
+      generateVariants: jest.fn().mockResolvedValue(undefined),
+    } as jest.Mocked<ProductImageService>;
+
     return {
       productRepository,
       shopRepository,
       storageService,
+      productImageService,
     };
   }
 
   it('uploads files, replaces images, and deletes old storage keys', async () => {
-    const { productRepository, shopRepository, storageService } = buildDeps();
+    const { productRepository, shopRepository, storageService, productImageService } = buildDeps();
     const useCase = new SetProductImagesUseCase(
       productRepository,
       shopRepository,
-      storageService
+      storageService,
+      productImageService
     );
 
     const result = await useCase.execute(actor, product.id, {
@@ -124,12 +131,13 @@ describe('SetProductImagesUseCase', () => {
     expect(storageService.putObject).toHaveBeenCalledTimes(1);
     expect(storageService.putObject).toHaveBeenCalledWith(
       expect.objectContaining({
-        key: expect.stringContaining(
-          'shops/shoppub0001/products/productpub01/images/original/'
+        key: expect.stringMatching(
+          /shops\/shoppub0001\/products\/productpub01\/images\/[^/]+\/original\.jpg$/
         ),
       })
     );
     expect(productRepository.replaceImages).toHaveBeenCalledTimes(1);
+    expect(productImageService.generateVariants).toHaveBeenCalledWith(product.id);
     expect(storageService.deleteObject).toHaveBeenCalledWith(
       'products/product-1/images/old.jpg'
     );

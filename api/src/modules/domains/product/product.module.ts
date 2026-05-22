@@ -5,8 +5,10 @@ import { IdempotencyModule } from '../../shared/idempotency/idempotency.module';
 import { CacheModule } from '../../shared/cache/cache.module';
 import { StorageModule } from '../../shared/storage/storage.module';
 import { AuditModule } from '../../shared/audit/audit.module';
+import { ImageModule } from '../../shared/image/image.module';
 import { CategoryModule } from '../category/category.module';
 import { ShopModule } from '../shop/shop.module';
+import { ProductImageService } from './app/services/product-image.service';
 import { CreateProductDraftFacadeUseCase } from './app/use-cases/create-product-draft-facade/create-product-draft-facade.use-case';
 import { ConsumeProductImageUploadTicketUseCase } from './app/use-cases/consume-product-image-upload-ticket/consume-product-image-upload-ticket.use-case';
 import { CreateProductDraftUseCase } from './app/use-cases/create-product-draft/create-product-draft.use-case';
@@ -30,6 +32,7 @@ import { ShopProductsController } from '../shop/api/rest/shop-products.controlle
 import { MikroOrmProductRepository } from './infra/mikro-orm-product.repository';
 import { ProductAttributeValueEntity } from './infra/persistence/entities/product-attribute-value.entity';
 import { ProductImageEntity } from './infra/persistence/entities/product-image.entity';
+import { ProductImageVariantEntity } from './infra/persistence/entities/product-image-variant.entity';
 import { ProductInventoryReservationEntity } from './infra/persistence/entities/product-inventory-reservation.entity';
 import { ProductInventoryEntity } from './infra/persistence/entities/product-inventory.entity';
 import { ProductShippingDestinationEntity } from './infra/persistence/entities/product-shipping-destination.entity';
@@ -45,10 +48,12 @@ import { ProductEntity } from './infra/persistence/entities/product.entity';
     ShopModule,
     CategoryModule,
     StorageModule,
+    ImageModule,
     AuditModule,
     MikroOrmModule.forFeature([
       ProductEntity,
       ProductImageEntity,
+      ProductImageVariantEntity,
       ProductAttributeValueEntity,
       ProductVariantEntity,
       ProductInventoryEntity,
@@ -63,6 +68,7 @@ import { ProductEntity } from './infra/persistence/entities/product.entity';
       provide: ProductRepository,
       useClass: MikroOrmProductRepository,
     },
+    ProductImageService,
     ConsumeProductImageUploadTicketUseCase,
     CreateProductDraftFacadeUseCase,
     CreateProductDraftUseCase,

@@ -11,6 +11,7 @@ import {
   ActorCannotCreateProductDraftError,
   ProductNotFoundError
 } from '../../errors/product-app.error';
+import { ProductImageService } from '../../services/product-image.service';
 
 export interface UploadedProductImageFile {
   originalname: string;
@@ -31,7 +32,8 @@ export class SetProductImagesUseCase {
   constructor(
     private readonly productRepository: ProductRepository,
     private readonly shopRepository: ShopRepository,
-    private readonly storageService: StorageService
+    private readonly storageService: StorageService,
+    private readonly productImageService: ProductImageService
   ) {}
 
   async execute(
@@ -59,6 +61,7 @@ export class SetProductImagesUseCase {
     }
 
     const uploadedKeys: string[] = [];
+    let imagesPersisted = false;
 
     try {
       const storedImages = await Promise.all(
@@ -91,12 +94,17 @@ export class SetProductImagesUseCase {
         return err(new ProductNotFoundError(productId));
       }
 
+      imagesPersisted = true;
+
+      await this.productImageService.generateVariants(productId);
       await this.deleteObjects(replacedImages.removedStorageKeys);
 
       return ok(replacedImages.product);
     }
     catch (error) {
-      await this.deleteObjects(uploadedKeys);
+      if (!imagesPersisted) {
+        await this.deleteObjects(uploadedKeys);
+      }
       throw error;
     }
   }
@@ -106,6 +114,8 @@ export class SetProductImagesUseCase {
     productId: string,
     contentType: string
   ): string {
+    const imageId = createPublicId();
+
     return buildStorageObjectKey({
       env: resolveStorageEnvironmentSegment(process.env.NODE_ENV),
       visibility: 'public',
@@ -114,9 +124,9 @@ export class SetProductImagesUseCase {
         { domain: 'products', id: productId },
       ],
       collection: 'images',
-      assetType: 'original',
+      assetPath: [imageId],
       extension: resolveImageExtension(contentType),
-      filename: createPublicId(),
+      filename: 'original',
     });
   }
 

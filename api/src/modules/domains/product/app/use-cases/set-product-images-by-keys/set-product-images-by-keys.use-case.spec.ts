@@ -3,6 +3,7 @@ import { UserStatus } from '~/modules/domains/auth/domain/enums/user-status.enum
 import type { ShopRepository } from '~/modules/domains/shop/app/ports/shop.repository';
 import type { ProductRepository } from '../../ports/product.repository';
 import type { ProductDraftSummary } from '../../product.types';
+import type { ProductImageService } from '../../services/product-image.service';
 import { SetProductImagesByKeysUseCase } from './set-product-images-by-keys.use-case';
 
 describe('SetProductImagesByKeysUseCase', () => {
@@ -78,17 +79,23 @@ describe('SetProductImagesByKeysUseCase', () => {
       }),
     };
 
+    const productImageService: jest.Mocked<ProductImageService> = {
+      generateVariants: jest.fn().mockResolvedValue(undefined),
+    } as jest.Mocked<ProductImageService>;
+
     return {
       productRepository,
       shopRepository,
+      productImageService,
     };
   }
 
   it('replaces product images using existing storage keys', async () => {
-    const { productRepository, shopRepository } = buildDeps();
+    const { productRepository, shopRepository, productImageService } = buildDeps();
     const useCase = new SetProductImagesByKeysUseCase(
       productRepository,
-      shopRepository
+      shopRepository,
+      productImageService
     );
 
     const result = await useCase.execute(actor, product.id, {
@@ -110,5 +117,6 @@ describe('SetProductImagesByKeysUseCase', () => {
         },
       ],
     });
+    expect(productImageService.generateVariants).toHaveBeenCalledWith(product.id);
   });
 });

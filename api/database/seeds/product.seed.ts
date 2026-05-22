@@ -80,9 +80,9 @@ async function syncProductImages(
         { domain: 'products', id: product.publicId },
       ],
       collection: 'images',
-      assetType: 'original',
+      assetPath: [filenameWithoutExtension],
       extension,
-      filename: filenameWithoutExtension,
+      filename: 'original',
     });
 
     em.persist(em.create(ProductImageEntity, { product, storageKey, rank: index + 1 }));

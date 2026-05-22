@@ -18,4 +18,18 @@ export const PRODUCT_IMAGE_VARIANT_SPECS: Partial<
     format: 'webp',
     quality: 82,
   },
+  [ProductImageVariant.THUMB_1X1]: {
+    width: 200,
+    height: 200,
+    fit: 'cover',
+    format: 'webp',
+    quality: 78,
+  },
+  [ProductImageVariant.DETAIL_4X5]: {
+    width: 1200,
+    height: 1500,
+    fit: 'contain',
+    format: 'webp',
+    quality: 86,
+  },
 };

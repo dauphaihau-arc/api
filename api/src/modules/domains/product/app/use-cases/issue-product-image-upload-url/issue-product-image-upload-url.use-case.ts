@@ -17,10 +17,10 @@ import {
 import { createPublicId } from '~/common/ids/public-id';
 import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
 import { buildStorageObjectKey, resolveImageExtension, resolveStorageEnvironmentSegment } from '~/modules/shared/storage/app/storage-key-builder';
-import type { StorageAssetType } from '~/modules/shared/storage/app/storage-key.types';
 import { StorageService } from '~/modules/shared/storage/app/ports/storage.service';
 import { ProductRepository } from '../../ports/product.repository';
 import { ShopRepository } from '~/modules/domains/shop/app/ports/shop.repository';
+import { ProductImageAssetType } from '../../../domain/enums/product-image-asset-type.enum';
 
 const UPLOAD_TICKET_TTL_MS = 15 * 60 * 1000;
 
@@ -51,7 +51,7 @@ export class IssueProductImageUploadUrlUseCase {
     shopId: string,
     productId: string,
     contentType: string,
-    assetType: StorageAssetType
+    assetType: ProductImageAssetType
   ): Promise<IssueProductImageUploadUrlResult> {
     const product = await this.productRepository.findById(productId);
 
@@ -66,6 +66,7 @@ export class IssueProductImageUploadUrlUseCase {
     }
 
     const extension = resolveImageExtension(contentType);
+    const imageId = createPublicId();
     const shopStorageId = product.shopPublicId ?? product.shopId;
     const productStorageId = product.publicId ?? product.id;
     const key = buildStorageObjectKey({
@@ -76,9 +77,9 @@ export class IssueProductImageUploadUrlUseCase {
         { domain: 'products', id: productStorageId },
       ],
       collection: 'images',
-      assetType,
+      assetPath: [imageId],
       extension,
-      filename: createPublicId(),
+      filename: assetType,
     });
 
     if (this.storageConfig.driver === 'minio') {

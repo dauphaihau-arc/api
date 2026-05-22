@@ -1,5 +1,7 @@
 import 'reflect-metadata';
-import { createReadStream, existsSync } from 'node:fs';
+import { createReadStream } from 'node:fs';
+import { existsSync } from 'node:fs';
+import { readFile } from 'node:fs/promises';
 import * as path from 'node:path';
 import {
   CreateBucketCommand,
@@ -10,9 +12,14 @@ import {
 import { MikroORM } from '@mikro-orm/postgresql';
 import { buildDatabaseConfig } from '../src/config/database.config';
 import { CategoryEntity } from '../src/modules/domains/category/infra/persistence/entities/category.entity';
+import { PRODUCT_IMAGE_VARIANT_SPECS } from '../src/modules/domains/product/app/config/product-image-variant.config';
+import { ProductImageVariant } from '../src/modules/domains/product/domain/enums/product-image-variant.enum';
 import { ProductImageEntity } from '../src/modules/domains/product/infra/persistence/entities/product-image.entity';
+import { ProductImageVariantEntity } from '../src/modules/domains/product/infra/persistence/entities/product-image-variant.entity';
 import { ProductEntity } from '../src/modules/domains/product/infra/persistence/entities/product.entity';
 import { ShopEntity } from '../src/modules/domains/shop/infra/persistence/entities/shop.entity';
+import { SharpImageTransformService } from '../src/modules/shared/image/infra/sharp-image-transform.service';
+import { buildStorageObjectKey, resolveStorageEnvironmentSegment } from '../src/modules/shared/storage/app/storage-key-builder';
 import {
   resolveSeedProductAssetDirectory,
   resolveSeedProductImagePaths,
@@ -89,6 +96,24 @@ async function uploadObject(
       Key: key,
       Body: createReadStream(filePath),
       ContentType: resolveContentType(filePath),
+    })
+  );
+}
+
+async function uploadBuffer(
+  client: S3Client,
+  bucket: string,
+  key: string,
+  body: Buffer,
+  contentType: string
+): Promise<void> {
+  await client.send(
+    new PutObjectCommand({
+      Bucket: bucket,
+      Key: key,
+      Body: body,
+      ContentType: contentType,
+      ContentLength: body.byteLength,
     })
   );
 }
@@ -179,11 +204,19 @@ async function main(): Promise<void> {
     },
   });
 
+  const imageTransformService = new SharpImageTransformService();
+
   await ensureBucket(client, storageConfig.bucket);
 
   const orm = await MikroORM.init({
     ...buildDatabaseConfig(process.env),
-    entities: [CategoryEntity, ShopEntity, ProductEntity, ProductImageEntity],
+    entities: [
+      CategoryEntity,
+      ShopEntity,
+      ProductEntity,
+      ProductImageEntity,
+      ProductImageVariantEntity,
+    ],
   });
 
   try {
@@ -237,7 +270,7 @@ async function main(): Promise<void> {
       const product = await em.findOne(
         ProductEntity,
         { shop, slug: slugifySeedValue(productSeed.title) },
-        { populate: ['images'] }
+        { populate: ['images', 'images.variants'] }
       );
 
       if (!product) {
@@ -259,11 +292,68 @@ async function main(): Promise<void> {
           assetDirectory,
           path.basename(imageFilenames[index])
         );
+        const sourceBuffer = await readFile(sourceFile);
 
         await uploadObject(client, storageConfig.bucket, image.storageKey, sourceFile);
         console.log(`Uploaded product asset -> ${image.storageKey}`);
+
+        for (const [variant, spec] of Object.entries(PRODUCT_IMAGE_VARIANT_SPECS) as Array<
+          [ProductImageVariant, (typeof PRODUCT_IMAGE_VARIANT_SPECS)[ProductImageVariant]]
+        >) {
+          if (!spec) {
+            continue;
+          }
+
+          const transformed = await imageTransformService.transform(sourceBuffer, spec);
+          const variantKey = buildStorageObjectKey({
+            env: resolveStorageEnvironmentSegment(process.env.NODE_ENV),
+            visibility: 'public',
+            path: [
+              { domain: 'shops', id: shop.publicId },
+              { domain: 'products', id: product.publicId },
+            ],
+            collection: 'images',
+            assetPath: [resolveProductImageStorageId(image.storageKey)],
+            extension: spec.format,
+            filename: variant,
+          });
+
+          await uploadBuffer(
+            client,
+            storageConfig.bucket,
+            variantKey,
+            transformed,
+            resolveVariantContentType(spec.format)
+          );
+
+          const existingVariant = image.variants
+            .getItems()
+            .find((candidate) => candidate.variant === variant);
+
+          if (existingVariant) {
+            existingVariant.storageKey = variantKey;
+            existingVariant.width = spec.width;
+            existingVariant.height = spec.height;
+            existingVariant.format = spec.format;
+            em.persist(existingVariant);
+          }
+          else {
+            em.persist(em.create(ProductImageVariantEntity, {
+              image,
+              variant,
+              storageKey: variantKey,
+              width: spec.width,
+              height: spec.height,
+              format: spec.format,
+            }));
+          }
+
+          console.log(`Uploaded product asset variant -> ${variantKey}`);
+        }
       }
     }
+
+    await em.flush();
   } finally {
     await orm.close(true);
   }
@@ -275,3 +365,27 @@ void main().catch((error) => {
   console.error(error);
   process.exit(1);
 });
+
+function resolveVariantContentType(format: 'webp' | 'jpg' | 'png' | 'avif'): string {
+  switch (format) {
+    case 'webp':
+      return 'image/webp';
+    case 'jpg':
+      return 'image/jpeg';
+    case 'png':
+      return 'image/png';
+    case 'avif':
+      return 'image/avif';
+  }
+}
+
+function resolveProductImageStorageId(storageKey: string): string {
+  const segments = storageKey.split('/').filter(Boolean);
+  const imageId = segments.at(-2);
+
+  if (!imageId) {
+    throw new Error(`Unable to resolve product image storage id from key "${storageKey}".`);
+  }
+
+  return imageId;
+}

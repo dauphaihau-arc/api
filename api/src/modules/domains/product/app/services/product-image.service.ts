@@ -63,9 +63,9 @@ export class ProductImageService {
             { domain: 'products', id: product.publicId ?? product.id },
           ],
           collection: 'images',
-          assetSegment: variant,
+          assetPath: [resolveProductImageStorageId(image.storageKey)],
           extension: spec.format,
-          filename: image.id,
+          filename: variant,
         });
 
         await this.storageService.putObject({
@@ -124,6 +124,17 @@ export class ProductImageService {
       throw error;
     }
   }
+}
+
+function resolveProductImageStorageId(storageKey: string): string {
+  const segments = storageKey.split('/').filter(Boolean);
+  const imageId = segments.at(-2);
+
+  if (!imageId) {
+    throw new Error(`Unable to resolve product image storage id from key "${storageKey}".`);
+  }
+
+  return imageId;
 }
 
 function resolveImageVariantContentType(format: 'webp' | 'jpg' | 'png' | 'avif'): string {

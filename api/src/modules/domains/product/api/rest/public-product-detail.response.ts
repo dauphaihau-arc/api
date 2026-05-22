@@ -22,6 +22,13 @@ export type PublicProductDetailResponse = {
     storage_key: string;
     url?: string;
     rank: number;
+    variants?: Record<string, {
+      storage_key: string;
+      url?: string;
+      width?: number;
+      height?: number;
+      format?: string;
+    }>;
   }>;
   variants: Array<{
     id: string;

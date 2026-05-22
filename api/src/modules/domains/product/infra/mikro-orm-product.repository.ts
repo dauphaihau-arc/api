@@ -7,6 +7,7 @@ import { CategoryAttributeEntity } from '~/modules/domains/category/infra/persis
 import { CategoryEntity } from '~/modules/domains/category/infra/persistence/entities/category.entity';
 import { ShopEntity } from '~/modules/domains/shop/infra/persistence/entities/shop.entity';
 import { ProductState } from '../domain/enums/product-state.enum';
+import { ProductImageVariant } from '../domain/enums/product-image-variant.enum';
 import { ProductRepository } from '../app/ports/product.repository';
 import type {
   CreateProductDraftRepositoryInput,
@@ -39,6 +40,7 @@ export class MikroOrmProductRepository implements ProductRepository {
     'shop',
     'category',
     'images',
+    'images.variants',
     'attributeValues',
     'attributeValues.categoryAttribute',
     'attributeValues.selectedOption',
@@ -141,7 +143,13 @@ export class MikroOrmProductRepository implements ProductRepository {
         ...(input.whoMade ? { whoMade: input.whoMade } : {}),
       },
       {
-        populate: ['shop', 'images', 'inventoryRecords', 'inventoryRecords.productVariant'],
+        populate: [
+          'shop',
+          'images',
+          'images.variants',
+          'inventoryRecords',
+          'inventoryRecords.productVariant',
+        ],
       }
     );
 
@@ -207,7 +215,10 @@ export class MikroOrmProductRepository implements ProductRepository {
 
     const removedStorageKeys = product.images
       .getItems()
-      .map((image) => image.storageKey);
+      .flatMap((image) => [
+        image.storageKey,
+        ...image.variants.getItems().map((variant) => variant.storageKey),
+      ]);
 
     for (const image of product.images.getItems()) {
       entityManager.remove(image);
@@ -550,6 +561,17 @@ export class MikroOrmProductRepository implements ProductRepository {
           storageKey: image.storageKey,
           url: this.storageService.getPublicUrl(image.storageKey),
           rank: image.rank,
+          variants: image.variants
+            .getItems()
+            .map((variant) => ({
+              id: variant.id,
+              variant: variant.variant,
+              storageKey: variant.storageKey,
+              url: this.storageService.getPublicUrl(variant.storageKey),
+              width: variant.width,
+              height: variant.height,
+              format: variant.format,
+            })),
         })),
       attributes: product.attributeValues
         .getItems()
@@ -648,6 +670,17 @@ export class MikroOrmProductRepository implements ProductRepository {
           storageKey: image.storageKey,
           url: this.storageService.getPublicUrl(image.storageKey),
           rank: image.rank,
+          variants: image.variants
+            .getItems()
+            .map((variant) => ({
+              id: variant.id,
+              variant: variant.variant,
+              storageKey: variant.storageKey,
+              url: this.storageService.getPublicUrl(variant.storageKey),
+              width: variant.width,
+              height: variant.height,
+              format: variant.format,
+            })),
         })),
       variants: product.variants
         .getItems()
@@ -723,10 +756,7 @@ export class MikroOrmProductRepository implements ProductRepository {
       title: product.title,
       slug: product.slug,
       image: primaryImage
-        ? {
-          storageKey: primaryImage.storageKey,
-          url: this.storageService.getPublicUrl(primaryImage.storageKey),
-        }
+        ? this.toPublicListImage(primaryImage)
         : undefined,
       variantType: product.variantType,
       inventory: primaryInventory
@@ -772,5 +802,31 @@ export class MikroOrmProductRepository implements ProductRepository {
 
         return left.productVariant.rank - right.productVariant.rank;
       })[0];
+  }
+
+  private toPublicListImage(primaryImage: ProductImageEntity): PublicProductListItem['image'] {
+    const cardVariant = primaryImage.variants
+      .getItems()
+      .find((variant) => variant.variant === ProductImageVariant.CARD_1X1);
+
+    if (cardVariant) {
+      return {
+        storageKey: cardVariant.storageKey,
+        url: this.storageService.getPublicUrl(cardVariant.storageKey),
+        variant: cardVariant.variant,
+        variants: {
+          [cardVariant.variant]: {
+            storageKey: cardVariant.storageKey,
+            url: this.storageService.getPublicUrl(cardVariant.storageKey),
+          },
+        },
+      };
+    }
+
+    return {
+      storageKey: primaryImage.storageKey,
+      url: this.storageService.getPublicUrl(primaryImage.storageKey),
+      variant: 'original',
+    };
   }
 }

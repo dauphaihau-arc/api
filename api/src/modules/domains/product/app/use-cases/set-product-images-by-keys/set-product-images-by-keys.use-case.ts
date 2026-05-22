@@ -8,6 +8,7 @@ import {
 } from '../../errors/product-app.error';
 import { ProductRepository } from '../../ports/product.repository';
 import type { ProductDraftSummary } from '../../product.types';
+import { ProductImageService } from '../../services/product-image.service';
 
 export interface SetProductImagesByKeysInput {
   images: Array<{
@@ -24,7 +25,8 @@ type SetProductImagesByKeysError =
 export class SetProductImagesByKeysUseCase {
   constructor(
     private readonly productRepository: ProductRepository,
-    private readonly shopRepository: ShopRepository
+    private readonly shopRepository: ShopRepository,
+    private readonly productImageService: ProductImageService
   ) {}
 
   async execute(
@@ -62,6 +64,8 @@ export class SetProductImagesByKeysUseCase {
     if (!replacedImages) {
       return err(new ProductNotFoundError(productId));
     }
+
+    await this.productImageService.generateVariants(productId);
 
     return ok(replacedImages.product);
   }

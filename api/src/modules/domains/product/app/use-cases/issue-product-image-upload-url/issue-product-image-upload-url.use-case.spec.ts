@@ -3,6 +3,8 @@ import type { Cache } from 'cache-manager';
 import type { StorageConfig } from '~/config/storage.config';
 import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
 import { UserStatus } from '~/modules/domains/auth/domain/enums/user-status.enum';
+import type { StorageService } from '~/modules/shared/storage/app/ports/storage.service';
+import { ProductImageAssetType } from '../../../domain/enums/product-image-asset-type.enum';
 import type { ProductRepository } from '../../ports/product.repository';
 import type { ShopRepository } from '~/modules/domains/shop/app/ports/shop.repository';
 import { IssueProductImageUploadUrlUseCase } from './issue-product-image-upload-url.use-case';
@@ -26,12 +28,12 @@ describe('IssueProductImageUploadUrlUseCase', () => {
     localRoot: '/tmp/storage',
   }) {
     const cacheStore = new Map<string, unknown>();
-    const cacheManager: Pick<Cache, 'get' | 'set'> = {
+    const cacheManager = {
       get: jest.fn(async (key: string) => cacheStore.get(key)),
       set: jest.fn(async (key: string, value: unknown) => {
         cacheStore.set(key, value);
       }),
-    };
+    } as unknown as Pick<Cache, 'get' | 'set'>;
 
     const shopRepository: jest.Mocked<ShopRepository> = {
       create: jest.fn(),
@@ -83,23 +85,34 @@ describe('IssueProductImageUploadUrlUseCase', () => {
       findByShopIdAndSlug: jest.fn(),
     };
 
+    const storageService: jest.Mocked<StorageService> = {
+      putObject: jest.fn(),
+      getObject: jest.fn(),
+      exists: jest.fn(),
+      getPublicUrl: jest.fn(),
+      deleteObject: jest.fn(),
+      ping: jest.fn().mockResolvedValue(undefined),
+    };
+
     return {
       cacheManager,
       shopRepository,
       productRepository,
       storageConfig,
+      storageService,
     };
   }
 
   it('issues a local upload ticket when object storage is disabled', async () => {
     const {
-      cacheManager, shopRepository, productRepository, storageConfig, 
+      cacheManager, shopRepository, productRepository, storageConfig, storageService,
     } = buildDeps();
     const useCase = new IssueProductImageUploadUrlUseCase(
       cacheManager as Cache,
       shopRepository,
       productRepository,
-      storageConfig
+      storageConfig,
+      storageService
     );
 
     const issued = await useCase.execute(
@@ -107,10 +120,12 @@ describe('IssueProductImageUploadUrlUseCase', () => {
       'shop-1',
       'product-1',
       'image/webp',
-      'original'
+      ProductImageAssetType.ORIGINAL
     );
 
-    expect(issued.key).toContain('shops/shoppub0001/products/productpub01/images/original/');
+    expect(issued.key).toMatch(
+      /shops\/shoppub0001\/products\/productpub01\/images\/[^/]+\/original\.webp$/
+    );
     expect(issued.token).toBeDefined();
     expect(cacheManager.set).toHaveBeenCalledTimes(1);
   });
@@ -120,7 +135,7 @@ describe('IssueProductImageUploadUrlUseCase', () => {
     mockedGetSignedUrl.mockResolvedValueOnce('http://localhost:9000/bucket/signed');
 
     const {
-      cacheManager, shopRepository, productRepository, storageConfig, 
+      cacheManager, shopRepository, productRepository, storageConfig, storageService,
     } = buildDeps({
       driver: 'minio',
       endpoint: 'http://localhost:9000',
@@ -136,7 +151,8 @@ describe('IssueProductImageUploadUrlUseCase', () => {
       cacheManager as Cache,
       shopRepository,
       productRepository,
-      storageConfig
+      storageConfig,
+      storageService
     );
 
     const issued = await useCase.execute(
@@ -144,11 +160,12 @@ describe('IssueProductImageUploadUrlUseCase', () => {
       'shop-1',
       'product-1',
       'image/webp',
-      'original'
+      ProductImageAssetType.ORIGINAL
     );
 
     expect(issued.token).toBeUndefined();
     expect(issued.presignedUrl).toBe('http://localhost:9000/bucket/signed');
     expect(mockedGetSignedUrl).toHaveBeenCalledTimes(1);
+    expect(storageService.ping).toHaveBeenCalledTimes(1);
   });
 });

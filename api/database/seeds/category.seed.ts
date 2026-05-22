@@ -33,7 +33,7 @@ function buildCategoryImageStorageKey(
     visibility: 'public',
     path: [{ domain: 'categories', id: categoryId }],
     collection: 'images',
-    assetType: 'original',
+    assetPath: ['original'],
     extension,
     filename: filenameWithoutExtension,
   });
