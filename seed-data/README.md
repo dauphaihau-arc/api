@@ -26,6 +26,7 @@ Rules:
 - Shop metadata lives in `seed-data/shops.tsv` and should use `shop_slug` as the stable seed identifier.
 - Optional local-only shops can live in `seed-data/shops.local.tsv`.
 - Product metadata lives in `seed-data/products.tsv`.
+- `seed-data/products.tsv` may include a `state` column; blank defaults to `active`.
 - Optional local-only product rows can live in `seed-data/products.local.tsv`.
 - Product inventory and variant rows live in `seed-data/product-inventory.tsv`.
 - Optional local-only inventory rows can live in `seed-data/product-inventory.local.tsv`.
@@ -33,6 +34,7 @@ Rules:
 - Coupon-to-product mappings live in `seed-data/coupon-products.tsv`.
 - Product images are auto-discovered from the folder derived from `shop_slug` and `title` in [product.seed.ts](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/api/database/seeds/product.seed.ts:41).
 - Product images should live under shop and product slug directories, for example `seed-data/images/products/olive-atelier/linen-weekend-dress/`.
+- Draft products can omit image folders entirely; active products still require seeded images.
 - Local-only product images can live under `seed-data/images/products-local/` with the same shop/product slug structure. The local folder is checked before the tracked folder.
 - Each product folder must contain one `hero.*` image. Additional images should be named `detail-*` and are uploaded after `hero.*`.
 - Supported product image extensions are `.jpg`, `.jpeg`, `.png`, and `.webp`.

@@ -1,13 +1,63 @@
-shop_slug	category_path	title	description	who_made	variant_type	variant_group_name	variant_sub_group_name
-olive-atelier	Fashion > Women's Fashion > Dresses	Linen Weekend Dress	Relaxed linen dress with a lightweight drape and clean everyday silhouette.	i_did	none		
-olive-atelier	Fashion > Bags & Purses > Totes	Canvas Market Tote	Structured everyday tote reimagined in durable canvas for a clothing-focused lifestyle collection.	collective	none		
-reed-workshop	Electronics > Headphones	Yamaha HPH-MT7 Studio Monitor Headphones	Closed-back over-ear studio monitor headphones with 40 mm drivers, 15 Hz to 25 kHz response, strong isolation, and a fatigue-reducing fit for extended sessions.	i_did	combine	Color	Size
-reed-workshop	Electronics > Headphones	Sony WH-1000XM6 Wireless Headphones	Silver over-ear wireless headphones with Bluetooth 5.3, adaptive noise cancelling, clear call microphones, foldable travel-friendly design, and up to 40 hours playback without ANC or 30 hours with ANC.	someone_else	none		
-sage-studio	Art > Painting	Minimal Horizon Print	Archival print with a muted color palette and a wide matte-ready aspect ratio.	i_did	none		
-sage-studio	Art > Painting	Oak Side Table	Compact studio display piece presented as part of an art-focused interior collection.	collective	single	Finish	
-rowan-menswear	Fashion > Man Fashion > Tees	AW23 / 11 —J23-029 Ripple Tornado Pullover	The front has a large zipper pocket, unified storage space, and a low-burden fit.	i_did	none		
-rowan-menswear	Fashion > Man Fashion > Pants	S26-S1-P / Visor Structure Pants	Inspiration from armor architecture, this design explores the juxtaposition of symmetrical and asymmetrical paneling.	i_did	none		
-hazel-home	Home & Living > Furniture > Table	Solid Oak Console Table	Compact solid oak console table with rounded corners and a natural oil finish for entryways and living spaces.	collective	single	Finish	
-hazel-home	Home & Living > Furniture > Table	Walnut Accent Side Table	Space-saving walnut side table designed for lamps, books, and everyday living room essentials.	collective	single	Finish	
-juno-console	Toys & Games > Games > Console game > Xbox	Xbox Wireless Controller	Official-style wireless controller with textured grip, responsive triggers, and low-latency pairing for console sessions.	someone_else	none		
-juno-console	Toys & Games > Games > Console game > Playstation	PlayStation DualSense Wireless Controller	Adaptive-trigger wireless controller with haptic feedback and USB-C charging for immersive console play.	someone_else	none		
+shop_slug	category_path	title	description	who_made	variant_type	variant_group_name	variant_sub_group_name	state
+olive-atelier	Fashion > Women's Fashion > Dresses	Linen Weekend Dress	Relaxed linen dress with a lightweight drape and clean everyday silhouette.	i_did	none			active
+olive-atelier	Fashion > Bags & Purses > Totes	Canvas Market Tote	Structured everyday tote reimagined in durable canvas for a clothing-focused lifestyle collection.	collective	none			active
+reed-workshop	Electronics > Headphones	Yamaha HPH-MT7 Studio Monitor Headphones	Closed-back over-ear studio monitor headphones with 40 mm drivers, 15 Hz to 25 kHz response, strong isolation, and a fatigue-reducing fit for extended sessions.	i_did	combine	Color	Size	active
+reed-workshop	Electronics > Headphones	Sony WH-1000XM6 Wireless Headphones	Silver over-ear wireless headphones with Bluetooth 5.3, adaptive noise cancelling, clear call microphones, foldable travel-friendly design, and up to 40 hours playback without ANC or 30 hours with ANC.	someone_else	none			active
+sage-studio	Art > Painting	Minimal Horizon Print	Archival print with a muted color palette and a wide matte-ready aspect ratio.	i_did	none			active
+sage-studio	Art > Painting	Oak Side Table	Compact studio display piece presented as part of an art-focused interior collection.	collective	single	Finish		active
+rowan-menswear	Fashion > Man Fashion > Tees	AW23 / 11 —J23-029 Ripple Tornado Pullover	The front has a large zipper pocket, unified storage space, and a low-burden fit.	i_did	none			active
+rowan-menswear	Fashion > Man Fashion > Pants	S26-S1-P / Visor Structure Pants	Inspiration from armor architecture, this design explores the juxtaposition of symmetrical and asymmetrical paneling.	i_did	none			active
+hazel-home	Home & Living > Furniture > Table	Solid Oak Console Table	Compact solid oak console table with rounded corners and a natural oil finish for entryways and living spaces.	collective	single	Finish		active
+hazel-home	Home & Living > Furniture > Table	Walnut Accent Side Table	Space-saving walnut side table designed for lamps, books, and everyday living room essentials.	collective	single	Finish		active
+juno-console	Toys & Games > Games > Console game > Xbox	Xbox Wireless Controller	Official-style wireless controller with textured grip, responsive triggers, and low-latency pairing for console sessions.	someone_else	none			active
+juno-console	Toys & Games > Games > Console game > Playstation	PlayStation DualSense Wireless Controller	Adaptive-trigger wireless controller with haptic feedback and USB-C charging for immersive console play.	someone_else	none			active
+bulk-catalog-lab	Fashion > Man Fashion > Tees	Bulk Draft Product 01	Draft-only seeded product 01 for testing large product tables without images.	i_did	none			draft
+bulk-catalog-lab	Fashion > Man Fashion > Tees	Bulk Draft Product 02	Draft-only seeded product 02 for testing large product tables without images.	i_did	none			draft
+bulk-catalog-lab	Fashion > Man Fashion > Tees	Bulk Draft Product 03	Draft-only seeded product 03 for testing large product tables without images.	i_did	none			draft
+bulk-catalog-lab	Fashion > Man Fashion > Tees	Bulk Draft Product 04	Draft-only seeded product 04 for testing large product tables without images.	i_did	none			draft
+bulk-catalog-lab	Fashion > Man Fashion > Tees	Bulk Draft Product 05	Draft-only seeded product 05 for testing large product tables without images.	i_did	none			draft
+bulk-catalog-lab	Fashion > Man Fashion > Tees	Bulk Draft Product 06	Draft-only seeded product 06 for testing large product tables without images.	i_did	none			draft
+bulk-catalog-lab	Fashion > Man Fashion > Tees	Bulk Draft Product 07	Draft-only seeded product 07 for testing large product tables without images.	i_did	none			draft
+bulk-catalog-lab	Fashion > Man Fashion > Tees	Bulk Draft Product 08	Draft-only seeded product 08 for testing large product tables without images.	i_did	none			draft
+bulk-catalog-lab	Fashion > Man Fashion > Tees	Bulk Draft Product 09	Draft-only seeded product 09 for testing large product tables without images.	i_did	none			draft
+bulk-catalog-lab	Fashion > Man Fashion > Tees	Bulk Draft Product 10	Draft-only seeded product 10 for testing large product tables without images.	i_did	none			draft
+bulk-catalog-lab	Fashion > Man Fashion > Tees	Bulk Draft Product 11	Draft-only seeded product 11 for testing large product tables without images.	i_did	none			draft
+bulk-catalog-lab	Fashion > Man Fashion > Tees	Bulk Draft Product 12	Draft-only seeded product 12 for testing large product tables without images.	i_did	none			draft
+bulk-catalog-lab	Fashion > Man Fashion > Tees	Bulk Draft Product 13	Draft-only seeded product 13 for testing large product tables without images.	i_did	none			draft
+bulk-catalog-lab	Fashion > Man Fashion > Tees	Bulk Draft Product 14	Draft-only seeded product 14 for testing large product tables without images.	i_did	none			draft
+bulk-catalog-lab	Fashion > Man Fashion > Tees	Bulk Draft Product 15	Draft-only seeded product 15 for testing large product tables without images.	i_did	none			draft
+bulk-catalog-lab	Fashion > Man Fashion > Tees	Bulk Draft Product 16	Draft-only seeded product 16 for testing large product tables without images.	i_did	none			draft
+bulk-catalog-lab	Fashion > Man Fashion > Tees	Bulk Draft Product 17	Draft-only seeded product 17 for testing large product tables without images.	i_did	none			draft
+bulk-catalog-lab	Fashion > Man Fashion > Tees	Bulk Draft Product 18	Draft-only seeded product 18 for testing large product tables without images.	i_did	none			draft
+bulk-catalog-lab	Fashion > Man Fashion > Tees	Bulk Draft Product 19	Draft-only seeded product 19 for testing large product tables without images.	i_did	none			draft
+bulk-catalog-lab	Fashion > Man Fashion > Tees	Bulk Draft Product 20	Draft-only seeded product 20 for testing large product tables without images.	i_did	none			draft
+bulk-catalog-lab	Fashion > Man Fashion > Tees	Bulk Draft Product 21	Draft-only seeded product 21 for testing large product tables without images.	i_did	none			draft
+bulk-catalog-lab	Fashion > Man Fashion > Tees	Bulk Draft Product 22	Draft-only seeded product 22 for testing large product tables without images.	i_did	none			draft
+bulk-catalog-lab	Fashion > Man Fashion > Tees	Bulk Draft Product 23	Draft-only seeded product 23 for testing large product tables without images.	i_did	none			draft
+bulk-catalog-lab	Fashion > Man Fashion > Tees	Bulk Draft Product 24	Draft-only seeded product 24 for testing large product tables without images.	i_did	none			draft
+bulk-catalog-lab	Fashion > Man Fashion > Tees	Bulk Draft Product 25	Draft-only seeded product 25 for testing large product tables without images.	i_did	none			draft
+bulk-catalog-lab	Fashion > Man Fashion > Tees	Bulk Draft Product 26	Draft-only seeded product 26 for testing large product tables without images.	i_did	none			draft
+bulk-catalog-lab	Fashion > Man Fashion > Tees	Bulk Draft Product 27	Draft-only seeded product 27 for testing large product tables without images.	i_did	none			draft
+bulk-catalog-lab	Fashion > Man Fashion > Tees	Bulk Draft Product 28	Draft-only seeded product 28 for testing large product tables without images.	i_did	none			draft
+bulk-catalog-lab	Fashion > Man Fashion > Tees	Bulk Draft Product 29	Draft-only seeded product 29 for testing large product tables without images.	i_did	none			draft
+bulk-catalog-lab	Fashion > Man Fashion > Tees	Bulk Draft Product 30	Draft-only seeded product 30 for testing large product tables without images.	i_did	none			draft
+bulk-catalog-lab	Fashion > Man Fashion > Tees	Bulk Draft Product 31	Draft-only seeded product 31 for testing large product tables without images.	i_did	none			draft
+bulk-catalog-lab	Fashion > Man Fashion > Tees	Bulk Draft Product 32	Draft-only seeded product 32 for testing large product tables without images.	i_did	none			draft
+bulk-catalog-lab	Fashion > Man Fashion > Tees	Bulk Draft Product 33	Draft-only seeded product 33 for testing large product tables without images.	i_did	none			draft
+bulk-catalog-lab	Fashion > Man Fashion > Tees	Bulk Draft Product 34	Draft-only seeded product 34 for testing large product tables without images.	i_did	none			draft
+bulk-catalog-lab	Fashion > Man Fashion > Tees	Bulk Draft Product 35	Draft-only seeded product 35 for testing large product tables without images.	i_did	none			draft
+bulk-catalog-lab	Fashion > Man Fashion > Tees	Bulk Draft Product 36	Draft-only seeded product 36 for testing large product tables without images.	i_did	none			draft
+bulk-catalog-lab	Fashion > Man Fashion > Tees	Bulk Draft Product 37	Draft-only seeded product 37 for testing large product tables without images.	i_did	none			draft
+bulk-catalog-lab	Fashion > Man Fashion > Tees	Bulk Draft Product 38	Draft-only seeded product 38 for testing large product tables without images.	i_did	none			draft
+bulk-catalog-lab	Fashion > Man Fashion > Tees	Bulk Draft Product 39	Draft-only seeded product 39 for testing large product tables without images.	i_did	none			draft
+bulk-catalog-lab	Fashion > Man Fashion > Tees	Bulk Draft Product 40	Draft-only seeded product 40 for testing large product tables without images.	i_did	none			draft
+bulk-catalog-lab	Fashion > Man Fashion > Tees	Bulk Draft Product 41	Draft-only seeded product 41 for testing large product tables without images.	i_did	none			draft
+bulk-catalog-lab	Fashion > Man Fashion > Tees	Bulk Draft Product 42	Draft-only seeded product 42 for testing large product tables without images.	i_did	none			draft
+bulk-catalog-lab	Fashion > Man Fashion > Tees	Bulk Draft Product 43	Draft-only seeded product 43 for testing large product tables without images.	i_did	none			draft
+bulk-catalog-lab	Fashion > Man Fashion > Tees	Bulk Draft Product 44	Draft-only seeded product 44 for testing large product tables without images.	i_did	none			draft
+bulk-catalog-lab	Fashion > Man Fashion > Tees	Bulk Draft Product 45	Draft-only seeded product 45 for testing large product tables without images.	i_did	none			draft
+bulk-catalog-lab	Fashion > Man Fashion > Tees	Bulk Draft Product 46	Draft-only seeded product 46 for testing large product tables without images.	i_did	none			draft
+bulk-catalog-lab	Fashion > Man Fashion > Tees	Bulk Draft Product 47	Draft-only seeded product 47 for testing large product tables without images.	i_did	none			draft
+bulk-catalog-lab	Fashion > Man Fashion > Tees	Bulk Draft Product 48	Draft-only seeded product 48 for testing large product tables without images.	i_did	none			draft
+bulk-catalog-lab	Fashion > Man Fashion > Tees	Bulk Draft Product 49	Draft-only seeded product 49 for testing large product tables without images.	i_did	none			draft
+bulk-catalog-lab	Fashion > Man Fashion > Tees	Bulk Draft Product 50	Draft-only seeded product 50 for testing large product tables without images.	i_did	none			draft
