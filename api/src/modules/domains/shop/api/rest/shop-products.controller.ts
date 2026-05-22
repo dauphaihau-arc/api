@@ -45,8 +45,7 @@ import { SetProductShippingUseCase } from '~/modules/domains/product/app/use-cas
 import { SetProductVariantsUseCase } from '~/modules/domains/product/app/use-cases/set-product-variants/set-product-variants.use-case';
 import { UpdateProductDetailsUseCase } from '~/modules/domains/product/app/use-cases/update-product-details/update-product-details.use-case';
 import type {
-  ProductDraftSummary,
-  ShopProductListResult
+  ProductDraftSummary
 } from '~/modules/domains/product/app/product.types';
 import { CreateProductDraftFacadeDto } from '~/modules/domains/product/api/rest/dto/create-product-draft-facade.dto';
 import { CreateProductDto } from '~/modules/domains/product/api/rest/dto/create-product.dto';
@@ -59,6 +58,8 @@ import { SetProductVariantsDto } from '~/modules/domains/product/api/rest/dto/se
 import { UpdateProductDto } from '~/modules/domains/product/api/rest/dto/update-product.dto';
 import { mapProductAppErrorToHttpException } from '~/modules/domains/product/api/rest/product-http-error-mapper';
 import { ShopRepository } from '../../app/ports/shop.repository';
+import { toShopProductListResponse } from './shop-product-list.presenter';
+import type { ShopProductListResponse } from './shop-product-list.response';
 
 @Controller('shops/:shopId/products')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -86,10 +87,10 @@ export class ShopProductsController {
     @Param('shopId') shopId: string,
     @Query() query: ListShopProductsQueryDto,
     @CurrentUser() currentUser: AuthenticatedUser
-  ): Promise<ShopProductListResult> {
+  ): Promise<ShopProductListResponse> {
     await this.assertActorCanManageShop(currentUser, shopId);
 
-    return this.listShopProductsUseCase.execute({
+    const result = await this.listShopProductsUseCase.execute({
       shopId,
       page: query.page,
       limit: query.limit,
@@ -97,6 +98,8 @@ export class ShopProductsController {
       categoryId: query.categoryId,
       search: query.search,
     });
+
+    return toShopProductListResponse(result);
   }
 
   @Get(':id')
