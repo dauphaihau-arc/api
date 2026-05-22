@@ -1,11 +1,12 @@
 import { MikroOrmModule } from '@mikro-orm/nestjs';
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { IdempotencyModule } from '../../shared/idempotency/idempotency.module';
 import { CacheModule } from '../../shared/cache/cache.module';
 import { StorageModule } from '../../shared/storage/storage.module';
 import { AuditModule } from '../../shared/audit/audit.module';
 import { ImageModule } from '../../shared/image/image.module';
+import { QueueModule } from '../../shared/queue/queue.module';
 import { CategoryModule } from '../category/category.module';
 import { ShopModule } from '../shop/shop.module';
 import { ProductImageService } from './app/services/product-image.service';
@@ -49,6 +50,7 @@ import { ProductEntity } from './infra/persistence/entities/product.entity';
     CategoryModule,
     StorageModule,
     ImageModule,
+    forwardRef(() => QueueModule),
     AuditModule,
     MikroOrmModule.forFeature([
       ProductEntity,
@@ -88,6 +90,7 @@ import { ProductEntity } from './infra/persistence/entities/product.entity';
   ],
   exports: [
     ProductRepository,
+    ProductImageService,
     ConsumeProductImageUploadTicketUseCase,
     CreateProductDraftFacadeUseCase,
     CreateProductDraftUseCase,

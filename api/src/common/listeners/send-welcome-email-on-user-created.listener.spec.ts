@@ -1,5 +1,5 @@
 import { UserCreatedEvent } from '../events/user-created.event';
-import { appJobName } from '../jobs/job.types';
+import { appJobDeduplicationKey, appJobName } from '../jobs/job.types';
 import type { JobDispatcher } from '../../modules/shared/queue/app/ports/job-dispatcher';
 import { SendWelcomeEmailOnUserCreatedListener } from './send-welcome-email-on-user-created.listener';
 
@@ -23,7 +23,7 @@ describe('SendWelcomeEmailOnUserCreatedListener', () => {
         displayName: 'Member User',
       },
       {
-        deduplicationKey: 'user.send-welcome-email--user-1',
+        deduplicationKey: appJobDeduplicationKey.sendWelcomeEmail('user-1'),
       }
     );
   });

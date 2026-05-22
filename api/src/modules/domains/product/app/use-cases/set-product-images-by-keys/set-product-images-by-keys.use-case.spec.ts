@@ -1,9 +1,10 @@
 import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
 import { UserStatus } from '~/modules/domains/auth/domain/enums/user-status.enum';
 import type { ShopRepository } from '~/modules/domains/shop/app/ports/shop.repository';
+import { appJobDeduplicationKey, appJobName } from '~/common/jobs/job.types';
+import type { JobDispatcher } from '~/modules/shared/queue/app/ports/job-dispatcher';
 import type { ProductRepository } from '../../ports/product.repository';
 import type { ProductDraftSummary } from '../../product.types';
-import type { ProductImageService } from '../../services/product-image.service';
 import { SetProductImagesByKeysUseCase } from './set-product-images-by-keys.use-case';
 
 describe('SetProductImagesByKeysUseCase', () => {
@@ -79,23 +80,23 @@ describe('SetProductImagesByKeysUseCase', () => {
       }),
     };
 
-    const productImageService: jest.Mocked<ProductImageService> = {
-      generateVariants: jest.fn().mockResolvedValue(undefined),
-    } as jest.Mocked<ProductImageService>;
+    const jobDispatcher: jest.Mocked<JobDispatcher> = {
+      dispatch: jest.fn().mockResolvedValue(undefined),
+    } as jest.Mocked<JobDispatcher>;
 
     return {
       productRepository,
       shopRepository,
-      productImageService,
+      jobDispatcher,
     };
   }
 
   it('replaces product images using existing storage keys', async () => {
-    const { productRepository, shopRepository, productImageService } = buildDeps();
+    const { productRepository, shopRepository, jobDispatcher } = buildDeps();
     const useCase = new SetProductImagesByKeysUseCase(
       productRepository,
       shopRepository,
-      productImageService
+      jobDispatcher
     );
 
     const result = await useCase.execute(actor, product.id, {
@@ -117,6 +118,12 @@ describe('SetProductImagesByKeysUseCase', () => {
         },
       ],
     });
-    expect(productImageService.generateVariants).toHaveBeenCalledWith(product.id);
+    expect(jobDispatcher.dispatch).toHaveBeenCalledWith(
+      appJobName.generateProductImageVariants,
+      { productId: product.id },
+      {
+        deduplicationKey: appJobDeduplicationKey.generateProductImageVariants(product.id),
+      }
+    );
   });
 });

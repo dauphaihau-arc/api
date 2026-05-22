@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import { appJobName } from '../jobs/job.types';
+import { appJobDeduplicationKey, appJobName } from '../jobs/job.types';
 import { UserCreatedEvent } from '../events/user-created.event';
 import { JobDispatcher } from '../../modules/shared/queue/app/ports/job-dispatcher';
 
@@ -22,7 +22,7 @@ export class SendWelcomeEmailOnUserCreatedListener {
         displayName: event.displayName,
       },
       {
-        deduplicationKey: `${appJobName.sendWelcomeEmail}--${event.userId}`,
+        deduplicationKey: appJobDeduplicationKey.sendWelcomeEmail(event.userId),
       }
     );
 

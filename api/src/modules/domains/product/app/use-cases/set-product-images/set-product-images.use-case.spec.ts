@@ -1,10 +1,11 @@
 import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
 import { UserStatus } from '~/modules/domains/auth/domain/enums/user-status.enum';
 import type { ShopRepository } from '~/modules/domains/shop/app/ports/shop.repository';
+import { appJobDeduplicationKey, appJobName } from '~/common/jobs/job.types';
+import type { JobDispatcher } from '~/modules/shared/queue/app/ports/job-dispatcher';
 import type { StorageService } from '~/modules/shared/storage/app/ports/storage.service';
 import type { ProductRepository } from '../../ports/product.repository';
 import type { ProductDraftSummary } from '../../product.types';
-import type { ProductImageService } from '../../services/product-image.service';
 import { SetProductImagesUseCase } from './set-product-images.use-case';
 
 describe('SetProductImagesUseCase', () => {
@@ -96,25 +97,25 @@ describe('SetProductImagesUseCase', () => {
       }),
     };
 
-    const productImageService: jest.Mocked<ProductImageService> = {
-      generateVariants: jest.fn().mockResolvedValue(undefined),
-    } as jest.Mocked<ProductImageService>;
+    const jobDispatcher: jest.Mocked<JobDispatcher> = {
+      dispatch: jest.fn().mockResolvedValue(undefined),
+    } as jest.Mocked<JobDispatcher>;
 
     return {
       productRepository,
       shopRepository,
       storageService,
-      productImageService,
+      jobDispatcher,
     };
   }
 
   it('uploads files, replaces images, and deletes old storage keys', async () => {
-    const { productRepository, shopRepository, storageService, productImageService } = buildDeps();
+    const { productRepository, shopRepository, storageService, jobDispatcher } = buildDeps();
     const useCase = new SetProductImagesUseCase(
       productRepository,
       shopRepository,
       storageService,
-      productImageService
+      jobDispatcher
     );
 
     const result = await useCase.execute(actor, product.id, {
@@ -137,7 +138,13 @@ describe('SetProductImagesUseCase', () => {
       })
     );
     expect(productRepository.replaceImages).toHaveBeenCalledTimes(1);
-    expect(productImageService.generateVariants).toHaveBeenCalledWith(product.id);
+    expect(jobDispatcher.dispatch).toHaveBeenCalledWith(
+      appJobName.generateProductImageVariants,
+      { productId: product.id },
+      {
+        deduplicationKey: appJobDeduplicationKey.generateProductImageVariants(product.id),
+      }
+    );
     expect(storageService.deleteObject).toHaveBeenCalledWith(
       'products/product-1/images/old.jpg'
     );

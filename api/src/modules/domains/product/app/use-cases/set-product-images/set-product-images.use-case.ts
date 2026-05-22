@@ -1,8 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { createPublicId } from '~/common/ids/public-id';
 import { err, ok, type Result } from '~/common/application/result';
+import { appJobDeduplicationKey, appJobName } from '~/common/jobs/job.types';
 import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
 import { ShopRepository } from '~/modules/domains/shop/app/ports/shop.repository';
+import { JobDispatcher } from '~/modules/shared/queue/app/ports/job-dispatcher';
 import { buildStorageObjectKey, resolveImageExtension, resolveStorageEnvironmentSegment } from '~/modules/shared/storage/app/storage-key-builder';
 import { StorageService } from '~/modules/shared/storage/app/ports/storage.service';
 import { ProductRepository } from '../../ports/product.repository';
@@ -11,7 +13,6 @@ import {
   ActorCannotCreateProductDraftError,
   ProductNotFoundError
 } from '../../errors/product-app.error';
-import { ProductImageService } from '../../services/product-image.service';
 
 export interface UploadedProductImageFile {
   originalname: string;
@@ -33,7 +34,7 @@ export class SetProductImagesUseCase {
     private readonly productRepository: ProductRepository,
     private readonly shopRepository: ShopRepository,
     private readonly storageService: StorageService,
-    private readonly productImageService: ProductImageService
+    private readonly jobDispatcher: JobDispatcher
   ) {}
 
   async execute(
@@ -96,7 +97,13 @@ export class SetProductImagesUseCase {
 
       imagesPersisted = true;
 
-      await this.productImageService.generateVariants(productId);
+      await this.jobDispatcher.dispatch(
+        appJobName.generateProductImageVariants,
+        { productId },
+        {
+          deduplicationKey: appJobDeduplicationKey.generateProductImageVariants(productId),
+        }
+      );
       await this.deleteObjects(replacedImages.removedStorageKeys);
 
       return ok(replacedImages.product);

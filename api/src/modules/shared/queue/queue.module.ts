@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import {
   QueueConfig,
@@ -7,8 +7,10 @@ import {
 } from '~/config/queue.config';
 import { MailModule } from '../mail/mail.module';
 import Redis from 'ioredis';
+import { GenerateProductImageVariantsJob } from '~/common/jobs/generate-product-image-variants.job';
 import { SendPasswordResetEmailJob } from '~/common/jobs/send-password-reset-email.job';
 import { SendWelcomeEmailJob } from '~/common/jobs/send-welcome-email.job';
+import { ProductModule } from '~/modules/domains/product/product.module';
 import { JobDispatcher } from './app/ports/job-dispatcher';
 import { AppJobRunner } from './infra/app-job-runner';
 import { BullMqConnectionManager } from './infra/bullmq-connection-manager';
@@ -18,7 +20,7 @@ import { QueueConfigLoggerService } from './infra/queue-config-logger.service';
 import { BULLMQ_CONNECTION } from './infra/queue.constants';
 
 @Module({
-  imports: [ConfigModule, MailModule],
+  imports: [ConfigModule, MailModule, forwardRef(() => ProductModule)],
   providers: [
     {
       provide: QUEUE_CONFIG,
@@ -45,6 +47,7 @@ import { BULLMQ_CONNECTION } from './infra/queue.constants';
     AppJobRunner,
     SendWelcomeEmailJob,
     SendPasswordResetEmailJob,
+    GenerateProductImageVariantsJob,
     {
       provide: JobDispatcher,
       inject: [QUEUE_CONFIG, BULLMQ_CONNECTION, AppJobRunner],

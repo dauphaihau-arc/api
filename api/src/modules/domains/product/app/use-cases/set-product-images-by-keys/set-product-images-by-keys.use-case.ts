@@ -1,14 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { err, ok, type Result } from '~/common/application/result';
+import { appJobDeduplicationKey, appJobName } from '~/common/jobs/job.types';
 import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
 import { ShopRepository } from '~/modules/domains/shop/app/ports/shop.repository';
+import { JobDispatcher } from '~/modules/shared/queue/app/ports/job-dispatcher';
 import {
   ActorCannotCreateProductDraftError,
   ProductNotFoundError
 } from '../../errors/product-app.error';
 import { ProductRepository } from '../../ports/product.repository';
 import type { ProductDraftSummary } from '../../product.types';
-import { ProductImageService } from '../../services/product-image.service';
 
 export interface SetProductImagesByKeysInput {
   images: Array<{
@@ -26,7 +27,7 @@ export class SetProductImagesByKeysUseCase {
   constructor(
     private readonly productRepository: ProductRepository,
     private readonly shopRepository: ShopRepository,
-    private readonly productImageService: ProductImageService
+    private readonly jobDispatcher: JobDispatcher
   ) {}
 
   async execute(
@@ -65,7 +66,13 @@ export class SetProductImagesByKeysUseCase {
       return err(new ProductNotFoundError(productId));
     }
 
-    await this.productImageService.generateVariants(productId);
+    await this.jobDispatcher.dispatch(
+      appJobName.generateProductImageVariants,
+      { productId },
+      {
+        deduplicationKey: appJobDeduplicationKey.generateProductImageVariants(productId),
+      }
+    );
 
     return ok(replacedImages.product);
   }

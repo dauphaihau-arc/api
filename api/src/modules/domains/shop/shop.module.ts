@@ -1,5 +1,5 @@
 import { MikroOrmModule } from '@mikro-orm/nestjs';
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from '../auth/auth.module';
 import { CouponEntity } from '../coupon/infra/persistence/entities/coupon.entity';
@@ -17,7 +17,7 @@ import { ShopEntity } from './infra/persistence/entities/shop.entity';
 @Module({
   imports: [
     ConfigModule,
-    AuthModule,
+    forwardRef(() => AuthModule),
     MikroOrmModule.forFeature([ShopEntity, CouponEntity]),
   ],
   controllers: [ShopController, ShopCouponsController],
