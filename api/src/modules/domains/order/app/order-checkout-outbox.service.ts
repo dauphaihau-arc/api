@@ -94,7 +94,7 @@ export class OrderCheckoutOutboxService {
         shippingAddress: claimed.payload.shippingAddress,
       });
 
-      await this.entityManager.transactional(async (entityManager) => {
+      await this.entityManager.fork().transactional(async (entityManager) => {
         const event = await entityManager.findOneOrFail(
           OutboxEventEntity,
           { id: claimed.eventId },
@@ -139,7 +139,8 @@ export class OrderCheckoutOutboxService {
   }
 
   async processPendingEvents(limit = 10): Promise<number> {
-    const pendingEvents = await this.entityManager.find(
+    const entityManager = this.entityManager.fork();
+    const pendingEvents = await entityManager.find(
       OutboxEventEntity,
       {
         eventName: CHECKOUT_OUTBOX_EVENT_NAME,
@@ -170,7 +171,7 @@ export class OrderCheckoutOutboxService {
     attemptCount: number;
     payload: CheckoutSessionRequestedPayload;
   } | null> {
-    return this.entityManager.transactional(async (entityManager) => {
+    return this.entityManager.fork().transactional(async (entityManager) => {
       const event = await entityManager.findOne(
         OutboxEventEntity,
         { id: eventId },
@@ -221,7 +222,7 @@ export class OrderCheckoutOutboxService {
       stack
     );
 
-    await this.entityManager.transactional(async (entityManager) => {
+    await this.entityManager.fork().transactional(async (entityManager) => {
       const event = await entityManager.findOneOrFail(
         OutboxEventEntity,
         { id: eventId },
