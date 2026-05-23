@@ -62,7 +62,7 @@ describe('OrderCheckoutService', () => {
   };
 
   function buildService(options?: {
-    processResult?: string | undefined;
+    processResult?: { id: string; url: string } | undefined;
   }) {
     const orders: Array<Record<string, unknown>> = [];
     const inventory = {
@@ -160,12 +160,18 @@ describe('OrderCheckoutService', () => {
       orderRepository,
       orderCheckoutOutboxService,
     } = buildService({
-      processResult: 'https://stripe.test/session-1',
+      processResult: {
+        id: 'cs_test_1',
+        url: 'https://stripe.test/session-1',
+      },
     });
 
     const result = await service.createOrders(
-      'user-1',
-      'member@example.com',
+      {
+        type: 'user',
+        userId: 'user-1',
+        email: 'member@example.com',
+      },
       'cart-1',
       cart,
       {
@@ -185,6 +191,7 @@ describe('OrderCheckoutService', () => {
 
     expect(orderRepository.create).toHaveBeenCalledWith(
       expect.objectContaining({
+        customerEmail: 'member@example.com',
         status: OrderStatus.CHECKOUT_PENDING,
       })
     );
@@ -193,6 +200,7 @@ describe('OrderCheckoutService', () => {
     ).toHaveBeenCalled();
     expect(orderCheckoutOutboxService.processEventById).toHaveBeenCalledWith('outbox-1');
     expect(result.checkoutSessionUrl).toBe('https://stripe.test/session-1');
+    expect(result.checkoutSessionId).toBe('cs_test_1');
     expect(result.checkoutPending).toBe(false);
   });
 
@@ -200,8 +208,11 @@ describe('OrderCheckoutService', () => {
     const { service } = buildService();
 
     const result = await service.createOrders(
-      'user-1',
-      'member@example.com',
+      {
+        type: 'user',
+        userId: 'user-1',
+        email: 'member@example.com',
+      },
       'cart-1',
       cart,
       {
@@ -231,8 +242,11 @@ describe('OrderCheckoutService', () => {
     } = buildService();
 
     const result = await service.createOrders(
-      'user-1',
-      'member@example.com',
+      {
+        type: 'user',
+        userId: 'user-1',
+        email: 'member@example.com',
+      },
       'cart-1',
       cart,
       {
@@ -260,5 +274,44 @@ describe('OrderCheckoutService', () => {
     ).not.toHaveBeenCalled();
     expect(orderCheckoutOutboxService.processEventById).not.toHaveBeenCalled();
     expect(result.checkoutPending).toBe(false);
+  });
+
+  it('creates guest cash orders without a user reference and records the customer email', async () => {
+    const {
+      service,
+      orderRepository,
+    } = buildService();
+
+    await service.createOrders(
+      {
+        type: 'guest',
+        email: 'guest@example.com',
+      },
+      'cart-1',
+      {
+        ...cart,
+        userId: null,
+        guestSessionId: 'guest-session-1',
+      },
+      {
+        paymentType: PaymentType.CASH,
+        shippingAddress: {
+          fullName: 'Guest User',
+          address1: '123 Main St',
+          city: 'Los Angeles',
+          country: 'US',
+          state: 'CA',
+          zip: '90001',
+          phone: '123456789',
+        },
+        isTempCart: false,
+      }
+    );
+
+    expect(orderRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        customerEmail: 'guest@example.com',
+      })
+    );
   });
 });

@@ -13,7 +13,7 @@ describe('OrderCheckoutOutboxService', () => {
       aggregateId: 'order-1',
       payload: {
         userId: 'user-1',
-        userEmail: 'member@example.com',
+        customerEmail: 'member@example.com',
         cartId: 'cart-1',
         orderIds: ['order-1'],
         currency: 'USD',
@@ -65,7 +65,14 @@ describe('OrderCheckoutOutboxService', () => {
         callback(fakeEntityManager as unknown as EntityManager)),
     };
 
-    const entityManager = fakeEntityManager as unknown as EntityManager;
+    const entityManager = {
+      ...fakeEntityManager,
+      fork: jest.fn(() => ({
+        ...fakeEntityManager,
+        transactional: jest.fn(async (callback: (em: EntityManager) => Promise<unknown>) =>
+          callback(fakeEntityManager as unknown as EntityManager)),
+      })),
+    } as unknown as EntityManager;
 
     const paymentGateway: jest.Mocked<PaymentGateway> = {
       createStripeCheckoutSession: options?.paymentFails
@@ -103,7 +110,10 @@ describe('OrderCheckoutOutboxService', () => {
         currency: 'USD',
       })
     );
-    expect(result).toBe('https://stripe.test/session-1');
+    expect(result).toEqual({
+      id: 'cs_test_1',
+      url: 'https://stripe.test/session-1',
+    });
     expect(order.status).toBe(OrderStatus.AWAITING_PAYMENT);
     expect(order.paymentDetails).toEqual(
       expect.objectContaining({
