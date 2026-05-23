@@ -169,7 +169,7 @@ export class CartController {
     if (!cart) {
       return buildCartResponse(null, undefined, {
         ownerType: actor.type,
-        requiresSignInForCheckout: actor.type === 'guest',
+        requiresSignInForCheckout: false,
       });
     }
 
@@ -205,7 +205,7 @@ export class CartController {
 
     return buildCartResponse(cart, undefined, {
       ownerType: actor.type,
-      requiresSignInForCheckout: actor.type === 'guest',
+      requiresSignInForCheckout: false,
     });
   }
 

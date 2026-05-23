@@ -15,6 +15,17 @@ export interface ShippingAddressInput {
   phone: string;
 }
 
+export type CheckoutActor =
+  | {
+    type: 'user';
+    userId: string;
+    email: string;
+  }
+  | {
+    type: 'guest';
+    email: string;
+  };
+
 export interface CreatedOrderShopRef {
   id: string;
   shopId: string;
@@ -25,6 +36,7 @@ export interface CreatedOrderShopRef {
 export interface CreateOrderResult {
   orderShops: CreatedOrderShopRef[];
   checkoutSessionUrl?: string;
+  checkoutSessionId?: string;
   checkoutPending?: boolean;
 }
 

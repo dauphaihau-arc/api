@@ -14,9 +14,13 @@ import { PaymentType } from '../../../domain/enums/payment-type.enum';
 export class OrderEntity extends AbstractBaseEntity {
   @ManyToOne(() => CurrentUserEntity, {
     fieldName: 'user_id',
+    nullable: true,
     deleteRule: 'cascade',
   })
-  user!: CurrentUserEntity;
+  user?: CurrentUserEntity;
+
+  @Property({ fieldName: 'customer_email', length: 320 })
+  customerEmail!: string;
 
   @ManyToOne(() => ShopEntity, {
     fieldName: 'shop_id',

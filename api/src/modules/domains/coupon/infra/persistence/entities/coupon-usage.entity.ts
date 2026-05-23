@@ -18,9 +18,10 @@ export class CouponUsageEntity extends AbstractBaseEntity {
 
   @ManyToOne(() => CurrentUserEntity, {
     fieldName: 'user_id',
+    nullable: true,
     deleteRule: 'cascade',
   })
-  user!: CurrentUserEntity;
+  user?: CurrentUserEntity;
 
   @Property({ fieldName: 'order_id', type: 'uuid' })
   orderId!: string;

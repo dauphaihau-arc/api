@@ -65,6 +65,7 @@ import { CartItemEntity } from './infra/persistence/entities/cart-item.entity';
     AddCartItemUseCase,
     UpdateCartItemUseCase,
     RemoveCartItemUseCase,
+    GuestCartSessionService,
   ],
 })
 export class CartModule {}

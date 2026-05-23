@@ -6,8 +6,10 @@ import {
   buildQueueConfig
 } from '~/config/queue.config';
 import { MailModule } from '../mail/mail.module';
+import { PaymentModule } from '../payment/payment.module';
 import Redis from 'ioredis';
 import { GenerateProductImageVariantsJob } from '~/common/jobs/generate-product-image-variants.job';
+import { SendGuestOrderConfirmationEmailJob } from '~/common/jobs/send-guest-order-confirmation-email.job';
 import { SendPasswordResetEmailJob } from '~/common/jobs/send-password-reset-email.job';
 import { SendWelcomeEmailJob } from '~/common/jobs/send-welcome-email.job';
 import { ProductModule } from '~/modules/domains/product/product.module';
@@ -20,7 +22,7 @@ import { QueueConfigLoggerService } from './infra/queue-config-logger.service';
 import { BULLMQ_CONNECTION } from './infra/queue.constants';
 
 @Module({
-  imports: [ConfigModule, MailModule, forwardRef(() => ProductModule)],
+  imports: [ConfigModule, MailModule, PaymentModule, forwardRef(() => ProductModule)],
   providers: [
     {
       provide: QUEUE_CONFIG,
@@ -47,6 +49,7 @@ import { BULLMQ_CONNECTION } from './infra/queue.constants';
     AppJobRunner,
     SendWelcomeEmailJob,
     SendPasswordResetEmailJob,
+    SendGuestOrderConfirmationEmailJob,
     GenerateProductImageVariantsJob,
     {
       provide: JobDispatcher,

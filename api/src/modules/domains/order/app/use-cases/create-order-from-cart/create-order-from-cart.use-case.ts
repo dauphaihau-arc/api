@@ -29,7 +29,11 @@ export class CreateOrderFromCartUseCase {
       throw new NotFoundException('Address not found');
     }
 
-    return this.orderCheckoutService.createOrders(actor.userId, actor.email, cart.id, cart, {
+    return this.orderCheckoutService.createOrders({
+      type: 'user',
+      userId: actor.userId,
+      email: actor.email,
+    }, cart.id, cart, {
       paymentType: body.paymentType,
       currency: body.currency,
       shippingAddress: {

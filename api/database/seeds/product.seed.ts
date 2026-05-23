@@ -258,7 +258,10 @@ export async function seedProducts(
   em: EntityManager,
   shopsBySlug: Map<string, ShopEntity>
 ): Promise<void> {
-  for (const productSeed of productSeeds) {
+  const totalProducts = productSeeds.length;
+  console.log(`[seed][products] Upserting ${totalProducts} products`);
+
+  for (const [index, productSeed] of productSeeds.entries()) {
     const shop = shopsBySlug.get(productSeed.shopSlug);
     if (!shop) {
       throw new Error(`Missing seeded shop: ${productSeed.shopSlug}`);
@@ -329,5 +332,9 @@ export async function seedProducts(
       variantsByKey
     );
     await syncProductShipping(em, product, shop);
+
+    if ((index + 1) % 10 === 0 || index + 1 === totalProducts) {
+      console.log(`[seed][products] Processed ${index + 1}/${totalProducts}`);
+    }
   }
 }

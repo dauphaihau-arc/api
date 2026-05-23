@@ -13,6 +13,13 @@ import {
   type CategorySeedNode,
 } from './category.data';
 
+function countCategoryNodes(nodes: CategorySeedNode[]): number {
+  return nodes.reduce(
+    (total, node) => total + 1 + countCategoryNodes(node.children ?? []),
+    0
+  );
+}
+
 function buildCategoryImageStorageKey(
   categoryId: string,
   imageFilename: string
@@ -122,7 +129,12 @@ async function upsertCategory(
 }
 
 export async function seedCategories(em: EntityManager): Promise<void> {
+  const totalCategories = countCategoryNodes(categorySeedData);
+  console.log(`[seed][categories] Upserting ${totalCategories} categories`);
+
   for (const categorySeed of categorySeedData) {
     await upsertCategory(em, categorySeed);
   }
+
+  console.log('[seed][categories] Categories complete');
 }

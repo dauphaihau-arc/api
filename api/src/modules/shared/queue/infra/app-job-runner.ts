@@ -5,6 +5,7 @@ import {
   AppJobPayloadMap
 } from '~/common/jobs/job.types';
 import { GenerateProductImageVariantsJob } from '~/common/jobs/generate-product-image-variants.job';
+import { SendGuestOrderConfirmationEmailJob } from '~/common/jobs/send-guest-order-confirmation-email.job';
 import { SendPasswordResetEmailJob } from '~/common/jobs/send-password-reset-email.job';
 import { SendWelcomeEmailJob } from '~/common/jobs/send-welcome-email.job';
 
@@ -15,6 +16,7 @@ export class AppJobRunner {
   constructor(
     private readonly sendWelcomeEmailJob: SendWelcomeEmailJob,
     private readonly sendPasswordResetEmailJob: SendPasswordResetEmailJob,
+    private readonly sendGuestOrderConfirmationEmailJob: SendGuestOrderConfirmationEmailJob,
     private readonly generateProductImageVariantsJob: GenerateProductImageVariantsJob
   ) {}
 
@@ -34,6 +36,11 @@ export class AppJobRunner {
       case appJobName.sendPasswordResetEmail:
         await this.sendPasswordResetEmailJob.run(
           payload as AppJobPayloadMap[typeof appJobName.sendPasswordResetEmail]
+        );
+        return;
+      case appJobName.sendGuestOrderConfirmationEmail:
+        await this.sendGuestOrderConfirmationEmailJob.run(
+          payload as AppJobPayloadMap[typeof appJobName.sendGuestOrderConfirmationEmail]
         );
         return;
       case appJobName.generateProductImageVariants:

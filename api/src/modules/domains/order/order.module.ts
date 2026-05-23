@@ -11,19 +11,25 @@ import { ProductInventoryEntity } from '../product/infra/persistence/entities/pr
 import { ProductVariantEntity } from '../product/infra/persistence/entities/product-variant.entity';
 import { ShopEntity } from '../shop/infra/persistence/entities/shop.entity';
 import { MeOrderController } from './api/rest/me-order.controller';
+import { CheckoutController } from './api/rest/checkout.controller';
 import { OrderWebhookController } from './api/rest/order-webhook.controller';
 import { OrderCheckoutService } from './app/order-checkout.service';
 import { OrderPaymentService } from './app/order-payment.service';
+import { GuestOrderTrackingTokenService } from './app/guest-order-tracking-token.service';
+import { CreateGuestOrderForBuyNowUseCase } from './app/use-cases/create-guest-order-for-buy-now/create-guest-order-for-buy-now.use-case';
+import { CreateGuestOrderFromCartUseCase } from './app/use-cases/create-guest-order-from-cart/create-guest-order-from-cart.use-case';
 import { CreateOrderForBuyNowUseCase } from './app/use-cases/create-order-for-buy-now/create-order-for-buy-now.use-case';
 import { CreateOrderFromCartUseCase } from './app/use-cases/create-order-from-cart/create-order-from-cart.use-case';
 import { GetOrdersByCheckoutSessionUseCase } from './app/use-cases/get-orders-by-checkout-session/get-orders-by-checkout-session.use-case';
 import { HandleStripeWebhookUseCase } from './app/use-cases/handle-stripe-webhook/handle-stripe-webhook.use-case';
 import { ListOrdersUseCase } from './app/use-cases/list-orders/list-orders.use-case';
+import { LookupGuestOrdersUseCase } from './app/use-cases/lookup-guest-orders/lookup-guest-orders.use-case';
 import { OrderCheckoutOutboxService } from './app/order-checkout-outbox.service';
 import { OutboxEventEntity } from './infra/persistence/entities/outbox-event.entity';
 import { OrderEntity } from './infra/persistence/entities/order.entity';
 import { OrderItemEntity } from './infra/persistence/entities/order-item.entity';
 import { PaymentModule } from '../../shared/payment/payment.module';
+import { QueueModule } from '../../shared/queue/queue.module';
 import { UserModule } from '../user/user.module';
 
 @Module({
@@ -33,6 +39,7 @@ import { UserModule } from '../user/user.module';
     CartModule,
     CouponModule,
     PaymentModule,
+    QueueModule,
     UserModule,
     MikroOrmModule.forFeature([
       OutboxEventEntity,
@@ -46,14 +53,18 @@ import { UserModule } from '../user/user.module';
       ProductVariantEntity,
     ]),
   ],
-  controllers: [MeOrderController, OrderWebhookController],
+  controllers: [CheckoutController, MeOrderController, OrderWebhookController],
   providers: [
     OrderCheckoutService,
     OrderCheckoutOutboxService,
     OrderPaymentService,
+    GuestOrderTrackingTokenService,
+    CreateGuestOrderFromCartUseCase,
+    CreateGuestOrderForBuyNowUseCase,
     CreateOrderFromCartUseCase,
     CreateOrderForBuyNowUseCase,
     GetOrdersByCheckoutSessionUseCase,
+    LookupGuestOrdersUseCase,
     HandleStripeWebhookUseCase,
     ListOrdersUseCase,
   ],

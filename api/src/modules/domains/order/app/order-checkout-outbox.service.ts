@@ -33,8 +33,8 @@ export interface CheckoutSessionShippingAddressPayload {
 }
 
 export interface CheckoutSessionRequestedPayload {
-  userId: string;
-  userEmail: string;
+  userId?: string;
+  customerEmail: string;
   cartId: string;
   orderIds: string[];
   currency: string;
@@ -73,7 +73,9 @@ export class OrderCheckoutOutboxService {
     return outboxEvent;
   }
 
-  async processEventById(eventId: string): Promise<string | undefined> {
+  async processEventById(
+    eventId: string
+  ): Promise<{ id: string; url: string } | undefined> {
     const claimed = await this.claimEvent(eventId);
 
     if (!claimed) {
@@ -82,10 +84,10 @@ export class OrderCheckoutOutboxService {
 
     try {
       const checkoutSession = await this.paymentGateway.createStripeCheckoutSession({
-        customerEmail: claimed.payload.userEmail,
+        customerEmail: claimed.payload.customerEmail,
         currency: claimed.payload.currency,
         metadata: {
-          user_id: claimed.payload.userId,
+          ...(claimed.payload.userId ? { user_id: claimed.payload.userId } : {}),
           cart_id: claimed.payload.cartId,
         },
         lineItems: claimed.payload.lineItems,
@@ -125,7 +127,10 @@ export class OrderCheckoutOutboxService {
         await entityManager.flush();
       });
 
-      return checkoutSession.url;
+      return {
+        id: checkoutSession.id,
+        url: checkoutSession.url,
+      };
     }
     catch (error) {
       await this.markProcessingFailure(
@@ -157,8 +162,7 @@ export class OrderCheckoutOutboxService {
 
     for (const event of pendingEvents) {
       const result = await this.processEventById(event.id);
-
-      if (result) {
+      if (result?.url) {
         processedCount += 1;
       }
     }

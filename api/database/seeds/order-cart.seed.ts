@@ -188,6 +188,7 @@ export async function seedOrderCartDemo(
 
     const order = em.create(OrderEntity, {
       user,
+      customerEmail: user.email.toString(),
       shop: inventory.shop,
       paymentType: PaymentType.CARD,
       status: OrderStatus.PAID,

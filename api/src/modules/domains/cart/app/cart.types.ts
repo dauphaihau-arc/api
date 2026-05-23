@@ -135,7 +135,7 @@ export function buildCartResponse(
   };
 
   const ownerType = options?.ownerType ?? (cart?.userId ? 'user' : 'guest');
-  const requiresSignInForCheckout = options?.requiresSignInForCheckout ?? (ownerType === 'guest');
+  const requiresSignInForCheckout = options?.requiresSignInForCheckout ?? false;
 
   if (!cart || cart.items.length === 0) {
     return {

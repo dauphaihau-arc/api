@@ -35,7 +35,28 @@ import { seedOrderCartDemo } from './seeds/order-cart.seed';
 import { seedProducts } from './seeds/product.seed';
 import { seedShops } from './seeds/shop.seed';
 
+function formatDuration(ms: number): string {
+  if (ms < 1_000) {
+    return `${ms}ms`;
+  }
+
+  return `${(ms / 1_000).toFixed(1)}s`;
+}
+
+async function runSeedStep<T>(label: string, work: () => Promise<T>): Promise<T> {
+  const startedAt = Date.now();
+  console.log(`[seed] ${label}...`);
+
+  const result = await work();
+
+  console.log(`[seed] ${label} done in ${formatDuration(Date.now() - startedAt)}`);
+  return result;
+}
+
 async function main() {
+  const seedStartedAt = Date.now();
+  console.log('[seed] Starting demo seed');
+
   const orm = await MikroORM.init({
     ...buildDatabaseConfig(process.env),
     entities: [
@@ -72,16 +93,21 @@ async function main() {
   try {
     const em = orm.em.fork();
 
-    await orm.getMigrator().up();
+    await runSeedStep('Applying migrations', async () => orm.getMigrator().up());
 
-    const { usersByEmail } = await seedAuth(em);
-    await seedCategories(em);
-    const { shopsBySlug } = await seedShops(em, usersByEmail);
-    await seedProducts(em, shopsBySlug);
-    await seedCoupons(em, shopsBySlug);
-    await seedOrderCartDemo(em, usersByEmail);
+    const { usersByEmail } = await runSeedStep('Seeding auth', async () => seedAuth(em));
+    await runSeedStep('Seeding categories', async () => seedCategories(em));
+    const { shopsBySlug } = await runSeedStep('Seeding shops', async () =>
+      seedShops(em, usersByEmail)
+    );
+    await runSeedStep('Seeding products', async () => seedProducts(em, shopsBySlug));
+    await runSeedStep('Seeding coupons', async () => seedCoupons(em, shopsBySlug));
+    await runSeedStep('Seeding demo orders and carts', async () =>
+      seedOrderCartDemo(em, usersByEmail)
+    );
 
     console.log('Seed completed');
+    console.log(`[seed] Total duration: ${formatDuration(Date.now() - seedStartedAt)}`);
     console.log('Users:');
     console.log('- admin@example.com / Password123! (admin)');
     console.log('- member@example.com / Password123! (customer)');

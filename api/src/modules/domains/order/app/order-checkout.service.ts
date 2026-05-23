@@ -19,6 +19,7 @@ import { OrderEntity } from '../infra/persistence/entities/order.entity';
 import { OrderItemEntity } from '../infra/persistence/entities/order-item.entity';
 import { OrderCheckoutOutboxService } from './order-checkout-outbox.service';
 import type {
+  CheckoutActor,
   CreateOrderResult,
   ShippingAddressInput,
   ShopAdjustmentInput
@@ -34,8 +35,7 @@ export class OrderCheckoutService {
   ) {}
 
   async createOrders(
-    userId: string,
-    userEmail: string,
+    actor: CheckoutActor,
     cartId: string,
     cart: CartSnapshot,
     input: {
@@ -51,7 +51,7 @@ export class OrderCheckoutService {
       : 'USD';
 
     const pricedCart = await this.couponPricingService.priceCart({
-      userId,
+      userId: actor.type === 'user' ? actor.userId : undefined,
       cart,
       shippingAddress: input.shippingAddress,
       shopAdjustments: input.shopAdjustments,
@@ -76,7 +76,10 @@ export class OrderCheckoutService {
         }
 
         const order = orderRepository.create({
-          user: entityManager.getReference(CurrentUserEntity, userId),
+          ...(actor.type === 'user'
+            ? { user: entityManager.getReference(CurrentUserEntity, actor.userId) }
+            : {}),
+          customerEmail: actor.email,
           shop: shopEntity,
           paymentType: input.paymentType,
           status: input.paymentType === PaymentType.CASH
@@ -150,7 +153,9 @@ export class OrderCheckoutService {
           coupon.usesCount += 1;
           const usage = usageRepository.create({
             coupon,
-            user: entityManager.getReference(CurrentUserEntity, userId),
+            ...(actor.type === 'user'
+              ? { user: entityManager.getReference(CurrentUserEntity, actor.userId) }
+              : {}),
             orderId: order.id,
             code: coupon.code,
           });
@@ -184,8 +189,8 @@ export class OrderCheckoutService {
         const outboxEvent = await this.orderCheckoutOutboxService.createCheckoutSessionRequestedEvent(
           entityManager,
           {
-            userId,
-            userEmail,
+            userId: actor.type === 'user' ? actor.userId : undefined,
+            customerEmail: actor.email,
             cartId,
             orderIds: createdOrders.map((order) => order.id),
             currency,
@@ -229,13 +234,14 @@ export class OrderCheckoutService {
       };
     });
 
-    const checkoutSessionUrl = result.checkoutOutboxEventId
+    const checkoutSessionResult = result.checkoutOutboxEventId
       ? await this.orderCheckoutOutboxService.processEventById(result.checkoutOutboxEventId)
       : undefined;
 
     return {
-      checkoutPending: result.checkoutPending && !checkoutSessionUrl,
-      checkoutSessionUrl,
+      checkoutPending: result.checkoutPending && !checkoutSessionResult?.url,
+      checkoutSessionId: checkoutSessionResult?.id,
+      checkoutSessionUrl: checkoutSessionResult?.url,
       orderShops: result.orderShops,
     };
   }
