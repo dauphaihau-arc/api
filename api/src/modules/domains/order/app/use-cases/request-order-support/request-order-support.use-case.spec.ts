@@ -1,0 +1,95 @@
+import type { EntityManager } from '@mikro-orm/postgresql';
+import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
+import { UserStatus } from '../../../../auth/domain/enums/user-status.enum';
+import { RequestOrderSupportUseCase } from './request-order-support.use-case';
+
+describe('RequestOrderSupportUseCase', () => {
+  it('stores a customer support note on the order', async () => {
+    const actor: AuthenticatedUser = {
+      userId: 'user-1',
+      email: 'buyer@example.com',
+      status: UserStatus.ACTIVE,
+      sessionId: 'session-1',
+      roles: [],
+      permissions: [],
+    }
+    const order = {
+      id: 'order-1',
+      shop: {
+        id: 'shop-1',
+        shopName: 'Shop 1',
+        slug: 'shop-1',
+      },
+      customerEmail: 'buyer@example.com',
+      paymentType: 'card',
+      status: 'paid',
+      promoCodes: [],
+      shippingStatus: 'pre_transit',
+      shippingOriginCountries: ['US'],
+      shippingToCountry: 'US',
+      shippingEstimatedDelivery: new Date('2026-05-30T00:00:00.000Z'),
+      subtotal: 25,
+      totalShippingFee: 5,
+      totalDiscount: 0,
+      total: 30,
+      note: undefined,
+      trackingNumber: undefined,
+      shippingCarrier: undefined,
+      shipmentNote: undefined,
+      shippedAt: undefined,
+      deliveredAt: undefined,
+      canceledAt: undefined,
+      cancelReason: undefined,
+      customerSupportNote: undefined,
+      cancelRequestedAt: undefined,
+      createdAt: new Date('2026-05-23T00:00:00.000Z'),
+      shippingAddress: {
+        full_name: 'Buyer One',
+        address1: '123 Main St',
+        city: 'Los Angeles',
+        country: 'US',
+        state: 'CA',
+        zip: '90001',
+      },
+      updatedAt: new Date('2026-05-23T00:00:00.000Z'),
+    }
+    const items = [{
+      id: 'item-1',
+      product: { id: 'product-1', slug: 'product-1', shop: { slug: 'shop-1' } },
+      title: 'Product 1',
+      imageUrl: undefined,
+      quantity: 1,
+      price: 25,
+      salePrice: undefined,
+      variantName: undefined,
+      variantGroupName: undefined,
+      variantSubGroupName: undefined,
+      percentCouponPercent: null,
+    }]
+    const fakeEntityManager = {
+      getRepository: jest.fn((entity: { name?: string }) => {
+        switch (entity?.name) {
+          case 'OrderEntity':
+            return { findOne: jest.fn().mockResolvedValue(order) };
+          case 'OrderItemEntity':
+            return { find: jest.fn().mockResolvedValue(items) };
+          default:
+            return {};
+        }
+      }),
+      flush: jest.fn().mockResolvedValue(undefined),
+    } as unknown as EntityManager;
+
+    const useCase = new RequestOrderSupportUseCase({
+      fork: jest.fn(() => fakeEntityManager),
+    } as unknown as EntityManager)
+
+    const result = await useCase.execute(actor, 'order-1', {
+      supportNote: 'Need help changing the address',
+    })
+
+    expect(order.customerSupportNote).toBe('Need help changing the address')
+    expect(fakeEntityManager.flush).toHaveBeenCalled()
+    expect(result.customerSupportNote).toBe('Need help changing the address')
+  })
+})

@@ -74,6 +74,39 @@ export class OrderEntity extends AbstractBaseEntity {
   @Property({ fieldName: 'shipping_estimated_delivery' })
   shippingEstimatedDelivery!: Date;
 
+  @Property({ fieldName: 'tracking_number', length: 255, nullable: true })
+  trackingNumber?: string;
+
+  @Property({ fieldName: 'shipping_carrier', length: 255, nullable: true })
+  shippingCarrier?: string;
+
+  @Property({ fieldName: 'shipment_note', type: 'text', nullable: true })
+  shipmentNote?: string;
+
+  @Property({ fieldName: 'shipped_at', nullable: true })
+  shippedAt?: Date;
+
+  @Property({ fieldName: 'delivered_at', nullable: true })
+  deliveredAt?: Date;
+
+  @Property({ fieldName: 'canceled_at', nullable: true })
+  canceledAt?: Date;
+
+  @Property({ fieldName: 'cancel_reason', type: 'text', nullable: true })
+  cancelReason?: string;
+
+  @Property({ fieldName: 'refunded_at', nullable: true })
+  refundedAt?: Date;
+
+  @Property({ fieldName: 'support_note', type: 'text', nullable: true })
+  supportNote?: string;
+
+  @Property({ fieldName: 'customer_support_note', type: 'text', nullable: true })
+  customerSupportNote?: string;
+
+  @Property({ fieldName: 'cancel_requested_at', nullable: true })
+  cancelRequestedAt?: Date;
+
   @Property({ fieldName: 'payment_details', type: 'json', nullable: true })
   paymentDetails?: Record<string, unknown>;
 }

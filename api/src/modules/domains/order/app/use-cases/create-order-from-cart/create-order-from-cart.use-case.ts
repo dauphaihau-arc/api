@@ -1,8 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
 import { CartRepository } from '~/modules/domains/cart/app/ports/cart.repository';
 import { GetMyAddressUseCase } from '~/modules/domains/user/app/use-cases/get-my-address/get-my-address.use-case';
 import type { CreateOrderFromCartDto } from '../../../api/rest/dto/create-order-from-cart.dto';
+import { AddressNotFoundError, CartNotFoundError } from '../../errors/order-app.error';
 import { OrderCheckoutService } from '../../order-checkout.service';
 
 @Injectable()
@@ -20,13 +21,13 @@ export class CreateOrderFromCartUseCase {
     });
 
     if (!cart) {
-      throw new NotFoundException('Cart not found');
+      throw new CartNotFoundError();
     }
 
     const address = await this.getMyAddressUseCase.execute(actor, body.userAddressId);
 
     if (!address) {
-      throw new NotFoundException('Address not found');
+      throw new AddressNotFoundError();
     }
 
     return this.orderCheckoutService.createOrders({

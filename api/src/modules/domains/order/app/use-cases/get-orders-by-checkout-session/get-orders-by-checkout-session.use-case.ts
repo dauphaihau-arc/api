@@ -1,5 +1,10 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PaymentGateway } from '~/modules/shared/payment/app/ports/payment-gateway';
+import {
+  CheckoutSessionExpiredError,
+  CheckoutSessionIdRequiredError,
+  CheckoutSessionNotFoundError,
+} from '../../errors/order-app.error';
 import { OrderPaymentService } from '../../order-payment.service';
 
 @Injectable()
@@ -11,13 +16,13 @@ export class GetOrdersByCheckoutSessionUseCase {
 
   async execute(sessionId: string) {
     if (!sessionId) {
-      throw new BadRequestException('session_id is required');
+      throw new CheckoutSessionIdRequiredError();
     }
 
     let result = await this.orderPaymentService.getOrdersByCheckoutSession(sessionId);
 
     if (result.orderShops.length === 0) {
-      throw new NotFoundException('Checkout session not found');
+      throw new CheckoutSessionNotFoundError();
     }
 
     const session = await this.paymentGateway.retrieveStripeCheckoutSession(sessionId);
@@ -36,7 +41,7 @@ export class GetOrdersByCheckoutSessionUseCase {
         sessionId,
         session.expires_at ? new Date(session.expires_at * 1000) : undefined
       );
-      throw new NotFoundException('Checkout session expired');
+      throw new CheckoutSessionExpiredError();
     }
 
     return result;

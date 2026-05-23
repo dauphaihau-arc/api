@@ -3,6 +3,8 @@ import {
   Controller,
   Delete,
   Get,
+  Param,
+  Patch,
   Post,
   Put,
   Query,
@@ -12,15 +14,25 @@ import { CurrentUser } from '~/common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '~/modules/domains/auth/api/guard/jwt-auth.guard';
 import { PermissionsGuard } from '~/modules/domains/auth/api/guard/permissions.guard';
 import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
+import {
+  isOrderAppError,
+  mapOrderAppErrorToHttpException,
+} from './order-http-error-mapper';
 import { CreateOrderForBuyNowUseCase } from '../../app/use-cases/create-order-for-buy-now/create-order-for-buy-now.use-case';
 import { CreateOrderFromCartUseCase } from '../../app/use-cases/create-order-from-cart/create-order-from-cart.use-case';
+import { GetMyOrderByIdUseCase } from '../../app/use-cases/get-my-order-by-id/get-my-order-by-id.use-case';
 import { GetOrdersByCheckoutSessionUseCase } from '../../app/use-cases/get-orders-by-checkout-session/get-orders-by-checkout-session.use-case';
 import { ListOrdersUseCase } from '../../app/use-cases/list-orders/list-orders.use-case';
+import { RequestOrderCancelUseCase } from '../../app/use-cases/request-order-cancel/request-order-cancel.use-case';
+import { RequestOrderSupportUseCase } from '../../app/use-cases/request-order-support/request-order-support.use-case';
 import { CreateOrderForBuyNowDto } from './dto/create-order-for-buy-now.dto';
 import { CreateOrderFromCartDto } from './dto/create-order-from-cart.dto';
+import { RequestOrderCancelDto } from './dto/request-order-cancel.dto';
+import { RequestOrderSupportDto } from './dto/request-order-support.dto';
 import {
   toCreateOrderResponse,
   toCheckoutSessionOrderResponse,
+  toMyOrderDetailResponse,
   toOrderListResponse
 } from './order.response';
 
@@ -31,6 +43,9 @@ export class MeOrderController {
     private readonly listOrdersUseCase: ListOrdersUseCase,
     private readonly createOrderFromCartUseCase: CreateOrderFromCartUseCase,
     private readonly createOrderForBuyNowUseCase: CreateOrderForBuyNowUseCase,
+    private readonly getMyOrderByIdUseCase: GetMyOrderByIdUseCase,
+    private readonly requestOrderCancelUseCase: RequestOrderCancelUseCase,
+    private readonly requestOrderSupportUseCase: RequestOrderSupportUseCase,
     private readonly getOrdersByCheckoutSessionUseCase: GetOrdersByCheckoutSessionUseCase
   ) {}
 
@@ -40,13 +55,66 @@ export class MeOrderController {
       .then(toOrderListResponse);
   }
 
+  @Get(':orderId')
+  async detail(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('orderId') orderId: string
+  ) {
+    try {
+      return toMyOrderDetailResponse(
+        await this.getMyOrderByIdUseCase.execute(currentUser, orderId)
+      );
+    }
+    catch (error) {
+      this.throwMappedOrderError(error);
+    }
+  }
+
+  @Patch(':orderId/cancel-request')
+  async requestCancel(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('orderId') orderId: string,
+    @Body() body: RequestOrderCancelDto
+  ) {
+    try {
+      return toMyOrderDetailResponse(
+        await this.requestOrderCancelUseCase.execute(currentUser, orderId, body)
+      );
+    }
+    catch (error) {
+      this.throwMappedOrderError(error);
+    }
+  }
+
+  @Patch(':orderId/support-request')
+  async requestSupport(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('orderId') orderId: string,
+    @Body() body: RequestOrderSupportDto
+  ) {
+    try {
+      return toMyOrderDetailResponse(
+        await this.requestOrderSupportUseCase.execute(currentUser, orderId, body)
+      );
+    }
+    catch (error) {
+      this.throwMappedOrderError(error);
+    }
+  }
+
   @Post()
   async createFromCart(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() body: CreateOrderFromCartDto
   ) {
-    return this.createOrderFromCartUseCase.execute(currentUser, body)
-      .then(toCreateOrderResponse);
+    try {
+      return toCreateOrderResponse(
+        await this.createOrderFromCartUseCase.execute(currentUser, body)
+      );
+    }
+    catch (error) {
+      this.throwMappedOrderError(error);
+    }
   }
 
   @Put()
@@ -54,13 +122,33 @@ export class MeOrderController {
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() body: CreateOrderForBuyNowDto
   ) {
-    return this.createOrderForBuyNowUseCase.execute(currentUser, body)
-      .then(toCreateOrderResponse);
+    try {
+      return toCreateOrderResponse(
+        await this.createOrderForBuyNowUseCase.execute(currentUser, body)
+      );
+    }
+    catch (error) {
+      this.throwMappedOrderError(error);
+    }
   }
 
   @Delete()
   async getByCheckoutSession(@Query('session_id') sessionId?: string) {
-    return this.getOrdersByCheckoutSessionUseCase.execute(sessionId ?? '')
-      .then(toCheckoutSessionOrderResponse);
+    try {
+      return toCheckoutSessionOrderResponse(
+        await this.getOrdersByCheckoutSessionUseCase.execute(sessionId ?? '')
+      );
+    }
+    catch (error) {
+      this.throwMappedOrderError(error);
+    }
+  }
+
+  private throwMappedOrderError(error: unknown): never {
+    if (isOrderAppError(error)) {
+      throw mapOrderAppErrorToHttpException(error);
+    }
+
+    throw error;
   }
 }

@@ -17,6 +17,10 @@ import { GuestOrderTrackingTokenService } from '../../app/guest-order-tracking-t
 import { GetOrdersByCheckoutSessionUseCase } from '../../app/use-cases/get-orders-by-checkout-session/get-orders-by-checkout-session.use-case';
 import { LookupGuestOrdersUseCase } from '../../app/use-cases/lookup-guest-orders/lookup-guest-orders.use-case';
 import {
+  isOrderAppError,
+  mapOrderAppErrorToHttpException,
+} from './order-http-error-mapper';
+import {
   toCheckoutSessionOrderResponse,
   toCreateOrderResponse,
   toOrderListResponse,
@@ -46,8 +50,14 @@ export class CheckoutController {
 
   @Get('session/:sessionId')
   async getBySession(@Param('sessionId') sessionId: string) {
-    return this.getOrdersByCheckoutSessionUseCase.execute(sessionId)
-      .then(toCheckoutSessionOrderResponse);
+    try {
+      return toCheckoutSessionOrderResponse(
+        await this.getOrdersByCheckoutSessionUseCase.execute(sessionId)
+      );
+    }
+    catch (error) {
+      this.throwMappedOrderError(error);
+    }
   }
 
   @Get('guest-orders')
@@ -70,7 +80,12 @@ export class CheckoutController {
       };
 
     if ('sessionId' in resolvedLookup && resolvedLookup.sessionId) {
-      await this.getOrdersByCheckoutSessionUseCase.execute(resolvedLookup.sessionId);
+      try {
+        await this.getOrdersByCheckoutSessionUseCase.execute(resolvedLookup.sessionId);
+      }
+      catch (error) {
+        this.throwMappedOrderError(error);
+      }
     }
 
     return this.lookupGuestOrdersUseCase.execute(resolvedLookup)
@@ -88,8 +103,14 @@ export class CheckoutController {
       throw new NotFoundException('Guest cart session not found');
     }
 
-    return this.createGuestOrderFromCartUseCase.execute(guestSessionId, body)
-      .then(toCreateOrderResponse);
+    try {
+      return toCreateOrderResponse(
+        await this.createGuestOrderFromCartUseCase.execute(guestSessionId, body)
+      );
+    }
+    catch (error) {
+      this.throwMappedOrderError(error);
+    }
   }
 
   @Post('buy-now')
@@ -103,7 +124,21 @@ export class CheckoutController {
       throw new NotFoundException('Guest cart session not found');
     }
 
-    return this.createGuestOrderForBuyNowUseCase.execute(guestSessionId, body)
-      .then(toCreateOrderResponse);
+    try {
+      return toCreateOrderResponse(
+        await this.createGuestOrderForBuyNowUseCase.execute(guestSessionId, body)
+      );
+    }
+    catch (error) {
+      this.throwMappedOrderError(error);
+    }
+  }
+
+  private throwMappedOrderError(error: unknown): never {
+    if (isOrderAppError(error)) {
+      throw mapOrderAppErrorToHttpException(error);
+    }
+
+    throw error;
   }
 }

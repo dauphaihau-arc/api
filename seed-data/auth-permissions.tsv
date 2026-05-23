@@ -5,5 +5,6 @@ shops.create	Create Shops	Create a shop account
 shops.manage	Manage Shops	Manage owned shop resources such as products and coupons
 users.read	Read Users	View user records
 users.manage	Manage Users	Create, update, or disable users
+orders.manage	Manage Orders	Inspect and override marketplace orders
 roles.read	Read Roles	View role definitions
 roles.manage	Manage Roles	Create or update roles and assignments

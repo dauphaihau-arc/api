@@ -62,6 +62,7 @@ export interface OrderListShop {
   shopName: string;
   shopSlug: string;
   paymentType: string;
+  status: string;
   products: OrderListProduct[];
   promoCodes: string[];
   shippingStatus: string;
@@ -69,6 +70,15 @@ export interface OrderListShop {
   shippingToCountry: string;
   shippingFromCountries: string[];
   shippingEstimatedDelivery: Date;
+  trackingNumber?: string;
+  shippingCarrier?: string;
+  shipmentNote?: string;
+  shippedAt?: Date;
+  deliveredAt?: Date;
+  canceledAt?: Date;
+  cancelReason?: string;
+  customerSupportNote?: string;
+  cancelRequestedAt?: Date;
   subtotal: number;
   totalShippingFee: number;
   totalDiscount: number;
@@ -79,6 +89,95 @@ export interface OrderListShop {
 
 export interface OrderListResult {
   orderShops: OrderListShop[];
+}
+
+export interface MyOrderDetail extends OrderListShop {
+  customerEmail: string;
+  shippingAddress: OrderShippingAddressSummary;
+}
+
+export interface AdminOrderDetail extends MyOrderDetail {
+  supportNote?: string;
+  refundedAt?: Date;
+  paymentDetails?: Record<string, unknown>;
+}
+
+export interface AdminOrderSummary {
+  id: string;
+  shopId: string;
+  shopName: string;
+  shopSlug: string;
+  customerEmail: string;
+  paymentType: string;
+  status: string;
+  shippingStatus: string;
+  total: number;
+  supportNote?: string;
+  cancelReason?: string;
+  refundedAt?: Date;
+  createdAt: Date;
+}
+
+export interface AdminOrderListResult {
+  results: AdminOrderSummary[];
+  page: number;
+  limit: number;
+  totalPages: number;
+  totalResults: number;
+}
+
+export interface OrderShippingAddressSummary {
+  fullName: string;
+  address1: string;
+  address2?: string;
+  city: string;
+  country: string;
+  state: string;
+  zip: string;
+  phone?: string;
+}
+
+export interface ShopOrderSummary {
+  id: string;
+  shopId: string;
+  shopName: string;
+  shopSlug: string;
+  customerEmail: string;
+  customerFullName: string;
+  paymentType: string;
+  status: string;
+  products: OrderListProduct[];
+  promoCodes: string[];
+  shippingStatus: string;
+  shippingUpdatedAt: Date;
+  shippingToCountry: string;
+  shippingFromCountries: string[];
+  shippingEstimatedDelivery: Date;
+  trackingNumber?: string;
+  shippingCarrier?: string;
+  shipmentNote?: string;
+  shippedAt?: Date;
+  deliveredAt?: Date;
+  canceledAt?: Date;
+  cancelReason?: string;
+  subtotal: number;
+  totalShippingFee: number;
+  totalDiscount: number;
+  total: number;
+  note?: string;
+  createdAt: Date;
+}
+
+export interface ShopOrderListResult {
+  results: ShopOrderSummary[];
+  page: number;
+  limit: number;
+  totalPages: number;
+  totalResults: number;
+}
+
+export interface ShopOrderDetail extends ShopOrderSummary {
+  shippingAddress: OrderShippingAddressSummary;
 }
 
 export interface ShopAdjustmentInput {

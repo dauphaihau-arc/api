@@ -1,0 +1,121 @@
+import type { EntityManager } from '@mikro-orm/postgresql';
+import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
+import { UserStatus } from '../../../../auth/domain/enums/user-status.enum';
+import { OrderShippingStatus } from '../../../domain/enums/order-shipping-status.enum';
+import { OrderStatus } from '../../../domain/enums/order-status.enum';
+import { BuyerShippedOrderCancelNotAllowedError } from '../../errors/order-app.error';
+import { RequestOrderCancelUseCase } from './request-order-cancel.use-case';
+
+describe('RequestOrderCancelUseCase', () => {
+  const actor: AuthenticatedUser = {
+    userId: 'user-1',
+    email: 'buyer@example.com',
+    status: UserStatus.ACTIVE,
+    sessionId: 'session-1',
+    roles: [],
+    permissions: [],
+  };
+
+  function buildUseCase(input?: {
+    status?: OrderStatus
+    shippingStatus?: OrderShippingStatus
+  }) {
+    const order = {
+      id: 'order-1',
+      shop: {
+        id: 'shop-1',
+        shopName: 'Shop 1',
+        slug: 'shop-1',
+      },
+      customerEmail: 'buyer@example.com',
+      paymentType: 'card',
+      status: input?.status ?? OrderStatus.PAID,
+      promoCodes: [],
+      shippingStatus: input?.shippingStatus ?? OrderShippingStatus.PRE_TRANSIT,
+      shippingOriginCountries: ['US'],
+      shippingToCountry: 'US',
+      shippingEstimatedDelivery: new Date('2026-05-30T00:00:00.000Z'),
+      subtotal: 25,
+      totalShippingFee: 5,
+      totalDiscount: 0,
+      total: 30,
+      note: undefined,
+      trackingNumber: undefined,
+      shippingCarrier: undefined,
+      shipmentNote: undefined,
+      shippedAt: undefined,
+      deliveredAt: undefined,
+      canceledAt: undefined,
+      cancelReason: undefined,
+      customerSupportNote: undefined,
+      cancelRequestedAt: undefined,
+      createdAt: new Date('2026-05-23T00:00:00.000Z'),
+      shippingAddress: {
+        full_name: 'Buyer One',
+        address1: '123 Main St',
+        city: 'Los Angeles',
+        country: 'US',
+        state: 'CA',
+        zip: '90001',
+      },
+      updatedAt: new Date('2026-05-23T00:00:00.000Z'),
+    };
+    const items = [{
+      id: 'item-1',
+      product: { id: 'product-1', slug: 'product-1', shop: { slug: 'shop-1' } },
+      title: 'Product 1',
+      imageUrl: undefined,
+      quantity: 1,
+      price: 25,
+      salePrice: undefined,
+      variantName: undefined,
+      variantGroupName: undefined,
+      variantSubGroupName: undefined,
+      percentCouponPercent: null,
+    }];
+    const fakeEntityManager = {
+      getRepository: jest.fn((entity: { name?: string }) => {
+        switch (entity?.name) {
+          case 'OrderEntity':
+            return { findOne: jest.fn().mockResolvedValue(order) };
+          case 'OrderItemEntity':
+            return { find: jest.fn().mockResolvedValue(items) };
+          default:
+            return {};
+        }
+      }),
+      flush: jest.fn().mockResolvedValue(undefined),
+    } as unknown as EntityManager;
+
+    return {
+      order,
+      fakeEntityManager,
+      useCase: new RequestOrderCancelUseCase({ fork: jest.fn(() => fakeEntityManager) } as unknown as EntityManager),
+    };
+  }
+
+  it('cancels a pre-transit paid order immediately', async () => {
+    const { useCase, order, fakeEntityManager } = buildUseCase();
+
+    const result = await useCase.execute(actor, 'order-1', {
+      cancelReason: 'Changed my mind',
+    })
+
+    expect(order.status).toBe(OrderStatus.CANCELED)
+    expect(order.cancelRequestedAt).toBeInstanceOf(Date)
+    expect(order.canceledAt).toBeInstanceOf(Date)
+    expect(order.cancelReason).toBe('Changed my mind')
+    expect(fakeEntityManager.flush).toHaveBeenCalled()
+    expect(result.status).toBe(OrderStatus.CANCELED)
+  })
+
+  it('rejects canceling shipped orders', async () => {
+    const { useCase } = buildUseCase({
+      shippingStatus: OrderShippingStatus.SHIPPED,
+    })
+
+    await expect(
+      useCase.execute(actor, 'order-1', {})
+    ).rejects.toThrow(BuyerShippedOrderCancelNotAllowedError)
+  })
+})

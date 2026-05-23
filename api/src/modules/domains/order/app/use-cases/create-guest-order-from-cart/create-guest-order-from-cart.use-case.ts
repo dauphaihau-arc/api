@@ -1,4 +1,4 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import {
   PAYMENT_CONFIG,
   type PaymentConfig
@@ -12,6 +12,7 @@ import { CartRepository } from '~/modules/domains/cart/app/ports/cart.repository
 import { JobDispatcher } from '~/modules/shared/queue/app/ports/job-dispatcher';
 import { buildGuestOrderTrackingUrl } from '../../guest-order-tracking-url.builder';
 import { GuestOrderTrackingTokenService } from '../../guest-order-tracking-token.service';
+import { CartNotFoundError } from '../../errors/order-app.error';
 import { OrderCheckoutService } from '../../order-checkout.service';
 
 @Injectable()
@@ -31,7 +32,7 @@ export class CreateGuestOrderFromCartUseCase {
     });
 
     if (!cart) {
-      throw new NotFoundException('Cart not found');
+      throw new CartNotFoundError();
     }
 
     const result = await this.orderCheckoutService.createOrders({

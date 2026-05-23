@@ -1,9 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
 import { CartRepository } from '~/modules/domains/cart/app/ports/cart.repository';
 import { CartKind } from '~/modules/domains/cart/domain/enums/cart-kind.enum';
 import { GetMyAddressUseCase } from '~/modules/domains/user/app/use-cases/get-my-address/get-my-address.use-case';
 import type { CreateOrderForBuyNowDto } from '../../../api/rest/dto/create-order-for-buy-now.dto';
+import { AddressNotFoundError, TemporaryCartNotFoundError } from '../../errors/order-app.error';
 import { OrderCheckoutService } from '../../order-checkout.service';
 
 @Injectable()
@@ -21,13 +22,13 @@ export class CreateOrderForBuyNowUseCase {
     );
 
     if (!cart || cart.kind !== CartKind.BUY_NOW) {
-      throw new NotFoundException('Temporary cart not found');
+      throw new TemporaryCartNotFoundError();
     }
 
     const address = await this.getMyAddressUseCase.execute(actor, body.userAddressId);
 
     if (!address) {
-      throw new NotFoundException('Address not found');
+      throw new AddressNotFoundError();
     }
 
     const firstShop = cart.items[0]?.inventory.shopId;

@@ -1,4 +1,4 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { CartRepository } from '~/modules/domains/cart/app/ports/cart.repository';
 import { CartKind } from '~/modules/domains/cart/domain/enums/cart-kind.enum';
 import {
@@ -12,6 +12,7 @@ import {
 import { JobDispatcher } from '~/modules/shared/queue/app/ports/job-dispatcher';
 import type { CreateGuestOrderForBuyNowDto } from '../../../api/rest/dto/create-guest-order-for-buy-now.dto';
 import { buildGuestOrderTrackingUrl } from '../../guest-order-tracking-url.builder';
+import { TemporaryCartNotFoundError } from '../../errors/order-app.error';
 import { GuestOrderTrackingTokenService } from '../../guest-order-tracking-token.service';
 import { OrderCheckoutService } from '../../order-checkout.service';
 
@@ -32,7 +33,7 @@ export class CreateGuestOrderForBuyNowUseCase {
     );
 
     if (!cart || cart.kind !== CartKind.BUY_NOW) {
-      throw new NotFoundException('Temporary cart not found');
+      throw new TemporaryCartNotFoundError();
     }
 
     const firstShop = cart.items[0]?.inventory.shopId;
