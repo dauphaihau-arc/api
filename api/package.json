@@ -28,7 +28,7 @@
     "start:debug": "node -r tsconfig-paths/register ./node_modules/@nestjs/cli/bin/nest.js start --debug --watch",
     "start:prod": "node dist/src/index.js",
     "start:worker": "node -r tsconfig-paths/register ./node_modules/@nestjs/cli/bin/nest.js start --entryFile worker",
-    "start:worker:dev": "node -r tsconfig-paths/register ./node_modules/@nestjs/cli/bin/nest.js start --watch --entryFile worker",
+    "start:worker:dev": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\" && node -r tsconfig-paths/register ./node_modules/@nestjs/cli/bin/nest.js start --watch --entryFile worker",
     "start:worker:prod": "node dist/src/worker.js",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\"",
     "test": "jest",
