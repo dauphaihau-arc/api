@@ -10,13 +10,36 @@ describe('SharpImageTransformService', () => {
         width: 1200,
         height: 800,
         channels: 3,
-        background: {
-          r: 200,
-          g: 120,
-          b: 40,
-        },
+        background: '#c87828',
       },
     })
+      .png()
+      .toBuffer();
+  }
+
+  async function createSubjectOnSolidBackground(): Promise<Buffer> {
+    return sharp({
+      create: {
+        width: 120,
+        height: 120,
+        channels: 4,
+        background: '#ffffffff',
+      },
+    })
+      .composite([
+        {
+          input: await sharp({
+            create: {
+              width: 60,
+              height: 60,
+              channels: 4,
+              background: '#dc1e1eff',
+            },
+          }).png().toBuffer(),
+          top: 30,
+          left: 30,
+        },
+      ])
       .png()
       .toBuffer();
   }
@@ -47,5 +70,31 @@ describe('SharpImageTransformService', () => {
     expect(metadata.width).toBe(600);
     expect(metadata.height).toBe(600);
     expect(metadata.format).toBe('webp');
+  });
+
+  it('removes a solid border-connected background to transparency', async () => {
+    const source = await createSubjectOnSolidBackground();
+
+    const output = await service.transform(source, {
+      width: 120,
+      height: 120,
+      fit: 'contain',
+      format: 'png',
+      removeBackground: true,
+    });
+
+    const rawImage = await sharp(output)
+      .ensureAlpha()
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+    const pixelBuffer = rawImage['data'];
+    const { info } = rawImage;
+
+    const topLeftAlpha = pixelBuffer[3];
+    const centerOffset = ((60 * info.width) + 60) * info.channels;
+    const centerAlpha = pixelBuffer[centerOffset + 3];
+
+    expect(topLeftAlpha).toBe(0);
+    expect(centerAlpha).toBe(255);
   });
 });

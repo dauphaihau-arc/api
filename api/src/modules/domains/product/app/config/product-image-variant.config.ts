@@ -6,6 +6,7 @@ export type ProductImageVariantSpec = {
   fit: 'cover' | 'contain';
   format: 'webp' | 'jpg' | 'png' | 'avif';
   quality: number;
+  removeBackground?: boolean;
 };
 
 export const PRODUCT_IMAGE_VARIANT_SPECS: Partial<
@@ -17,6 +18,7 @@ export const PRODUCT_IMAGE_VARIANT_SPECS: Partial<
     fit: 'cover',
     format: 'webp',
     quality: 82,
+    removeBackground: true,
   },
   [ProductImageVariant.THUMB_1X1]: {
     width: 200,
@@ -24,6 +26,7 @@ export const PRODUCT_IMAGE_VARIANT_SPECS: Partial<
     fit: 'cover',
     format: 'webp',
     quality: 78,
+    removeBackground: true,
   },
   [ProductImageVariant.DETAIL_4X5]: {
     width: 1200,
@@ -31,5 +34,6 @@ export const PRODUCT_IMAGE_VARIANT_SPECS: Partial<
     fit: 'contain',
     format: 'webp',
     quality: 86,
+    removeBackground: true,
   },
 };
