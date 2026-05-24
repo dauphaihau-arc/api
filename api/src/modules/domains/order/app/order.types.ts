@@ -160,6 +160,8 @@ export interface ShopOrderSummary {
   deliveredAt?: Date;
   canceledAt?: Date;
   cancelReason?: string;
+  customerSupportNote?: string;
+  cancelRequestedAt?: Date;
   subtotal: number;
   totalShippingFee: number;
   totalDiscount: number;

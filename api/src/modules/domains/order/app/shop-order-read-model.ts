@@ -69,6 +69,8 @@ export function toShopOrderSummary(
     deliveredAt: order.deliveredAt,
     canceledAt: order.canceledAt,
     cancelReason: order.cancelReason,
+    customerSupportNote: order.customerSupportNote,
+    cancelRequestedAt: order.cancelRequestedAt,
     subtotal: Number(order.subtotal),
     totalShippingFee: Number(order.totalShippingFee),
     totalDiscount: Number(order.totalDiscount),

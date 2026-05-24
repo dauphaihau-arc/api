@@ -168,6 +168,8 @@ function toShopOrderSummaryResponse(orderShop: ShopOrderSummary) {
     note: orderShop.note,
     canceled_at: orderShop.canceledAt,
     cancel_reason: orderShop.cancelReason,
+    customer_support_note: orderShop.customerSupportNote,
+    cancel_requested_at: orderShop.cancelRequestedAt,
     created_at: orderShop.createdAt,
   };
 }
