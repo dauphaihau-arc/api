@@ -15,6 +15,7 @@ import { MeOrderController } from './api/rest/me-order.controller';
 import { CheckoutController } from './api/rest/checkout.controller';
 import { OrderWebhookController } from './api/rest/order-webhook.controller';
 import { ShopOrderController } from './api/rest/shop-order.controller';
+import { OrderCancellationService } from './app/order-cancellation.service';
 import { OrderCheckoutService } from './app/order-checkout.service';
 import { OrderPaymentService } from './app/order-payment.service';
 import { GuestOrderTrackingTokenService } from './app/guest-order-tracking-token.service';
@@ -77,6 +78,7 @@ import { UpdateShopOrderStatusUseCase } from './app/use-cases/update-shop-order-
   ],
   providers: [
     OrderCheckoutService,
+    OrderCancellationService,
     OrderCheckoutOutboxService,
     OrderPaymentService,
     GuestOrderTrackingTokenService,

@@ -11,11 +11,15 @@ import {
   BuyerShippedOrderCancelNotAllowedError,
   OrderNotFoundError,
 } from '../../errors/order-app.error';
+import { OrderCancellationService } from '../../order-cancellation.service';
 import type { MyOrderDetail } from '../../order.types';
 
 @Injectable()
 export class RequestOrderCancelUseCase {
-  constructor(private readonly entityManager: EntityManager) {}
+  constructor(
+    private readonly entityManager: EntityManager,
+    private readonly orderCancellationService: OrderCancellationService
+  ) {}
 
   async execute(
     actor: AuthenticatedUser,
@@ -23,94 +27,99 @@ export class RequestOrderCancelUseCase {
     input: RequestOrderCancelDto
   ): Promise<MyOrderDetail> {
     const entityManager = this.entityManager.fork();
-    const order = await entityManager.getRepository(OrderEntity).findOne(
-      { id: orderId, user: actor.userId },
-      { populate: ['shop'] }
-    );
 
-    if (!order) {
-      throw new OrderNotFoundError();
-    }
+    return entityManager.transactional(async (transactionalEntityManager) => {
+      const order = await transactionalEntityManager.getRepository(OrderEntity).findOne(
+        { id: orderId, user: actor.userId },
+        { populate: ['shop'] }
+      );
 
-    if (![OrderStatus.PENDING, OrderStatus.PAID].includes(order.status)) {
-      throw new BuyerOrderCancelNotAllowedError();
-    }
+      if (!order) {
+        throw new OrderNotFoundError();
+      }
 
-    if (order.shippingStatus !== OrderShippingStatus.PRE_TRANSIT) {
-      throw new BuyerShippedOrderCancelNotAllowedError();
-    }
+      if (![OrderStatus.PENDING, OrderStatus.PAID].includes(order.status)) {
+        throw new BuyerOrderCancelNotAllowedError();
+      }
 
-    const now = new Date();
-    order.status = OrderStatus.CANCELED;
-    order.cancelRequestedAt = now;
-    order.canceledAt = now;
-    order.cancelReason = input.cancelReason?.trim() || order.cancelReason;
+      if (order.shippingStatus !== OrderShippingStatus.PRE_TRANSIT) {
+        throw new BuyerShippedOrderCancelNotAllowedError();
+      }
 
-    await entityManager.flush();
+      const now = new Date();
+      order.cancelRequestedAt = now;
+      await this.orderCancellationService.cancelOrder(transactionalEntityManager, order, {
+        canceledAt: now,
+        cancelReason: input.cancelReason,
+        source: 'buyer',
+      });
 
-    const items = await entityManager.getRepository(OrderItemEntity).find(
-      { order: order.id },
-      { populate: ['order', 'product', 'product.shop', 'inventory'] }
-    );
+      await transactionalEntityManager.flush();
 
-    return {
-      id: order.id,
-      shopId: order.shop.id,
-      shopName: order.shop.shopName,
-      shopSlug: order.shop.slug,
-      customerEmail: order.customerEmail,
-      paymentType: order.paymentType,
-      status: order.status,
-      products: items.map((item) => ({
-        id: item.id,
-        productId: item.product.id,
-        slug: item.product.slug,
-        shopSlug: item.product.shop.slug,
-        title: item.title,
-        imageUrl: item.imageUrl,
-        quantity: item.quantity,
-        price: Number(item.price),
-        salePrice: item.salePrice ? Number(item.salePrice) : null,
-        variantName: item.variantName,
-        variantGroupName: item.variantGroupName,
-        variantSubGroupName: item.variantSubGroupName,
-        percentCouponPercent: item.percentCouponPercent ?? null,
-      })),
-      promoCodes: order.promoCodes,
-      shippingStatus: order.shippingStatus,
-      shippingUpdatedAt: order.updatedAt,
-      shippingToCountry: order.shippingToCountry,
-      shippingFromCountries: order.shippingOriginCountries,
-      shippingEstimatedDelivery: order.shippingEstimatedDelivery,
-      trackingNumber: order.trackingNumber,
-      shippingCarrier: order.shippingCarrier,
-      shipmentNote: order.shipmentNote,
-      shippedAt: order.shippedAt,
-      deliveredAt: order.deliveredAt,
-      canceledAt: order.canceledAt,
-      cancelReason: order.cancelReason,
-      customerSupportNote: order.customerSupportNote,
-      cancelRequestedAt: order.cancelRequestedAt,
-      subtotal: Number(order.subtotal),
-      totalShippingFee: Number(order.totalShippingFee),
-      totalDiscount: Number(order.totalDiscount),
-      total: Number(order.total),
-      note: order.note,
-      createdAt: order.createdAt,
-      shippingAddress: {
-        fullName: String((order.shippingAddress?.full_name ?? '')),
-        address1: String((order.shippingAddress?.address1 ?? '')),
-        ...(order.shippingAddress?.address2
-          ? { address2: String(order.shippingAddress.address2) }
-          : {}),
-        city: String((order.shippingAddress?.city ?? '')),
-        country: String((order.shippingAddress?.country ?? '')),
-        state: String((order.shippingAddress?.state ?? '')),
-        zip: String((order.shippingAddress?.zip ?? '')),
-        ...(order.shippingAddress?.phone
-          ? { phone: String(order.shippingAddress.phone) }
-          : {}),
-      },
-    };
+      const items = await transactionalEntityManager.getRepository(OrderItemEntity).find(
+        { order: order.id },
+        { populate: ['order', 'product', 'product.shop', 'inventory'] }
+      );
+
+      return {
+        id: order.id,
+        shopId: order.shop.id,
+        shopName: order.shop.shopName,
+        shopSlug: order.shop.slug,
+        customerEmail: order.customerEmail,
+        paymentType: order.paymentType,
+        status: order.status,
+        products: items.map((item) => ({
+          id: item.id,
+          productId: item.product.id,
+          slug: item.product.slug,
+          shopSlug: item.product.shop.slug,
+          title: item.title,
+          imageUrl: item.imageUrl,
+          quantity: item.quantity,
+          price: Number(item.price),
+          salePrice: item.salePrice ? Number(item.salePrice) : null,
+          variantName: item.variantName,
+          variantGroupName: item.variantGroupName,
+          variantSubGroupName: item.variantSubGroupName,
+          percentCouponPercent: item.percentCouponPercent ?? null,
+        })),
+        promoCodes: order.promoCodes,
+        shippingStatus: order.shippingStatus,
+        shippingUpdatedAt: order.updatedAt,
+        shippingToCountry: order.shippingToCountry,
+        shippingFromCountries: order.shippingOriginCountries,
+        shippingEstimatedDelivery: order.shippingEstimatedDelivery,
+        trackingNumber: order.trackingNumber,
+        shippingCarrier: order.shippingCarrier,
+        shipmentNote: order.shipmentNote,
+        shippedAt: order.shippedAt,
+        deliveredAt: order.deliveredAt,
+        canceledAt: order.canceledAt,
+        cancelReason: order.cancelReason,
+        customerSupportNote: order.customerSupportNote,
+        cancelRequestedAt: order.cancelRequestedAt,
+        subtotal: Number(order.subtotal),
+        totalShippingFee: Number(order.totalShippingFee),
+        totalDiscount: Number(order.totalDiscount),
+        total: Number(order.total),
+        note: order.note,
+        createdAt: order.createdAt,
+        shippingAddress: {
+          fullName: String((order.shippingAddress?.full_name ?? '')),
+          address1: String((order.shippingAddress?.address1 ?? '')),
+          ...(order.shippingAddress?.address2
+            ? { address2: String(order.shippingAddress.address2) }
+            : {}),
+          city: String((order.shippingAddress?.city ?? '')),
+          country: String((order.shippingAddress?.country ?? '')),
+          state: String((order.shippingAddress?.state ?? '')),
+          zip: String((order.shippingAddress?.zip ?? '')),
+          ...(order.shippingAddress?.phone
+            ? { phone: String(order.shippingAddress.phone) }
+            : {}),
+        },
+      };
+    });
   }
 }

@@ -11,12 +11,16 @@ import {
   SellerOrderStatusUpdateNotAllowedError,
   SellerShippedOrderCancelNotAllowedError,
 } from '../../errors/order-app.error';
+import { OrderCancellationService } from '../../order-cancellation.service';
 import { toShopOrderDetail } from '../../shop-order-read-model';
 import type { ShopOrderDetail } from '../../order.types';
 
 @Injectable()
 export class UpdateShopOrderStatusUseCase {
-  constructor(private readonly entityManager: EntityManager) {}
+  constructor(
+    private readonly entityManager: EntityManager,
+    private readonly orderCancellationService: OrderCancellationService
+  ) {}
 
   async execute(
     shopId: string,
@@ -24,38 +28,42 @@ export class UpdateShopOrderStatusUseCase {
     input: UpdateShopOrderStatusDto
   ): Promise<ShopOrderDetail> {
     const entityManager = this.entityManager.fork();
-    const order = await entityManager.getRepository(OrderEntity).findOne(
-      { id: orderId, shop: shopId },
-      { populate: ['shop'] }
-    );
+    return entityManager.transactional(async (transactionalEntityManager) => {
+      const order = await transactionalEntityManager.getRepository(OrderEntity).findOne(
+        { id: orderId, shop: shopId },
+        { populate: ['shop'] }
+      );
 
-    if (!order) {
-      throw new OrderNotFoundError();
-    }
+      if (!order) {
+        throw new OrderNotFoundError();
+      }
 
-    if (input.status !== OrderStatus.CANCELED) {
-      throw new SellerOrderStatusUpdateNotAllowedError();
-    }
+      if (input.status !== OrderStatus.CANCELED) {
+        throw new SellerOrderStatusUpdateNotAllowedError();
+      }
 
-    if (order.status === OrderStatus.CANCELED) {
-      return this.buildDetail(entityManager, order);
-    }
+      if (order.status === OrderStatus.CANCELED) {
+        return this.buildDetail(transactionalEntityManager, order);
+      }
 
-    if (![OrderStatus.PENDING, OrderStatus.PAID].includes(order.status)) {
-      throw new SellerOrderCancelNotAllowedError();
-    }
+      if (![OrderStatus.PENDING, OrderStatus.PAID].includes(order.status)) {
+        throw new SellerOrderCancelNotAllowedError();
+      }
 
-    if (order.shippingStatus !== OrderShippingStatus.PRE_TRANSIT) {
-      throw new SellerShippedOrderCancelNotAllowedError();
-    }
+      if (order.shippingStatus !== OrderShippingStatus.PRE_TRANSIT) {
+        throw new SellerShippedOrderCancelNotAllowedError();
+      }
 
-    order.status = OrderStatus.CANCELED;
-    order.canceledAt = new Date();
-    order.cancelReason = input.cancelReason?.trim() || order.cancelReason;
+      await this.orderCancellationService.cancelOrder(transactionalEntityManager, order, {
+        canceledAt: new Date(),
+        cancelReason: input.cancelReason,
+        source: 'seller',
+      });
 
-    await entityManager.flush();
+      await transactionalEntityManager.flush();
 
-    return this.buildDetail(entityManager, order);
+      return this.buildDetail(transactionalEntityManager, order);
+    });
   }
 
   private async buildDetail(

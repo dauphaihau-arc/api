@@ -2,6 +2,7 @@ import type { EntityManager } from '@mikro-orm/postgresql';
 import { OrderShippingStatus } from '../../../domain/enums/order-shipping-status.enum';
 import { OrderStatus } from '../../../domain/enums/order-status.enum';
 import { SellerShippedOrderCancelNotAllowedError } from '../../errors/order-app.error';
+import { OrderCancellationService } from '../../order-cancellation.service';
 import { UpdateShopOrderStatusUseCase } from './update-shop-order-status.use-case';
 
 describe('UpdateShopOrderStatusUseCase', () => {
@@ -82,21 +83,30 @@ describe('UpdateShopOrderStatusUseCase', () => {
         }
       }),
       flush: jest.fn().mockResolvedValue(undefined),
+      transactional: jest.fn(async (callback) => await callback(fakeEntityManager)),
     } as unknown as EntityManager;
 
     const entityManager = {
       fork: jest.fn(() => fakeEntityManager),
     } as unknown as EntityManager;
+    const cancellationService = {
+      cancelOrder: jest.fn(async (_entityManager, targetOrder, cancelInput) => {
+        targetOrder.status = OrderStatus.CANCELED;
+        targetOrder.canceledAt = cancelInput.canceledAt;
+        targetOrder.cancelReason = cancelInput.cancelReason;
+      }),
+    } as unknown as OrderCancellationService;
 
     return {
       order,
       fakeEntityManager,
-      useCase: new UpdateShopOrderStatusUseCase(entityManager),
+      cancellationService,
+      useCase: new UpdateShopOrderStatusUseCase(entityManager, cancellationService),
     };
   }
 
   it('cancels a paid pre-transit order', async () => {
-    const { useCase, order, fakeEntityManager } = buildUseCase();
+    const { useCase, order, fakeEntityManager, cancellationService } = buildUseCase();
 
     const result = await useCase.execute('shop-1', 'order-1', {
       status: OrderStatus.CANCELED,
@@ -106,6 +116,7 @@ describe('UpdateShopOrderStatusUseCase', () => {
     expect(order.status).toBe(OrderStatus.CANCELED);
     expect(order.cancelReason).toBe('Out of stock');
     expect(order.canceledAt).toBeInstanceOf(Date);
+    expect(cancellationService.cancelOrder).toHaveBeenCalled();
     expect(fakeEntityManager.flush).toHaveBeenCalled();
     expect(result.id).toBe('order-1');
   });

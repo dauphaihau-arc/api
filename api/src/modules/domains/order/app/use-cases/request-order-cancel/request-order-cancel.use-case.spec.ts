@@ -4,6 +4,7 @@ import { UserStatus } from '../../../../auth/domain/enums/user-status.enum';
 import { OrderShippingStatus } from '../../../domain/enums/order-shipping-status.enum';
 import { OrderStatus } from '../../../domain/enums/order-status.enum';
 import { BuyerShippedOrderCancelNotAllowedError } from '../../errors/order-app.error';
+import type { OrderCancellationService } from '../../order-cancellation.service';
 import { RequestOrderCancelUseCase } from './request-order-cancel.use-case';
 
 describe('RequestOrderCancelUseCase', () => {
@@ -85,17 +86,29 @@ describe('RequestOrderCancelUseCase', () => {
         }
       }),
       flush: jest.fn().mockResolvedValue(undefined),
+      transactional: jest.fn(async (callback) => await callback(fakeEntityManager)),
     } as unknown as EntityManager;
+    const cancellationService = {
+      cancelOrder: jest.fn(async (_entityManager, targetOrder, cancelInput) => {
+        targetOrder.status = OrderStatus.CANCELED;
+        targetOrder.canceledAt = cancelInput.canceledAt;
+        targetOrder.cancelReason = cancelInput.cancelReason;
+      }),
+    } as unknown as OrderCancellationService;
 
     return {
       order,
       fakeEntityManager,
-      useCase: new RequestOrderCancelUseCase({ fork: jest.fn(() => fakeEntityManager) } as unknown as EntityManager),
+      cancellationService,
+      useCase: new RequestOrderCancelUseCase(
+        { fork: jest.fn(() => fakeEntityManager) } as unknown as EntityManager,
+        cancellationService
+      ),
     };
   }
 
   it('cancels a pre-transit paid order immediately', async () => {
-    const { useCase, order, fakeEntityManager } = buildUseCase();
+    const { useCase, order, fakeEntityManager, cancellationService } = buildUseCase();
 
     const result = await useCase.execute(actor, 'order-1', {
       cancelReason: 'Changed my mind',
@@ -105,6 +118,7 @@ describe('RequestOrderCancelUseCase', () => {
     expect(order.cancelRequestedAt).toBeInstanceOf(Date)
     expect(order.canceledAt).toBeInstanceOf(Date)
     expect(order.cancelReason).toBe('Changed my mind')
+    expect(cancellationService.cancelOrder).toHaveBeenCalled()
     expect(fakeEntityManager.flush).toHaveBeenCalled()
     expect(result.status).toBe(OrderStatus.CANCELED)
   })
