@@ -20,11 +20,13 @@ import { RequestPasswordResetUseCase } from './app/use-cases/request-password-re
 import { RefreshSessionUseCase } from './app/use-cases/refresh-session/refresh-session.use-case';
 import { ResetPasswordUseCase } from './app/use-cases/reset-password/reset-password.use-case';
 import { RegisterUseCase } from './app/use-cases/register/register.use-case';
+import { RegisterSellerUseCase } from './app/use-cases/register-seller/register-seller.use-case';
 import { IssueSessionUseCase } from './app/use-cases/issue-session/issue-session.use-case';
 import { VerifyResetPasswordTokenUseCase } from './app/use-cases/verify-reset-password-token/verify-reset-password-token.use-case';
 import { UpdateCurrentUserPreferencesUseCase } from './app/use-cases/update-current-user-preferences/update-current-user-preferences.use-case';
 import { AuthController } from './api/rest/auth.controller';
 import { MeController } from './api/rest/me.controller';
+import { SellerAuthController } from './api/rest/seller-auth.controller';
 import { JwtAuthGuard } from './api/guard/jwt-auth.guard';
 import { PermissionsGuard } from './api/guard/permissions.guard';
 import { AuthHttpExceptionFilter } from './api/rest/auth-http-exception.filter';
@@ -50,6 +52,7 @@ import { UserSessionEntity } from './infra/persistence/entities/user-session.ent
 import { UserRoleEntity } from './infra/persistence/entities/user-role.entity';
 import { IdempotencyModule } from '../../shared/idempotency/idempotency.module';
 import { QueueModule } from '../../shared/queue/queue.module';
+import { ShopModule } from '../shop/shop.module';
 
 const authEntities = [
   CurrentUserEntity,
@@ -70,6 +73,7 @@ const authEntities = [
     CacheModule,
     IdempotencyModule,
     forwardRef(() => QueueModule),
+    forwardRef(() => ShopModule),
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -87,7 +91,7 @@ const authEntities = [
     }),
     MikroOrmModule.forFeature(authEntities),
   ],
-  controllers: [AuthController, MeController],
+  controllers: [AuthController, SellerAuthController, MeController],
   providers: [
     {
       provide: AUTH_CONFIG,
@@ -124,6 +128,7 @@ const authEntities = [
       useClass: JwtAuthTokenService,
     },
     RegisterUseCase,
+    RegisterSellerUseCase,
     LoginUseCase,
     RefreshSessionUseCase,
     LogoutUseCase,
