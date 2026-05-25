@@ -1,0 +1,148 @@
+import type { EntityManager } from '@mikro-orm/postgresql';
+import type { ModuleRef } from '@nestjs/core';
+import type { PaymentGateway } from '~/modules/shared/payment/app/ports/payment-gateway';
+import type { JobDispatcher } from '~/modules/shared/queue/app/ports/job-dispatcher';
+import { PaymentType } from '../domain/enums/payment-type.enum';
+import { OrderStatus } from '../domain/enums/order-status.enum';
+import { OrderRefundService } from './order-refund.service';
+
+describe('OrderRefundService', () => {
+  it('marks paid card cancellations as refund pending', () => {
+    const moduleRef = {
+      get: jest.fn(),
+    } as unknown as ModuleRef;
+    const service = new OrderRefundService(
+      {} as EntityManager,
+      {} as PaymentGateway,
+      moduleRef
+    );
+    const order = {
+      paymentType: PaymentType.CARD,
+      paymentDetails: { payment_intent_id: 'pi_123' },
+    };
+    const now = new Date('2026-05-25T00:00:00.000Z');
+
+    const shouldRefund = service.prepareRefundOnCancellation(
+      order as never,
+      OrderStatus.PAID,
+      now
+    );
+
+    expect(shouldRefund).toBe(true);
+    expect(order.paymentDetails).toEqual({
+      payment_intent_id: 'pi_123',
+      refund_status: 'pending',
+      refund_requested_at: now.toISOString(),
+      refund_failed_reason: undefined,
+    });
+  });
+
+  it('processes a refund and marks the order refunded', async () => {
+    const order = {
+      id: 'order-1',
+      paymentType: PaymentType.CARD,
+      currency: 'USD',
+      status: OrderStatus.CANCELED,
+      refundedAt: undefined,
+      paymentDetails: {
+        payment_intent_id: 'pi_123',
+        refund_status: 'pending',
+      },
+    };
+    const transactionalEntityManager = {
+      getRepository: jest.fn(() => ({
+        findOne: jest.fn().mockResolvedValue(order),
+      })),
+      flush: jest.fn().mockResolvedValue(undefined),
+    };
+    const entityManager = {
+      fork: jest.fn(() => ({
+        getRepository: jest.fn(() => ({
+          findOne: jest.fn().mockResolvedValue(order),
+        })),
+      })),
+      transactional: jest.fn(async (callback) => await callback(transactionalEntityManager)),
+    } as unknown as EntityManager;
+    const paymentGateway = {
+      createStripeRefund: jest.fn().mockResolvedValue({
+        id: 're_123',
+        status: 'succeeded',
+        amount: 3000,
+      }),
+    } as unknown as PaymentGateway;
+    const jobDispatcher = {
+      dispatch: jest.fn().mockResolvedValue(undefined),
+    } as unknown as JobDispatcher;
+    const moduleRef = {
+      get: jest.fn().mockReturnValue(jobDispatcher),
+    } as unknown as ModuleRef;
+    const service = new OrderRefundService(entityManager, paymentGateway, moduleRef);
+
+    await service.processRefund('order-1');
+
+    expect(paymentGateway.createStripeRefund).toHaveBeenCalledWith('pi_123');
+    expect(jobDispatcher.dispatch).toHaveBeenNthCalledWith(1, 'order.send-refund-succeeded-email', { orderId: 'order-1' });
+    expect(jobDispatcher.dispatch).toHaveBeenNthCalledWith(2, 'order.send-seller-order-update-email', {
+      orderId: 'order-1',
+      eventType: 'refunded',
+    });
+    expect(order.status).toBe(OrderStatus.REFUNDED);
+    expect(order.refundedAt).toBeInstanceOf(Date);
+    expect(order.paymentDetails).toEqual(expect.objectContaining({
+      payment_intent_id: 'pi_123',
+      refund_status: 'succeeded',
+      refund_id: 're_123',
+      refund_amount: 30,
+    }));
+  });
+
+  it('sends a failure notification when the refund fails', async () => {
+    const order = {
+      id: 'order-1',
+      paymentType: PaymentType.CARD,
+      currency: 'USD',
+      status: OrderStatus.CANCELED,
+      refundedAt: undefined,
+      paymentDetails: {
+        payment_intent_id: 'pi_123',
+        refund_status: 'pending',
+      },
+    };
+    const transactionalEntityManager = {
+      getRepository: jest.fn(() => ({
+        findOne: jest.fn().mockResolvedValue(order),
+      })),
+      flush: jest.fn().mockResolvedValue(undefined),
+    };
+    const entityManager = {
+      fork: jest.fn(() => ({
+        getRepository: jest.fn(() => ({
+          findOne: jest.fn().mockResolvedValue(order),
+        })),
+      })),
+      transactional: jest.fn(async (callback) => await callback(transactionalEntityManager)),
+    } as unknown as EntityManager;
+    const paymentGateway = {
+      createStripeRefund: jest.fn().mockRejectedValue(new Error('Stripe timeout')),
+    } as unknown as PaymentGateway;
+    const jobDispatcher = {
+      dispatch: jest.fn().mockResolvedValue(undefined),
+    } as unknown as JobDispatcher;
+    const moduleRef = {
+      get: jest.fn().mockReturnValue(jobDispatcher),
+    } as unknown as ModuleRef;
+    const service = new OrderRefundService(entityManager, paymentGateway, moduleRef);
+
+    await service.processRefund('order-1');
+
+    expect(order.paymentDetails).toEqual(expect.objectContaining({
+      payment_intent_id: 'pi_123',
+      refund_status: 'failed',
+      refund_failed_reason: 'Stripe timeout',
+    }));
+    expect(jobDispatcher.dispatch).toHaveBeenCalledWith('order.send-refund-failed-email', {
+      orderId: 'order-1',
+    });
+  });
+
+});

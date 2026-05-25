@@ -9,6 +9,26 @@ import type {
   ShopOrderSummary
 } from '../../app/order.types';
 
+function toPaymentResponse(order: {
+  paymentType: string;
+  refundedAt?: Date;
+  paymentDetails?: Record<string, unknown>;
+}) {
+  const refundStatus = typeof order.paymentDetails?.['refund_status'] === 'string'
+    ? order.paymentDetails['refund_status']
+    : undefined;
+  const refundFailedReason = typeof order.paymentDetails?.['refund_failed_reason'] === 'string'
+    ? order.paymentDetails['refund_failed_reason']
+    : undefined;
+
+  return {
+    type: order.paymentType,
+    ...(refundStatus ? { refund_status: refundStatus } : {}),
+    ...(order.refundedAt ? { refunded_at: order.refundedAt } : {}),
+    ...(refundFailedReason ? { refund_failed_reason: refundFailedReason } : {}),
+  };
+}
+
 export function toCreateOrderResponse(result: CreateOrderResult) {
   return {
     checkout_session_url: result.checkoutSessionUrl,
@@ -44,9 +64,7 @@ export function toOrderListResponse(result: OrderListResult) {
         shop_name: orderShop.shopName,
         slug: orderShop.shopSlug,
       },
-      payment: {
-        type: orderShop.paymentType,
-      },
+      payment: toPaymentResponse(orderShop),
       status: orderShop.status,
       products: orderShop.products.map((product) => ({
         product: {
@@ -140,9 +158,7 @@ function toShopOrderSummaryResponse(orderShop: ShopOrderSummary) {
       email: orderShop.customerEmail,
       full_name: orderShop.customerFullName,
     },
-    payment: {
-      type: orderShop.paymentType,
-    },
+    payment: toPaymentResponse(orderShop),
     status: orderShop.status,
     products: toShopOrderProductResponse(orderShop),
     promo_coupons: orderShop.promoCodes.map((code) => ({
@@ -214,9 +230,7 @@ export function toMyOrderDetailResponse(order: MyOrderDetail) {
       customer: {
         email: order.customerEmail,
       },
-      payment: {
-        type: order.paymentType,
-      },
+      payment: toPaymentResponse(order),
       status: order.status,
       products: order.products.map((product) => ({
         product: {

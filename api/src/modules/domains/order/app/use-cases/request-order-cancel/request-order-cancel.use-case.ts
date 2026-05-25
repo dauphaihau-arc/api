@@ -1,6 +1,7 @@
 import { EntityManager } from '@mikro-orm/postgresql';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
+import { JobDispatcher } from '~/modules/shared/queue/app/ports/job-dispatcher';
 import type { RequestOrderCancelDto } from '../../../api/rest/dto/request-order-cancel.dto';
 import { OrderShippingStatus } from '../../../domain/enums/order-shipping-status.enum';
 import { OrderStatus } from '../../../domain/enums/order-status.enum';
@@ -16,9 +17,12 @@ import type { MyOrderDetail } from '../../order.types';
 
 @Injectable()
 export class RequestOrderCancelUseCase {
+  private readonly logger = new Logger(RequestOrderCancelUseCase.name);
+
   constructor(
     private readonly entityManager: EntityManager,
-    private readonly orderCancellationService: OrderCancellationService
+    private readonly orderCancellationService: OrderCancellationService,
+    private readonly jobDispatcher: JobDispatcher
   ) {}
 
   async execute(
@@ -28,7 +32,7 @@ export class RequestOrderCancelUseCase {
   ): Promise<MyOrderDetail> {
     const entityManager = this.entityManager.fork();
 
-    return entityManager.transactional(async (transactionalEntityManager) => {
+    const result = await entityManager.transactional(async (transactionalEntityManager) => {
       const order = await transactionalEntityManager.getRepository(OrderEntity).findOne(
         { id: orderId, user: actor.userId },
         { populate: ['shop'] }
@@ -48,7 +52,7 @@ export class RequestOrderCancelUseCase {
 
       const now = new Date();
       order.cancelRequestedAt = now;
-      await this.orderCancellationService.cancelOrder(transactionalEntityManager, order, {
+      const { refundRequested } = await this.orderCancellationService.cancelOrder(transactionalEntityManager, order, {
         canceledAt: now,
         cancelReason: input.cancelReason,
         source: 'buyer',
@@ -62,6 +66,7 @@ export class RequestOrderCancelUseCase {
       );
 
       return {
+        refundRequested,
         id: order.id,
         shopId: order.shop.id,
         shopName: order.shop.shopName,
@@ -99,6 +104,8 @@ export class RequestOrderCancelUseCase {
         cancelReason: order.cancelReason,
         customerSupportNote: order.customerSupportNote,
         cancelRequestedAt: order.cancelRequestedAt,
+        refundedAt: order.refundedAt,
+        paymentDetails: order.paymentDetails,
         subtotal: Number(order.subtotal),
         totalShippingFee: Number(order.totalShippingFee),
         totalDiscount: Number(order.totalDiscount),
@@ -121,5 +128,32 @@ export class RequestOrderCancelUseCase {
         },
       };
     });
+
+    if (result.refundRequested) {
+      try {
+        await this.jobDispatcher.dispatch('order.process-refund', { orderId });
+      }
+      catch (error) {
+        this.logger.error(
+          `Failed to schedule refund for canceled order ${orderId}`,
+          error instanceof Error ? error.stack : undefined
+        );
+      }
+    }
+    try {
+      await this.jobDispatcher.dispatch('order.send-seller-order-update-email', {
+        orderId,
+        eventType: 'canceled',
+      });
+    }
+    catch (error) {
+      this.logger.error(
+        `Failed to schedule seller cancellation notification for order ${orderId}`,
+        error instanceof Error ? error.stack : undefined
+      );
+    }
+
+    const { refundRequested: _refundRequested, ...detail } = result;
+    return detail;
   }
 }

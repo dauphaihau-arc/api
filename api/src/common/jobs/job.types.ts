@@ -2,6 +2,10 @@ export const appJobName = {
   sendWelcomeEmail: 'user.send-welcome-email',
   sendPasswordResetEmail: 'user.send-password-reset-email',
   sendGuestOrderConfirmationEmail: 'order.send-guest-confirmation-email',
+  processOrderRefund: 'order.process-refund',
+  sendRefundSucceededEmail: 'order.send-refund-succeeded-email',
+  sendRefundFailedEmail: 'order.send-refund-failed-email',
+  sendSellerOrderUpdateEmail: 'order.send-seller-order-update-email',
   generateProductImageVariants: 'product.generate-image-variants',
 } as const;
 
@@ -22,6 +26,19 @@ export interface AppJobPayloadMap {
     orderIds: string[];
     trackingUrl: string;
     shopNames: string[];
+  };
+  [appJobName.processOrderRefund]: {
+    orderId: string;
+  };
+  [appJobName.sendRefundSucceededEmail]: {
+    orderId: string;
+  };
+  [appJobName.sendRefundFailedEmail]: {
+    orderId: string;
+  };
+  [appJobName.sendSellerOrderUpdateEmail]: {
+    orderId: string;
+    eventType: 'canceled' | 'refunded';
   };
   [appJobName.generateProductImageVariants]: {
     productId: string;
@@ -54,6 +71,12 @@ export const appJobDeduplicationKey = {
       appJobName.sendGuestOrderConfirmationEmail,
       email,
       orderIds.join('-')
+    );
+  },
+  processOrderRefund(orderId: string): string {
+    return buildJobDeduplicationKey(
+      appJobName.processOrderRefund,
+      orderId
     );
   },
   generateProductImageVariants(productId: string): string {

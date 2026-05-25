@@ -6,7 +6,9 @@ import {
 import {
   AddressNotFoundError,
   AdminOrderStatusOverrideNotAllowedError,
+  AdminRefundActionNotAllowedError,
   AdminRefundNotAllowedError,
+  AdminRefundRequiresCardPaymentError,
   BuyerOrderCancelNotAllowedError,
   BuyerShippedOrderCancelNotAllowedError,
   CartNotFoundError,
@@ -53,7 +55,9 @@ export function mapOrderAppErrorToHttpException(
     || error instanceof ShipmentUpdateNotAllowedError
     || error instanceof InvalidShippingStatusTransitionError
     || error instanceof AdminOrderStatusOverrideNotAllowedError
+    || error instanceof AdminRefundActionNotAllowedError
     || error instanceof AdminRefundNotAllowedError
+    || error instanceof AdminRefundRequiresCardPaymentError
   ) {
     return new BadRequestException(error.message);
   }

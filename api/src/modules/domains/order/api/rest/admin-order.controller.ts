@@ -14,8 +14,10 @@ import { PermissionsGuard } from '~/modules/domains/auth/api/guard/permissions.g
 import { ListAdminOrdersUseCase } from '../../app/use-cases/list-admin-orders/list-admin-orders.use-case';
 import { GetAdminOrderByIdUseCase } from '../../app/use-cases/get-admin-order-by-id/get-admin-order-by-id.use-case';
 import { UpdateAdminOrderStatusUseCase } from '../../app/use-cases/update-admin-order-status/update-admin-order-status.use-case';
+import { UpdateAdminOrderRefundUseCase } from '../../app/use-cases/update-admin-order-refund/update-admin-order-refund.use-case';
 import { UpdateAdminOrderSupportNoteUseCase } from '../../app/use-cases/update-admin-order-support-note/update-admin-order-support-note.use-case';
 import { ListAdminOrdersQueryDto } from './dto/list-admin-orders.query.dto';
+import { UpdateAdminOrderRefundDto } from './dto/update-admin-order-refund.dto';
 import { UpdateAdminOrderStatusDto } from './dto/update-admin-order-status.dto';
 import { UpdateAdminOrderSupportNoteDto } from './dto/update-admin-order-support-note.dto';
 import {
@@ -32,6 +34,7 @@ export class AdminOrderController {
     private readonly listAdminOrdersUseCase: ListAdminOrdersUseCase,
     private readonly getAdminOrderByIdUseCase: GetAdminOrderByIdUseCase,
     private readonly updateAdminOrderStatusUseCase: UpdateAdminOrderStatusUseCase,
+    private readonly updateAdminOrderRefundUseCase: UpdateAdminOrderRefundUseCase,
     private readonly updateAdminOrderSupportNoteUseCase: UpdateAdminOrderSupportNoteUseCase
   ) {}
 
@@ -64,6 +67,22 @@ export class AdminOrderController {
     try {
       return toAdminOrderDetailResponse(
         await this.updateAdminOrderStatusUseCase.execute(orderId, body)
+      );
+    }
+    catch (error) {
+      this.throwMappedOrderError(error);
+    }
+  }
+
+  @Patch(':orderId/refund')
+  @Header('Cache-Control', 'private, no-store')
+  async updateRefund(
+    @Param('orderId') orderId: string,
+    @Body() body: UpdateAdminOrderRefundDto
+  ) {
+    try {
+      return toAdminOrderDetailResponse(
+        await this.updateAdminOrderRefundUseCase.execute(orderId, body)
       );
     }
     catch (error) {

@@ -107,3 +107,15 @@ export class AdminRefundNotAllowedError extends OrderAppError {
     super('Unpaid or expired orders cannot be marked refunded');
   }
 }
+
+export class AdminRefundRequiresCardPaymentError extends OrderAppError {
+  constructor() {
+    super('Only card orders support refund actions');
+  }
+}
+
+export class AdminRefundActionNotAllowedError extends OrderAppError {
+  constructor() {
+    super('This refund action is not allowed for the current order state');
+  }
+}

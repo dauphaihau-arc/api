@@ -94,14 +94,22 @@ describe('UpdateShopOrderStatusUseCase', () => {
         targetOrder.status = OrderStatus.CANCELED;
         targetOrder.canceledAt = cancelInput.canceledAt;
         targetOrder.cancelReason = cancelInput.cancelReason;
+        return { refundRequested: false };
       }),
     } as unknown as OrderCancellationService;
+    const jobDispatcher = {
+      dispatch: jest.fn().mockResolvedValue(undefined),
+    };
 
     return {
       order,
       fakeEntityManager,
       cancellationService,
-      useCase: new UpdateShopOrderStatusUseCase(entityManager, cancellationService),
+      useCase: new UpdateShopOrderStatusUseCase(
+        entityManager,
+        cancellationService,
+        jobDispatcher as never
+      ),
     };
   }
 

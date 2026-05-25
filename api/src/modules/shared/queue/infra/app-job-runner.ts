@@ -5,8 +5,12 @@ import {
   AppJobPayloadMap
 } from '~/common/jobs/job.types';
 import { GenerateProductImageVariantsJob } from '~/common/jobs/generate-product-image-variants.job';
+import { ProcessOrderRefundJob } from '~/common/jobs/process-order-refund.job';
 import { SendGuestOrderConfirmationEmailJob } from '~/common/jobs/send-guest-order-confirmation-email.job';
 import { SendPasswordResetEmailJob } from '~/common/jobs/send-password-reset-email.job';
+import { SendRefundFailedEmailJob } from '~/common/jobs/send-refund-failed-email.job';
+import { SendRefundSucceededEmailJob } from '~/common/jobs/send-refund-succeeded-email.job';
+import { SendSellerOrderUpdateEmailJob } from '~/common/jobs/send-seller-order-update-email.job';
 import { SendWelcomeEmailJob } from '~/common/jobs/send-welcome-email.job';
 
 @Injectable()
@@ -17,6 +21,10 @@ export class AppJobRunner {
     private readonly sendWelcomeEmailJob: SendWelcomeEmailJob,
     private readonly sendPasswordResetEmailJob: SendPasswordResetEmailJob,
     private readonly sendGuestOrderConfirmationEmailJob: SendGuestOrderConfirmationEmailJob,
+    private readonly processOrderRefundJob: ProcessOrderRefundJob,
+    private readonly sendRefundSucceededEmailJob: SendRefundSucceededEmailJob,
+    private readonly sendRefundFailedEmailJob: SendRefundFailedEmailJob,
+    private readonly sendSellerOrderUpdateEmailJob: SendSellerOrderUpdateEmailJob,
     private readonly generateProductImageVariantsJob: GenerateProductImageVariantsJob
   ) {}
 
@@ -41,6 +49,26 @@ export class AppJobRunner {
       case appJobName.sendGuestOrderConfirmationEmail:
         await this.sendGuestOrderConfirmationEmailJob.run(
           payload as AppJobPayloadMap[typeof appJobName.sendGuestOrderConfirmationEmail]
+        );
+        return;
+      case appJobName.processOrderRefund:
+        await this.processOrderRefundJob.run(
+          payload as AppJobPayloadMap[typeof appJobName.processOrderRefund]
+        );
+        return;
+      case appJobName.sendRefundSucceededEmail:
+        await this.sendRefundSucceededEmailJob.run(
+          payload as AppJobPayloadMap[typeof appJobName.sendRefundSucceededEmail]
+        );
+        return;
+      case appJobName.sendRefundFailedEmail:
+        await this.sendRefundFailedEmailJob.run(
+          payload as AppJobPayloadMap[typeof appJobName.sendRefundFailedEmail]
+        );
+        return;
+      case appJobName.sendSellerOrderUpdateEmail:
+        await this.sendSellerOrderUpdateEmailJob.run(
+          payload as AppJobPayloadMap[typeof appJobName.sendSellerOrderUpdateEmail]
         );
         return;
       case appJobName.generateProductImageVariants:

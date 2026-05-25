@@ -6,9 +6,12 @@ import { ProductInventoryEntity } from '../../product/infra/persistence/entities
 import { OrderStatus } from '../domain/enums/order-status.enum';
 import { OrderEntity } from '../infra/persistence/entities/order.entity';
 import { OrderItemEntity } from '../infra/persistence/entities/order-item.entity';
+import { OrderRefundService } from './order-refund.service';
 
 @Injectable()
 export class OrderCancellationService {
+  constructor(private readonly orderRefundService: OrderRefundService) {}
+
   async cancelOrder(
     entityManager: EntityManager,
     order: OrderEntity,
@@ -17,7 +20,7 @@ export class OrderCancellationService {
       cancelReason?: string;
       source: 'buyer' | 'seller';
     }
-  ): Promise<void> {
+  ): Promise<{ refundRequested: boolean }> {
     const previousStatus = order.status;
 
     order.status = OrderStatus.CANCELED;
@@ -37,6 +40,14 @@ export class OrderCancellationService {
         allocations_reverted: [OrderStatus.PENDING, OrderStatus.PAID].includes(previousStatus),
       },
     };
+
+    const refundRequested = this.orderRefundService.prepareRefundOnCancellation(
+      order,
+      previousStatus,
+      input.canceledAt
+    );
+
+    return { refundRequested };
   }
 
   private async restoreAllocations(

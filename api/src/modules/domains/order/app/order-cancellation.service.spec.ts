@@ -1,6 +1,8 @@
 import type { EntityManager } from '@mikro-orm/postgresql';
+import type { PaymentGateway } from '~/modules/shared/payment/app/ports/payment-gateway';
 import { OrderStatus } from '../domain/enums/order-status.enum';
 import { OrderCancellationService } from './order-cancellation.service';
+import { OrderRefundService } from './order-refund.service';
 
 describe('OrderCancellationService', () => {
   it('restores stock and coupon usage for paid orders', async () => {
@@ -14,6 +16,7 @@ describe('OrderCancellationService', () => {
     };
     const order = {
       id: 'order-1',
+      paymentType: 'card',
       status: OrderStatus.PAID,
       cancelReason: undefined,
       paymentDetails: { type: 'card' },
@@ -35,15 +38,20 @@ describe('OrderCancellationService', () => {
       remove,
     } as unknown as EntityManager;
 
-    const service = new OrderCancellationService();
+    const refundService = new OrderRefundService(
+      {} as EntityManager,
+      {} as PaymentGateway
+    );
+    const service = new OrderCancellationService(refundService);
     const canceledAt = new Date('2026-05-24T00:00:00.000Z');
 
-    await service.cancelOrder(fakeEntityManager, order as never, {
+    const result = await service.cancelOrder(fakeEntityManager, order as never, {
       canceledAt,
       cancelReason: 'Changed my mind',
       source: 'buyer',
     });
 
+    expect(result).toEqual({ refundRequested: true });
     expect(order.status).toBe(OrderStatus.CANCELED);
     expect(order.cancelReason).toBe('Changed my mind');
     expect(inventory.stock).toBe(5);
@@ -57,6 +65,9 @@ describe('OrderCancellationService', () => {
         source: 'buyer',
         allocations_reverted: true,
       },
+      refund_status: 'pending',
+      refund_requested_at: canceledAt.toISOString(),
+      refund_failed_reason: undefined,
     });
   });
 });

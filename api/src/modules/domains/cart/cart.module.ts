@@ -1,5 +1,5 @@
 import { MikroOrmModule } from '@mikro-orm/nestjs';
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { CART_CONFIG, buildCartConfig } from '~/config/cart.config';
 import { StorageModule } from '../../shared/storage/storage.module';
@@ -26,7 +26,7 @@ import { CartItemEntity } from './infra/persistence/entities/cart-item.entity';
 @Module({
   imports: [
     ConfigModule,
-    AuthModule,
+    forwardRef(() => AuthModule),
     CouponModule,
     StorageModule,
     MikroOrmModule.forFeature([

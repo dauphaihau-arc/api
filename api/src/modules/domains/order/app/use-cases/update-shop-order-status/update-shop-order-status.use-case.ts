@@ -1,5 +1,6 @@
 import { EntityManager } from '@mikro-orm/postgresql';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
+import { JobDispatcher } from '~/modules/shared/queue/app/ports/job-dispatcher';
 import type { UpdateShopOrderStatusDto } from '../../../api/rest/dto/update-shop-order-status.dto';
 import { OrderShippingStatus } from '../../../domain/enums/order-shipping-status.enum';
 import { OrderStatus } from '../../../domain/enums/order-status.enum';
@@ -17,9 +18,12 @@ import type { ShopOrderDetail } from '../../order.types';
 
 @Injectable()
 export class UpdateShopOrderStatusUseCase {
+  private readonly logger = new Logger(UpdateShopOrderStatusUseCase.name);
+
   constructor(
     private readonly entityManager: EntityManager,
-    private readonly orderCancellationService: OrderCancellationService
+    private readonly orderCancellationService: OrderCancellationService,
+    private readonly jobDispatcher: JobDispatcher
   ) {}
 
   async execute(
@@ -28,7 +32,7 @@ export class UpdateShopOrderStatusUseCase {
     input: UpdateShopOrderStatusDto
   ): Promise<ShopOrderDetail> {
     const entityManager = this.entityManager.fork();
-    return entityManager.transactional(async (transactionalEntityManager) => {
+    const result = await entityManager.transactional(async (transactionalEntityManager) => {
       const order = await transactionalEntityManager.getRepository(OrderEntity).findOne(
         { id: orderId, shop: shopId },
         { populate: ['shop'] }
@@ -43,7 +47,10 @@ export class UpdateShopOrderStatusUseCase {
       }
 
       if (order.status === OrderStatus.CANCELED) {
-        return this.buildDetail(transactionalEntityManager, order);
+        return {
+          refundRequested: false,
+          detail: await this.buildDetail(transactionalEntityManager, order),
+        };
       }
 
       if (![OrderStatus.PENDING, OrderStatus.PAID].includes(order.status)) {
@@ -54,7 +61,7 @@ export class UpdateShopOrderStatusUseCase {
         throw new SellerShippedOrderCancelNotAllowedError();
       }
 
-      await this.orderCancellationService.cancelOrder(transactionalEntityManager, order, {
+      const { refundRequested } = await this.orderCancellationService.cancelOrder(transactionalEntityManager, order, {
         canceledAt: new Date(),
         cancelReason: input.cancelReason,
         source: 'seller',
@@ -62,8 +69,25 @@ export class UpdateShopOrderStatusUseCase {
 
       await transactionalEntityManager.flush();
 
-      return this.buildDetail(transactionalEntityManager, order);
+      return {
+        refundRequested,
+        detail: await this.buildDetail(transactionalEntityManager, order),
+      };
     });
+
+    if (result.refundRequested) {
+      try {
+        await this.jobDispatcher.dispatch('order.process-refund', { orderId });
+      }
+      catch (error) {
+        this.logger.error(
+          `Failed to schedule refund for canceled shop order ${orderId}`,
+          error instanceof Error ? error.stack : undefined
+        );
+      }
+    }
+
+    return result.detail;
   }
 
   private async buildDetail(

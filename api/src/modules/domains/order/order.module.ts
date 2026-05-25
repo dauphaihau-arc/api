@@ -1,6 +1,7 @@
 import { MikroOrmModule } from '@mikro-orm/nestjs';
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ProcessOrderRefundJob } from '~/common/jobs/process-order-refund.job';
 import { AuthModule } from '../auth/auth.module';
 import { CurrentUserEntity } from '../auth/infra/persistence/entities/current-user.entity';
 import { CartModule } from '../cart/cart.module';
@@ -17,6 +18,7 @@ import { OrderWebhookController } from './api/rest/order-webhook.controller';
 import { ShopOrderController } from './api/rest/shop-order.controller';
 import { OrderCancellationService } from './app/order-cancellation.service';
 import { OrderCheckoutService } from './app/order-checkout.service';
+import { OrderRefundService } from './app/order-refund.service';
 import { OrderPaymentService } from './app/order-payment.service';
 import { GuestOrderTrackingTokenService } from './app/guest-order-tracking-token.service';
 import { CreateGuestOrderForBuyNowUseCase } from './app/use-cases/create-guest-order-for-buy-now/create-guest-order-for-buy-now.use-case';
@@ -35,6 +37,7 @@ import { LookupGuestOrdersUseCase } from './app/use-cases/lookup-guest-orders/lo
 import { RequestOrderCancelUseCase } from './app/use-cases/request-order-cancel/request-order-cancel.use-case';
 import { RequestOrderSupportUseCase } from './app/use-cases/request-order-support/request-order-support.use-case';
 import { UpdateAdminOrderStatusUseCase } from './app/use-cases/update-admin-order-status/update-admin-order-status.use-case';
+import { UpdateAdminOrderRefundUseCase } from './app/use-cases/update-admin-order-refund/update-admin-order-refund.use-case';
 import { UpdateAdminOrderSupportNoteUseCase } from './app/use-cases/update-admin-order-support-note/update-admin-order-support-note.use-case';
 import { OrderCheckoutOutboxService } from './app/order-checkout-outbox.service';
 import { OutboxEventEntity } from './infra/persistence/entities/outbox-event.entity';
@@ -50,11 +53,11 @@ import { UpdateShopOrderStatusUseCase } from './app/use-cases/update-shop-order-
 @Module({
   imports: [
     ConfigModule,
-    AuthModule,
+    forwardRef(() => AuthModule),
     CartModule,
     CouponModule,
     PaymentModule,
-    QueueModule,
+    forwardRef(() => QueueModule),
     UserModule,
     ShopModule,
     MikroOrmModule.forFeature([
@@ -79,6 +82,7 @@ import { UpdateShopOrderStatusUseCase } from './app/use-cases/update-shop-order-
   providers: [
     OrderCheckoutService,
     OrderCancellationService,
+    OrderRefundService,
     OrderCheckoutOutboxService,
     OrderPaymentService,
     GuestOrderTrackingTokenService,
@@ -98,10 +102,12 @@ import { UpdateShopOrderStatusUseCase } from './app/use-cases/update-shop-order-
     ListShopOrdersUseCase,
     GetShopOrderByIdUseCase,
     UpdateAdminOrderStatusUseCase,
+    UpdateAdminOrderRefundUseCase,
     UpdateAdminOrderSupportNoteUseCase,
     UpdateShopOrderStatusUseCase,
     UpdateShopOrderShipmentUseCase,
+    ProcessOrderRefundJob,
   ],
-  exports: [OrderCheckoutOutboxService],
+  exports: [OrderCheckoutOutboxService, OrderRefundService, ProcessOrderRefundJob],
 })
 export class OrderModule {}

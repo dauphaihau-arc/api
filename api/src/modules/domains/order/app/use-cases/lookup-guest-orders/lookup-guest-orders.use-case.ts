@@ -121,6 +121,8 @@ export class LookupGuestOrdersUseCase {
         cancelReason: order.cancelReason,
         customerSupportNote: order.customerSupportNote,
         cancelRequestedAt: order.cancelRequestedAt,
+        refundedAt: order.refundedAt,
+        paymentDetails: order.paymentDetails,
         subtotal: Number(order.subtotal),
         totalShippingFee: Number(order.totalShippingFee),
         totalDiscount: Number(order.totalDiscount),

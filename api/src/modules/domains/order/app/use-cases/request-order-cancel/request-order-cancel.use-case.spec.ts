@@ -93,22 +93,28 @@ describe('RequestOrderCancelUseCase', () => {
         targetOrder.status = OrderStatus.CANCELED;
         targetOrder.canceledAt = cancelInput.canceledAt;
         targetOrder.cancelReason = cancelInput.cancelReason;
+        return { refundRequested: false };
       }),
     } as unknown as OrderCancellationService;
+    const jobDispatcher = {
+      dispatch: jest.fn().mockResolvedValue(undefined),
+    };
 
     return {
       order,
       fakeEntityManager,
       cancellationService,
+      jobDispatcher,
       useCase: new RequestOrderCancelUseCase(
         { fork: jest.fn(() => fakeEntityManager) } as unknown as EntityManager,
-        cancellationService
+        cancellationService,
+        jobDispatcher as never
       ),
     };
   }
 
   it('cancels a pre-transit paid order immediately', async () => {
-    const { useCase, order, fakeEntityManager, cancellationService } = buildUseCase();
+    const { useCase, order, fakeEntityManager, cancellationService, jobDispatcher } = buildUseCase();
 
     const result = await useCase.execute(actor, 'order-1', {
       cancelReason: 'Changed my mind',
@@ -120,6 +126,10 @@ describe('RequestOrderCancelUseCase', () => {
     expect(order.cancelReason).toBe('Changed my mind')
     expect(cancellationService.cancelOrder).toHaveBeenCalled()
     expect(fakeEntityManager.flush).toHaveBeenCalled()
+    expect(jobDispatcher.dispatch).toHaveBeenCalledWith('order.send-seller-order-update-email', {
+      orderId: 'order-1',
+      eventType: 'canceled',
+    })
     expect(result.status).toBe(OrderStatus.CANCELED)
   })
 

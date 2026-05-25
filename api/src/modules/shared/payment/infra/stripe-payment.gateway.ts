@@ -127,6 +127,19 @@ export class StripePaymentGateway extends PaymentGateway {
     return this.requireStripe().checkout.sessions.retrieve(sessionId);
   }
 
+  async createStripeRefund(paymentIntentId: string) {
+    const refund = await this.requireStripe().refunds.create({
+      payment_intent: paymentIntentId,
+    });
+
+    return {
+      id: refund.id,
+      status: refund.status ?? 'unknown',
+      amount: refund.amount,
+      failureReason: refund.failure_reason,
+    };
+  }
+
   private requireStripe(): Stripe {
     if (!this.stripe) {
       throw new InternalServerErrorException('Stripe is not configured');

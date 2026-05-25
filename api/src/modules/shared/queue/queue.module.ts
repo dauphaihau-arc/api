@@ -1,4 +1,4 @@
-import { forwardRef, Module } from '@nestjs/common';
+import { forwardRef, Logger, Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import {
   QueueConfig,
@@ -11,7 +11,11 @@ import Redis from 'ioredis';
 import { GenerateProductImageVariantsJob } from '~/common/jobs/generate-product-image-variants.job';
 import { SendGuestOrderConfirmationEmailJob } from '~/common/jobs/send-guest-order-confirmation-email.job';
 import { SendPasswordResetEmailJob } from '~/common/jobs/send-password-reset-email.job';
+import { SendRefundFailedEmailJob } from '~/common/jobs/send-refund-failed-email.job';
+import { SendRefundSucceededEmailJob } from '~/common/jobs/send-refund-succeeded-email.job';
+import { SendSellerOrderUpdateEmailJob } from '~/common/jobs/send-seller-order-update-email.job';
 import { SendWelcomeEmailJob } from '~/common/jobs/send-welcome-email.job';
+import { OrderModule } from '~/modules/domains/order/order.module';
 import { ProductModule } from '~/modules/domains/product/product.module';
 import { JobDispatcher } from './app/ports/job-dispatcher';
 import { AppJobRunner } from './infra/app-job-runner';
@@ -21,8 +25,16 @@ import { InlineJobDispatcher } from './infra/inline-job-dispatcher';
 import { QueueConfigLoggerService } from './infra/queue-config-logger.service';
 import { BULLMQ_CONNECTION } from './infra/queue.constants';
 
+const queueModuleLogger = new Logger('QueueModule');
+
 @Module({
-  imports: [ConfigModule, MailModule, PaymentModule, forwardRef(() => ProductModule)],
+  imports: [
+    ConfigModule,
+    MailModule,
+    PaymentModule,
+    forwardRef(() => ProductModule),
+    forwardRef(() => OrderModule),
+  ],
   providers: [
     {
       provide: QUEUE_CONFIG,
@@ -33,15 +45,42 @@ import { BULLMQ_CONNECTION } from './infra/queue.constants';
     {
       provide: BULLMQ_CONNECTION,
       inject: [QUEUE_CONFIG],
-      useFactory: (queueConfig: QueueConfig) => {
+      useFactory: async (queueConfig: QueueConfig) => {
         if (queueConfig.driver !== 'redis') {
+          queueModuleLogger.log(
+            `Skipping BullMQ Redis bootstrap because queue driver is ${queueConfig.driver}`
+          );
           return null;
         }
 
-        return new Redis(queueConfig.redisUrl, {
+        queueModuleLogger.log(
+          `Connecting BullMQ Redis at ${queueConfig.redisUrl}`
+        );
+
+        const connection = new Redis(queueConfig.redisUrl, {
+          lazyConnect: true,
           maxRetriesPerRequest: null,
           enableReadyCheck: false,
+          retryStrategy: () => null,
         });
+
+        try {
+          await connection.connect();
+          queueModuleLogger.log('BullMQ Redis socket connected');
+          await connection.ping();
+          queueModuleLogger.log('BullMQ Redis ping succeeded');
+        }
+        catch (error) {
+          queueModuleLogger.error(
+            `Failed to connect BullMQ Redis at ${queueConfig.redisUrl}`,
+            error instanceof Error ? error.stack : undefined
+          );
+
+          connection.disconnect();
+          throw error;
+        }
+
+        return connection;
       },
     },
     BullMqConnectionManager,
@@ -50,6 +89,9 @@ import { BULLMQ_CONNECTION } from './infra/queue.constants';
     SendWelcomeEmailJob,
     SendPasswordResetEmailJob,
     SendGuestOrderConfirmationEmailJob,
+    SendRefundSucceededEmailJob,
+    SendRefundFailedEmailJob,
+    SendSellerOrderUpdateEmailJob,
     GenerateProductImageVariantsJob,
     {
       provide: JobDispatcher,

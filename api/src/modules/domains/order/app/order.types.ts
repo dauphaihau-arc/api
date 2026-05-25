@@ -79,6 +79,8 @@ export interface OrderListShop {
   cancelReason?: string;
   customerSupportNote?: string;
   cancelRequestedAt?: Date;
+  refundedAt?: Date;
+  paymentDetails?: Record<string, unknown>;
   subtotal: number;
   totalShippingFee: number;
   totalDiscount: number;
@@ -162,6 +164,8 @@ export interface ShopOrderSummary {
   cancelReason?: string;
   customerSupportNote?: string;
   cancelRequestedAt?: Date;
+  refundedAt?: Date;
+  paymentDetails?: Record<string, unknown>;
   subtotal: number;
   totalShippingFee: number;
   totalDiscount: number;

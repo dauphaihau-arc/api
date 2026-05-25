@@ -43,4 +43,13 @@ export abstract class PaymentGateway {
   abstract retrieveStripeCheckoutSession(
     sessionId: string
   ): Promise<Stripe.Checkout.Session>;
+
+  abstract createStripeRefund(
+    paymentIntentId: string
+  ): Promise<{
+    id: string;
+    status: string;
+    amount: number;
+    failureReason?: string | null;
+  }>;
 }
