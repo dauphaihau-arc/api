@@ -1,5 +1,6 @@
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
+import { NotifyUserUseCase } from '~/modules/shared/notification/app/use-cases/notify-user/notify-user.use-case';
 import type { UpdateShopOrderShipmentDto } from '../../../api/rest/dto/update-shop-order-shipment.dto';
 import { OrderShippingStatus } from '../../../domain/enums/order-shipping-status.enum';
 import { OrderStatus } from '../../../domain/enums/order-status.enum';
@@ -38,7 +39,10 @@ const ALLOWED_SHIPPING_TRANSITIONS: Record<OrderShippingStatus, OrderShippingSta
 
 @Injectable()
 export class UpdateShopOrderShipmentUseCase {
-  constructor(private readonly entityManager: EntityManager) {}
+  constructor(
+    private readonly entityManager: EntityManager,
+    private readonly notifyUserUseCase: NotifyUserUseCase
+  ) {}
 
   async execute(
     shopId: string,
@@ -48,7 +52,7 @@ export class UpdateShopOrderShipmentUseCase {
     const entityManager = this.entityManager.fork();
     const order = await entityManager.getRepository(OrderEntity).findOne(
       { id: orderId, shop: shopId },
-      { populate: ['shop'] }
+      { populate: ['shop', 'user'] }
     );
 
     if (!order) {
@@ -110,11 +114,43 @@ export class UpdateShopOrderShipmentUseCase {
 
     await entityManager.flush();
 
+    if (order.user?.id && input.shippingStatus) {
+      await this.notifyUserUseCase.execute({
+        userId: order.user.id,
+        type: `order.shipping.${input.shippingStatus}`,
+        title: 'Order shipping updated',
+        body: this.buildShippingBody(order.id, input.shippingStatus),
+        data: {
+          orderId,
+          shopId,
+          shippingStatus: input.shippingStatus,
+        },
+        channels: ['in_app', 'web_push'],
+      });
+    }
+
     const items = await entityManager.getRepository(OrderItemEntity).find(
       { order: order.id },
       { populate: ['order', 'product', 'product.shop', 'inventory'] }
     );
 
     return toShopOrderDetail(order, items);
+  }
+
+  private buildShippingBody(
+    orderId: string,
+    shippingStatus: OrderShippingStatus
+  ): string {
+    switch (shippingStatus) {
+      case OrderShippingStatus.IN_TRANSIT:
+        return `Your order ${orderId} is now in transit.`;
+      case OrderShippingStatus.SHIPPED:
+        return `Your order ${orderId} has shipped.`;
+      case OrderShippingStatus.DELIVERED:
+        return `Your order ${orderId} has been delivered.`;
+      case OrderShippingStatus.PRE_TRANSIT:
+      default:
+        return `Your order ${orderId} shipping details were updated.`;
+    }
   }
 }

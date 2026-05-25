@@ -16,6 +16,7 @@ describe('UpdateShopOrderShipmentUseCase', () => {
         shopName: 'Shop 1',
         slug: 'shop-1',
       },
+      user: { id: 'user-1' },
       customerEmail: 'buyer@example.com',
       shippingAddress: {
         full_name: 'Buyer One',
@@ -88,15 +89,23 @@ describe('UpdateShopOrderShipmentUseCase', () => {
       fork: jest.fn(() => fakeEntityManager),
     } as unknown as EntityManager;
 
+    const notifyUserUseCase = {
+      execute: jest.fn().mockResolvedValue(undefined),
+    };
+
     return {
       order,
       fakeEntityManager,
-      useCase: new UpdateShopOrderShipmentUseCase(entityManager),
+      notifyUserUseCase,
+      useCase: new UpdateShopOrderShipmentUseCase(
+        entityManager,
+        notifyUserUseCase as never
+      ),
     };
   }
 
   it('updates shipment details and marks the order as shipped', async () => {
-    const { useCase, order, fakeEntityManager } = buildUseCase();
+    const { useCase, order, fakeEntityManager, notifyUserUseCase } = buildUseCase();
 
     const result = await useCase.execute('shop-1', 'order-1', {
       shippingStatus: OrderShippingStatus.SHIPPED,
@@ -111,6 +120,7 @@ describe('UpdateShopOrderShipmentUseCase', () => {
     expect(order.shipmentNote).toBe('Left warehouse');
     expect(order.shippedAt).toBeInstanceOf(Date);
     expect(fakeEntityManager.flush).toHaveBeenCalled();
+    expect(notifyUserUseCase.execute).toHaveBeenCalled();
     expect(result.shippingStatus).toBe(OrderShippingStatus.SHIPPED);
   });
 

@@ -44,6 +44,7 @@ import { OutboxEventEntity } from './infra/persistence/entities/outbox-event.ent
 import { OrderEntity } from './infra/persistence/entities/order.entity';
 import { OrderItemEntity } from './infra/persistence/entities/order-item.entity';
 import { PaymentModule } from '../../shared/payment/payment.module';
+import { NotificationModule } from '../../shared/notification/notification.module';
 import { QueueModule } from '../../shared/queue/queue.module';
 import { UserModule } from '../user/user.module';
 import { ShopModule } from '../shop/shop.module';
@@ -57,6 +58,7 @@ import { UpdateShopOrderStatusUseCase } from './app/use-cases/update-shop-order-
     CartModule,
     CouponModule,
     PaymentModule,
+    NotificationModule,
     forwardRef(() => QueueModule),
     UserModule,
     ShopModule,

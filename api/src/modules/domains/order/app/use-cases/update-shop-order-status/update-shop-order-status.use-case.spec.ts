@@ -17,6 +17,7 @@ describe('UpdateShopOrderStatusUseCase', () => {
         shopName: 'Shop 1',
         slug: 'shop-1',
       },
+      user: { id: 'user-1' },
       customerEmail: 'buyer@example.com',
       shippingAddress: {
         full_name: 'Buyer One',
@@ -100,21 +101,32 @@ describe('UpdateShopOrderStatusUseCase', () => {
     const jobDispatcher = {
       dispatch: jest.fn().mockResolvedValue(undefined),
     };
+    const notifyUserUseCase = {
+      execute: jest.fn().mockResolvedValue(undefined),
+    };
 
     return {
       order,
       fakeEntityManager,
       cancellationService,
+      notifyUserUseCase,
       useCase: new UpdateShopOrderStatusUseCase(
         entityManager,
         cancellationService,
-        jobDispatcher as never
+        jobDispatcher as never,
+        notifyUserUseCase as never
       ),
     };
   }
 
   it('cancels a paid pre-transit order', async () => {
-    const { useCase, order, fakeEntityManager, cancellationService } = buildUseCase();
+    const {
+      useCase,
+      order,
+      fakeEntityManager,
+      cancellationService,
+      notifyUserUseCase,
+    } = buildUseCase();
 
     const result = await useCase.execute('shop-1', 'order-1', {
       status: OrderStatus.CANCELED,
@@ -126,6 +138,7 @@ describe('UpdateShopOrderStatusUseCase', () => {
     expect(order.canceledAt).toBeInstanceOf(Date);
     expect(cancellationService.cancelOrder).toHaveBeenCalled();
     expect(fakeEntityManager.flush).toHaveBeenCalled();
+    expect(notifyUserUseCase.execute).toHaveBeenCalled();
     expect(result.id).toBe('order-1');
   });
 
