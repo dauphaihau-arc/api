@@ -79,6 +79,7 @@
     "rxjs": "^7.8.1",
     "sharp": "^0.34.5",
     "stripe": "^18.5.0",
+    "web-push": "^3.6.7",
     "zod": "^4.4.3"
   },
   "devDependencies": {
@@ -93,6 +94,7 @@
     "@types/passport-jwt": "^4.0.1",
     "@types/pg": "^8.20.0",
     "@types/supertest": "^7.0.0",
+    "@types/web-push": "^3.6.4",
     "eslint": "^10.3.0",
     "jest": "^30.0.0",
     "source-map-support": "^0.5.21",

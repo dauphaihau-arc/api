@@ -21,6 +21,7 @@ import { UserModule } from './domains/user/user.module';
 import { CacheModule } from './shared/cache/cache.module';
 import { HealthModule } from './shared/health/health.module';
 import { MailModule } from './shared/mail/mail.module';
+import { NotificationModule } from './shared/notification/notification.module';
 import { QueueModule } from './shared/queue/queue.module';
 import { RateLimitModule } from './shared/rate-limit/rate-limit.module';
 import { StorageModule } from './shared/storage/storage.module';
@@ -50,6 +51,7 @@ import { PaymentModule } from './shared/payment/payment.module';
     MikroOrmModule.forMiddleware(),
     CacheModule,
     MailModule,
+    NotificationModule,
     PaymentModule,
     QueueModule,
     RateLimitModule,

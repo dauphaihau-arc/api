@@ -65,6 +65,10 @@ const appEnvBaseSchema = z.object({
   MAIL_DEFAULT_FROM_EMAIL: z.email().default('noreply@example.com'),
   MAIL_DEFAULT_FROM_NAME: z.string().trim().min(1).default('Nest Template'),
   RESEND_API_KEY: z.string().trim().min(1).optional(),
+  WEB_PUSH_SUBJECT: z.string().trim().min(1).optional(),
+  WEB_PUSH_PUBLIC_KEY: z.string().trim().min(1).optional(),
+  WEB_PUSH_PRIVATE_KEY: z.string().trim().min(1).optional(),
+  WEB_PUSH_TTL_SECONDS: positiveIntegerString.default('60'),
   STRIPE_SECRET_KEY: z.string().trim().min(1).optional(),
   STRIPE_WEBHOOK_SECRET_KEY: z.string().trim().min(1).optional(),
   STORAGE_DRIVER: z.enum(['local', 'minio']).default('local'),
@@ -106,6 +110,31 @@ const appEnvSchema = appEnvBaseSchema.superRefine((env, context) => {
       path: ['RESEND_API_KEY'],
       message: 'Expected RESEND_API_KEY when MAIL_DRIVER is resend.',
     });
+  }
+
+  const hasAnyWebPushSetting = Boolean(
+    env.WEB_PUSH_SUBJECT
+    || env.WEB_PUSH_PUBLIC_KEY
+    || env.WEB_PUSH_PRIVATE_KEY
+  );
+
+  if (
+    hasAnyWebPushSetting
+    && (!env.WEB_PUSH_SUBJECT || !env.WEB_PUSH_PUBLIC_KEY || !env.WEB_PUSH_PRIVATE_KEY)
+  ) {
+    for (const field of [
+      'WEB_PUSH_SUBJECT',
+      'WEB_PUSH_PUBLIC_KEY',
+      'WEB_PUSH_PRIVATE_KEY',
+    ] as const) {
+      if (!env[field]) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [field],
+          message: `Expected ${field} when Web Push is configured.`,
+        });
+      }
+    }
   }
 
   if (env.STRIPE_SECRET_KEY && !env.STRIPE_WEBHOOK_SECRET_KEY) {

@@ -11,6 +11,7 @@ import { SendPasswordResetEmailJob } from '~/common/jobs/send-password-reset-ema
 import { SendRefundFailedEmailJob } from '~/common/jobs/send-refund-failed-email.job';
 import { SendRefundSucceededEmailJob } from '~/common/jobs/send-refund-succeeded-email.job';
 import { SendSellerOrderUpdateEmailJob } from '~/common/jobs/send-seller-order-update-email.job';
+import { SendWebPushNotificationJob } from '~/common/jobs/send-web-push-notification.job';
 import { SendWelcomeEmailJob } from '~/common/jobs/send-welcome-email.job';
 
 @Injectable()
@@ -25,6 +26,7 @@ export class AppJobRunner {
     private readonly sendRefundSucceededEmailJob: SendRefundSucceededEmailJob,
     private readonly sendRefundFailedEmailJob: SendRefundFailedEmailJob,
     private readonly sendSellerOrderUpdateEmailJob: SendSellerOrderUpdateEmailJob,
+    private readonly sendWebPushNotificationJob: SendWebPushNotificationJob,
     private readonly generateProductImageVariantsJob: GenerateProductImageVariantsJob
   ) {}
 
@@ -69,6 +71,11 @@ export class AppJobRunner {
       case appJobName.sendSellerOrderUpdateEmail:
         await this.sendSellerOrderUpdateEmailJob.run(
           payload as AppJobPayloadMap[typeof appJobName.sendSellerOrderUpdateEmail]
+        );
+        return;
+      case appJobName.sendWebPushNotification:
+        await this.sendWebPushNotificationJob.run(
+          payload as AppJobPayloadMap[typeof appJobName.sendWebPushNotification]
         );
         return;
       case appJobName.generateProductImageVariants:
