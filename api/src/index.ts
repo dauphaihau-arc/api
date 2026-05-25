@@ -1,5 +1,6 @@
 import {
   ClassSerializerInterceptor,
+  Logger,
   RequestMethod,
   ValidationPipe
 } from '@nestjs/common';
@@ -12,8 +13,10 @@ import { AppModule } from './modules/app.module';
 import { RequestContextService } from './modules/shared/request-context/request-context.service';
 
 const API_PREFIX = 'v1';
+const bootstrapLogger = new Logger('Bootstrap');
 
 async function bootstrap() {
+  bootstrapLogger.log('Creating Nest application');
   const app = await NestFactory.create(AppModule, { bodyParser: false });
   const corsAllowedOrigins = parseCorsAllowedOrigins(process.env);
 
@@ -56,6 +59,12 @@ async function bootstrap() {
     ],
   });
 
+  bootstrapLogger.log(
+    `Starting HTTP listener on port ${process.env.PORT ?? 3000}`
+  );
   await app.listen(process.env.PORT ?? 3000);
+  bootstrapLogger.log(
+    `HTTP listener ready on port ${process.env.PORT ?? 3000}`
+  );
 }
 void bootstrap();

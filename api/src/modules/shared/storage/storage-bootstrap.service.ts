@@ -8,8 +8,11 @@ export class StorageBootstrapService implements OnModuleInit {
   constructor(private readonly storageService: StorageService) {}
 
   async onModuleInit(): Promise<void> {
+    this.logger.log('Pinging storage backend during bootstrap');
+
     try {
       await this.storageService.ping();
+      this.logger.log('Storage bootstrap ping succeeded');
     }
     catch (error) {
       this.logger.error('Storage bootstrap failed', error instanceof Error ? error.stack : undefined);
