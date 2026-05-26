@@ -26,6 +26,7 @@ import { QueueModule } from './shared/queue/queue.module';
 import { RateLimitModule } from './shared/rate-limit/rate-limit.module';
 import { StorageModule } from './shared/storage/storage.module';
 import { PaymentModule } from './shared/payment/payment.module';
+import { SseModule } from './shared/sse/sse.module';
 
 @Module({
   imports: [
@@ -55,6 +56,7 @@ import { PaymentModule } from './shared/payment/payment.module';
     PaymentModule,
     QueueModule,
     RateLimitModule,
+    SseModule,
     StorageModule,
     HealthModule,
 
