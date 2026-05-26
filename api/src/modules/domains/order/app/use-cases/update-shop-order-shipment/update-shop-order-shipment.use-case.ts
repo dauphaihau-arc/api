@@ -1,6 +1,8 @@
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { NotifyUserUseCase } from '~/modules/shared/notification/app/use-cases/notify-user/notify-user.use-case';
+import { SSE_ORDER_UPDATED_EVENT } from '~/modules/shared/sse/app/sse.events';
 import type { UpdateShopOrderShipmentDto } from '../../../api/rest/dto/update-shop-order-shipment.dto';
 import { OrderShippingStatus } from '../../../domain/enums/order-shipping-status.enum';
 import { OrderStatus } from '../../../domain/enums/order-status.enum';
@@ -41,7 +43,8 @@ const ALLOWED_SHIPPING_TRANSITIONS: Record<OrderShippingStatus, OrderShippingSta
 export class UpdateShopOrderShipmentUseCase {
   constructor(
     private readonly entityManager: EntityManager,
-    private readonly notifyUserUseCase: NotifyUserUseCase
+    private readonly notifyUserUseCase: NotifyUserUseCase,
+    private readonly eventEmitter: EventEmitter2
   ) {}
 
   async execute(
@@ -115,6 +118,18 @@ export class UpdateShopOrderShipmentUseCase {
     await entityManager.flush();
 
     if (order.user?.id && input.shippingStatus) {
+      this.eventEmitter.emit(SSE_ORDER_UPDATED_EVENT, {
+        userId: order.user.id,
+        orderId,
+        changed: [
+          'shippingStatus',
+          ...(input.trackingNumber !== undefined ? ['trackingNumber'] : []),
+          ...(input.shippingStatus === OrderShippingStatus.DELIVERED ? ['status'] : []),
+        ],
+        status: order.status,
+        shippingStatus: input.shippingStatus,
+      });
+
       await this.notifyUserUseCase.execute({
         userId: order.user.id,
         type: `order.shipping.${input.shippingStatus}`,
@@ -126,6 +141,15 @@ export class UpdateShopOrderShipmentUseCase {
           shippingStatus: input.shippingStatus,
         },
         channels: ['in_app', 'web_push'],
+      });
+    }
+    else if (order.user?.id && input.trackingNumber !== undefined) {
+      this.eventEmitter.emit(SSE_ORDER_UPDATED_EVENT, {
+        userId: order.user.id,
+        orderId,
+        changed: ['trackingNumber'],
+        status: order.status,
+        shippingStatus: order.shippingStatus,
       });
     }
 

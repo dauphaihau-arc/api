@@ -1,4 +1,5 @@
 import type { EntityManager } from '@mikro-orm/postgresql';
+import type { EventEmitter2 } from '@nestjs/event-emitter';
 import type { JobDispatcher } from '~/modules/shared/queue/app/ports/job-dispatcher';
 import { AdminOrderRefundAction } from '../../../api/rest/dto/update-admin-order-refund.dto';
 import { PaymentType } from '../../../domain/enums/payment-type.enum';
@@ -23,6 +24,7 @@ describe('UpdateAdminOrderRefundUseCase', () => {
         shopName: 'Shop 1',
         slug: 'shop-1',
       },
+      user: { id: 'user-1' },
       customerEmail: 'buyer@example.com',
       shippingAddress: {
         full_name: 'Buyer One',
@@ -56,6 +58,8 @@ describe('UpdateAdminOrderRefundUseCase', () => {
       paymentDetails: {
         payment_intent_id: 'pi_test_1',
         refund_status: refundStatus,
+        refund_failed_reason: undefined,
+        refund_note: undefined,
       },
       createdAt: new Date('2026-05-23T00:00:00.000Z'),
       updatedAt: new Date('2026-05-23T00:00:00.000Z'),
@@ -105,12 +109,19 @@ describe('UpdateAdminOrderRefundUseCase', () => {
     const jobDispatcher = {
       dispatch: jest.fn().mockResolvedValue(undefined),
     } as unknown as JobDispatcher;
+    const eventEmitter: Pick<jest.Mocked<EventEmitter2>, 'emit'> = {
+      emit: jest.fn(),
+    };
 
     return {
       order,
       fakeEntityManager,
       jobDispatcher,
-      useCase: new UpdateAdminOrderRefundUseCase(entityManager, jobDispatcher),
+      useCase: new UpdateAdminOrderRefundUseCase(
+        entityManager,
+        jobDispatcher,
+        eventEmitter as unknown as EventEmitter2
+      ),
     };
   }
 

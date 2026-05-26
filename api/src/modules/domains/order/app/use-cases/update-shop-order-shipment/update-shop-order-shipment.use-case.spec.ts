@@ -1,4 +1,5 @@
 import type { EntityManager } from '@mikro-orm/postgresql';
+import type { EventEmitter2 } from '@nestjs/event-emitter';
 import { OrderShippingStatus } from '../../../domain/enums/order-shipping-status.enum';
 import { OrderStatus } from '../../../domain/enums/order-status.enum';
 import { ShipmentUpdateNotAllowedError } from '../../errors/order-app.error';
@@ -92,6 +93,9 @@ describe('UpdateShopOrderShipmentUseCase', () => {
     const notifyUserUseCase = {
       execute: jest.fn().mockResolvedValue(undefined),
     };
+    const eventEmitter: Pick<jest.Mocked<EventEmitter2>, 'emit'> = {
+      emit: jest.fn(),
+    };
 
     return {
       order,
@@ -99,7 +103,8 @@ describe('UpdateShopOrderShipmentUseCase', () => {
       notifyUserUseCase,
       useCase: new UpdateShopOrderShipmentUseCase(
         entityManager,
-        notifyUserUseCase as never
+        notifyUserUseCase as never,
+        eventEmitter as unknown as EventEmitter2
       ),
     };
   }

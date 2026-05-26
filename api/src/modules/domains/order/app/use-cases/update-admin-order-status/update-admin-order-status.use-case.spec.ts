@@ -1,4 +1,5 @@
 import type { EntityManager } from '@mikro-orm/postgresql';
+import type { EventEmitter2 } from '@nestjs/event-emitter';
 import { OrderStatus } from '../../../domain/enums/order-status.enum';
 import { AdminRefundNotAllowedError } from '../../errors/order-app.error';
 import { UpdateAdminOrderStatusUseCase } from './update-admin-order-status.use-case';
@@ -12,6 +13,7 @@ describe('UpdateAdminOrderStatusUseCase', () => {
         shopName: 'Shop 1',
         slug: 'shop-1',
       },
+      user: { id: 'user-1' },
       customerEmail: 'buyer@example.com',
       shippingAddress: {
         full_name: 'Buyer One',
@@ -88,11 +90,17 @@ describe('UpdateAdminOrderStatusUseCase', () => {
     const entityManager = {
       fork: jest.fn(() => fakeEntityManager),
     } as unknown as EntityManager;
+    const eventEmitter: Pick<jest.Mocked<EventEmitter2>, 'emit'> = {
+      emit: jest.fn(),
+    };
 
     return {
       order,
       fakeEntityManager,
-      useCase: new UpdateAdminOrderStatusUseCase(entityManager),
+      useCase: new UpdateAdminOrderStatusUseCase(
+        entityManager,
+        eventEmitter as unknown as EventEmitter2
+      ),
     };
   }
 

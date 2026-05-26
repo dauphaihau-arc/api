@@ -1,5 +1,7 @@
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { SSE_ORDER_UPDATED_EVENT } from '~/modules/shared/sse/app/sse.events';
 import type { UpdateAdminOrderStatusDto } from '../../../api/rest/dto/update-admin-order-status.dto';
 import { OrderStatus } from '../../../domain/enums/order-status.enum';
 import { OrderEntity } from '../../../infra/persistence/entities/order.entity';
@@ -20,7 +22,10 @@ const ALLOWED_ADMIN_STATUSES = new Set<OrderStatus>([
 
 @Injectable()
 export class UpdateAdminOrderStatusUseCase {
-  constructor(private readonly entityManager: EntityManager) {}
+  constructor(
+    private readonly entityManager: EntityManager,
+    private readonly eventEmitter: EventEmitter2
+  ) {}
 
   async execute(
     orderId: string,
@@ -29,7 +34,7 @@ export class UpdateAdminOrderStatusUseCase {
     const entityManager = this.entityManager.fork();
     const order = await entityManager.getRepository(OrderEntity).findOne(
       { id: orderId },
-      { populate: ['shop'] }
+      { populate: ['shop', 'user'] }
     );
 
     if (!order) {
@@ -60,6 +65,16 @@ export class UpdateAdminOrderStatusUseCase {
     }
 
     await entityManager.flush();
+
+    if (order.user?.id) {
+      this.eventEmitter.emit(SSE_ORDER_UPDATED_EVENT, {
+        userId: order.user.id,
+        orderId,
+        changed: ['status'],
+        status: order.status,
+        shippingStatus: order.shippingStatus,
+      });
+    }
 
     const items = await entityManager.getRepository(OrderItemEntity).find(
       { order: order.id },

@@ -1,7 +1,9 @@
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable, Logger } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { appJobDeduplicationKey } from '~/common/jobs/job.types';
 import { JobDispatcher } from '~/modules/shared/queue/app/ports/job-dispatcher';
+import { SSE_ORDER_UPDATED_EVENT } from '~/modules/shared/sse/app/sse.events';
 import type { UpdateAdminOrderRefundDto } from '../../../api/rest/dto/update-admin-order-refund.dto';
 import { AdminOrderRefundAction } from '../../../api/rest/dto/update-admin-order-refund.dto';
 import { PaymentType } from '../../../domain/enums/payment-type.enum';
@@ -25,7 +27,8 @@ export class UpdateAdminOrderRefundUseCase {
 
   constructor(
     private readonly entityManager: EntityManager,
-    private readonly jobDispatcher: JobDispatcher
+    private readonly jobDispatcher: JobDispatcher,
+    private readonly eventEmitter: EventEmitter2
   ) {}
 
   async execute(
@@ -37,7 +40,7 @@ export class UpdateAdminOrderRefundUseCase {
     const result = await entityManager.transactional(async (transactionalEntityManager) => {
       const order = await transactionalEntityManager.getRepository(OrderEntity).findOne(
         { id: orderId },
-        { populate: ['shop'] }
+        { populate: ['shop', 'user'] }
       );
 
       if (!order) {
@@ -111,6 +114,7 @@ export class UpdateAdminOrderRefundUseCase {
 
       return {
         shouldDispatchRetry: input.action === AdminOrderRefundAction.RETRY,
+        customerUserId: order.user?.id,
         notificationAction:
           input.action === AdminOrderRefundAction.MARK_SUCCEEDED
             ? 'refund_succeeded'
@@ -120,6 +124,16 @@ export class UpdateAdminOrderRefundUseCase {
         detail: toAdminOrderDetail(order, items),
       };
     });
+
+    if (result.customerUserId) {
+      this.eventEmitter.emit(SSE_ORDER_UPDATED_EVENT, {
+        userId: result.customerUserId,
+        orderId,
+        changed: ['status', 'refundStatus'],
+        status: result.detail.status,
+        shippingStatus: result.detail.shippingStatus,
+      });
+    }
 
     if (result.shouldDispatchRetry) {
       try {

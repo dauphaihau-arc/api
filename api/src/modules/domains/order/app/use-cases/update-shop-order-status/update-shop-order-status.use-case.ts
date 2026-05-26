@@ -1,7 +1,9 @@
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable, Logger } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { NotifyUserUseCase } from '~/modules/shared/notification/app/use-cases/notify-user/notify-user.use-case';
 import { JobDispatcher } from '~/modules/shared/queue/app/ports/job-dispatcher';
+import { SSE_ORDER_UPDATED_EVENT } from '~/modules/shared/sse/app/sse.events';
 import type { UpdateShopOrderStatusDto } from '../../../api/rest/dto/update-shop-order-status.dto';
 import { OrderShippingStatus } from '../../../domain/enums/order-shipping-status.enum';
 import { OrderStatus } from '../../../domain/enums/order-status.enum';
@@ -25,7 +27,8 @@ export class UpdateShopOrderStatusUseCase {
     private readonly entityManager: EntityManager,
     private readonly orderCancellationService: OrderCancellationService,
     private readonly jobDispatcher: JobDispatcher,
-    private readonly notifyUserUseCase: NotifyUserUseCase
+    private readonly notifyUserUseCase: NotifyUserUseCase,
+    private readonly eventEmitter: EventEmitter2
   ) {}
 
   async execute(
@@ -92,6 +95,13 @@ export class UpdateShopOrderStatusUseCase {
     }
 
     if (result.customerUserId) {
+      this.eventEmitter.emit(SSE_ORDER_UPDATED_EVENT, {
+        userId: result.customerUserId,
+        orderId,
+        changed: ['status'],
+        status: OrderStatus.CANCELED,
+      });
+
       await this.notifyUserUseCase.execute({
         userId: result.customerUserId,
         type: 'order.canceled',
