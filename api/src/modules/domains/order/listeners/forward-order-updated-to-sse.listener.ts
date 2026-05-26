@@ -1,19 +1,20 @@
 import { randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
+import { buildUserEventsChannelKey } from '~/modules/shared/sse/app/user-events-channel';
+import { SsePublisher } from '~/modules/shared/sse/infra/sse.publisher';
 import {
-  SSE_ORDER_UPDATED_EVENT,
+  ORDER_UPDATED_SSE_EVENT,
   type OrderUpdatedSseEventPayload,
-} from '../app/sse.events';
-import { SsePublisher } from '../infra/sse.publisher';
+} from '../app/events/order-sse.event';
 
 @Injectable()
 export class ForwardOrderUpdatedToSseListener {
   constructor(private readonly ssePublisher: SsePublisher) {}
 
-  @OnEvent(SSE_ORDER_UPDATED_EVENT, { async: true, suppressErrors: true })
+  @OnEvent(ORDER_UPDATED_SSE_EVENT, { async: true, suppressErrors: true })
   handle(payload: OrderUpdatedSseEventPayload): void {
-    this.ssePublisher.publishToUser(payload.userId, {
+    this.ssePublisher.publish(buildUserEventsChannelKey(payload.userId), {
       id: randomUUID(),
       type: 'message',
       data: {

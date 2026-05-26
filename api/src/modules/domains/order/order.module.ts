@@ -46,8 +46,10 @@ import { OrderItemEntity } from './infra/persistence/entities/order-item.entity'
 import { PaymentModule } from '../../shared/payment/payment.module';
 import { NotificationModule } from '../../shared/notification/notification.module';
 import { QueueModule } from '../../shared/queue/queue.module';
+import { SseModule } from '../../shared/sse/sse.module';
 import { UserModule } from '../user/user.module';
 import { ShopModule } from '../shop/shop.module';
+import { ForwardOrderUpdatedToSseListener } from './listeners/forward-order-updated-to-sse.listener';
 import { UpdateShopOrderShipmentUseCase } from './app/use-cases/update-shop-order-shipment/update-shop-order-shipment.use-case';
 import { UpdateShopOrderStatusUseCase } from './app/use-cases/update-shop-order-status/update-shop-order-status.use-case';
 
@@ -60,6 +62,7 @@ import { UpdateShopOrderStatusUseCase } from './app/use-cases/update-shop-order-
     PaymentModule,
     NotificationModule,
     forwardRef(() => QueueModule),
+    SseModule,
     UserModule,
     ShopModule,
     MikroOrmModule.forFeature([
@@ -108,6 +111,7 @@ import { UpdateShopOrderStatusUseCase } from './app/use-cases/update-shop-order-
     UpdateAdminOrderSupportNoteUseCase,
     UpdateShopOrderStatusUseCase,
     UpdateShopOrderShipmentUseCase,
+    ForwardOrderUpdatedToSseListener,
     ProcessOrderRefundJob,
   ],
   exports: [OrderCheckoutOutboxService, OrderRefundService, ProcessOrderRefundJob],

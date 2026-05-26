@@ -3,7 +3,6 @@ import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { appJobDeduplicationKey } from '~/common/jobs/job.types';
 import { JobDispatcher } from '~/modules/shared/queue/app/ports/job-dispatcher';
-import { SSE_ORDER_UPDATED_EVENT } from '~/modules/shared/sse/app/sse.events';
 import type { UpdateAdminOrderRefundDto } from '../../../api/rest/dto/update-admin-order-refund.dto';
 import { AdminOrderRefundAction } from '../../../api/rest/dto/update-admin-order-refund.dto';
 import { PaymentType } from '../../../domain/enums/payment-type.enum';
@@ -17,6 +16,7 @@ import {
   AdminRefundRequiresCardPaymentError,
   OrderNotFoundError,
 } from '../../errors/order-app.error';
+import { ORDER_UPDATED_SSE_EVENT } from '../../events/order-sse.event';
 import type { AdminOrderDetail } from '../../order.types';
 
 type RefundStatus = 'pending' | 'succeeded' | 'failed' | 'not_required';
@@ -126,7 +126,7 @@ export class UpdateAdminOrderRefundUseCase {
     });
 
     if (result.customerUserId) {
-      this.eventEmitter.emit(SSE_ORDER_UPDATED_EVENT, {
+      this.eventEmitter.emit(ORDER_UPDATED_SSE_EVENT, {
         userId: result.customerUserId,
         orderId,
         changed: ['status', 'refundStatus'],

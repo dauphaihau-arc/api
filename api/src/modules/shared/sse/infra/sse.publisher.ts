@@ -1,26 +1,30 @@
 import { Injectable } from '@nestjs/common';
 import type { MessageEvent } from '@nestjs/common';
 import { Observable, Subject, interval } from 'rxjs';
-import type { UserSseMessage } from '../app/sse.types';
+import type { SseMessage } from '../app/sse.types';
 
-type UserStream = Subject<MessageEvent>;
+type SseStream = Subject<MessageEvent>;
 
 const HEARTBEAT_INTERVAL_MS = 25_000;
 const RETRY_INTERVAL_MS = 5_000;
 
 @Injectable()
 export class SsePublisher {
-  private readonly streamsByUserId = new Map<string, Set<UserStream>>();
+  private readonly streamsByChannelKey = new Map<string, Set<SseStream>>();
 
-  createUserStream(userId: string): Observable<MessageEvent> {
+  createChannelStream(
+    channelKey: string,
+    connectedData?: Record<string, unknown>
+  ): Observable<MessageEvent> {
     return new Observable<MessageEvent>((subscriber) => {
       const stream = new Subject<MessageEvent>();
-      this.addStream(userId, stream);
+      this.addStream(channelKey, stream);
 
       subscriber.next({
         type: 'connected',
         data: {
           connected: true,
+          ...(connectedData ?? {}),
         },
         retry: RETRY_INTERVAL_MS,
       });
@@ -39,13 +43,21 @@ export class SsePublisher {
         heartbeatSubscription.unsubscribe();
         streamSubscription.unsubscribe();
         stream.complete();
-        this.removeStream(userId, stream);
+        this.removeStream(channelKey, stream);
       };
     });
   }
 
-  publishToUser(userId: string, message: UserSseMessage): void {
-    const streams = this.streamsByUserId.get(userId);
+  publish(channelKey: string, message: SseMessage): void {
+    const streams = this.streamsByChannelKey.get(channelKey);
+
+    this.publishToStreams(streams, message);
+  }
+
+  private publishToStreams(
+    streams: Set<SseStream> | undefined,
+    message: SseMessage
+  ): void {
 
     if (!streams || streams.size === 0) {
       return;
@@ -63,19 +75,19 @@ export class SsePublisher {
     }
   }
 
-  private addStream(userId: string, stream: UserStream): void {
-    const existingStreams = this.streamsByUserId.get(userId);
+  private addStream(channelKey: string, stream: SseStream): void {
+    const existingStreams = this.streamsByChannelKey.get(channelKey);
 
     if (existingStreams) {
       existingStreams.add(stream);
       return;
     }
 
-    this.streamsByUserId.set(userId, new Set([stream]));
+    this.streamsByChannelKey.set(channelKey, new Set([stream]));
   }
 
-  private removeStream(userId: string, stream: UserStream): void {
-    const streams = this.streamsByUserId.get(userId);
+  private removeStream(channelKey: string, stream: SseStream): void {
+    const streams = this.streamsByChannelKey.get(channelKey);
 
     if (!streams) {
       return;
@@ -84,7 +96,7 @@ export class SsePublisher {
     streams.delete(stream);
 
     if (streams.size === 0) {
-      this.streamsByUserId.delete(userId);
+      this.streamsByChannelKey.delete(channelKey);
     }
   }
 }

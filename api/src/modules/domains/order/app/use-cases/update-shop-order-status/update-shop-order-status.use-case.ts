@@ -3,7 +3,6 @@ import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { NotifyUserUseCase } from '~/modules/shared/notification/app/use-cases/notify-user/notify-user.use-case';
 import { JobDispatcher } from '~/modules/shared/queue/app/ports/job-dispatcher';
-import { SSE_ORDER_UPDATED_EVENT } from '~/modules/shared/sse/app/sse.events';
 import type { UpdateShopOrderStatusDto } from '../../../api/rest/dto/update-shop-order-status.dto';
 import { OrderShippingStatus } from '../../../domain/enums/order-shipping-status.enum';
 import { OrderStatus } from '../../../domain/enums/order-status.enum';
@@ -15,6 +14,7 @@ import {
   SellerOrderStatusUpdateNotAllowedError,
   SellerShippedOrderCancelNotAllowedError,
 } from '../../errors/order-app.error';
+import { ORDER_UPDATED_SSE_EVENT } from '../../events/order-sse.event';
 import { OrderCancellationService } from '../../order-cancellation.service';
 import { toShopOrderDetail } from '../../shop-order-read-model';
 import type { ShopOrderDetail } from '../../order.types';
@@ -95,7 +95,7 @@ export class UpdateShopOrderStatusUseCase {
     }
 
     if (result.customerUserId) {
-      this.eventEmitter.emit(SSE_ORDER_UPDATED_EVENT, {
+      this.eventEmitter.emit(ORDER_UPDATED_SSE_EVENT, {
         userId: result.customerUserId,
         orderId,
         changed: ['status'],

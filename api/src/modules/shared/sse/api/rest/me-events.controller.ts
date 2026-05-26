@@ -5,6 +5,7 @@ import { CurrentUser } from '~/common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '~/modules/domains/auth/api/guard/jwt-auth.guard';
 import { PermissionsGuard } from '~/modules/domains/auth/api/guard/permissions.guard';
 import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
+import { buildUserEventsChannelKey } from '../../app/user-events-channel';
 import { SsePublisher } from '../../infra/sse.publisher';
 
 @Controller('me/events')
@@ -16,6 +17,8 @@ export class MeEventsController {
   stream(
     @CurrentUser() currentUser: AuthenticatedUser
   ): Observable<MessageEvent> {
-    return this.ssePublisher.createUserStream(currentUser.userId);
+    return this.ssePublisher.createChannelStream(
+      buildUserEventsChannelKey(currentUser.userId)
+    );
   }
 }

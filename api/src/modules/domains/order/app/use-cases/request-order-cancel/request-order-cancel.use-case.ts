@@ -3,7 +3,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
 import { JobDispatcher } from '~/modules/shared/queue/app/ports/job-dispatcher';
-import { SSE_ORDER_UPDATED_EVENT } from '~/modules/shared/sse/app/sse.events';
+import { ORDER_UPDATED_SSE_EVENT } from '../../events/order-sse.event';
 import type { RequestOrderCancelDto } from '../../../api/rest/dto/request-order-cancel.dto';
 import { OrderShippingStatus } from '../../../domain/enums/order-shipping-status.enum';
 import { OrderStatus } from '../../../domain/enums/order-status.enum';
@@ -132,7 +132,7 @@ export class RequestOrderCancelUseCase {
       };
     });
 
-    this.eventEmitter.emit(SSE_ORDER_UPDATED_EVENT, {
+    this.eventEmitter.emit(ORDER_UPDATED_SSE_EVENT, {
       userId: actor.userId,
       orderId,
       changed: ['status'],

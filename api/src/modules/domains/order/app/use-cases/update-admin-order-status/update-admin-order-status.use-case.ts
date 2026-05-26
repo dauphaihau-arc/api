@@ -1,7 +1,6 @@
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { SSE_ORDER_UPDATED_EVENT } from '~/modules/shared/sse/app/sse.events';
 import type { UpdateAdminOrderStatusDto } from '../../../api/rest/dto/update-admin-order-status.dto';
 import { OrderStatus } from '../../../domain/enums/order-status.enum';
 import { OrderEntity } from '../../../infra/persistence/entities/order.entity';
@@ -12,6 +11,7 @@ import {
   AdminRefundNotAllowedError,
   OrderNotFoundError,
 } from '../../errors/order-app.error';
+import { ORDER_UPDATED_SSE_EVENT } from '../../events/order-sse.event';
 import type { AdminOrderDetail } from '../../order.types';
 
 const ALLOWED_ADMIN_STATUSES = new Set<OrderStatus>([
@@ -67,7 +67,7 @@ export class UpdateAdminOrderStatusUseCase {
     await entityManager.flush();
 
     if (order.user?.id) {
-      this.eventEmitter.emit(SSE_ORDER_UPDATED_EVENT, {
+      this.eventEmitter.emit(ORDER_UPDATED_SSE_EVENT, {
         userId: order.user.id,
         orderId,
         changed: ['status'],
