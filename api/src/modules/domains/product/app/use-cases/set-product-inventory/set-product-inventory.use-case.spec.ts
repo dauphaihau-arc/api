@@ -1,7 +1,9 @@
+import type { EventEmitter2 } from '@nestjs/event-emitter';
 import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
 import { UserStatus } from '~/modules/domains/auth/domain/enums/user-status.enum';
 import type { ShopRepository } from '~/modules/domains/shop/app/ports/shop.repository';
 import type { AuditLogService } from '~/modules/shared/audit/app/audit-log.service';
+import { PRODUCT_INVENTORY_UPDATED_SSE_EVENT } from '../../events/product-inventory-sse.event';
 import { ProductVariantType } from '../../../domain/enums/product-variant-type.enum';
 import type { ProductRepository } from '../../ports/product.repository';
 import type { ProductDraftSummary } from '../../product.types';
@@ -92,15 +94,19 @@ describe('SetProductInventoryUseCase', () => {
       auditLogService: {
         record: jest.fn().mockResolvedValue(undefined),
       } as unknown as jest.Mocked<AuditLogService>,
+      eventEmitter: {
+        emit: jest.fn(),
+      } as unknown as Pick<jest.Mocked<EventEmitter2>, 'emit'>,
     };
   }
 
   it('replaces inventory for a variant-backed product', async () => {
-    const { productRepository, shopRepository, auditLogService } = buildDeps();
+    const { productRepository, shopRepository, auditLogService, eventEmitter } = buildDeps();
     const useCase = new SetProductInventoryUseCase(
       productRepository,
       shopRepository,
-      auditLogService
+      auditLogService,
+      eventEmitter as unknown as EventEmitter2
     );
 
     const result = await useCase.execute(actor, variantProduct.id, {
@@ -134,14 +140,23 @@ describe('SetProductInventoryUseCase', () => {
         entityId: variantProduct.id,
       })
     );
+    expect(eventEmitter.emit).toHaveBeenCalledWith(
+      PRODUCT_INVENTORY_UPDATED_SSE_EVENT,
+      expect.objectContaining({
+        productId: variantProduct.id,
+        inventoryId: 'inventory-1',
+        stock: 10,
+      })
+    );
   });
 
   it('rejects missing variant references for variant-backed products', async () => {
-    const { productRepository, shopRepository, auditLogService } = buildDeps();
+    const { productRepository, shopRepository, auditLogService, eventEmitter } = buildDeps();
     const useCase = new SetProductInventoryUseCase(
       productRepository,
       shopRepository,
-      auditLogService
+      auditLogService,
+      eventEmitter as unknown as EventEmitter2
     );
 
     const result = await useCase.execute(actor, variantProduct.id, {

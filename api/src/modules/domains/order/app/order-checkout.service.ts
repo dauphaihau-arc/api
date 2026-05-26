@@ -5,7 +5,12 @@ import {
   Injectable,
   NotFoundException
 } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { MARKETPLACE_CURRENCIES } from '~/config/marketplace.config';
+import {
+  buildProductInventoryUpdatedSseEvent,
+  PRODUCT_INVENTORY_UPDATED_SSE_EVENT,
+} from '~/modules/domains/product/app/events/product-inventory-sse.event';
 import { CurrentUserEntity } from '../../auth/infra/persistence/entities/current-user.entity';
 import { CouponPricingService } from '../../coupon/app/coupon-pricing.service';
 import { CouponUsageEntity } from '../../coupon/infra/persistence/entities/coupon-usage.entity';
@@ -31,7 +36,8 @@ export class OrderCheckoutService {
   constructor(
     private readonly entityManager: EntityManager,
     private readonly couponPricingService: CouponPricingService,
-    private readonly orderCheckoutOutboxService: OrderCheckoutOutboxService
+    private readonly orderCheckoutOutboxService: OrderCheckoutOutboxService,
+    private readonly eventEmitter: EventEmitter2
   ) {}
 
   async createOrders(
@@ -67,6 +73,7 @@ export class OrderCheckoutService {
       const orderItemRepository = entityManager.getRepository(OrderItemEntity);
       const usageRepository = entityManager.getRepository(CouponUsageEntity);
       const createdOrders: OrderEntity[] = [];
+      const inventoryEvents: ReturnType<typeof buildProductInventoryUpdatedSseEvent>[] = [];
       let checkoutOutboxEventId: string | undefined;
 
       for (const shop of pricedCart.shops) {
@@ -130,6 +137,11 @@ export class OrderCheckoutService {
           }
 
           inventory.stock -= item.quantity;
+          inventoryEvents.push(buildProductInventoryUpdatedSseEvent({
+            productId: item.productId,
+            inventoryId: inventory.id,
+            stock: inventory.stock,
+          }));
 
           const orderItem = orderItemRepository.create({
             order,
@@ -225,6 +237,7 @@ export class OrderCheckoutService {
       return {
         checkoutPending: input.paymentType === PaymentType.CARD,
         checkoutOutboxEventId,
+        inventoryEvents,
         orderShops: createdOrders.map((order) => ({
           id: order.id,
           shopId: order.shop.id,
@@ -237,6 +250,10 @@ export class OrderCheckoutService {
     const checkoutSessionResult = result.checkoutOutboxEventId
       ? await this.orderCheckoutOutboxService.processEventById(result.checkoutOutboxEventId)
       : undefined;
+
+    for (const inventoryEvent of result.inventoryEvents) {
+      this.eventEmitter.emit(PRODUCT_INVENTORY_UPDATED_SSE_EVENT, inventoryEvent);
+    }
 
     return {
       checkoutPending: result.checkoutPending && !checkoutSessionResult?.url,

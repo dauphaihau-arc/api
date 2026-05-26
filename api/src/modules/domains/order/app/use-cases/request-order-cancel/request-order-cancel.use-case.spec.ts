@@ -94,7 +94,7 @@ describe('RequestOrderCancelUseCase', () => {
         targetOrder.status = OrderStatus.CANCELED;
         targetOrder.canceledAt = cancelInput.canceledAt;
         targetOrder.cancelReason = cancelInput.cancelReason;
-        return { refundRequested: false };
+        return { refundRequested: false, inventoryEvents: [] };
       }),
     } as unknown as OrderCancellationService;
     const jobDispatcher = {

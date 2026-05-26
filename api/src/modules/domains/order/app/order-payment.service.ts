@@ -1,6 +1,11 @@
 import { LockMode } from '@mikro-orm/core';
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import {
+  buildProductInventoryUpdatedSseEvent,
+  PRODUCT_INVENTORY_UPDATED_SSE_EVENT,
+} from '~/modules/domains/product/app/events/product-inventory-sse.event';
 import { CouponUsageEntity } from '../../coupon/infra/persistence/entities/coupon-usage.entity';
 import { ProductInventoryEntity } from '../../product/infra/persistence/entities/product-inventory.entity';
 import { OrderStatus } from '../domain/enums/order-status.enum';
@@ -10,7 +15,10 @@ import type { CreateOrderResult } from './order.types';
 
 @Injectable()
 export class OrderPaymentService {
-  constructor(private readonly entityManager: EntityManager) {}
+  constructor(
+    private readonly entityManager: EntityManager,
+    private readonly eventEmitter: EventEmitter2
+  ) {}
 
   async getOrdersByCheckoutSession(sessionId: string): Promise<CreateOrderResult> {
     const entityManager = this.entityManager.fork();
@@ -68,23 +76,25 @@ export class OrderPaymentService {
     sessionId: string,
     expiredAt?: Date
   ): Promise<void> {
-    await this.entityManager.transactional(async (entityManager) => {
+    const inventoryEvents = await this.entityManager.transactional(async (entityManager) => {
       const orders = await this.findOrdersByCheckoutSession(entityManager, sessionId);
       const actionableOrders = orders.filter((order) => order.status === OrderStatus.AWAITING_PAYMENT);
 
       if (actionableOrders.length === 0) {
-        return;
+        return [];
       }
 
       const orderIds = actionableOrders.map((order) => order.id);
       const orderItems = await entityManager.getRepository(OrderItemEntity).find(
         { order: { $in: orderIds } },
-        { populate: ['inventory'] }
+        { populate: ['inventory', 'product'] }
       );
       const couponUsages = await entityManager.getRepository(CouponUsageEntity).find(
         { orderId: { $in: orderIds } },
         { populate: ['coupon'] }
       );
+
+      const inventoryEvents: ReturnType<typeof buildProductInventoryUpdatedSseEvent>[] = [];
 
       for (const item of orderItems) {
         const inventory = await entityManager.getRepository(ProductInventoryEntity).findOne(
@@ -94,6 +104,11 @@ export class OrderPaymentService {
 
         if (inventory) {
           inventory.stock += item.quantity;
+          inventoryEvents.push(buildProductInventoryUpdatedSseEvent({
+            productId: item.product.id,
+            inventoryId: inventory.id,
+            stock: inventory.stock,
+          }));
         }
       }
 
@@ -113,7 +128,12 @@ export class OrderPaymentService {
       }
 
       await entityManager.flush();
+      return inventoryEvents;
     });
+
+    for (const inventoryEvent of inventoryEvents) {
+      this.eventEmitter.emit(PRODUCT_INVENTORY_UPDATED_SSE_EVENT, inventoryEvent);
+    }
   }
 
   private async findOrdersByCheckoutSession(

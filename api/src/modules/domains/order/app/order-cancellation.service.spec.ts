@@ -8,6 +8,7 @@ describe('OrderCancellationService', () => {
   it('restores stock and coupon usage for paid orders', async () => {
     const inventory = { id: 'inventory-1', stock: 2 };
     const orderItem = {
+      product: { id: 'product-1' },
       inventory: { id: 'inventory-1' },
       quantity: 3,
     };
@@ -51,7 +52,16 @@ describe('OrderCancellationService', () => {
       source: 'buyer',
     });
 
-    expect(result).toEqual({ refundRequested: true });
+    expect(result).toEqual({
+      refundRequested: true,
+      inventoryEvents: [
+        expect.objectContaining({
+          productId: 'product-1',
+          inventoryId: 'inventory-1',
+          stock: 5,
+        }),
+      ],
+    });
     expect(order.status).toBe(OrderStatus.CANCELED);
     expect(order.cancelReason).toBe('Changed my mind');
     expect(inventory.stock).toBe(5);

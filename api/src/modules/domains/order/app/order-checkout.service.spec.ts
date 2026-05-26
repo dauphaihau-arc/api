@@ -1,3 +1,4 @@
+import type { EventEmitter2 } from '@nestjs/event-emitter';
 import type { EntityManager } from '@mikro-orm/postgresql';
 import type { CouponPricingService } from '../../coupon/app/coupon-pricing.service';
 import { CartKind } from '../../cart/domain/enums/cart-kind.enum';
@@ -140,14 +141,20 @@ describe('OrderCheckoutService', () => {
       processPendingEvents: jest.fn(),
     } as unknown as jest.Mocked<OrderCheckoutOutboxService>;
 
+    const eventEmitter: Pick<jest.Mocked<EventEmitter2>, 'emit'> = {
+      emit: jest.fn(),
+    };
+
     const service = new OrderCheckoutService(
       entityManager,
       couponPricingService,
-      orderCheckoutOutboxService
+      orderCheckoutOutboxService,
+      eventEmitter as unknown as EventEmitter2
     );
 
     return {
       service,
+      eventEmitter,
       fakeEntityManager,
       orderRepository,
       orderCheckoutOutboxService,
@@ -157,6 +164,7 @@ describe('OrderCheckoutService', () => {
   it('writes a checkout outbox event for card payments and returns a checkout URL when immediate processing succeeds', async () => {
     const {
       service,
+      eventEmitter,
       orderRepository,
       orderCheckoutOutboxService,
     } = buildService({
@@ -199,6 +207,7 @@ describe('OrderCheckoutService', () => {
       orderCheckoutOutboxService.createCheckoutSessionRequestedEvent
     ).toHaveBeenCalled();
     expect(orderCheckoutOutboxService.processEventById).toHaveBeenCalledWith('outbox-1');
+    expect(eventEmitter.emit).toHaveBeenCalled();
     expect(result.checkoutSessionUrl).toBe('https://stripe.test/session-1');
     expect(result.checkoutSessionId).toBe('cs_test_1');
     expect(result.checkoutPending).toBe(false);

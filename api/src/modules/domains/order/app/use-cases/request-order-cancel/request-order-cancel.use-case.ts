@@ -2,6 +2,7 @@ import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
+import { PRODUCT_INVENTORY_UPDATED_SSE_EVENT } from '~/modules/domains/product/app/events/product-inventory-sse.event';
 import { JobDispatcher } from '~/modules/shared/queue/app/ports/job-dispatcher';
 import { ORDER_UPDATED_SSE_EVENT } from '../../events/order-sse.event';
 import type { RequestOrderCancelDto } from '../../../api/rest/dto/request-order-cancel.dto';
@@ -55,7 +56,7 @@ export class RequestOrderCancelUseCase {
 
       const now = new Date();
       order.cancelRequestedAt = now;
-      const { refundRequested } = await this.orderCancellationService.cancelOrder(transactionalEntityManager, order, {
+      const { refundRequested, inventoryEvents } = await this.orderCancellationService.cancelOrder(transactionalEntityManager, order, {
         canceledAt: now,
         cancelReason: input.cancelReason,
         source: 'buyer',
@@ -70,6 +71,7 @@ export class RequestOrderCancelUseCase {
 
       return {
         refundRequested,
+        inventoryEvents,
         id: order.id,
         shopId: order.shop.id,
         shopName: order.shop.shopName,
@@ -139,6 +141,10 @@ export class RequestOrderCancelUseCase {
       status: result.status,
       shippingStatus: result.shippingStatus,
     });
+
+    for (const inventoryEvent of result.inventoryEvents) {
+      this.eventEmitter.emit(PRODUCT_INVENTORY_UPDATED_SSE_EVENT, inventoryEvent);
+    }
 
     if (result.refundRequested) {
       try {

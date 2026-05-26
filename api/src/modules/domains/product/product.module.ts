@@ -7,6 +7,7 @@ import { StorageModule } from '../../shared/storage/storage.module';
 import { AuditModule } from '../../shared/audit/audit.module';
 import { ImageModule } from '../../shared/image/image.module';
 import { QueueModule } from '../../shared/queue/queue.module';
+import { SseModule } from '../../shared/sse/sse.module';
 import { CategoryModule } from '../category/category.module';
 import { ShopModule } from '../shop/shop.module';
 import { ProductImageService } from './app/services/product-image.service';
@@ -28,7 +29,9 @@ import { SetProductVariantsUseCase } from './app/use-cases/set-product-variants/
 import { UpdateProductDetailsUseCase } from './app/use-cases/update-product-details/update-product-details.use-case';
 import { ProductRepository } from './app/ports/product.repository';
 import { ProductController } from './api/rest/product.controller';
+import { ProductInventoryEventsController } from './api/rest/product-inventory-events.controller';
 import { ProductUploadController } from './api/rest/product-upload.controller';
+import { ForwardProductInventoryUpdatedToSseListener } from './listeners/forward-product-inventory-updated-to-sse.listener';
 import { ShopProductsController } from '../shop/api/rest/shop-products.controller';
 import { MikroOrmProductRepository } from './infra/mikro-orm-product.repository';
 import { ProductAttributeValueEntity } from './infra/persistence/entities/product-attribute-value.entity';
@@ -52,6 +55,7 @@ import { ProductEntity } from './infra/persistence/entities/product.entity';
     ImageModule,
     forwardRef(() => QueueModule),
     AuditModule,
+    SseModule,
     MikroOrmModule.forFeature([
       ProductEntity,
       ProductImageEntity,
@@ -64,7 +68,12 @@ import { ProductEntity } from './infra/persistence/entities/product.entity';
       ProductShippingDestinationEntity,
     ]),
   ],
-  controllers: [ProductController, ProductUploadController, ShopProductsController],
+  controllers: [
+    ProductController,
+    ProductInventoryEventsController,
+    ProductUploadController,
+    ShopProductsController,
+  ],
   providers: [
     {
       provide: ProductRepository,
@@ -87,6 +96,7 @@ import { ProductEntity } from './infra/persistence/entities/product.entity';
     SetProductShippingUseCase,
     SetProductVariantsUseCase,
     UpdateProductDetailsUseCase,
+    ForwardProductInventoryUpdatedToSseListener,
   ],
   exports: [
     ProductRepository,

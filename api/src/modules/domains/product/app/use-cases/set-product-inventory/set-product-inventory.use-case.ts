@@ -1,8 +1,13 @@
 import { Injectable } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { err, ok, type Result } from '~/common/application/result';
 import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
 import { ShopRepository } from '~/modules/domains/shop/app/ports/shop.repository';
 import { AuditLogService } from '~/modules/shared/audit/app/audit-log.service';
+import {
+  buildProductInventoryUpdatedSseEvent,
+  PRODUCT_INVENTORY_UPDATED_SSE_EVENT,
+} from '../../events/product-inventory-sse.event';
 import { ProductVariantType } from '../../../domain/enums/product-variant-type.enum';
 import {
   ActorCannotCreateProductDraftError,
@@ -32,7 +37,8 @@ export class SetProductInventoryUseCase {
   constructor(
     private readonly productRepository: ProductRepository,
     private readonly shopRepository: ShopRepository,
-    private readonly auditLogService: AuditLogService
+    private readonly auditLogService: AuditLogService,
+    private readonly eventEmitter: EventEmitter2
   ) {}
 
   async execute(
@@ -100,6 +106,17 @@ export class SetProductInventoryUseCase {
         sessionId: actor.sessionId,
       },
     });
+
+    for (const inventory of product.inventory) {
+      this.eventEmitter.emit(
+        PRODUCT_INVENTORY_UPDATED_SSE_EVENT,
+        buildProductInventoryUpdatedSseEvent({
+          productId: product.id,
+          inventoryId: inventory.id,
+          stock: inventory.stock,
+        })
+      );
+    }
 
     return ok(product);
   }
