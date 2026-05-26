@@ -72,4 +72,12 @@ describe('ProductController', () => {
       'handmade-bag'
     );
   });
+
+  it('throws when the product does not exist', async () => {
+    getPublicProductBySlugsUseCase.execute.mockResolvedValue(null);
+
+    await expect(controller.productBySlugs('missing-shop', 'missing-product')).rejects.toBeInstanceOf(
+      NotFoundException
+    );
+  });
 });
