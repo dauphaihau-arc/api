@@ -32,9 +32,8 @@ yarn-error.log*
 .idea/
 .vscode/
 
-# Temporary ignore
-docs/legacy-backend-migration-summary.md
-
 # Keep the main app migration snapshot tracked; ignore transient snapshots.
 api/database/migrations/.snapshot-*.json
 !api/database/migrations/.snapshot-app.json
+
+implements/
