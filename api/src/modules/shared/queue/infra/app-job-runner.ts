@@ -4,6 +4,7 @@ import {
   AppJobName,
   AppJobPayloadMap
 } from '~/common/jobs/job.types';
+import { RefreshExchangeRatesJob } from '~/common/jobs/refresh-exchange-rates.job';
 import { GenerateProductImageVariantsJob } from '~/common/jobs/generate-product-image-variants.job';
 import { ProcessOrderRefundJob } from '~/common/jobs/process-order-refund.job';
 import { SendGuestOrderConfirmationEmailJob } from '~/common/jobs/send-guest-order-confirmation-email.job';
@@ -19,6 +20,7 @@ export class AppJobRunner {
   private readonly logger = new Logger(AppJobRunner.name);
 
   constructor(
+    private readonly refreshExchangeRatesJob: RefreshExchangeRatesJob,
     private readonly sendWelcomeEmailJob: SendWelcomeEmailJob,
     private readonly sendPasswordResetEmailJob: SendPasswordResetEmailJob,
     private readonly sendGuestOrderConfirmationEmailJob: SendGuestOrderConfirmationEmailJob,
@@ -38,6 +40,9 @@ export class AppJobRunner {
     this.logger.debug(`Job payload for ${name}: ${JSON.stringify(payload)}`);
 
     switch (name) {
+      case appJobName.refreshExchangeRates:
+        await this.refreshExchangeRatesJob.run();
+        return;
       case appJobName.sendWelcomeEmail:
         await this.sendWelcomeEmailJob.run(
           payload as AppJobPayloadMap[typeof appJobName.sendWelcomeEmail]

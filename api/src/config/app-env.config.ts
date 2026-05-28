@@ -71,6 +71,15 @@ const appEnvBaseSchema = z.object({
   WEB_PUSH_TTL_SECONDS: positiveIntegerString.default('60'),
   STRIPE_SECRET_KEY: z.string().trim().min(1).optional(),
   STRIPE_WEBHOOK_SECRET_KEY: z.string().trim().min(1).optional(),
+  FX_RATE_SYNC_PROVIDER: z
+    .enum(['disabled', 'open-exchange-rates'])
+    .default('disabled'),
+  FX_RATE_SYNC_INTERVAL: z.string().trim().min(1).default('1h'),
+  FX_RATE_SYNC_RUN_ON_STARTUP: z.enum(['true', 'false']).default('false'),
+  OPEN_EXCHANGE_RATES_APP_ID: z.string().trim().min(1).optional(),
+  OPEN_EXCHANGE_RATES_BASE_URL: z
+    .url()
+    .default('https://openexchangerates.org/api'),
   STORAGE_DRIVER: z.enum(['local', 'minio']).default('local'),
   STORAGE_LOCAL_ROOT: z.string().trim().min(1).default('./storage'),
   STORAGE_PUBLIC_BASE_URL: z.url().optional(),
@@ -143,6 +152,18 @@ const appEnvSchema = appEnvBaseSchema.superRefine((env, context) => {
       path: ['STRIPE_WEBHOOK_SECRET_KEY'],
       message:
         'Expected STRIPE_WEBHOOK_SECRET_KEY when STRIPE_SECRET_KEY is set.',
+    });
+  }
+
+  if (
+    env.FX_RATE_SYNC_PROVIDER === 'open-exchange-rates'
+    && !env.OPEN_EXCHANGE_RATES_APP_ID
+  ) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['OPEN_EXCHANGE_RATES_APP_ID'],
+      message:
+        'Expected OPEN_EXCHANGE_RATES_APP_ID when FX_RATE_SYNC_PROVIDER is open-exchange-rates.',
     });
   }
 

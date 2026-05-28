@@ -1,4 +1,5 @@
 export const appJobName = {
+  refreshExchangeRates: 'fx.refresh-rates',
   sendWelcomeEmail: 'user.send-welcome-email',
   sendPasswordResetEmail: 'user.send-password-reset-email',
   sendGuestOrderConfirmationEmail: 'order.send-guest-confirmation-email',
@@ -11,6 +12,9 @@ export const appJobName = {
 } as const;
 
 export interface AppJobPayloadMap {
+  [appJobName.refreshExchangeRates]: {
+    requestedAt: string;
+  };
   [appJobName.sendWelcomeEmail]: {
     userId: string;
     email: string;
@@ -71,6 +75,12 @@ export function buildJobDeduplicationKey(
 }
 
 export const appJobDeduplicationKey = {
+  refreshExchangeRates(bucket: string): string {
+    return buildJobDeduplicationKey(
+      appJobName.refreshExchangeRates,
+      bucket
+    );
+  },
   sendWelcomeEmail(userId: string): string {
     return buildJobDeduplicationKey(appJobName.sendWelcomeEmail, userId);
   },
