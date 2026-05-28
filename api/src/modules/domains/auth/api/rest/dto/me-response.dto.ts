@@ -13,6 +13,48 @@ class MePreferencesResponseDto {
   currency!: string;
 }
 
+class CurrentUserShopResponseDto {
+  @Expose({ name: 'shop_name' })
+  shopName!: string;
+}
+
+export class CurrentUserResponseDto {
+  @Expose()
+  id!: string;
+
+  @Expose()
+  email!: string;
+
+  @Expose({ name: 'display_name' })
+  displayName?: string;
+
+  @Expose()
+  permissions!: string[];
+
+  @Expose()
+  preferences?: MePreferencesResponseDto;
+
+  @Expose()
+  shop?: CurrentUserShopResponseDto;
+
+  static fromUserProfile(userProfile: UserProfile): CurrentUserResponseDto {
+    const dto = new CurrentUserResponseDto();
+    dto.id = userProfile.id;
+    dto.email = userProfile.email;
+    dto.displayName = userProfile.displayName;
+    dto.permissions = userProfile.permissions;
+    if (userProfile.preferences) {
+      dto.preferences = Object.assign(new MePreferencesResponseDto(), userProfile.preferences);
+    }
+    if (userProfile.shop) {
+      dto.shop = Object.assign(new CurrentUserShopResponseDto(), {
+        shopName: userProfile.shop.shopName,
+      });
+    }
+    return dto;
+  }
+}
+
 class MeShopResponseDto {
   @Expose()
   id!: string;

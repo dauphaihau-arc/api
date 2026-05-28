@@ -162,10 +162,10 @@ describe('Auth flow (e2e)', () => {
     expect(meBody).toMatchObject({
       email,
       displayName: 'Member User',
-      sessionId,
-      roles: ['member'],
       permissions: expectedMemberPermissions,
     });
+    expect(meBody).not.toHaveProperty('sessionId');
+    expect(meBody).not.toHaveProperty('roles');
     expect(meResponse.headers['cache-control']).toBe('no-store');
 
     const loginResponse = await agent

@@ -37,7 +37,7 @@ import { AuthHttpExceptionFilter } from './auth-http-exception.filter';
 import { AuthCookieService } from './auth-cookie.utils';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { LoginDto } from './dto/login.dto';
-import { AuthUserResponseDto, MeResponseDto } from './dto/me-response.dto';
+import { AuthUserResponseDto, CurrentUserResponseDto } from './dto/me-response.dto';
 import { AuthClientConfigResponseDto } from './dto/auth-client-config-response.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { RegisterDto } from './dto/register.dto';
@@ -216,8 +216,8 @@ export class AuthController {
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   async me(
     @CurrentUser() currentUser: AuthenticatedUser
-  ): Promise<MeResponseDto> {
-    return MeResponseDto.fromUserProfile(
+  ): Promise<CurrentUserResponseDto> {
+    return CurrentUserResponseDto.fromUserProfile(
       await this.getCurrentUserUseCase.execute(currentUser)
     );
   }
