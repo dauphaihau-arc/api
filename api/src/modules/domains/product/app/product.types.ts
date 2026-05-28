@@ -118,8 +118,9 @@ export interface ProductInventorySummary {
   productVariantId?: string;
   sku?: string;
   stock: number;
-  price: number;
-  salePrice?: number;
+  amountMinor?: number;
+  originalAmountMinor?: number;
+  currency?: string;
 }
 
 export interface ReplaceProductInventoryRepositoryInput {
@@ -129,8 +130,6 @@ export interface ReplaceProductInventoryRepositoryInput {
     productVariantId?: string;
     sku?: string;
     stock: number;
-    price: number;
-    salePrice?: number;
   }>;
 }
 
@@ -223,8 +222,9 @@ export interface PublicProductListItem {
   };
   variantType?: ProductVariantType;
   inventory?: {
-    price: number;
-    salePrice?: number;
+    amountMinor?: number;
+    originalAmountMinor?: number;
+    currency?: string;
     stock: number;
     sku?: string;
   };
@@ -236,8 +236,9 @@ export interface PublicProductInventorySummary {
   productVariantId?: string;
   sku?: string;
   stock: number;
-  price: number;
-  salePrice?: number;
+  amountMinor?: number;
+  originalAmountMinor?: number;
+  currency?: string;
 }
 
 export interface PublicProductShippingSummary {

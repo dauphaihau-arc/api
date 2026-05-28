@@ -13,6 +13,7 @@ import { OrderEntity } from '~/modules/domains/order/infra/persistence/entities/
 import { OrderItemEntity } from '~/modules/domains/order/infra/persistence/entities/order-item.entity';
 import { ProductImageEntity } from '~/modules/domains/product/infra/persistence/entities/product-image.entity';
 import { ProductInventoryEntity } from '~/modules/domains/product/infra/persistence/entities/product-inventory.entity';
+import { getInventoryPricingSnapshot } from '~/modules/domains/product/infra/variant-price-read';
 
 type OrderSeed = {
   inventoryId: string;
@@ -58,7 +59,13 @@ type SeedInventory = {
 };
 
 function calculateUnitPrice(inventory: ProductInventoryEntity): number {
-  return inventory.salePrice ?? inventory.price;
+  const pricing = getInventoryPricingSnapshot(inventory);
+
+  if (!pricing) {
+    throw new Error(`Missing active base price for seeded inventory ${inventory.id}`);
+  }
+
+  return fromMinor(pricing.amountMinor);
 }
 
 function buildShippingAddress() {
@@ -79,17 +86,17 @@ async function loadInventories(em: EntityManager): Promise<Map<string, SeedInven
     em.findOneOrFail(
       ProductInventoryEntity,
       { product: { title: 'Canvas Market Tote' } },
-      { populate: ['product', 'product.images', 'product.shop', 'product.shop.ownerUser', 'productVariant'] }
+      { populate: ['product', 'product.images', 'product.shop', 'product.shop.ownerUser', 'productVariant', 'prices'] }
     ),
     em.findOneOrFail(
       ProductInventoryEntity,
       { product: { title: 'Sony WH-1000XM6 Wireless Headphones' } },
-      { populate: ['product', 'product.images', 'product.shop', 'productVariant'] }
+      { populate: ['product', 'product.images', 'product.shop', 'productVariant', 'prices'] }
     ),
     em.findOneOrFail(
       ProductInventoryEntity,
       { product: { title: 'Minimal Horizon Print' } },
-      { populate: ['product', 'product.images', 'product.shop', 'productVariant'] }
+      { populate: ['product', 'product.images', 'product.shop', 'productVariant', 'prices'] }
     ),
   ]);
 
@@ -174,6 +181,7 @@ export async function seedOrderCartDemo(
     }
 
     const image = await em.findOne(ProductImageEntity, { product: inventory.product }, { orderBy: { rank: 'asc' } });
+    const pricing = getInventoryPricingSnapshot(inventory);
     const unitPrice = calculateUnitPrice(inventory);
     const subtotal = unitPrice * orderSeed.quantity;
     const coupon = orderSeed.couponCode ? couponsByCode.get(orderSeed.couponCode) : undefined;
@@ -224,8 +232,12 @@ export async function seedOrderCartDemo(
         variantGroupName: inventory.product.variantGroupName,
         variantSubGroupName: inventory.product.variantSubGroupName,
         variantName: inventory.productVariant?.name,
-        price: inventory.price,
-        salePrice: inventory.salePrice,
+        price: pricing?.originalAmountMinor != null
+          ? fromMinor(pricing.originalAmountMinor)
+          : unitPrice,
+        salePrice: pricing?.originalAmountMinor != null
+          ? fromMinor(pricing.amountMinor)
+          : undefined,
         quantity: orderSeed.quantity,
         percentCouponCode: coupon?.type === CouponType.PERCENTAGE ? coupon.code : undefined,
         percentCouponPercent:
@@ -250,4 +262,8 @@ export async function seedOrderCartDemo(
 
     await em.flush();
   }
+}
+
+function fromMinor(amountMinor: number): number {
+  return amountMinor / 100;
 }

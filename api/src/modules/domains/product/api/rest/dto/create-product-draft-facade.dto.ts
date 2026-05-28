@@ -4,6 +4,7 @@ import {
   IsArray,
   IsBoolean,
   IsEnum,
+  IsIn,
   IsNumber,
   IsOptional,
   IsString,
@@ -16,6 +17,7 @@ import {
   ValidateNested
 } from 'class-validator';
 import { Expose, Transform, Type } from 'class-transformer';
+import { MARKETPLACE_CURRENCIES } from '~/config/marketplace.config';
 import { ProductShippingCharge } from '~/modules/domains/product/domain/enums/product-shipping-charge.enum';
 import { ProductVariantType } from '~/modules/domains/product/domain/enums/product-variant-type.enum';
 import { ProductWhoMade } from '~/modules/domains/product/domain/enums/product-who-made.enum';
@@ -90,19 +92,36 @@ export class CreateProductDraftFacadeInventoryDto {
   @Min(0)
   @Max(999)
   stock!: number;
+}
 
+export class CreateProductDraftFacadePricingDto {
+  @IsOptional()
+  @Expose({ name: 'variant_client_key' })
+  @Transform(({ value, obj: source }) => value ?? source.variant_client_key)
+  @IsString()
+  @MinLength(1)
+  variantClientKey?: string;
+
+  @Expose({ name: 'amount_minor' })
+  @Transform(({ value, obj: source }) => value ?? source.amount_minor)
   @IsNumber()
-  @Min(0.5)
-  @Max(50000)
-  price!: number;
+  @Min(50)
+  @Max(5_000_000)
+  amountMinor!: number;
 
   @IsOptional()
-  @Expose({ name: 'sale_price' })
-  @Transform(({ value, obj: source }) => value ?? source.sale_price)
+  @Expose({ name: 'original_amount_minor' })
+  @Transform(({ value, obj: source }) => value ?? source.original_amount_minor)
   @IsNumber()
   @Min(0)
-  @Max(50000)
-  salePrice?: number;
+  @Max(5_000_000)
+  originalAmountMinor?: number;
+
+  @IsOptional()
+  @IsString()
+  @Length(3, 3)
+  @IsIn(MARKETPLACE_CURRENCIES)
+  currency?: string;
 }
 
 export class CreateProductDraftFacadeShippingDestinationDto {
@@ -233,6 +252,13 @@ export class CreateProductDraftFacadeDto {
   @ValidateNested({ each: true })
   @Type(() => CreateProductDraftFacadeInventoryDto)
   inventory?: CreateProductDraftFacadeInventoryDto[];
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(100)
+  @ValidateNested({ each: true })
+  @Type(() => CreateProductDraftFacadePricingDto)
+  pricing?: CreateProductDraftFacadePricingDto[];
 
   @IsOptional()
   @ValidateNested()

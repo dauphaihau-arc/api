@@ -20,6 +20,7 @@ export class MikroOrmShopRepository implements ShopRepository {
       shopName: input.shopName,
       slug: input.slug,
       status: 'active',
+      currency: input.currency,
     });
 
     await em.persistAndFlush(shop);
@@ -89,6 +90,7 @@ export class MikroOrmShopRepository implements ShopRepository {
       shopName: shop.shopName,
       slug: shop.slug,
       status: shop.status,
+      currency: shop.currency,
     };
   }
 }

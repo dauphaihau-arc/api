@@ -34,6 +34,9 @@ import { ProductEntity } from './persistence/entities/product.entity';
 import { ProductShippingDestinationEntity } from './persistence/entities/product-shipping-destination.entity';
 import { ProductShippingProfileEntity } from './persistence/entities/product-shipping-profile.entity';
 import { ProductVariantEntity } from './persistence/entities/product-variant.entity';
+import { VariantPriceEntity } from './persistence/entities/variant-price.entity';
+import { ResolvedStorefrontPriceService } from '../app/services/resolved-storefront-price.service';
+import { getInventoryPricingSnapshot } from './variant-price-read';
 
 @Injectable()
 export class MikroOrmProductRepository implements ProductRepository {
@@ -48,13 +51,15 @@ export class MikroOrmProductRepository implements ProductRepository {
     'variants',
     'inventoryRecords',
     'inventoryRecords.productVariant',
+    'inventoryRecords.prices',
     'shippingProfiles',
     'shippingProfiles.destinations',
   ] as const;
 
   constructor(
     private readonly entityManager: EntityManager,
-    private readonly storageService: StorageService
+    private readonly storageService: StorageService,
+    private readonly resolvedStorefrontPriceService: ResolvedStorefrontPriceService,
   ) {}
 
   async findById(id: string): Promise<ProductDraftSummary | null> {
@@ -149,6 +154,7 @@ export class MikroOrmProductRepository implements ProductRepository {
           'images',
           'images.variants',
           'inventoryRecords',
+          'inventoryRecords.prices',
           'inventoryRecords.productVariant',
         ],
       }
@@ -173,19 +179,23 @@ export class MikroOrmProductRepository implements ProductRepository {
       return true;
     });
 
-    const sortedProducts = filteredProducts.sort((left, right) => {
-      if (input.order === 'price_asc' || input.order === 'price_desc') {
-        const leftPrice = this.getComparablePrice(left);
-        const rightPrice = this.getComparablePrice(right);
+    const productsWithComparablePrice = await Promise.all(
+      filteredProducts.map(async product => ({
+        product,
+        comparablePrice: await this.getComparablePrice(product),
+      })),
+    );
 
-        if (leftPrice !== rightPrice) {
+    const sortedProducts = productsWithComparablePrice.sort((left, right) => {
+      if (input.order === 'price_asc' || input.order === 'price_desc') {
+        if (left.comparablePrice !== right.comparablePrice) {
           return input.order === 'price_asc'
-            ? leftPrice - rightPrice
-            : rightPrice - leftPrice;
+            ? left.comparablePrice - right.comparablePrice
+            : right.comparablePrice - left.comparablePrice;
         }
       }
 
-      return right.createdAt.getTime() - left.createdAt.getTime();
+      return right.product.createdAt.getTime() - left.product.createdAt.getTime();
     });
 
     const total = sortedProducts.length;
@@ -193,7 +203,7 @@ export class MikroOrmProductRepository implements ProductRepository {
     const pagedProducts = sortedProducts.slice(start, start + input.limit);
 
     return {
-      items: pagedProducts.map((product) => this.toPublicListItem(product)),
+      items: await Promise.all(pagedProducts.map(({ product }) => this.toPublicListItem(product))),
       meta: buildPaginationMeta(input.page, input.limit, total),
     };
   }
@@ -357,6 +367,28 @@ export class MikroOrmProductRepository implements ProductRepository {
       return null;
     }
 
+    const existingPriceByInventoryKey = new Map<string, {
+      amountMinor: number;
+      originalAmountMinor?: number;
+      currency: string;
+    }>();
+
+    for (const inventoryRecord of product.inventoryRecords.getItems()) {
+      const pricing = getInventoryPricingSnapshot(inventoryRecord);
+      if (!pricing) {
+        continue;
+      }
+
+      existingPriceByInventoryKey.set(
+        buildInventoryKey(inventoryRecord.productVariant?.id),
+        {
+          amountMinor: pricing.amountMinor,
+          originalAmountMinor: pricing.originalAmountMinor,
+          currency: pricing.currency,
+        }
+      );
+    }
+
     for (const inventoryRecord of product.inventoryRecords.getItems()) {
       entityManager.remove(inventoryRecord);
     }
@@ -364,6 +396,9 @@ export class MikroOrmProductRepository implements ProductRepository {
     product.inventoryRecords.removeAll();
 
     for (const row of input.inventory) {
+      const preservedPrice = existingPriceByInventoryKey.get(
+        buildInventoryKey(row.productVariantId)
+      );
       const inventoryEntity = entityManager.create(ProductInventoryEntity, {
         shop: entityManager.getReference(ShopEntity, input.shopId),
         product,
@@ -372,13 +407,90 @@ export class MikroOrmProductRepository implements ProductRepository {
           : undefined,
         sku: row.sku,
         stock: row.stock,
-        price: row.price,
-        salePrice: row.salePrice,
       });
       product.inventoryRecords.add(inventoryEntity);
       entityManager.persist(inventoryEntity);
+
+      if (preservedPrice) {
+        entityManager.persist(entityManager.create(VariantPriceEntity, {
+          productInventory: inventoryEntity,
+          activeFrom: new Date(),
+          amountMinor: preservedPrice.amountMinor,
+          originalAmountMinor: preservedPrice.originalAmountMinor,
+          currency: preservedPrice.currency,
+        }));
+      }
     }
 
+    await entityManager.persistAndFlush(product);
+
+    return this.toDraftSummary(product);
+  }
+
+  async replacePricing(input: {
+    productId: string;
+    pricing: Array<{
+      inventoryId: string;
+      amountMinor: number;
+      originalAmountMinor?: number;
+      currency: string;
+    }>;
+  }): Promise<ProductDraftSummary | null> {
+    const entityManager = this.entityManager.fork();
+    const repository = entityManager.getRepository(ProductEntity);
+    const product = await repository.findOne(
+      { id: input.productId },
+      {
+        populate: [...MikroOrmProductRepository.summaryPopulate],
+      }
+    );
+
+    if (!product) {
+      return null;
+    }
+
+    const pricingByInventoryId = new Map(
+      input.pricing.map((row) => [row.inventoryId, row])
+    );
+
+    const pendingBasePrices: VariantPriceEntity[] = [];
+
+    for (const inventoryRecord of product.inventoryRecords.getItems()) {
+      const nextPricing = pricingByInventoryId.get(inventoryRecord.id);
+
+      if (!nextPricing) {
+        continue;
+      }
+
+      for (const existingPrice of inventoryRecord.prices.getItems()) {
+        if (!existingPrice.marketCode && !existingPrice.activeTo) {
+          existingPrice.activeTo = new Date();
+        }
+      }
+    }
+
+    await entityManager.flush();
+
+    for (const inventoryRecord of product.inventoryRecords.getItems()) {
+      const nextPricing = pricingByInventoryId.get(inventoryRecord.id);
+
+      if (!nextPricing) {
+        continue;
+      }
+
+      const canonicalBasePrice = entityManager.create(VariantPriceEntity, {
+        productInventory: inventoryRecord,
+        activeFrom: new Date(),
+        amountMinor: nextPricing.amountMinor,
+        originalAmountMinor: nextPricing.originalAmountMinor,
+        currency: nextPricing.currency,
+      });
+
+      inventoryRecord.prices.add(canonicalBasePrice);
+      pendingBasePrices.push(canonicalBasePrice);
+    }
+
+    entityManager.persist(pendingBasePrices);
     await entityManager.persistAndFlush(product);
 
     return this.toDraftSummary(product);
@@ -622,10 +734,7 @@ export class MikroOrmProductRepository implements ProductRepository {
           productVariantId: inventoryRecord.productVariant?.id,
           sku: inventoryRecord.sku,
           stock: inventoryRecord.stock,
-          price: Number(inventoryRecord.price),
-          salePrice: inventoryRecord.salePrice != null
-            ? Number(inventoryRecord.salePrice)
-            : undefined,
+          ...this.getSummaryPricing(inventoryRecord),
         })),
       shipping: product.shippingProfiles.length > 0
         ? {
@@ -649,7 +758,31 @@ export class MikroOrmProductRepository implements ProductRepository {
     };
   }
 
-  private toPublicDetail(product: ProductEntity): PublicProductDetail {
+  private async toPublicDetail(product: ProductEntity): Promise<PublicProductDetail> {
+    const inventory = await Promise.all(
+      product.inventoryRecords
+        .getItems()
+        .sort((left, right) => {
+          if (!left.productVariant && !right.productVariant) {
+            return 0;
+          }
+          if (!left.productVariant) {
+            return -1;
+          }
+          if (!right.productVariant) {
+            return 1;
+          }
+          return left.productVariant.rank - right.productVariant.rank;
+        })
+        .map(async (inventoryRecord) => ({
+          id: inventoryRecord.id,
+          productVariantId: inventoryRecord.productVariant?.id,
+          sku: inventoryRecord.sku,
+          stock: inventoryRecord.stock,
+          ...(await this.getResolvedPublicPricing(inventoryRecord)),
+        })),
+    );
+
     return {
       id: product.id,
       shop: {
@@ -701,30 +834,7 @@ export class MikroOrmProductRepository implements ProductRepository {
           imageStorageKey: variant.imageStorageKey,
           rank: variant.rank,
         })),
-      inventory: product.inventoryRecords
-        .getItems()
-        .sort((left, right) => {
-          if (!left.productVariant && !right.productVariant) {
-            return 0;
-          }
-          if (!left.productVariant) {
-            return -1;
-          }
-          if (!right.productVariant) {
-            return 1;
-          }
-          return left.productVariant.rank - right.productVariant.rank;
-        })
-        .map((inventoryRecord) => ({
-          id: inventoryRecord.id,
-          productVariantId: inventoryRecord.productVariant?.id,
-          sku: inventoryRecord.sku,
-          stock: inventoryRecord.stock,
-          price: Number(inventoryRecord.price),
-          salePrice: inventoryRecord.salePrice != null
-            ? Number(inventoryRecord.salePrice)
-            : undefined,
-        })),
+      inventory,
       shipping: product.shippingProfiles.length > 0
         ? {
           originCountry: product.shippingProfiles[0].originCountry,
@@ -745,12 +855,15 @@ export class MikroOrmProductRepository implements ProductRepository {
     };
   }
 
-  private toPublicListItem(product: ProductEntity): PublicProductListItem {
+  private async toPublicListItem(product: ProductEntity): Promise<PublicProductListItem> {
     const primaryImage = product.images
       .getItems()
       .slice()
       .sort((left, right) => left.rank - right.rank)[0];
     const primaryInventory = this.getPrimaryInventory(product);
+    const resolvedPricing = primaryInventory
+      ? await this.getResolvedPublicPricing(primaryInventory)
+      : undefined;
 
     return {
       id: product.id,
@@ -769,10 +882,7 @@ export class MikroOrmProductRepository implements ProductRepository {
       variantType: product.variantType,
       inventory: primaryInventory
         ? {
-          price: Number(primaryInventory.price),
-          salePrice: primaryInventory.salePrice != null
-            ? Number(primaryInventory.salePrice)
-            : undefined,
+          ...resolvedPricing,
           stock: primaryInventory.stock,
           sku: primaryInventory.sku,
         }
@@ -781,14 +891,16 @@ export class MikroOrmProductRepository implements ProductRepository {
     };
   }
 
-  private getComparablePrice(product: ProductEntity): number {
+  private async getComparablePrice(product: ProductEntity): Promise<number> {
     const inventory = this.getPrimaryInventory(product);
 
     if (!inventory) {
       return Number.POSITIVE_INFINITY;
     }
 
-    return Number(inventory.salePrice ?? inventory.price);
+    const pricing = await this.resolvedStorefrontPriceService.resolveForCurrentRequest(inventory);
+
+    return pricing?.amountMinor ?? Number.POSITIVE_INFINITY;
   }
 
   private getPrimaryInventory(product: ProductEntity): ProductInventoryEntity | undefined {
@@ -810,6 +922,18 @@ export class MikroOrmProductRepository implements ProductRepository {
 
         return left.productVariant.rank - right.productVariant.rank;
       })[0];
+  }
+
+  private getSummaryPricing(
+    inventory: ProductInventoryEntity,
+  ): { amountMinor?: number; originalAmountMinor?: number; currency?: string } {
+    const pricing = getInventoryPricingSnapshot(inventory);
+
+    return {
+      amountMinor: pricing?.amountMinor,
+      ...(pricing?.originalAmountMinor !== undefined ? { originalAmountMinor: pricing.originalAmountMinor } : {}),
+      currency: pricing?.currency,
+    };
   }
 
   private toPublicListImage(primaryImage: ProductImageEntity): PublicProductListItem['image'] {
@@ -837,4 +961,20 @@ export class MikroOrmProductRepository implements ProductRepository {
       variant: 'original',
     };
   }
+
+  private async getResolvedPublicPricing(
+    inventory: ProductInventoryEntity,
+  ): Promise<{ amountMinor?: number; originalAmountMinor?: number; currency?: string }> {
+    const pricing = await this.resolvedStorefrontPriceService.resolveForCurrentRequest(inventory);
+
+    return {
+      amountMinor: pricing?.amountMinor,
+      ...(pricing?.originalAmountMinor !== undefined ? { originalAmountMinor: pricing.originalAmountMinor } : {}),
+      currency: pricing?.currency,
+    };
+  }
+}
+
+function buildInventoryKey(productVariantId?: string): string {
+  return productVariantId ?? '__no_variant__';
 }

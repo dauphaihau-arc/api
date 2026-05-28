@@ -12,6 +12,7 @@ import { ShopEntity } from '~/modules/domains/shop/infra/persistence/entities/sh
 import { ProductEntity } from './product.entity';
 import { ProductInventoryReservationEntity } from './product-inventory-reservation.entity';
 import { ProductVariantEntity } from './product-variant.entity';
+import { VariantPriceEntity } from './variant-price.entity';
 
 @Entity({ tableName: 'product_inventory' })
 @Index({ properties: ['product'] })
@@ -43,26 +44,12 @@ export class ProductInventoryEntity extends AbstractBaseEntity {
   @Property({ fieldName: 'stock' })
   stock!: number;
 
-  @Property({
-    fieldName: 'price',
-    type: 'numeric',
-    precision: 12,
-    scale: 2,
-  })
-  price!: number;
-
-  @Property({
-    fieldName: 'sale_price',
-    type: 'numeric',
-    precision: 12,
-    scale: 2,
-    nullable: true,
-  })
-  salePrice?: number;
-
   @OneToMany(
     () => ProductInventoryReservationEntity,
     (reservation) => reservation.productInventory
   )
   reservations = new Collection<ProductInventoryReservationEntity>(this);
+
+  @OneToMany(() => VariantPriceEntity, (price) => price.productInventory)
+  prices = new Collection<VariantPriceEntity>(this);
 }

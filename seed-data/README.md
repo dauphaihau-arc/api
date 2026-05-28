@@ -12,6 +12,8 @@ Expected layout:
 - `seed-data/products.local.tsv` (optional, local-only)
 - `seed-data/product-inventory.tsv`
 - `seed-data/product-inventory.local.tsv` (optional, local-only)
+- `seed-data/exchange-rates.tsv`
+- `seed-data/exchange-rates.local.tsv` (optional, local-only)
 - `seed-data/coupons.tsv`
 - `seed-data/coupon-products.tsv`
 - `seed-data/images/categories/`
@@ -30,6 +32,10 @@ Rules:
 - Optional local-only product rows can live in `seed-data/products.local.tsv`.
 - Product inventory and variant rows live in `seed-data/product-inventory.tsv`.
 - Optional local-only inventory rows can live in `seed-data/product-inventory.local.tsv`.
+- Inventory TSV money columns are seed inputs only. Canonical sell prices are stored in `variant_prices`, not on `product_inventory`.
+- Exchange-rate seed rows live in `seed-data/exchange-rates.tsv`.
+- Optional local-only exchange rates can live in `seed-data/exchange-rates.local.tsv`.
+- Exchange-rate TSV should contain direct currency pairs because current FX lookup reads `from_currency -> to_currency` rows directly.
 - Coupon metadata lives in `seed-data/coupons.tsv`.
 - Coupon-to-product mappings live in `seed-data/coupon-products.tsv`.
 - Product images are auto-discovered from the folder derived from `shop_slug` and `title` in [product.seed.ts](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/api/database/seeds/product.seed.ts:41).

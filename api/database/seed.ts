@@ -25,12 +25,14 @@ import { ProductShippingDestinationEntity } from '../src/modules/domains/product
 import { ProductShippingProfileEntity } from '../src/modules/domains/product/infra/persistence/entities/product-shipping-profile.entity';
 import { ProductVariantEntity } from '../src/modules/domains/product/infra/persistence/entities/product-variant.entity';
 import { ProductEntity } from '../src/modules/domains/product/infra/persistence/entities/product.entity';
+import { ExchangeRateEntity } from '../src/modules/shared/market/infra/persistence/entities/exchange-rate.entity';
 import { OrderEntity } from '../src/modules/domains/order/infra/persistence/entities/order.entity';
 import { OrderItemEntity } from '../src/modules/domains/order/infra/persistence/entities/order-item.entity';
 import { ShopEntity } from '../src/modules/domains/shop/infra/persistence/entities/shop.entity';
 import { seedAuth } from './seeds/auth.seed';
 import { seedCategories } from './seeds/category.seed';
 import { seedCoupons } from './seeds/coupon.seed';
+import { seedExchangeRates } from './seeds/exchange-rate.seed';
 import { seedOrderCartDemo } from './seeds/order-cart.seed';
 import { seedProducts } from './seeds/product.seed';
 import { seedShops } from './seeds/shop.seed';
@@ -87,6 +89,7 @@ async function main() {
       ProductInventoryReservationEntity,
       ProductShippingProfileEntity,
       ProductShippingDestinationEntity,
+      ExchangeRateEntity,
     ],
   });
 
@@ -100,6 +103,7 @@ async function main() {
     const { shopsBySlug } = await runSeedStep('Seeding shops', async () =>
       seedShops(em, usersByEmail)
     );
+    await runSeedStep('Seeding exchange rates', async () => seedExchangeRates(em));
     await runSeedStep('Seeding products', async () => seedProducts(em, shopsBySlug));
     await runSeedStep('Seeding coupons', async () => seedCoupons(em, shopsBySlug));
     await runSeedStep('Seeding demo orders and carts', async () =>

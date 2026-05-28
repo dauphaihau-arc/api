@@ -2,6 +2,7 @@ import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
 import { err, ok, type Result } from '~/common/application/result';
 import { toSlug } from '~/common/utils/slugify';
+import type { MarketplaceCurrency } from '~/config/marketplace.config';
 import { AuthUserRepository } from '~/modules/domains/auth/app/ports/auth-user.repository';
 import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
 import { RoleKey } from '~/modules/domains/auth/domain/value-objects/role-key';
@@ -16,6 +17,7 @@ import type { ShopSummary } from '../../shop.types';
 
 export interface CreateShopInput {
   shopName: string;
+  currency: MarketplaceCurrency;
 }
 
 @Injectable()
@@ -68,6 +70,7 @@ export class CreateShopUseCase {
           ownerUserId: actor.userId,
           shopName: trimmedShopName,
           slug,
+          currency: input.currency,
         },
         entityManager
       );

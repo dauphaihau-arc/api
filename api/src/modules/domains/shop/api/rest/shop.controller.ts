@@ -30,6 +30,7 @@ export class ShopController {
   ): Promise<ShopSummary> {
     return this.createShopUseCase.execute(currentUser, {
       shopName: body.shop_name,
+      currency: body.currency,
     })
       .then((result) => resolveOrThrow(result, mapShopAppErrorToHttpException));
   }

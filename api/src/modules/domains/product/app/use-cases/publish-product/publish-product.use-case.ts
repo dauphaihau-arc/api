@@ -135,6 +135,14 @@ function validatePublishReadiness(
     );
   }
 
+  for (const inventory of product.inventory) {
+    if (inventory.amountMinor === undefined || !inventory.currency) {
+      return new ProductNotReadyToPublishError(
+        'Pricing is required for every inventory row before publishing'
+      );
+    }
+  }
+
   const variantType = product.variantType ?? ProductVariantType.NONE;
 
   if (variantType === ProductVariantType.NONE) {

@@ -56,8 +56,13 @@ export const toPublicProductDetailResponse = (
     product_variant_id: inventory.productVariantId,
     sku: inventory.sku,
     stock: inventory.stock,
-    price: inventory.price,
-    sale_price: inventory.salePrice,
+    ...(inventory.amountMinor !== undefined
+      ? { amount_minor: inventory.amountMinor }
+      : {}),
+    ...(inventory.originalAmountMinor !== undefined
+      ? { original_amount_minor: inventory.originalAmountMinor }
+      : {}),
+    ...(inventory.currency ? { currency: inventory.currency } : {}),
   })),
   shipping: product.shipping
     ? {

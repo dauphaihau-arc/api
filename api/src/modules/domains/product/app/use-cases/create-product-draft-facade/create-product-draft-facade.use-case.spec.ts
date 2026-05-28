@@ -113,7 +113,34 @@ describe('CreateProductDraftFacadeUseCase', () => {
               productVariantId: 'variant-1',
               sku: 'MUG-BLK',
               stock: 5,
-              price: 24.5,
+              amountMinor: 2450,
+              currency: 'USD',
+            },
+          ],
+        },
+      }),
+    };
+    const setProductPricingUseCase = {
+      execute: jest.fn().mockResolvedValue({
+        isOk: true,
+        value: {
+          ...draft,
+          variants: [
+            {
+              id: 'variant-1',
+              name: 'Black',
+              optionValue1: 'Black',
+              rank: 1,
+            },
+          ],
+          inventory: [
+            {
+              id: 'inventory-1',
+              productVariantId: 'variant-1',
+              sku: 'MUG-BLK',
+              stock: 5,
+              amountMinor: 2450,
+              currency: 'USD',
             },
           ],
         },
@@ -150,6 +177,7 @@ describe('CreateProductDraftFacadeUseCase', () => {
       setProductAttributesUseCase as never,
       setProductVariantsUseCase as never,
       setProductInventoryUseCase as never,
+      setProductPricingUseCase as never,
       setProductShippingUseCase as never
     );
 
@@ -160,6 +188,7 @@ describe('CreateProductDraftFacadeUseCase', () => {
       setProductAttributesUseCase,
       setProductVariantsUseCase,
       setProductInventoryUseCase,
+      setProductPricingUseCase,
       setProductShippingUseCase,
     };
   }
@@ -171,6 +200,7 @@ describe('CreateProductDraftFacadeUseCase', () => {
       setProductAttributesUseCase,
       setProductVariantsUseCase,
       setProductInventoryUseCase,
+      setProductPricingUseCase,
       setProductShippingUseCase,
     } = buildUseCase();
 
@@ -207,7 +237,13 @@ describe('CreateProductDraftFacadeUseCase', () => {
           variantClientKey: 'black',
           sku: 'MUG-BLK',
           stock: 5,
-          price: 24.5,
+        },
+      ],
+      pricing: [
+        {
+          variantClientKey: 'black',
+          amountMinor: 2450,
+          currency: 'USD',
         },
       ],
       shipping: {
@@ -239,8 +275,20 @@ describe('CreateProductDraftFacadeUseCase', () => {
             productVariantId: 'variant-1',
             sku: 'MUG-BLK',
             stock: 5,
-            price: 24.5,
-            salePrice: undefined,
+          },
+        ],
+      }
+    );
+    expect(setProductPricingUseCase.execute).toHaveBeenCalledWith(
+      actor,
+      draft.id,
+      {
+        pricing: [
+          {
+            inventoryId: 'inventory-1',
+            amountMinor: 2450,
+            originalAmountMinor: undefined,
+            currency: 'USD',
           },
         ],
       }
@@ -267,7 +315,6 @@ describe('CreateProductDraftFacadeUseCase', () => {
         {
           variantClientKey: 'white',
           stock: 5,
-          price: 24.5,
         },
       ],
     });

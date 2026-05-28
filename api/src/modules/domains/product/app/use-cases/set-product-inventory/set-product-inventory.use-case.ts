@@ -22,8 +22,6 @@ export interface SetProductInventoryInput {
     productVariantId?: string;
     sku?: string;
     stock: number;
-    price: number;
-    salePrice?: number;
   }>;
 }
 
@@ -82,8 +80,6 @@ export class SetProductInventoryUseCase {
         productVariantId: row.productVariantId,
         sku: row.sku?.trim() || undefined,
         stock: row.stock,
-        price: row.price,
-        salePrice: row.salePrice,
       })),
     });
 
@@ -139,24 +135,6 @@ function validateInventoryPayload(
     if (row.stock < 0) {
       return new InvalidProductVariantConfigurationError(
         'Inventory stock cannot be negative'
-      );
-    }
-
-    if (row.price < 0.5) {
-      return new InvalidProductVariantConfigurationError(
-        'Inventory price must be at least 0.5'
-      );
-    }
-
-    if (row.salePrice !== undefined && row.salePrice < 0) {
-      return new InvalidProductVariantConfigurationError(
-        'Inventory sale price cannot be negative'
-      );
-    }
-
-    if (row.salePrice !== undefined && row.salePrice > row.price) {
-      return new InvalidProductVariantConfigurationError(
-        'Inventory sale price cannot exceed price'
       );
     }
 

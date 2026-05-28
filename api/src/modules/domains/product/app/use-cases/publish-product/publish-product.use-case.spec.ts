@@ -31,13 +31,22 @@ describe('PublishProductUseCase', () => {
     nonTaxable: false,
     variantType: 'none' as ProductDraftSummary['variantType'],
     images: [
-      { id: 'img-1', storageKey: 'products/p1/images/1.jpg', rank: 1 },
+      {
+        id: 'img-1',
+        storageKey: 'products/p1/images/1.jpg',
+        rank: 1,
+        variantStatus: 'completed',
+      },
     ],
     attributes: [],
     variants: [],
     inventory: [
       {
-        id: 'inv-1', sku: 'MUG-001', stock: 10, price: 19.99, 
+        id: 'inv-1',
+        sku: 'MUG-001',
+        stock: 10,
+        amountMinor: 1999,
+        currency: 'USD',
       },
     ],
     shipping: {
@@ -139,5 +148,28 @@ describe('PublishProductUseCase', () => {
     expect(result.isOk).toBe(false);
     expect(productRepository.publish).not.toHaveBeenCalled();
     expect(auditLogService.record).not.toHaveBeenCalled();
+  });
+
+  it('rejects publishing when an inventory row has no price yet', async () => {
+    const { productRepository, shopRepository, auditLogService } = buildDeps({
+      ...readyProduct,
+      inventory: [
+        {
+          id: 'inv-1',
+          sku: 'MUG-001',
+          stock: 10,
+        },
+      ],
+    });
+    const useCase = new PublishProductUseCase(
+      productRepository,
+      shopRepository,
+      auditLogService
+    );
+
+    const result = await useCase.execute(actor, readyProduct.id);
+
+    expect(result.isOk).toBe(false);
+    expect(productRepository.publish).not.toHaveBeenCalled();
   });
 });

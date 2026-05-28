@@ -1,4 +1,5 @@
 import type { EntityManager } from '@mikro-orm/postgresql';
+import type { MarketplaceCurrency } from '../../src/config/marketplace.config';
 import type { CurrentUserEntity } from '../../src/modules/domains/auth/infra/persistence/entities/current-user.entity';
 import { ShopEntity } from '../../src/modules/domains/shop/infra/persistence/entities/shop.entity';
 import { SHOPS_LOCAL_TSV_PATH, SHOPS_TSV_PATH } from './product-seed-paths';
@@ -9,6 +10,7 @@ type ShopSeed = {
   ownerEmail: string;
   shopName: string;
   description?: string;
+  currency: MarketplaceCurrency;
 };
 
 type ShopCsvRow = {
@@ -16,6 +18,7 @@ type ShopCsvRow = {
   owner_email: string;
   shop_name: string;
   description: string;
+  currency?: string;
 };
 
 function loadShopSeeds(): ShopSeed[] {
@@ -42,6 +45,7 @@ function loadShopSeeds(): ShopSeed[] {
       ownerEmail: row.owner_email.trim(),
       shopName: row.shop_name.trim(),
       description: row.description.trim() || undefined,
+      currency: (row.currency?.trim() || 'USD') as MarketplaceCurrency,
     };
   });
 }
@@ -69,12 +73,14 @@ export async function seedShops(
         slug: shopSeed.shopSlug,
         description: shopSeed.description,
         status: 'active',
+        currency: shopSeed.currency,
       });
 
     shop.ownerUser = owner;
     shop.slug = shopSeed.shopSlug;
     shop.description = shopSeed.description;
     shop.status = 'active';
+    shop.currency = shopSeed.currency;
     em.persist(shop);
     shopsBySlug.set(shopSeed.shopSlug, shop);
     shopsByName.set(shop.shopName, shop);

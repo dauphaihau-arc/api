@@ -6,11 +6,13 @@ import { CacheModule } from '../../shared/cache/cache.module';
 import { StorageModule } from '../../shared/storage/storage.module';
 import { AuditModule } from '../../shared/audit/audit.module';
 import { ImageModule } from '../../shared/image/image.module';
+import { MarketModule } from '../../shared/market/market.module';
 import { QueueModule } from '../../shared/queue/queue.module';
 import { SseModule } from '../../shared/sse/sse.module';
 import { CategoryModule } from '../category/category.module';
 import { ShopModule } from '../shop/shop.module';
 import { ProductImageService } from './app/services/product-image.service';
+import { ResolvedStorefrontPriceService } from './app/services/resolved-storefront-price.service';
 import { CreateProductDraftFacadeUseCase } from './app/use-cases/create-product-draft-facade/create-product-draft-facade.use-case';
 import { ConsumeProductImageUploadTicketUseCase } from './app/use-cases/consume-product-image-upload-ticket/consume-product-image-upload-ticket.use-case';
 import { CreateProductDraftUseCase } from './app/use-cases/create-product-draft/create-product-draft.use-case';
@@ -24,9 +26,11 @@ import { SetProductImagesByKeysUseCase } from './app/use-cases/set-product-image
 import { SetProductImagesUseCase } from './app/use-cases/set-product-images/set-product-images.use-case';
 import { SetProductAttributesUseCase } from './app/use-cases/set-product-attributes/set-product-attributes.use-case';
 import { SetProductInventoryUseCase } from './app/use-cases/set-product-inventory/set-product-inventory.use-case';
+import { SetProductPricingUseCase } from './app/use-cases/set-product-pricing/set-product-pricing.use-case';
 import { SetProductShippingUseCase } from './app/use-cases/set-product-shipping/set-product-shipping.use-case';
 import { SetProductVariantsUseCase } from './app/use-cases/set-product-variants/set-product-variants.use-case';
 import { UpdateProductDetailsUseCase } from './app/use-cases/update-product-details/update-product-details.use-case';
+import { ProductPricingRepository } from './app/ports/product-pricing.repository';
 import { ProductRepository } from './app/ports/product.repository';
 import { ProductController } from './api/rest/product.controller';
 import { ProductInventoryEventsController } from './api/rest/product-inventory-events.controller';
@@ -43,6 +47,7 @@ import { ProductShippingDestinationEntity } from './infra/persistence/entities/p
 import { ProductShippingProfileEntity } from './infra/persistence/entities/product-shipping-profile.entity';
 import { ProductVariantEntity } from './infra/persistence/entities/product-variant.entity';
 import { ProductEntity } from './infra/persistence/entities/product.entity';
+import { VariantPriceEntity } from './infra/persistence/entities/variant-price.entity';
 
 @Module({
   imports: [
@@ -53,6 +58,7 @@ import { ProductEntity } from './infra/persistence/entities/product.entity';
     CategoryModule,
     StorageModule,
     ImageModule,
+    MarketModule,
     forwardRef(() => QueueModule),
     AuditModule,
     SseModule,
@@ -63,6 +69,7 @@ import { ProductEntity } from './infra/persistence/entities/product.entity';
       ProductAttributeValueEntity,
       ProductVariantEntity,
       ProductInventoryEntity,
+      VariantPriceEntity,
       ProductInventoryReservationEntity,
       ProductShippingProfileEntity,
       ProductShippingDestinationEntity,
@@ -79,7 +86,12 @@ import { ProductEntity } from './infra/persistence/entities/product.entity';
       provide: ProductRepository,
       useClass: MikroOrmProductRepository,
     },
+    {
+      provide: ProductPricingRepository,
+      useExisting: ProductRepository,
+    },
     ProductImageService,
+    ResolvedStorefrontPriceService,
     ConsumeProductImageUploadTicketUseCase,
     CreateProductDraftFacadeUseCase,
     CreateProductDraftUseCase,
@@ -93,6 +105,7 @@ import { ProductEntity } from './infra/persistence/entities/product.entity';
     SetProductImagesUseCase,
     SetProductAttributesUseCase,
     SetProductInventoryUseCase,
+    SetProductPricingUseCase,
     SetProductShippingUseCase,
     SetProductVariantsUseCase,
     UpdateProductDetailsUseCase,
@@ -101,6 +114,7 @@ import { ProductEntity } from './infra/persistence/entities/product.entity';
   exports: [
     ProductRepository,
     ProductImageService,
+    ResolvedStorefrontPriceService,
     ConsumeProductImageUploadTicketUseCase,
     CreateProductDraftFacadeUseCase,
     CreateProductDraftUseCase,
@@ -114,6 +128,7 @@ import { ProductEntity } from './infra/persistence/entities/product.entity';
     SetProductImagesUseCase,
     SetProductAttributesUseCase,
     SetProductInventoryUseCase,
+    SetProductPricingUseCase,
     SetProductShippingUseCase,
     SetProductVariantsUseCase,
     UpdateProductDetailsUseCase,

@@ -17,30 +17,37 @@ export const toPublicProductListResponse = (
     slug: product.slug,
     image: product.image
       ? {
-          storage_key: product.image.storageKey,
-          url: product.image.url,
-          variant: product.image.variant,
-          variants: product.image.variants
-            ? Object.fromEntries(
-                Object.entries(product.image.variants).map(([name, variant]) => [
-                  name,
-                  {
-                    storage_key: variant.storageKey,
-                    url: variant.url,
-                  },
-                ])
-              )
-            : undefined,
-        }
+        storage_key: product.image.storageKey,
+        url: product.image.url,
+        variant: product.image.variant,
+        variants: product.image.variants
+          ? Object.fromEntries(
+            Object.entries(product.image.variants).map(([name, variant]) => [
+              name,
+              {
+                storage_key: variant.storageKey,
+                url: variant.url,
+              },
+            ])
+          )
+          : undefined,
+      }
       : undefined,
     variant_type: product.variantType,
     inventory: product.inventory
       ? {
-          price: product.inventory.price,
-          sale_price: product.inventory.salePrice,
-          stock: product.inventory.stock,
-          sku: product.inventory.sku,
-        }
+        stock: product.inventory.stock,
+        sku: product.inventory.sku,
+        ...(product.inventory.amountMinor !== undefined
+          ? { amount_minor: product.inventory.amountMinor }
+          : {}),
+        ...(product.inventory.originalAmountMinor !== undefined
+          ? { original_amount_minor: product.inventory.originalAmountMinor }
+          : {}),
+        ...(product.inventory.currency
+          ? { currency: product.inventory.currency }
+          : {}),
+      }
       : undefined,
     created_at: product.createdAt,
   })),

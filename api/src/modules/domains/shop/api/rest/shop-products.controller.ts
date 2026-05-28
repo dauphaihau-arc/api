@@ -41,6 +41,7 @@ import {
 import { SetProductAttributesUseCase } from '~/modules/domains/product/app/use-cases/set-product-attributes/set-product-attributes.use-case';
 import { SetProductImagesByKeysUseCase } from '~/modules/domains/product/app/use-cases/set-product-images-by-keys/set-product-images-by-keys.use-case';
 import { SetProductInventoryUseCase } from '~/modules/domains/product/app/use-cases/set-product-inventory/set-product-inventory.use-case';
+import { SetProductPricingUseCase } from '~/modules/domains/product/app/use-cases/set-product-pricing/set-product-pricing.use-case';
 import { SetProductShippingUseCase } from '~/modules/domains/product/app/use-cases/set-product-shipping/set-product-shipping.use-case';
 import { SetProductVariantsUseCase } from '~/modules/domains/product/app/use-cases/set-product-variants/set-product-variants.use-case';
 import { UpdateProductDetailsUseCase } from '~/modules/domains/product/app/use-cases/update-product-details/update-product-details.use-case';
@@ -53,6 +54,7 @@ import { ListShopProductsQueryDto } from '~/modules/domains/product/api/rest/dto
 import { SetProductAttributesDto } from '~/modules/domains/product/api/rest/dto/set-product-attributes.dto';
 import { SetProductImagesByKeysDto } from '~/modules/domains/product/api/rest/dto/set-product-images-by-keys.dto';
 import { SetProductInventoryDto } from '~/modules/domains/product/api/rest/dto/set-product-inventory.dto';
+import { SetProductPricingDto } from '~/modules/domains/product/api/rest/dto/set-product-pricing.dto';
 import { SetProductShippingDto } from '~/modules/domains/product/api/rest/dto/set-product-shipping.dto';
 import { SetProductVariantsDto } from '~/modules/domains/product/api/rest/dto/set-product-variants.dto';
 import { UpdateProductDto } from '~/modules/domains/product/api/rest/dto/update-product.dto';
@@ -77,6 +79,7 @@ export class ShopProductsController {
     private readonly setProductAttributesUseCase: SetProductAttributesUseCase,
     private readonly setProductVariantsUseCase: SetProductVariantsUseCase,
     private readonly setProductInventoryUseCase: SetProductInventoryUseCase,
+    private readonly setProductPricingUseCase: SetProductPricingUseCase,
     private readonly setProductShippingUseCase: SetProductShippingUseCase,
     private readonly updateProductDetailsUseCase: UpdateProductDetailsUseCase
   ) {}
@@ -260,6 +263,21 @@ export class ShopProductsController {
     await this.assertActorCanManageProductShop(currentUser, shopId, id);
 
     const result = await this.setProductInventoryUseCase.execute(currentUser, id, body);
+    resolveOrThrow(result, mapProductAppErrorToHttpException);
+  }
+
+  @Put(':id/pricing')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Header('Cache-Control', 'private, no-store')
+  async setProductPricing(
+    @Param('shopId') shopId: string,
+    @Param('id') id: string,
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Body() body: SetProductPricingDto
+  ): Promise<void> {
+    await this.assertActorCanManageProductShop(currentUser, shopId, id);
+
+    const result = await this.setProductPricingUseCase.execute(currentUser, id, body);
     resolveOrThrow(result, mapProductAppErrorToHttpException);
   }
 

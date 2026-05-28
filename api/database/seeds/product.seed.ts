@@ -8,6 +8,7 @@ import { ProductImageVariantStatus } from '../../src/modules/domains/product/dom
 import { ProductShippingCharge } from '../../src/modules/domains/product/domain/enums/product-shipping-charge.enum';
 import { ProductVariantType } from '../../src/modules/domains/product/domain/enums/product-variant-type.enum';
 import { ProductWhoMade } from '../../src/modules/domains/product/domain/enums/product-who-made.enum';
+import type { MarketplaceCurrency } from '../../src/config/marketplace.config';
 import {
   buildStorageObjectKey,
   resolveStorageEnvironmentSegment,
@@ -17,6 +18,7 @@ import { ProductImageEntity } from '../../src/modules/domains/product/infra/pers
 import { ProductInventoryEntity } from '../../src/modules/domains/product/infra/persistence/entities/product-inventory.entity';
 import { ProductShippingDestinationEntity } from '../../src/modules/domains/product/infra/persistence/entities/product-shipping-destination.entity';
 import { ProductShippingProfileEntity } from '../../src/modules/domains/product/infra/persistence/entities/product-shipping-profile.entity';
+import { VariantPriceEntity } from '../../src/modules/domains/product/infra/persistence/entities/variant-price.entity';
 import { ProductVariantEntity } from '../../src/modules/domains/product/infra/persistence/entities/product-variant.entity';
 import { ProductEntity } from '../../src/modules/domains/product/infra/persistence/entities/product.entity';
 import type { ShopEntity } from '../../src/modules/domains/shop/infra/persistence/entities/shop.entity';
@@ -30,6 +32,45 @@ import {
 
 function slugify(value: string): string {
   return slugifySeedValue(value);
+}
+
+const CURRENCY_DECIMALS: Record<MarketplaceCurrency, number> = {
+  USD: 2,
+  AUD: 2,
+  BRL: 2,
+  CHF: 2,
+  CNY: 2,
+  CZK: 2,
+  DKK: 2,
+  EUR: 2,
+  GBP: 2,
+  CAD: 2,
+  HKD: 2,
+  HUF: 2,
+  IDR: 2,
+  ILS: 2,
+  INR: 2,
+  JPY: 0,
+  KRW: 0,
+  MAD: 2,
+  MXN: 2,
+  MYR: 2,
+  NOK: 2,
+  NZD: 2,
+  PHP: 2,
+  PLN: 2,
+  SEK: 2,
+  SGD: 2,
+  THB: 2,
+  TRY: 2,
+  TWD: 2,
+  VND: 0,
+  ZAR: 2,
+};
+
+function toMinorUnits(amount: number, currency: MarketplaceCurrency): number {
+  const decimals = CURRENCY_DECIMALS[currency];
+  return Math.round(amount * 10 ** decimals);
 }
 
 async function findCategoryByPath(em: EntityManager, path: string[]): Promise<CategoryEntity> {
@@ -188,6 +229,10 @@ async function syncProductInventory(
   }
   await em.flush();
 
+  const createdInventories: Array<{
+    inventory: ProductInventoryEntity;
+    seed: ProductSeed['inventory'][number];
+  }> = [];
   inventorySeeds.forEach((inventorySeed) => {
     const variantKey =
       variantType === ProductVariantType.NONE
@@ -196,15 +241,33 @@ async function syncProductInventory(
           ? `${inventorySeed.optionValue1 ?? ''}::${inventorySeed.optionValue2 ?? ''}`
           : `${inventorySeed.optionValue1 ?? ''}`;
 
+    const inventory = em.create(ProductInventoryEntity, {
+      shop,
+      product,
+      productVariant: variantKey ? variantsByKey.get(variantKey) : undefined,
+      sku: inventorySeed.sku,
+      stock: inventorySeed.stock,
+    });
+
+    createdInventories.push({
+      inventory,
+      seed: inventorySeed,
+    });
+    em.persist(inventory);
+  });
+
+  await em.flush();
+
+  createdInventories.forEach(({ inventory, seed }) => {
     em.persist(
-      em.create(ProductInventoryEntity, {
-        shop,
-        product,
-        productVariant: variantKey ? variantsByKey.get(variantKey) : undefined,
-        sku: inventorySeed.sku,
-        stock: inventorySeed.stock,
-        price: inventorySeed.price,
-        salePrice: inventorySeed.salePrice,
+      em.create(VariantPriceEntity, {
+        productInventory: inventory,
+        currency: shop.currency,
+        amountMinor: toMinorUnits(seed.salePrice ?? seed.price, shop.currency),
+        originalAmountMinor: seed.salePrice !== undefined
+          ? toMinorUnits(seed.price, shop.currency)
+          : undefined,
+        activeFrom: new Date(),
       })
     );
   });

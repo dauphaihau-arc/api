@@ -55,8 +55,9 @@ export type ShopProductListResponse = {
       product_variant_id?: string;
       sku?: string;
       stock: number;
-      price: number;
-      sale_price?: number;
+      amount_minor?: number;
+      original_amount_minor?: number;
+      currency?: string;
     }>;
   }>;
   meta: {

@@ -24,6 +24,7 @@ describe('CreateShopUseCase', () => {
         shopName: 'arc-shop',
         slug: 'arc-shop',
         status: 'active',
+        currency: 'USD',
       }),
       findById: jest.fn(),
       findByOwnerUserId: jest.fn().mockResolvedValue(null),
@@ -62,7 +63,10 @@ describe('CreateShopUseCase', () => {
       authUserRepository
     );
 
-    const result = await useCase.execute(actor, { shopName: 'arc-shop' });
+    const result = await useCase.execute(actor, {
+      shopName: 'arc-shop',
+      currency: 'USD',
+    });
 
     expect(result.isOk).toBe(true);
     expect(repository.create).toHaveBeenCalledWith(
@@ -70,6 +74,7 @@ describe('CreateShopUseCase', () => {
         ownerUserId: actor.userId,
         shopName: 'arc-shop',
         slug: 'arc-shop',
+        currency: 'USD',
       },
       expect.anything()
     );

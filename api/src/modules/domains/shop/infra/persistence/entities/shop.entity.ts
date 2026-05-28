@@ -9,6 +9,7 @@ import {
 } from '@mikro-orm/core';
 import { AbstractBaseEntity } from '~/common/database/abstract-base.entity';
 import { createPublicId } from '~/common/ids/public-id';
+import type { MarketplaceCurrency } from '~/config/marketplace.config';
 import { CurrentUserEntity } from '~/modules/domains/auth/infra/persistence/entities/current-user.entity';
 import { ProductEntity } from '~/modules/domains/product/infra/persistence/entities/product.entity';
 
@@ -38,6 +39,9 @@ export class ShopEntity extends AbstractBaseEntity {
 
   @Property({ fieldName: 'status', length: 20 })
   status = 'active';
+
+  @Property({ fieldName: 'currency', length: 3 })
+  currency!: MarketplaceCurrency;
 
   @OneToMany(() => ProductEntity, (product) => product.shop)
   products = new Collection<ProductEntity>(this);

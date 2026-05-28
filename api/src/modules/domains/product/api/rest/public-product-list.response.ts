@@ -23,8 +23,9 @@ export type PublicProductListResponse = {
     };
     variant_type?: PublicProductListItem['variantType'];
     inventory?: {
-      price: number;
-      sale_price?: number;
+      amount_minor?: number;
+      original_amount_minor?: number;
+      currency?: string;
       stock: number;
       sku?: string;
     };

@@ -29,19 +29,6 @@ export class ProductInventoryRowDto {
   @Min(0)
   @Max(999)
   stock!: number;
-
-  @IsNumber()
-  @Min(0.5)
-  @Max(50000)
-  price!: number;
-
-  @IsOptional()
-  @Expose({ name: 'sale_price' })
-  @Transform(({ value, obj: source }) => value ?? source.sale_price)
-  @IsNumber()
-  @Min(0)
-  @Max(50000)
-  salePrice?: number;
 }
 
 export class SetProductInventoryDto {
