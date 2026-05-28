@@ -132,6 +132,7 @@ export class RegisterSellerUseCase {
           ownerUserId: createdUser.id,
           shopName: trimmedShopName,
           slug,
+          currency: userPreferences.currency,
         },
         entityManager
       );

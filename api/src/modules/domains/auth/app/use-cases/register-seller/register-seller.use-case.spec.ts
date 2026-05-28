@@ -53,6 +53,7 @@ describe('RegisterSellerUseCase', () => {
         shopName: 'Seller Shop',
         slug: 'seller-shop',
         status: 'active',
+        currency: 'USD',
       }),
       findById: jest.fn(),
       findByOwnerUserId: jest.fn(),
@@ -122,6 +123,7 @@ describe('RegisterSellerUseCase', () => {
         ownerUserId: 'user-1',
         shopName: 'Seller Shop',
         slug: 'seller-shop',
+        currency: 'USD',
       },
       expect.anything()
     );

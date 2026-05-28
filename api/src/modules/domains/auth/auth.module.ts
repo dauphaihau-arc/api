@@ -149,6 +149,7 @@ const authEntities = [
   exports: [
     AUTH_CONFIG,
     AuthUserRepository,
+    UserPreferenceRepository,
     JwtAuthGuard,
     OptionalJwtAuthGuard,
     PermissionsGuard,
