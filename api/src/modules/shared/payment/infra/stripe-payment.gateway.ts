@@ -9,7 +9,6 @@ import type {
 } from '../app/ports/payment-gateway';
 
 const ZERO_DECIMAL_CURRENCIES = ['JPY', 'KRW', 'VND'] as const;
-const BASE_CURRENCY = 'USD';
 
 @Injectable()
 export class StripePaymentGateway extends PaymentGateway {
@@ -34,26 +33,22 @@ export class StripePaymentGateway extends PaymentGateway {
       );
     }
 
-    const exchangeRate = await this.resolveExchangeRate(input.currency);
-    const lineItems = input.lineItems.map((item) =>
-      this.toCheckoutLineItem(item, input.currency, exchangeRate)
-    );
+    this.assertSupportedCurrency(input.currency);
 
     const params: Stripe.Checkout.SessionCreateParams = {
       submit_type: 'pay',
       mode: 'payment',
       customer_email: input.customerEmail,
       metadata: input.metadata,
-      line_items: lineItems,
+      line_items: input.lineItems.map((item) =>
+        this.toCheckoutLineItem(item, input.currency)
+      ),
       shipping_options: [
         {
           shipping_rate_data: {
             type: 'fixed_amount',
             fixed_amount: {
-              amount: this.toStripeAmount(
-                input.shippingAmount * exchangeRate,
-                input.currency
-              ),
+              amount: this.toStripeAmount(input.shippingAmountMinor, input.currency),
               currency: input.currency,
             },
             display_name: 'Total shops',
@@ -83,13 +78,13 @@ export class StripePaymentGateway extends PaymentGateway {
       };
     }
 
-    if ((input.discountAmount ?? 0) > 0) {
+    if ((input.discountAmountMinor ?? 0) > 0) {
       const coupon = await stripe.coupons.create({
         name: 'DISCOUNT',
         duration: 'once',
         currency: input.currency,
         amount_off: this.toStripeAmount(
-          (input.discountAmount ?? 0) * exchangeRate,
+          input.discountAmountMinor ?? 0,
           input.currency
         ),
         metadata: input.metadata,
@@ -148,35 +143,15 @@ export class StripePaymentGateway extends PaymentGateway {
     return this.stripe;
   }
 
-  private async resolveExchangeRate(currency: string): Promise<number> {
+  private assertSupportedCurrency(currency: string): void {
     if (!MARKETPLACE_CURRENCIES.includes(currency as (typeof MARKETPLACE_CURRENCIES)[number])) {
       throw new BadRequestException('Unsupported currency');
     }
-
-    if (currency === BASE_CURRENCY) {
-      return 1;
-    }
-
-    const response = await fetch(`https://open.er-api.com/v6/latest/${BASE_CURRENCY}`);
-
-    if (!response.ok) {
-      throw new InternalServerErrorException('Failed to fetch exchange rates');
-    }
-
-    const exchangeRatesResponse = await response.json() as { rates?: Record<string, number> };
-    const exchangeRate = exchangeRatesResponse.rates?.[currency];
-
-    if (!exchangeRate) {
-      throw new BadRequestException('Unsupported currency');
-    }
-
-    return exchangeRate;
   }
 
   private toCheckoutLineItem(
     item: StripeCheckoutLineItemInput,
-    currency: string,
-    exchangeRate: number
+    currency: string
   ): Stripe.Checkout.SessionCreateParams.LineItem {
     return {
       price_data: {
@@ -185,17 +160,17 @@ export class StripePaymentGateway extends PaymentGateway {
           name: item.name,
           ...(item.imageUrl ? { images: [item.imageUrl] } : {}),
         },
-        unit_amount: this.toStripeAmount(item.unitAmount * exchangeRate, currency),
+        unit_amount: this.toStripeAmount(item.unitAmountMinor, currency),
       },
       quantity: item.quantity,
     };
   }
 
-  private toStripeAmount(amount: number, currency: string): number {
+  private toStripeAmount(amountMinor: number, currency: string): number {
     if (ZERO_DECIMAL_CURRENCIES.includes(currency as (typeof ZERO_DECIMAL_CURRENCIES)[number])) {
-      return Math.round(amount);
+      return Math.round(amountMinor);
     }
 
-    return Math.round(amount * 100);
+    return Math.round(amountMinor);
   }
 }

@@ -24,6 +24,30 @@ export class AddressNotFoundError extends OrderAppError {
   }
 }
 
+export class CheckoutQuoteNoItemsError extends OrderAppError {
+  constructor() {
+    super('No selected cart items to quote');
+  }
+}
+
+export class CheckoutQuoteNotFoundError extends OrderAppError {
+  constructor() {
+    super('Checkout quote not found');
+  }
+}
+
+export class CheckoutQuoteExpiredError extends OrderAppError {
+  constructor() {
+    super('Checkout quote expired');
+  }
+}
+
+export class CheckoutQuoteCartChangedError extends OrderAppError {
+  constructor() {
+    super('Checkout quote no longer matches the selected cart items');
+  }
+}
+
 export class OrderNotFoundError extends OrderAppError {
   constructor() {
     super('Order was not found');

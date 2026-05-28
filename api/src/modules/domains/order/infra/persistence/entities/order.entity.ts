@@ -40,21 +40,36 @@ export class OrderEntity extends AbstractBaseEntity {
   @Property({ length: 3 })
   currency!: string;
 
+  @Property({ fieldName: 'market_code', length: 20, nullable: true })
+  marketCode?: string;
+
   @Property({ type: 'numeric', precision: 12, scale: 2 })
   subtotal!: number;
+
+  @Property({ fieldName: 'subtotal_minor', nullable: true })
+  subtotalMinor?: number;
 
   @Property({
     fieldName: 'total_shipping_fee', type: 'numeric', precision: 12, scale: 2, default: 0, 
   })
   totalShippingFee = 0;
 
+  @Property({ fieldName: 'shipping_minor', nullable: true })
+  shippingMinor?: number;
+
   @Property({
     fieldName: 'total_discount', type: 'numeric', precision: 12, scale: 2, default: 0, 
   })
   totalDiscount = 0;
 
+  @Property({ fieldName: 'discount_minor', nullable: true })
+  discountMinor?: number;
+
   @Property({ type: 'numeric', precision: 12, scale: 2 })
   total!: number;
+
+  @Property({ fieldName: 'total_minor', nullable: true })
+  totalMinor?: number;
 
   @Property({ nullable: true, type: 'text' })
   note?: string;

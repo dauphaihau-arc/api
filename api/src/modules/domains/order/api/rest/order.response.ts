@@ -1,5 +1,6 @@
 import type {
   AdminOrderListResult,
+  CheckoutQuoteResult,
   AdminOrderDetail,
   CreateOrderResult,
   MyOrderDetail,
@@ -8,6 +9,7 @@ import type {
   ShopOrderListResult,
   ShopOrderSummary
 } from '../../app/order.types';
+import { toMinorUnits } from '~/common/utils/money';
 
 function toPaymentResponse(order: {
   paymentType: string;
@@ -29,6 +31,26 @@ function toPaymentResponse(order: {
   };
 }
 
+function toMinorTotals(input: {
+  currency: string;
+  subtotal: number;
+  subtotalMinor?: number;
+  totalShippingFee: number;
+  shippingMinor?: number;
+  totalDiscount: number;
+  discountMinor?: number;
+  total: number;
+  totalMinor?: number;
+}) {
+  return {
+    currency: input.currency,
+    subtotal_minor: input.subtotalMinor ?? toMinorUnits(input.subtotal, input.currency),
+    shipping_minor: input.shippingMinor ?? toMinorUnits(input.totalShippingFee, input.currency),
+    discount_minor: input.discountMinor ?? toMinorUnits(input.totalDiscount, input.currency),
+    total_minor: input.totalMinor ?? toMinorUnits(input.total, input.currency),
+  };
+}
+
 export function toCreateOrderResponse(result: CreateOrderResult) {
   return {
     checkout_session_url: result.checkoutSessionUrl,
@@ -40,6 +62,40 @@ export function toCreateOrderResponse(result: CreateOrderResult) {
         shop_name: orderShop.shopName,
         slug: orderShop.shopSlug,
       },
+    })),
+  };
+}
+
+export function toCheckoutQuoteResponse(result: CheckoutQuoteResult) {
+  return {
+    quote_id: result.quoteId,
+    presentment_currency: result.presentmentCurrency,
+    checkout_currency: result.checkoutCurrency,
+    subtotal_minor: result.subtotalMinor,
+    shipping_minor: result.shippingMinor,
+    discount_minor: result.discountMinor,
+    total_minor: result.totalMinor,
+    expires_at: result.expiresAt,
+    items: result.items.map((item) => ({
+      inventory_id: item.inventoryId,
+      title: item.title,
+      image_url: item.imageUrl,
+      quantity: item.quantity,
+      source_currency: item.sourceCurrency,
+      unit_price_source_minor: item.unitPriceSourceMinor,
+      line_total_source_minor: item.lineTotalSourceMinor,
+      checkout_currency: item.checkoutCurrency,
+      unit_price_checkout_minor: item.unitPriceCheckoutMinor,
+      line_total_checkout_minor: item.lineTotalCheckoutMinor,
+      original_amount_minor: item.originalAmountMinor,
+      currency: item.checkoutCurrency,
+      source_type: item.sourceType,
+      fx_rate: item.fxRate,
+      fx_source: item.fxSource,
+      fx_effective_at: item.fxEffectiveAt,
+      variant_name: item.variantName,
+      variant_group_name: item.variantGroupName,
+      variant_sub_group_name: item.variantSubGroupName,
     })),
   };
 }
@@ -87,8 +143,9 @@ export function toOrderListResponse(result: OrderListResult) {
         title: product.title,
         image_url: product.imageUrl,
         quantity: product.quantity,
-        price: product.price,
-        sale_price: product.salePrice,
+        amount_minor: product.amountMinor,
+        original_amount_minor: product.originalAmountMinor,
+        currency: product.currency,
       })),
       promo_coupons: orderShop.promoCodes.map((code) => ({
         id: code,
@@ -106,10 +163,7 @@ export function toOrderListResponse(result: OrderListResult) {
         shipped_at: orderShop.shippedAt,
         delivered_at: orderShop.deliveredAt,
       },
-      subtotal: orderShop.subtotal,
-      total_shipping_fee: orderShop.totalShippingFee,
-      total_discount: orderShop.totalDiscount,
-      total: orderShop.total,
+      ...toMinorTotals(orderShop),
       note: orderShop.note,
       canceled_at: orderShop.canceledAt,
       cancel_reason: orderShop.cancelReason,
@@ -126,8 +180,9 @@ function toShopOrderProductResponse(orderShop: ShopOrderSummary) {
     title: product.title,
     image_url: product.imageUrl,
     quantity: product.quantity,
-    price: product.price,
-    sale_price: product.salePrice,
+    amount_minor: product.amountMinor,
+    original_amount_minor: product.originalAmountMinor,
+    currency: product.currency,
     inventory: {
       variant: product.variantName,
     },
@@ -177,10 +232,7 @@ function toShopOrderSummaryResponse(orderShop: ShopOrderSummary) {
       shipped_at: orderShop.shippedAt,
       delivered_at: orderShop.deliveredAt,
     },
-    subtotal: orderShop.subtotal,
-    total_shipping_fee: orderShop.totalShippingFee,
-    total_discount: orderShop.totalDiscount,
-    total: orderShop.total,
+    ...toMinorTotals(orderShop),
     note: orderShop.note,
     canceled_at: orderShop.canceledAt,
     cancel_reason: orderShop.cancelReason,
@@ -253,8 +305,9 @@ export function toMyOrderDetailResponse(order: MyOrderDetail) {
         title: product.title,
         image_url: product.imageUrl,
         quantity: product.quantity,
-        price: product.price,
-        sale_price: product.salePrice,
+        amount_minor: product.amountMinor,
+        original_amount_minor: product.originalAmountMinor,
+        currency: product.currency,
       })),
       promo_coupons: order.promoCodes.map((code) => ({
         id: code,
@@ -282,10 +335,7 @@ export function toMyOrderDetailResponse(order: MyOrderDetail) {
         zip: order.shippingAddress.zip,
         phone: order.shippingAddress.phone,
       },
-      subtotal: order.subtotal,
-      total_shipping_fee: order.totalShippingFee,
-      total_discount: order.totalDiscount,
-      total: order.total,
+      ...toMinorTotals(order),
       note: order.note,
       canceled_at: order.canceledAt,
       cancel_reason: order.cancelReason,
@@ -334,8 +384,9 @@ export function toAdminOrderDetailResponse(order: AdminOrderDetail) {
         title: product.title,
         image_url: product.imageUrl,
         quantity: product.quantity,
-        price: product.price,
-        sale_price: product.salePrice,
+        amount_minor: product.amountMinor,
+        original_amount_minor: product.originalAmountMinor,
+        currency: product.currency,
       })),
       promo_coupons: order.promoCodes.map((code) => ({
         id: code,
@@ -363,10 +414,7 @@ export function toAdminOrderDetailResponse(order: AdminOrderDetail) {
         zip: order.shippingAddress.zip,
         phone: order.shippingAddress.phone,
       },
-      subtotal: order.subtotal,
-      total_shipping_fee: order.totalShippingFee,
-      total_discount: order.totalDiscount,
-      total: order.total,
+      ...toMinorTotals(order),
       note: order.note,
       support_note: order.supportNote,
       canceled_at: order.canceledAt,
@@ -396,7 +444,8 @@ export function toAdminOrderListResponse(result: AdminOrderListResult) {
       shipping: {
         shipping_status: order.shippingStatus,
       },
-      total: order.total,
+      currency: order.currency,
+      total_minor: order.totalMinor ?? toMinorUnits(order.total, order.currency),
       support_note: order.supportNote,
       cancel_reason: order.cancelReason,
       refunded_at: order.refundedAt,

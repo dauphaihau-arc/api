@@ -21,8 +21,12 @@ import { OrderCheckoutService } from './app/order-checkout.service';
 import { OrderRefundService } from './app/order-refund.service';
 import { OrderPaymentService } from './app/order-payment.service';
 import { GuestOrderTrackingTokenService } from './app/guest-order-tracking-token.service';
+import { CreateGuestCheckoutQuoteForBuyNowUseCase } from './app/use-cases/create-guest-checkout-quote-for-buy-now/create-guest-checkout-quote-for-buy-now.use-case';
 import { CreateGuestOrderForBuyNowUseCase } from './app/use-cases/create-guest-order-for-buy-now/create-guest-order-for-buy-now.use-case';
+import { CreateGuestCheckoutQuoteFromCartUseCase } from './app/use-cases/create-guest-checkout-quote-from-cart/create-guest-checkout-quote-from-cart.use-case';
+import { CreateCheckoutQuoteForBuyNowUseCase } from './app/use-cases/create-checkout-quote-for-buy-now/create-checkout-quote-for-buy-now.use-case';
 import { CreateGuestOrderFromCartUseCase } from './app/use-cases/create-guest-order-from-cart/create-guest-order-from-cart.use-case';
+import { CreateCheckoutQuoteFromCartUseCase } from './app/use-cases/create-checkout-quote-from-cart/create-checkout-quote-from-cart.use-case';
 import { CreateOrderForBuyNowUseCase } from './app/use-cases/create-order-for-buy-now/create-order-for-buy-now.use-case';
 import { CreateOrderFromCartUseCase } from './app/use-cases/create-order-from-cart/create-order-from-cart.use-case';
 import { GetAdminOrderByIdUseCase } from './app/use-cases/get-admin-order-by-id/get-admin-order-by-id.use-case';
@@ -39,7 +43,11 @@ import { RequestOrderSupportUseCase } from './app/use-cases/request-order-suppor
 import { UpdateAdminOrderStatusUseCase } from './app/use-cases/update-admin-order-status/update-admin-order-status.use-case';
 import { UpdateAdminOrderRefundUseCase } from './app/use-cases/update-admin-order-refund/update-admin-order-refund.use-case';
 import { UpdateAdminOrderSupportNoteUseCase } from './app/use-cases/update-admin-order-support-note/update-admin-order-support-note.use-case';
+import { CreateCheckoutQuoteService } from './app/create-checkout-quote.service';
+import { LoadCheckoutQuoteService } from './app/load-checkout-quote.service';
 import { OrderCheckoutOutboxService } from './app/order-checkout-outbox.service';
+import { CheckoutQuoteEntity } from './infra/persistence/entities/checkout-quote.entity';
+import { CheckoutQuoteItemEntity } from './infra/persistence/entities/checkout-quote-item.entity';
 import { OutboxEventEntity } from './infra/persistence/entities/outbox-event.entity';
 import { OrderEntity } from './infra/persistence/entities/order.entity';
 import { OrderItemEntity } from './infra/persistence/entities/order-item.entity';
@@ -67,6 +75,8 @@ import { UpdateShopOrderStatusUseCase } from './app/use-cases/update-shop-order-
     ShopModule,
     MikroOrmModule.forFeature([
       OutboxEventEntity,
+      CheckoutQuoteEntity,
+      CheckoutQuoteItemEntity,
       OrderEntity,
       OrderItemEntity,
       CouponUsageEntity,
@@ -86,13 +96,19 @@ import { UpdateShopOrderStatusUseCase } from './app/use-cases/update-shop-order-
   ],
   providers: [
     OrderCheckoutService,
+    CreateCheckoutQuoteService,
+    LoadCheckoutQuoteService,
     OrderCancellationService,
     OrderRefundService,
     OrderCheckoutOutboxService,
     OrderPaymentService,
     GuestOrderTrackingTokenService,
+    CreateGuestCheckoutQuoteFromCartUseCase,
+    CreateGuestCheckoutQuoteForBuyNowUseCase,
     CreateGuestOrderFromCartUseCase,
     CreateGuestOrderForBuyNowUseCase,
+    CreateCheckoutQuoteFromCartUseCase,
+    CreateCheckoutQuoteForBuyNowUseCase,
     CreateOrderFromCartUseCase,
     CreateOrderForBuyNowUseCase,
     GetAdminOrderByIdUseCase,

@@ -1,6 +1,18 @@
 import type { OrderEntity } from '../infra/persistence/entities/order.entity';
 import type { OrderItemEntity } from '../infra/persistence/entities/order-item.entity';
 import type { AdminOrderDetail } from './order.types';
+import {
+  getOrderDiscountMajor,
+  getOrderItemAmountMinor,
+  getOrderItemOriginalAmountMinor,
+  getOrderDiscountMinor,
+  getOrderShippingMajor,
+  getOrderShippingMinor,
+  getOrderSubtotalMajor,
+  getOrderSubtotalMinor,
+  getOrderTotalMinor,
+  getOrderTotalMajor,
+} from './order-money';
 
 export function toAdminOrderDetail(
   order: OrderEntity,
@@ -11,6 +23,7 @@ export function toAdminOrderDetail(
     shopId: order.shop.id,
     shopName: order.shop.shopName,
     shopSlug: order.shop.slug,
+    currency: order.currency,
     customerEmail: order.customerEmail,
     paymentType: order.paymentType,
     status: order.status,
@@ -22,8 +35,9 @@ export function toAdminOrderDetail(
       title: item.title,
       imageUrl: item.imageUrl,
       quantity: item.quantity,
-      price: Number(item.price),
-      salePrice: item.salePrice ? Number(item.salePrice) : null,
+      amountMinor: getOrderItemAmountMinor(item),
+      originalAmountMinor: getOrderItemOriginalAmountMinor(item),
+      currency: order.currency,
       variantName: item.variantName,
       variantGroupName: item.variantGroupName,
       variantSubGroupName: item.variantSubGroupName,
@@ -43,10 +57,14 @@ export function toAdminOrderDetail(
     canceledAt: order.canceledAt,
     cancelReason: order.cancelReason,
     refundedAt: order.refundedAt,
-    subtotal: Number(order.subtotal),
-    totalShippingFee: Number(order.totalShippingFee),
-    totalDiscount: Number(order.totalDiscount),
-    total: Number(order.total),
+    subtotal: getOrderSubtotalMajor(order),
+    subtotalMinor: getOrderSubtotalMinor(order),
+    totalShippingFee: getOrderShippingMajor(order),
+    shippingMinor: getOrderShippingMinor(order),
+    totalDiscount: getOrderDiscountMajor(order),
+    discountMinor: getOrderDiscountMinor(order),
+    total: getOrderTotalMajor(order),
+    totalMinor: getOrderTotalMinor(order),
     note: order.note,
     createdAt: order.createdAt,
     shippingAddress: {

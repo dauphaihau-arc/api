@@ -10,15 +10,21 @@ import {
 import type { CreateGuestOrderFromCartDto } from '../../../api/rest/dto/create-guest-order-from-cart.dto';
 import { CartRepository } from '~/modules/domains/cart/app/ports/cart.repository';
 import { JobDispatcher } from '~/modules/shared/queue/app/ports/job-dispatcher';
+import { doesCartMatchCheckoutQuote } from '../../checkout-quote-cart-matcher';
 import { buildGuestOrderTrackingUrl } from '../../guest-order-tracking-url.builder';
 import { GuestOrderTrackingTokenService } from '../../guest-order-tracking-token.service';
-import { CartNotFoundError } from '../../errors/order-app.error';
+import {
+  CartNotFoundError,
+  CheckoutQuoteCartChangedError,
+} from '../../errors/order-app.error';
+import { LoadCheckoutQuoteService } from '../../load-checkout-quote.service';
 import { OrderCheckoutService } from '../../order-checkout.service';
 
 @Injectable()
 export class CreateGuestOrderFromCartUseCase {
   constructor(
     private readonly cartRepository: CartRepository,
+    private readonly loadCheckoutQuoteService: LoadCheckoutQuoteService,
     private readonly orderCheckoutService: OrderCheckoutService,
     private readonly jobDispatcher: JobDispatcher,
     private readonly guestOrderTrackingTokenService: GuestOrderTrackingTokenService,
@@ -26,13 +32,18 @@ export class CreateGuestOrderFromCartUseCase {
   ) {}
 
   async execute(guestSessionId: string, body: CreateGuestOrderFromCartDto) {
-    const cart = await this.cartRepository.findActiveCart({
+    const quote = await this.loadCheckoutQuoteService.loadForGuest(guestSessionId, body.quoteId);
+    const cart = await this.cartRepository.findCartByIdForActor({
       type: 'guest',
       guestSessionId,
-    });
+    }, quote.cartId);
 
     if (!cart) {
       throw new CartNotFoundError();
+    }
+
+    if (!doesCartMatchCheckoutQuote(cart, quote)) {
+      throw new CheckoutQuoteCartChangedError();
     }
 
     const result = await this.orderCheckoutService.createOrders({
@@ -40,18 +51,9 @@ export class CreateGuestOrderFromCartUseCase {
       email: body.guest.email,
     }, cart.id, cart, {
       paymentType: body.paymentType,
-      currency: body.currency,
-      shippingAddress: {
-        fullName: body.shippingAddress.fullName,
-        address1: body.shippingAddress.address1,
-        address2: body.shippingAddress.address2,
-        city: body.shippingAddress.city,
-        country: body.shippingAddress.country,
-        state: body.shippingAddress.state,
-        zip: body.shippingAddress.zip,
-        phone: body.shippingAddress.phone,
-      },
-      shopAdjustments: body.shopAdjustments,
+      shippingAddress: quote.shippingAddress,
+      shopAdjustments: quote.shopAdjustments,
+      quote,
       isTempCart: false,
     });
 

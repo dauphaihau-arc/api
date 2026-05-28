@@ -12,6 +12,10 @@ import {
   BuyerOrderCancelNotAllowedError,
   BuyerShippedOrderCancelNotAllowedError,
   CartNotFoundError,
+  CheckoutQuoteNoItemsError,
+  CheckoutQuoteNotFoundError,
+  CheckoutQuoteCartChangedError,
+  CheckoutQuoteExpiredError,
   CheckoutSessionExpiredError,
   CheckoutSessionIdRequiredError,
   CheckoutSessionNotFoundError,
@@ -40,6 +44,7 @@ export function mapOrderAppErrorToHttpException(
     || error instanceof OrderNotFoundError
     || error instanceof CheckoutSessionNotFoundError
     || error instanceof CheckoutSessionExpiredError
+    || error instanceof CheckoutQuoteNotFoundError
   ) {
     return new NotFoundException(error.message);
   }
@@ -58,6 +63,9 @@ export function mapOrderAppErrorToHttpException(
     || error instanceof AdminRefundActionNotAllowedError
     || error instanceof AdminRefundNotAllowedError
     || error instanceof AdminRefundRequiresCardPaymentError
+    || error instanceof CheckoutQuoteNoItemsError
+    || error instanceof CheckoutQuoteCartChangedError
+    || error instanceof CheckoutQuoteExpiredError
   ) {
     return new BadRequestException(error.message);
   }

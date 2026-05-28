@@ -11,15 +11,21 @@ import {
 } from '~/common/jobs/job.types';
 import { JobDispatcher } from '~/modules/shared/queue/app/ports/job-dispatcher';
 import type { CreateGuestOrderForBuyNowDto } from '../../../api/rest/dto/create-guest-order-for-buy-now.dto';
+import { doesCartMatchCheckoutQuote } from '../../checkout-quote-cart-matcher';
 import { buildGuestOrderTrackingUrl } from '../../guest-order-tracking-url.builder';
-import { TemporaryCartNotFoundError } from '../../errors/order-app.error';
+import {
+  CheckoutQuoteCartChangedError,
+  TemporaryCartNotFoundError,
+} from '../../errors/order-app.error';
 import { GuestOrderTrackingTokenService } from '../../guest-order-tracking-token.service';
+import { LoadCheckoutQuoteService } from '../../load-checkout-quote.service';
 import { OrderCheckoutService } from '../../order-checkout.service';
 
 @Injectable()
 export class CreateGuestOrderForBuyNowUseCase {
   constructor(
     private readonly cartRepository: CartRepository,
+    private readonly loadCheckoutQuoteService: LoadCheckoutQuoteService,
     private readonly orderCheckoutService: OrderCheckoutService,
     private readonly jobDispatcher: JobDispatcher,
     private readonly guestOrderTrackingTokenService: GuestOrderTrackingTokenService,
@@ -27,37 +33,28 @@ export class CreateGuestOrderForBuyNowUseCase {
   ) {}
 
   async execute(guestSessionId: string, body: CreateGuestOrderForBuyNowDto) {
+    const quote = await this.loadCheckoutQuoteService.loadForGuest(guestSessionId, body.quoteId);
     const cart = await this.cartRepository.findCartByIdForActor(
       { type: 'guest', guestSessionId },
-      body.cartId
+      quote.cartId
     );
 
     if (!cart || cart.kind !== CartKind.BUY_NOW) {
       throw new TemporaryCartNotFoundError();
     }
 
-    const firstShop = cart.items[0]?.inventory.shopId;
-    const shopAdjustments = firstShop
-      ? [{ shopId: firstShop, promoCodes: body.promoCodes, note: body.note }]
-      : [];
+    if (!doesCartMatchCheckoutQuote(cart, quote)) {
+      throw new CheckoutQuoteCartChangedError();
+    }
 
     const result = await this.orderCheckoutService.createOrders({
       type: 'guest',
       email: body.guest.email,
     }, cart.id, cart, {
       paymentType: body.paymentType,
-      currency: body.currency,
-      shippingAddress: {
-        fullName: body.shippingAddress.fullName,
-        address1: body.shippingAddress.address1,
-        address2: body.shippingAddress.address2,
-        city: body.shippingAddress.city,
-        country: body.shippingAddress.country,
-        state: body.shippingAddress.state,
-        zip: body.shippingAddress.zip,
-        phone: body.shippingAddress.phone,
-      },
-      shopAdjustments,
+      shippingAddress: quote.shippingAddress,
+      shopAdjustments: quote.shopAdjustments,
+      quote,
       isTempCart: true,
     });
 

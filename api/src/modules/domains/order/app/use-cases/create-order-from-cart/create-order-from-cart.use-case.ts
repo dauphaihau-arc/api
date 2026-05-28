@@ -1,33 +1,36 @@
 import { Injectable } from '@nestjs/common';
 import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
 import { CartRepository } from '~/modules/domains/cart/app/ports/cart.repository';
-import { GetMyAddressUseCase } from '~/modules/domains/user/app/use-cases/get-my-address/get-my-address.use-case';
+import { doesCartMatchCheckoutQuote } from '../../checkout-quote-cart-matcher';
 import type { CreateOrderFromCartDto } from '../../../api/rest/dto/create-order-from-cart.dto';
-import { AddressNotFoundError, CartNotFoundError } from '../../errors/order-app.error';
+import {
+  CartNotFoundError,
+  CheckoutQuoteCartChangedError,
+} from '../../errors/order-app.error';
+import { LoadCheckoutQuoteService } from '../../load-checkout-quote.service';
 import { OrderCheckoutService } from '../../order-checkout.service';
 
 @Injectable()
 export class CreateOrderFromCartUseCase {
   constructor(
     private readonly cartRepository: CartRepository,
-    private readonly getMyAddressUseCase: GetMyAddressUseCase,
+    private readonly loadCheckoutQuoteService: LoadCheckoutQuoteService,
     private readonly orderCheckoutService: OrderCheckoutService
   ) {}
 
   async execute(actor: AuthenticatedUser, body: CreateOrderFromCartDto) {
-    const cart = await this.cartRepository.findActiveCart({
+    const quote = await this.loadCheckoutQuoteService.loadForUser(actor.userId, body.quoteId);
+    const cart = await this.cartRepository.findCartByIdForActor({
       type: 'user',
       userId: actor.userId,
-    });
+    }, quote.cartId);
 
     if (!cart) {
       throw new CartNotFoundError();
     }
 
-    const address = await this.getMyAddressUseCase.execute(actor, body.userAddressId);
-
-    if (!address) {
-      throw new AddressNotFoundError();
+    if (!doesCartMatchCheckoutQuote(cart, quote)) {
+      throw new CheckoutQuoteCartChangedError();
     }
 
     return this.orderCheckoutService.createOrders({
@@ -36,18 +39,9 @@ export class CreateOrderFromCartUseCase {
       email: actor.email,
     }, cart.id, cart, {
       paymentType: body.paymentType,
-      currency: body.currency,
-      shippingAddress: {
-        fullName: address.fullName,
-        address1: address.address1,
-        address2: address.address2,
-        city: address.city,
-        country: address.country,
-        state: address.state,
-        zip: address.zip,
-        phone: address.phone,
-      },
-      shopAdjustments: body.shopAdjustments,
+      shippingAddress: quote.shippingAddress,
+      shopAdjustments: quote.shopAdjustments,
+      quote,
       isTempCart: false,
     });
   }

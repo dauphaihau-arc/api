@@ -17,7 +17,7 @@ const RETRY_DELAYS_MS = [15_000, 60_000, 300_000, 900_000, 3_600_000];
 export interface CheckoutSessionLineItemPayload {
   name: string;
   imageUrl?: string;
-  unitAmount: number;
+  unitAmountMinor: number;
   quantity: number;
 }
 
@@ -39,8 +39,8 @@ export interface CheckoutSessionRequestedPayload {
   orderIds: string[];
   currency: string;
   lineItems: CheckoutSessionLineItemPayload[];
-  shippingAmount: number;
-  discountAmount: number;
+  shippingAmountMinor: number;
+  discountAmountMinor: number;
   shippingAddress: CheckoutSessionShippingAddressPayload;
 }
 
@@ -91,8 +91,8 @@ export class OrderCheckoutOutboxService {
           cart_id: claimed.payload.cartId,
         },
         lineItems: claimed.payload.lineItems,
-        shippingAmount: claimed.payload.shippingAmount,
-        discountAmount: claimed.payload.discountAmount,
+        shippingAmountMinor: claimed.payload.shippingAmountMinor,
+        discountAmountMinor: claimed.payload.discountAmountMinor,
         shippingAddress: claimed.payload.shippingAddress,
       });
 

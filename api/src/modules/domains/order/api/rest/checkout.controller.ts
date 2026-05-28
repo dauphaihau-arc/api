@@ -11,7 +11,9 @@ import {
 import { Throttle } from '@nestjs/throttler';
 import type { Request } from 'express';
 import { GuestCartSessionService } from '~/modules/domains/cart/api/rest/guest-cart-session.service';
+import { CreateGuestCheckoutQuoteForBuyNowUseCase } from '../../app/use-cases/create-guest-checkout-quote-for-buy-now/create-guest-checkout-quote-for-buy-now.use-case';
 import { CreateGuestOrderForBuyNowUseCase } from '../../app/use-cases/create-guest-order-for-buy-now/create-guest-order-for-buy-now.use-case';
+import { CreateGuestCheckoutQuoteFromCartUseCase } from '../../app/use-cases/create-guest-checkout-quote-from-cart/create-guest-checkout-quote-from-cart.use-case';
 import { CreateGuestOrderFromCartUseCase } from '../../app/use-cases/create-guest-order-from-cart/create-guest-order-from-cart.use-case';
 import { GuestOrderTrackingTokenService } from '../../app/guest-order-tracking-token.service';
 import { GetOrdersByCheckoutSessionUseCase } from '../../app/use-cases/get-orders-by-checkout-session/get-orders-by-checkout-session.use-case';
@@ -21,10 +23,13 @@ import {
   mapOrderAppErrorToHttpException,
 } from './order-http-error-mapper';
 import {
+  toCheckoutQuoteResponse,
   toCheckoutSessionOrderResponse,
   toCreateOrderResponse,
   toOrderListResponse,
 } from './order.response';
+import { CreateGuestCheckoutQuoteForBuyNowDto } from './dto/create-guest-checkout-quote-for-buy-now.dto';
+import { CreateGuestCheckoutQuoteFromCartDto } from './dto/create-guest-checkout-quote-from-cart.dto';
 import { CreateGuestOrderForBuyNowDto } from './dto/create-guest-order-for-buy-now.dto';
 import { CreateGuestOrderFromCartDto } from './dto/create-guest-order-from-cart.dto';
 import { LookupGuestOrdersQueryDto } from './dto/lookup-guest-orders.query.dto';
@@ -41,6 +46,8 @@ const checkoutRouteRateLimits = {
 export class CheckoutController {
   constructor(
     private readonly guestCartSessionService: GuestCartSessionService,
+    private readonly createGuestCheckoutQuoteFromCartUseCase: CreateGuestCheckoutQuoteFromCartUseCase,
+    private readonly createGuestCheckoutQuoteForBuyNowUseCase: CreateGuestCheckoutQuoteForBuyNowUseCase,
     private readonly createGuestOrderFromCartUseCase: CreateGuestOrderFromCartUseCase,
     private readonly createGuestOrderForBuyNowUseCase: CreateGuestOrderForBuyNowUseCase,
     private readonly getOrdersByCheckoutSessionUseCase: GetOrdersByCheckoutSessionUseCase,
@@ -92,6 +99,27 @@ export class CheckoutController {
       .then(toOrderListResponse);
   }
 
+  @Post('cart/quote')
+  async createQuoteFromCart(
+    @Req() request: Request,
+    @Body() body: CreateGuestCheckoutQuoteFromCartDto
+  ) {
+    const guestSessionId = this.guestCartSessionService.extractSessionId(request);
+
+    if (!guestSessionId) {
+      throw new NotFoundException('Guest cart session not found');
+    }
+
+    try {
+      return toCheckoutQuoteResponse(
+        await this.createGuestCheckoutQuoteFromCartUseCase.execute(guestSessionId, body)
+      );
+    }
+    catch (error) {
+      this.throwMappedOrderError(error);
+    }
+  }
+
   @Post('cart')
   async createFromCart(
     @Req() request: Request,
@@ -106,6 +134,27 @@ export class CheckoutController {
     try {
       return toCreateOrderResponse(
         await this.createGuestOrderFromCartUseCase.execute(guestSessionId, body)
+      );
+    }
+    catch (error) {
+      this.throwMappedOrderError(error);
+    }
+  }
+
+  @Post('buy-now/quote')
+  async createQuoteForBuyNow(
+    @Req() request: Request,
+    @Body() body: CreateGuestCheckoutQuoteForBuyNowDto
+  ) {
+    const guestSessionId = this.guestCartSessionService.extractSessionId(request);
+
+    if (!guestSessionId) {
+      throw new NotFoundException('Guest cart session not found');
+    }
+
+    try {
+      return toCheckoutQuoteResponse(
+        await this.createGuestCheckoutQuoteForBuyNowUseCase.execute(guestSessionId, body)
       );
     }
     catch (error) {

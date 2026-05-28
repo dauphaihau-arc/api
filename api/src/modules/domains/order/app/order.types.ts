@@ -40,14 +40,73 @@ export interface CreateOrderResult {
   checkoutPending?: boolean;
 }
 
+export interface CheckoutQuoteItemSummary {
+  inventoryId: string;
+  productId: string;
+  shopId: string;
+  shopName: string;
+  shopSlug: string;
+  title: string;
+  imageUrl?: string;
+  quantity: number;
+  sourceCurrency: string;
+  unitPriceSourceMinor: number;
+  lineTotalSourceMinor: number;
+  checkoutCurrency: string;
+  unitPriceCheckoutMinor: number;
+  lineTotalCheckoutMinor: number;
+  unitPriceMinor: number;
+  originalAmountMinor?: number;
+  lineTotalMinor: number;
+  currency: string;
+  sourcePriceId?: string;
+  sourceType?: 'market_override' | 'base_native' | 'base_fx';
+  marketCode?: string;
+  fxRate?: string;
+  fxSource?: string;
+  fxEffectiveAt?: Date;
+  fxSourceTimestamp?: Date;
+  variantName?: string;
+  variantGroupName?: string;
+  variantSubGroupName?: string;
+}
+
+export interface CheckoutQuoteShopSummary {
+  shopId: string;
+  shopName: string;
+  shopSlug: string;
+  subtotalMinor: number;
+  discountMinor: number;
+  shippingMinor: number;
+  totalMinor: number;
+  note?: string;
+  promoCodes: string[];
+  originCountries: string[];
+  items: CheckoutQuoteItemSummary[];
+}
+
+export interface CheckoutQuoteResult {
+  quoteId: string;
+  presentmentCurrency?: string;
+  checkoutCurrency: string;
+  subtotalMinor: number;
+  shippingMinor: number;
+  discountMinor: number;
+  totalMinor: number;
+  expiresAt: Date;
+  shops: CheckoutQuoteShopSummary[];
+  items: CheckoutQuoteItemSummary[];
+}
+
 export interface OrderListProduct {
   id: string;
   title: string;
   slug: string;
   imageUrl?: string;
   quantity: number;
-  price: number;
-  salePrice: number | null;
+  amountMinor: number;
+  originalAmountMinor: number | null;
+  currency: string;
   variantName?: string;
   variantGroupName?: string;
   variantSubGroupName?: string;
@@ -61,6 +120,7 @@ export interface OrderListShop {
   shopId: string;
   shopName: string;
   shopSlug: string;
+  currency: string;
   paymentType: string;
   status: string;
   products: OrderListProduct[];
@@ -82,9 +142,13 @@ export interface OrderListShop {
   refundedAt?: Date;
   paymentDetails?: Record<string, unknown>;
   subtotal: number;
+  subtotalMinor?: number;
   totalShippingFee: number;
+  shippingMinor?: number;
   totalDiscount: number;
+  discountMinor?: number;
   total: number;
+  totalMinor?: number;
   note?: string;
   createdAt: Date;
 }
@@ -110,10 +174,12 @@ export interface AdminOrderSummary {
   shopName: string;
   shopSlug: string;
   customerEmail: string;
+  currency: string;
   paymentType: string;
   status: string;
   shippingStatus: string;
   total: number;
+  totalMinor?: number;
   supportNote?: string;
   cancelReason?: string;
   refundedAt?: Date;
@@ -146,6 +212,7 @@ export interface ShopOrderSummary {
   shopSlug: string;
   customerEmail: string;
   customerFullName: string;
+  currency: string;
   paymentType: string;
   status: string;
   products: OrderListProduct[];
@@ -167,9 +234,13 @@ export interface ShopOrderSummary {
   refundedAt?: Date;
   paymentDetails?: Record<string, unknown>;
   subtotal: number;
+  subtotalMinor?: number;
   totalShippingFee: number;
+  shippingMinor?: number;
   totalDiscount: number;
+  discountMinor?: number;
   total: number;
+  totalMinor?: number;
   note?: string;
   createdAt: Date;
 }
@@ -205,10 +276,22 @@ export interface PricedCartItem {
   variantGroupName?: string;
   variantSubGroupName?: string;
   variantName?: string;
+  currency: string;
+  sourceCurrency?: string;
+  sourceUnitPriceMinor?: number;
+  unitPriceMinor?: number;
+  originalAmountMinor?: number;
   price: number;
   salePrice?: number;
   baseUnitPrice: number;
   effectiveUnitPrice: number;
+  sourcePriceId?: string;
+  sourceType?: 'market_override' | 'base_native' | 'base_fx';
+  marketCode?: string;
+  fxRate?: string;
+  fxSource?: string;
+  fxEffectiveAt?: Date;
+  fxSourceTimestamp?: Date;
   autoSaleCoupon?: CouponEntity;
 }
 
@@ -228,6 +311,7 @@ export interface PricedShopCart {
 export interface PricedCartSummary {
   cart: CartSnapshot;
   shops: PricedShopCart[];
+  currency: string;
   subtotalPrice: number;
   totalDiscount: number;
   subtotalAfterDiscount: number;

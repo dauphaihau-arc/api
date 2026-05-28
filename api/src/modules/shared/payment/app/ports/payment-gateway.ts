@@ -3,7 +3,7 @@ import type Stripe from 'stripe';
 export interface StripeCheckoutLineItemInput {
   name: string;
   imageUrl?: string;
-  unitAmount: number;
+  unitAmountMinor: number;
   quantity: number;
 }
 
@@ -23,8 +23,8 @@ export interface CreateStripeCheckoutSessionInput {
   currency: string;
   metadata?: Record<string, string>;
   lineItems: StripeCheckoutLineItemInput[];
-  shippingAmount: number;
-  discountAmount?: number;
+  shippingAmountMinor: number;
+  discountAmountMinor?: number;
   shippingAddress?: StripeShippingAddressInput;
   successPath?: string;
   cancelPath?: string;

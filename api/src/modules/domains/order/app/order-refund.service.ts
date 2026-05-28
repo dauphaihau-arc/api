@@ -1,6 +1,7 @@
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable, Logger } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
+import { fromMinorUnits } from '~/common/utils/money';
 import { PaymentGateway } from '~/modules/shared/payment/app/ports/payment-gateway';
 import { JobDispatcher } from '~/modules/shared/queue/app/ports/job-dispatcher';
 import { PaymentType } from '../domain/enums/payment-type.enum';
@@ -133,11 +134,7 @@ export class OrderRefundService {
   }
 
   private fromStripeAmount(amount: number, currency: string): number {
-    if (['JPY', 'KRW', 'VND'].includes(currency)) {
-      return amount;
-    }
-
-    return amount / 100;
+    return fromMinorUnits(amount, currency);
   }
 
   private async dispatchRefundNotification(

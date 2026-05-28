@@ -20,6 +20,7 @@ describe('OrderCheckoutService', () => {
 
   const pricedCart: PricedCartSummary = {
     cart,
+    currency: 'USD',
     shops: [
       {
         shopId: 'shop-1',
@@ -38,6 +39,7 @@ describe('OrderCheckoutService', () => {
             variantName: 'Blue',
             variantGroupName: 'Color',
             variantSubGroupName: 'Primary',
+            currency: 'USD',
             price: 10,
             salePrice: 9,
             baseUnitPrice: 10,
@@ -157,6 +159,7 @@ describe('OrderCheckoutService', () => {
       eventEmitter,
       fakeEntityManager,
       orderRepository,
+      orderItemRepository,
       orderCheckoutOutboxService,
     };
   }
@@ -166,6 +169,7 @@ describe('OrderCheckoutService', () => {
       service,
       eventEmitter,
       orderRepository,
+      orderItemRepository,
       orderCheckoutOutboxService,
     } = buildService({
       processResult: {
@@ -201,6 +205,17 @@ describe('OrderCheckoutService', () => {
       expect.objectContaining({
         customerEmail: 'member@example.com',
         status: OrderStatus.CHECKOUT_PENDING,
+        subtotalMinor: 1800,
+        shippingMinor: 0,
+        discountMinor: 200,
+        totalMinor: 1800,
+      })
+    );
+    expect(orderItemRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        unitPriceMinor: 900,
+        originalAmountMinor: 1000,
+        lineTotalMinor: 1800,
       })
     );
     expect(
@@ -320,6 +335,157 @@ describe('OrderCheckoutService', () => {
     expect(orderRepository.create).toHaveBeenCalledWith(
       expect.objectContaining({
         customerEmail: 'guest@example.com',
+      })
+    );
+  });
+
+  it('copies quote minor-unit amounts and provenance into persisted orders', async () => {
+    const {
+      service,
+      orderRepository,
+      orderItemRepository,
+    } = buildService();
+
+    await service.createOrders(
+      {
+        type: 'user',
+        userId: 'user-1',
+        email: 'member@example.com',
+      },
+      'cart-1',
+      cart,
+      {
+        paymentType: PaymentType.CARD,
+        shippingAddress: {
+          fullName: 'Member User',
+          address1: '123 Main St',
+          city: 'Los Angeles',
+          country: 'US',
+          state: 'CA',
+          zip: '90001',
+          phone: '123456789',
+        },
+        quote: {
+          id: 'quote-1',
+          cartId: 'cart-1',
+          marketCode: 'US',
+          presentmentCurrency: 'USD',
+          checkoutCurrency: 'USD',
+          subtotalMinor: 1800,
+          shippingMinor: 0,
+          discountMinor: 0,
+          totalMinor: 1800,
+          shippingAddress: {
+            fullName: 'Member User',
+            address1: '123 Main St',
+            city: 'Los Angeles',
+            country: 'US',
+            state: 'CA',
+            zip: '90001',
+            phone: '123456789',
+          },
+          shops: [
+            {
+              shopId: 'shop-1',
+              shopName: 'Shop 1',
+              shopSlug: 'shop-1',
+              subtotalMinor: 1800,
+              shippingMinor: 0,
+              discountMinor: 0,
+              totalMinor: 1800,
+              promoCodes: [],
+              originCountries: ['US'],
+              items: [
+                {
+                  inventoryId: 'inventory-1',
+                  productId: 'product-1',
+                  shopId: 'shop-1',
+                  shopName: 'Shop 1',
+                  shopSlug: 'shop-1',
+                  title: 'Product 1',
+                  imageUrl: 'https://example.com/product-1.png',
+                  quantity: 2,
+                  sourceCurrency: 'USD',
+                  unitPriceSourceMinor: 1000,
+                  lineTotalSourceMinor: 2000,
+                  checkoutCurrency: 'USD',
+                  unitPriceCheckoutMinor: 900,
+                  lineTotalCheckoutMinor: 1800,
+                  unitPriceMinor: 900,
+                  originalAmountMinor: 1000,
+                  lineTotalMinor: 1800,
+                  currency: 'USD',
+                  sourcePriceId: 'price-1',
+                  sourceType: 'base_fx',
+                  marketCode: 'US',
+                  fxRate: '1.10',
+                  fxSource: 'seed',
+                  fxEffectiveAt: new Date('2026-05-20T00:00:00.000Z'),
+                  fxSourceTimestamp: new Date('2026-05-20T00:00:00.000Z'),
+                  variantName: 'Blue',
+                  variantGroupName: 'Color',
+                  variantSubGroupName: 'Primary',
+                },
+              ],
+            },
+          ],
+          items: [
+            {
+              inventoryId: 'inventory-1',
+              productId: 'product-1',
+              shopId: 'shop-1',
+              shopName: 'Shop 1',
+              shopSlug: 'shop-1',
+              title: 'Product 1',
+              imageUrl: 'https://example.com/product-1.png',
+              quantity: 2,
+              sourceCurrency: 'USD',
+              unitPriceSourceMinor: 1000,
+              lineTotalSourceMinor: 2000,
+              checkoutCurrency: 'USD',
+              unitPriceCheckoutMinor: 900,
+              lineTotalCheckoutMinor: 1800,
+              unitPriceMinor: 900,
+              originalAmountMinor: 1000,
+              lineTotalMinor: 1800,
+              currency: 'USD',
+              sourcePriceId: 'price-1',
+              sourceType: 'base_fx',
+              marketCode: 'US',
+              fxRate: '1.10',
+              fxSource: 'seed',
+              fxEffectiveAt: new Date('2026-05-20T00:00:00.000Z'),
+              fxSourceTimestamp: new Date('2026-05-20T00:00:00.000Z'),
+              variantName: 'Blue',
+              variantGroupName: 'Color',
+              variantSubGroupName: 'Primary',
+            },
+          ],
+        },
+        isTempCart: false,
+      }
+    );
+
+    expect(orderRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        marketCode: 'US',
+        subtotalMinor: 1800,
+        shippingMinor: 0,
+        discountMinor: 0,
+        totalMinor: 1800,
+      })
+    );
+    expect(orderItemRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        unitPriceMinor: 900,
+        originalAmountMinor: 1000,
+        lineTotalMinor: 1800,
+        currency: 'USD',
+        sourcePriceId: 'price-1',
+        sourceType: 'base_fx',
+        marketCode: 'US',
+        fxRate: '1.10',
+        fxSource: 'seed',
       })
     );
   });

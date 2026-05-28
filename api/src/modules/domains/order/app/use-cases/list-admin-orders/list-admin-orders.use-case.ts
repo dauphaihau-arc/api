@@ -2,6 +2,7 @@ import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
 import type { ListAdminOrdersQueryDto } from '../../../api/rest/dto/list-admin-orders.query.dto';
 import { OrderEntity } from '../../../infra/persistence/entities/order.entity';
+import { getOrderTotalMajor, getOrderTotalMinor } from '../../order-money';
 import type { AdminOrderListResult } from '../../order.types';
 
 @Injectable()
@@ -41,10 +42,12 @@ export class ListAdminOrdersUseCase {
         shopName: order.shop.shopName,
         shopSlug: order.shop.slug,
         customerEmail: order.customerEmail,
+        currency: order.currency,
         paymentType: order.paymentType,
         status: order.status,
         shippingStatus: order.shippingStatus,
-        total: Number(order.total),
+        total: getOrderTotalMajor(order),
+        totalMinor: getOrderTotalMinor(order),
         supportNote: order.supportNote,
         cancelReason: order.cancelReason,
         refundedAt: order.refundedAt,

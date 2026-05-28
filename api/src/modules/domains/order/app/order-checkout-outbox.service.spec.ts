@@ -20,12 +20,12 @@ describe('OrderCheckoutOutboxService', () => {
         lineItems: [
           {
             name: 'Product 1',
-            unitAmount: 9,
+            unitAmountMinor: 900,
             quantity: 2,
           },
         ],
-        shippingAmount: 0,
-        discountAmount: 2,
+        shippingAmountMinor: 0,
+        discountAmountMinor: 200,
         shippingAddress: {
           fullName: 'Member User',
           address1: '123 Main St',
@@ -108,6 +108,7 @@ describe('OrderCheckoutOutboxService', () => {
       expect.objectContaining({
         customerEmail: 'member@example.com',
         currency: 'USD',
+        discountAmountMinor: 200,
       })
     );
     expect(result).toEqual({

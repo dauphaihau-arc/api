@@ -3,6 +3,18 @@ import { Injectable } from '@nestjs/common';
 import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
 import { OrderEntity } from '../../../infra/persistence/entities/order.entity';
 import { OrderItemEntity } from '../../../infra/persistence/entities/order-item.entity';
+import {
+  getOrderDiscountMajor,
+  getOrderDiscountMinor,
+  getOrderItemAmountMinor,
+  getOrderItemOriginalAmountMinor,
+  getOrderShippingMajor,
+  getOrderShippingMinor,
+  getOrderSubtotalMajor,
+  getOrderSubtotalMinor,
+  getOrderTotalMinor,
+  getOrderTotalMajor,
+} from '../../order-money';
 import type { OrderListResult } from '../../order.types';
 
 @Injectable()
@@ -38,6 +50,7 @@ export class ListOrdersUseCase {
         shopId: order.shop.id,
         shopName: order.shop.shopName,
         shopSlug: order.shop.slug,
+        currency: order.currency,
         paymentType: order.paymentType,
         status: order.status,
         products: (itemsByOrderId.get(order.id) ?? []).map((item) => ({
@@ -48,8 +61,9 @@ export class ListOrdersUseCase {
           title: item.title,
           imageUrl: item.imageUrl,
           quantity: item.quantity,
-          price: Number(item.price),
-          salePrice: item.salePrice ? Number(item.salePrice) : null,
+          amountMinor: getOrderItemAmountMinor(item),
+          originalAmountMinor: getOrderItemOriginalAmountMinor(item),
+          currency: order.currency,
           variantName: item.variantName,
           variantGroupName: item.variantGroupName,
           variantSubGroupName: item.variantSubGroupName,
@@ -72,10 +86,14 @@ export class ListOrdersUseCase {
         cancelRequestedAt: order.cancelRequestedAt,
         refundedAt: order.refundedAt,
         paymentDetails: order.paymentDetails,
-        subtotal: Number(order.subtotal),
-        totalShippingFee: Number(order.totalShippingFee),
-        totalDiscount: Number(order.totalDiscount),
-        total: Number(order.total),
+        subtotal: getOrderSubtotalMajor(order),
+        subtotalMinor: getOrderSubtotalMinor(order),
+        totalShippingFee: getOrderShippingMajor(order),
+        shippingMinor: getOrderShippingMinor(order),
+        totalDiscount: getOrderDiscountMajor(order),
+        discountMinor: getOrderDiscountMinor(order),
+        total: getOrderTotalMajor(order),
+        totalMinor: getOrderTotalMinor(order),
         note: order.note,
         createdAt: order.createdAt,
       })),

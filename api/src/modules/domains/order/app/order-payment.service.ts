@@ -63,9 +63,12 @@ export class OrderPaymentService {
 
       const cartId = String(actionableOrders[0]?.paymentDetails?.cart_id ?? '');
       const isTempCart = Boolean(actionableOrders[0]?.paymentDetails?.is_temp_cart);
+      const quotedInventoryIds = Array.isArray(actionableOrders[0]?.paymentDetails?.quoted_inventory_ids)
+        ? actionableOrders[0]?.paymentDetails?.quoted_inventory_ids as string[]
+        : undefined;
 
       if (cartId) {
-        await this.clearCart(entityManager, cartId, isTempCart);
+        await this.clearCart(entityManager, cartId, isTempCart, quotedInventoryIds);
       }
 
       await entityManager.flush();
@@ -161,7 +164,8 @@ export class OrderPaymentService {
   private async clearCart(
     entityManager: EntityManager,
     cartId: string,
-    isTempCart: boolean
+    isTempCart: boolean,
+    inventoryIds?: string[]
   ): Promise<void> {
     if (isTempCart) {
       await entityManager.getConnection().execute(
@@ -171,10 +175,20 @@ export class OrderPaymentService {
       return;
     }
 
-    await entityManager.getConnection().execute(
-      'delete from cart_items where cart_id = ? and is_select_order = true',
-      [cartId]
-    );
+    if (inventoryIds && inventoryIds.length > 0) {
+      const placeholders = inventoryIds.map(() => '?').join(', ');
+      await entityManager.getConnection().execute(
+        `delete from cart_items where cart_id = ? and product_inventory_id in (${placeholders})`,
+        [cartId, ...inventoryIds]
+      );
+    }
+    else {
+      await entityManager.getConnection().execute(
+        'delete from cart_items where cart_id = ? and is_select_order = true',
+        [cartId]
+      );
+    }
+
     await entityManager.getConnection().execute(
       'delete from carts where id = ? and not exists (select 1 from cart_items where cart_items.cart_id = carts.id)',
       [cartId]
