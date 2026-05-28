@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { NestFactory, Reflector } from '@nestjs/core';
 import express from 'express';
+import { setupApiDocs } from './common/docs/setup-api-docs';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 import { RequestLoggingInterceptor } from './common/interceptors/request-logging.interceptor';
 import { parseCorsAllowedOrigins } from './config/cors.config';
@@ -58,6 +59,7 @@ async function bootstrap() {
       },
     ],
   });
+  setupApiDocs(app);
 
   bootstrapLogger.log(
     `Starting HTTP listener on port ${process.env.PORT ?? 3000}`

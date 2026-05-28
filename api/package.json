@@ -59,6 +59,7 @@
     "@nestjs/jwt": "^11.0.1",
     "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^11.0.1",
+    "@nestjs/swagger": "^11.4.4",
     "@nestjs/throttler": "^6.5.0",
     "bcryptjs": "^3.0.2",
     "bullmq": "^5.76.6",
@@ -79,6 +80,7 @@
     "rxjs": "^7.8.1",
     "sharp": "^0.34.5",
     "stripe": "^18.5.0",
+    "swagger-ui-express": "^5.0.1",
     "web-push": "^3.6.7",
     "zod": "^4.4.3"
   },

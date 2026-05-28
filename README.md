@@ -40,6 +40,7 @@ Top-level structure:
 ### API and Security
 
 - **REST-first API** - the main application surface is versioned REST endpoints under `/v1`
+- **OpenAPI and Scalar docs** - REST endpoints are exposed as generated OpenAPI JSON at `/docs/openapi.json` and browsable API reference at `/docs`
 - **GraphQL surface** - a smaller GraphQL surface exists for user management and shares the same authorization model
 - **JWT guards with cookie-backed sessions** - authentication uses JWT-based access control with cookie-managed access and refresh session flows
 - **Role and permission model** - authorization is enforced through explicit permission checks and seeded access data
@@ -118,6 +119,11 @@ Update values as needed for your local environment.
 ```bash
 just api-up
 ```
+
+API docs are available after startup:
+
+- Scalar UI: `http://localhost:3000/docs`
+- OpenAPI JSON: `http://localhost:3000/docs/openapi.json`
 
 Optional: run the background worker in a separate terminal.
 
