@@ -1,8 +1,9 @@
 import { EntityManager } from '@mikro-orm/postgresql';
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { CART_CONFIG } from '~/config/cart.config';
 import type { CartConfig } from '~/config/cart.config';
 import { CurrentUserEntity } from '~/modules/domains/auth/infra/persistence/entities/current-user.entity';
+import { ResolvedStorefrontPriceService } from '~/modules/domains/product/app/services/resolved-storefront-price.service';
 import { ProductImageEntity } from '~/modules/domains/product/infra/persistence/entities/product-image.entity';
 import { ProductInventoryEntity } from '~/modules/domains/product/infra/persistence/entities/product-inventory.entity';
 import { ProductVariantType } from '~/modules/domains/product/domain/enums/product-variant-type.enum';
@@ -15,6 +16,7 @@ import {
 import type {
   CartActor,
   CartInventoryCandidate,
+  CartInventorySnapshot,
   CartItemSnapshot,
   CartSnapshot,
 } from '../app/cart.types';
@@ -29,12 +31,14 @@ export class MikroOrmCartRepository implements CartRepository {
     'items.product',
     'items.product.images',
     'items.productInventory',
+    'items.productInventory.prices',
     'items.productInventory.productVariant',
   ] as const;
 
   constructor(
     private readonly entityManager: EntityManager,
     private readonly storageService: StorageService,
+    private readonly resolvedStorefrontPriceService: ResolvedStorefrontPriceService,
     @Inject(CART_CONFIG) private readonly cartConfig: CartConfig
   ) {}
 
@@ -45,7 +49,7 @@ export class MikroOrmCartRepository implements CartRepository {
     const inventory = await repository.findOne(
       { id: inventoryId },
       {
-        populate: ['shop', 'product', 'product.images', 'productVariant'],
+        populate: ['shop', 'product', 'product.images', 'productVariant', 'prices'],
       }
     );
 
@@ -420,26 +424,25 @@ export class MikroOrmCartRepository implements CartRepository {
     );
   }
 
-  private toCartSnapshot(cart: CartEntity): CartSnapshot {
+  private async toCartSnapshot(cart: CartEntity): Promise<CartSnapshot> {
     return {
       id: cart.id,
       userId: cart.user?.id ?? null,
       guestSessionId: cart.guestSessionId ?? null,
       kind: cart.kind,
-      items: cart.items
-        .getItems()
-        .map((item) => this.toCartItemSnapshot(item))
-        .sort((left, right) => right.updatedAt.getTime() - left.updatedAt.getTime()),
+      items: (await Promise.all(
+        cart.items.getItems().map((item) => this.toCartItemSnapshot(item))
+      )).sort((left, right) => right.updatedAt.getTime() - left.updatedAt.getTime()),
     };
   }
 
-  private toCartItemSnapshot(item: CartItemEntity): CartItemSnapshot {
+  private async toCartItemSnapshot(item: CartItemEntity): Promise<CartItemSnapshot> {
     return {
       id: item.id,
       quantity: item.quantity,
       isSelectOrder: item.isSelectOrder,
       updatedAt: item.updatedAt,
-      inventory: this.toInventoryCandidate(
+      inventory: await this.toInventoryCandidate(
         item.productInventory,
         item.product.images.getItems()[0],
         item.product.title,
@@ -453,7 +456,7 @@ export class MikroOrmCartRepository implements CartRepository {
     };
   }
 
-  private toInventoryCandidate(
+  private async toInventoryCandidate(
     inventory: ProductInventoryEntity,
     image?: ProductImageEntity,
     title?: string,
@@ -463,7 +466,15 @@ export class MikroOrmCartRepository implements CartRepository {
     shopName?: string,
     productSlug?: string,
     shopSlug?: string
-  ): CartInventoryCandidate {
+  ): Promise<CartInventorySnapshot> {
+    const pricing = await this.resolvedStorefrontPriceService.resolveForCurrentRequest(inventory);
+
+    if (!pricing) {
+      throw new InternalServerErrorException(
+        `Cart inventory ${inventory.id} is missing resolved pricing`
+      );
+    }
+
     return {
       inventoryId: inventory.id,
       productId: inventory.product.id,
@@ -478,8 +489,23 @@ export class MikroOrmCartRepository implements CartRepository {
       imageUrl: image ? this.storageService.getPublicUrl(image.storageKey) : undefined,
       variantName: inventory.productVariant?.name,
       stock: inventory.stock,
-      price: inventory.price,
-      salePrice: inventory.salePrice,
+      currency: pricing.currency,
+      pricing: {
+        amountMinor: pricing.amountMinor,
+        ...(pricing.originalAmountMinor != null
+          ? { originalAmountMinor: pricing.originalAmountMinor }
+          : {}),
+        currency: pricing.currency,
+        sourceCurrency: pricing.sourceCurrency,
+        sourceUnitAmountMinor: pricing.sourceUnitAmountMinor,
+        sourcePriceId: pricing.sourcePriceId,
+        sourceType: pricing.sourceType,
+        marketCode: pricing.marketCode,
+        fxRate: pricing.fxRate,
+        fxSource: pricing.fxSource,
+        fxEffectiveAt: pricing.fxEffectiveAt,
+        fxSourceTimestamp: pricing.fxSourceTimestamp,
+      },
       sku: inventory.sku,
       productState: inventory.product.state,
     };

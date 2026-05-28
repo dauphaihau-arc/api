@@ -23,6 +23,10 @@ export class RequestContextService {
         this.clsService.get(REQUEST_CONTEXT_CLS_KEYS.requestId),
       ipAddress: this.clsService.get(REQUEST_CONTEXT_CLS_KEYS.ipAddress),
       userAgent: this.clsService.get(REQUEST_CONTEXT_CLS_KEYS.userAgent),
+      marketCode: this.clsService.get(REQUEST_CONTEXT_CLS_KEYS.marketCode),
+      currency: this.clsService.get(REQUEST_CONTEXT_CLS_KEYS.currency),
+      locale: this.clsService.get(REQUEST_CONTEXT_CLS_KEYS.locale),
+      channel: this.clsService.get(REQUEST_CONTEXT_CLS_KEYS.channel),
       actorId: this.clsService.get(REQUEST_CONTEXT_CLS_KEYS.actorId),
       actorEmail: this.clsService.get(REQUEST_CONTEXT_CLS_KEYS.actorEmail),
       sessionId: this.clsService.get(REQUEST_CONTEXT_CLS_KEYS.sessionId),
@@ -40,6 +44,22 @@ export class RequestContextService {
 
     if (requestContext.userAgent) {
       this.clsService.set(REQUEST_CONTEXT_CLS_KEYS.userAgent, requestContext.userAgent);
+    }
+
+    if (requestContext.marketCode) {
+      this.clsService.set(REQUEST_CONTEXT_CLS_KEYS.marketCode, requestContext.marketCode);
+    }
+
+    if (requestContext.currency) {
+      this.clsService.set(REQUEST_CONTEXT_CLS_KEYS.currency, requestContext.currency);
+    }
+
+    if (requestContext.locale) {
+      this.clsService.set(REQUEST_CONTEXT_CLS_KEYS.locale, requestContext.locale);
+    }
+
+    if (requestContext.channel) {
+      this.clsService.set(REQUEST_CONTEXT_CLS_KEYS.channel, requestContext.channel);
     }
   }
 

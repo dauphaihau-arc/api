@@ -5,6 +5,7 @@ import { CART_CONFIG, buildCartConfig } from '~/config/cart.config';
 import { StorageModule } from '../../shared/storage/storage.module';
 import { AuthModule } from '../auth/auth.module';
 import { CouponModule } from '../coupon/coupon.module';
+import { ProductModule } from '../product/product.module';
 import { CurrentUserEntity } from '../auth/infra/persistence/entities/current-user.entity';
 import { ProductImageEntity } from '../product/infra/persistence/entities/product-image.entity';
 import { ProductInventoryEntity } from '../product/infra/persistence/entities/product-inventory.entity';
@@ -28,6 +29,7 @@ import { CartItemEntity } from './infra/persistence/entities/cart-item.entity';
     ConfigModule,
     forwardRef(() => AuthModule),
     CouponModule,
+    ProductModule,
     StorageModule,
     MikroOrmModule.forFeature([
       CartEntity,

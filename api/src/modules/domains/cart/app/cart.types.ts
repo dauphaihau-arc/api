@@ -1,4 +1,20 @@
 import { CartKind } from '../domain/enums/cart-kind.enum';
+import { toMinorUnits } from '~/common/utils/money';
+
+export interface CartPricingSnapshot {
+  amountMinor: number;
+  originalAmountMinor?: number;
+  currency: string;
+  sourceCurrency: string;
+  sourceUnitAmountMinor: number;
+  sourcePriceId?: string;
+  sourceType?: 'market_override' | 'base_native' | 'base_fx';
+  marketCode?: string;
+  fxRate?: string;
+  fxSource?: string;
+  fxEffectiveAt?: Date;
+  fxSourceTimestamp?: Date;
+}
 
 export type CartOwnerType = 'guest' | 'user';
 
@@ -20,10 +36,13 @@ export interface CartInventoryCandidate {
   imageUrl?: string;
   variantName?: string;
   stock: number;
-  price: number;
-  salePrice?: number;
   sku?: string;
   productState: string;
+}
+
+export interface CartInventorySnapshot extends CartInventoryCandidate {
+  currency: string;
+  pricing: CartPricingSnapshot;
 }
 
 export interface CartItemSnapshot {
@@ -31,7 +50,7 @@ export interface CartItemSnapshot {
   quantity: number;
   isSelectOrder: boolean;
   updatedAt: Date;
-  inventory: CartInventoryCandidate;
+  inventory: CartInventorySnapshot;
 }
 
 export interface CartSnapshot {
@@ -46,7 +65,7 @@ export interface CartProductItemResponse {
   id: string;
   quantity: number;
   is_selected: boolean;
-  unit_price: number;
+  unit_price_minor: number;
   product: {
     id: string;
     slug: string;
@@ -61,8 +80,9 @@ export interface CartProductItemResponse {
   };
   inventory: {
     id: string;
-    price: number;
-    sale_price?: number;
+    amount_minor: number;
+    original_amount_minor?: number;
+    currency: string;
     stock: number;
     sku?: string;
     variant_name?: string;
@@ -75,8 +95,9 @@ export interface CartShopGroupResponse {
     name: string;
   };
   items: CartProductItemResponse[];
-  total_price: number;
-  total_shipping_fee: number;
+  currency: string;
+  total_minor: number;
+  shipping_minor: number;
 }
 
 export interface CartResponse {
@@ -106,30 +127,87 @@ export interface CartResponse {
   cart_owner_type?: CartOwnerType;
   requires_sign_in_for_checkout?: boolean;
   summary: {
-    subtotal_price: number;
-    total_discount: number;
-    subtotal_after_discount: number;
-    total_shipping_fee: number;
-    total_price: number;
+    currency: string;
+    subtotal_minor: number;
+    discount_minor: number;
+    subtotal_after_discount_minor: number;
+    shipping_minor: number;
+    total_minor: number;
     total_selected_quantity: number;
     total_quantity: number;
   };
 }
 
+interface CartSummaryInput {
+  currency?: string;
+  subtotalPrice: number;
+  totalDiscount: number;
+  subtotalAfterDiscount: number;
+  totalShippingFee: number;
+  totalPrice: number;
+  totalSelectedQuantity: number;
+  totalQuantity: number;
+}
+
+function resolveCartCurrency(cart: CartSnapshot | null): string {
+  return cart?.items[0]?.inventory.pricing.currency ?? 'USD';
+}
+
+function toSummaryResponse(
+  summary: CartSummaryInput,
+  currency: string
+): CartResponse['summary'] {
+  return {
+    currency,
+    subtotal_minor: toMinorUnits(summary.subtotalPrice, currency),
+    discount_minor: toMinorUnits(summary.totalDiscount, currency),
+    subtotal_after_discount_minor: toMinorUnits(
+      summary.subtotalAfterDiscount,
+      currency
+    ),
+    shipping_minor: toMinorUnits(summary.totalShippingFee, currency),
+    total_minor: toMinorUnits(summary.totalPrice, currency),
+    total_selected_quantity: summary.totalSelectedQuantity,
+    total_quantity: summary.totalQuantity,
+  };
+}
+
+function resolveCartItemPricing(item: CartItemSnapshot): {
+  currency: string;
+  unitPriceMinor: number;
+  originalAmountMinor?: number;
+  unitPriceMajor: number;
+} {
+  const snapshotPricing = item.inventory.pricing;
+
+  return {
+    currency: snapshotPricing.currency,
+    unitPriceMinor: snapshotPricing.amountMinor,
+    originalAmountMinor: snapshotPricing.originalAmountMinor,
+    unitPriceMajor: snapshotPricing.amountMinor / minorUnitDivisor(snapshotPricing.currency),
+  };
+}
+
+function minorUnitDivisor(currency: string): number {
+  return currency === 'JPY' || currency === 'KRW' || currency === 'VND' ? 1 : 100;
+}
+
 export function buildCartResponse(
   cart: CartSnapshot | null,
-  summaryOverride?: CartResponse['summary'],
+  summaryOverride?: CartSummaryInput,
   options?: {
     ownerType?: CartOwnerType;
     requiresSignInForCheckout?: boolean;
   }
 ): CartResponse {
+  const currency = resolveCartCurrency(cart);
   const emptySummary = {
-    subtotal_price: 0,
-    total_discount: 0,
-    subtotal_after_discount: 0,
-    total_shipping_fee: 0,
-    total_price: 0,
+    currency,
+    subtotal_minor: 0,
+    discount_minor: 0,
+    subtotal_after_discount_minor: 0,
+    shipping_minor: 0,
+    total_minor: 0,
     total_selected_quantity: 0,
     total_quantity: 0,
   };
@@ -142,7 +220,9 @@ export function buildCartResponse(
       cart: null,
       cart_owner_type: ownerType,
       requires_sign_in_for_checkout: requiresSignInForCheckout,
-      summary: summaryOverride ?? emptySummary,
+      summary: summaryOverride
+        ? toSummaryResponse(summaryOverride, summaryOverride.currency ?? currency)
+        : emptySummary,
     };
   }
 
@@ -157,10 +237,10 @@ export function buildCartResponse(
   for (const item of sortedItems) {
     totalQuantity += item.quantity;
 
-    const unitPrice = item.inventory.salePrice ?? item.inventory.price;
+    const resolvedPricing = resolveCartItemPricing(item);
 
     if (item.isSelectOrder) {
-      subtotalPrice += unitPrice * item.quantity;
+      subtotalPrice += resolvedPricing.unitPriceMajor * item.quantity;
     }
 
     const existingShopGroup = groupedByShop.get(item.inventory.shopId) ?? {
@@ -169,15 +249,16 @@ export function buildCartResponse(
         name: item.inventory.shopName,
       },
       items: [],
-      total_price: 0,
-      total_shipping_fee: 0,
+      currency: item.inventory.currency,
+      total_minor: 0,
+      shipping_minor: 0,
     };
 
     existingShopGroup.items.push({
       id: item.id,
       quantity: item.quantity,
       is_selected: item.isSelectOrder,
-      unit_price: unitPrice,
+      unit_price_minor: resolvedPricing.unitPriceMinor,
       product: {
         id: item.inventory.productId,
         slug: item.inventory.productSlug,
@@ -192,8 +273,11 @@ export function buildCartResponse(
       },
       inventory: {
         id: item.inventory.inventoryId,
-        price: item.inventory.price,
-        sale_price: item.inventory.salePrice,
+        amount_minor: resolvedPricing.unitPriceMinor,
+        ...(resolvedPricing.originalAmountMinor != null
+          ? { original_amount_minor: resolvedPricing.originalAmountMinor }
+          : {}),
+        currency: resolvedPricing.currency,
         stock: item.inventory.stock,
         sku: item.inventory.sku,
         variant_name: item.inventory.variantName,
@@ -201,7 +285,7 @@ export function buildCartResponse(
     });
 
     if (item.isSelectOrder) {
-      existingShopGroup.total_price += unitPrice * item.quantity;
+      existingShopGroup.total_minor += resolvedPricing.unitPriceMinor * item.quantity;
     }
 
     groupedByShop.set(item.inventory.shopId, existingShopGroup);
@@ -233,16 +317,19 @@ export function buildCartResponse(
     },
     cart_owner_type: ownerType,
     requires_sign_in_for_checkout: requiresSignInForCheckout,
-    summary: summaryOverride ?? {
-      subtotal_price: subtotalPrice,
-      total_discount: 0,
-      subtotal_after_discount: subtotalPrice,
-      total_shipping_fee: 0,
-      total_price: subtotalPrice,
-      total_selected_quantity: cart.items
-        .filter((item) => item.isSelectOrder)
-        .reduce((sum, item) => sum + item.quantity, 0),
-      total_quantity: totalQuantity,
-    },
+    summary: summaryOverride
+      ? toSummaryResponse(summaryOverride, summaryOverride.currency ?? currency)
+      : {
+          currency,
+          subtotal_minor: toMinorUnits(subtotalPrice, currency),
+          discount_minor: 0,
+          subtotal_after_discount_minor: toMinorUnits(subtotalPrice, currency),
+          shipping_minor: 0,
+          total_minor: toMinorUnits(subtotalPrice, currency),
+          total_selected_quantity: cart.items
+            .filter((item) => item.isSelectOrder)
+            .reduce((sum, item) => sum + item.quantity, 0),
+          total_quantity: totalQuantity,
+        },
   };
 }

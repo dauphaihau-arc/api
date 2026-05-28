@@ -47,6 +47,12 @@ export class GlobalExceptionFilter implements ExceptionFilter {
           actorId: requestContext.actorId,
           actorEmail: requestContext.actorEmail,
           sessionId: requestContext.sessionId,
+          market: {
+            marketCode: requestContext.marketCode,
+            currency: requestContext.currency,
+            locale: requestContext.locale,
+            channel: requestContext.channel,
+          },
           errorName: exception instanceof Error ? exception.name : 'UnknownError',
           errorMessage:
             exception instanceof Error

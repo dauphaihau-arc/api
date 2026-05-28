@@ -72,6 +72,12 @@ export class RequestLoggingInterceptor implements NestInterceptor {
       actorId: requestContext.actorId,
       actorEmail: requestContext.actorEmail,
       sessionId: requestContext.sessionId,
+      market: {
+        marketCode: requestContext.marketCode,
+        currency: requestContext.currency,
+        locale: requestContext.locale,
+        channel: requestContext.channel,
+      },
       http: {
         method: request.method,
         path: request.url,

@@ -2,12 +2,20 @@ export interface RequestContext {
   requestId?: string;
   ipAddress?: string;
   userAgent?: string;
+  marketCode?: string;
+  currency?: string;
+  locale?: string;
+  channel?: string;
 }
 
 export const REQUEST_CONTEXT_CLS_KEYS = {
   requestId: 'requestContext.requestId',
   ipAddress: 'requestContext.ipAddress',
   userAgent: 'requestContext.userAgent',
+  marketCode: 'requestContext.marketCode',
+  currency: 'requestContext.currency',
+  locale: 'requestContext.locale',
+  channel: 'requestContext.channel',
   actorId: 'requestContext.actorId',
   actorEmail: 'requestContext.actorEmail',
   sessionId: 'requestContext.sessionId',
@@ -33,6 +41,21 @@ export function extractRequestContext(request: RequestLike): RequestContext {
     userAgent: normalizeValue(
       request.get?.('user-agent') ?? getHeaderValue(request.headers, 'user-agent')
     ),
+    marketCode: normalizeValue(
+      request.get?.('x-market-code')
+      ?? request.get?.('x-market')
+      ?? getHeaderValue(request.headers, 'x-market-code')
+      ?? getHeaderValue(request.headers, 'x-market')
+    ),
+    currency: normalizeValue(
+      request.get?.('x-currency') ?? getHeaderValue(request.headers, 'x-currency')
+    ),
+    locale: normalizeValue(
+      request.get?.('x-locale') ?? getHeaderValue(request.headers, 'x-locale')
+    ),
+    channel: normalizeValue(
+      request.get?.('x-channel') ?? getHeaderValue(request.headers, 'x-channel')
+    ),
   };
 }
 
@@ -53,6 +76,22 @@ export function initializeRequestContextStore(
 
   if (requestContext.userAgent) {
     cls.set(REQUEST_CONTEXT_CLS_KEYS.userAgent, requestContext.userAgent);
+  }
+
+  if (requestContext.marketCode) {
+    cls.set(REQUEST_CONTEXT_CLS_KEYS.marketCode, requestContext.marketCode);
+  }
+
+  if (requestContext.currency) {
+    cls.set(REQUEST_CONTEXT_CLS_KEYS.currency, requestContext.currency);
+  }
+
+  if (requestContext.locale) {
+    cls.set(REQUEST_CONTEXT_CLS_KEYS.locale, requestContext.locale);
+  }
+
+  if (requestContext.channel) {
+    cls.set(REQUEST_CONTEXT_CLS_KEYS.channel, requestContext.channel);
   }
 }
 

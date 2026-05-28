@@ -24,8 +24,14 @@ describe('buildCartResponse', () => {
             title: 'Mug',
             variantType: 'none',
             stock: 9,
-            price: 20,
-            salePrice: 15,
+            currency: 'USD',
+            pricing: {
+              amountMinor: 1500,
+              originalAmountMinor: 2000,
+              currency: 'USD',
+              sourceCurrency: 'USD',
+              sourceUnitAmountMinor: 1500,
+            },
             productState: 'active',
             imageUrl: 'https://cdn.example.com/dev/public/mug.jpg',
           },
@@ -46,7 +52,13 @@ describe('buildCartResponse', () => {
             variantType: 'single',
             variantName: 'Large',
             stock: 4,
-            price: 18,
+            currency: 'USD',
+            pricing: {
+              amountMinor: 1800,
+              currency: 'USD',
+              sourceCurrency: 'USD',
+              sourceUnitAmountMinor: 1800,
+            },
             productState: 'active',
           },
         },
@@ -69,7 +81,7 @@ describe('buildCartResponse', () => {
                 id: 'item-1',
                 quantity: 2,
                 is_selected: true,
-                unit_price: 15,
+                unit_price_minor: 1500,
                 product: {
                   id: 'product-1',
                   slug: 'mug',
@@ -84,8 +96,9 @@ describe('buildCartResponse', () => {
                 },
                 inventory: {
                   id: 'inventory-1',
-                  price: 20,
-                  sale_price: 15,
+                  amount_minor: 1500,
+                  original_amount_minor: 2000,
+                  currency: 'USD',
                   stock: 9,
                   sku: undefined,
                   variant_name: undefined,
@@ -95,7 +108,7 @@ describe('buildCartResponse', () => {
                 id: 'item-2',
                 quantity: 1,
                 is_selected: false,
-                unit_price: 18,
+                unit_price_minor: 1800,
                 product: {
                   id: 'product-2',
                   slug: 'bowl',
@@ -110,16 +123,17 @@ describe('buildCartResponse', () => {
                 },
                 inventory: {
                   id: 'inventory-2',
-                  price: 18,
-                  sale_price: undefined,
+                  amount_minor: 1800,
+                  currency: 'USD',
                   stock: 4,
                   sku: undefined,
                   variant_name: 'Large',
                 },
               },
             ],
-            total_price: 30,
-            total_shipping_fee: 0,
+            currency: 'USD',
+            total_minor: 3000,
+            shipping_minor: 0,
           },
         ],
         recent_items: [
@@ -161,18 +175,19 @@ describe('buildCartResponse', () => {
       cart_owner_type: 'user',
       requires_sign_in_for_checkout: false,
       summary: {
-        subtotal_price: 30,
-        total_discount: 0,
-        subtotal_after_discount: 30,
-        total_shipping_fee: 0,
-        total_price: 30,
+        currency: 'USD',
+        subtotal_minor: 3000,
+        discount_minor: 0,
+        subtotal_after_discount_minor: 3000,
+        shipping_minor: 0,
+        total_minor: 3000,
         total_selected_quantity: 2,
         total_quantity: 3,
       },
     });
   });
 
-  it('falls back to price when sale price is absent', () => {
+  it('uses base-native resolved pricing when compare-at pricing is absent', () => {
     const cart: CartSnapshot = {
       id: 'cart-2',
       userId: 'user-2',
@@ -194,8 +209,13 @@ describe('buildCartResponse', () => {
             title: 'Studio Pullover Hoodie',
             variantType: 'single',
             stock: 2,
-            price: 42,
-            salePrice: undefined,
+            currency: 'USD',
+            pricing: {
+              amountMinor: 4200,
+              currency: 'USD',
+              sourceCurrency: 'USD',
+              sourceUnitAmountMinor: 4200,
+            },
             productState: 'active',
           },
         },
@@ -204,8 +224,55 @@ describe('buildCartResponse', () => {
 
     const response = buildCartResponse(cart);
 
-    expect(response.cart?.shop_groups[0]?.total_price).toBe(42);
-    expect(response.summary.subtotal_price).toBe(42);
-    expect(response.summary.total_price).toBe(42);
+    expect(response.cart?.shop_groups[0]?.total_minor).toBe(4200);
+    expect(response.summary.subtotal_minor).toBe(4200);
+    expect(response.summary.total_minor).toBe(4200);
+  });
+
+  it('uses resolved pricing metadata as the authoritative cart money source', () => {
+    const cart: CartSnapshot = {
+      id: 'cart-3',
+      userId: 'user-3',
+      guestSessionId: null,
+      kind: CartKind.ACTIVE,
+      items: [
+        {
+          id: 'item-4',
+          quantity: 3,
+          isSelectOrder: true,
+          updatedAt: new Date('2026-05-15T09:00:00.000Z'),
+          inventory: {
+            inventoryId: 'inventory-4',
+            productId: 'product-4',
+            productSlug: 'travel-mug',
+            shopId: 'shop-3',
+            shopName: 'North Studio',
+            shopSlug: 'north-studio',
+            title: 'Travel Mug',
+            variantType: 'single',
+            stock: 7,
+            currency: 'USD',
+            pricing: {
+              amountMinor: 1250,
+              originalAmountMinor: 1500,
+              currency: 'USD',
+              sourceCurrency: 'USD',
+              sourceUnitAmountMinor: 1000,
+              sourceType: 'base_fx',
+            },
+            productState: 'active',
+          },
+        },
+      ],
+    };
+
+    const response = buildCartResponse(cart);
+
+    expect(response.cart?.shop_groups[0]?.items[0]?.unit_price_minor).toBe(1250);
+    expect(response.cart?.shop_groups[0]?.items[0]?.inventory.amount_minor).toBe(1250);
+    expect(response.cart?.shop_groups[0]?.items[0]?.inventory.original_amount_minor).toBe(1500);
+    expect(response.cart?.shop_groups[0]?.total_minor).toBe(3750);
+    expect(response.summary.subtotal_minor).toBe(3750);
+    expect(response.summary.total_minor).toBe(3750);
   });
 });

@@ -1,5 +1,6 @@
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
+import { fromMinorUnits, toMinorUnits } from '~/common/utils/money';
 import type { CartSnapshot } from '../../cart/app/cart.types';
 import type {
   PricedCartItem,
@@ -76,6 +77,13 @@ export class CouponPricingService {
     }
 
     for (const item of selectedItems) {
+      const snapshotPrice = item.inventory.pricing;
+      const pricingCurrency = snapshotPrice.currency;
+      const baseUnitPriceMinor = snapshotPrice.originalAmountMinor ?? snapshotPrice.amountMinor;
+      const baseUnitPrice = fromMinorUnits(baseUnitPriceMinor, pricingCurrency);
+      const saleUnitPrice = snapshotPrice.originalAmountMinor != null
+        ? fromMinorUnits(snapshotPrice.amountMinor, pricingCurrency)
+        : undefined;
       const activeAutoCoupons = (autoCouponsByShop.get(item.inventory.shopId) ?? [])
         .filter((coupon) =>
           isCouponActive(coupon)
@@ -83,17 +91,19 @@ export class CouponPricingService {
         );
 
       let autoSaleCoupon: CouponEntity | undefined;
-      let bestPrice = item.inventory.salePrice ?? item.inventory.price;
+      let bestPrice = saleUnitPrice ?? baseUnitPrice;
+      let effectiveUnitPriceMinor = snapshotPrice.amountMinor;
 
       for (const coupon of activeAutoCoupons) {
         if (coupon.type !== CouponType.PERCENTAGE) {
           continue;
         }
 
-        const discounted = item.inventory.price * (1 - (coupon.percentOff / 100));
+        const discounted = baseUnitPrice * (1 - (coupon.percentOff / 100));
         if (discounted < bestPrice) {
           bestPrice = discounted;
           autoSaleCoupon = coupon;
+          effectiveUnitPriceMinor = toMinorUnits(discounted, pricingCurrency);
         }
       }
 
@@ -110,10 +120,22 @@ export class CouponPricingService {
         variantGroupName: item.inventory.variantGroupName,
         variantSubGroupName: item.inventory.variantSubGroupName,
         variantName: item.inventory.variantName,
-        price: item.inventory.price,
-        salePrice: bestPrice < item.inventory.price ? bestPrice : item.inventory.salePrice,
-        baseUnitPrice: item.inventory.price,
+        currency: pricingCurrency,
+        sourceCurrency: snapshotPrice.sourceCurrency,
+        sourceUnitPriceMinor: snapshotPrice.sourceUnitAmountMinor,
+        unitPriceMinor: effectiveUnitPriceMinor,
+        originalAmountMinor: baseUnitPriceMinor,
+        price: baseUnitPrice,
+        salePrice: bestPrice < baseUnitPrice ? bestPrice : saleUnitPrice,
+        baseUnitPrice,
         effectiveUnitPrice: bestPrice,
+        sourcePriceId: snapshotPrice?.sourcePriceId,
+        sourceType: snapshotPrice?.sourceType,
+        marketCode: snapshotPrice?.marketCode,
+        fxRate: snapshotPrice?.fxRate,
+        fxSource: snapshotPrice?.fxSource,
+        fxEffectiveAt: snapshotPrice?.fxEffectiveAt,
+        fxSourceTimestamp: snapshotPrice?.fxSourceTimestamp,
         autoSaleCoupon,
       };
 
@@ -206,6 +228,7 @@ export class CouponPricingService {
     return {
       cart: input.cart,
       shops,
+      currency: selectedItems[0]?.inventory.currency ?? 'USD',
       subtotalPrice,
       totalDiscount,
       subtotalAfterDiscount: Math.max(0, subtotalPrice - totalDiscount),
