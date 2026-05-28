@@ -1,28 +1,75 @@
 import type { AuthConfig } from '~/config/auth.config';
+import { ApiProperty } from '@nestjs/swagger';
 import {
   AUTH_PASSWORD_MAX_LENGTH,
   AUTH_PASSWORD_MIN_LENGTH,
   AUTH_PASSWORD_PATTERN
 } from '../validation/password-validation';
 
+class AuthPasswordRequirementsResponseDto {
+  @ApiProperty()
+  lowercase!: boolean;
+
+  @ApiProperty()
+  uppercase!: boolean;
+
+  @ApiProperty()
+  number!: boolean;
+
+  @ApiProperty({
+    name: 'special_character',
+  })
+  special_character!: boolean;
+}
+
+class AuthPasswordConfigResponseDto {
+  @ApiProperty({
+    name: 'min_length',
+  })
+  min_length!: number;
+
+  @ApiProperty({
+    name: 'max_length',
+  })
+  max_length!: number;
+
+  @ApiProperty()
+  pattern!: string;
+
+  @ApiProperty({
+    type: () => AuthPasswordRequirementsResponseDto,
+  })
+  requirements!: AuthPasswordRequirementsResponseDto;
+
+  @ApiProperty()
+  message!: string;
+}
+
+class AuthSessionConfigResponseDto {
+  @ApiProperty({
+    name: 'access_token_ttl_seconds',
+  })
+  access_token_ttl_seconds!: number;
+
+  @ApiProperty({
+    name: 'refresh_token_ttl_seconds',
+  })
+  refresh_token_ttl_seconds!: number;
+}
+
 export class AuthClientConfigResponseDto {
+  @ApiProperty()
   version!: string;
-  password!: {
-    min_length: number;
-    max_length: number;
-    pattern: string;
-    requirements: {
-      lowercase: boolean;
-      uppercase: boolean;
-      number: boolean;
-      special_character: boolean;
-    };
-    message: string;
-  };
-  session!: {
-    access_token_ttl_seconds: number;
-    refresh_token_ttl_seconds: number;
-  };
+
+  @ApiProperty({
+    type: () => AuthPasswordConfigResponseDto,
+  })
+  password!: AuthPasswordConfigResponseDto;
+
+  @ApiProperty({
+    type: () => AuthSessionConfigResponseDto,
+  })
+  session!: AuthSessionConfigResponseDto;
 
   static create(authConfig: AuthConfig): AuthClientConfigResponseDto {
     return {

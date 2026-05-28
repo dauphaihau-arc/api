@@ -6,17 +6,36 @@ import {
   HttpStatus,
   ServiceUnavailableException
 } from '@nestjs/common';
+import {
+  ApiOkResponse,
+  ApiOperation,
+  ApiServiceUnavailableResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { SkipThrottle } from '@nestjs/throttler';
+import { HealthCheckResponseDto } from './health-check.response.dto';
 import { HealthService } from './health.service';
 
 @Controller('health')
 @SkipThrottle()
+@ApiTags('Health')
 export class HealthController {
   constructor(private readonly healthService: HealthService) {}
 
   @Get()
   @Header('Cache-Control', 'no-store')
   @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Check service health',
+    description: 'Runs database and storage connectivity checks.',
+  })
+  @ApiOkResponse({
+    type: HealthCheckResponseDto,
+  })
+  @ApiServiceUnavailableResponse({
+    description: 'One or more health checks failed.',
+    type: HealthCheckResponseDto,
+  })
   async getHealth() {
     const result = await this.healthService.check();
 

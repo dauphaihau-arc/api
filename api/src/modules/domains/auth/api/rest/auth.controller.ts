@@ -13,6 +13,15 @@ import {
   UseFilters,
   UseGuards
 } from '@nestjs/common';
+import {
+  ApiCookieAuth,
+  ApiCreatedResponse,
+  ApiNoContentResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiQuery,
+  ApiTags,
+} from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { Throttle } from '@nestjs/throttler';
 import { Idempotent } from '~/common/decorators/idempotent.decorator';
@@ -70,6 +79,7 @@ const authRouteRateLimits = {
 
 @Controller('auth')
 @UseFilters(AuthHttpExceptionFilter)
+@ApiTags('Auth')
 export class AuthController {
   constructor(
     private readonly registerUseCase: RegisterUseCase,
@@ -94,6 +104,12 @@ export class AuthController {
   @Idempotent({
     scope: 'auth:register',
   })
+  @ApiOperation({
+    summary: 'Register a new user session',
+  })
+  @ApiCreatedResponse({
+    type: AuthUserResponseDto,
+  })
   async register(
     @Body() body: RegisterDto,
     @Res({ passthrough: true }) response: Response
@@ -114,6 +130,12 @@ export class AuthController {
   })
   @Header('Cache-Control', 'no-store')
   @HttpCode(200)
+  @ApiOperation({
+    summary: 'Authenticate a user',
+  })
+  @ApiOkResponse({
+    type: AuthUserResponseDto,
+  })
   async login(
     @Body() body: LoginDto,
     @Res({ passthrough: true }) response: Response
@@ -134,6 +156,12 @@ export class AuthController {
   })
   @Header('Cache-Control', 'no-store')
   @HttpCode(204)
+  @ApiOperation({
+    summary: 'Refresh the current session',
+  })
+  @ApiNoContentResponse({
+    description: 'Session cookies were refreshed.',
+  })
   async refresh(
     @Req() request: Request,
     @Res({ passthrough: true }) response: Response
@@ -154,6 +182,12 @@ export class AuthController {
   })
   @Header('Cache-Control', 'no-store')
   @HttpCode(204)
+  @ApiOperation({
+    summary: 'Request a password reset email',
+  })
+  @ApiNoContentResponse({
+    description: 'Password reset request accepted.',
+  })
   async forgotPassword(@Body() body: ForgotPasswordDto): Promise<void> {
     await this.requestPasswordResetUseCase.execute(body.email);
   }
@@ -161,6 +195,12 @@ export class AuthController {
   @Get('client-config')
   @Header('Cache-Control', 'public, max-age=300, stale-while-revalidate=86400')
   @HttpCode(200)
+  @ApiOperation({
+    summary: 'Get auth client configuration',
+  })
+  @ApiOkResponse({
+    type: AuthClientConfigResponseDto,
+  })
   getClientConfig(): AuthClientConfigResponseDto {
     return AuthClientConfigResponseDto.create(this.authConfig);
   }
@@ -168,6 +208,22 @@ export class AuthController {
   @Get('verify-token')
   @Header('Cache-Control', 'no-store')
   @HttpCode(200)
+  @ApiOperation({
+    summary: 'Verify a reset-password token',
+  })
+  @ApiQuery({
+    name: 'token',
+    required: true,
+    type: String,
+  })
+  @ApiQuery({
+    name: 'type',
+    required: true,
+    enum: ['resetPassword'],
+  })
+  @ApiOkResponse({
+    description: 'Token is valid.',
+  })
   async verifyToken(@Query() query: VerifyTokenDto): Promise<void> {
     resolveOrThrow(
       await this.verifyResetPasswordTokenUseCase.execute(query.token),
@@ -181,6 +237,17 @@ export class AuthController {
   })
   @Header('Cache-Control', 'no-store')
   @HttpCode(200)
+  @ApiOperation({
+    summary: 'Reset a password with a token',
+  })
+  @ApiQuery({
+    name: 'token',
+    required: true,
+    type: String,
+  })
+  @ApiOkResponse({
+    type: AuthUserResponseDto,
+  })
   async resetPassword(
     @Query() query: TokenQueryDto,
     @Body() body: ResetPasswordDto,
@@ -203,6 +270,13 @@ export class AuthController {
   @Header('Cache-Control', 'no-store')
   @HttpCode(204)
   @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @ApiOperation({
+    summary: 'Sign out the current user',
+  })
+  @ApiCookieAuth('accessCookie')
+  @ApiNoContentResponse({
+    description: 'Authentication cookies were cleared.',
+  })
   async logout(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Res({ passthrough: true }) response: Response
@@ -214,6 +288,13 @@ export class AuthController {
   @Get('me')
   @Header('Cache-Control', 'no-store')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @ApiOperation({
+    summary: 'Get the current authenticated user',
+  })
+  @ApiCookieAuth('accessCookie')
+  @ApiOkResponse({
+    type: CurrentUserResponseDto,
+  })
   async me(
     @CurrentUser() currentUser: AuthenticatedUser
   ): Promise<CurrentUserResponseDto> {
