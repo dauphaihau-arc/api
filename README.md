@@ -11,50 +11,55 @@ The codebase follows a modular Clean Architecture style with Domain-Driven Desig
 Top-level structure:
 
 - `api/` - NestJS application source, config, migrations, and scripts
+- `agents/` - agent guidance, architecture notes, testing notes, and repo rules
 - `infra/` - local Docker Compose services for Postgres, Redis, and MinIO
 - `docs/` - supporting documentation and migration notes
 - `seed-data/` - TSV seed files used for reference and demo data
 
-## Applied Techniques
+## Implemented Patterns and Capabilities
 
 ### Architecture
 
-- **Modular monolith** - the ARC ecommerce backend is delivered as a single application while keeping business capabilities separated into explicit internal modules with clear boundaries
-- **Clean Architecture by module** - modules in `domains/` and `shared/` organize code into clear application, domain, and infrastructure boundaries with inward-only dependency flow
-- **Value objects** - domain value objects encapsulate validation and invariants for core business concepts such as email, keeping invalid state out of the domain model
-- **Use case pattern** - application behavior is organized as explicit use cases per module, keeping business actions isolated, testable, and independent from transport or persistence details
-- **Ports and adapters** - application-layer ports define stable contracts for repositories and services, allowing infrastructure implementations to evolve without changing use cases
-- **Repository pattern** - application-layer repository ports isolate domain use cases from MikroORM persistence details through stable contracts
-- **Request context propagation** - shared request context carries per-request metadata across application flows and async boundaries
-- **Layered error model** - domain and application errors are separated explicitly, keeping business-rule failures distinct from use-case and orchestration errors. See [`docs/layered-error-model.md`](docs/layered-error-model.md)
-- **Events and listeners** - shared events and listeners decouple cross-module reactions and background side effects from the initiating application flow
-- **Background processing** - dedicated worker entrypoint for async jobs and queue-driven workloads
-- **Consistent validation and typing** - DTO validation and schema-based runtime checks
+- **Modular monolith** - the ARC ecommerce backend is delivered as a single NestJS application while keeping business capabilities separated into explicit domain and shared modules
+- **Clean Architecture by module** - modules in `domains/` and `shared/` organize code into application, domain, and infrastructure boundaries with inward-only dependency flow
+- **Use case and ports/adapters structure** - application behavior is organized as explicit use cases and application-layer ports so transport and infrastructure implementations remain replaceable
+- **Value objects** - domain value objects encapsulate validation and invariants for core concepts such as email and permission keys
+- **Request context propagation** - CLS-backed request context carries request, actor, session, locale, currency, and market metadata across request handling and async flows
+- **Layered error model** - domain and application errors are mapped separately from transport concerns. See [`docs/layered-error-model.md`](docs/layered-error-model.md)
+- **Event-driven side effects** - shared events and listeners decouple secondary reactions such as cache invalidation and welcome email handling from the initiating use case
 
-### Security
+### Commerce and Checkout
 
-- **JWT-based authentication** - Passport and JWT guards for protected API access
-- **Role and permission model** - authorization enforced through explicit application rules and seeded access data
-- **Rate limiting** - Nest throttling protects sensitive or high-cost endpoints
-- **Signed object access** - S3-compatible presigned URLs for controlled file access
-- **Environment-isolated secrets** - support for local `.env` and Infisical-backed runtime configuration
+- **Quote-based checkout snapshots** - checkout persists a priced quote snapshot before order creation so downstream payment and support flows operate on stored pricing state instead of mutable cart state. See [`docs/checkout-quote-design.md`](docs/checkout-quote-design.md)
+- **Multi-currency pricing** - the pricing model supports presentment currency, checkout currency, market-aware pricing, FX metadata, and stored pricing provenance. See [`docs/multi-currency/multi-currency-pricing-design.md`](docs/multi-currency/multi-currency-pricing-design.md)
+- **FX rate synchronization** - exchange rates can be synced into the app and consumed through shared market services and rounding policy rules
+- **Stripe checkout and refunds** - payment flows integrate with Stripe for checkout session creation, webhook processing, and refund handling
+- **Transactional outbox for checkout** - checkout session creation is decoupled from the write transaction through durable outbox events and retryable post-commit processing. See [`docs/outbox-pattern.md`](docs/outbox-pattern.md) and [`docs/checkout-transactional-outbox.md`](docs/checkout-transactional-outbox.md)
+- **Structured storage keys and asset processing** - uploaded product assets use predictable storage key conventions and image-processing flows. See [`docs/structured-storage-keys.md`](docs/structured-storage-keys.md)
 
-### Data Management
+### API and Security
 
-- **Structured persistence** - MikroORM-based data access with explicit migrations and seed flows
-- **Transactional outbox** - durable outbox events decouple committed state changes from external side effects such as payment checkout session creation, enabling safe retry after commit. See [`docs/outbox-pattern.md`](docs/outbox-pattern.md)
-- **Idempotency keys** - repeated client requests can be deduplicated safely through request-scoped idempotency handling and cached response replay
-- **Structured storage keys** - object keys are generated from environment, visibility, domain path, collection, and asset type segments to keep uploaded assets predictable and organized. See [`docs/structured-storage-keys.md`](docs/structured-storage-keys.md)
-- **Optimistic locking** - entity versioning protects concurrent updates by rejecting stale writes against the latest persisted state
+- **REST-first API** - the main application surface is versioned REST endpoints under `/v1`
+- **GraphQL surface** - a smaller GraphQL surface exists for user management and shares the same authorization model
+- **JWT guards with cookie-backed sessions** - authentication uses JWT-based access control with cookie-managed access and refresh session flows
+- **Role and permission model** - authorization is enforced through explicit permission checks and seeded access data
+- **DTO validation plus config schema validation** - request DTOs use Nest validation, while environment configuration is validated with Zod at startup
+- **Rate limiting** - Nest throttling protects the global API surface and sensitive endpoints
+- **Idempotency keys on selected writes** - selected write endpoints can safely deduplicate repeated client requests and replay cached responses
+- **SSE endpoints** - Server-Sent Events are available for user event streams and product inventory updates
+- **Signed object access** - S3-compatible presigned URLs are used for controlled file access
+- **Web push notifications** - the API supports push subscription registration, notification delivery, and queued push jobs
 
 ### Operations
 
+- **Structured persistence** - MikroORM handles relational persistence with explicit migrations and repeatable seed flows
+- **Dedicated worker process** - the app includes a separate worker entrypoint for BullMQ jobs, outbox processing, and scheduled tasks
 - **Audit logging** - high-value product mutations can be persisted with actor and request metadata for business traceability
-- **Local-first infrastructure** - Docker Compose setup for Postgres, Redis, and MinIO
-- **Queue processing** - BullMQ-backed worker process for async jobs
-- **Structured logging with correlation IDs** - request and error logs include request, actor, and session context to make API and async flows traceable across the system
+- **Structured logging with correlation IDs** - request and error logs include request and actor context to make API and async flows traceable across the system
+- **Optimistic locking** - versioned entities reject stale concurrent writes against the latest persisted state
 - **Health checks** - dedicated health endpoints support local verification and runtime readiness monitoring
-- **Seeded environments** - reference and demo datasets for reproducible local setup
+- **Local-first infrastructure** - Docker Compose setup for Postgres, Redis, and MinIO keeps local development reproducible
+- **Seeded environments** - reference and demo datasets support repeatable local setup and demos
 
 ## Stack
 
