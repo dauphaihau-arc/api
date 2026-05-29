@@ -33,6 +33,7 @@ import { CreateOrderForBuyNowDto } from './dto/create-order-for-buy-now.dto';
 import { CreateOrderFromCartDto } from './dto/create-order-from-cart.dto';
 import { RequestOrderCancelDto } from './dto/request-order-cancel.dto';
 import { RequestOrderSupportDto } from './dto/request-order-support.dto';
+import { ListMyOrdersQueryDto } from './dto/list-my-orders.query.dto';
 import {
   toCheckoutQuoteResponse,
   toCreateOrderResponse,
@@ -57,8 +58,11 @@ export class MeOrderController {
   ) {}
 
   @Get()
-  async list(@CurrentUser() currentUser: AuthenticatedUser) {
-    return this.listOrdersUseCase.execute(currentUser)
+  async list(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Query() query: ListMyOrdersQueryDto
+  ) {
+    return this.listOrdersUseCase.execute(currentUser, query)
       .then(toOrderListResponse);
   }
 
