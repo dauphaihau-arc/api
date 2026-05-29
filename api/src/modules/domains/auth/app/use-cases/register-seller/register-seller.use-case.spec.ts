@@ -106,6 +106,7 @@ describe('RegisterSellerUseCase', () => {
       password: 'password123',
       displayName: 'Seller User',
       shopName: 'Seller Shop',
+      currency: 'EUR',
     });
 
     expect(result.isOk).toBe(true);
@@ -114,7 +115,7 @@ describe('RegisterSellerUseCase', () => {
         userId: 'user-1',
         region: 'United States',
         language: 'en',
-        currency: 'USD',
+        currency: 'EUR',
       },
       expect.anything()
     );
@@ -123,7 +124,7 @@ describe('RegisterSellerUseCase', () => {
         ownerUserId: 'user-1',
         shopName: 'Seller Shop',
         slug: 'seller-shop',
-        currency: 'USD',
+        currency: 'EUR',
       },
       expect.anything()
     );

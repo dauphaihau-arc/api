@@ -30,6 +30,7 @@ import { UserStatus } from '../../../domain/enums/user-status.enum';
 import { Email } from '../../../domain/value-objects/email';
 import { PasswordHash } from '../../../domain/value-objects/password-hash';
 import { RoleKey } from '../../../domain/value-objects/role-key';
+import type { MarketplaceCurrency } from '~/config/marketplace.config';
 
 const customerRole = {
   key: RoleKey.create('customer'),
@@ -48,6 +49,7 @@ export interface RegisterSellerInput {
   password: string;
   displayName: string;
   shopName: string;
+  currency: MarketplaceCurrency;
 }
 
 @Injectable()
@@ -103,7 +105,9 @@ export class RegisterSellerUseCase {
     const passwordHash = PasswordHash.fromPersisted(
       await this.passwordHasher.hash(input.password)
     );
-    const userPreferences = normalizeUserPreferences();
+    const userPreferences = normalizeUserPreferences({
+      currency: input.currency,
+    });
     const user = await this.entityManager.transactional(async (entityManager) => {
       await this.authUserRepository.ensureRole(customerRole, entityManager);
       await this.authUserRepository.ensureRole(sellerRole, entityManager);
@@ -132,7 +136,7 @@ export class RegisterSellerUseCase {
           ownerUserId: createdUser.id,
           shopName: trimmedShopName,
           slug,
-          currency: userPreferences.currency,
+          currency: input.currency,
         },
         entityManager
       );

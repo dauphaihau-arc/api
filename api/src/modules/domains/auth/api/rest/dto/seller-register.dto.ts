@@ -4,10 +4,12 @@ import {
 } from 'class-transformer';
 import {
   IsEmail,
+  IsEnum,
   IsString,
   MaxLength,
   MinLength
 } from 'class-validator';
+import { MARKETPLACE_CURRENCIES, type MarketplaceCurrency } from '~/config/marketplace.config';
 import { IsAuthPassword } from '../validation/password-validation';
 
 export class SellerRegisterDto {
@@ -30,4 +32,7 @@ export class SellerRegisterDto {
   @MinLength(3)
   @MaxLength(20)
   shopName!: string;
+
+  @IsEnum(MARKETPLACE_CURRENCIES)
+  currency!: MarketplaceCurrency;
 }
