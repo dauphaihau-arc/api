@@ -76,6 +76,7 @@ const appEnvBaseSchema = z.object({
     .default('disabled'),
   FX_RATE_SYNC_INTERVAL: z.string().trim().min(1).default('1h'),
   FX_RATE_SYNC_RUN_ON_STARTUP: z.enum(['true', 'false']).default('false'),
+  FX_SYNC_TRIGGER_SECRET: z.string().trim().min(1).optional(),
   OPEN_EXCHANGE_RATES_APP_ID: z.string().trim().min(1).optional(),
   OPEN_EXCHANGE_RATES_BASE_URL: z
     .url()

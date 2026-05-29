@@ -1,0 +1,13 @@
+{
+  "name": "arc-fx-sync-cron",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev --test-scheduled",
+    "typegen": "wrangler types"
+  },
+  "devDependencies": {
+    "wrangler": "^4.20.0"
+  }
+}

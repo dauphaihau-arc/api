@@ -3,20 +3,21 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import {
   buildFxRateSyncConfig,
-  FX_RATE_SYNC_CONFIG,
+  FX_RATE_SYNC_CONFIG
 } from '~/config/fx-rate-sync.config';
 import { MarketController } from './market.controller';
 import { EXCHANGE_RATE_PROVIDER } from './exchange-rate-provider';
 import { ExchangeRateEntity } from './infra/persistence/entities/exchange-rate.entity';
 import { ExchangeRateSyncService } from './exchange-rate-sync.service';
 import { FxRateService } from './fx-rate.service';
+import { InternalJobsController } from './internal-jobs.controller';
 import { MarketService } from './market.service';
 import { OpenExchangeRatesProvider } from './open-exchange-rates.provider';
 import { RoundingPolicyService } from './rounding-policy.service';
 
 @Module({
   imports: [ConfigModule, MikroOrmModule.forFeature([ExchangeRateEntity])],
-  controllers: [MarketController],
+  controllers: [MarketController, InternalJobsController],
   providers: [
     {
       provide: FX_RATE_SYNC_CONFIG,

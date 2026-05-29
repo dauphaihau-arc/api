@@ -6,7 +6,6 @@ import { validateAppEnv } from '~/config/app-env.config';
 import { buildDatabaseConfig } from '~/config/database.config';
 import { OrderModule } from '../../domains/order/order.module';
 import { MarketModule } from '../market/market.module';
-import { ExchangeRateSyncSchedulerService } from '../market/exchange-rate-sync-scheduler.service';
 import { OrderCheckoutOutboxWorkerService } from '../../domains/order/app/order-checkout-outbox-worker.service';
 import { QueueModule } from './queue.module';
 import { BullMqWorkerService } from './infra/bullmq-worker.service';
@@ -30,7 +29,6 @@ import { BullMqWorkerService } from './infra/bullmq-worker.service';
   providers: [
     BullMqWorkerService,
     OrderCheckoutOutboxWorkerService,
-    ExchangeRateSyncSchedulerService,
   ],
 })
 export class QueueWorkerModule {}

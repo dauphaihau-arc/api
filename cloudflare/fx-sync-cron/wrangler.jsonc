@@ -1,0 +1,14 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "arc-fx-sync-cron",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-05-29",
+  "workers_dev": true,
+  "preview_urls": false,
+  "triggers": {
+    "crons": ["0 * * * *"]
+  },
+  "vars": {
+    "FX_SYNC_TIMEOUT_MS": "30000"
+  }
+}
