@@ -9,9 +9,9 @@ import { JwtAuthGuard } from '~/modules/domains/auth/api/guard/jwt-auth.guard';
 import { PermissionsGuard } from '~/modules/domains/auth/api/guard/permissions.guard';
 import { CreateShopUseCase } from '../../app/use-cases/create-shop/create-shop.use-case';
 import { GetMyShopUseCase } from '../../app/use-cases/get-my-shop/get-my-shop.use-case';
-import type { ShopSummary } from '../../app/shop.types';
 import { CreateShopDto } from './dto/create-shop.dto';
 import { mapShopAppErrorToHttpException } from './shop-http-error-mapper';
+import { toShopResponse } from './shop.response';
 
 @Controller('shops')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -27,12 +27,13 @@ export class ShopController {
   createShop(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() body: CreateShopDto
-  ): Promise<ShopSummary> {
+  ) {
     return this.createShopUseCase.execute(currentUser, {
       shopName: body.shop_name,
       currency: body.currency,
     })
-      .then((result) => resolveOrThrow(result, mapShopAppErrorToHttpException));
+      .then((result) => resolveOrThrow(result, mapShopAppErrorToHttpException))
+      .then(toShopResponse);
   }
 
   @Get('me')
@@ -40,13 +41,13 @@ export class ShopController {
   @RequirePermissions('shops.manage')
   async myShop(
     @CurrentUser() currentUser: AuthenticatedUser
-  ): Promise<ShopSummary> {
+  ) {
     const shop = await this.getMyShopUseCase.execute(currentUser);
 
     if (!shop) {
       throw new NotFoundException('Shop was not found');
     }
 
-    return shop;
+    return toShopResponse(shop);
   }
 }
