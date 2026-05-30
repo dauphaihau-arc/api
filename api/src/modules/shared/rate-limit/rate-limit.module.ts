@@ -24,6 +24,7 @@ import { GraphqlThrottlerGuard } from './graphql-throttler.guard';
       ) => ({
         storage,
         errorMessage: 'Too many requests.',
+        skipIf: () => !rateLimitConfig.enabled,
         throttlers: [
           {
             limit: rateLimitConfig.limit,
