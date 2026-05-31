@@ -23,9 +23,10 @@ import { UserModule } from './domains/user/user.module';
 import { CacheModule } from './shared/cache/cache.module';
 import { HealthModule } from './shared/health/health.module';
 import { MailModule } from './shared/mail/mail.module';
+import { CurrencyModule } from './shared/currency/currency.module';
+import { MarketplaceModule } from './shared/marketplace/marketplace.module';
 import { NotificationModule } from './shared/notification/notification.module';
 import { ObservabilityModule } from './shared/observability/observability.module';
-import { MarketModule } from './shared/market/market.module';
 import { QueueModule } from './shared/queue/queue.module';
 import { RateLimitModule } from './shared/rate-limit/rate-limit.module';
 import { StorageModule } from './shared/storage/storage.module';
@@ -56,8 +57,9 @@ import { SseModule } from './shared/sse/sse.module';
     }),
     MikroOrmModule.forMiddleware(),
     CacheModule,
+    CurrencyModule,
     MailModule,
-    MarketModule,
+    MarketplaceModule,
     NotificationModule,
     ObservabilityModule,
     PaymentModule,

@@ -25,7 +25,7 @@ import { ProductShippingDestinationEntity } from '../src/modules/domains/product
 import { ProductShippingProfileEntity } from '../src/modules/domains/product/infra/persistence/entities/product-shipping-profile.entity';
 import { ProductVariantEntity } from '../src/modules/domains/product/infra/persistence/entities/product-variant.entity';
 import { ProductEntity } from '../src/modules/domains/product/infra/persistence/entities/product.entity';
-import { ExchangeRateEntity } from '../src/modules/shared/market/infra/persistence/entities/exchange-rate.entity';
+import { ExchangeRateEntity } from '../src/modules/shared/currency/infra/persistence/entities/exchange-rate.entity';
 import { OrderEntity } from '../src/modules/domains/order/infra/persistence/entities/order.entity';
 import { OrderItemEntity } from '../src/modules/domains/order/infra/persistence/entities/order-item.entity';
 import { ShopEntity } from '../src/modules/domains/shop/infra/persistence/entities/shop.entity';

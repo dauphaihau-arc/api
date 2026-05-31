@@ -1,28 +1,30 @@
 import { RequestMethod } from '@nestjs/common';
 import { METHOD_METADATA, PATH_METADATA } from '@nestjs/common/constants';
-import { MarketController } from './market.controller';
-import type { MarketService } from './market.service';
+import { MarketplaceController } from './marketplace.controller';
+import type { MarketplaceService } from './marketplace.service';
 
-describe('MarketController', () => {
-  const marketService = {
+describe('MarketplaceController', () => {
+  const marketplaceService = {
     getConfig: jest.fn(),
   };
 
-  const controller = new MarketController(marketService as unknown as MarketService);
+  const controller = new MarketplaceController(
+    marketplaceService as unknown as MarketplaceService
+  );
 
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
   it('registers GET config on the controller method', () => {
-    const handler = MarketController.prototype.getConfig;
+    const handler = MarketplaceController.prototype.getConfig;
 
     expect(Reflect.getMetadata(PATH_METADATA, handler)).toBe('config');
     expect(Reflect.getMetadata(METHOD_METADATA, handler)).toBe(RequestMethod.GET);
   });
 
   it('returns the backend-supported market configuration', () => {
-    marketService.getConfig.mockReturnValue({
+    marketplaceService.getConfig.mockReturnValue({
       markets: [
         {
           code: 'VN',
@@ -49,6 +51,6 @@ describe('MarketController', () => {
         },
       ],
     });
-    expect(marketService.getConfig).toHaveBeenCalledTimes(1);
+    expect(marketplaceService.getConfig).toHaveBeenCalledTimes(1);
   });
 });

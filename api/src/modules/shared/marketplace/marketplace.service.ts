@@ -4,13 +4,13 @@ import {
   type MarketplaceMarket,
 } from '~/config/marketplace.config';
 
-export interface MarketConfigResult {
+export interface MarketplaceConfigResult {
   markets: MarketplaceMarket[];
 }
 
 @Injectable()
-export class MarketService {
-  getConfig(): MarketConfigResult {
+export class MarketplaceService {
+  getConfig(): MarketplaceConfigResult {
     return {
       markets: MARKETPLACE_MARKETS.map((market) => ({
         ...market,

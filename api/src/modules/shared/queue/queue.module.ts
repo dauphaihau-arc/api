@@ -22,7 +22,7 @@ import { SendWelcomeEmailJob } from '~/common/jobs/send-welcome-email.job';
 import { OrderModule } from '~/modules/domains/order/order.module';
 import { ProductModule } from '~/modules/domains/product/product.module';
 import { NotificationModule } from '../notification/notification.module';
-import { MarketModule } from '../market/market.module';
+import { CurrencyModule } from '../currency/currency.module';
 import { JobDispatcher } from './app/ports/job-dispatcher';
 import { AppJobRunner } from './infra/app-job-runner';
 import { BullMqConnectionManager } from './infra/bullmq-connection-manager';
@@ -38,7 +38,7 @@ const queueModuleLogger = new Logger('QueueModule');
   imports: [
     ConfigModule,
     MailModule,
-    MarketModule,
+    CurrencyModule,
     ObservabilityModule,
     PaymentModule,
     forwardRef(() => NotificationModule),

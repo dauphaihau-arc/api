@@ -1,6 +1,6 @@
 import type { EntityManager } from '@mikro-orm/postgresql';
 import type { MarketplaceCurrency } from '../../src/config/marketplace.config';
-import { ExchangeRateEntity } from '../../src/modules/shared/market/infra/persistence/entities/exchange-rate.entity';
+import { ExchangeRateEntity } from '../../src/modules/shared/currency/infra/persistence/entities/exchange-rate.entity';
 import {
   EXCHANGE_RATES_LOCAL_TSV_PATH,
   EXCHANGE_RATES_TSV_PATH,

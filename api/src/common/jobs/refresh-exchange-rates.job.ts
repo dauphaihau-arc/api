@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { ExchangeRateSyncService } from '~/modules/shared/market/exchange-rate-sync.service';
+import { ExchangeRateSyncService } from '~/modules/shared/currency/exchange-rate-sync.service';
 
 @Injectable()
 export class RefreshExchangeRatesJob {

@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { MARKETPLACE_MARKETS } from '~/config/marketplace.config';
-import { FxRateService, type ExchangeRateSnapshot } from '~/modules/shared/market/fx-rate.service';
-import { RoundingPolicyService } from '~/modules/shared/market/rounding-policy.service';
+import { FxRateService, type ExchangeRateSnapshot } from '~/modules/shared/currency/fx-rate.service';
+import { RoundingPolicyService } from '~/modules/shared/currency/rounding-policy.service';
 import { RequestContextService } from '~/modules/shared/request-context/request-context.service';
 import type { ProductInventoryEntity } from '../../infra/persistence/entities/product-inventory.entity';
 import {

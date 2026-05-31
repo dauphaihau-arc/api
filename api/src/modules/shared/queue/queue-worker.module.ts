@@ -7,7 +7,7 @@ import { buildPinoLoggerParams } from '~/common/logging/pino-logger.config';
 import { validateAppEnv } from '~/config/app-env.config';
 import { buildDatabaseConfig } from '~/config/database.config';
 import { OrderModule } from '../../domains/order/order.module';
-import { MarketModule } from '../market/market.module';
+import { CurrencyModule } from '../currency/currency.module';
 import { OrderCheckoutOutboxWorkerService } from '../../domains/order/app/order-checkout-outbox-worker.service';
 import { QueueModule } from './queue.module';
 import { BullMqWorkerService } from './infra/bullmq-worker.service';
@@ -26,7 +26,7 @@ import { BullMqWorkerService } from './infra/bullmq-worker.service';
       registerRequestContext: false,
     }),
     QueueModule,
-    MarketModule,
+    CurrencyModule,
     OrderModule,
   ],
   providers: [

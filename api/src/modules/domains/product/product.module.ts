@@ -6,7 +6,7 @@ import { CacheModule } from '../../shared/cache/cache.module';
 import { StorageModule } from '../../shared/storage/storage.module';
 import { AuditModule } from '../../shared/audit/audit.module';
 import { ImageModule } from '../../shared/image/image.module';
-import { MarketModule } from '../../shared/market/market.module';
+import { CurrencyModule } from '../../shared/currency/currency.module';
 import { QueueModule } from '../../shared/queue/queue.module';
 import { SseModule } from '../../shared/sse/sse.module';
 import { CategoryModule } from '../category/category.module';
@@ -58,7 +58,7 @@ import { VariantPriceEntity } from './infra/persistence/entities/variant-price.e
     CategoryModule,
     StorageModule,
     ImageModule,
-    MarketModule,
+    CurrencyModule,
     forwardRef(() => QueueModule),
     AuditModule,
     SseModule,
