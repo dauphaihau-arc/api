@@ -1,7 +1,42 @@
 services:
+  api:
+    profiles: ["app"]
+    build:
+      context: ../api
+      dockerfile: Dockerfile
+    container_name: arc-api
+    restart: unless-stopped
+    depends_on:
+      - postgres
+      - redis
+      - minio
+      - otel-collector
+    env_file:
+      - ../api/.env.docker
+    ports:
+      - "3000:3000"
+
+  worker:
+    profiles: ["app"]
+    build:
+      context: ../api
+      dockerfile: Dockerfile
+    container_name: arc-api-worker
+    restart: unless-stopped
+    command: ["pnpm", "start:worker:prod"]
+    depends_on:
+      - postgres
+      - redis
+      - minio
+      - otel-collector
+    env_file:
+      - ../api/.env.docker
+    environment:
+      OTEL_SERVICE_NAME: arc-api-worker
+
   postgres:
     image: postgres:16-alpine
-    container_name: api-postgres
+    container_name: arc-postgres
     restart: unless-stopped
     environment:
       POSTGRES_DB: app
@@ -19,7 +54,7 @@ services:
 
   minio:
     image: minio/minio:latest
-    container_name: api-minio
+    container_name: arc-minio
     restart: unless-stopped
     environment:
       MINIO_ROOT_USER: minioadmin
@@ -38,7 +73,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: api-redis
+    container_name: arc-redis
     restart: unless-stopped
     ports:
       - "6379:6379"
@@ -50,7 +85,93 @@ services:
       timeout: 5s
       retries: 5
 
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.126.0
+    container_name: arc-otel-collector
+    restart: unless-stopped
+    command: ["--config=/etc/otelcol-contrib/config.yaml"]
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+    volumes:
+      - ./otel-collector/config.yaml:/etc/otelcol-contrib/config.yaml:ro
+    depends_on:
+      - tempo
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  prometheus:
+    image: prom/prometheus:v3.4.2
+    container_name: arc-prometheus
+    restart: unless-stopped
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  tempo:
+    image: grafana/tempo:2.8.1
+    container_name: arc-tempo
+    restart: unless-stopped
+    command: ["-config.file=/etc/tempo/tempo.yaml"]
+    ports:
+      - "3200:3200"
+    volumes:
+      - ./tempo/tempo.yaml:/etc/tempo/tempo.yaml:ro
+      - tempo_data:/var/tempo
+
+  grafana:
+    image: grafana/grafana:12.1.1
+    container_name: arc-grafana
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - loki
+      - prometheus
+      - tempo
+
+  loki:
+    image: grafana/loki:3.1.1
+    container_name: arc-loki
+    restart: unless-stopped
+    command: ["-config.file=/etc/loki/config.yaml"]
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./loki/config.yaml:/etc/loki/config.yaml:ro
+      - loki_data:/loki
+
+  promtail:
+    image: grafana/promtail:3.1.1
+    container_name: arc-promtail
+    restart: unless-stopped
+    command: ["-config.file=/etc/promtail/config.yaml"]
+    volumes:
+      - ./promtail/config.yaml:/etc/promtail/config.yaml:ro
+      - ../api/logs:/var/log/arc-api
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - loki
+
 volumes:
   postgres_data:
   minio_data:
   redis_data:
+  loki_data:
+  prometheus_data:
+  tempo_data:
+  grafana_data:

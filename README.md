@@ -12,7 +12,7 @@ Top-level structure:
 
 - `api/` - NestJS application source, config, migrations, and scripts
 - `agents/` - agent guidance, architecture notes, testing notes, and repo rules
-- `infra/` - local Docker Compose services for Postgres, Redis, and MinIO
+- `infra/` - local Docker Compose services for core dependencies and the observability stack
 - `docs/` - supporting documentation and migration notes
 - `seed-data/` - TSV seed files used for reference and demo data
 
@@ -57,6 +57,11 @@ Top-level structure:
 - **Dedicated worker process** - the app includes a separate worker entrypoint for BullMQ jobs, outbox processing, and scheduled tasks
 - **Audit logging** - high-value product mutations can be persisted with actor and request metadata for business traceability
 - **Structured logging with correlation IDs** - request and error logs include request and actor context to make API and async flows traceable across the system
+- **Prometheus metrics and runtime instrumentation** - the API exposes `/metrics` and records HTTP, PostgreSQL, Redis, BullMQ, and process-level signals for local monitoring and alert-oriented dashboards
+- **OpenTelemetry tracing pipeline** - the API exports traces through the local OpenTelemetry Collector into Tempo so request and async execution paths can be inspected end to end
+- **Centralized local logs** - host-run and container-run logs can be aggregated through Promtail and Loki, then explored in Grafana alongside metrics and traces
+- **Sentry error tracking** - API and worker runtimes can report captured exceptions to Sentry when `SENTRY_DSN` is configured
+- **Provisioned observability stack** - Prometheus, Loki, Tempo, Grafana, and the OTEL collector are wired into the local Docker stack for reproducible troubleshooting
 - **Optimistic locking** - versioned entities reject stale concurrent writes against the latest persisted state
 - **Health checks** - dedicated health endpoints support local verification and runtime readiness monitoring
 - **Local-first infrastructure** - Docker Compose setup for Postgres, Redis, and MinIO keeps local development reproducible
@@ -97,6 +102,12 @@ This starts:
 - MinIO API on `localhost:9000`
 - MinIO Console on `localhost:9001`
 - Redis on `localhost:6379`
+- OpenTelemetry Collector on `localhost:4317` and `localhost:4318`
+- Loki on `http://localhost:3100`
+- Promtail on `http://localhost:9080`
+- Prometheus on `http://localhost:9090`
+- Tempo on `http://localhost:3200`
+- Grafana on `http://localhost:3001` (`admin` / `admin`)
 
 ### 2. Install dependencies
 
@@ -114,22 +125,73 @@ cp api/.env.example api/.env
 
 Update values as needed for your local environment.
 
-### 4. Run the API
+### 4. Run the default local dev path
+
+For the fastest edit/debug loop with the observability stack still available:
 
 ```bash
-just api-up
+just api-up-observability
+just api-worker-up-observability
+```
+
+These commands keep the API and worker on the host, mirror structured JSON logs into
+`api/logs/*.log` for Promtail/Loki, and preserve stdout in your terminal.
+
+### 5. Run the fully containerized stack instead
+
+If you want container-runtime parity rather than host-run processes:
+
+```bash
+just stack-up
 ```
 
 API docs are available after startup:
 
 - Scalar UI: `http://localhost:3000/docs`
 - OpenAPI JSON: `http://localhost:3000/docs/openapi.json`
+- Prometheus metrics: `http://localhost:3000/metrics`
+- Bull Board: `http://localhost:3000/ops/queues`
+- Readiness probe: `http://localhost:3000/health/ready`
+- Grafana Explore logs: `http://localhost:3001/explore`
 
-Optional: run the background worker in a separate terminal.
+Tracing and error monitoring can also be enabled:
+
+- OpenTelemetry tracing loads from `api/instrumentation.mjs`
+- Local OTLP traces can be sent to `http://127.0.0.1:4318/v1/traces`
+- Set `SENTRY_DSN` to enable Sentry error tracking
+- Optional local trace debugging: set `OTEL_TRACES_CONSOLE_EXPORTER=true`
+
+The local observability stack is prewired as follows:
+
+- Prometheus scrapes the API from `/metrics` for both container-run and host-run paths
+- The API exports traces to the local OpenTelemetry Collector over OTLP/HTTP
+- The collector forwards traces to Tempo
+- The API and worker emit JSON logs to stdout through `nestjs-pino`
+- Promtail scrapes Docker logs for `arc-api` and `arc-api-worker`
+- Promtail also scrapes host-run log files from `api/logs/*.log`
+- Loki stores those logs for Grafana Explore and dashboard use
+- Grafana is provisioned with Prometheus and Tempo data sources and an `ARC API Overview` dashboard
+- The containerized stack runs built `dist` entrypoints, so code changes require `just stack-up` again to rebuild images
+- `just infra-up` starts infra plus observability without binding port `3000`
+- Container env for `api` and `worker` is centralized in `api/.env.docker`, with only small Compose overrides where the services differ
+
+Host-run commands remain available if you do not want log mirroring:
 
 ```bash
+just api-up
 just api-worker-up
 ```
+
+For local SQL debugging, you can enable structured query logs in `api/.env`:
+
+```bash
+DB_LOG_QUERIES=true
+DB_SLOW_QUERY_THRESHOLD_MS=250
+```
+
+`DB_LOG_QUERIES=true` logs all SQL queries. `DB_SLOW_QUERY_THRESHOLD_MS` logs only slow
+queries when full query logging is disabled. Query logs include `requestId` and `traceId`
+when available so they can be correlated with request logs and traces.
 
 ## Useful Commands
 
@@ -145,6 +207,8 @@ cd api && pnpm test
 
 - [`docs/checkout-transactional-outbox.md`](docs/checkout-transactional-outbox.md)
 - [`docs/layered-error-model.md`](docs/layered-error-model.md)
+- [`docs/local-dev-runtime-modes.md`](docs/local-dev-runtime-modes.md)
+- [`docs/observability-queries.md`](docs/observability-queries.md)
 - [`docs/outbox-pattern.md`](docs/outbox-pattern.md)
 - [`docs/seeding.md`](docs/seeding.md)
 - [`docs/structured-storage-keys.md`](docs/structured-storage-keys.md)

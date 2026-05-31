@@ -14,6 +14,12 @@ infra-fresh:
   docker compose -f {{ compose_file }} down -v
   docker compose -f {{ compose_file }} up -d
 
+stack-up:
+  docker compose -f {{ compose_file }} --profile app up -d --build
+
+stack-down:
+  docker compose -f {{ compose_file }} down
+
 
 
 # --------- API app
@@ -30,6 +36,16 @@ api-up:
   set +a && \
   pnpm start:dev
 
+api-up-observability:
+  cd {{ api_dir }} && \
+  mkdir -p logs && \
+  if [ ! -f ".env" ] && [ -f ".env.example" ]; then cp ".env.example" ".env"; fi && \
+  test -f ".env" && \
+  set -a && \
+  . ".env" && \
+  set +a && \
+  LOG_PRETTY=false pnpm start:dev 2>&1 | tee logs/api.log
+
 api-up-infisical project_id *env_name:
   cd {{ api_dir }} && \
   test -n "$INFISICAL_TOKEN" && \
@@ -44,6 +60,16 @@ api-worker-up:
   . ".env" && \
   set +a && \
   pnpm start:worker:dev
+
+api-worker-up-observability:
+  cd {{ api_dir }} && \
+  mkdir -p logs && \
+  if [ ! -f ".env" ] && [ -f ".env.example" ]; then cp ".env.example" ".env"; fi && \
+  test -f ".env" && \
+  set -a && \
+  . ".env" && \
+  set +a && \
+  LOG_PRETTY=false pnpm start:worker:dev 2>&1 | tee logs/worker.log
 
 api-worker-up-infisical project_id *env_name:
   cd {{ api_dir }} && \

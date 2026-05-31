@@ -15,11 +15,15 @@ package-lock.json
 
 # Environment files
 .env
+.env.docker
 .env.local
 .env.*.local
 **/.env
+**/.env.docker
 **/.env.local
 **/.env.*.local
+!**/.env.example
+!**/.env.docker.example
 cloudflare/fx-sync-cron/.dev.vars
 cloudflare/fx-sync-cron/.wrangler/
 
