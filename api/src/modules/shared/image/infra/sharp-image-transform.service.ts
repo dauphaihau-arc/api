@@ -22,6 +22,7 @@ export class SharpImageTransformService implements ImageTransformService {
       width: spec.width,
       height: spec.height,
       fit: spec.fit,
+      background: spec.background,
     });
 
     switch (spec.format) {

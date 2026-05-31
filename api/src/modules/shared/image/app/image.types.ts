@@ -14,5 +14,6 @@ export interface ImageTransformSpec {
   fit: ImageResizeFit;
   format: ImageOutputFormat;
   quality?: number;
+  background?: string;
   removeBackground?: boolean;
 }

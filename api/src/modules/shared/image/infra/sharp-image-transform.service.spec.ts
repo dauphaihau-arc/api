@@ -97,4 +97,23 @@ describe('SharpImageTransformService', () => {
     expect(topLeftAlpha).toBe(0);
     expect(centerAlpha).toBe(255);
   });
+
+  it('applies the configured contain background instead of defaulting to black padding', async () => {
+    const source = await createSourceImage();
+
+    const output = await service.transform(source, {
+      width: 120,
+      height: 150,
+      fit: 'contain',
+      format: 'png',
+      background: '#ffffffff',
+    });
+
+    const { data: pixelBuffer } = await sharp(output)
+      .ensureAlpha()
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+
+    expect(Array.from(pixelBuffer.slice(0, 4))).toEqual([255, 255, 255, 255]);
+  });
 });

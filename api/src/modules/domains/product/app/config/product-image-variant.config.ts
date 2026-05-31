@@ -6,6 +6,7 @@ export type ProductImageVariantSpec = {
   fit: 'cover' | 'contain';
   format: 'webp' | 'jpg' | 'png' | 'avif';
   quality: number;
+  background?: string;
   removeBackground?: boolean;
 };
 
@@ -34,6 +35,7 @@ export const PRODUCT_IMAGE_VARIANT_SPECS: Partial<
     fit: 'contain',
     format: 'webp',
     quality: 86,
+    background: '#ffffffff',
     removeBackground: true,
   },
 };
