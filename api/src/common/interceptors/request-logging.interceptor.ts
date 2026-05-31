@@ -14,6 +14,20 @@ import { getActiveTraceContext } from '~/modules/shared/observability/tracing';
 import type { StructuredLogRecord } from '../logging/structured-log.types';
 import { buildStructuredLog } from '../utils/structured-log';
 
+function isSseRequest(request: Request): boolean {
+  const acceptHeader = request.headers.accept
+
+  if (typeof acceptHeader === 'string' && acceptHeader.includes('text/event-stream')) {
+    return true
+  }
+
+  if (Array.isArray(acceptHeader) && acceptHeader.some(value => value.includes('text/event-stream'))) {
+    return true
+  }
+
+  return request.path.endsWith('/events')
+}
+
 @Injectable()
 export class RequestLoggingInterceptor implements NestInterceptor {
   constructor(
@@ -29,6 +43,10 @@ export class RequestLoggingInterceptor implements NestInterceptor {
     const startedAt = Date.now();
 
     if (!request || !response) {
+      return next.handle();
+    }
+
+    if (isSseRequest(request)) {
       return next.handle();
     }
 

@@ -37,7 +37,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     const requestContext = this.requestContextService.get();
     const traceContext = getActiveTraceContext();
 
-    if (requestContext.requestId) {
+    if (requestContext.requestId && !response.headersSent) {
       response.setHeader('X-Request-Id', requestContext.requestId);
     }
 
@@ -100,6 +100,14 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         },
         `${request.method.toUpperCase()} ${request.url} ${statusCode} ${exception instanceof Error ? exception.name : 'UnknownError'}`
       );
+    }
+
+    if (response.headersSent || response.writableEnded) {
+      if (!response.writableEnded) {
+        response.end();
+      }
+
+      return;
     }
 
     response.status(statusCode).json(responseBody);

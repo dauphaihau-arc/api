@@ -20,7 +20,25 @@ export class SsePublisher {
       const stream = new Subject<MessageEvent>();
       this.addStream(channelKey, stream);
 
-      subscriber.next({
+      const emit = (event: MessageEvent): boolean => {
+        if (subscriber.closed) {
+          return false;
+        }
+
+        try {
+          subscriber.next(event);
+          return true;
+        }
+        catch {
+          if (!subscriber.closed) {
+            subscriber.complete();
+          }
+
+          return false;
+        }
+      };
+
+      emit({
         type: 'connected',
         data: {
           connected: true,
@@ -29,14 +47,32 @@ export class SsePublisher {
         retry: RETRY_INTERVAL_MS,
       });
 
-      const streamSubscription = stream.subscribe(subscriber);
+      const streamSubscription = stream.subscribe({
+        next: (event) => {
+          emit(event);
+        },
+        error: () => {
+          if (!subscriber.closed) {
+            subscriber.complete();
+          }
+        },
+        complete: () => {
+          if (!subscriber.closed) {
+            subscriber.complete();
+          }
+        },
+      });
       const heartbeatSubscription = interval(HEARTBEAT_INTERVAL_MS).subscribe(() => {
-        subscriber.next({
+        const emitted = emit({
           type: 'heartbeat',
           data: {
             at: new Date().toISOString(),
           },
         });
+
+        if (!emitted) {
+          heartbeatSubscription.unsubscribe();
+        }
       });
 
       return () => {
