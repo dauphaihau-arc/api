@@ -19,6 +19,7 @@ import { ProductInventoryEntity } from '../../src/modules/domains/product/infra/
 import { ProductShippingDestinationEntity } from '../../src/modules/domains/product/infra/persistence/entities/product-shipping-destination.entity';
 import { ProductShippingProfileEntity } from '../../src/modules/domains/product/infra/persistence/entities/product-shipping-profile.entity';
 import { VariantPriceEntity } from '../../src/modules/domains/product/infra/persistence/entities/variant-price.entity';
+import { VARIANT_PRICE_TYPES } from '../../src/modules/domains/product/infra/persistence/entities/variant-price.entity';
 import { ProductVariantEntity } from '../../src/modules/domains/product/infra/persistence/entities/product-variant.entity';
 import { ProductEntity } from '../../src/modules/domains/product/infra/persistence/entities/product.entity';
 import type { ShopEntity } from '../../src/modules/domains/shop/infra/persistence/entities/shop.entity';
@@ -71,6 +72,19 @@ const CURRENCY_DECIMALS: Record<MarketplaceCurrency, number> = {
 function toMinorUnits(amount: number, currency: MarketplaceCurrency): number {
   const decimals = CURRENCY_DECIMALS[currency];
   return Math.round(amount * 10 ** decimals);
+}
+
+function buildVariantKey(
+  variantType: ProductVariantType,
+  inventorySeed: ProductSeed['inventory'][number]
+): string | undefined {
+  if (variantType === ProductVariantType.NONE) {
+    return undefined;
+  }
+
+  return variantType === ProductVariantType.COMBINE
+    ? `${inventorySeed.optionValue1 ?? ''}::${inventorySeed.optionValue2 ?? ''}`
+    : `${inventorySeed.optionValue1 ?? ''}`;
 }
 
 async function findCategoryByPath(em: EntityManager, path: string[]): Promise<CategoryEntity> {
@@ -175,38 +189,42 @@ async function syncProductVariants(
   variantType: ProductVariantType,
   inventorySeeds: ProductSeed['inventory']
 ): Promise<Map<string, ProductVariantEntity>> {
-  for (const variant of await em.find(ProductVariantEntity, { product })) {
-    em.remove(variant);
-  }
-  await em.flush();
-
   const variantsByKey = new Map<string, ProductVariantEntity>();
   if (variantType === ProductVariantType.NONE) {
     return variantsByKey;
   }
 
+  const existingVariants = await em.find(ProductVariantEntity, { product });
+  const existingVariantsByKey = new Map(
+    existingVariants.map((variant) => [
+      variantType === ProductVariantType.COMBINE
+        ? `${variant.optionValue1 ?? ''}::${variant.optionValue2 ?? ''}`
+        : `${variant.optionValue1 ?? ''}`,
+      variant,
+    ])
+  );
+
   const seenKeys = new Set<string>();
   inventorySeeds.forEach((inventorySeed, index) => {
-    const key =
-      variantType === ProductVariantType.COMBINE
-        ? `${inventorySeed.optionValue1 ?? ''}::${inventorySeed.optionValue2 ?? ''}`
-        : `${inventorySeed.optionValue1 ?? ''}`;
+    const key = buildVariantKey(variantType, inventorySeed);
 
-    if (seenKeys.has(key)) {
+    if (!key || seenKeys.has(key)) {
       return;
     }
 
     seenKeys.add(key);
-    const variant = em.create(ProductVariantEntity, {
-      product,
-      name:
-        variantType === ProductVariantType.COMBINE
-          ? `${inventorySeed.optionValue1} / ${inventorySeed.optionValue2}`
-          : (inventorySeed.optionValue1 ?? 'Default'),
-      optionValue1: inventorySeed.optionValue1,
-      optionValue2: inventorySeed.optionValue2,
-      rank: index + 1,
-    });
+    const variantName =
+      variantType === ProductVariantType.COMBINE
+        ? `${inventorySeed.optionValue1} / ${inventorySeed.optionValue2}`
+        : (inventorySeed.optionValue1 ?? 'Default');
+    const variant = existingVariantsByKey.get(key)
+      ?? em.create(ProductVariantEntity, { product, name: variantName, rank: index + 1 });
+
+    variant.product = product;
+    variant.name = variantName;
+    variant.optionValue1 = inventorySeed.optionValue1;
+    variant.optionValue2 = inventorySeed.optionValue2;
+    variant.rank = index + 1;
 
     variantsByKey.set(key, variant);
     em.persist(variant);
@@ -224,30 +242,36 @@ async function syncProductInventory(
   inventorySeeds: ProductSeed['inventory'],
   variantsByKey: Map<string, ProductVariantEntity>
 ): Promise<void> {
-  for (const inventory of await em.find(ProductInventoryEntity, { product })) {
-    em.remove(inventory);
-  }
-  await em.flush();
+  const existingInventories = await em.find(
+    ProductInventoryEntity,
+    { product },
+    { populate: ['prices', 'productVariant'] }
+  );
+  const existingInventoriesBySku = new Map(
+    existingInventories
+      .filter((inventory) => inventory.sku)
+      .map((inventory) => [inventory.sku as string, inventory])
+  );
 
   const createdInventories: Array<{
     inventory: ProductInventoryEntity;
     seed: ProductSeed['inventory'][number];
   }> = [];
   inventorySeeds.forEach((inventorySeed) => {
-    const variantKey =
-      variantType === ProductVariantType.NONE
-        ? undefined
-        : variantType === ProductVariantType.COMBINE
-          ? `${inventorySeed.optionValue1 ?? ''}::${inventorySeed.optionValue2 ?? ''}`
-          : `${inventorySeed.optionValue1 ?? ''}`;
+    const variantKey = buildVariantKey(variantType, inventorySeed);
+    const inventory = existingInventoriesBySku.get(inventorySeed.sku)
+      ?? em.create(ProductInventoryEntity, {
+        shop,
+        product,
+        sku: inventorySeed.sku,
+        stock: inventorySeed.stock,
+      });
 
-    const inventory = em.create(ProductInventoryEntity, {
-      shop,
-      product,
-      productVariant: variantKey ? variantsByKey.get(variantKey) : undefined,
-      sku: inventorySeed.sku,
-      stock: inventorySeed.stock,
-    });
+    inventory.shop = shop;
+    inventory.product = product;
+    inventory.productVariant = variantKey ? variantsByKey.get(variantKey) : undefined;
+    inventory.sku = inventorySeed.sku;
+    inventory.stock = inventorySeed.stock;
 
     createdInventories.push({
       inventory,
@@ -259,17 +283,27 @@ async function syncProductInventory(
   await em.flush();
 
   createdInventories.forEach(({ inventory, seed }) => {
-    em.persist(
-      em.create(VariantPriceEntity, {
+    const activeBasePrice = inventory.prices
+      .getItems()
+      .find((price) => !price.marketCode && !price.activeTo);
+    const price = activeBasePrice
+      ?? em.create(VariantPriceEntity, {
         productInventory: inventory,
+        priceType: VARIANT_PRICE_TYPES.BASE,
         currency: shop.currency,
         amountMinor: toMinorUnits(seed.salePrice ?? seed.price, shop.currency),
-        originalAmountMinor: seed.salePrice !== undefined
-          ? toMinorUnits(seed.price, shop.currency)
-          : undefined,
         activeFrom: new Date(),
-      })
-    );
+      });
+
+    price.productInventory = inventory;
+    price.priceType = VARIANT_PRICE_TYPES.BASE;
+    price.currency = shop.currency;
+    price.amountMinor = toMinorUnits(seed.salePrice ?? seed.price, shop.currency);
+    price.originalAmountMinor = seed.salePrice !== undefined
+      ? toMinorUnits(seed.price, shop.currency)
+      : undefined;
+
+    em.persist(price);
   });
 
   await em.flush();

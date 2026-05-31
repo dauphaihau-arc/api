@@ -34,7 +34,10 @@ import { ProductEntity } from './persistence/entities/product.entity';
 import { ProductShippingDestinationEntity } from './persistence/entities/product-shipping-destination.entity';
 import { ProductShippingProfileEntity } from './persistence/entities/product-shipping-profile.entity';
 import { ProductVariantEntity } from './persistence/entities/product-variant.entity';
-import { VariantPriceEntity } from './persistence/entities/variant-price.entity';
+import {
+  VARIANT_PRICE_TYPES,
+  VariantPriceEntity,
+} from './persistence/entities/variant-price.entity';
 import { ResolvedStorefrontPriceService } from '../app/services/resolved-storefront-price.service';
 import { getInventoryPricingSnapshot } from './variant-price-read';
 
@@ -414,6 +417,7 @@ export class MikroOrmProductRepository implements ProductRepository {
       if (preservedPrice) {
         entityManager.persist(entityManager.create(VariantPriceEntity, {
           productInventory: inventoryEntity,
+          priceType: VARIANT_PRICE_TYPES.BASE,
           activeFrom: new Date(),
           amountMinor: preservedPrice.amountMinor,
           originalAmountMinor: preservedPrice.originalAmountMinor,
@@ -480,6 +484,7 @@ export class MikroOrmProductRepository implements ProductRepository {
 
       const canonicalBasePrice = entityManager.create(VariantPriceEntity, {
         productInventory: inventoryRecord,
+        priceType: VARIANT_PRICE_TYPES.BASE,
         activeFrom: new Date(),
         amountMinor: nextPricing.amountMinor,
         originalAmountMinor: nextPricing.originalAmountMinor,

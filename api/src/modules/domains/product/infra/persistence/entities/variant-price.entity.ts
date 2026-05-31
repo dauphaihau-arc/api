@@ -7,6 +7,14 @@ import {
 import { AbstractBaseEntity } from '~/common/database/abstract-base.entity';
 import { ProductInventoryEntity } from './product-inventory.entity';
 
+export const VARIANT_PRICE_TYPES = {
+  BASE: 'base',
+  MARKET: 'market',
+} as const;
+
+export type VariantPriceType =
+  typeof VARIANT_PRICE_TYPES[keyof typeof VARIANT_PRICE_TYPES];
+
 @Entity({ tableName: 'variant_prices' })
 @Index({ properties: ['productInventory', 'marketCode'] })
 export class VariantPriceEntity extends AbstractBaseEntity {
@@ -15,6 +23,9 @@ export class VariantPriceEntity extends AbstractBaseEntity {
     deleteRule: 'cascade',
   })
   productInventory!: ProductInventoryEntity;
+
+  @Property({ fieldName: 'price_type', length: 20 })
+  priceType: VariantPriceType = VARIANT_PRICE_TYPES.BASE;
 
   @Property({ fieldName: 'market_code', length: 20, nullable: true })
   marketCode?: string;
