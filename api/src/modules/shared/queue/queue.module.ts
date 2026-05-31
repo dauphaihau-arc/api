@@ -1,10 +1,13 @@
 import { forwardRef, Logger, Module } from '@nestjs/common';
+import { Queue } from 'bullmq';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import {
   QueueConfig,
   QUEUE_CONFIG,
   buildQueueConfig
 } from '~/config/queue.config';
+import { ObservabilityModule } from '../observability/observability.module';
+import { ObservabilityService } from '../observability/observability.service';
 import { MailModule } from '../mail/mail.module';
 import { PaymentModule } from '../payment/payment.module';
 import Redis from 'ioredis';
@@ -24,9 +27,10 @@ import { JobDispatcher } from './app/ports/job-dispatcher';
 import { AppJobRunner } from './infra/app-job-runner';
 import { BullMqConnectionManager } from './infra/bullmq-connection-manager';
 import { BullMqJobDispatcher } from './infra/bullmq-job-dispatcher';
+import { BullMqQueueManager } from './infra/bullmq-queue-manager';
 import { InlineJobDispatcher } from './infra/inline-job-dispatcher';
 import { QueueConfigLoggerService } from './infra/queue-config-logger.service';
-import { BULLMQ_CONNECTION } from './infra/queue.constants';
+import { BULLMQ_CONNECTION, BULLMQ_QUEUE } from './infra/queue.constants';
 
 const queueModuleLogger = new Logger('QueueModule');
 
@@ -35,6 +39,7 @@ const queueModuleLogger = new Logger('QueueModule');
     ConfigModule,
     MailModule,
     MarketModule,
+    ObservabilityModule,
     PaymentModule,
     forwardRef(() => NotificationModule),
     forwardRef(() => ProductModule),
@@ -49,8 +54,11 @@ const queueModuleLogger = new Logger('QueueModule');
     },
     {
       provide: BULLMQ_CONNECTION,
-      inject: [QUEUE_CONFIG],
-      useFactory: async (queueConfig: QueueConfig) => {
+      inject: [QUEUE_CONFIG, ObservabilityService],
+      useFactory: async (
+        queueConfig: QueueConfig,
+        observabilityService: ObservabilityService
+      ) => {
         if (queueConfig.driver !== 'redis') {
           queueModuleLogger.log(
             `Skipping BullMQ Redis bootstrap because queue driver is ${queueConfig.driver}`
@@ -85,10 +93,38 @@ const queueModuleLogger = new Logger('QueueModule');
           throw error;
         }
 
+        connection.on('error', () => {
+          observabilityService.recordRedisConnectionError('bullmq');
+        });
+
         return connection;
       },
     },
+    {
+      provide: BULLMQ_QUEUE,
+      inject: [QUEUE_CONFIG, BULLMQ_CONNECTION, ObservabilityService],
+      useFactory: (
+        queueConfig: QueueConfig,
+        connection: Redis | null,
+        observabilityService: ObservabilityService
+      ) => {
+        if (queueConfig.driver !== 'redis' || !connection) {
+          observabilityService.attachBullMqQueue(null);
+          return null;
+        }
+
+        const queue = new Queue(queueConfig.queueName, {
+          connection,
+          prefix: queueConfig.prefix,
+        });
+
+        observabilityService.attachBullMqQueue(queue);
+
+        return queue;
+      },
+    },
     BullMqConnectionManager,
+    BullMqQueueManager,
     QueueConfigLoggerService,
     AppJobRunner,
     RefreshExchangeRatesJob,
@@ -121,6 +157,12 @@ const queueModuleLogger = new Logger('QueueModule');
       },
     },
   ],
-  exports: [QUEUE_CONFIG, BULLMQ_CONNECTION, JobDispatcher, AppJobRunner],
+  exports: [
+    QUEUE_CONFIG,
+    BULLMQ_CONNECTION,
+    BULLMQ_QUEUE,
+    JobDispatcher,
+    AppJobRunner,
+  ],
 })
 export class QueueModule {}

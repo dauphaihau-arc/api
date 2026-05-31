@@ -22,6 +22,18 @@ class HealthComponentsResponseDto {
     type: () => HealthComponentResponseDto,
   })
   storage!: HealthComponentResponseDto;
+
+  @ApiProperty({
+    type: () => HealthComponentResponseDto,
+    required: false,
+  })
+  redis?: HealthComponentResponseDto;
+
+  @ApiProperty({
+    type: () => HealthComponentResponseDto,
+    required: false,
+  })
+  queue?: HealthComponentResponseDto;
 }
 
 export class HealthCheckResponseDto {

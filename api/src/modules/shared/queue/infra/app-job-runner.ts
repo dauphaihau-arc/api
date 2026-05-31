@@ -1,4 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
+import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
+import { captureException } from '~/common/sentry/sentry';
+import { getAppTracer, setSpanError } from '../../observability/tracing';
 import {
   appJobName,
   AppJobName,
@@ -17,9 +20,11 @@ import { SendWelcomeEmailJob } from '~/common/jobs/send-welcome-email.job';
 
 @Injectable()
 export class AppJobRunner {
-  private readonly logger = new Logger(AppJobRunner.name);
+  private readonly tracer = getAppTracer();
 
   constructor(
+    @InjectPinoLogger(AppJobRunner.name)
+    private readonly logger: PinoLogger,
     private readonly refreshExchangeRatesJob: RefreshExchangeRatesJob,
     private readonly sendWelcomeEmailJob: SendWelcomeEmailJob,
     private readonly sendPasswordResetEmailJob: SendPasswordResetEmailJob,
@@ -36,60 +41,93 @@ export class AppJobRunner {
     name: TName,
     payload: AppJobPayloadMap[TName]
   ): Promise<void> {
-    this.logger.log(`Running job ${name}`);
-    this.logger.debug(`Job payload for ${name}: ${JSON.stringify(payload)}`);
+    return this.tracer.startActiveSpan(`queue.job ${name}`, {
+      attributes: {
+        'app.job.name': name,
+      },
+    }, async (span) => {
+      this.logger.info({
+        context: AppJobRunner.name,
+        event: 'queue.job.started',
+        jobName: name,
+        payload,
+      }, 'Running job');
 
-    switch (name) {
-      case appJobName.refreshExchangeRates:
-        await this.refreshExchangeRatesJob.run();
-        return;
-      case appJobName.sendWelcomeEmail:
-        await this.sendWelcomeEmailJob.run(
-          payload as AppJobPayloadMap[typeof appJobName.sendWelcomeEmail]
-        );
-        return;
-      case appJobName.sendPasswordResetEmail:
-        await this.sendPasswordResetEmailJob.run(
-          payload as AppJobPayloadMap[typeof appJobName.sendPasswordResetEmail]
-        );
-        return;
-      case appJobName.sendGuestOrderConfirmationEmail:
-        await this.sendGuestOrderConfirmationEmailJob.run(
-          payload as AppJobPayloadMap[typeof appJobName.sendGuestOrderConfirmationEmail]
-        );
-        return;
-      case appJobName.processOrderRefund:
-        await this.processOrderRefundJob.run(
-          payload as AppJobPayloadMap[typeof appJobName.processOrderRefund]
-        );
-        return;
-      case appJobName.sendRefundSucceededEmail:
-        await this.sendRefundSucceededEmailJob.run(
-          payload as AppJobPayloadMap[typeof appJobName.sendRefundSucceededEmail]
-        );
-        return;
-      case appJobName.sendRefundFailedEmail:
-        await this.sendRefundFailedEmailJob.run(
-          payload as AppJobPayloadMap[typeof appJobName.sendRefundFailedEmail]
-        );
-        return;
-      case appJobName.sendSellerOrderUpdateEmail:
-        await this.sendSellerOrderUpdateEmailJob.run(
-          payload as AppJobPayloadMap[typeof appJobName.sendSellerOrderUpdateEmail]
-        );
-        return;
-      case appJobName.sendWebPushNotification:
-        await this.sendWebPushNotificationJob.run(
-          payload as AppJobPayloadMap[typeof appJobName.sendWebPushNotification]
-        );
-        return;
-      case appJobName.generateProductImageVariants:
-        await this.generateProductImageVariantsJob.run(
-          payload as AppJobPayloadMap[typeof appJobName.generateProductImageVariants]
-        );
-        return;
-    }
+      try {
+        switch (name) {
+          case appJobName.refreshExchangeRates:
+            await this.refreshExchangeRatesJob.run();
+            return;
+          case appJobName.sendWelcomeEmail:
+            await this.sendWelcomeEmailJob.run(
+              payload as AppJobPayloadMap[typeof appJobName.sendWelcomeEmail]
+            );
+            return;
+          case appJobName.sendPasswordResetEmail:
+            await this.sendPasswordResetEmailJob.run(
+              payload as AppJobPayloadMap[typeof appJobName.sendPasswordResetEmail]
+            );
+            return;
+          case appJobName.sendGuestOrderConfirmationEmail:
+            await this.sendGuestOrderConfirmationEmailJob.run(
+              payload as AppJobPayloadMap[typeof appJobName.sendGuestOrderConfirmationEmail]
+            );
+            return;
+          case appJobName.processOrderRefund:
+            await this.processOrderRefundJob.run(
+              payload as AppJobPayloadMap[typeof appJobName.processOrderRefund]
+            );
+            return;
+          case appJobName.sendRefundSucceededEmail:
+            await this.sendRefundSucceededEmailJob.run(
+              payload as AppJobPayloadMap[typeof appJobName.sendRefundSucceededEmail]
+            );
+            return;
+          case appJobName.sendRefundFailedEmail:
+            await this.sendRefundFailedEmailJob.run(
+              payload as AppJobPayloadMap[typeof appJobName.sendRefundFailedEmail]
+            );
+            return;
+          case appJobName.sendSellerOrderUpdateEmail:
+            await this.sendSellerOrderUpdateEmailJob.run(
+              payload as AppJobPayloadMap[typeof appJobName.sendSellerOrderUpdateEmail]
+            );
+            return;
+          case appJobName.sendWebPushNotification:
+            await this.sendWebPushNotificationJob.run(
+              payload as AppJobPayloadMap[typeof appJobName.sendWebPushNotification]
+            );
+            return;
+          case appJobName.generateProductImageVariants:
+            await this.generateProductImageVariantsJob.run(
+              payload as AppJobPayloadMap[typeof appJobName.generateProductImageVariants]
+            );
+            return;
+        }
 
-    throw new Error(`Unsupported job name: ${String(name)}`);
+        throw new Error(`Unsupported job name: ${String(name)}`);
+      }
+      catch (error) {
+        setSpanError(span, error);
+        this.logger.error({
+          context: AppJobRunner.name,
+          err: error instanceof Error ? error : undefined,
+          event: 'queue.job.failed',
+          jobName: String(name),
+          payload,
+        }, 'Queue job failed');
+        captureException(error, (scope) => {
+          scope.setTag('runtime', 'worker');
+          scope.setTag('job.name', String(name));
+          scope.setContext('job', {
+            name: String(name),
+          });
+        });
+        throw error;
+      }
+      finally {
+        span.end();
+      }
+    });
   }
 }

@@ -14,16 +14,14 @@ describe('buildStructuredLog', () => {
           userAgent: undefined,
         },
       })
-    ).toBe(
-      JSON.stringify({
-        event: 'http.request.completed',
-        requestId: 'req-123',
-        http: {
-          method: 'POST',
-          statusCode: 201,
-          path: '/v1/orders',
-        },
-      })
-    );
+    ).toEqual({
+      event: 'http.request.completed',
+      requestId: 'req-123',
+      http: {
+        method: 'POST',
+        statusCode: 201,
+        path: '/v1/orders',
+      },
+    });
   });
 });

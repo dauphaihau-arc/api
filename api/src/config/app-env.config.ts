@@ -10,6 +10,8 @@ const positiveIntegerString = z
 
 const appEnvBaseSchema = z.object({
   PORT: positiveIntegerString.default('3000'),
+  LOG_LEVEL: z.string().trim().min(1).default('info'),
+  LOG_PRETTY: z.enum(['true', 'false']).default('false'),
   NODE_ENV: z
     .enum(['development', 'test', 'production'])
     .default('development'),
@@ -30,6 +32,8 @@ const appEnvBaseSchema = z.object({
   DB_USER: z.string().trim().min(1).optional(),
   DB_PASSWORD: z.string().trim().min(1).optional(),
   DB_NAME: z.string().trim().min(1).optional(),
+  DB_LOG_QUERIES: z.enum(['true', 'false']).default('false'),
+  DB_SLOW_QUERY_THRESHOLD_MS: positiveIntegerString.default('250'),
   REDIS_URL: z.url().default('redis://127.0.0.1:6379'),
   CACHE_DRIVER: z.enum(['memory', 'redis']).optional(),
   CACHE_TTL: z.string().trim().min(1).default('60s'),
@@ -42,6 +46,24 @@ const appEnvBaseSchema = z.object({
   QUEUE_REMOVE_COMPLETED_AFTER: z.string().trim().min(1).default('1d'),
   QUEUE_REMOVE_FAILED_AFTER: z.string().trim().min(1).default('7d'),
   QUEUE_WORKER_CONCURRENCY: positiveIntegerString.default('10'),
+  BULL_BOARD_ENABLED: z.enum(['true', 'false']).default('true'),
+  BULL_BOARD_PATH: z.string().trim().min(1).default('/ops/queues'),
+  BULL_BOARD_USERNAME: z.string().trim().min(1).optional(),
+  BULL_BOARD_PASSWORD: z.string().trim().min(1).optional(),
+  OTEL_ENABLED: z.enum(['true', 'false']).default('true'),
+  OTEL_SERVICE_NAME: z.string().trim().min(1).default('arc-api'),
+  OTEL_TRACES_CONSOLE_EXPORTER: z.enum(['true', 'false']).default('false'),
+  OTEL_EXPORTER_OTLP_ENDPOINT: z.string().trim().optional(),
+  OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: z.string().trim().optional(),
+  SENTRY_ENABLED: z.enum(['true', 'false']).default('true'),
+  SENTRY_DSN: z.string().trim().optional(),
+  SENTRY_ENVIRONMENT: z.string().trim().min(1).optional(),
+  SENTRY_RELEASE: z.string().trim().min(1).optional(),
+  SENTRY_TRACES_SAMPLE_RATE: z
+    .string()
+    .trim()
+    .regex(/^(0(\.\d+)?|1(\.0+)?)$/, 'Expected a number between 0 and 1.')
+    .optional(),
   JWT_ACCESS_SECRET: z.string().trim().min(1),
   JWT_REFRESH_SECRET: z.string().trim().min(1),
   JWT_ACCESS_TTL: z.string().trim().min(1),
@@ -193,6 +215,26 @@ const appEnvSchema = appEnvBaseSchema.superRefine((env, context) => {
       path: ['AUTH_COOKIE_SECURE'],
       message:
         'Expected AUTH_COOKIE_SECURE=true when AUTH_COOKIE_SAME_SITE is none.',
+    });
+  }
+
+  if (
+    (env.BULL_BOARD_USERNAME && !env.BULL_BOARD_PASSWORD)
+    || (!env.BULL_BOARD_USERNAME && env.BULL_BOARD_PASSWORD)
+  ) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['BULL_BOARD_PASSWORD'],
+      message:
+        'Expected both BULL_BOARD_USERNAME and BULL_BOARD_PASSWORD when Bull Board auth is configured.',
+    });
+  }
+
+  if (env.SENTRY_TRACES_SAMPLE_RATE && !env.SENTRY_DSN) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['SENTRY_DSN'],
+      message: 'Expected SENTRY_DSN when SENTRY_TRACES_SAMPLE_RATE is set.',
     });
   }
 });

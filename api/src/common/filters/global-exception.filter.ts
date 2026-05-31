@@ -3,19 +3,20 @@ import {
   Catch,
   ExceptionFilter,
   HttpException,
-  HttpStatus,
-  Logger
+  HttpStatus
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
+import { PinoLogger } from 'nestjs-pino';
+import { captureException } from '../sentry/sentry';
 import { RequestContextService } from '~/modules/shared/request-context/request-context.service';
+import { getActiveTraceContext } from '~/modules/shared/observability/tracing';
 import { buildStructuredLog } from '../utils/structured-log';
 
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
-  private readonly logger = new Logger(GlobalExceptionFilter.name);
-
   constructor(
-    private readonly requestContextService: RequestContextService
+    private readonly requestContextService: RequestContextService,
+    private readonly logger: PinoLogger
   ) {}
 
   catch(exception: unknown, host: ArgumentsHost) {
@@ -34,39 +35,70 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 
     const responseBody = buildErrorResponse(exception, statusCode, request.url);
     const requestContext = this.requestContextService.get();
+    const traceContext = getActiveTraceContext();
 
     if (requestContext.requestId) {
       response.setHeader('X-Request-Id', requestContext.requestId);
     }
 
     if (statusCode >= 500) {
-      this.logger.error(
-        buildStructuredLog({
-          event: 'http.request.exception',
+      captureException(exception, (scope) => {
+        scope.setTag('runtime', 'api');
+        scope.setTag('request_id', requestContext.requestId ?? 'unknown');
+        scope.setTag('http.method', request.method);
+        scope.setTag('http.path', request.url);
+        scope.setTag('http.status_code', String(statusCode));
+
+        if (requestContext.actorId) {
+          scope.setUser({
+            id: requestContext.actorId,
+            email: requestContext.actorEmail,
+          });
+        }
+
+        scope.setContext('request', {
+          method: request.method,
+          path: request.url,
+          statusCode,
           requestId: requestContext.requestId,
-          actorId: requestContext.actorId,
-          actorEmail: requestContext.actorEmail,
-          sessionId: requestContext.sessionId,
-          market: {
-            marketCode: requestContext.marketCode,
-            currency: requestContext.currency,
-            locale: requestContext.locale,
-            channel: requestContext.channel,
-          },
-          errorName: exception instanceof Error ? exception.name : 'UnknownError',
-          errorMessage:
-            exception instanceof Error
-              ? exception.message
-              : 'Unknown error',
-          http: {
-            method: request.method,
-            path: request.url,
-            statusCode,
-            ipAddress: requestContext.ipAddress,
-            userAgent: requestContext.userAgent,
-          },
-        }),
-        exception instanceof Error ? exception.stack : undefined
+          traceId: traceContext?.traceId,
+          spanId: traceContext?.spanId,
+        });
+      });
+
+      this.logger.error(
+        {
+          ...buildStructuredLog({
+            context: GlobalExceptionFilter.name,
+            event: 'http.request.exception',
+            requestId: requestContext.requestId,
+            actorId: requestContext.actorId,
+            actorEmail: requestContext.actorEmail,
+            sessionId: requestContext.sessionId,
+            market: {
+              marketCode: requestContext.marketCode,
+              currency: requestContext.currency,
+              locale: requestContext.locale,
+              channel: requestContext.channel,
+            },
+            errorName: exception instanceof Error ? exception.name : 'UnknownError',
+            errorMessage:
+              exception instanceof Error
+                ? exception.message
+                : 'Unknown error',
+            traceId: traceContext?.traceId,
+            spanId: traceContext?.spanId,
+            http: {
+              method: request.method,
+              path: request.url,
+              statusCode,
+              ipAddress: requestContext.ipAddress,
+              userAgent: requestContext.userAgent,
+            },
+          }),
+          err: exception instanceof Error ? exception : undefined,
+        },
+        `${request.method.toUpperCase()} ${request.url} ${statusCode} ${exception instanceof Error ? exception.name : 'UnknownError'}`
       );
     }
 

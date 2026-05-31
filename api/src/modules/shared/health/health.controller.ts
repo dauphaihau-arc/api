@@ -45,4 +45,28 @@ export class HealthController {
 
     return result;
   }
+
+  @Get('ready')
+  @Header('Cache-Control', 'no-store')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Check service readiness',
+    description: 'Runs database, storage, Redis, and queue readiness checks.',
+  })
+  @ApiOkResponse({
+    type: HealthCheckResponseDto,
+  })
+  @ApiServiceUnavailableResponse({
+    description: 'One or more readiness checks failed.',
+    type: HealthCheckResponseDto,
+  })
+  async getReadiness() {
+    const result = await this.healthService.checkReadiness();
+
+    if (result.status === 'error') {
+      throw new ServiceUnavailableException(result);
+    }
+
+    return result;
+  }
 }

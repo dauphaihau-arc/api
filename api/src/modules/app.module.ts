@@ -4,10 +4,12 @@ import { ConfigModule } from '@nestjs/config';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { GraphQLModule } from '@nestjs/graphql';
 import { MikroOrmModule } from '@mikro-orm/nestjs';
+import { LoggerModule } from 'nestjs-pino';
 import { RequestContextModule } from './shared/request-context/request-context.module';
 import { InvalidateUserCacheOnUserCreatedListener } from '../common/listeners/invalidate-user-cache-on-user-created.listener';
 import { InvalidateUserCacheOnUserUpdatedListener } from '../common/listeners/invalidate-user-cache-on-user-updated.listener';
 import { SendWelcomeEmailOnUserCreatedListener } from '../common/listeners/send-welcome-email-on-user-created.listener';
+import { buildPinoLoggerParams } from '../common/logging/pino-logger.config';
 import { validateAppEnv } from '../config/app-env.config';
 import { buildDatabaseConfig } from '../config/database.config';
 import { AuthModule } from './domains/auth/auth.module';
@@ -22,6 +24,7 @@ import { CacheModule } from './shared/cache/cache.module';
 import { HealthModule } from './shared/health/health.module';
 import { MailModule } from './shared/mail/mail.module';
 import { NotificationModule } from './shared/notification/notification.module';
+import { ObservabilityModule } from './shared/observability/observability.module';
 import { MarketModule } from './shared/market/market.module';
 import { QueueModule } from './shared/queue/queue.module';
 import { RateLimitModule } from './shared/rate-limit/rate-limit.module';
@@ -35,6 +38,7 @@ import { SseModule } from './shared/sse/sse.module';
       isGlobal: true,
       validate: validateAppEnv,
     }),
+    LoggerModule.forRoot(buildPinoLoggerParams('api')),
 
     // ------ shared
     RequestContextModule,
@@ -55,6 +59,7 @@ import { SseModule } from './shared/sse/sse.module';
     MailModule,
     MarketModule,
     NotificationModule,
+    ObservabilityModule,
     PaymentModule,
     QueueModule,
     RateLimitModule,

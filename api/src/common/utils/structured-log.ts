@@ -1,18 +1,12 @@
-export type StructuredLogValue =
-  | string
-  | number
-  | boolean
-  | null
-  | undefined
-  | StructuredLogRecord
-  | StructuredLogValue[];
+import type {
+  StructuredLogRecord,
+  StructuredLogValue
+} from '../logging/structured-log.types';
 
-export interface StructuredLogRecord {
-  [key: string]: StructuredLogValue;
-}
-
-export function buildStructuredLog(payload: StructuredLogRecord): string {
-  return JSON.stringify(pruneUndefined(payload));
+export function buildStructuredLog(
+  payload: StructuredLogRecord
+): StructuredLogRecord {
+  return pruneUndefined(payload) as StructuredLogRecord;
 }
 
 function pruneUndefined(value: StructuredLogValue): StructuredLogValue {
