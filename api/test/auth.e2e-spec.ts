@@ -7,6 +7,7 @@ import { Test } from '@nestjs/testing';
 import type { INestApplication } from '@nestjs/common';
 import { ClassSerializerInterceptor, ValidationPipe } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { PinoLogger } from 'nestjs-pino';
 import request from 'supertest';
 import type { App } from 'supertest/types';
 import { GlobalExceptionFilter } from '../src/common/filters/global-exception.filter';
@@ -14,6 +15,8 @@ import { RequestLoggingInterceptor } from '../src/common/interceptors/request-lo
 import { parseCorsAllowedOrigins } from '../src/config/cors.config';
 import type { AuthUserResponse, UserProfile } from '../src/modules/domains/auth/app/auth.types';
 import { UserPreferenceEntity } from '../src/modules/domains/auth/infra/persistence/entities/user-preference.entity';
+import { ObservabilityService } from '../src/modules/shared/observability/observability.service';
+import { RequestContextService } from '../src/modules/shared/request-context/request-context.service';
 import { StorageService } from '../src/modules/shared/storage/app/ports/storage.service';
 import { LocalFileStorageService } from '../src/modules/shared/storage/infra/local-file-storage.service';
 import { createTestDatabase, dropTestDatabase } from './e2e-postgres';
@@ -46,9 +49,13 @@ describe('Auth flow (e2e)', () => {
     process.env.JWT_ACCESS_TTL = '15m';
     process.env.JWT_REFRESH_TTL = '7d';
     process.env.BCRYPT_SALT_ROUNDS = '4';
+    process.env.CACHE_DRIVER = 'memory';
+    process.env.RATE_LIMIT_DRIVER = 'memory';
+    process.env.QUEUE_DRIVER = 'inline';
+    process.env.MAIL_DRIVER = 'logger';
     process.env.STORAGE_DRIVER = 'local';
     process.env.STORAGE_LOCAL_ROOT = storageRoot;
-    const { AppModule } = await import('../src/modules/app.module');
+    const { AppModule } = await import('../src/modules/app.module.js');
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
@@ -81,10 +88,21 @@ describe('Auth flow (e2e)', () => {
         forbidNonWhitelisted: true,
       })
     );
-    app.useGlobalFilters(new GlobalExceptionFilter());
+    const exceptionLogger = await app.resolve(PinoLogger);
+    const requestLogger = await app.resolve(PinoLogger);
+    app.useGlobalFilters(
+      new GlobalExceptionFilter(
+        app.get(RequestContextService),
+        exceptionLogger,
+      )
+    );
     app.useGlobalInterceptors(
       new ClassSerializerInterceptor(app.get(Reflector)),
-      new RequestLoggingInterceptor()
+      new RequestLoggingInterceptor(
+        app.get(RequestContextService),
+        app.get(ObservabilityService),
+        requestLogger,
+      )
     );
     app.setGlobalPrefix(API_PREFIX);
     await app.init();
@@ -264,6 +282,31 @@ describe('Auth flow (e2e)', () => {
     });
   });
 
+  it('opens a stable SSE stream for the current user without header write errors', async () => {
+    const email = `member-sse-${Date.now()}@example.com`;
+    const agent = request.agent(app.getHttpServer());
+
+    const registerResponse = await agent
+      .post(`${API_PREFIX}/auth/register`)
+      .send({
+        email,
+        password: 'password123',
+        displayName: 'SSE Member User',
+      })
+      .expect(201);
+
+    const cookies = registerResponse.headers['set-cookie'];
+    const response = await readSseHandshake(
+      app,
+      Array.isArray(cookies) ? cookies.map((cookie) => cookie.split(';')[0]).join('; ') : '',
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers['content-type']).toContain('text/event-stream');
+    expect(response.body).toContain('"connected":true');
+    expect(response.body).not.toContain('Cannot set headers after they are sent to the client');
+  });
+
   it('applies stricter route-specific rate limits for register, login, and refresh', async () => {
     const registerIp = '203.0.113.10';
     const registerEmailPrefix = `rate-limit-register-${Date.now()}`;
@@ -402,4 +445,58 @@ function parseCookieAssertion(
     raw: rawCookie!,
     value: nameValue.slice(separatorIndex + 1),
   };
+}
+
+async function readSseHandshake(
+  app: INestApplication<App>,
+  cookieHeader: string
+): Promise<{
+  status: number;
+  headers: Record<string, string | string[]>;
+  body: string;
+}> {
+  return new Promise((resolve, reject) => {
+    request(app.getHttpServer())
+      .get(`${API_PREFIX}/me/events`)
+      .set('Accept', 'text/event-stream')
+      .set('Cookie', cookieHeader)
+      .buffer(false)
+      .parse((response, callback) => {
+        let body = '';
+        let settled = false;
+
+        const finish = (error: Error | null) => {
+          if (settled) {
+            return;
+          }
+
+          settled = true;
+          callback(error, body);
+          response.destroy();
+        };
+
+        response.setEncoding('utf8');
+        response.on('data', (chunk: string) => {
+          body += chunk;
+
+          if (body.includes('"connected":true')) {
+            finish(null);
+          }
+        });
+        response.on('end', () => finish(null));
+        response.on('error', error => finish(error as Error));
+      })
+      .end((error, response) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+
+        resolve({
+          status: response.status,
+          headers: response.headers,
+          body: typeof response.body === 'string' ? response.body : String(response.body ?? ''),
+        });
+      });
+  });
 }
