@@ -59,6 +59,7 @@ const appEnvBaseSchema = z.object({
   SENTRY_DSN: z.string().trim().optional(),
   SENTRY_ENVIRONMENT: z.string().trim().min(1).optional(),
   SENTRY_RELEASE: z.string().trim().min(1).optional(),
+  SENTRY_TEST_TRIGGER_SECRET: z.string().trim().min(1).optional(),
   SENTRY_TRACES_SAMPLE_RATE: z
     .string()
     .trim()
