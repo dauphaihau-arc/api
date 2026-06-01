@@ -1,7 +1,7 @@
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
 import { buildStorageObjectKey, resolveStorageEnvironmentSegment } from '~/modules/shared/storage/app/storage-key-builder';
-import { ImageTransformService } from '~/modules/shared/image/app/ports/image-transform.service';
+import { ImageTransformService } from '~/modules/shared/image-transform/app/ports/image-transform.service';
 import { StorageService } from '~/modules/shared/storage/app/ports/storage.service';
 import { PRODUCT_IMAGE_VARIANT_SPECS } from '../config/product-image-variant.config';
 import { ProductImageVariant } from '../../domain/enums/product-image-variant.enum';

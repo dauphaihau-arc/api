@@ -1,4 +1,4 @@
-import type { ImageMetadata, ImageTransformSpec } from '../image.types';
+import type { ImageMetadata, ImageTransformSpec } from '../image-transform.types';
 
 export abstract class ImageTransformService {
   abstract getMetadata(input: Buffer): Promise<ImageMetadata>;

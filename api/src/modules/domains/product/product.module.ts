@@ -5,7 +5,7 @@ import { IdempotencyModule } from '../../shared/idempotency/idempotency.module';
 import { CacheModule } from '../../shared/cache/cache.module';
 import { StorageModule } from '../../shared/storage/storage.module';
 import { AuditModule } from '../../shared/audit/audit.module';
-import { ImageModule } from '../../shared/image/image.module';
+import { ImageTransformModule } from '../../shared/image-transform/image-transform.module';
 import { CurrencyModule } from '../../shared/currency/currency.module';
 import { QueueModule } from '../../shared/queue/queue.module';
 import { SseModule } from '../../shared/sse/sse.module';
@@ -57,7 +57,7 @@ import { VariantPriceEntity } from './infra/persistence/entities/variant-price.e
     ShopModule,
     CategoryModule,
     StorageModule,
-    ImageModule,
+    ImageTransformModule,
     CurrencyModule,
     forwardRef(() => QueueModule),
     AuditModule,

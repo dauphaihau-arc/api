@@ -1,5 +1,5 @@
 import sharp from 'sharp';
-import type { ImageMetadata, ImageTransformSpec } from '../app/image.types';
+import type { ImageMetadata, ImageTransformSpec } from '../app/image-transform.types';
 import type { ImageTransformService } from '../app/ports/image-transform.service';
 
 export class SharpImageTransformService implements ImageTransformService {

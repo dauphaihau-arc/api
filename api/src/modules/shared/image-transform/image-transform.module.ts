@@ -11,4 +11,4 @@ import { SharpImageTransformService } from './infra/sharp-image-transform.servic
   ],
   exports: [ImageTransformService],
 })
-export class ImageModule {}
+export class ImageTransformModule {}

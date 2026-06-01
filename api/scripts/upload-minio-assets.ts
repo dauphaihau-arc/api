@@ -20,7 +20,7 @@ import { ProductImageEntity } from '../src/modules/domains/product/infra/persist
 import { ProductImageVariantEntity } from '../src/modules/domains/product/infra/persistence/entities/product-image-variant.entity';
 import { ProductEntity } from '../src/modules/domains/product/infra/persistence/entities/product.entity';
 import { ShopEntity } from '../src/modules/domains/shop/infra/persistence/entities/shop.entity';
-import { SharpImageTransformService } from '../src/modules/shared/image/infra/sharp-image-transform.service';
+import { SharpImageTransformService } from '../src/modules/shared/image-transform/infra/sharp-image-transform.service';
 import { buildStorageObjectKey, resolveStorageEnvironmentSegment } from '../src/modules/shared/storage/app/storage-key-builder';
 import {
   resolveOptionalSeedProductAssetDirectory,
