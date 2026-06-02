@@ -26,7 +26,7 @@ function toOrderProducts(items: OrderItemEntity[], currency: string): OrderListP
     slug: item.product.slug,
     imageUrl: item.imageUrl,
     quantity: item.quantity,
-    amountMinor: getOrderItemAmountMinor(item),
+    amountMinor: getOrderItemAmountMinor(item, currency),
     originalAmountMinor: getOrderItemOriginalAmountMinor(item),
     currency,
     variantName: item.variantName,

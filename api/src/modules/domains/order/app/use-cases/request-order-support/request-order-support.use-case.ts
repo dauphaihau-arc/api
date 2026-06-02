@@ -1,6 +1,7 @@
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
 import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
+import { NotifyUserUseCase } from '~/modules/shared/notification/app/use-cases/notify-user/notify-user.use-case';
 import type { RequestOrderSupportDto } from '../../../api/rest/dto/request-order-support.dto';
 import { OrderEntity } from '../../../infra/persistence/entities/order.entity';
 import { OrderItemEntity } from '../../../infra/persistence/entities/order-item.entity';
@@ -18,10 +19,17 @@ import {
   getOrderTotalMajor,
 } from '../../order-money';
 import type { MyOrderDetail } from '../../order.types';
+import {
+  buildSellerOrderSupportRequestedNotification,
+  getSellerOrderNotificationRecipientId,
+} from '../../seller-order-notification';
 
 @Injectable()
 export class RequestOrderSupportUseCase {
-  constructor(private readonly entityManager: EntityManager) {}
+  constructor(
+    private readonly entityManager: EntityManager,
+    private readonly notifyUserUseCase: NotifyUserUseCase
+  ) {}
 
   async execute(
     actor: AuthenticatedUser,
@@ -31,7 +39,7 @@ export class RequestOrderSupportUseCase {
     const entityManager = this.entityManager.fork();
     const order = await entityManager.getRepository(OrderEntity).findOne(
       { id: orderId, user: actor.userId },
-      { populate: ['shop'] }
+      { populate: ['shop.ownerUser'] }
     );
 
     if (!order) {
@@ -39,7 +47,18 @@ export class RequestOrderSupportUseCase {
     }
 
     order.customerSupportNote = input.supportNote.trim();
+    const sellerUserId = getSellerOrderNotificationRecipientId(order);
     await entityManager.flush();
+
+    if (sellerUserId) {
+      await this.notifyUserUseCase.execute(
+        buildSellerOrderSupportRequestedNotification(
+          sellerUserId,
+          order.id,
+          order.shop.id
+        )
+      );
+    }
 
     const items = await entityManager.getRepository(OrderItemEntity).find(
       { order: order.id },
@@ -63,7 +82,7 @@ export class RequestOrderSupportUseCase {
         title: item.title,
         imageUrl: item.imageUrl,
         quantity: item.quantity,
-        amountMinor: getOrderItemAmountMinor(item),
+        amountMinor: getOrderItemAmountMinor(item, order.currency),
         originalAmountMinor: getOrderItemOriginalAmountMinor(item),
         currency: order.currency,
         variantName: item.variantName,

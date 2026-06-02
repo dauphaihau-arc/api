@@ -3,6 +3,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
 import { PRODUCT_INVENTORY_UPDATED_SSE_EVENT } from '~/modules/domains/product/app/events/product-inventory-sse.event';
+import { NotifyUserUseCase } from '~/modules/shared/notification/app/use-cases/notify-user/notify-user.use-case';
 import { JobDispatcher } from '~/modules/shared/queue/app/ports/job-dispatcher';
 import { ORDER_UPDATED_SSE_EVENT } from '../../events/order-sse.event';
 import type { RequestOrderCancelDto } from '../../../api/rest/dto/request-order-cancel.dto';
@@ -29,6 +30,10 @@ import {
   getOrderTotalMajor,
 } from '../../order-money';
 import type { MyOrderDetail } from '../../order.types';
+import {
+  buildSellerOrderCancelRequestedNotification,
+  getSellerOrderNotificationRecipientId,
+} from '../../seller-order-notification';
 
 @Injectable()
 export class RequestOrderCancelUseCase {
@@ -38,6 +43,7 @@ export class RequestOrderCancelUseCase {
     private readonly entityManager: EntityManager,
     private readonly orderCancellationService: OrderCancellationService,
     private readonly jobDispatcher: JobDispatcher,
+    private readonly notifyUserUseCase: NotifyUserUseCase,
     private readonly eventEmitter: EventEmitter2
   ) {}
 
@@ -51,7 +57,7 @@ export class RequestOrderCancelUseCase {
     const result = await entityManager.transactional(async (transactionalEntityManager) => {
       const order = await transactionalEntityManager.getRepository(OrderEntity).findOne(
         { id: orderId, user: actor.userId },
-        { populate: ['shop'] }
+        { populate: ['shop.ownerUser'] }
       );
 
       if (!order) {
@@ -86,6 +92,7 @@ export class RequestOrderCancelUseCase {
         inventoryEvents,
         id: order.id,
         shopId: order.shop.id,
+        sellerUserId: getSellerOrderNotificationRecipientId(order),
         shopName: order.shop.shopName,
         shopSlug: order.shop.slug,
         currency: order.currency,
@@ -100,7 +107,7 @@ export class RequestOrderCancelUseCase {
           title: item.title,
           imageUrl: item.imageUrl,
           quantity: item.quantity,
-          amountMinor: getOrderItemAmountMinor(item),
+          amountMinor: getOrderItemAmountMinor(item, order.currency),
           originalAmountMinor: getOrderItemOriginalAmountMinor(item),
           currency: order.currency,
           variantName: item.variantName,
@@ -188,7 +195,21 @@ export class RequestOrderCancelUseCase {
       );
     }
 
-    const { refundRequested: _refundRequested, ...detail } = result;
+    if (result.sellerUserId) {
+      await this.notifyUserUseCase.execute(
+        buildSellerOrderCancelRequestedNotification(
+          result.sellerUserId,
+          orderId,
+          result.shopId
+        )
+      );
+    }
+
+    const {
+      refundRequested: _refundRequested,
+      sellerUserId: _sellerUserId,
+      ...detail
+    } = result;
     return detail;
   }
 }

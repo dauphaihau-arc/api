@@ -112,7 +112,7 @@ export class LookupGuestOrdersUseCase {
           title: item.title,
           imageUrl: item.imageUrl,
           quantity: item.quantity,
-          amountMinor: getOrderItemAmountMinor(item),
+          amountMinor: getOrderItemAmountMinor(item, order.currency),
           originalAmountMinor: getOrderItemOriginalAmountMinor(item),
           currency: order.currency,
           variantName: item.variantName,
