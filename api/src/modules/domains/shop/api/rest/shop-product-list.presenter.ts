@@ -1,6 +1,16 @@
 import type { ShopProductListResult } from '~/modules/domains/product/app/product.types';
 import type { ShopProductListResponse } from './shop-product-list.response';
 
+function resolveShopListImageStorageKey(
+  image: ShopProductListResult['items'][number]['images'][number]
+): string {
+  const thumbnailVariant = image.variants?.find(
+    (variant) => variant.variant === 'thumb_1x1'
+  );
+
+  return thumbnailVariant?.storageKey ?? image.storageKey;
+}
+
 export const toShopProductListResponse = (
   result: ShopProductListResult
 ): ShopProductListResponse => ({
@@ -22,8 +32,7 @@ export const toShopProductListResponse = (
     variant_sub_group_name: product.variantSubGroupName,
     images: product.images.map((image) => ({
       id: image.id,
-      storage_key: image.storageKey,
-      url: image.url,
+      storage_key: resolveShopListImageStorageKey(image),
       rank: image.rank,
       variant_status: image.variantStatus,
       variant_error: image.variantError,
@@ -32,7 +41,6 @@ export const toShopProductListResponse = (
         id: variant.id,
         variant: variant.variant,
         storage_key: variant.storageKey,
-        url: variant.url,
         width: variant.width,
         height: variant.height,
         format: variant.format,

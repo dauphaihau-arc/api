@@ -18,7 +18,6 @@ export type ShopProductListResponse = {
     images: Array<{
       id: string;
       storage_key: string;
-      url?: string;
       rank: number;
       variant_status: string;
       variant_error?: string;
@@ -27,7 +26,6 @@ export type ShopProductListResponse = {
         id: string;
         variant: string;
         storage_key: string;
-        url?: string;
         width?: number;
         height?: number;
         format?: string;

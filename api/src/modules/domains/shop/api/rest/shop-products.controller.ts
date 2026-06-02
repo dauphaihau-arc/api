@@ -62,6 +62,8 @@ import { SetProductVariantsDto } from '~/modules/domains/product/api/rest/dto/se
 import { UpdateProductDto } from '~/modules/domains/product/api/rest/dto/update-product.dto';
 import { mapProductAppErrorToHttpException } from '~/modules/domains/product/api/rest/product-http-error-mapper';
 import { ShopRepository } from '../../app/ports/shop.repository';
+import { toShopProductDetailResponse } from './shop-product-detail.presenter';
+import type { ShopProductDetailResponse } from './shop-product-detail.response';
 import { toShopProductListResponse } from './shop-product-list.presenter';
 import type { ShopProductListResponse } from './shop-product-list.response';
 
@@ -114,12 +116,12 @@ export class ShopProductsController {
     @Param('shopId') shopId: string,
     @Param('id') id: string,
     @CurrentUser() currentUser: AuthenticatedUser
-  ): Promise<ProductDraftSummary> {
+  ): Promise<ShopProductDetailResponse> {
     await this.assertActorCanManageShop(currentUser, shopId);
 
     const product = await this.getProductOrThrow(shopId, id);
 
-    return product;
+    return toShopProductDetailResponse(product);
   }
 
   @Post()
@@ -159,8 +161,6 @@ export class ShopProductsController {
     );
   }
 
-  @Patch(':id')
-  @HttpCode(HttpStatus.NO_CONTENT)
   @Post('bulk-mutate')
   @Header('Cache-Control', 'private, no-store')
   async bulkMutateProducts(
@@ -185,6 +185,8 @@ export class ShopProductsController {
     };
   }
 
+  @Patch(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
   @Header('Cache-Control', 'private, no-store')
   async updateProduct(
     @Param('shopId') shopId: string,
