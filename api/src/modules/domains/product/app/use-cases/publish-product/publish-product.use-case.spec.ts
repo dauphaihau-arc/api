@@ -80,6 +80,7 @@ describe('PublishProductUseCase', () => {
       replaceInventory: jest.fn(),
       replaceShipping: jest.fn(),
       updateDetails: jest.fn(),
+      updateState: jest.fn(),
       publish: jest.fn().mockResolvedValue({
         ...product,
         state: ProductState.ACTIVE,

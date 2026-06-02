@@ -45,6 +45,7 @@ describe('ListShopProductsUseCase', () => {
       replaceInventory: jest.fn(),
       replaceShipping: jest.fn(),
       updateDetails: jest.fn(),
+      updateState: jest.fn(),
       publish: jest.fn(),
       findByShopIdAndSlug: jest.fn(),
     };

@@ -59,6 +59,7 @@ describe('UpdateProductDetailsUseCase', () => {
         variantGroupName: input.variantGroupName,
         variantSubGroupName: input.variantSubGroupName,
       })),
+      updateState: jest.fn(),
       publish: jest.fn(),
       findByShopIdAndSlug: jest.fn().mockResolvedValue(null),
     };

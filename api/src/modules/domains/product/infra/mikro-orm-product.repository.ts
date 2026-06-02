@@ -115,6 +115,10 @@ export class MikroOrmProductRepository implements ProductRepository {
 
     const normalizedSearch = input.search?.trim().toLowerCase();
     const filteredProducts = products.filter((product) => {
+      if (!this.shouldIncludeInShopList(product.state, input.state)) {
+        return false;
+      }
+
       if (!normalizedSearch) {
         return true;
       }
@@ -136,6 +140,17 @@ export class MikroOrmProductRepository implements ProductRepository {
       items: pagedProducts.map((product) => this.toDraftSummary(product)),
       meta: buildPaginationMeta(input.page, input.limit, total),
     };
+  }
+
+  private shouldIncludeInShopList(
+    productState: ProductState,
+    requestedState?: ProductState
+  ): boolean {
+    if (requestedState) {
+      return productState === requestedState;
+    }
+
+    return productState !== ProductState.REMOVED;
   }
 
   async listPublic(
@@ -582,6 +597,30 @@ export class MikroOrmProductRepository implements ProductRepository {
     product.nonTaxable = input.nonTaxable;
     product.variantGroupName = input.variantGroupName;
     product.variantSubGroupName = input.variantSubGroupName;
+
+    await entityManager.persistAndFlush(product);
+
+    return this.toDraftSummary(product);
+  }
+
+  async updateState(
+    productId: string,
+    state: ProductDraftSummary['state']
+  ): Promise<ProductDraftSummary | null> {
+    const entityManager = this.entityManager.fork();
+    const repository = entityManager.getRepository(ProductEntity);
+    const product = await repository.findOne(
+      { id: productId },
+      {
+        populate: [...MikroOrmProductRepository.summaryPopulate],
+      }
+    );
+
+    if (!product) {
+      return null;
+    }
+
+    product.state = state;
 
     await entityManager.persistAndFlush(product);
 

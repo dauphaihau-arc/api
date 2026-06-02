@@ -65,6 +65,7 @@ describe('SetProductShippingUseCase', () => {
         },
       }),
       updateDetails: jest.fn(),
+      updateState: jest.fn(),
       publish: jest.fn(),
       findByShopIdAndSlug: jest.fn(),
     };

@@ -45,9 +45,11 @@ import { SetProductPricingUseCase } from '~/modules/domains/product/app/use-case
 import { SetProductShippingUseCase } from '~/modules/domains/product/app/use-cases/set-product-shipping/set-product-shipping.use-case';
 import { SetProductVariantsUseCase } from '~/modules/domains/product/app/use-cases/set-product-variants/set-product-variants.use-case';
 import { UpdateProductDetailsUseCase } from '~/modules/domains/product/app/use-cases/update-product-details/update-product-details.use-case';
+import { BulkMutateShopProductsUseCase } from '~/modules/domains/product/app/use-cases/bulk-mutate-shop-products/bulk-mutate-shop-products.use-case';
 import type {
   ProductDraftSummary
 } from '~/modules/domains/product/app/product.types';
+import { BulkMutateShopProductsDto } from '~/modules/domains/product/api/rest/dto/bulk-mutate-shop-products.dto';
 import { CreateProductDraftFacadeDto } from '~/modules/domains/product/api/rest/dto/create-product-draft-facade.dto';
 import { CreateProductDto } from '~/modules/domains/product/api/rest/dto/create-product.dto';
 import { ListShopProductsQueryDto } from '~/modules/domains/product/api/rest/dto/list-shop-products.query.dto';
@@ -81,7 +83,8 @@ export class ShopProductsController {
     private readonly setProductInventoryUseCase: SetProductInventoryUseCase,
     private readonly setProductPricingUseCase: SetProductPricingUseCase,
     private readonly setProductShippingUseCase: SetProductShippingUseCase,
-    private readonly updateProductDetailsUseCase: UpdateProductDetailsUseCase
+    private readonly updateProductDetailsUseCase: UpdateProductDetailsUseCase,
+    private readonly bulkMutateShopProductsUseCase: BulkMutateShopProductsUseCase
   ) {}
 
   @Get()
@@ -158,6 +161,30 @@ export class ShopProductsController {
 
   @Patch(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
+  @Post('bulk-mutate')
+  @Header('Cache-Control', 'private, no-store')
+  async bulkMutateProducts(
+    @Param('shopId') shopId: string,
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Body() body: BulkMutateShopProductsDto
+  ): Promise<{
+    succeeded_ids: string[];
+    failed: Array<{ id: string; code: string; reason: string }>;
+  }> {
+    await this.assertActorCanManageShop(currentUser, shopId);
+
+    const result = await this.bulkMutateShopProductsUseCase.execute(currentUser, {
+      shopId,
+      productIds: body.ids,
+      action: body.action,
+    });
+
+    return {
+      succeeded_ids: result.succeededIds,
+      failed: result.failed,
+    };
+  }
+
   @Header('Cache-Control', 'private, no-store')
   async updateProduct(
     @Param('shopId') shopId: string,

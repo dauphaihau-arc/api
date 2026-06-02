@@ -58,6 +58,11 @@ export abstract class ProductRepository {
     input: UpdateProductDetailsRepositoryInput
   ): Promise<ProductDraftSummary | null>;
 
+  abstract updateState(
+    productId: string,
+    state: ProductDraftSummary['state']
+  ): Promise<ProductDraftSummary | null>;
+
   abstract publish(productId: string): Promise<ProductDraftSummary | null>;
 
   abstract findByShopIdAndSlug(

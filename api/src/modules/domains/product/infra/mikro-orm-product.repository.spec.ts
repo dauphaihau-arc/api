@@ -1,5 +1,6 @@
 import type { StorageService } from '~/modules/shared/storage/app/ports/storage.service';
 import { ProductImageVariant } from '../domain/enums/product-image-variant.enum';
+import { ProductState } from '../domain/enums/product-state.enum';
 import type { ProductInventoryEntity } from './persistence/entities/product-inventory.entity';
 import { ProductImageVariantEntity } from './persistence/entities/product-image-variant.entity';
 import { ProductImageEntity } from './persistence/entities/product-image.entity';
@@ -111,5 +112,13 @@ describe('MikroOrmProductRepository image projection', () => {
       amountMinor: 30,
       currency: 'JPY',
     });
+  });
+
+  it('hides removed products from the default shop list', () => {
+    const { repository } = buildRepository();
+
+    expect((repository as any).shouldIncludeInShopList(ProductState.REMOVED)).toBe(false);
+    expect((repository as any).shouldIncludeInShopList(ProductState.ACTIVE)).toBe(true);
+    expect((repository as any).shouldIncludeInShopList(ProductState.REMOVED, ProductState.REMOVED)).toBe(true);
   });
 });

@@ -21,6 +21,7 @@ import { GetPublicProductBySlugsUseCase } from './app/use-cases/get-public-produ
 import { IssueProductImageUploadUrlUseCase } from './app/use-cases/issue-product-image-upload-url/issue-product-image-upload-url.use-case';
 import { ListPublicProductsUseCase } from './app/use-cases/list-public-products/list-public-products.use-case';
 import { ListShopProductsUseCase } from './app/use-cases/list-shop-products/list-shop-products.use-case';
+import { BulkMutateShopProductsUseCase } from './app/use-cases/bulk-mutate-shop-products/bulk-mutate-shop-products.use-case';
 import { PublishProductUseCase } from './app/use-cases/publish-product/publish-product.use-case';
 import { SetProductImagesByKeysUseCase } from './app/use-cases/set-product-images-by-keys/set-product-images-by-keys.use-case';
 import { SetProductImagesUseCase } from './app/use-cases/set-product-images/set-product-images.use-case';
@@ -100,6 +101,7 @@ import { VariantPriceEntity } from './infra/persistence/entities/variant-price.e
     IssueProductImageUploadUrlUseCase,
     ListPublicProductsUseCase,
     ListShopProductsUseCase,
+    BulkMutateShopProductsUseCase,
     PublishProductUseCase,
     SetProductImagesByKeysUseCase,
     SetProductImagesUseCase,
@@ -123,6 +125,7 @@ import { VariantPriceEntity } from './infra/persistence/entities/variant-price.e
     IssueProductImageUploadUrlUseCase,
     ListPublicProductsUseCase,
     ListShopProductsUseCase,
+    BulkMutateShopProductsUseCase,
     PublishProductUseCase,
     SetProductImagesByKeysUseCase,
     SetProductImagesUseCase,
