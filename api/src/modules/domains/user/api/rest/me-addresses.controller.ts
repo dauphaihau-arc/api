@@ -12,6 +12,15 @@ import {
   Query,
   UseGuards
 } from '@nestjs/common';
+import {
+  ApiCookieAuth,
+  ApiNoContentResponse,
+  ApiNotFoundResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiParam,
+  ApiTags,
+} from '@nestjs/swagger';
 import { CurrentUser } from '~/common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '~/modules/domains/auth/api/guard/jwt-auth.guard';
 import { PermissionsGuard } from '~/modules/domains/auth/api/guard/permissions.guard';
@@ -35,6 +44,8 @@ import {
 
 @Controller('me/addresses')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
+@ApiTags('My Addresses')
+@ApiCookieAuth('accessCookie')
 export class MeAddressesController {
   constructor(
     private readonly listMyAddressesUseCase: ListMyAddressesUseCase,
@@ -46,6 +57,11 @@ export class MeAddressesController {
 
   @Get()
   @Header('Cache-Control', 'private, no-cache')
+  @ApiOperation({ summary: 'List my addresses' })
+  @ApiOkResponse({
+    description: 'Paginated address list.',
+    schema: { type: 'object' },
+  })
   async list(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Query() query: ListMyAddressesQueryDto
@@ -64,6 +80,11 @@ export class MeAddressesController {
 
   @Post()
   @Header('Cache-Control', 'private, no-store')
+  @ApiOperation({ summary: 'Create my address' })
+  @ApiOkResponse({
+    description: 'Created address.',
+    schema: { type: 'object' },
+  })
   async create(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() body: CreateMyAddressDto
@@ -85,6 +106,13 @@ export class MeAddressesController {
 
   @Get(':id')
   @Header('Cache-Control', 'private, no-cache')
+  @ApiOperation({ summary: 'Get my address by id' })
+  @ApiParam({ name: 'id', type: String })
+  @ApiOkResponse({
+    description: 'Address detail.',
+    schema: { type: 'object' },
+  })
+  @ApiNotFoundResponse({ description: 'Address not found.' })
   async detail(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('id') id: string
@@ -100,6 +128,12 @@ export class MeAddressesController {
 
   @Patch(':id')
   @Header('Cache-Control', 'private, no-store')
+  @ApiOperation({ summary: 'Update my address' })
+  @ApiParam({ name: 'id', type: String })
+  @ApiOkResponse({
+    description: 'Updated address.',
+    schema: { type: 'object' },
+  })
   async update(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('id') id: string,
@@ -123,6 +157,9 @@ export class MeAddressesController {
   @Delete(':id')
   @Header('Cache-Control', 'private, no-store')
   @HttpCode(204)
+  @ApiOperation({ summary: 'Delete my address' })
+  @ApiParam({ name: 'id', type: String })
+  @ApiNoContentResponse({ description: 'Address deleted.' })
   async delete(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('id') id: string

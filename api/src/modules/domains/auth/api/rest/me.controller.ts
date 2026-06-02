@@ -5,6 +5,12 @@ import {
   Patch,
   UseGuards
 } from '@nestjs/common';
+import {
+  ApiCookieAuth,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import { CurrentUser } from '~/common/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../../app/auth.types';
 import { UpdateCurrentUserPreferencesUseCase } from '../../app/use-cases/update-current-user-preferences/update-current-user-preferences.use-case';
@@ -14,6 +20,8 @@ import { MeResponseDto } from './dto/me-response.dto';
 import { UpdateMeDto } from './dto/update-me.dto';
 
 @Controller('me')
+@ApiTags('Auth')
+@ApiCookieAuth('accessCookie')
 export class MeController {
   constructor(
     private readonly updateCurrentUserPreferencesUseCase: UpdateCurrentUserPreferencesUseCase
@@ -22,6 +30,10 @@ export class MeController {
   @Patch()
   @Header('Cache-Control', 'no-store')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @ApiOperation({ summary: 'Update current user preferences' })
+  @ApiOkResponse({
+    type: MeResponseDto,
+  })
   async updateMe(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() body: UpdateMeDto

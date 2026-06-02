@@ -11,6 +11,12 @@ import {
   Res,
   UseGuards,
 } from '@nestjs/common';
+import {
+  ApiCookieAuth,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { resolveOrThrow } from '~/common/application/result';
 import { OptionalJwtAuthGuard } from '~/modules/domains/auth/api/guard/optional-jwt-auth.guard';
@@ -37,6 +43,8 @@ type CartRequest = Request & { user?: AuthenticatedUser | null };
 
 @Controller('cart')
 @UseGuards(OptionalJwtAuthGuard)
+@ApiTags('Cart')
+@ApiCookieAuth('accessCookie')
 export class CartController {
   constructor(
     private readonly couponPricingService: CouponPricingService,
@@ -50,6 +58,11 @@ export class CartController {
 
   @Get()
   @Header('Cache-Control', 'private, no-cache')
+  @ApiOperation({ summary: 'Get the current cart' })
+  @ApiOkResponse({
+    description: 'Cart state.',
+    schema: { type: 'object' },
+  })
   async cart(
     @Req() request: CartRequest,
     @Query() query: GetCartQueryDto
@@ -66,6 +79,11 @@ export class CartController {
 
   @Post('items')
   @Header('Cache-Control', 'private, no-store')
+  @ApiOperation({ summary: 'Add an item to the current cart' })
+  @ApiOkResponse({
+    description: 'Updated cart state.',
+    schema: { type: 'object' },
+  })
   async addItem(
     @Req() request: CartRequest,
     @Res({ passthrough: true }) response: Response,
@@ -86,6 +104,11 @@ export class CartController {
 
   @Post('merge')
   @Header('Cache-Control', 'private, no-store')
+  @ApiOperation({ summary: 'Merge a guest cart into the signed-in user cart' })
+  @ApiOkResponse({
+    description: 'Merged cart state.',
+    schema: { type: 'object' },
+  })
   async merge(
     @Req() request: CartRequest,
     @Res({ passthrough: true }) response: Response
@@ -123,6 +146,11 @@ export class CartController {
 
   @Patch('items')
   @Header('Cache-Control', 'private, no-store')
+  @ApiOperation({ summary: 'Update an item in the current cart' })
+  @ApiOkResponse({
+    description: 'Updated cart state.',
+    schema: { type: 'object' },
+  })
   async updateItem(
     @Req() request: CartRequest,
     @Res({ passthrough: true }) response: Response,
@@ -194,6 +222,11 @@ export class CartController {
 
   @Delete('items')
   @Header('Cache-Control', 'private, no-store')
+  @ApiOperation({ summary: 'Delete an item from the current cart' })
+  @ApiOkResponse({
+    description: 'Updated cart state.',
+    schema: { type: 'object' },
+  })
   async deleteItem(
     @Req() request: CartRequest,
     @Res({ passthrough: true }) response: Response,

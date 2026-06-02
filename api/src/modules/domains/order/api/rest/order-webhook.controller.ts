@@ -4,12 +4,19 @@ import {
   Post,
   Req
 } from '@nestjs/common';
+import {
+  ApiHeader,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import { SkipThrottle } from '@nestjs/throttler';
 import type { Request } from 'express';
 import { PaymentGateway } from '~/modules/shared/payment/app/ports/payment-gateway';
 import { HandleStripeWebhookUseCase } from '../../app/use-cases/handle-stripe-webhook/handle-stripe-webhook.use-case';
 
 @Controller('webhooks/stripe')
+@ApiTags('Stripe Webhooks')
 export class OrderWebhookController {
   constructor(
     private readonly paymentGateway: PaymentGateway,
@@ -18,6 +25,16 @@ export class OrderWebhookController {
 
   @Post()
   @SkipThrottle()
+  @ApiOperation({ summary: 'Handle Stripe webhook events' })
+  @ApiHeader({
+    name: 'stripe-signature',
+    required: false,
+    description: 'Stripe webhook signature header.',
+  })
+  @ApiOkResponse({
+    description: 'Webhook accepted.',
+    schema: { type: 'object' },
+  })
   async handle(
     @Req() request: Request & { rawBody?: Buffer },
     @Headers('stripe-signature') signature?: string

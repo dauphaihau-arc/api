@@ -1,5 +1,12 @@
 import { Controller, Sse, UseGuards } from '@nestjs/common';
 import type { MessageEvent } from '@nestjs/common';
+import {
+  ApiCookieAuth,
+  ApiOkResponse,
+  ApiOperation,
+  ApiProduces,
+  ApiTags,
+} from '@nestjs/swagger';
 import type { Observable } from 'rxjs';
 import { CurrentUser } from '~/common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '~/modules/domains/auth/api/guard/jwt-auth.guard';
@@ -10,10 +17,18 @@ import { SsePublisher } from '../../infra/sse.publisher';
 
 @Controller('me/events')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
+@ApiTags('My Events')
+@ApiCookieAuth('accessCookie')
 export class MeEventsController {
   constructor(private readonly ssePublisher: SsePublisher) {}
 
   @Sse()
+  @ApiOperation({ summary: 'Stream current user events over SSE' })
+  @ApiProduces('text/event-stream')
+  @ApiOkResponse({
+    description: 'Server-sent event stream.',
+    schema: { type: 'string' },
+  })
   stream(
     @CurrentUser() currentUser: AuthenticatedUser
   ): Observable<MessageEvent> {

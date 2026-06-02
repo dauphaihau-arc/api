@@ -17,6 +17,15 @@ import {
   UseGuards,
   UseInterceptors
 } from '@nestjs/common';
+import {
+  ApiConsumes,
+  ApiCookieAuth,
+  ApiNoContentResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiParam,
+  ApiTags,
+} from '@nestjs/swagger';
 import { RequirePermissions } from '~/common/decorators/require-permissions.decorator';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { resolveOrThrow } from '~/common/application/result';
@@ -67,9 +76,11 @@ import type { ShopProductDetailResponse } from './shop-product-detail.response';
 import { toShopProductListResponse } from './shop-product-list.presenter';
 import type { ShopProductListResponse } from './shop-product-list.response';
 
-@Controller('shops/:shopId/products')
+@Controller('shops/:shop_id/products')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @RequirePermissions('shops.manage')
+@ApiTags('Shop Products')
+@ApiCookieAuth('accessCookie')
 export class ShopProductsController {
   constructor(
     private readonly shopRepository: ShopRepository,
@@ -91,8 +102,14 @@ export class ShopProductsController {
 
   @Get()
   @Header('Cache-Control', 'private, no-cache')
+  @ApiOperation({ summary: 'List products for a shop' })
+  @ApiParam({ name: 'shop_id', type: String })
+  @ApiOkResponse({
+    description: 'Paginated shop product list.',
+    schema: { type: 'object' },
+  })
   async products(
-    @Param('shopId') shopId: string,
+    @Param('shop_id') shopId: string,
     @Query() query: ListShopProductsQueryDto,
     @CurrentUser() currentUser: AuthenticatedUser
   ): Promise<ShopProductListResponse> {
@@ -112,8 +129,15 @@ export class ShopProductsController {
 
   @Get(':id')
   @Header('Cache-Control', 'private, no-cache')
+  @ApiOperation({ summary: 'Get shop product detail' })
+  @ApiParam({ name: 'shop_id', type: String })
+  @ApiParam({ name: 'id', type: String })
+  @ApiOkResponse({
+    description: 'Shop product detail.',
+    schema: { type: 'object' },
+  })
   async product(
-    @Param('shopId') shopId: string,
+    @Param('shop_id') shopId: string,
     @Param('id') id: string,
     @CurrentUser() currentUser: AuthenticatedUser
   ): Promise<ShopProductDetailResponse> {
@@ -126,11 +150,17 @@ export class ShopProductsController {
 
   @Post()
   @Header('Cache-Control', 'private, no-store')
+  @ApiOperation({ summary: 'Create a shop product draft' })
+  @ApiParam({ name: 'shop_id', type: String })
+  @ApiOkResponse({
+    description: 'Created product draft.',
+    schema: { type: 'object' },
+  })
   createProductDraft(
-    @Param('shopId') shopId: string,
+    @Param('shop_id') shopId: string,
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() body: CreateProductDto
-  ): Promise<ProductDraftSummary> {
+  ): Promise<ShopProductDetailResponse> {
     const input: CreateProductDraftInput = {
       ...body,
       shopId,
@@ -139,7 +169,8 @@ export class ShopProductsController {
     return this.createProductDraftUseCase.execute(currentUser, input)
       .then((result) =>
         resolveOrThrow(result, mapProductAppErrorToHttpException)
-      );
+      )
+      .then(toShopProductDetailResponse);
   }
 
   @Post('drafts')
@@ -148,23 +179,35 @@ export class ShopProductsController {
   @Idempotent({
     scope: 'product:create-draft-facade',
   })
+  @ApiOperation({ summary: 'Create a shop product draft facade' })
+  @ApiParam({ name: 'shop_id', type: String })
+  @ApiOkResponse({
+    description: 'Created product draft.',
+    schema: { type: 'object' },
+  })
   createProductDraftFacade(
-    @Param('shopId') shopId: string,
+    @Param('shop_id') shopId: string,
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() body: CreateProductDraftFacadeDto
-  ): Promise<ProductDraftSummary> {
+  ): Promise<ShopProductDetailResponse> {
     return this.createProductDraftFacadeUseCase.execute(currentUser, {
       shopId,
       ...body,
     }).then((result) =>
       resolveOrThrow(result, mapProductAppErrorToHttpException)
-    );
+    ).then(toShopProductDetailResponse);
   }
 
   @Post('bulk-mutate')
   @Header('Cache-Control', 'private, no-store')
+  @ApiOperation({ summary: 'Bulk mutate shop products' })
+  @ApiParam({ name: 'shop_id', type: String })
+  @ApiOkResponse({
+    description: 'Bulk mutation result.',
+    schema: { type: 'object' },
+  })
   async bulkMutateProducts(
-    @Param('shopId') shopId: string,
+    @Param('shop_id') shopId: string,
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() body: BulkMutateShopProductsDto
   ): Promise<{
@@ -188,8 +231,12 @@ export class ShopProductsController {
   @Patch(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @Header('Cache-Control', 'private, no-store')
+  @ApiOperation({ summary: 'Update shop product details' })
+  @ApiParam({ name: 'shop_id', type: String })
+  @ApiParam({ name: 'id', type: String })
+  @ApiNoContentResponse({ description: 'Product updated.' })
   async updateProduct(
-    @Param('shopId') shopId: string,
+    @Param('shop_id') shopId: string,
     @Param('id') id: string,
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() body: UpdateProductDto
@@ -202,25 +249,38 @@ export class ShopProductsController {
 
   @Post(':id/publish')
   @Header('Cache-Control', 'private, no-store')
+  @ApiOperation({ summary: 'Publish a shop product' })
+  @ApiParam({ name: 'shop_id', type: String })
+  @ApiParam({ name: 'id', type: String })
+  @ApiOkResponse({
+    description: 'Published product draft.',
+    schema: { type: 'object' },
+  })
   async publishProduct(
-    @Param('shopId') shopId: string,
+    @Param('shop_id') shopId: string,
     @Param('id') id: string,
     @CurrentUser() currentUser: AuthenticatedUser
-  ): Promise<ProductDraftSummary> {
+  ): Promise<ShopProductDetailResponse> {
     await this.assertActorCanManageProductShop(currentUser, shopId, id);
 
     return this.publishProductUseCase.execute(currentUser, id)
       .then((result) =>
         resolveOrThrow(result, mapProductAppErrorToHttpException)
-      );
+      )
+      .then(toShopProductDetailResponse);
   }
 
   @Put(':id/images')
   @HttpCode(HttpStatus.NO_CONTENT)
   @Header('Cache-Control', 'private, no-store')
   @UseInterceptors(FilesInterceptor('images', 10))
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: 'Upload shop product images' })
+  @ApiParam({ name: 'shop_id', type: String })
+  @ApiParam({ name: 'id', type: String })
+  @ApiNoContentResponse({ description: 'Product images updated.' })
   async setProductImages(
-    @Param('shopId') shopId: string,
+    @Param('shop_id') shopId: string,
     @Param('id') id: string,
     @CurrentUser() currentUser: AuthenticatedUser,
     @UploadedFiles() imageFiles: UploadedProductImageFile[] = [],
@@ -238,8 +298,12 @@ export class ShopProductsController {
   @Put(':id/images-by-keys')
   @HttpCode(HttpStatus.NO_CONTENT)
   @Header('Cache-Control', 'private, no-store')
+  @ApiOperation({ summary: 'Assign shop product images by storage keys' })
+  @ApiParam({ name: 'shop_id', type: String })
+  @ApiParam({ name: 'id', type: String })
+  @ApiNoContentResponse({ description: 'Product images updated.' })
   async setProductImagesByKeys(
-    @Param('shopId') shopId: string,
+    @Param('shop_id') shopId: string,
     @Param('id') id: string,
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() body: SetProductImagesByKeysDto
@@ -253,8 +317,12 @@ export class ShopProductsController {
   @Put(':id/attributes')
   @HttpCode(HttpStatus.NO_CONTENT)
   @Header('Cache-Control', 'private, no-store')
+  @ApiOperation({ summary: 'Set shop product attributes' })
+  @ApiParam({ name: 'shop_id', type: String })
+  @ApiParam({ name: 'id', type: String })
+  @ApiNoContentResponse({ description: 'Product attributes updated.' })
   async setProductAttributes(
-    @Param('shopId') shopId: string,
+    @Param('shop_id') shopId: string,
     @Param('id') id: string,
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() body: SetProductAttributesDto
@@ -268,8 +336,12 @@ export class ShopProductsController {
   @Put(':id/variants')
   @HttpCode(HttpStatus.NO_CONTENT)
   @Header('Cache-Control', 'private, no-store')
+  @ApiOperation({ summary: 'Set shop product variants' })
+  @ApiParam({ name: 'shop_id', type: String })
+  @ApiParam({ name: 'id', type: String })
+  @ApiNoContentResponse({ description: 'Product variants updated.' })
   async setProductVariants(
-    @Param('shopId') shopId: string,
+    @Param('shop_id') shopId: string,
     @Param('id') id: string,
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() body: SetProductVariantsDto
@@ -283,8 +355,12 @@ export class ShopProductsController {
   @Put(':id/inventory')
   @HttpCode(HttpStatus.NO_CONTENT)
   @Header('Cache-Control', 'private, no-store')
+  @ApiOperation({ summary: 'Set shop product inventory' })
+  @ApiParam({ name: 'shop_id', type: String })
+  @ApiParam({ name: 'id', type: String })
+  @ApiNoContentResponse({ description: 'Product inventory updated.' })
   async setProductInventory(
-    @Param('shopId') shopId: string,
+    @Param('shop_id') shopId: string,
     @Param('id') id: string,
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() body: SetProductInventoryDto
@@ -298,8 +374,12 @@ export class ShopProductsController {
   @Put(':id/pricing')
   @HttpCode(HttpStatus.NO_CONTENT)
   @Header('Cache-Control', 'private, no-store')
+  @ApiOperation({ summary: 'Set shop product pricing' })
+  @ApiParam({ name: 'shop_id', type: String })
+  @ApiParam({ name: 'id', type: String })
+  @ApiNoContentResponse({ description: 'Product pricing updated.' })
   async setProductPricing(
-    @Param('shopId') shopId: string,
+    @Param('shop_id') shopId: string,
     @Param('id') id: string,
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() body: SetProductPricingDto
@@ -313,8 +393,12 @@ export class ShopProductsController {
   @Put(':id/shipping')
   @HttpCode(HttpStatus.NO_CONTENT)
   @Header('Cache-Control', 'private, no-store')
+  @ApiOperation({ summary: 'Set shop product shipping settings' })
+  @ApiParam({ name: 'shop_id', type: String })
+  @ApiParam({ name: 'id', type: String })
+  @ApiNoContentResponse({ description: 'Product shipping updated.' })
   async setProductShipping(
-    @Param('shopId') shopId: string,
+    @Param('shop_id') shopId: string,
     @Param('id') id: string,
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() body: SetProductShippingDto

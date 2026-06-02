@@ -10,6 +10,13 @@ import {
   Query,
   UseGuards
 } from '@nestjs/common';
+import {
+  ApiCookieAuth,
+  ApiOkResponse,
+  ApiOperation,
+  ApiParam,
+  ApiTags,
+} from '@nestjs/swagger';
 import { RequirePermissions } from '~/common/decorators/require-permissions.decorator';
 import { CurrentUser } from '~/common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '~/modules/domains/auth/api/guard/jwt-auth.guard';
@@ -32,9 +39,11 @@ import {
   mapOrderAppErrorToHttpException,
 } from './order-http-error-mapper';
 
-@Controller('shops/:shopId/orders')
+@Controller('shops/:shop_id/orders')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @RequirePermissions('shops.manage')
+@ApiTags('Shop Orders')
+@ApiCookieAuth('accessCookie')
 export class ShopOrderController {
   constructor(
     private readonly shopRepository: ShopRepository,
@@ -46,9 +55,15 @@ export class ShopOrderController {
 
   @Get()
   @Header('Cache-Control', 'private, no-cache')
+  @ApiOperation({ summary: 'List shop orders' })
+  @ApiParam({ name: 'shop_id', type: String })
+  @ApiOkResponse({
+    description: 'Paginated shop order list.',
+    schema: { type: 'object' },
+  })
   async list(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('shopId') shopId: string,
+    @Param('shop_id') shopId: string,
     @Query() query: ListShopOrdersQueryDto
   ) {
     await this.assertActorCanManageShop(currentUser, shopId);
@@ -57,12 +72,19 @@ export class ShopOrderController {
       .then(toShopOrderListResponse);
   }
 
-  @Get(':orderId')
+  @Get(':order_id')
   @Header('Cache-Control', 'private, no-cache')
+  @ApiOperation({ summary: 'Get shop order detail' })
+  @ApiParam({ name: 'shop_id', type: String })
+  @ApiParam({ name: 'order_id', type: String })
+  @ApiOkResponse({
+    description: 'Shop order detail.',
+    schema: { type: 'object' },
+  })
   async detail(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('shopId') shopId: string,
-    @Param('orderId') orderId: string
+    @Param('shop_id') shopId: string,
+    @Param('order_id') orderId: string
   ) {
     await this.assertActorCanManageShop(currentUser, shopId);
 
@@ -76,12 +98,19 @@ export class ShopOrderController {
     }
   }
 
-  @Patch(':orderId/status')
+  @Patch(':order_id/status')
   @Header('Cache-Control', 'private, no-store')
+  @ApiOperation({ summary: 'Update shop order status' })
+  @ApiParam({ name: 'shop_id', type: String })
+  @ApiParam({ name: 'order_id', type: String })
+  @ApiOkResponse({
+    description: 'Updated shop order detail.',
+    schema: { type: 'object' },
+  })
   async updateStatus(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('shopId') shopId: string,
-    @Param('orderId') orderId: string,
+    @Param('shop_id') shopId: string,
+    @Param('order_id') orderId: string,
     @Body() body: UpdateShopOrderStatusDto
   ) {
     await this.assertActorCanManageShop(currentUser, shopId);
@@ -96,12 +125,19 @@ export class ShopOrderController {
     }
   }
 
-  @Patch(':orderId/shipment')
+  @Patch(':order_id/shipment')
   @Header('Cache-Control', 'private, no-store')
+  @ApiOperation({ summary: 'Update shop order shipment' })
+  @ApiParam({ name: 'shop_id', type: String })
+  @ApiParam({ name: 'order_id', type: String })
+  @ApiOkResponse({
+    description: 'Updated shop order detail.',
+    schema: { type: 'object' },
+  })
   async updateShipment(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('shopId') shopId: string,
-    @Param('orderId') orderId: string,
+    @Param('shop_id') shopId: string,
+    @Param('order_id') orderId: string,
     @Body() body: UpdateShopOrderShipmentDto
   ) {
     await this.assertActorCanManageShop(currentUser, shopId);

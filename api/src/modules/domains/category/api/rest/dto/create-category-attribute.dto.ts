@@ -1,4 +1,5 @@
 import { Expose, Transform } from 'class-transformer';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 import {
   ArrayMinSize,
   IsArray,
@@ -14,6 +15,7 @@ export class CreateCategoryAttributeDto {
   name!: string;
 
   @IsOptional()
+  @ApiPropertyOptional({ name: 'input_type' })
   @Expose({ name: 'input_type' })
   @Transform(({ value, obj: source }) => value ?? source.input_type)
   @IsString()
@@ -21,6 +23,7 @@ export class CreateCategoryAttributeDto {
   inputType?: string;
 
   @IsOptional()
+  @ApiPropertyOptional({ name: 'is_required' })
   @Expose({ name: 'is_required' })
   @Transform(({ value, obj: source }) => value ?? source.is_required)
   @IsBoolean()

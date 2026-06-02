@@ -1,5 +1,6 @@
 import { RequestMethod } from '@nestjs/common';
 import { METHOD_METADATA, PATH_METADATA } from '@nestjs/common/constants';
+import { ok } from '~/common/application/result';
 import { ShopProductsController } from './shop-products.controller';
 
 describe('ShopProductsController', () => {
@@ -217,6 +218,60 @@ describe('ShopProductsController', () => {
       },
     });
     expect(getProductByIdUseCase.execute).toHaveBeenCalledWith('product-1');
+  });
+
+  it('returns created product drafts in snake_case for the HTTP boundary', async () => {
+    createProductDraftUseCase.execute.mockResolvedValue(ok({
+      id: 'product-1',
+      publicId: 'public-product-1',
+      shopId: 'shop-1',
+      shopPublicId: 'public-shop-1',
+      categoryId: 'category-1',
+      title: 'Handmade Bag',
+      slug: 'handmade-bag',
+      description: 'A detail page payload.',
+      state: 'draft',
+      whoMade: 'i_did',
+      isDigital: false,
+      nonTaxable: true,
+      variantType: 'single',
+      variantGroupName: 'Color',
+      variantSubGroupName: 'Size',
+      images: [],
+      attributes: [],
+      variants: [],
+      inventory: [],
+      shipping: undefined,
+    }));
+
+    await expect(controller.createProductDraft(
+      'shop-1',
+      {
+        userId: 'user-1',
+        email: 'seller@example.com',
+        status: 'active',
+        sessionId: 'session-1',
+        roles: [],
+        permissions: [],
+      } as never,
+      {
+        title: 'Handmade Bag',
+        description: 'A detail page payload.',
+        whoMade: 'i_did',
+      } as never
+    )).resolves.toMatchObject({
+      id: 'product-1',
+      public_id: 'public-product-1',
+      shop_id: 'shop-1',
+      shop_public_id: 'public-shop-1',
+      category_id: 'category-1',
+      who_made: 'i_did',
+      is_digital: false,
+      non_taxable: true,
+      variant_type: 'single',
+      variant_group_name: 'Color',
+      variant_sub_group_name: 'Size',
+    });
   });
 
   it('returns thumb_1x1 as the list image storage_key when available', async () => {

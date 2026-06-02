@@ -7,6 +7,11 @@ import {
   UseFilters,
   UseInterceptors
 } from '@nestjs/common';
+import {
+  ApiCreatedResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import type { Response } from 'express';
 import { Idempotent } from '~/common/decorators/idempotent.decorator';
@@ -35,6 +40,7 @@ const sellerAuthRouteRateLimits = {
 
 @Controller('seller/auth')
 @UseFilters(AuthHttpExceptionFilter)
+@ApiTags('Seller Auth')
 export class SellerAuthController {
   constructor(
     private readonly registerSellerUseCase: RegisterSellerUseCase,
@@ -49,6 +55,10 @@ export class SellerAuthController {
   @UseInterceptors(IdempotencyKeyInterceptor)
   @Idempotent({
     scope: 'seller-auth:register',
+  })
+  @ApiOperation({ summary: 'Register a seller account and session' })
+  @ApiCreatedResponse({
+    type: AuthUserResponseDto,
   })
   async register(
     @Body() body: SellerRegisterDto,

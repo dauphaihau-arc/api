@@ -1,9 +1,12 @@
 import type { INestApplication } from '@nestjs/common';
+import type { OpenAPIObject } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 const DOCS_PATH = '/docs';
 const OPENAPI_JSON_PATH = `${DOCS_PATH}/openapi.json`;
+type DocumentTag = { name: string; description?: string };
+type TaggedOperation = { tags?: string[] };
 
 function renderScalarDocument(openApiUrl: string): string {
   return `<!doctype html>
@@ -28,6 +31,32 @@ function renderScalarDocument(openApiUrl: string): string {
     </script>
   </body>
 </html>`;
+}
+
+function sortDocumentTags(document: OpenAPIObject): void {
+  const existingTags = new Map<string, DocumentTag>();
+
+  for (const tag of document.tags ?? []) {
+    existingTags.set(tag.name, tag);
+  }
+
+  const discoveredTagNames = new Set<string>();
+
+  for (const pathItem of Object.values(document.paths ?? {})) {
+    for (const operation of Object.values(pathItem ?? {})) {
+      if (!operation || typeof operation !== 'object' || !('tags' in operation)) {
+        continue;
+      }
+
+      for (const tagName of ((operation as TaggedOperation).tags ?? []).filter(Boolean)) {
+        discoveredTagNames.add(tagName);
+      }
+    }
+  }
+
+  document.tags = [...discoveredTagNames]
+    .sort((left, right) => left.localeCompare(right))
+    .map((name) => existingTags.get(name) ?? { name });
 }
 
 export function setupApiDocs(app: INestApplication): void {
@@ -58,6 +87,8 @@ export function setupApiDocs(app: INestApplication): void {
       operationIdFactory: (_controllerKey: string, methodKey: string) => methodKey,
     }
   );
+
+  sortDocumentTags(document);
 
   SwaggerModule.setup(DOCS_PATH, app, document, {
     ui: false,

@@ -12,6 +12,13 @@ import {
   Req,
   UseGuards
 } from '@nestjs/common';
+import {
+  ApiCookieAuth,
+  ApiOkResponse,
+  ApiOperation,
+  ApiParam,
+  ApiTags,
+} from '@nestjs/swagger';
 import type { Request } from 'express';
 import { CurrentUser } from '~/common/decorators/current-user.decorator';
 import {
@@ -38,6 +45,8 @@ import {
 
 @Controller('me/notifications')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
+@ApiTags('My Notifications')
+@ApiCookieAuth('accessCookie')
 export class MeNotificationsController {
   constructor(
     private readonly listMyNotificationsUseCase: ListMyNotificationsUseCase,
@@ -52,6 +61,11 @@ export class MeNotificationsController {
 
   @Get()
   @Header('Cache-Control', 'private, no-cache')
+  @ApiOperation({ summary: 'List my notifications' })
+  @ApiOkResponse({
+    description: 'Paginated notification list.',
+    schema: { type: 'object' },
+  })
   async list(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Query() query: ListMyNotificationsQueryDto
@@ -69,6 +83,11 @@ export class MeNotificationsController {
 
   @Get('unread-count')
   @Header('Cache-Control', 'private, no-cache')
+  @ApiOperation({ summary: 'Get my unread notification count' })
+  @ApiOkResponse({
+    description: 'Unread notification count.',
+    schema: { type: 'object' },
+  })
   async unreadCount(@CurrentUser() currentUser: AuthenticatedUser) {
     return {
       unread_count: await this.getMyNotificationUnreadCountUseCase.execute(
@@ -79,6 +98,12 @@ export class MeNotificationsController {
 
   @Patch(':id/read')
   @Header('Cache-Control', 'private, no-store')
+  @ApiOperation({ summary: 'Mark one notification as read' })
+  @ApiParam({ name: 'id', type: String })
+  @ApiOkResponse({
+    description: 'Updated notification.',
+    schema: { type: 'object' },
+  })
   async markAsRead(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('id') id: string
@@ -92,6 +117,11 @@ export class MeNotificationsController {
 
   @Patch('read-all')
   @Header('Cache-Control', 'private, no-store')
+  @ApiOperation({ summary: 'Mark all notifications as read' })
+  @ApiOkResponse({
+    description: 'Bulk read result.',
+    schema: { type: 'object' },
+  })
   async markAllAsRead(@CurrentUser() currentUser: AuthenticatedUser) {
     const result = await this.markAllMyNotificationsAsReadUseCase.execute(
       currentUser
@@ -104,6 +134,11 @@ export class MeNotificationsController {
 
   @Get('web-push/public-key')
   @Header('Cache-Control', 'private, no-cache')
+  @ApiOperation({ summary: 'Get the web push public key' })
+  @ApiOkResponse({
+    description: 'Web push public key configuration.',
+    schema: { type: 'object' },
+  })
   getWebPushPublicKey() {
     return {
       enabled: this.webPushConfig.enabled,
@@ -113,6 +148,11 @@ export class MeNotificationsController {
 
   @Post('web-push/subscriptions')
   @Header('Cache-Control', 'private, no-store')
+  @ApiOperation({ summary: 'Register a web push subscription' })
+  @ApiOkResponse({
+    description: 'Registered web push subscription.',
+    schema: { type: 'object' },
+  })
   async registerWebPushSubscription(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() body: RegisterWebPushSubscriptionDto,
@@ -141,6 +181,11 @@ export class MeNotificationsController {
 
   @Delete('web-push/subscriptions')
   @Header('Cache-Control', 'private, no-store')
+  @ApiOperation({ summary: 'Unregister a web push subscription' })
+  @ApiOkResponse({
+    description: 'Removal result.',
+    schema: { type: 'object' },
+  })
   async unregisterWebPushSubscription(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() body: UnregisterWebPushSubscriptionDto

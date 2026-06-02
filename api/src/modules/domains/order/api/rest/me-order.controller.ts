@@ -10,6 +10,14 @@ import {
   Query,
   UseGuards
 } from '@nestjs/common';
+import {
+  ApiCookieAuth,
+  ApiOkResponse,
+  ApiOperation,
+  ApiParam,
+  ApiQuery,
+  ApiTags,
+} from '@nestjs/swagger';
 import { CurrentUser } from '~/common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '~/modules/domains/auth/api/guard/jwt-auth.guard';
 import { PermissionsGuard } from '~/modules/domains/auth/api/guard/permissions.guard';
@@ -44,6 +52,8 @@ import {
 
 @Controller('me/orders')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
+@ApiTags('My Orders')
+@ApiCookieAuth('accessCookie')
 export class MeOrderController {
   constructor(
     private readonly listOrdersUseCase: ListOrdersUseCase,
@@ -58,6 +68,11 @@ export class MeOrderController {
   ) {}
 
   @Get()
+  @ApiOperation({ summary: 'List my orders' })
+  @ApiOkResponse({
+    description: 'Paginated order list.',
+    schema: { type: 'object' },
+  })
   async list(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Query() query: ListMyOrdersQueryDto
@@ -66,10 +81,16 @@ export class MeOrderController {
       .then(toOrderListResponse);
   }
 
-  @Get(':orderId')
+  @Get(':order_id')
+  @ApiOperation({ summary: 'Get my order detail' })
+  @ApiParam({ name: 'order_id', type: String })
+  @ApiOkResponse({
+    description: 'Order detail.',
+    schema: { type: 'object' },
+  })
   async detail(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('orderId') orderId: string
+    @Param('order_id') orderId: string
   ) {
     try {
       return toMyOrderDetailResponse(
@@ -81,10 +102,16 @@ export class MeOrderController {
     }
   }
 
-  @Patch(':orderId/cancel-request')
+  @Patch(':order_id/cancel-request')
+  @ApiOperation({ summary: 'Request order cancellation' })
+  @ApiParam({ name: 'order_id', type: String })
+  @ApiOkResponse({
+    description: 'Updated order detail.',
+    schema: { type: 'object' },
+  })
   async requestCancel(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('orderId') orderId: string,
+    @Param('order_id') orderId: string,
     @Body() body: RequestOrderCancelDto
   ) {
     try {
@@ -97,10 +124,16 @@ export class MeOrderController {
     }
   }
 
-  @Patch(':orderId/support-request')
+  @Patch(':order_id/support-request')
+  @ApiOperation({ summary: 'Request order support' })
+  @ApiParam({ name: 'order_id', type: String })
+  @ApiOkResponse({
+    description: 'Updated order detail.',
+    schema: { type: 'object' },
+  })
   async requestSupport(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('orderId') orderId: string,
+    @Param('order_id') orderId: string,
     @Body() body: RequestOrderSupportDto
   ) {
     try {
@@ -114,6 +147,11 @@ export class MeOrderController {
   }
 
   @Post('quote')
+  @ApiOperation({ summary: 'Create a checkout quote from my cart' })
+  @ApiOkResponse({
+    description: 'Checkout quote.',
+    schema: { type: 'object' },
+  })
   async createQuoteFromCart(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() body: CreateCheckoutQuoteFromCartDto
@@ -129,6 +167,11 @@ export class MeOrderController {
   }
 
   @Post('buy-now/quote')
+  @ApiOperation({ summary: 'Create a buy-now checkout quote' })
+  @ApiOkResponse({
+    description: 'Checkout quote.',
+    schema: { type: 'object' },
+  })
   async createQuoteForBuyNow(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() body: CreateCheckoutQuoteForBuyNowDto
@@ -144,6 +187,11 @@ export class MeOrderController {
   }
 
   @Post()
+  @ApiOperation({ summary: 'Create an order from my cart' })
+  @ApiOkResponse({
+    description: 'Created order.',
+    schema: { type: 'object' },
+  })
   async createFromCart(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() body: CreateOrderFromCartDto
@@ -159,6 +207,11 @@ export class MeOrderController {
   }
 
   @Put()
+  @ApiOperation({ summary: 'Create a buy-now order' })
+  @ApiOkResponse({
+    description: 'Created order.',
+    schema: { type: 'object' },
+  })
   async createForBuyNow(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() body: CreateOrderForBuyNowDto
@@ -174,6 +227,12 @@ export class MeOrderController {
   }
 
   @Delete()
+  @ApiOperation({ summary: 'Get orders by checkout session' })
+  @ApiQuery({ name: 'session_id', required: false, type: String })
+  @ApiOkResponse({
+    description: 'Checkout session orders.',
+    schema: { type: 'object' },
+  })
   async getByCheckoutSession(@Query('session_id') sessionId?: string) {
     try {
       return toCheckoutSessionOrderResponse(

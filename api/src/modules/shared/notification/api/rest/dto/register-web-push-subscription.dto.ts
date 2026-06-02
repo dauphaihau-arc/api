@@ -1,4 +1,4 @@
-import { Type } from 'class-transformer';
+import { Expose, Transform, Type } from 'class-transformer';
 import {
   Allow,
   IsNotEmpty,
@@ -21,8 +21,10 @@ export class RegisterWebPushSubscriptionDto {
   @IsNotEmpty()
   endpoint!: string;
 
+  @Expose({ name: 'expiration_time' })
+  @Transform(({ value, obj: source }) => value ?? source.expiration_time)
   @Allow()
-  expirationTime?: number | null;
+  expiration_time?: number | null;
 
   @ValidateNested()
   @Type(() => WebPushSubscriptionKeysDto)

@@ -7,6 +7,7 @@ import {
   ValidateNested
 } from 'class-validator';
 import { Expose, Transform, Type } from 'class-transformer';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 import {
   MARKETPLACE_CURRENCIES,
   MARKETPLACE_LANGUAGES,
@@ -37,6 +38,7 @@ export class RegisterDto {
   password!: string;
 
   @IsOptional()
+  @ApiPropertyOptional({ name: 'display_name' })
   @Expose({ name: 'display_name' })
   @Transform(({ value, obj: source }) => value ?? source.display_name)
   @IsString()

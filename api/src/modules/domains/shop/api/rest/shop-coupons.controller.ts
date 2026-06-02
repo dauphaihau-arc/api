@@ -8,6 +8,13 @@ import {
   Query,
   UseGuards
 } from '@nestjs/common';
+import {
+  ApiCookieAuth,
+  ApiOkResponse,
+  ApiOperation,
+  ApiParam,
+  ApiTags,
+} from '@nestjs/swagger';
 import { RequirePermissions } from '~/common/decorators/require-permissions.decorator';
 import { CurrentUser } from '~/common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '~/modules/domains/auth/api/guard/jwt-auth.guard';
@@ -25,9 +32,11 @@ import {
   toShopCouponResponse
 } from './shop-coupon.response';
 
-@Controller('shops/:shopId/coupons')
+@Controller('shops/:shop_id/coupons')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @RequirePermissions('shops.manage')
+@ApiTags('Shop Coupons')
+@ApiCookieAuth('accessCookie')
 export class ShopCouponsController {
   constructor(
     private readonly createShopCouponUseCase: CreateShopCouponUseCase,
@@ -37,9 +46,15 @@ export class ShopCouponsController {
   ) {}
 
   @Post()
+  @ApiOperation({ summary: 'Create a shop coupon' })
+  @ApiParam({ name: 'shop_id', type: String })
+  @ApiOkResponse({
+    description: 'Created coupon.',
+    schema: { type: 'object' },
+  })
   async create(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('shopId') shopId: string,
+    @Param('shop_id') shopId: string,
     @Body() body: CreateShopCouponDto
   ) {
     const coupon = await this.createShopCouponUseCase.execute(
@@ -52,9 +67,15 @@ export class ShopCouponsController {
   }
 
   @Get()
+  @ApiOperation({ summary: 'List shop coupons' })
+  @ApiParam({ name: 'shop_id', type: String })
+  @ApiOkResponse({
+    description: 'Paginated coupon list.',
+    schema: { type: 'object' },
+  })
   async list(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('shopId') shopId: string,
+    @Param('shop_id') shopId: string,
     @Query() query: ListShopCouponsQueryDto
   ) {
     return this.listShopCouponsUseCase.execute(currentUser, shopId, query)
@@ -62,9 +83,15 @@ export class ShopCouponsController {
   }
 
   @Post('bulk-delete')
+  @ApiOperation({ summary: 'Bulk delete shop coupons' })
+  @ApiParam({ name: 'shop_id', type: String })
+  @ApiOkResponse({
+    description: 'Bulk delete result.',
+    schema: { type: 'object' },
+  })
   async bulkDelete(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('shopId') shopId: string,
+    @Param('shop_id') shopId: string,
     @Body() body: BulkDeleteShopCouponsDto
   ) {
     const result = await this.bulkDeleteShopCouponsUseCase.execute(
@@ -79,11 +106,18 @@ export class ShopCouponsController {
     };
   }
 
-  @Delete(':couponId')
+  @Delete(':coupon_id')
+  @ApiOperation({ summary: 'Delete a shop coupon' })
+  @ApiParam({ name: 'shop_id', type: String })
+  @ApiParam({ name: 'coupon_id', type: String })
+  @ApiOkResponse({
+    description: 'Delete confirmation.',
+    schema: { type: 'object' },
+  })
   async remove(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('shopId') shopId: string,
-    @Param('couponId') couponId: string
+    @Param('shop_id') shopId: string,
+    @Param('coupon_id') couponId: string
   ) {
     await this.deleteShopCouponUseCase.execute(currentUser, shopId, couponId);
     return { message: 'deleted successfully' };

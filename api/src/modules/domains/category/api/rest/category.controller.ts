@@ -1,6 +1,13 @@
 import {
   Body, Controller, Get, Header, Param, Post, Query, UseGuards 
 } from '@nestjs/common';
+import {
+  ApiCookieAuth,
+  ApiOkResponse,
+  ApiOperation,
+  ApiParam,
+  ApiTags,
+} from '@nestjs/swagger';
 import { SkipThrottle } from '@nestjs/throttler';
 import { resolveOrThrow } from '~/common/application/result';
 import { JwtAuthGuard } from '~/modules/domains/auth/api/guard/jwt-auth.guard';
@@ -27,6 +34,7 @@ import { SuggestCategoriesQueryDto } from './dto/suggest-categories.query.dto';
 import { mapCategoryAppErrorToHttpException } from './category-http-error-mapper';
 
 @Controller('categories')
+@ApiTags('Categories')
 export class CategoryController {
   constructor(
     private readonly createCategoryUseCase: CreateCategoryUseCase,
@@ -38,6 +46,11 @@ export class CategoryController {
 
   @Get('suggestions')
   @Header('Cache-Control', 'private, no-cache')
+  @ApiOperation({ summary: 'Suggest categories by name' })
+  @ApiOkResponse({
+    description: 'Matching category suggestions.',
+    schema: { type: 'object' },
+  })
   async suggestCategories(
     @Query() query: SuggestCategoriesQueryDto
   ): Promise<{ categories: CategorySuggestionResponse[] }> {
@@ -51,6 +64,11 @@ export class CategoryController {
   @Get()
   @SkipThrottle()
   @Header('Cache-Control', 'private, no-cache')
+  @ApiOperation({ summary: 'List categories' })
+  @ApiOkResponse({
+    description: 'Category list.',
+    schema: { type: 'array', items: { type: 'object' } },
+  })
   categories(
     @Query() query: ListCategoriesQueryDto
   ): Promise<CategoryResponse[]> {
@@ -61,6 +79,12 @@ export class CategoryController {
   @Get(':id/attributes')
   @SkipThrottle()
   @Header('Cache-Control', 'private, no-cache')
+  @ApiOperation({ summary: 'Get category attributes' })
+  @ApiParam({ name: 'id', type: String })
+  @ApiOkResponse({
+    description: 'Category attributes.',
+    schema: { type: 'object' },
+  })
   getCategoryAttributes(
     @Param('id') id: string
   ): Promise<{ attributes: CategoryAttributeResponse[] }> {
@@ -76,6 +100,12 @@ export class CategoryController {
   @Post()
   @Header('Cache-Control', 'private, no-store')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @ApiCookieAuth('accessCookie')
+  @ApiOperation({ summary: 'Create a category' })
+  @ApiOkResponse({
+    description: 'Created category.',
+    schema: { type: 'object' },
+  })
   createCategory(@Body() body: CreateCategoryDto): Promise<CategoryResponse> {
     return this.createCategoryUseCase.execute(body)
       .then((result) =>
@@ -87,6 +117,13 @@ export class CategoryController {
   @Post(':id/attributes')
   @Header('Cache-Control', 'private, no-store')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @ApiCookieAuth('accessCookie')
+  @ApiOperation({ summary: 'Create a category attribute' })
+  @ApiParam({ name: 'id', type: String })
+  @ApiOkResponse({
+    description: 'Updated category.',
+    schema: { type: 'object' },
+  })
   createCategoryAttribute(
     @Param('id') id: string,
     @Body() body: CreateCategoryAttributeDto

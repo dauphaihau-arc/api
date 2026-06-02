@@ -8,6 +8,13 @@ import {
   Query,
   UseGuards
 } from '@nestjs/common';
+import {
+  ApiCookieAuth,
+  ApiOkResponse,
+  ApiOperation,
+  ApiParam,
+  ApiTags,
+} from '@nestjs/swagger';
 import { RequirePermissions } from '~/common/decorators/require-permissions.decorator';
 import { JwtAuthGuard } from '~/modules/domains/auth/api/guard/jwt-auth.guard';
 import { PermissionsGuard } from '~/modules/domains/auth/api/guard/permissions.guard';
@@ -29,6 +36,8 @@ import { toAdminOrderDetailResponse, toAdminOrderListResponse } from './order.re
 @Controller('admin/orders')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @RequirePermissions('orders.manage')
+@ApiTags('Admin Orders')
+@ApiCookieAuth('accessCookie')
 export class AdminOrderController {
   constructor(
     private readonly listAdminOrdersUseCase: ListAdminOrdersUseCase,
@@ -40,14 +49,25 @@ export class AdminOrderController {
 
   @Get()
   @Header('Cache-Control', 'private, no-cache')
+  @ApiOperation({ summary: 'List admin orders' })
+  @ApiOkResponse({
+    description: 'Paginated admin order list.',
+    schema: { type: 'object' },
+  })
   async list(@Query() query: ListAdminOrdersQueryDto) {
     return this.listAdminOrdersUseCase.execute(query)
       .then(toAdminOrderListResponse);
   }
 
-  @Get(':orderId')
+  @Get(':order_id')
   @Header('Cache-Control', 'private, no-cache')
-  async detail(@Param('orderId') orderId: string) {
+  @ApiOperation({ summary: 'Get admin order detail' })
+  @ApiParam({ name: 'order_id', type: String })
+  @ApiOkResponse({
+    description: 'Admin order detail.',
+    schema: { type: 'object' },
+  })
+  async detail(@Param('order_id') orderId: string) {
     try {
       return toAdminOrderDetailResponse(
         await this.getAdminOrderByIdUseCase.execute(orderId)
@@ -58,10 +78,16 @@ export class AdminOrderController {
     }
   }
 
-  @Patch(':orderId/status')
+  @Patch(':order_id/status')
   @Header('Cache-Control', 'private, no-store')
+  @ApiOperation({ summary: 'Update admin order status' })
+  @ApiParam({ name: 'order_id', type: String })
+  @ApiOkResponse({
+    description: 'Updated admin order detail.',
+    schema: { type: 'object' },
+  })
   async updateStatus(
-    @Param('orderId') orderId: string,
+    @Param('order_id') orderId: string,
     @Body() body: UpdateAdminOrderStatusDto
   ) {
     try {
@@ -74,10 +100,16 @@ export class AdminOrderController {
     }
   }
 
-  @Patch(':orderId/refund')
+  @Patch(':order_id/refund')
   @Header('Cache-Control', 'private, no-store')
+  @ApiOperation({ summary: 'Update admin order refund state' })
+  @ApiParam({ name: 'order_id', type: String })
+  @ApiOkResponse({
+    description: 'Updated admin order detail.',
+    schema: { type: 'object' },
+  })
   async updateRefund(
-    @Param('orderId') orderId: string,
+    @Param('order_id') orderId: string,
     @Body() body: UpdateAdminOrderRefundDto
   ) {
     try {
@@ -90,10 +122,16 @@ export class AdminOrderController {
     }
   }
 
-  @Patch(':orderId/support-note')
+  @Patch(':order_id/support-note')
   @Header('Cache-Control', 'private, no-store')
+  @ApiOperation({ summary: 'Update admin order support note' })
+  @ApiParam({ name: 'order_id', type: String })
+  @ApiOkResponse({
+    description: 'Updated admin order detail.',
+    schema: { type: 'object' },
+  })
   async updateSupportNote(
-    @Param('orderId') orderId: string,
+    @Param('order_id') orderId: string,
     @Body() body: UpdateAdminOrderSupportNoteDto
   ) {
     try {

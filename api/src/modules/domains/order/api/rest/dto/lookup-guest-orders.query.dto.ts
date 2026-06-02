@@ -1,16 +1,19 @@
 import { BadRequestException } from '@nestjs/common';
 import { Expose, Transform } from 'class-transformer';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsEmail, IsOptional, IsString, ValidateIf } from 'class-validator';
 
 export class LookupGuestOrdersQueryDto {
   @ValidateIf((dto: LookupGuestOrdersQueryDto) => !dto.sessionId && !dto.token)
   @IsOptional()
+  @ApiPropertyOptional()
   @IsEmail()
   @IsString()
   email?: string;
 
   @ValidateIf((dto: LookupGuestOrdersQueryDto) => !dto.sessionId && !dto.token)
   @IsOptional()
+  @ApiPropertyOptional({ name: 'order_id' })
   @Expose({ name: 'order_id' })
   @Transform(({ value, obj: source }) => value ?? source.order_id)
   @IsString()
@@ -18,6 +21,7 @@ export class LookupGuestOrdersQueryDto {
 
   @ValidateIf((dto: LookupGuestOrdersQueryDto) => !dto.sessionId && !dto.token)
   @IsOptional()
+  @ApiPropertyOptional({ name: 'order_ids' })
   @Expose({ name: 'order_ids' })
   @Transform(({ value, obj: source }) => value ?? source.order_ids)
   @IsString()
@@ -25,16 +29,19 @@ export class LookupGuestOrdersQueryDto {
 
   @ValidateIf((dto: LookupGuestOrdersQueryDto) => !dto.sessionId && !dto.token)
   @IsOptional()
+  @ApiPropertyOptional()
   @IsString()
   zip?: string;
 
   @IsOptional()
+  @ApiPropertyOptional({ name: 'session_id' })
   @Expose({ name: 'session_id' })
   @Transform(({ value, obj: source }) => value ?? source.session_id)
   @IsString()
   sessionId?: string;
 
   @IsOptional()
+  @ApiPropertyOptional()
   @IsString()
   token?: string;
 

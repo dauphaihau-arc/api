@@ -9,6 +9,14 @@ import {
   Req,
   UseGuards
 } from '@nestjs/common';
+import {
+  ApiConsumes,
+  ApiCookieAuth,
+  ApiOkResponse,
+  ApiOperation,
+  ApiParam,
+  ApiTags,
+} from '@nestjs/swagger';
 import type { Request } from 'express';
 import { CurrentUser } from '~/common/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
@@ -24,7 +32,8 @@ interface UploadUrlResponse {
   method: 'PUT';
 }
 
-@Controller('shops/:shopId/products/:productId/image-uploads')
+@Controller('shops/:shop_id/products/:product_id/image-uploads')
+@ApiTags('Product Uploads')
 export class ProductUploadController {
   constructor(
     private readonly issueProductImageUploadUrlUseCase: IssueProductImageUploadUrlUseCase,
@@ -34,9 +43,17 @@ export class ProductUploadController {
   @Post()
   @Header('Cache-Control', 'private, no-store')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @ApiCookieAuth('accessCookie')
+  @ApiOperation({ summary: 'Issue a product image upload URL' })
+  @ApiParam({ name: 'shop_id', type: String })
+  @ApiParam({ name: 'product_id', type: String })
+  @ApiOkResponse({
+    description: 'Issued upload URL.',
+    schema: { type: 'object' },
+  })
   async issueUploadUrl(
-    @Param('shopId') shopId: string,
-    @Param('productId') productId: string,
+    @Param('shop_id') shopId: string,
+    @Param('product_id') productId: string,
     @CurrentUser() currentUser: AuthenticatedUser,
     @Req() request: Request,
     @Body() body: IssueProductImageUploadDto
@@ -60,6 +77,13 @@ export class ProductUploadController {
   @Put(':token')
   @Header('Cache-Control', 'no-store')
   @HttpCode(200)
+  @ApiConsumes('application/octet-stream')
+  @ApiOperation({ summary: 'Upload a product image by upload ticket' })
+  @ApiParam({ name: 'token', type: String })
+  @ApiOkResponse({
+    description: 'Uploaded asset key.',
+    schema: { type: 'object' },
+  })
   async uploadByTicket(
     @Param('token') token: string,
     @Req() request: Request,

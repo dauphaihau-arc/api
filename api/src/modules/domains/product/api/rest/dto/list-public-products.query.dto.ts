@@ -1,4 +1,5 @@
 import { Expose, Transform, Type } from 'class-transformer';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsBoolean,
   IsEnum,
@@ -58,6 +59,7 @@ export class ListPublicProductsQueryDto {
   limit: number = PRODUCT_PUBLIC_LIST_DEFAULT_LIMIT;
 
   @IsOptional()
+  @ApiPropertyOptional({ name: 'category_id' })
   @Expose({ name: 'category_id' })
   @Transform(({ value, obj: source }) => value ?? source.category_id)
   @IsUUID()
@@ -79,6 +81,7 @@ export class ListPublicProductsQueryDto {
   title?: string;
 
   @IsOptional()
+  @ApiPropertyOptional({ name: 'is_digital' })
   @Expose({ name: 'is_digital' })
   @Transform(({ value, obj: source }) =>
     toOptionalBoolean(value ?? source.is_digital)
@@ -87,6 +90,7 @@ export class ListPublicProductsQueryDto {
   isDigital?: boolean;
 
   @IsOptional()
+  @ApiPropertyOptional({ name: 'who_made', enum: ProductWhoMade })
   @Expose({ name: 'who_made' })
   @Transform(({ value, obj: source }) => value ?? source.who_made)
   @IsEnum(ProductWhoMade)

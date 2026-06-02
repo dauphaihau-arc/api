@@ -3,11 +3,13 @@ import {
   Transform,
   Type
 } from 'class-transformer';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsBoolean, IsOptional, IsUUID, Max, Min 
 } from 'class-validator';
 
 export class AddCartItemDto {
+  @ApiProperty({ name: 'inventory_id' })
   @Expose({ name: 'inventory_id' })
   @Transform(({ value, obj: source }) => value ?? source.inventory_id)
   @IsUUID()
@@ -19,6 +21,7 @@ export class AddCartItemDto {
   quantity!: number;
 
   @IsOptional()
+  @ApiPropertyOptional({ name: 'is_temp' })
   @Expose({ name: 'is_temp' })
   @Transform(({ value, obj: source }) => value ?? source.is_temp)
   @IsBoolean()

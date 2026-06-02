@@ -2,6 +2,7 @@ import {
   Expose,
   Transform
 } from 'class-transformer';
+import { ApiProperty } from '@nestjs/swagger';
 import {
   IsEmail,
   IsEnum,
@@ -20,12 +21,14 @@ export class SellerRegisterDto {
   @IsAuthPassword()
   password!: string;
 
+  @ApiProperty({ name: 'display_name' })
   @Expose({ name: 'display_name' })
   @Transform(({ value, obj: source }) => value ?? source.display_name)
   @IsString()
   @MinLength(1)
   displayName!: string;
 
+  @ApiProperty({ name: 'shop_name' })
   @Expose({ name: 'shop_name' })
   @Transform(({ value, obj: source }) => value ?? source.shop_name)
   @IsString()
