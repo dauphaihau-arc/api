@@ -4,6 +4,7 @@ import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from '../auth/auth.module';
 import { CouponEntity } from '../coupon/infra/persistence/entities/coupon.entity';
 import { ShopRepository } from './app/ports/shop.repository';
+import { BulkDeleteShopCouponsUseCase } from './app/use-cases/bulk-delete-shop-coupons/bulk-delete-shop-coupons.use-case';
 import { CreateShopCouponUseCase } from './app/use-cases/create-shop-coupon/create-shop-coupon.use-case';
 import { CreateShopUseCase } from './app/use-cases/create-shop/create-shop.use-case';
 import { DeleteShopCouponUseCase } from './app/use-cases/delete-shop-coupon/delete-shop-coupon.use-case';
@@ -30,6 +31,7 @@ import { ShopEntity } from './infra/persistence/entities/shop.entity';
     GetMyShopUseCase,
     CreateShopCouponUseCase,
     ListShopCouponsUseCase,
+    BulkDeleteShopCouponsUseCase,
     DeleteShopCouponUseCase,
   ],
   exports: [ShopRepository, CreateShopUseCase, GetMyShopUseCase],
