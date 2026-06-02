@@ -3,10 +3,15 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
 import { fromMinorUnits } from '~/common/utils/money';
 import { PaymentGateway } from '~/modules/shared/payment/app/ports/payment-gateway';
+import { NotifyUserUseCase } from '~/modules/shared/notification/app/use-cases/notify-user/notify-user.use-case';
 import { JobDispatcher } from '~/modules/shared/queue/app/ports/job-dispatcher';
 import { PaymentType } from '../domain/enums/payment-type.enum';
 import { OrderStatus } from '../domain/enums/order-status.enum';
 import { OrderEntity } from '../infra/persistence/entities/order.entity';
+import {
+  buildSellerOrderRefundNotification,
+  getSellerOrderNotificationRecipientId,
+} from './seller-order-notification';
 
 type RefundStatus = 'pending' | 'succeeded' | 'failed' | 'not_required';
 
@@ -107,7 +112,10 @@ export class OrderRefundService {
     }
   ): Promise<void> {
     await this.entityManager.transactional(async (transactionalEntityManager) => {
-      const order = await transactionalEntityManager.getRepository(OrderEntity).findOne({ id: orderId });
+      const order = await transactionalEntityManager.getRepository(OrderEntity).findOne(
+        { id: orderId },
+        { populate: ['shop.ownerUser'] }
+      );
 
       if (!order) {
         return;
@@ -152,10 +160,32 @@ export class OrderRefundService {
           orderId,
           eventType: 'refunded',
         });
-        return;
+      }
+      else {
+        await jobDispatcher.dispatch('order.send-refund-failed-email', { orderId });
       }
 
-      await jobDispatcher.dispatch('order.send-refund-failed-email', { orderId });
+      const notifyUserUseCase = this.moduleRef.get(NotifyUserUseCase, {
+        strict: false,
+      });
+      const order = await this.entityManager
+        .fork()
+        .getRepository(OrderEntity)
+        .findOne({ id: orderId }, { populate: ['shop.ownerUser'] });
+      const sellerUserId = order
+        ? getSellerOrderNotificationRecipientId(order)
+        : null;
+
+      if (order && sellerUserId && notifyUserUseCase) {
+        await notifyUserUseCase.execute(
+          buildSellerOrderRefundNotification(
+            sellerUserId,
+            orderId,
+            order.shop.id,
+            refundStatus
+          )
+        );
+      }
     }
     catch (error) {
       this.logger.error(

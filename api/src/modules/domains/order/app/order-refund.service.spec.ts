@@ -1,6 +1,7 @@
 import type { EntityManager } from '@mikro-orm/postgresql';
 import type { ModuleRef } from '@nestjs/core';
 import type { PaymentGateway } from '~/modules/shared/payment/app/ports/payment-gateway';
+import type { NotifyUserUseCase } from '~/modules/shared/notification/app/use-cases/notify-user/notify-user.use-case';
 import type { JobDispatcher } from '~/modules/shared/queue/app/ports/job-dispatcher';
 import { PaymentType } from '../domain/enums/payment-type.enum';
 import { OrderStatus } from '../domain/enums/order-status.enum';
@@ -44,6 +45,12 @@ describe('OrderRefundService', () => {
       currency: 'USD',
       status: OrderStatus.CANCELED,
       refundedAt: undefined,
+      shop: {
+        id: 'shop-1',
+        ownerUser: {
+          id: 'seller-1',
+        },
+      },
       paymentDetails: {
         payment_intent_id: 'pi_123',
         refund_status: 'pending',
@@ -73,8 +80,16 @@ describe('OrderRefundService', () => {
     const jobDispatcher = {
       dispatch: jest.fn().mockResolvedValue(undefined),
     } as unknown as JobDispatcher;
+    const notifyUserUseCase = {
+      execute: jest.fn().mockResolvedValue(undefined),
+    } as unknown as jest.Mocked<NotifyUserUseCase>;
     const moduleRef = {
-      get: jest.fn().mockReturnValue(jobDispatcher),
+      get: jest.fn((token: unknown) => {
+        if (typeof token === 'function' && token.name === 'NotifyUserUseCase') {
+          return notifyUserUseCase;
+        }
+        return jobDispatcher;
+      }),
     } as unknown as ModuleRef;
     const service = new OrderRefundService(entityManager, paymentGateway, moduleRef);
 
@@ -86,6 +101,15 @@ describe('OrderRefundService', () => {
       orderId: 'order-1',
       eventType: 'refunded',
     });
+    expect(notifyUserUseCase.execute).toHaveBeenCalledWith(expect.objectContaining({
+      userId: 'seller-1',
+      type: 'seller.order.refund_succeeded',
+      data: expect.objectContaining({
+        orderId: 'order-1',
+        shopId: 'shop-1',
+        refundStatus: 'succeeded',
+      }),
+    }));
     expect(order.status).toBe(OrderStatus.REFUNDED);
     expect(order.refundedAt).toBeInstanceOf(Date);
     expect(order.paymentDetails).toEqual(expect.objectContaining({
@@ -103,6 +127,12 @@ describe('OrderRefundService', () => {
       currency: 'USD',
       status: OrderStatus.CANCELED,
       refundedAt: undefined,
+      shop: {
+        id: 'shop-1',
+        ownerUser: {
+          id: 'seller-1',
+        },
+      },
       paymentDetails: {
         payment_intent_id: 'pi_123',
         refund_status: 'pending',
@@ -128,8 +158,16 @@ describe('OrderRefundService', () => {
     const jobDispatcher = {
       dispatch: jest.fn().mockResolvedValue(undefined),
     } as unknown as JobDispatcher;
+    const notifyUserUseCase = {
+      execute: jest.fn().mockResolvedValue(undefined),
+    } as unknown as jest.Mocked<NotifyUserUseCase>;
     const moduleRef = {
-      get: jest.fn().mockReturnValue(jobDispatcher),
+      get: jest.fn((token: unknown) => {
+        if (typeof token === 'function' && token.name === 'NotifyUserUseCase') {
+          return notifyUserUseCase;
+        }
+        return jobDispatcher;
+      }),
     } as unknown as ModuleRef;
     const service = new OrderRefundService(entityManager, paymentGateway, moduleRef);
 
@@ -143,6 +181,15 @@ describe('OrderRefundService', () => {
     expect(jobDispatcher.dispatch).toHaveBeenCalledWith('order.send-refund-failed-email', {
       orderId: 'order-1',
     });
+    expect(notifyUserUseCase.execute).toHaveBeenCalledWith(expect.objectContaining({
+      userId: 'seller-1',
+      type: 'seller.order.refund_failed',
+      data: expect.objectContaining({
+        orderId: 'order-1',
+        shopId: 'shop-1',
+        refundStatus: 'failed',
+      }),
+    }));
   });
 
 });

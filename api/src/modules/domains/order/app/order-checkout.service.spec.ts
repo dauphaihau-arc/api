@@ -1,6 +1,7 @@
 import type { EventEmitter2 } from '@nestjs/event-emitter';
 import type { EntityManager } from '@mikro-orm/postgresql';
 import type { CouponPricingService } from '../../coupon/app/coupon-pricing.service';
+import type { NotifyUserUseCase } from '~/modules/shared/notification/app/use-cases/notify-user/notify-user.use-case';
 import { CartKind } from '../../cart/domain/enums/cart-kind.enum';
 import type { OrderCheckoutOutboxService } from './order-checkout-outbox.service';
 import { OrderCheckoutService } from './order-checkout.service';
@@ -76,6 +77,9 @@ describe('OrderCheckoutService', () => {
       id: 'shop-1',
       shopName: 'Shop 1',
       slug: 'shop-1',
+      ownerUser: {
+        id: 'seller-1',
+      },
     };
 
     const orderRepository = {
@@ -146,17 +150,22 @@ describe('OrderCheckoutService', () => {
     const eventEmitter: Pick<jest.Mocked<EventEmitter2>, 'emit'> = {
       emit: jest.fn(),
     };
+    const notifyUserUseCase = {
+      execute: jest.fn().mockResolvedValue(undefined),
+    } as unknown as jest.Mocked<NotifyUserUseCase>;
 
     const service = new OrderCheckoutService(
       entityManager,
       couponPricingService,
       orderCheckoutOutboxService,
+      notifyUserUseCase,
       eventEmitter as unknown as EventEmitter2
     );
 
     return {
       service,
       eventEmitter,
+      notifyUserUseCase,
       fakeEntityManager,
       orderRepository,
       orderItemRepository,
@@ -168,6 +177,7 @@ describe('OrderCheckoutService', () => {
     const {
       service,
       eventEmitter,
+      notifyUserUseCase,
       orderRepository,
       orderItemRepository,
       orderCheckoutOutboxService,
@@ -223,6 +233,15 @@ describe('OrderCheckoutService', () => {
     ).toHaveBeenCalled();
     expect(orderCheckoutOutboxService.processEventById).toHaveBeenCalledWith('outbox-1');
     expect(eventEmitter.emit).toHaveBeenCalled();
+    expect(notifyUserUseCase.execute).toHaveBeenCalledWith(expect.objectContaining({
+      userId: 'seller-1',
+      type: 'seller.order.created',
+      data: expect.objectContaining({
+        target: 'seller_order_detail',
+        orderId: 'order-1',
+        shopId: 'shop-1',
+      }),
+    }));
     expect(result.checkoutSessionUrl).toBe('https://stripe.test/session-1');
     expect(result.checkoutSessionId).toBe('cs_test_1');
     expect(result.checkoutPending).toBe(false);

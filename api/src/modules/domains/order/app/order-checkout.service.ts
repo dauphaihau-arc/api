@@ -12,6 +12,7 @@ import {
   buildProductInventoryUpdatedSseEvent,
   PRODUCT_INVENTORY_UPDATED_SSE_EVENT,
 } from '~/modules/domains/product/app/events/product-inventory-sse.event';
+import { NotifyUserUseCase } from '~/modules/shared/notification/app/use-cases/notify-user/notify-user.use-case';
 import type { CartSnapshot } from '../../cart/app/cart.types';
 import { CurrentUserEntity } from '../../auth/infra/persistence/entities/current-user.entity';
 import { CouponPricingService } from '../../coupon/app/coupon-pricing.service';
@@ -26,6 +27,10 @@ import { OrderEntity } from '../infra/persistence/entities/order.entity';
 import { OrderItemEntity } from '../infra/persistence/entities/order-item.entity';
 import type { LoadedCheckoutQuote } from './load-checkout-quote.service';
 import { OrderCheckoutOutboxService } from './order-checkout-outbox.service';
+import {
+  buildSellerOrderCreatedNotification,
+  getSellerOrderNotificationRecipientId,
+} from './seller-order-notification';
 import type {
   CheckoutActor,
   CreateOrderResult,
@@ -39,6 +44,7 @@ export class OrderCheckoutService {
     private readonly entityManager: EntityManager,
     private readonly couponPricingService: CouponPricingService,
     private readonly orderCheckoutOutboxService: OrderCheckoutOutboxService,
+    private readonly notifyUserUseCase: NotifyUserUseCase,
     private readonly eventEmitter: EventEmitter2
   ) {}
 
@@ -89,7 +95,10 @@ export class OrderCheckoutService {
         const pricedShop = quote
           ? undefined
           : shop as NonNullable<typeof pricedCart>['shops'][number];
-        const shopEntity = await entityManager.getRepository(ShopEntity).findOne({ id: shop.shopId });
+        const shopEntity = await entityManager.getRepository(ShopEntity).findOne(
+          { id: shop.shopId },
+          { populate: ['ownerUser'] }
+        );
         if (!shopEntity) {
           throw new NotFoundException('Shop not found');
         }
@@ -194,11 +203,11 @@ export class OrderCheckoutService {
               : toMinorUnits(pricedItem!.effectiveUnitPrice, currency),
             salePrice: quoteItem
               ? (quoteItem.originalAmountMinor
-                  ? fromMinorUnits(quoteItem.unitPriceCheckoutMinor, currency)
-                  : undefined)
+                ? fromMinorUnits(quoteItem.unitPriceCheckoutMinor, currency)
+                : undefined)
               : (pricedItem!.effectiveUnitPrice < pricedItem!.price
-                  ? pricedItem!.effectiveUnitPrice
-                  : pricedItem!.salePrice),
+                ? pricedItem!.effectiveUnitPrice
+                : pricedItem!.salePrice),
             originalAmountMinor: quoteItem
               ? quoteItem.originalAmountMinor
               : pricedItem!.effectiveUnitPrice < pricedItem!.price
@@ -300,6 +309,7 @@ export class OrderCheckoutService {
           shopId: order.shop.id,
           shopName: order.shop.shopName,
           shopSlug: order.shop.slug,
+          ownerUserId: getSellerOrderNotificationRecipientId(order),
         })),
       };
     });
@@ -310,6 +320,20 @@ export class OrderCheckoutService {
 
     for (const inventoryEvent of result.inventoryEvents) {
       this.eventEmitter.emit(PRODUCT_INVENTORY_UPDATED_SSE_EVENT, inventoryEvent);
+    }
+
+    for (const orderShop of result.orderShops) {
+      if (!('ownerUserId' in orderShop) || typeof orderShop.ownerUserId !== 'string') {
+        continue;
+      }
+
+      await this.notifyUserUseCase.execute(
+        buildSellerOrderCreatedNotification(
+          orderShop.ownerUserId,
+          orderShop.id,
+          orderShop.shopId
+        )
+      );
     }
 
     return {

@@ -1,5 +1,6 @@
 import type { EntityManager } from '@mikro-orm/postgresql';
 import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
+import type { NotifyUserUseCase } from '~/modules/shared/notification/app/use-cases/notify-user/notify-user.use-case';
 import { UserStatus } from '../../../../auth/domain/enums/user-status.enum';
 import { RequestOrderSupportUseCase } from './request-order-support.use-case';
 
@@ -19,6 +20,9 @@ describe('RequestOrderSupportUseCase', () => {
         id: 'shop-1',
         shopName: 'Shop 1',
         slug: 'shop-1',
+        ownerUser: {
+          id: 'seller-1',
+        },
       },
       customerEmail: 'buyer@example.com',
       paymentType: 'card',
@@ -87,10 +91,13 @@ describe('RequestOrderSupportUseCase', () => {
       }),
       flush: jest.fn().mockResolvedValue(undefined),
     } as unknown as EntityManager;
+    const notifyUserUseCase = {
+      execute: jest.fn().mockResolvedValue(undefined),
+    } as unknown as jest.Mocked<NotifyUserUseCase>;
 
     const useCase = new RequestOrderSupportUseCase({
       fork: jest.fn(() => fakeEntityManager),
-    } as unknown as EntityManager)
+    } as unknown as EntityManager, notifyUserUseCase)
 
     const result = await useCase.execute(actor, 'order-1', {
       supportNote: 'Need help changing the address',
@@ -98,6 +105,15 @@ describe('RequestOrderSupportUseCase', () => {
 
     expect(order.customerSupportNote).toBe('Need help changing the address')
     expect(fakeEntityManager.flush).toHaveBeenCalled()
+    expect(notifyUserUseCase.execute).toHaveBeenCalledWith(expect.objectContaining({
+      userId: 'seller-1',
+      type: 'seller.order.support_requested',
+      data: expect.objectContaining({
+        target: 'seller_order_detail',
+        orderId: 'order-1',
+        shopId: 'shop-1',
+      }),
+    }))
     expect(result.customerSupportNote).toBe('Need help changing the address')
   })
 })

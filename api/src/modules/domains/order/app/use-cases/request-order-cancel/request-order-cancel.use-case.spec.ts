@@ -1,6 +1,7 @@
 import type { EntityManager } from '@mikro-orm/postgresql';
 import type { EventEmitter2 } from '@nestjs/event-emitter';
 import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
+import type { NotifyUserUseCase } from '~/modules/shared/notification/app/use-cases/notify-user/notify-user.use-case';
 import { UserStatus } from '../../../../auth/domain/enums/user-status.enum';
 import { OrderShippingStatus } from '../../../domain/enums/order-shipping-status.enum';
 import { OrderStatus } from '../../../domain/enums/order-status.enum';
@@ -28,6 +29,9 @@ describe('RequestOrderCancelUseCase', () => {
         id: 'shop-1',
         shopName: 'Shop 1',
         slug: 'shop-1',
+        ownerUser: {
+          id: 'seller-1',
+        },
       },
       customerEmail: 'buyer@example.com',
       paymentType: 'card',
@@ -111,23 +115,35 @@ describe('RequestOrderCancelUseCase', () => {
     const eventEmitter: Pick<jest.Mocked<EventEmitter2>, 'emit'> = {
       emit: jest.fn(),
     };
+    const notifyUserUseCase = {
+      execute: jest.fn().mockResolvedValue(undefined),
+    } as unknown as jest.Mocked<NotifyUserUseCase>;
 
     return {
       order,
       fakeEntityManager,
       cancellationService,
       jobDispatcher,
+      notifyUserUseCase,
       useCase: new RequestOrderCancelUseCase(
         { fork: jest.fn(() => fakeEntityManager) } as unknown as EntityManager,
         cancellationService,
         jobDispatcher as never,
+        notifyUserUseCase,
         eventEmitter as unknown as EventEmitter2
       ),
     };
   }
 
   it('cancels a pre-transit paid order immediately', async () => {
-    const { useCase, order, fakeEntityManager, cancellationService, jobDispatcher } = buildUseCase();
+    const {
+      useCase,
+      order,
+      fakeEntityManager,
+      cancellationService,
+      jobDispatcher,
+      notifyUserUseCase,
+    } = buildUseCase();
 
     const result = await useCase.execute(actor, 'order-1', {
       cancelReason: 'Changed my mind',
@@ -143,6 +159,15 @@ describe('RequestOrderCancelUseCase', () => {
       orderId: 'order-1',
       eventType: 'canceled',
     })
+    expect(notifyUserUseCase.execute).toHaveBeenCalledWith(expect.objectContaining({
+      userId: 'seller-1',
+      type: 'seller.order.cancel_requested',
+      data: expect.objectContaining({
+        target: 'seller_order_detail',
+        orderId: 'order-1',
+        shopId: 'shop-1',
+      }),
+    }))
     expect(result.status).toBe(OrderStatus.CANCELED)
   })
 
