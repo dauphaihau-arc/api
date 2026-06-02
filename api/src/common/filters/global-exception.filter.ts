@@ -42,6 +42,10 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     }
 
     if (statusCode >= 500) {
+      const errorMessage = exception instanceof Error
+        ? exception.message
+        : 'Unknown error';
+
       captureException(exception, (scope) => {
         scope.setTag('runtime', 'api');
         scope.setTag('request_id', requestContext.requestId ?? 'unknown');
@@ -82,10 +86,8 @@ export class GlobalExceptionFilter implements ExceptionFilter {
               channel: requestContext.channel,
             },
             errorName: exception instanceof Error ? exception.name : 'UnknownError',
-            errorMessage:
-              exception instanceof Error
-                ? exception.message
-                : 'Unknown error',
+            errorMessage,
+            requestSummary: buildRequestSummary(request.method, request.url, statusCode),
             traceId: traceContext?.traceId,
             spanId: traceContext?.spanId,
             http: {
@@ -98,7 +100,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
           }),
           err: exception instanceof Error ? exception : undefined,
         },
-        `${request.method.toUpperCase()} ${request.url} ${statusCode} ${exception instanceof Error ? exception.name : 'UnknownError'}`
+        errorMessage
       );
     }
 
@@ -112,6 +114,14 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 
     response.status(statusCode).json(responseBody);
   }
+}
+
+function buildRequestSummary(
+  method: string,
+  path: string,
+  statusCode: number
+): string {
+  return `${method.toUpperCase()} ${path} ${statusCode}`;
 }
 
 function buildErrorResponse(

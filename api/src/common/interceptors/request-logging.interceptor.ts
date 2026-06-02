@@ -1,6 +1,8 @@
 import {
   CallHandler,
   ExecutionContext,
+  HttpException,
+  HttpStatus,
   Injectable,
   NestInterceptor
 } from '@nestjs/common';
@@ -83,27 +85,29 @@ export class RequestLoggingInterceptor implements NestInterceptor {
             )
           );
         },
-        error: () => {
+        error: (error: unknown) => {
           const durationMs = Date.now() - startedAt;
+          const statusCode = this.resolveFailureStatusCode(error);
+          const logMethod = statusCode >= 500 ? 'error' : 'warn';
 
           this.observabilityService.recordHttpRequest(
             request.method,
             this.resolveRoute(request),
-            response.statusCode,
+            statusCode,
             durationMs
           );
-          this.logger.warn(
+          this.logger[logMethod](
             this.buildHttpLogPayload(
               'http.request.failed',
               request,
-              response.statusCode,
+              statusCode,
               durationMs,
               requestContext
             ),
             this.buildHttpSummary(
               request.method,
               this.resolveRoute(request),
-              response.statusCode,
+              statusCode,
               durationMs
             )
           );
@@ -135,6 +139,14 @@ export class RequestLoggingInterceptor implements NestInterceptor {
     durationMs: number
   ): string {
     return `${method.toUpperCase()} ${route} ${statusCode} ${durationMs}ms`;
+  }
+
+  private resolveFailureStatusCode(error: unknown): number {
+    if (error instanceof HttpException) {
+      return error.getStatus();
+    }
+
+    return HttpStatus.INTERNAL_SERVER_ERROR;
   }
 
   private buildHttpLogPayload(
