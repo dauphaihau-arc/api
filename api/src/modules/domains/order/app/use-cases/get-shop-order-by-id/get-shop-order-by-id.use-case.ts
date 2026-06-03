@@ -3,6 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { OrderEntity } from '../../../infra/persistence/entities/order.entity';
 import { OrderItemEntity } from '../../../infra/persistence/entities/order-item.entity';
 import { OrderNotFoundError } from '../../errors/order-app.error';
+import { buildScopedOrderIdentifierWhere } from '../../order-identifier';
 import { toShopOrderDetail } from '../../shop-order-read-model';
 import type { ShopOrderDetail } from '../../order.types';
 
@@ -13,7 +14,7 @@ export class GetShopOrderByIdUseCase {
   async execute(shopId: string, orderId: string): Promise<ShopOrderDetail> {
     const entityManager = this.entityManager.fork();
     const order = await entityManager.getRepository(OrderEntity).findOne(
-      { id: orderId, shop: shopId },
+      buildScopedOrderIdentifierWhere(orderId, { shop: shopId }),
       { populate: ['shop'] }
     );
 
@@ -23,7 +24,7 @@ export class GetShopOrderByIdUseCase {
 
     const items = await entityManager.getRepository(OrderItemEntity).find(
       { order: order.id },
-      { populate: ['order', 'product', 'product.shop', 'inventory'] }
+      { populate: ['product', 'product.shop', 'inventory'] }
     );
 
     return toShopOrderDetail(order, items);

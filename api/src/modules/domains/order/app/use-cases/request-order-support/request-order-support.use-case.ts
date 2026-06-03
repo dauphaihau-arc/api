@@ -6,6 +6,8 @@ import type { RequestOrderSupportDto } from '../../../api/rest/dto/request-order
 import { OrderEntity } from '../../../infra/persistence/entities/order.entity';
 import { OrderItemEntity } from '../../../infra/persistence/entities/order-item.entity';
 import { OrderNotFoundError } from '../../errors/order-app.error';
+import { buildScopedOrderIdentifierWhere } from '../../order-identifier';
+import { getRequiredOrderNumber } from '../../order-number';
 import {
   getOrderDiscountMajor,
   getOrderDiscountMinor,
@@ -38,7 +40,7 @@ export class RequestOrderSupportUseCase {
   ): Promise<MyOrderDetail> {
     const entityManager = this.entityManager.fork();
     const order = await entityManager.getRepository(OrderEntity).findOne(
-      { id: orderId, user: actor.userId },
+      buildScopedOrderIdentifierWhere(orderId, { user: actor.userId }),
       { populate: ['shop.ownerUser'] }
     );
 
@@ -62,11 +64,12 @@ export class RequestOrderSupportUseCase {
 
     const items = await entityManager.getRepository(OrderItemEntity).find(
       { order: order.id },
-      { populate: ['order', 'product', 'product.shop', 'inventory'] }
+      { populate: ['product', 'product.shop', 'inventory'] }
     );
 
     return {
       id: order.id,
+      orderNumber: getRequiredOrderNumber(order),
       shopId: order.shop.id,
       shopName: order.shop.shopName,
       shopSlug: order.shop.slug,

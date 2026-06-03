@@ -10,6 +10,7 @@ import { OrderStatus } from '../../../domain/enums/order-status.enum';
 import { OrderEntity } from '../../../infra/persistence/entities/order.entity';
 import { OrderItemEntity } from '../../../infra/persistence/entities/order-item.entity';
 import { toAdminOrderDetail } from '../../admin-order-read-model';
+import { buildOrderIdentifierWhere } from '../../order-identifier';
 import {
   AdminRefundActionNotAllowedError,
   AdminRefundNotAllowedError,
@@ -39,7 +40,7 @@ export class UpdateAdminOrderRefundUseCase {
 
     const result = await entityManager.transactional(async (transactionalEntityManager) => {
       const order = await transactionalEntityManager.getRepository(OrderEntity).findOne(
-        { id: orderId },
+        buildOrderIdentifierWhere(orderId),
         { populate: ['shop', 'user'] }
       );
 
@@ -109,7 +110,7 @@ export class UpdateAdminOrderRefundUseCase {
 
       const items = await transactionalEntityManager.getRepository(OrderItemEntity).find(
         { order: order.id },
-        { populate: ['order', 'product', 'product.shop', 'inventory'] }
+        { populate: ['product', 'product.shop', 'inventory'] }
       );
 
       return {
@@ -128,7 +129,7 @@ export class UpdateAdminOrderRefundUseCase {
     if (result.customerUserId) {
       this.eventEmitter.emit(ORDER_UPDATED_SSE_EVENT, {
         userId: result.customerUserId,
-        orderId,
+        orderId: result.detail.id,
         changed: ['status', 'refundStatus'],
         status: result.detail.status,
         shippingStatus: result.detail.shippingStatus,
@@ -139,13 +140,13 @@ export class UpdateAdminOrderRefundUseCase {
       try {
         await this.jobDispatcher.dispatch(
           'order.process-refund',
-          { orderId },
-          { deduplicationKey: appJobDeduplicationKey.processOrderRefund(orderId) }
+          { orderId: result.detail.id },
+          { deduplicationKey: appJobDeduplicationKey.processOrderRefund(result.detail.id) }
         );
       }
       catch (error) {
         this.logger.error(
-          `Failed to schedule admin refund retry for order ${orderId}`,
+          `Failed to schedule admin refund retry for order ${result.detail.id}`,
           error instanceof Error ? error.stack : undefined
         );
       }
@@ -154,19 +155,19 @@ export class UpdateAdminOrderRefundUseCase {
     if (result.notificationAction) {
       try {
         if (result.notificationAction === 'refund_succeeded') {
-          await this.jobDispatcher.dispatch('order.send-refund-succeeded-email', { orderId });
+          await this.jobDispatcher.dispatch('order.send-refund-succeeded-email', { orderId: result.detail.id });
           await this.jobDispatcher.dispatch('order.send-seller-order-update-email', {
-            orderId,
+            orderId: result.detail.id,
             eventType: 'refunded',
           });
         }
         else {
-          await this.jobDispatcher.dispatch('order.send-refund-failed-email', { orderId });
+          await this.jobDispatcher.dispatch('order.send-refund-failed-email', { orderId: result.detail.id });
         }
       }
       catch (error) {
         this.logger.error(
-          `Failed to schedule admin refund notification for order ${orderId}`,
+          `Failed to schedule admin refund notification for order ${result.detail.id}`,
           error instanceof Error ? error.stack : undefined
         );
       }

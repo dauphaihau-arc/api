@@ -6,6 +6,7 @@ import { OrderStatus } from '../../../domain/enums/order-status.enum';
 import { OrderEntity } from '../../../infra/persistence/entities/order.entity';
 import { OrderItemEntity } from '../../../infra/persistence/entities/order-item.entity';
 import { toAdminOrderDetail } from '../../admin-order-read-model';
+import { buildOrderIdentifierWhere } from '../../order-identifier';
 import {
   AdminOrderStatusOverrideNotAllowedError,
   AdminRefundNotAllowedError,
@@ -33,7 +34,7 @@ export class UpdateAdminOrderStatusUseCase {
   ): Promise<AdminOrderDetail> {
     const entityManager = this.entityManager.fork();
     const order = await entityManager.getRepository(OrderEntity).findOne(
-      { id: orderId },
+      buildOrderIdentifierWhere(orderId),
       { populate: ['shop', 'user'] }
     );
 
@@ -69,7 +70,7 @@ export class UpdateAdminOrderStatusUseCase {
     if (order.user?.id) {
       this.eventEmitter.emit(ORDER_UPDATED_SSE_EVENT, {
         userId: order.user.id,
-        orderId,
+        orderId: order.id,
         changed: ['status'],
         status: order.status,
         shippingStatus: order.shippingStatus,
@@ -78,7 +79,7 @@ export class UpdateAdminOrderStatusUseCase {
 
     const items = await entityManager.getRepository(OrderItemEntity).find(
       { order: order.id },
-      { populate: ['order', 'product', 'product.shop', 'inventory'] }
+      { populate: ['product', 'product.shop', 'inventory'] }
     );
 
     return toAdminOrderDetail(order, items);

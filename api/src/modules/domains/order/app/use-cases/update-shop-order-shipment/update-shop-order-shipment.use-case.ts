@@ -14,6 +14,8 @@ import {
   ShipmentUpdatePayloadRequiredError,
 } from '../../errors/order-app.error';
 import { ORDER_UPDATED_SSE_EVENT } from '../../events/order-sse.event';
+import { buildScopedOrderIdentifierWhere } from '../../order-identifier';
+import { getRequiredOrderNumber } from '../../order-number';
 import { toShopOrderDetail } from '../../shop-order-read-model';
 import type { ShopOrderDetail } from '../../order.types';
 
@@ -54,7 +56,7 @@ export class UpdateShopOrderShipmentUseCase {
   ): Promise<ShopOrderDetail> {
     const entityManager = this.entityManager.fork();
     const order = await entityManager.getRepository(OrderEntity).findOne(
-      { id: orderId, shop: shopId },
+      buildScopedOrderIdentifierWhere(orderId, { shop: shopId }),
       { populate: ['shop', 'user'] }
     );
 
@@ -120,7 +122,7 @@ export class UpdateShopOrderShipmentUseCase {
     if (order.user?.id && input.shippingStatus) {
       this.eventEmitter.emit(ORDER_UPDATED_SSE_EVENT, {
         userId: order.user.id,
-        orderId,
+        orderId: order.id,
         changed: [
           'shippingStatus',
           ...(input.trackingNumber !== undefined ? ['trackingNumber'] : []),
@@ -134,9 +136,9 @@ export class UpdateShopOrderShipmentUseCase {
         userId: order.user.id,
         type: `order.shipping.${input.shippingStatus}`,
         title: 'Order shipping updated',
-        body: this.buildShippingBody(order.id, input.shippingStatus),
+        body: this.buildShippingBody(getRequiredOrderNumber(order), input.shippingStatus),
         data: {
-          orderId,
+          orderId: order.id,
           shopId,
           shippingStatus: input.shippingStatus,
         },
@@ -146,7 +148,7 @@ export class UpdateShopOrderShipmentUseCase {
     else if (order.user?.id && input.trackingNumber !== undefined) {
       this.eventEmitter.emit(ORDER_UPDATED_SSE_EVENT, {
         userId: order.user.id,
-        orderId,
+        orderId: order.id,
         changed: ['trackingNumber'],
         status: order.status,
         shippingStatus: order.shippingStatus,
@@ -155,26 +157,26 @@ export class UpdateShopOrderShipmentUseCase {
 
     const items = await entityManager.getRepository(OrderItemEntity).find(
       { order: order.id },
-      { populate: ['order', 'product', 'product.shop', 'inventory'] }
+      { populate: ['product', 'product.shop', 'inventory'] }
     );
 
     return toShopOrderDetail(order, items);
   }
 
   private buildShippingBody(
-    orderId: string,
+    orderNumber: string,
     shippingStatus: OrderShippingStatus
   ): string {
     switch (shippingStatus) {
       case OrderShippingStatus.IN_TRANSIT:
-        return `Your order ${orderId} is now in transit.`;
+        return `Your order ${orderNumber} is now in transit.`;
       case OrderShippingStatus.SHIPPED:
-        return `Your order ${orderId} has shipped.`;
+        return `Your order ${orderNumber} has shipped.`;
       case OrderShippingStatus.DELIVERED:
-        return `Your order ${orderId} has been delivered.`;
+        return `Your order ${orderNumber} has been delivered.`;
       case OrderShippingStatus.PRE_TRANSIT:
       default:
-        return `Your order ${orderId} shipping details were updated.`;
+        return `Your order ${orderNumber} shipping details were updated.`;
     }
   }
 }

@@ -17,6 +17,8 @@ import {
   OrderNotFoundError,
 } from '../../errors/order-app.error';
 import { OrderCancellationService } from '../../order-cancellation.service';
+import { buildScopedOrderIdentifierWhere } from '../../order-identifier';
+import { getRequiredOrderNumber } from '../../order-number';
 import {
   getOrderDiscountMajor,
   getOrderDiscountMinor,
@@ -56,7 +58,7 @@ export class RequestOrderCancelUseCase {
 
     const result = await entityManager.transactional(async (transactionalEntityManager) => {
       const order = await transactionalEntityManager.getRepository(OrderEntity).findOne(
-        { id: orderId, user: actor.userId },
+        buildScopedOrderIdentifierWhere(orderId, { user: actor.userId }),
         { populate: ['shop.ownerUser'] }
       );
 
@@ -84,13 +86,14 @@ export class RequestOrderCancelUseCase {
 
       const items = await transactionalEntityManager.getRepository(OrderItemEntity).find(
         { order: order.id },
-        { populate: ['order', 'product', 'product.shop', 'inventory'] }
+        { populate: ['product', 'product.shop', 'inventory'] }
       );
 
       return {
         refundRequested,
         inventoryEvents,
         id: order.id,
+        orderNumber: getRequiredOrderNumber(order),
         shopId: order.shop.id,
         sellerUserId: getSellerOrderNotificationRecipientId(order),
         shopName: order.shop.shopName,
@@ -161,7 +164,7 @@ export class RequestOrderCancelUseCase {
 
     this.eventEmitter.emit(ORDER_UPDATED_SSE_EVENT, {
       userId: actor.userId,
-      orderId,
+      orderId: result.id,
       changed: ['status'],
       status: result.status,
       shippingStatus: result.shippingStatus,
@@ -173,24 +176,24 @@ export class RequestOrderCancelUseCase {
 
     if (result.refundRequested) {
       try {
-        await this.jobDispatcher.dispatch('order.process-refund', { orderId });
+        await this.jobDispatcher.dispatch('order.process-refund', { orderId: result.id });
       }
       catch (error) {
         this.logger.error(
-          `Failed to schedule refund for canceled order ${orderId}`,
+          `Failed to schedule refund for canceled order ${result.id}`,
           error instanceof Error ? error.stack : undefined
         );
       }
     }
     try {
       await this.jobDispatcher.dispatch('order.send-seller-order-update-email', {
-        orderId,
+        orderId: result.id,
         eventType: 'canceled',
       });
     }
     catch (error) {
       this.logger.error(
-        `Failed to schedule seller cancellation notification for order ${orderId}`,
+        `Failed to schedule seller cancellation notification for order ${result.id}`,
         error instanceof Error ? error.stack : undefined
       );
     }
@@ -199,7 +202,7 @@ export class RequestOrderCancelUseCase {
       await this.notifyUserUseCase.execute(
         buildSellerOrderCancelRequestedNotification(
           result.sellerUserId,
-          orderId,
+          result.id,
           result.shopId
         )
       );

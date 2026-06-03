@@ -16,6 +16,7 @@ import {
   SellerShippedOrderCancelNotAllowedError,
 } from '../../errors/order-app.error';
 import { ORDER_UPDATED_SSE_EVENT } from '../../events/order-sse.event';
+import { buildScopedOrderIdentifierWhere } from '../../order-identifier';
 import { OrderCancellationService } from '../../order-cancellation.service';
 import { toShopOrderDetail } from '../../shop-order-read-model';
 import type { ShopOrderDetail } from '../../order.types';
@@ -41,7 +42,7 @@ export class UpdateShopOrderStatusUseCase {
 
     const result = await entityManager.transactional(async (transactionalEntityManager) => {
       const order = await transactionalEntityManager.getRepository(OrderEntity).findOne(
-        { id: orderId, shop: shopId },
+        buildScopedOrderIdentifierWhere(orderId, { shop: shopId }),
         { populate: ['shop', 'user'] }
       );
 
@@ -91,11 +92,11 @@ export class UpdateShopOrderStatusUseCase {
 
     if (result.refundRequested) {
       try {
-        await this.jobDispatcher.dispatch('order.process-refund', { orderId });
+        await this.jobDispatcher.dispatch('order.process-refund', { orderId: result.detail.id });
       }
       catch (error) {
         this.logger.error(
-          `Failed to schedule refund for canceled shop order ${orderId}`,
+          `Failed to schedule refund for canceled shop order ${result.detail.id}`,
           error instanceof Error ? error.stack : undefined
         );
       }
@@ -104,7 +105,7 @@ export class UpdateShopOrderStatusUseCase {
     if (result.customerUserId) {
       this.eventEmitter.emit(ORDER_UPDATED_SSE_EVENT, {
         userId: result.customerUserId,
-        orderId,
+        orderId: result.detail.id,
         changed: ['status'],
         status: OrderStatus.CANCELED,
       });
@@ -113,9 +114,9 @@ export class UpdateShopOrderStatusUseCase {
         userId: result.customerUserId,
         type: 'order.canceled',
         title: 'Order canceled',
-        body: `Your order ${orderId} was canceled by the seller.`,
+        body: `Your order ${result.detail.orderNumber} was canceled by the seller.`,
         data: {
-          orderId,
+          orderId: result.detail.id,
           shopId,
           actor: 'seller',
           status: OrderStatus.CANCELED,
@@ -133,7 +134,7 @@ export class UpdateShopOrderStatusUseCase {
   ): Promise<ShopOrderDetail> {
     const items = await entityManager.getRepository(OrderItemEntity).find(
       { order: order.id },
-      { populate: ['order', 'product', 'product.shop', 'inventory'] }
+      { populate: ['product', 'product.shop', 'inventory'] }
     );
 
     return toShopOrderDetail(order, items);
