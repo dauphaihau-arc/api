@@ -38,7 +38,7 @@ export class ListShopOrdersUseCase {
     const orderItems = orders.length > 0
       ? await entityManager.getRepository(OrderItemEntity).find(
         { order: { $in: orders.map((order) => order.id) } },
-        { populate: ['order', 'product', 'product.shop', 'inventory'] }
+        { populate: ['product', 'product.shop', 'inventory'] }
       )
       : [];
     const itemsByOrderId = new Map<string, OrderItemEntity[]>();

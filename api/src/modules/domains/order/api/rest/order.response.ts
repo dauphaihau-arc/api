@@ -57,6 +57,7 @@ export function toCreateOrderResponse(result: CreateOrderResult) {
     checkout_pending: result.checkoutPending ?? false,
     order_shops: result.orderShops.map((orderShop) => ({
       id: orderShop.id,
+      order_number: orderShop.orderNumber,
       shop: {
         id: orderShop.shopId,
         shop_name: orderShop.shopName,
@@ -103,6 +104,7 @@ export function toCheckoutQuoteResponse(result: CheckoutQuoteResult) {
 export function toCheckoutSessionOrderResponse(result: CreateOrderResult) {
   return {
     order_shops: result.orderShops.map((orderShop) => ({
+      order_number: orderShop.orderNumber,
       shop: {
         shop_name: orderShop.shopName,
         slug: orderShop.shopSlug,
@@ -115,6 +117,7 @@ export function toOrderListResponse(result: OrderListResult) {
   return {
     order_shops: result.orderShops.map((orderShop) => ({
       id: orderShop.id,
+      order_number: orderShop.orderNumber,
       shop: {
         id: orderShop.shopId,
         shop_name: orderShop.shopName,
@@ -204,6 +207,7 @@ function toShopOrderProductResponse(orderShop: ShopOrderSummary) {
 function toShopOrderSummaryResponse(orderShop: ShopOrderSummary) {
   return {
     id: orderShop.id,
+    order_number: orderShop.orderNumber,
     shop: {
       id: orderShop.shopId,
       shop_name: orderShop.shopName,
@@ -274,6 +278,7 @@ export function toMyOrderDetailResponse(order: MyOrderDetail) {
   return {
     order_shop: {
       id: order.id,
+      order_number: order.orderNumber,
       shop: {
         id: order.shopId,
         shop_name: order.shopName,
@@ -350,6 +355,7 @@ export function toAdminOrderDetailResponse(order: AdminOrderDetail) {
   return {
     order: {
       id: order.id,
+      order_number: order.orderNumber,
       shop: {
         id: order.shopId,
         shop_name: order.shopName,
@@ -429,6 +435,7 @@ export function toAdminOrderListResponse(result: AdminOrderListResult) {
   return {
     results: result.results.map((order) => ({
       id: order.id,
+      order_number: order.orderNumber,
       shop: {
         id: order.shopId,
         shop_name: order.shopName,

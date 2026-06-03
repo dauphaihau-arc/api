@@ -1,5 +1,5 @@
 import {
-  ArrayType, Entity, Enum, Index, ManyToOne, Property 
+  ArrayType, Entity, Enum, Index, ManyToOne, Opt, Property, Unique
 } from '@mikro-orm/core';
 import { AbstractBaseEntity } from '~/common/database/abstract-base.entity';
 import { CurrentUserEntity } from '~/modules/domains/auth/infra/persistence/entities/current-user.entity';
@@ -12,6 +12,10 @@ import { PaymentType } from '../../../domain/enums/payment-type.enum';
 @Index({ properties: ['user'] })
 @Index({ properties: ['shop'] })
 export class OrderEntity extends AbstractBaseEntity {
+  @Property({ fieldName: 'order_number', length: 25, nullable: true })
+  @Unique()
+  orderNumber?: Opt<string>;
+
   @ManyToOne(() => CurrentUserEntity, {
     fieldName: 'user_id',
     nullable: true,

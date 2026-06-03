@@ -1,5 +1,6 @@
 import type { OrderEntity } from '../infra/persistence/entities/order.entity';
 import type { OrderItemEntity } from '../infra/persistence/entities/order-item.entity';
+import { getRequiredOrderNumber } from './order-number';
 import type {
   OrderListProduct,
   OrderShippingAddressSummary,
@@ -61,6 +62,7 @@ export function toShopOrderSummary(
 
   return {
     id: order.id,
+    orderNumber: getRequiredOrderNumber(order),
     shopId: order.shop.id,
     shopName: order.shop.shopName,
     shopSlug: order.shop.slug,

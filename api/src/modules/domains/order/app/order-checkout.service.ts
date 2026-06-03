@@ -31,6 +31,7 @@ import {
   buildSellerOrderCreatedNotification,
   getSellerOrderNotificationRecipientId,
 } from './seller-order-notification';
+import { getRequiredOrderNumber } from './order-number';
 import type {
   CheckoutActor,
   CreateOrderResult,
@@ -154,6 +155,9 @@ export class OrderCheckoutService {
         });
         entityManager.persist(order);
         await entityManager.flush();
+        if ('refresh' in entityManager && typeof entityManager.refresh === 'function') {
+          await entityManager.refresh(order);
+        }
 
         for (const item of shop.items) {
           const quoteItem = quote
@@ -306,6 +310,7 @@ export class OrderCheckoutService {
         inventoryEvents,
         orderShops: createdOrders.map((order) => ({
           id: order.id,
+          orderNumber: getRequiredOrderNumber(order),
           shopId: order.shop.id,
           shopName: order.shop.shopName,
           shopSlug: order.shop.slug,

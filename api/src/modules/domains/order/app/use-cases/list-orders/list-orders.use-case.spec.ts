@@ -13,6 +13,7 @@ function buildOrder(input: {
 }) {
   return {
     id: input.id,
+    orderNumber: `ORD-20260527-${input.id.slice(-4).toUpperCase()}`,
     shop: {
       id: `${input.id}-shop`,
       shopName: input.shopName,
@@ -42,7 +43,7 @@ function buildOrder(input: {
     paymentDetails: undefined,
     updatedAt: new Date('2026-05-28T00:00:00.000Z'),
     createdAt: new Date('2026-05-27T00:00:00.000Z'),
-  } as OrderEntity;
+  } as unknown as OrderEntity;
 }
 
 function buildOrderItem(input: {

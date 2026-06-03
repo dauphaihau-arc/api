@@ -2,6 +2,7 @@ import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
 import type { ListAdminOrdersQueryDto } from '../../../api/rest/dto/list-admin-orders.query.dto';
 import { OrderEntity } from '../../../infra/persistence/entities/order.entity';
+import { getRequiredOrderNumber } from '../../order-number';
 import { getOrderTotalMajor, getOrderTotalMinor } from '../../order-money';
 import type { AdminOrderListResult } from '../../order.types';
 
@@ -21,6 +22,7 @@ export class ListAdminOrdersUseCase {
       const search = query.search.trim();
       where.$or = [
         { customerEmail: { $ilike: `%${search}%` } },
+        { orderNumber: { $ilike: `%${search}%` } },
         { id: search },
       ];
     }
@@ -38,6 +40,7 @@ export class ListAdminOrdersUseCase {
     return {
       results: orders.map((order) => ({
         id: order.id,
+        orderNumber: getRequiredOrderNumber(order),
         shopId: order.shop.id,
         shopName: order.shop.shopName,
         shopSlug: order.shop.slug,

@@ -18,6 +18,7 @@ import {
   getOrderTotalMinor,
   getOrderTotalMajor,
 } from '../../order-money';
+import { getRequiredOrderNumber } from '../../order-number';
 import type { OrderListResult } from '../../order.types';
 
 @Injectable()
@@ -41,7 +42,7 @@ export class ListOrdersUseCase {
     const orderItems = orders.length > 0
       ? await entityManager.getRepository(OrderItemEntity).find(
         { order: { $in: orders.map((order) => order.id) } },
-        { populate: ['order', 'product', 'product.shop', 'inventory'] }
+        { populate: ['product', 'product.shop', 'inventory'] }
       )
       : [];
 
@@ -56,6 +57,8 @@ export class ListOrdersUseCase {
     const normalizedSearch = query.search?.trim().toLowerCase();
 
     const filteredOrders = orders.filter((order) => {
+      const orderNumber = getRequiredOrderNumber(order);
+
       if (query.state && !matchesCustomerState(order, query.state)) {
         return false;
       }
@@ -76,6 +79,10 @@ export class ListOrdersUseCase {
         return true;
       }
 
+      if (orderNumber.toLowerCase().includes(normalizedSearch)) {
+        return true;
+      }
+
       if (
         order.shop.shopName.toLowerCase().includes(normalizedSearch)
         || order.shop.slug.toLowerCase().includes(normalizedSearch)
@@ -91,6 +98,7 @@ export class ListOrdersUseCase {
     return {
       orderShops: filteredOrders.map((order) => ({
         id: order.id,
+        orderNumber: getRequiredOrderNumber(order),
         shopId: order.shop.id,
         shopName: order.shop.shopName,
         shopSlug: order.shop.slug,

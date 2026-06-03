@@ -14,6 +14,7 @@ import {
   getOrderTotalMinor,
   getOrderTotalMajor,
 } from '../../order-money';
+import { getRequiredOrderNumber } from '../../order-number';
 import type { OrderListResult } from '../../order.types';
 
 @Injectable()
@@ -84,7 +85,7 @@ export class LookupGuestOrdersUseCase {
     const orderItems = orders.length > 0
       ? await entityManager.getRepository(OrderItemEntity).find(
         { order: { $in: orders.map((order) => order.id) } },
-        { populate: ['order', 'product', 'product.shop', 'inventory'] }
+        { populate: ['product', 'product.shop', 'inventory'] }
       )
       : [];
     const itemsByOrderId = new Map<string, OrderItemEntity[]>();
@@ -98,6 +99,7 @@ export class LookupGuestOrdersUseCase {
     return {
       orderShops: orders.map((order) => ({
         id: order.id,
+        orderNumber: getRequiredOrderNumber(order),
         shopId: order.shop.id,
         shopName: order.shop.shopName,
         shopSlug: order.shop.slug,

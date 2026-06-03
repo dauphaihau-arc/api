@@ -28,6 +28,7 @@ export type CheckoutActor =
 
 export interface CreatedOrderShopRef {
   id: string;
+  orderNumber: string;
   shopId: string;
   shopName: string;
   shopSlug: string;
@@ -117,6 +118,7 @@ export interface OrderListProduct {
 
 export interface OrderListShop {
   id: string;
+  orderNumber: string;
   shopId: string;
   shopName: string;
   shopSlug: string;
@@ -170,6 +172,7 @@ export interface AdminOrderDetail extends MyOrderDetail {
 
 export interface AdminOrderSummary {
   id: string;
+  orderNumber: string;
   shopId: string;
   shopName: string;
   shopSlug: string;
@@ -207,6 +210,7 @@ export interface OrderShippingAddressSummary {
 
 export interface ShopOrderSummary {
   id: string;
+  orderNumber: string;
   shopId: string;
   shopName: string;
   shopSlug: string;

@@ -11,6 +11,7 @@ import { ProductInventoryEntity } from '../../product/infra/persistence/entities
 import { OrderStatus } from '../domain/enums/order-status.enum';
 import { OrderEntity } from '../infra/persistence/entities/order.entity';
 import { OrderItemEntity } from '../infra/persistence/entities/order-item.entity';
+import { getRequiredOrderNumber } from './order-number';
 import type { CreateOrderResult } from './order.types';
 
 @Injectable()
@@ -27,6 +28,7 @@ export class OrderPaymentService {
     return {
       orderShops: orders.map((order) => ({
         id: order.id,
+        orderNumber: getRequiredOrderNumber(order),
         shopId: order.shop.id,
         shopName: order.shop.shopName,
         shopSlug: order.shop.slug,

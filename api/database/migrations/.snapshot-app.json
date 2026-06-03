@@ -4455,11 +4455,37 @@
           "comment": null,
           "enumItems": [],
           "mappedType": "integer"
+        },
+        "order_number": {
+          "name": "order_number",
+          "type": "varchar(25)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": true,
+          "length": 25,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "string"
         }
       },
       "name": "orders",
       "schema": "public",
       "indexes": [
+        {
+          "columnNames": [
+            "order_number"
+          ],
+          "composite": false,
+          "constraint": false,
+          "keyName": "orders_order_number_unique",
+          "unique": true,
+          "primary": false
+        },
         {
           "columnNames": [
             "id"
