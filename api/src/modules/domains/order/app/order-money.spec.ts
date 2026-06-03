@@ -5,6 +5,8 @@ import {
   getOrderSubtotalMinor,
   getOrderTotalMinor,
 } from './order-money';
+import type { OrderEntity } from '../infra/persistence/entities/order.entity';
+import type { OrderItemEntity } from '../infra/persistence/entities/order-item.entity';
 
 describe('getOrderItemAmountMinor', () => {
   it('returns unitPriceMinor when present', () => {
@@ -50,14 +52,34 @@ describe('getOrderItemAmountMinor', () => {
       lineTotalMinor: undefined,
       quantity: 1,
       salePrice: undefined,
-      price: undefined,
       currency: undefined,
-    })).toThrow('Order item item-4 is missing unitPriceMinor');
+    } as Pick<
+      OrderItemEntity,
+      | 'unitPriceMinor'
+      | 'lineTotalMinor'
+      | 'quantity'
+      | 'salePrice'
+      | 'price'
+      | 'currency'
+      | 'id'
+    >)).toThrow('Order item item-4 is missing unitPriceMinor');
   });
 });
 
 describe('order minor fallbacks', () => {
-  const legacyOrder = {
+  const legacyOrder: Pick<
+    OrderEntity,
+    | 'id'
+    | 'currency'
+    | 'subtotalMinor'
+    | 'subtotal'
+    | 'shippingMinor'
+    | 'totalShippingFee'
+    | 'discountMinor'
+    | 'totalDiscount'
+    | 'totalMinor'
+    | 'total'
+  > = {
     id: 'order-1',
     currency: 'USD',
     subtotalMinor: undefined,

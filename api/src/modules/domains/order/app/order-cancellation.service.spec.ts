@@ -1,5 +1,6 @@
 import type { EntityManager } from '@mikro-orm/postgresql';
 import type { PaymentGateway } from '~/modules/shared/payment/app/ports/payment-gateway';
+import type { ModuleRef } from '@nestjs/core';
 import { OrderStatus } from '../domain/enums/order-status.enum';
 import { OrderCancellationService } from './order-cancellation.service';
 import { OrderRefundService } from './order-refund.service';
@@ -41,7 +42,8 @@ describe('OrderCancellationService', () => {
 
     const refundService = new OrderRefundService(
       {} as EntityManager,
-      {} as PaymentGateway
+      {} as PaymentGateway,
+      {} as ModuleRef
     );
     const service = new OrderCancellationService(refundService);
     const canceledAt = new Date('2026-05-24T00:00:00.000Z');
