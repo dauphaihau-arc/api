@@ -48,6 +48,7 @@ Top-level structure:
 - **Rate limiting** - Nest throttling protects the global API surface and sensitive endpoints
 - **Idempotency keys on selected writes** - selected write endpoints can safely deduplicate repeated client requests and replay cached responses
 - **SSE endpoints** - Server-Sent Events are available for user event streams and product inventory updates
+- **Authenticated WebSocket chat gateway** - Socket.IO-based realtime chat delivery is available on `/ws`, with cookie-authenticated connections, per-conversation authorization, and Redis-backed room fanout. See [`docs/chat-websocket-flow.md`](docs/chat-websocket-flow.md)
 - **Signed object access** - S3-compatible presigned URLs are used for controlled file access
 - **Web push notifications** - the API supports push subscription registration, notification delivery, and queued push jobs
 

@@ -19,6 +19,7 @@ import { CouponModule } from './domains/coupon/coupon.module';
 import { OrderModule } from './domains/order/order.module';
 import { ProductModule } from './domains/product/product.module';
 import { ShopModule } from './domains/shop/shop.module';
+import { ChatModule } from './domains/chat/chat.module';
 import { UserModule } from './domains/user/user.module';
 import { CacheModule } from './shared/cache/cache.module';
 import { HealthModule } from './shared/health/health.module';
@@ -32,6 +33,7 @@ import { RateLimitModule } from './shared/rate-limit/rate-limit.module';
 import { StorageModule } from './shared/storage/storage.module';
 import { PaymentModule } from './shared/payment/payment.module';
 import { SseModule } from './shared/sse/sse.module';
+import { WsModule } from './shared/ws/ws.module';
 
 @Module({
   imports: [
@@ -66,6 +68,7 @@ import { SseModule } from './shared/sse/sse.module';
     QueueModule,
     RateLimitModule,
     SseModule,
+    WsModule,
     StorageModule,
     HealthModule,
 
@@ -78,6 +81,7 @@ import { SseModule } from './shared/sse/sse.module';
     CouponModule,
     CartModule,
     OrderModule,
+    ChatModule,
   ],
   providers: [
     InvalidateUserCacheOnUserCreatedListener,
