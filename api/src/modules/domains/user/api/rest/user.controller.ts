@@ -14,7 +14,7 @@ import {
 } from '@nestjs/common';
 import {
   ApiConsumes,
-  ApiCookieAuth,
+  ApiCookieAuth, ApiExcludeController,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
@@ -55,6 +55,7 @@ import {
 
 @Controller('users')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
+@ApiExcludeController()
 @ApiTags('Users')
 @ApiCookieAuth('accessCookie')
 export class UserController {

@@ -9,7 +9,7 @@ import {
   UseGuards
 } from '@nestjs/common';
 import {
-  ApiCookieAuth,
+  ApiCookieAuth, ApiExcludeController,
   ApiOkResponse,
   ApiOperation,
   ApiParam,
@@ -36,6 +36,7 @@ import { toAdminOrderDetailResponse, toAdminOrderListResponse } from './order.re
 @Controller('admin/orders')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @RequirePermissions('orders.manage')
+@ApiExcludeController()
 @ApiTags('Admin Orders')
 @ApiCookieAuth('accessCookie')
 export class AdminOrderController {
