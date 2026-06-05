@@ -104,6 +104,7 @@ export interface OrderListProduct {
   title: string;
   slug: string;
   imageUrl?: string;
+  imageStorageKey?: string;
   quantity: number;
   amountMinor: number;
   originalAmountMinor: number | null;

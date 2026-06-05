@@ -157,7 +157,7 @@ export class UpdateShopOrderShipmentUseCase {
 
     const items = await entityManager.getRepository(OrderItemEntity).find(
       { order: order.id },
-      { populate: ['product', 'product.shop', 'inventory'] }
+      { populate: ['product', 'product.shop', 'product.images', 'product.images.variants', 'inventory'] }
     );
 
     return toShopOrderDetail(order, items);

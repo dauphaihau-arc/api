@@ -260,6 +260,30 @@ export function toShopOrderDetailResponse(order: ShopOrderDetail) {
   return {
     order: {
       ...toShopOrderSummaryResponse(order),
+      products: order.products.map((product) => ({
+        id: product.id,
+        title: product.title,
+        ...(product.imageStorageKey ? { storage_key: product.imageStorageKey } : {}),
+        quantity: product.quantity,
+        amount_minor: product.amountMinor,
+        original_amount_minor: product.originalAmountMinor,
+        currency: product.currency,
+        inventory: {
+          variant: product.variantName,
+        },
+        product: {
+          id: product.productId,
+          slug: product.slug,
+          shop: {
+            slug: product.shopSlug,
+          },
+          variant_group_name: product.variantGroupName,
+          variant_sub_group_name: product.variantSubGroupName,
+        },
+        percent_coupon: product.percentCouponPercent
+          ? { percent_off: product.percentCouponPercent }
+          : null,
+      })),
       shipping_address: {
         full_name: order.shippingAddress.fullName,
         address1: order.shippingAddress.address1,
