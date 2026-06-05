@@ -1,5 +1,7 @@
+import type { FilterQuery } from '@mikro-orm/core';
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
+import { fromMinorUnits } from '~/common/utils/money';
 import { OrderEntity } from '../../../infra/persistence/entities/order.entity';
 import { OrderItemEntity } from '../../../infra/persistence/entities/order-item.entity';
 import type { ListShopOrdersQueryDto } from '../../../api/rest/dto/list-shop-orders.query.dto';
@@ -15,18 +17,80 @@ export class ListShopOrdersUseCase {
     query: ListShopOrdersQueryDto
   ): Promise<ShopOrderListResult> {
     const entityManager = this.entityManager.fork();
-    const where: Record<string, unknown> = { shop: shopId };
+    const where: FilterQuery<OrderEntity> = { shop: shopId };
+    const andConditions: FilterQuery<OrderEntity>[] = [];
 
-    if (query.status) {
-      where.status = query.status;
+    if (query.status?.length) {
+      where.status = { $in: query.status };
     }
 
-    if (query.shippingStatus) {
-      where.shippingStatus = query.shippingStatus;
+    if (query.shippingStatus?.length) {
+      where.shippingStatus = { $in: query.shippingStatus };
     }
+
+    if (query.createdFrom || query.createdTo) {
+      where.createdAt = {
+        ...(query.createdFrom ? { $gte: query.createdFrom } : {}),
+        ...(query.createdTo ? { $lte: query.createdTo } : {}),
+      };
+    }
+
+    if (query.amountMin !== undefined || query.amountMax !== undefined) {
+      const amountMinorFilter = {
+        ...(query.amountMin !== undefined ? { $gte: query.amountMin } : {}),
+        ...(query.amountMax !== undefined ? { $lte: query.amountMax } : {}),
+      };
+
+      const amountCurrency = query.currency?.length === 1 ? query.currency[0] : undefined;
+
+      if (amountCurrency) {
+        andConditions.push({
+          $or: [
+            { totalMinor: amountMinorFilter },
+            {
+              totalMinor: null,
+              total: {
+                ...(query.amountMin !== undefined
+                  ? { $gte: fromMinorUnits(query.amountMin, amountCurrency) }
+                  : {}),
+                ...(query.amountMax !== undefined
+                  ? { $lte: fromMinorUnits(query.amountMax, amountCurrency) }
+                  : {}),
+              },
+            },
+          ],
+        });
+      }
+      else {
+        where.totalMinor = amountMinorFilter;
+      }
+    }
+
+    if (query.currency?.length) {
+      where.currency = { $in: query.currency };
+    }
+
+    if (query.paymentType?.length) {
+      where.paymentType = { $in: query.paymentType };
+    }
+
+    if (query.search?.trim()) {
+      const search = query.search.trim();
+      andConditions.push({
+        $or: [
+          { customerEmail: { $ilike: `%${search}%` } },
+          { orderNumber: { $ilike: `%${search}%` } },
+          { id: search },
+        ],
+      });
+    }
+
+    const resolvedWhere = andConditions.length > 0
+      ? { ...where, $and: andConditions }
+      : where;
 
     const [orders, totalResults] = await entityManager.getRepository(OrderEntity).findAndCount(
-      where,
+      resolvedWhere,
       {
         populate: ['shop'],
         orderBy: { createdAt: 'desc' },
