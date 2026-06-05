@@ -57,6 +57,7 @@ export class RequestOrderSupportUseCase {
         buildSellerOrderSupportRequestedNotification(
           sellerUserId,
           order.id,
+          getRequiredOrderNumber(order),
           order.shop.id
         )
       );

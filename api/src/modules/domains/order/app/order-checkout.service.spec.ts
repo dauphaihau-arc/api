@@ -86,6 +86,7 @@ describe('OrderCheckoutService', () => {
       create: jest.fn((input: Record<string, unknown>) => {
         const order = {
           id: `order-${orders.length + 1}`,
+          orderNumber: `ORD-20260604-00000${orders.length + 1}`,
           ...input,
         };
         orders.push(order);
@@ -236,9 +237,11 @@ describe('OrderCheckoutService', () => {
     expect(notifyUserUseCase.execute).toHaveBeenCalledWith(expect.objectContaining({
       userId: 'seller-1',
       type: 'seller.order.created',
+      body: 'Order ORD-20260604-000001 has been placed.',
       data: expect.objectContaining({
         target: 'seller_order_detail',
         orderId: 'order-1',
+        orderNumber: 'ORD-20260604-000001',
         shopId: 'shop-1',
       }),
     }));

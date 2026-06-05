@@ -25,6 +25,7 @@ describe('RequestOrderCancelUseCase', () => {
   }) {
     const order = {
       id: 'order-1',
+      orderNumber: 'ORD-20260604-000001',
       shop: {
         id: 'shop-1',
         shopName: 'Shop 1',
@@ -162,9 +163,11 @@ describe('RequestOrderCancelUseCase', () => {
     expect(notifyUserUseCase.execute).toHaveBeenCalledWith(expect.objectContaining({
       userId: 'seller-1',
       type: 'seller.order.cancel_requested',
+      body: 'Customer requested cancellation for order ORD-20260604-000001.',
       data: expect.objectContaining({
         target: 'seller_order_detail',
         orderId: 'order-1',
+        orderNumber: 'ORD-20260604-000001',
         shopId: 'shop-1',
       }),
     }))

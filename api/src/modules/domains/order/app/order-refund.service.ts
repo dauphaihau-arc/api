@@ -12,6 +12,7 @@ import {
   buildSellerOrderRefundNotification,
   getSellerOrderNotificationRecipientId,
 } from './seller-order-notification';
+import { getRequiredOrderNumber } from './order-number';
 
 type RefundStatus = 'pending' | 'succeeded' | 'failed' | 'not_required';
 
@@ -181,6 +182,7 @@ export class OrderRefundService {
           buildSellerOrderRefundNotification(
             sellerUserId,
             orderId,
+            getRequiredOrderNumber(order),
             order.shop.id,
             refundStatus
           )

@@ -16,6 +16,7 @@ describe('RequestOrderSupportUseCase', () => {
     }
     const order = {
       id: 'order-1',
+      orderNumber: 'ORD-20260604-000001',
       shop: {
         id: 'shop-1',
         shopName: 'Shop 1',
@@ -108,9 +109,11 @@ describe('RequestOrderSupportUseCase', () => {
     expect(notifyUserUseCase.execute).toHaveBeenCalledWith(expect.objectContaining({
       userId: 'seller-1',
       type: 'seller.order.support_requested',
+      body: 'Customer sent a support request for order ORD-20260604-000001.',
       data: expect.objectContaining({
         target: 'seller_order_detail',
         orderId: 'order-1',
+        orderNumber: 'ORD-20260604-000001',
         shopId: 'shop-1',
       }),
     }))

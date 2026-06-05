@@ -336,6 +336,7 @@ export class OrderCheckoutService {
         buildSellerOrderCreatedNotification(
           orderShop.ownerUserId,
           orderShop.id,
+          orderShop.orderNumber,
           orderShop.shopId
         )
       );

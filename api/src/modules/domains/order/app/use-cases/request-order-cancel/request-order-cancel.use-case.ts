@@ -203,6 +203,7 @@ export class RequestOrderCancelUseCase {
         buildSellerOrderCancelRequestedNotification(
           result.sellerUserId,
           result.id,
+          result.orderNumber,
           result.shopId
         )
       );

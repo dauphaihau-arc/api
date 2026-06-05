@@ -41,6 +41,7 @@ describe('OrderRefundService', () => {
   it('processes a refund and marks the order refunded', async () => {
     const order = {
       id: 'order-1',
+      orderNumber: 'ORD-20260604-000001',
       paymentType: PaymentType.CARD,
       currency: 'USD',
       status: OrderStatus.CANCELED,
@@ -104,8 +105,10 @@ describe('OrderRefundService', () => {
     expect(notifyUserUseCase.execute).toHaveBeenCalledWith(expect.objectContaining({
       userId: 'seller-1',
       type: 'seller.order.refund_succeeded',
+      body: 'Refund for order ORD-20260604-000001 completed successfully.',
       data: expect.objectContaining({
         orderId: 'order-1',
+        orderNumber: 'ORD-20260604-000001',
         shopId: 'shop-1',
         refundStatus: 'succeeded',
       }),
@@ -123,6 +126,7 @@ describe('OrderRefundService', () => {
   it('sends a failure notification when the refund fails', async () => {
     const order = {
       id: 'order-1',
+      orderNumber: 'ORD-20260604-000001',
       paymentType: PaymentType.CARD,
       currency: 'USD',
       status: OrderStatus.CANCELED,
@@ -184,8 +188,10 @@ describe('OrderRefundService', () => {
     expect(notifyUserUseCase.execute).toHaveBeenCalledWith(expect.objectContaining({
       userId: 'seller-1',
       type: 'seller.order.refund_failed',
+      body: 'Refund for order ORD-20260604-000001 failed and needs attention.',
       data: expect.objectContaining({
         orderId: 'order-1',
+        orderNumber: 'ORD-20260604-000001',
         shopId: 'shop-1',
         refundStatus: 'failed',
       }),
