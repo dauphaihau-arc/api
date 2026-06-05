@@ -18,7 +18,6 @@ export const toPublicProductListResponse = (
     image: product.image
       ? {
         storage_key: product.image.storageKey,
-        url: product.image.url,
         variant: product.image.variant,
         variants: product.image.variants
           ? Object.fromEntries(
@@ -26,7 +25,6 @@ export const toPublicProductListResponse = (
               name,
               {
                 storage_key: variant.storageKey,
-                url: variant.url,
               },
             ])
           )

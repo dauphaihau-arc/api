@@ -46,12 +46,10 @@ describe('MikroOrmProductRepository image projection', () => {
 
     expect(projected).toEqual({
       storageKey: 'products/card_1x1.webp',
-      url: 'https://cdn.example.com/products/card_1x1.webp',
       variant: 'card_1x1',
       variants: {
         card_1x1: {
           storageKey: 'products/card_1x1.webp',
-          url: 'https://cdn.example.com/products/card_1x1.webp',
         },
       },
     });
@@ -71,7 +69,6 @@ describe('MikroOrmProductRepository image projection', () => {
 
     expect(projected).toEqual({
       storageKey: 'products/original.jpg',
-      url: 'https://cdn.example.com/products/original.jpg',
       variant: 'original',
     });
   });

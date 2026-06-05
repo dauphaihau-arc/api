@@ -988,12 +988,10 @@ export class MikroOrmProductRepository implements ProductRepository {
     if (cardVariant) {
       return {
         storageKey: cardVariant.storageKey,
-        url: this.storageService.getPublicUrl(cardVariant.storageKey),
         variant: cardVariant.variant,
         variants: {
           [cardVariant.variant]: {
             storageKey: cardVariant.storageKey,
-            url: this.storageService.getPublicUrl(cardVariant.storageKey),
           },
         },
       };
@@ -1001,7 +999,6 @@ export class MikroOrmProductRepository implements ProductRepository {
 
     return {
       storageKey: primaryImage.storageKey,
-      url: this.storageService.getPublicUrl(primaryImage.storageKey),
       variant: 'original',
     };
   }

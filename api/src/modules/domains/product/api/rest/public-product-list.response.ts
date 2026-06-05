@@ -14,11 +14,9 @@ export type PublicProductListResponse = {
     slug: string;
     image?: {
       storage_key: string;
-      url?: string;
       variant?: string;
       variants?: Record<string, {
         storage_key: string;
-        url?: string;
       }>;
     };
     variant_type?: PublicProductListItem['variantType'];

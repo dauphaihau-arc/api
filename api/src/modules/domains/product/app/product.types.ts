@@ -213,11 +213,9 @@ export interface PublicProductListItem {
   slug: string;
   image?: {
     storageKey: string;
-    url?: string;
     variant?: string;
     variants?: Record<string, {
       storageKey: string;
-      url?: string;
     }>;
   };
   variantType?: ProductVariantType;
