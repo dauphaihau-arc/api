@@ -37,13 +37,19 @@ function resolveOrderItemImageStorageKey(item: OrderItemEntity): string | undefi
   return thumbVariant?.storageKey ?? primaryImage.storageKey;
 }
 
-function toOrderProducts(items: OrderItemEntity[], currency: string): OrderListProduct[] {
+function toOrderProducts(
+  items: OrderItemEntity[],
+  currency: string,
+  options?: { includeImageStorageKey?: boolean }
+): OrderListProduct[] {
   return items.map((item) => ({
     id: item.id,
     title: item.title,
     slug: item.product.slug,
     imageUrl: item.imageUrl,
-    imageStorageKey: resolveOrderItemImageStorageKey(item),
+    ...(options?.includeImageStorageKey
+      ? { imageStorageKey: resolveOrderItemImageStorageKey(item) }
+      : {}),
     quantity: item.quantity,
     amountMinor: getOrderItemAmountMinor(item, currency),
     originalAmountMinor: getOrderItemOriginalAmountMinor(item),
@@ -125,7 +131,8 @@ export function toShopOrderDetail(
   items: OrderItemEntity[]
 ): ShopOrderDetail {
   return {
-    ...toShopOrderSummary(order, items),
+    ...toShopOrderSummary(order, []),
+    products: toOrderProducts(items, order.currency, { includeImageStorageKey: true }),
     shippingAddress: toShippingAddress(order.shippingAddress),
   };
 }
