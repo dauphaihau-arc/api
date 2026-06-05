@@ -2,14 +2,6 @@ import { fromMinorUnits, toMinorUnits } from '~/common/utils/money';
 import type { OrderEntity } from '../infra/persistence/entities/order.entity';
 import type { OrderItemEntity } from '../infra/persistence/entities/order-item.entity';
 
-function requireValue<T>(value: T | null | undefined, message: string): T {
-  if (value == null) {
-    throw new Error(message);
-  }
-
-  return value;
-}
-
 export function getOrderItemAmountMinor(
   item: Pick<
     OrderItemEntity,
