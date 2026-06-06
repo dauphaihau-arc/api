@@ -1,0 +1,6 @@
+email	display_name	password	role_key	email_verified
+maker.rowan@example.com	Rowan Cole	Password123!	seller	true
+maker.prompt@example.com	Mira Prompt	Password123!	seller	true
+maker.benedict@example.com	Benedict Vale	Password123!	seller	true
+maker.lily@example.com	Lily Ames	Password123!	seller	true
+maker.seoul@example.com	Jisoo Han	Password123!	seller	true
