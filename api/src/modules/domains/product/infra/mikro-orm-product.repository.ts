@@ -182,6 +182,10 @@ export class MikroOrmProductRepository implements ProductRepository {
     const normalizedTitle = input.title?.trim().toLowerCase();
 
     const filteredProducts = products.filter((product) => {
+      if (!this.shouldIncludeInPublicList(product)) {
+        return false;
+      }
+
       if (normalizedSearch) {
         const haystack = `${product.title} ${product.description}`.toLowerCase();
 
@@ -224,6 +228,10 @@ export class MikroOrmProductRepository implements ProductRepository {
       items: await Promise.all(pagedProducts.map(({ product }) => this.toPublicListItem(product))),
       meta: buildPaginationMeta(input.page, input.limit, total),
     };
+  }
+
+  private shouldIncludeInPublicList(product: ProductEntity): boolean {
+    return product.state === ProductState.ACTIVE && product.images.getItems().length > 0;
   }
 
   async replaceImages(

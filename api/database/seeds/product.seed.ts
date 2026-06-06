@@ -242,9 +242,15 @@ async function syncProductInventory(
   inventorySeeds: ProductSeed['inventory'],
   variantsByKey: Map<string, ProductVariantEntity>
 ): Promise<void> {
+  const inventorySeedSkus = inventorySeeds
+    .map((inventorySeed) => inventorySeed.sku.trim())
+    .filter(Boolean);
   const existingInventories = await em.find(
     ProductInventoryEntity,
-    { product },
+    {
+      shop,
+      sku: { $in: inventorySeedSkus },
+    },
     { populate: ['prices', 'productVariant'] }
   );
   const existingInventoriesBySku = new Map(
@@ -351,12 +357,49 @@ async function syncProductShipping(
   await em.flush();
 }
 
+async function pruneSyntheticBulkCatalogProducts(
+  em: EntityManager,
+  shopsBySlug: Map<string, ShopEntity>
+): Promise<void> {
+  const syntheticShopSlug = 'bulk-catalog-lab';
+  const shop = shopsBySlug.get(syntheticShopSlug);
+
+  if (!shop) {
+    return;
+  }
+
+  const seededSlugs = new Set(
+    productSeeds
+      .filter((seed) => seed.shopSlug === syntheticShopSlug)
+      .map((seed) => slugify(seed.title))
+  );
+
+  const existingProducts = await em.find(ProductEntity, { shop });
+  const staleProducts = existingProducts.filter((product) => !seededSlugs.has(product.slug));
+
+  for (const product of staleProducts) {
+    product.state = ProductState.REMOVED;
+    product.publishedAt = undefined;
+    await syncProductImages(em, shop, product, []);
+    em.persist(product);
+  }
+
+  if (staleProducts.length > 0) {
+    await em.flush();
+    console.log(
+      `[seed][products] Retired ${staleProducts.length} stale synthetic products for ${syntheticShopSlug}`
+    );
+  }
+}
+
 export async function seedProducts(
   em: EntityManager,
   shopsBySlug: Map<string, ShopEntity>
 ): Promise<void> {
   const totalProducts = productSeeds.length;
   console.log(`[seed][products] Upserting ${totalProducts} products`);
+
+  await pruneSyntheticBulkCatalogProducts(em, shopsBySlug);
 
   for (const [index, productSeed] of productSeeds.entries()) {
     const shop = shopsBySlug.get(productSeed.shopSlug);

@@ -118,4 +118,28 @@ describe('MikroOrmProductRepository image projection', () => {
     expect((repository as any).shouldIncludeInShopList(ProductState.ACTIVE)).toBe(true);
     expect((repository as any).shouldIncludeInShopList(ProductState.REMOVED, ProductState.REMOVED)).toBe(true);
   });
+
+  it('hides public list products that do not have any images', () => {
+    const { repository } = buildRepository();
+    const product = {
+      state: ProductState.ACTIVE,
+      images: {
+        getItems: () => [],
+      },
+    } as never;
+
+    expect((repository as any).shouldIncludeInPublicList(product)).toBe(false);
+  });
+
+  it('keeps active public list products that have at least one image', () => {
+    const { repository } = buildRepository();
+    const product = {
+      state: ProductState.ACTIVE,
+      images: {
+        getItems: () => [{}],
+      },
+    } as never;
+
+    expect((repository as any).shouldIncludeInPublicList(product)).toBe(true);
+  });
 });
