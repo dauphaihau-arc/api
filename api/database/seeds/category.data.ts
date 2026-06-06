@@ -268,11 +268,45 @@ export const categorySeedData: CategorySeedNode[] = [
           },
         ],
       },
+      {
+        name: 'Spirituality & Religion',
+        rank: 3,
+        attributes: attributesArtCommon,
+        children: [
+          {
+            name: 'Religious Home & Decor',
+            rank: 1,
+            attributes: attributesArtCommon,
+          },
+        ],
+      },
+      {
+        name: 'Home Decor',
+        rank: 4,
+        attributes: attributesArtCommon,
+      },
+    ],
+  },
+  {
+    name: 'Books, Films & Music',
+    rank: 5,
+    children: [
+      {
+        name: 'Books',
+        rank: 1,
+        children: [
+          {
+            name: 'Religion & Spirituality Books',
+            rank: 1,
+            attributes: attributesArtCommon,
+          },
+        ],
+      },
     ],
   },
   {
     name: 'Toys & Games',
-    rank: 5,
+    rank: 6,
     imageFilename: 'categories/toy-video-games.webp',
     children: [
       {
