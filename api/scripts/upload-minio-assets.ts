@@ -1,27 +1,22 @@
 import 'reflect-metadata';
-import { createReadStream } from 'node:fs';
 import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import * as path from 'node:path';
-import {
-  CreateBucketCommand,
-  HeadBucketCommand,
-  PutObjectCommand,
-  S3Client
-} from '@aws-sdk/client-s3';
 import { TableNotFoundException } from '@mikro-orm/core';
 import { MikroORM } from '@mikro-orm/postgresql';
+import { validateAppEnv } from '../src/config/app-env.config';
 import { buildDatabaseConfig } from '../src/config/database.config';
+import { buildStorageConfig, type StorageConfig } from '../src/config/storage.config';
 import { CategoryEntity } from '../src/modules/domains/category/infra/persistence/entities/category.entity';
-import { PRODUCT_IMAGE_VARIANT_SPECS } from '../src/modules/domains/product/app/config/product-image-variant.config';
-import { ProductImageVariant } from '../src/modules/domains/product/domain/enums/product-image-variant.enum';
-import { ProductImageVariantStatus } from '../src/modules/domains/product/domain/enums/product-image-variant-status.enum';
+import { ProductImageService } from '../src/modules/domains/product/app/services/product-image.service';
 import { ProductImageEntity } from '../src/modules/domains/product/infra/persistence/entities/product-image.entity';
 import { ProductImageVariantEntity } from '../src/modules/domains/product/infra/persistence/entities/product-image-variant.entity';
 import { ProductEntity } from '../src/modules/domains/product/infra/persistence/entities/product.entity';
 import { ShopEntity } from '../src/modules/domains/shop/infra/persistence/entities/shop.entity';
 import { SharpImageTransformService } from '../src/modules/shared/image-transform/infra/sharp-image-transform.service';
-import { buildStorageObjectKey, resolveStorageEnvironmentSegment } from '../src/modules/shared/storage/app/storage-key-builder';
+import type { StorageService } from '../src/modules/shared/storage/app/ports/storage.service';
+import { LocalFileStorageService } from '../src/modules/shared/storage/infra/local-file-storage.service';
+import { MinioStorageService } from '../src/modules/shared/storage/infra/minio-storage.service';
 import {
   resolveOptionalSeedProductAssetDirectory,
   resolveOptionalSeedProductImagePaths,
@@ -80,50 +75,6 @@ function resolveContentType(filePath: string): string {
   }
 }
 
-async function ensureBucket(client: S3Client, bucket: string): Promise<void> {
-  try {
-    await client.send(new HeadBucketCommand({ Bucket: bucket }));
-  } catch {
-    await client.send(new CreateBucketCommand({ Bucket: bucket }));
-  }
-}
-
-async function uploadObject(
-  client: S3Client,
-  bucket: string,
-  key: string,
-  filePath: string
-): Promise<void> {
-  assertFileExists(filePath);
-
-  await client.send(
-    new PutObjectCommand({
-      Bucket: bucket,
-      Key: key,
-      Body: createReadStream(filePath),
-      ContentType: resolveContentType(filePath),
-    })
-  );
-}
-
-async function uploadBuffer(
-  client: S3Client,
-  bucket: string,
-  key: string,
-  body: Buffer,
-  contentType: string
-): Promise<void> {
-  await client.send(
-    new PutObjectCommand({
-      Bucket: bucket,
-      Key: key,
-      Body: body,
-      ContentType: contentType,
-      ContentLength: body.byteLength,
-    })
-  );
-}
-
 function loadShopNamesBySlug(): Map<string, string> {
   const rows = [
     ...readTsvRows<ShopCsvRow>(SHOPS_TSV_PATH),
@@ -151,69 +102,47 @@ function loadProductSeedsMinimal(): MinimalProductSeed[] {
     return {
       shopSlug: row.shop_slug.trim(),
       title: row.title.trim(),
-      state: row.state?.trim() === 'draft' ? 'draft' : row.state?.trim() === 'inactive' ? 'inactive' : 'active',
+      state: row.state?.trim() === 'draft'
+        ? 'draft'
+        : row.state?.trim() === 'inactive'
+          ? 'inactive'
+          : 'active',
     };
   });
 }
 
-async function main(): Promise<void> {
-  const storageDriver = process.env.STORAGE_DRIVER ?? 'local';
-
-  if (storageDriver === 'local') {
-    throw new Error(
-      'STORAGE_DRIVER=local is not supported for upload-assets. Use object storage config.'
-    );
-  }
-
-  const storageConfig = {
-    driver: 'minio' as const,
-    endpoint:
-      process.env.STORAGE_OBJECT_STORAGE_ENDPOINT ??
-      process.env.STORAGE_MINIO_ENDPOINT ??
-      '',
-    region:
-      process.env.STORAGE_OBJECT_STORAGE_REGION ??
-      process.env.STORAGE_MINIO_REGION ??
-      'us-east-1',
-    bucket:
-      process.env.STORAGE_OBJECT_STORAGE_BUCKET ??
-      process.env.STORAGE_MINIO_BUCKET ??
-      '',
-    accessKey:
-      process.env.STORAGE_OBJECT_STORAGE_ACCESS_KEY ??
-      process.env.STORAGE_MINIO_ACCESS_KEY ??
-      '',
-    secretKey:
-      process.env.STORAGE_OBJECT_STORAGE_SECRET_KEY ??
-      process.env.STORAGE_MINIO_SECRET_KEY ??
-      '',
-    forcePathStyle:
-      (
-        process.env.STORAGE_OBJECT_STORAGE_FORCE_PATH_STYLE ??
-        process.env.STORAGE_MINIO_FORCE_PATH_STYLE ??
-        'true'
-      ) === 'true',
-  };
-
-  if (!storageConfig.endpoint || !storageConfig.bucket) {
-    throw new Error(
-      'Missing object storage configuration. Expected endpoint and bucket env vars.'
-    );
-  }
-
-  const client = new S3Client({
-    region: storageConfig.region,
-    endpoint: storageConfig.endpoint,
-    forcePathStyle: storageConfig.forcePathStyle,
-    credentials: {
-      accessKeyId: storageConfig.accessKey,
-      secretAccessKey: storageConfig.secretKey,
-    },
+function buildStorageService(): StorageService {
+  const env = validateAppEnv(process.env);
+  const config = buildStorageConfig({
+    get: ((key: string | symbol, defaultValue?: unknown) =>
+      env[key as string] ?? defaultValue) as never,
   });
 
-  const imageTransformService = new SharpImageTransformService();
+  return createStorageService(config);
+}
 
-  await ensureBucket(client, storageConfig.bucket);
+function createStorageService(config: StorageConfig): StorageService {
+  return config.driver === 'local'
+    ? new LocalFileStorageService(config)
+    : new MinioStorageService(config);
+}
+
+async function putSeedAsset(
+  storageService: StorageService,
+  key: string,
+  sourceFile: string
+): Promise<void> {
+  assertFileExists(sourceFile);
+
+  await storageService.putObject({
+    key,
+    body: await readFile(sourceFile),
+    contentType: resolveContentType(sourceFile),
+  });
+}
+
+async function main(): Promise<void> {
+  const storageService = buildStorageService();
 
   const orm = await MikroORM.init({
     ...buildDatabaseConfig(process.env),
@@ -228,6 +157,11 @@ async function main(): Promise<void> {
 
   try {
     const em = orm.em.fork();
+    const productImageService = new ProductImageService(
+      orm.em,
+      storageService,
+      new SharpImageTransformService()
+    );
     const shopNamesBySlug = loadShopNamesBySlug();
     const productSeeds = loadProductSeedsMinimal();
     let categories: CategoryEntity[];
@@ -258,7 +192,7 @@ async function main(): Promise<void> {
         path.basename(category.imageStorageKey)
       );
 
-      await uploadObject(client, storageConfig.bucket, category.imageStorageKey, sourceFile);
+      await putSeedAsset(storageService, category.imageStorageKey, sourceFile);
       console.log(`Uploaded category asset -> ${category.imageStorageKey}`);
     }
 
@@ -334,73 +268,14 @@ async function main(): Promise<void> {
           assetDirectory,
           path.basename(imageFilenames[index])
         );
-        const sourceBuffer = await readFile(sourceFile);
 
-        await uploadObject(client, storageConfig.bucket, image.storageKey, sourceFile);
+        await putSeedAsset(storageService, image.storageKey, sourceFile);
         console.log(`Uploaded product asset -> ${image.storageKey}`);
-
-        for (const [variant, spec] of Object.entries(PRODUCT_IMAGE_VARIANT_SPECS) as Array<
-          [ProductImageVariant, (typeof PRODUCT_IMAGE_VARIANT_SPECS)[ProductImageVariant]]
-        >) {
-          if (!spec) {
-            continue;
-          }
-
-          const transformed = await imageTransformService.transform(sourceBuffer, spec);
-          const variantKey = buildStorageObjectKey({
-            env: resolveStorageEnvironmentSegment(process.env.NODE_ENV),
-            visibility: 'public',
-            path: [
-              { domain: 'shops', id: shop.publicId },
-              { domain: 'products', id: product.publicId },
-            ],
-            collection: 'images',
-            assetPath: [resolveProductImageStorageId(image.storageKey)],
-            extension: spec.format,
-            filename: variant,
-          });
-
-          await uploadBuffer(
-            client,
-            storageConfig.bucket,
-            variantKey,
-            transformed,
-            resolveVariantContentType(spec.format)
-          );
-
-          const existingVariant = image.variants
-            .getItems()
-            .find((candidate) => candidate.variant === variant);
-
-          if (existingVariant) {
-            existingVariant.storageKey = variantKey;
-            existingVariant.width = spec.width;
-            existingVariant.height = spec.height;
-            existingVariant.format = spec.format;
-            em.persist(existingVariant);
-          }
-          else {
-            em.persist(em.create(ProductImageVariantEntity, {
-              image,
-              variant,
-              storageKey: variantKey,
-              width: spec.width,
-              height: spec.height,
-              format: spec.format,
-            }));
-          }
-
-          console.log(`Uploaded product asset variant -> ${variantKey}`);
-        }
-
-        image.variantStatus = ProductImageVariantStatus.READY;
-        image.variantError = undefined;
-        image.variantsGeneratedAt = new Date();
-        em.persist(image);
       }
-    }
 
-    await em.flush();
+      await productImageService.generateVariants(product.id);
+      console.log(`Generated product image variants -> ${product.slug}`);
+    }
   } finally {
     await orm.close(true);
   }
@@ -412,27 +287,3 @@ void main().catch((error) => {
   console.error(error);
   process.exit(1);
 });
-
-function resolveVariantContentType(format: 'webp' | 'jpg' | 'png' | 'avif'): string {
-  switch (format) {
-    case 'webp':
-      return 'image/webp';
-    case 'jpg':
-      return 'image/jpeg';
-    case 'png':
-      return 'image/png';
-    case 'avif':
-      return 'image/avif';
-  }
-}
-
-function resolveProductImageStorageId(storageKey: string): string {
-  const segments = storageKey.split('/').filter(Boolean);
-  const imageId = segments.at(-2);
-
-  if (!imageId) {
-    throw new Error(`Unable to resolve product image storage id from key "${storageKey}".`);
-  }
-
-  return imageId;
-}

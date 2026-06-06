@@ -200,8 +200,8 @@ redis-clear-infisical project_id *env_name:
   pnpm exec infisical run --projectId="{{ project_id }}" $ENV_ARG --token="$INFISICAL_TOKEN" -- pnpm redis:clear
 
 
-# Upload seed images to the configured object storage.
-# Default env (`.env`) is intended for local MinIO.
+# Upload seed images to the configured storage backend and generate product variants.
+# Default env (`.env`) is intended for local MinIO, but local file storage also works.
 # Requires seeded categories/shops/products to already exist in the database.
 storage-seed:
   cd {{ api_dir }} && \

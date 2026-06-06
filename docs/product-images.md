@@ -246,6 +246,8 @@ flowchart TD
 
 It does not change geometry rules by itself.
 
+`storage-seed` uploads through the configured storage backend and then runs the same product image variant generation service used by runtime product uploads.
+
 `storage-seed` uploads:
 
 - seeded category assets
