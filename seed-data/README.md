@@ -8,6 +8,7 @@ Expected layout:
 - `seed-data/auth-permissions.tsv`
 - `seed-data/auth-role-permissions.tsv`
 - `seed-data/auth-users.tsv`
+- `seed-data/auth-users.local.tsv` (optional, local-only)
 - `seed-data/products.tsv`
 - `seed-data/products.local.tsv` (optional, local-only)
 - `seed-data/product-inventory.tsv`
@@ -25,6 +26,7 @@ Rules:
 - Files under `seed-data/images/categories/` are uploaded to the `categories/` object prefix.
 - Auth reference data lives in `seed-data/auth-roles.tsv`, `seed-data/auth-permissions.tsv`, and `seed-data/auth-role-permissions.tsv`.
 - Seeded auth users live in `seed-data/auth-users.tsv`.
+- Optional local-only auth users can live in `seed-data/auth-users.local.tsv`.
 - Shop metadata lives in `seed-data/shops.tsv` and should use `shop_slug` as the stable seed identifier.
 - Optional local-only shops can live in `seed-data/shops.local.tsv`.
 - Product metadata lives in `seed-data/products.tsv`.
@@ -57,6 +59,7 @@ just r2-upload-assets
 Local-only workflow:
 
 - Add machine-specific ignore rules to `.git/info/exclude` instead of `.gitignore`.
+- Put extra local auth users in `seed-data/auth-users.local.tsv`.
 - Put extra local products in `seed-data/products.local.tsv`.
 - Put matching local inventory rows in `seed-data/product-inventory.local.tsv`.
 - Put matching local images in `seed-data/images/products-local/<shop-slug>/<product-slug>/`.

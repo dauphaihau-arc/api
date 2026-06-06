@@ -9,7 +9,7 @@ import { RoleEntity } from '~/modules/domains/auth/infra/persistence/entities/ro
 import { RolePermissionEntity } from '~/modules/domains/auth/infra/persistence/entities/role-permission.entity';
 import { UserRoleEntity } from '~/modules/domains/auth/infra/persistence/entities/user-role.entity';
 import { BcryptPasswordHasher } from '~/modules/domains/auth/infra/security/bcrypt-password-hasher';
-import { readTsvRows } from './shared/read-tsv-rows';
+import { readOptionalTsvRows, readTsvRows } from './shared/read-tsv-rows';
 
 type UserSeed = {
   email: string;
@@ -68,6 +68,7 @@ const ROLE_PERMISSIONS_TSV_PATH = path.resolve(
   '../../../seed-data/auth-role-permissions.tsv'
 );
 const USERS_TSV_PATH = path.resolve(__dirname, '../../../seed-data/auth-users.tsv');
+const USERS_LOCAL_TSV_PATH = path.resolve(__dirname, '../../../seed-data/auth-users.local.tsv');
 
 function parseBoolean(value: string, filePath: string, rowNumber: number): boolean {
   const normalized = value.trim().toLowerCase();
@@ -100,13 +101,22 @@ const rolePermissionSeeds: RolePermissionSeed[] =
     permissionKey: row.permission_key.trim(),
   }));
 
-const userSeeds: UserSeed[] = readTsvRows<UserCsvRow>(USERS_TSV_PATH).map((row, index) => ({
-  email: row.email.trim(),
-  displayName: row.display_name.trim(),
-  password: row.password,
-  roleKey: row.role_key.trim(),
-  emailVerified: parseBoolean(row.email_verified, USERS_TSV_PATH, index + 2),
-}));
+const userSeeds: UserSeed[] = [
+  ...readTsvRows<UserCsvRow>(USERS_TSV_PATH).map((row, index) => ({
+    email: row.email.trim(),
+    displayName: row.display_name.trim(),
+    password: row.password,
+    roleKey: row.role_key.trim(),
+    emailVerified: parseBoolean(row.email_verified, USERS_TSV_PATH, index + 2),
+  })),
+  ...readOptionalTsvRows<UserCsvRow>(USERS_LOCAL_TSV_PATH).map((row, index) => ({
+    email: row.email.trim(),
+    displayName: row.display_name.trim(),
+    password: row.password,
+    roleKey: row.role_key.trim(),
+    emailVerified: parseBoolean(row.email_verified, USERS_LOCAL_TSV_PATH, index + 2),
+  })),
+];
 
 export async function seedAuth(
   em: EntityManager
