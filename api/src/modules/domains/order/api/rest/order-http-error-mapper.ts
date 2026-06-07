@@ -21,10 +21,13 @@ import {
   CheckoutSessionNotFoundError,
   InvalidShippingStatusTransitionError,
   OrderAppError,
-  OrderNotFoundError,
-  SellerOrderCancelNotAllowedError,
-  SellerOrderStatusUpdateNotAllowedError,
-  SellerShippedOrderCancelNotAllowedError,
+    OrderNotFoundError,
+    SellerRefundActionNotAllowedError,
+    SellerRefundNotAllowedError,
+    SellerRefundRequiresCardPaymentError,
+    SellerOrderCancelNotAllowedError,
+    SellerOrderStatusUpdateNotAllowedError,
+    SellerShippedOrderCancelNotAllowedError,
   ShipmentUpdateNotAllowedError,
   ShipmentUpdatePayloadRequiredError,
   TemporaryCartNotFoundError,
@@ -54,6 +57,9 @@ export function mapOrderAppErrorToHttpException(
     || error instanceof SellerOrderStatusUpdateNotAllowedError
     || error instanceof SellerOrderCancelNotAllowedError
     || error instanceof SellerShippedOrderCancelNotAllowedError
+    || error instanceof SellerRefundActionNotAllowedError
+    || error instanceof SellerRefundNotAllowedError
+    || error instanceof SellerRefundRequiresCardPaymentError
     || error instanceof BuyerOrderCancelNotAllowedError
     || error instanceof BuyerShippedOrderCancelNotAllowedError
     || error instanceof ShipmentUpdatePayloadRequiredError

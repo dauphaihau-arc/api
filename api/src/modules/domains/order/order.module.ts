@@ -60,6 +60,7 @@ import { ShopModule } from '../shop/shop.module';
 import { ForwardOrderUpdatedToSseListener } from './listeners/forward-order-updated-to-sse.listener';
 import { UpdateShopOrderShipmentUseCase } from './app/use-cases/update-shop-order-shipment/update-shop-order-shipment.use-case';
 import { UpdateShopOrderStatusUseCase } from './app/use-cases/update-shop-order-status/update-shop-order-status.use-case';
+import { UpdateShopOrderRefundUseCase } from './app/use-cases/update-shop-order-refund/update-shop-order-refund.use-case';
 
 @Module({
   imports: [
@@ -127,6 +128,7 @@ import { UpdateShopOrderStatusUseCase } from './app/use-cases/update-shop-order-
     UpdateAdminOrderSupportNoteUseCase,
     UpdateShopOrderStatusUseCase,
     UpdateShopOrderShipmentUseCase,
+    UpdateShopOrderRefundUseCase,
     ForwardOrderUpdatedToSseListener,
     ProcessOrderRefundJob,
   ],

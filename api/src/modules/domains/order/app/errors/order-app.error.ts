@@ -90,6 +90,24 @@ export class SellerShippedOrderCancelNotAllowedError extends OrderAppError {
   }
 }
 
+export class SellerRefundNotAllowedError extends OrderAppError {
+  constructor() {
+    super('This order is not eligible for seller-initiated refund');
+  }
+}
+
+export class SellerRefundRequiresCardPaymentError extends OrderAppError {
+  constructor() {
+    super('Only card orders support seller refund actions');
+  }
+}
+
+export class SellerRefundActionNotAllowedError extends OrderAppError {
+  constructor() {
+    super('This seller refund action is not allowed for the current order state');
+  }
+}
+
 export class BuyerOrderCancelNotAllowedError extends OrderAppError {
   constructor() {
     super('This order can no longer be canceled');
