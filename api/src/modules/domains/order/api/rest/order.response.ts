@@ -295,6 +295,15 @@ export function toShopOrderDetailResponse(order: ShopOrderDetail) {
         phone: order.shippingAddress.phone,
       },
     },
+    timeline: order.timeline.map((event) => ({
+      id: event.id,
+      type: event.type,
+      occurred_at: event.occurredAt,
+      actor_type: event.actorType,
+      actor_id: event.actorId,
+      source: event.source,
+      payload: event.payload,
+    })),
   };
 }
 

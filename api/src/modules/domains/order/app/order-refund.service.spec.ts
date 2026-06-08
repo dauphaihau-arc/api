@@ -15,7 +15,8 @@ describe('OrderRefundService', () => {
     const service = new OrderRefundService(
       {} as EntityManager,
       {} as PaymentGateway,
-      moduleRef
+      moduleRef,
+      { record: jest.fn().mockResolvedValue(undefined) } as never
     );
     const order = {
       paymentType: PaymentType.CARD,
@@ -92,7 +93,12 @@ describe('OrderRefundService', () => {
         return jobDispatcher;
       }),
     } as unknown as ModuleRef;
-    const service = new OrderRefundService(entityManager, paymentGateway, moduleRef);
+    const service = new OrderRefundService(
+      entityManager,
+      paymentGateway,
+      moduleRef,
+      { record: jest.fn().mockResolvedValue(undefined) } as never
+    );
 
     await service.processRefund('order-1');
 
@@ -173,7 +179,12 @@ describe('OrderRefundService', () => {
         return jobDispatcher;
       }),
     } as unknown as ModuleRef;
-    const service = new OrderRefundService(entityManager, paymentGateway, moduleRef);
+    const service = new OrderRefundService(
+      entityManager,
+      paymentGateway,
+      moduleRef,
+      { record: jest.fn().mockResolvedValue(undefined) } as never
+    );
 
     await service.processRefund('order-1');
 

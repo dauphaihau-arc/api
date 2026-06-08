@@ -7,6 +7,8 @@ import { NotifyUserUseCase } from '~/modules/shared/notification/app/use-cases/n
 import { JobDispatcher } from '~/modules/shared/queue/app/ports/job-dispatcher';
 import { ORDER_UPDATED_SSE_EVENT } from '../../events/order-sse.event';
 import type { RequestOrderCancelDto } from '../../../api/rest/dto/request-order-cancel.dto';
+import { OrderEventActorType } from '../../../domain/enums/order-event-actor-type.enum';
+import { OrderEventType } from '../../../domain/enums/order-event-type.enum';
 import { OrderShippingStatus } from '../../../domain/enums/order-shipping-status.enum';
 import { OrderStatus } from '../../../domain/enums/order-status.enum';
 import { OrderEntity } from '../../../infra/persistence/entities/order.entity';
@@ -36,6 +38,7 @@ import {
   buildSellerOrderCancelRequestedNotification,
   getSellerOrderNotificationRecipientId,
 } from '../../seller-order-notification';
+import { OrderEventsService } from '../../order-events.service';
 
 @Injectable()
 export class RequestOrderCancelUseCase {
@@ -46,7 +49,8 @@ export class RequestOrderCancelUseCase {
     private readonly orderCancellationService: OrderCancellationService,
     private readonly jobDispatcher: JobDispatcher,
     private readonly notifyUserUseCase: NotifyUserUseCase,
-    private readonly eventEmitter: EventEmitter2
+    private readonly eventEmitter: EventEmitter2,
+    private readonly orderEventsService: OrderEventsService
   ) {}
 
   async execute(
@@ -75,11 +79,36 @@ export class RequestOrderCancelUseCase {
       }
 
       const now = new Date();
+      const previousStatus = order.status;
       order.cancelRequestedAt = now;
+      await this.orderEventsService.record(transactionalEntityManager, {
+        order,
+        type: OrderEventType.CANCEL_REQUESTED,
+        actorType: OrderEventActorType.BUYER,
+        actorId: actor.userId,
+        source: 'buyer_order_cancel',
+        occurredAt: now,
+        payload: {
+          reason: input.cancelReason,
+        },
+      });
       const { refundRequested, inventoryEvents } = await this.orderCancellationService.cancelOrder(transactionalEntityManager, order, {
         canceledAt: now,
         cancelReason: input.cancelReason,
         source: 'buyer',
+      });
+      await this.orderEventsService.record(transactionalEntityManager, {
+        order,
+        type: OrderEventType.ORDER_STATUS_CHANGED,
+        actorType: OrderEventActorType.BUYER,
+        actorId: actor.userId,
+        source: 'buyer_order_cancel',
+        occurredAt: now,
+        payload: {
+          from: previousStatus,
+          to: order.status,
+          reason: input.cancelReason,
+        },
       });
 
       await transactionalEntityManager.flush();

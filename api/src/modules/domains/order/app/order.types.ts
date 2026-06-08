@@ -209,6 +209,16 @@ export interface OrderShippingAddressSummary {
   phone?: string;
 }
 
+export interface OrderTimelineEvent {
+  id: string;
+  type: string;
+  occurredAt: Date;
+  actorType: string;
+  actorId?: string;
+  source?: string;
+  payload?: Record<string, unknown>;
+}
+
 export interface ShopOrderSummary {
   id: string;
   orderNumber: string;
@@ -260,6 +270,7 @@ export interface ShopOrderListResult {
 
 export interface ShopOrderDetail extends ShopOrderSummary {
   shippingAddress: OrderShippingAddressSummary;
+  timeline: OrderTimelineEvent[];
 }
 
 export interface ShopAdjustmentInput {

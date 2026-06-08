@@ -8,9 +8,12 @@ import {
 } from '~/modules/domains/product/app/events/product-inventory-sse.event';
 import { CouponUsageEntity } from '../../coupon/infra/persistence/entities/coupon-usage.entity';
 import { ProductInventoryEntity } from '../../product/infra/persistence/entities/product-inventory.entity';
+import { OrderEventActorType } from '../domain/enums/order-event-actor-type.enum';
+import { OrderEventType } from '../domain/enums/order-event-type.enum';
 import { OrderStatus } from '../domain/enums/order-status.enum';
 import { OrderEntity } from '../infra/persistence/entities/order.entity';
 import { OrderItemEntity } from '../infra/persistence/entities/order-item.entity';
+import { OrderEventsService } from './order-events.service';
 import { getRequiredOrderNumber } from './order-number';
 import type { CreateOrderResult } from './order.types';
 
@@ -18,7 +21,8 @@ import type { CreateOrderResult } from './order.types';
 export class OrderPaymentService {
   constructor(
     private readonly entityManager: EntityManager,
-    private readonly eventEmitter: EventEmitter2
+    private readonly eventEmitter: EventEmitter2,
+    private readonly orderEventsService: OrderEventsService
   ) {}
 
   async getOrdersByCheckoutSession(sessionId: string): Promise<CreateOrderResult> {
@@ -53,6 +57,7 @@ export class OrderPaymentService {
       }
 
       for (const order of actionableOrders) {
+        const previousStatus = order.status;
         order.status = OrderStatus.PAID;
         order.paymentDetails = {
           ...order.paymentDetails,
@@ -61,6 +66,20 @@ export class OrderPaymentService {
           payment_status: input.paymentStatus ?? 'paid',
           paid_at: input.completedAt?.toISOString() ?? new Date().toISOString(),
         };
+        await this.orderEventsService.record(entityManager, {
+          order,
+          type: OrderEventType.PAYMENT_SUCCEEDED,
+          actorType: OrderEventActorType.SYSTEM,
+          source: 'payment_webhook',
+          occurredAt: input.completedAt,
+          payload: {
+            from_status: previousStatus,
+            to_status: order.status,
+            payment_intent_id: input.paymentIntentId ?? undefined,
+            payment_status: input.paymentStatus ?? 'paid',
+            checkout_session_id: sessionId,
+          },
+        });
       }
 
       const cartId = String(actionableOrders[0]?.paymentDetails?.cart_id ?? '');
@@ -123,6 +142,7 @@ export class OrderPaymentService {
       }
 
       for (const order of actionableOrders) {
+        const previousStatus = order.status;
         order.status = OrderStatus.EXPIRED;
         order.paymentDetails = {
           ...order.paymentDetails,
@@ -130,6 +150,18 @@ export class OrderPaymentService {
           payment_status: 'expired',
           expired_at: expiredAt?.toISOString() ?? new Date().toISOString(),
         };
+        await this.orderEventsService.record(entityManager, {
+          order,
+          type: OrderEventType.PAYMENT_EXPIRED,
+          actorType: OrderEventActorType.SYSTEM,
+          source: 'payment_expiry',
+          occurredAt: expiredAt,
+          payload: {
+            from_status: previousStatus,
+            to_status: order.status,
+            checkout_session_id: sessionId,
+          },
+        });
       }
 
       await entityManager.flush();

@@ -5,11 +5,12 @@ import { appJobDeduplicationKey } from '~/common/jobs/job.types';
 import { JobDispatcher } from '~/modules/shared/queue/app/ports/job-dispatcher';
 import type { UpdateShopOrderRefundDto } from '../../../api/rest/dto/update-shop-order-refund.dto';
 import { ShopOrderRefundAction } from '../../../api/rest/dto/update-shop-order-refund.dto';
+import { OrderEventActorType } from '../../../domain/enums/order-event-actor-type.enum';
+import { OrderEventType } from '../../../domain/enums/order-event-type.enum';
 import { PaymentType } from '../../../domain/enums/payment-type.enum';
 import { OrderShippingStatus } from '../../../domain/enums/order-shipping-status.enum';
 import { OrderStatus } from '../../../domain/enums/order-status.enum';
 import { OrderEntity } from '../../../infra/persistence/entities/order.entity';
-import { OrderItemEntity } from '../../../infra/persistence/entities/order-item.entity';
 import { ORDER_UPDATED_SSE_EVENT } from '../../events/order-sse.event';
 import {
   OrderNotFoundError,
@@ -17,8 +18,9 @@ import {
   SellerRefundNotAllowedError,
   SellerRefundRequiresCardPaymentError,
 } from '../../errors/order-app.error';
+import { OrderEventsService } from '../../order-events.service';
 import { buildScopedOrderIdentifierWhere } from '../../order-identifier';
-import { toShopOrderDetail } from '../../shop-order-read-model';
+import { buildShopOrderDetail } from '../../shop-order-detail.loader';
 import type { ShopOrderDetail } from '../../order.types';
 
 type RefundStatus = 'pending' | 'succeeded' | 'failed' | 'not_required';
@@ -30,7 +32,8 @@ export class UpdateShopOrderRefundUseCase {
   constructor(
     private readonly entityManager: EntityManager,
     private readonly jobDispatcher: JobDispatcher,
-    private readonly eventEmitter: EventEmitter2
+    private readonly eventEmitter: EventEmitter2,
+    private readonly orderEventsService: OrderEventsService
   ) {}
 
   async execute(
@@ -69,16 +72,23 @@ export class UpdateShopOrderRefundUseCase {
         refund_note: undefined,
       };
 
-      await transactionalEntityManager.flush();
+      await this.orderEventsService.record(transactionalEntityManager, {
+        order,
+        type: OrderEventType.REFUND_REQUESTED,
+        actorType: OrderEventActorType.SELLER,
+        source: 'shop_order_refund',
+        occurredAt: now,
+        payload: {
+          action: input.action,
+          status: order.status,
+        },
+      });
 
-      const items = await transactionalEntityManager.getRepository(OrderItemEntity).find(
-        { order: order.id },
-        { populate: ['product', 'product.shop', 'product.images', 'product.images.variants', 'inventory'] }
-      );
+      await transactionalEntityManager.flush();
 
       return {
         customerUserId: order.user?.id,
-        detail: toShopOrderDetail(order, items),
+        detail: await buildShopOrderDetail(transactionalEntityManager, order),
       };
     });
 

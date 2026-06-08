@@ -46,8 +46,10 @@ import { UpdateAdminOrderSupportNoteUseCase } from './app/use-cases/update-admin
 import { CreateCheckoutQuoteService } from './app/create-checkout-quote.service';
 import { LoadCheckoutQuoteService } from './app/load-checkout-quote.service';
 import { OrderCheckoutOutboxService } from './app/order-checkout-outbox.service';
+import { OrderEventsService } from './app/order-events.service';
 import { CheckoutQuoteEntity } from './infra/persistence/entities/checkout-quote.entity';
 import { CheckoutQuoteItemEntity } from './infra/persistence/entities/checkout-quote-item.entity';
+import { OrderEventEntity } from './infra/persistence/entities/order-event.entity';
 import { OutboxEventEntity } from './infra/persistence/entities/outbox-event.entity';
 import { OrderEntity } from './infra/persistence/entities/order.entity';
 import { OrderItemEntity } from './infra/persistence/entities/order-item.entity';
@@ -76,6 +78,7 @@ import { UpdateShopOrderRefundUseCase } from './app/use-cases/update-shop-order-
     ShopModule,
     MikroOrmModule.forFeature([
       OutboxEventEntity,
+      OrderEventEntity,
       CheckoutQuoteEntity,
       CheckoutQuoteItemEntity,
       OrderEntity,
@@ -102,6 +105,7 @@ import { UpdateShopOrderRefundUseCase } from './app/use-cases/update-shop-order-
     OrderCancellationService,
     OrderRefundService,
     OrderCheckoutOutboxService,
+    OrderEventsService,
     OrderPaymentService,
     GuestOrderTrackingTokenService,
     CreateGuestCheckoutQuoteFromCartUseCase,

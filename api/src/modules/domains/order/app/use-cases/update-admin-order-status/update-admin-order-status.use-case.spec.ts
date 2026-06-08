@@ -8,6 +8,7 @@ describe('UpdateAdminOrderStatusUseCase', () => {
   function buildUseCase(status = OrderStatus.PAID) {
     const order = {
       id: 'order-1',
+      orderNumber: 'ORD-20260604-000001',
       shop: {
         id: 'shop-1',
         shopName: 'Shop 1',
@@ -63,6 +64,7 @@ describe('UpdateAdminOrderStatusUseCase', () => {
       imageUrl: 'https://example.com/product-1.png',
       quantity: 1,
       price: 25,
+      unitPriceMinor: 2500,
       salePrice: undefined,
       variantName: 'Blue',
       variantGroupName: 'Color',
@@ -93,13 +95,17 @@ describe('UpdateAdminOrderStatusUseCase', () => {
     const eventEmitter: Pick<jest.Mocked<EventEmitter2>, 'emit'> = {
       emit: jest.fn(),
     };
+    const orderEventsService = {
+      record: jest.fn().mockResolvedValue(undefined),
+    };
 
     return {
       order,
       fakeEntityManager,
       useCase: new UpdateAdminOrderStatusUseCase(
         entityManager,
-        eventEmitter as unknown as EventEmitter2
+        eventEmitter as unknown as EventEmitter2,
+        orderEventsService as never
       ),
     };
   }

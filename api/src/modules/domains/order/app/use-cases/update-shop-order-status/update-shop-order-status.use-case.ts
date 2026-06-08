@@ -5,10 +5,11 @@ import { PRODUCT_INVENTORY_UPDATED_SSE_EVENT } from '~/modules/domains/product/a
 import { NotifyUserUseCase } from '~/modules/shared/notification/app/use-cases/notify-user/notify-user.use-case';
 import { JobDispatcher } from '~/modules/shared/queue/app/ports/job-dispatcher';
 import type { UpdateShopOrderStatusDto } from '../../../api/rest/dto/update-shop-order-status.dto';
+import { OrderEventActorType } from '../../../domain/enums/order-event-actor-type.enum';
+import { OrderEventType } from '../../../domain/enums/order-event-type.enum';
 import { OrderShippingStatus } from '../../../domain/enums/order-shipping-status.enum';
 import { OrderStatus } from '../../../domain/enums/order-status.enum';
 import { OrderEntity } from '../../../infra/persistence/entities/order.entity';
-import { OrderItemEntity } from '../../../infra/persistence/entities/order-item.entity';
 import {
   OrderNotFoundError,
   SellerOrderCancelNotAllowedError,
@@ -18,7 +19,8 @@ import {
 import { ORDER_UPDATED_SSE_EVENT } from '../../events/order-sse.event';
 import { buildScopedOrderIdentifierWhere } from '../../order-identifier';
 import { OrderCancellationService } from '../../order-cancellation.service';
-import { toShopOrderDetail } from '../../shop-order-read-model';
+import { OrderEventsService } from '../../order-events.service';
+import { buildShopOrderDetail } from '../../shop-order-detail.loader';
 import type { ShopOrderDetail } from '../../order.types';
 
 @Injectable()
@@ -30,7 +32,8 @@ export class UpdateShopOrderStatusUseCase {
     private readonly orderCancellationService: OrderCancellationService,
     private readonly jobDispatcher: JobDispatcher,
     private readonly notifyUserUseCase: NotifyUserUseCase,
-    private readonly eventEmitter: EventEmitter2
+    private readonly eventEmitter: EventEmitter2,
+    private readonly orderEventsService: OrderEventsService
   ) {}
 
   async execute(
@@ -70,10 +73,23 @@ export class UpdateShopOrderStatusUseCase {
         throw new SellerShippedOrderCancelNotAllowedError();
       }
 
+      const previousStatus = order.status;
       const { refundRequested, inventoryEvents } = await this.orderCancellationService.cancelOrder(transactionalEntityManager, order, {
         canceledAt: new Date(),
         cancelReason: input.cancelReason,
         source: 'seller',
+      });
+
+      await this.orderEventsService.record(transactionalEntityManager, {
+        order,
+        type: OrderEventType.ORDER_STATUS_CHANGED,
+        actorType: OrderEventActorType.SELLER,
+        source: 'shop_order_status',
+        payload: {
+          from: previousStatus,
+          to: order.status,
+          reason: input.cancelReason,
+        },
       });
 
       await transactionalEntityManager.flush();
@@ -132,11 +148,6 @@ export class UpdateShopOrderStatusUseCase {
     entityManager: EntityManager,
     order: OrderEntity
   ): Promise<ShopOrderDetail> {
-    const items = await entityManager.getRepository(OrderItemEntity).find(
-      { order: order.id },
-      { populate: ['product', 'product.shop', 'product.images', 'product.images.variants', 'inventory'] }
-    );
-
-    return toShopOrderDetail(order, items);
+    return buildShopOrderDetail(entityManager, order);
   }
 }

@@ -2,9 +2,12 @@ import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import type { UpdateAdminOrderStatusDto } from '../../../api/rest/dto/update-admin-order-status.dto';
+import { OrderEventActorType } from '../../../domain/enums/order-event-actor-type.enum';
+import { OrderEventType } from '../../../domain/enums/order-event-type.enum';
 import { OrderStatus } from '../../../domain/enums/order-status.enum';
 import { OrderEntity } from '../../../infra/persistence/entities/order.entity';
 import { OrderItemEntity } from '../../../infra/persistence/entities/order-item.entity';
+import { OrderEventsService } from '../../order-events.service';
 import { toAdminOrderDetail } from '../../admin-order-read-model';
 import { buildOrderIdentifierWhere } from '../../order-identifier';
 import {
@@ -25,7 +28,8 @@ const ALLOWED_ADMIN_STATUSES = new Set<OrderStatus>([
 export class UpdateAdminOrderStatusUseCase {
   constructor(
     private readonly entityManager: EntityManager,
-    private readonly eventEmitter: EventEmitter2
+    private readonly eventEmitter: EventEmitter2,
+    private readonly orderEventsService: OrderEventsService
   ) {}
 
   async execute(
@@ -46,6 +50,8 @@ export class UpdateAdminOrderStatusUseCase {
       throw new AdminOrderStatusOverrideNotAllowedError();
     }
 
+    const previousStatus = order.status;
+
     if (input.status === OrderStatus.REFUNDED) {
       if ([OrderStatus.CHECKOUT_PENDING, OrderStatus.AWAITING_PAYMENT, OrderStatus.EXPIRED].includes(order.status)) {
         throw new AdminRefundNotAllowedError();
@@ -63,6 +69,20 @@ export class UpdateAdminOrderStatusUseCase {
 
     if (input.status === OrderStatus.ARCHIVED) {
       order.status = OrderStatus.ARCHIVED;
+    }
+
+    if (order.status !== previousStatus) {
+      await this.orderEventsService.record(entityManager, {
+        order,
+        type: OrderEventType.ORDER_STATUS_CHANGED,
+        actorType: OrderEventActorType.ADMIN,
+        source: 'admin_order_status',
+        payload: {
+          from: previousStatus,
+          to: order.status,
+          reason: input.cancelReason,
+        },
+      });
     }
 
     await entityManager.flush();

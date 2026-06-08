@@ -6,7 +6,8 @@ import type {
   OrderListProduct,
   OrderShippingAddressSummary,
   ShopOrderDetail,
-  ShopOrderSummary
+  ShopOrderSummary,
+  OrderTimelineEvent,
 } from './order.types';
 import {
   getOrderDiscountMajor,
@@ -128,11 +129,13 @@ export function toShopOrderSummary(
 
 export function toShopOrderDetail(
   order: OrderEntity,
-  items: OrderItemEntity[]
+  items: OrderItemEntity[],
+  timeline: OrderTimelineEvent[]
 ): ShopOrderDetail {
   return {
     ...toShopOrderSummary(order, []),
     products: toOrderProducts(items, order.currency, { includeImageStorageKey: true }),
     shippingAddress: toShippingAddress(order.shippingAddress),
+    timeline,
   };
 }

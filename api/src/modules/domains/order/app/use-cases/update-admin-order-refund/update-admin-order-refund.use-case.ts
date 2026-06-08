@@ -5,10 +5,13 @@ import { appJobDeduplicationKey } from '~/common/jobs/job.types';
 import { JobDispatcher } from '~/modules/shared/queue/app/ports/job-dispatcher';
 import type { UpdateAdminOrderRefundDto } from '../../../api/rest/dto/update-admin-order-refund.dto';
 import { AdminOrderRefundAction } from '../../../api/rest/dto/update-admin-order-refund.dto';
+import { OrderEventActorType } from '../../../domain/enums/order-event-actor-type.enum';
+import { OrderEventType } from '../../../domain/enums/order-event-type.enum';
 import { PaymentType } from '../../../domain/enums/payment-type.enum';
 import { OrderStatus } from '../../../domain/enums/order-status.enum';
 import { OrderEntity } from '../../../infra/persistence/entities/order.entity';
 import { OrderItemEntity } from '../../../infra/persistence/entities/order-item.entity';
+import { OrderEventsService } from '../../order-events.service';
 import { toAdminOrderDetail } from '../../admin-order-read-model';
 import { buildOrderIdentifierWhere } from '../../order-identifier';
 import {
@@ -29,7 +32,8 @@ export class UpdateAdminOrderRefundUseCase {
   constructor(
     private readonly entityManager: EntityManager,
     private readonly jobDispatcher: JobDispatcher,
-    private readonly eventEmitter: EventEmitter2
+    private readonly eventEmitter: EventEmitter2,
+    private readonly orderEventsService: OrderEventsService
   ) {}
 
   async execute(
@@ -56,6 +60,7 @@ export class UpdateAdminOrderRefundUseCase {
       this.assertRefundActionAllowed(order.status, refundStatus, input.action);
 
       const now = new Date();
+      const previousStatus = order.status;
 
       if (input.action === AdminOrderRefundAction.RETRY) {
         order.status = OrderStatus.CANCELED;
@@ -105,6 +110,26 @@ export class UpdateAdminOrderRefundUseCase {
           refund_note: input.reason?.trim() || 'Refund not required',
         };
       }
+
+      await this.orderEventsService.record(transactionalEntityManager, {
+        order,
+        type: input.action === AdminOrderRefundAction.MARK_SUCCEEDED
+          ? OrderEventType.REFUND_SUCCEEDED
+          : input.action === AdminOrderRefundAction.MARK_FAILED
+            ? OrderEventType.REFUND_FAILED
+            : input.action === AdminOrderRefundAction.MARK_NOT_REQUIRED
+              ? OrderEventType.REFUND_NOT_REQUIRED
+              : OrderEventType.REFUND_REQUESTED,
+        actorType: OrderEventActorType.ADMIN,
+        actorId: undefined,
+        source: 'admin_order_refund',
+        occurredAt: now,
+        payload: {
+          from_status: previousStatus,
+          to_status: order.status,
+          reason: input.reason?.trim() || undefined,
+        },
+      });
 
       await transactionalEntityManager.flush();
 

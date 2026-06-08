@@ -5,9 +5,12 @@ import { fromMinorUnits } from '~/common/utils/money';
 import { PaymentGateway } from '~/modules/shared/payment/app/ports/payment-gateway';
 import { NotifyUserUseCase } from '~/modules/shared/notification/app/use-cases/notify-user/notify-user.use-case';
 import { JobDispatcher } from '~/modules/shared/queue/app/ports/job-dispatcher';
+import { OrderEventActorType } from '../domain/enums/order-event-actor-type.enum';
+import { OrderEventType } from '../domain/enums/order-event-type.enum';
 import { PaymentType } from '../domain/enums/payment-type.enum';
 import { OrderStatus } from '../domain/enums/order-status.enum';
 import { OrderEntity } from '../infra/persistence/entities/order.entity';
+import { OrderEventsService } from './order-events.service';
 import {
   buildSellerOrderRefundNotification,
   getSellerOrderNotificationRecipientId,
@@ -23,7 +26,8 @@ export class OrderRefundService {
   constructor(
     private readonly entityManager: EntityManager,
     private readonly paymentGateway: PaymentGateway,
-    private readonly moduleRef: ModuleRef
+    private readonly moduleRef: ModuleRef,
+    private readonly orderEventsService: OrderEventsService
   ) {}
 
   prepareRefundOnCancellation(
@@ -134,8 +138,34 @@ export class OrderRefundService {
       };
 
       if (input.refundStatus === 'succeeded') {
+        const previousStatus = order.status;
         order.refundedAt = input.refundedAt ?? new Date();
         order.status = OrderStatus.REFUNDED;
+        await this.orderEventsService.record(transactionalEntityManager, {
+          order,
+          type: OrderEventType.REFUND_SUCCEEDED,
+          actorType: OrderEventActorType.SYSTEM,
+          source: 'refund_processor',
+          occurredAt: input.refundedAt,
+          payload: {
+            from_status: previousStatus,
+            to_status: order.status,
+            refund_id: input.refundId,
+            refund_amount: input.refundAmount,
+          },
+        });
+      }
+      else {
+        await this.orderEventsService.record(transactionalEntityManager, {
+          order,
+          type: OrderEventType.REFUND_FAILED,
+          actorType: OrderEventActorType.SYSTEM,
+          source: 'refund_processor',
+          payload: {
+            reason: input.refundFailedReason,
+            refund_id: input.refundId,
+          },
+        });
       }
 
       await transactionalEntityManager.flush();

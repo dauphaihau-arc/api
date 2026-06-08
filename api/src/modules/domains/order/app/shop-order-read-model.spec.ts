@@ -74,7 +74,7 @@ describe('shop-order-read-model', () => {
       percentCouponPercent: null,
     } as unknown as OrderItemEntity;
 
-    const detail = toShopOrderDetail(order, [item]);
+    const detail = toShopOrderDetail(order, [item], []);
 
     expect(detail.products[0]?.imageStorageKey).toBe(thumbVariant.storageKey);
   });
@@ -143,7 +143,7 @@ describe('shop-order-read-model', () => {
       percentCouponPercent: null,
     } as unknown as OrderItemEntity;
 
-    const detail = toShopOrderDetail(order, [item]);
+    const detail = toShopOrderDetail(order, [item], []);
 
     expect(detail.products[0]?.imageStorageKey).toBe(image.storageKey);
   });

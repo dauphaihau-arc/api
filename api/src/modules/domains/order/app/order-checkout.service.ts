@@ -20,6 +20,8 @@ import { CouponUsageEntity } from '../../coupon/infra/persistence/entities/coupo
 import { ProductInventoryEntity } from '../../product/infra/persistence/entities/product-inventory.entity';
 import { ProductEntity } from '../../product/infra/persistence/entities/product.entity';
 import { ShopEntity } from '../../shop/infra/persistence/entities/shop.entity';
+import { OrderEventActorType } from '../domain/enums/order-event-actor-type.enum';
+import { OrderEventType } from '../domain/enums/order-event-type.enum';
 import { PaymentType } from '../domain/enums/payment-type.enum';
 import { OrderShippingStatus } from '../domain/enums/order-shipping-status.enum';
 import { OrderStatus } from '../domain/enums/order-status.enum';
@@ -27,6 +29,7 @@ import { OrderEntity } from '../infra/persistence/entities/order.entity';
 import { OrderItemEntity } from '../infra/persistence/entities/order-item.entity';
 import type { LoadedCheckoutQuote } from './load-checkout-quote.service';
 import { OrderCheckoutOutboxService } from './order-checkout-outbox.service';
+import { OrderEventsService } from './order-events.service';
 import {
   buildSellerOrderCreatedNotification,
   getSellerOrderNotificationRecipientId,
@@ -45,6 +48,7 @@ export class OrderCheckoutService {
     private readonly entityManager: EntityManager,
     private readonly couponPricingService: CouponPricingService,
     private readonly orderCheckoutOutboxService: OrderCheckoutOutboxService,
+    private readonly orderEventsService: OrderEventsService,
     private readonly notifyUserUseCase: NotifyUserUseCase,
     private readonly eventEmitter: EventEmitter2
   ) {}
@@ -158,6 +162,21 @@ export class OrderCheckoutService {
         if ('refresh' in entityManager && typeof entityManager.refresh === 'function') {
           await entityManager.refresh(order);
         }
+        await this.orderEventsService.record(entityManager, {
+          order,
+          type: OrderEventType.ORDER_CREATED,
+          actorType: actor.type === 'user'
+            ? OrderEventActorType.BUYER
+            : OrderEventActorType.SYSTEM,
+          actorId: actor.type === 'user' ? actor.userId : undefined,
+          source: actor.type,
+          occurredAt: order.createdAt,
+          payload: {
+            status: order.status,
+            shipping_status: order.shippingStatus,
+            payment_type: order.paymentType,
+          },
+        });
 
         for (const item of shop.items) {
           const quoteItem = quote

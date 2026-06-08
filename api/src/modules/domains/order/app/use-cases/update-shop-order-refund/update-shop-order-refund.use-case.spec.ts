@@ -103,6 +103,10 @@ describe('UpdateShopOrderRefundUseCase', () => {
             return {
               find: jest.fn().mockResolvedValue([item]),
             };
+          case 'OrderEventEntity':
+            return {
+              find: jest.fn().mockResolvedValue([]),
+            };
           default:
             return {};
         }
@@ -121,6 +125,9 @@ describe('UpdateShopOrderRefundUseCase', () => {
     const eventEmitter: Pick<jest.Mocked<EventEmitter2>, 'emit'> = {
       emit: jest.fn(),
     };
+    const orderEventsService = {
+      record: jest.fn().mockResolvedValue(undefined),
+    };
 
     return {
       order,
@@ -129,7 +136,8 @@ describe('UpdateShopOrderRefundUseCase', () => {
       useCase: new UpdateShopOrderRefundUseCase(
         entityManager,
         jobDispatcher,
-        eventEmitter as unknown as EventEmitter2
+        eventEmitter as unknown as EventEmitter2,
+        orderEventsService as never
       ),
     };
   }

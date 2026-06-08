@@ -119,6 +119,9 @@ describe('RequestOrderCancelUseCase', () => {
     const notifyUserUseCase = {
       execute: jest.fn().mockResolvedValue(undefined),
     } as unknown as jest.Mocked<NotifyUserUseCase>;
+    const orderEventsService = {
+      record: jest.fn().mockResolvedValue(undefined),
+    };
 
     return {
       order,
@@ -131,7 +134,8 @@ describe('RequestOrderCancelUseCase', () => {
         cancellationService,
         jobDispatcher as never,
         notifyUserUseCase,
-        eventEmitter as unknown as EventEmitter2
+        eventEmitter as unknown as EventEmitter2,
+        orderEventsService as never
       ),
     };
   }

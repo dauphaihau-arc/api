@@ -2,12 +2,15 @@ import { LockMode } from '@mikro-orm/core';
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable, Logger } from '@nestjs/common';
 import { PaymentGateway } from '~/modules/shared/payment/app/ports/payment-gateway';
+import { OrderEventActorType } from '../domain/enums/order-event-actor-type.enum';
+import { OrderEventType } from '../domain/enums/order-event-type.enum';
 import { OrderStatus } from '../domain/enums/order-status.enum';
 import { OrderEntity } from '../infra/persistence/entities/order.entity';
 import {
   OutboxEventEntity,
   OutboxEventStatus
 } from '../infra/persistence/entities/outbox-event.entity';
+import { OrderEventsService } from './order-events.service';
 
 const CHECKOUT_OUTBOX_EVENT_NAME = 'order.checkout-session-requested';
 const CHECKOUT_OUTBOX_AGGREGATE_TYPE = 'order';
@@ -50,7 +53,8 @@ export class OrderCheckoutOutboxService {
 
   constructor(
     private readonly entityManager: EntityManager,
-    private readonly paymentGateway: PaymentGateway
+    private readonly paymentGateway: PaymentGateway,
+    private readonly orderEventsService: OrderEventsService
   ) {}
 
   async createCheckoutSessionRequestedEvent(
@@ -108,8 +112,20 @@ export class OrderCheckoutOutboxService {
         );
 
         for (const order of orders) {
+          const previousStatus = order.status;
           if (order.status === OrderStatus.CHECKOUT_PENDING) {
             order.status = OrderStatus.AWAITING_PAYMENT;
+            await this.orderEventsService.record(entityManager, {
+              order,
+              type: OrderEventType.ORDER_STATUS_CHANGED,
+              actorType: OrderEventActorType.SYSTEM,
+              source: 'checkout_outbox',
+              payload: {
+                from: previousStatus,
+                to: order.status,
+                checkout_session_id: checkoutSession.id,
+              },
+            });
           }
 
           order.paymentDetails = {

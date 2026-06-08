@@ -154,11 +154,15 @@ describe('OrderCheckoutService', () => {
     const notifyUserUseCase = {
       execute: jest.fn().mockResolvedValue(undefined),
     } as unknown as jest.Mocked<NotifyUserUseCase>;
+    const orderEventsService = {
+      record: jest.fn().mockResolvedValue(undefined),
+    };
 
     const service = new OrderCheckoutService(
       entityManager,
       couponPricingService,
       orderCheckoutOutboxService,
+      orderEventsService as never,
       notifyUserUseCase,
       eventEmitter as unknown as EventEmitter2
     );

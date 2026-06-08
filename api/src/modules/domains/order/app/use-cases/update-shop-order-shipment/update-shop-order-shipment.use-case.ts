@@ -2,11 +2,12 @@ import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { NotifyUserUseCase } from '~/modules/shared/notification/app/use-cases/notify-user/notify-user.use-case';
+import { OrderEventActorType } from '../../../domain/enums/order-event-actor-type.enum';
+import { OrderEventType } from '../../../domain/enums/order-event-type.enum';
 import type { UpdateShopOrderShipmentDto } from '../../../api/rest/dto/update-shop-order-shipment.dto';
 import { OrderShippingStatus } from '../../../domain/enums/order-shipping-status.enum';
 import { OrderStatus } from '../../../domain/enums/order-status.enum';
 import { OrderEntity } from '../../../infra/persistence/entities/order.entity';
-import { OrderItemEntity } from '../../../infra/persistence/entities/order-item.entity';
 import {
   InvalidShippingStatusTransitionError,
   OrderNotFoundError,
@@ -16,7 +17,8 @@ import {
 import { ORDER_UPDATED_SSE_EVENT } from '../../events/order-sse.event';
 import { buildScopedOrderIdentifierWhere } from '../../order-identifier';
 import { getRequiredOrderNumber } from '../../order-number';
-import { toShopOrderDetail } from '../../shop-order-read-model';
+import { OrderEventsService } from '../../order-events.service';
+import { buildShopOrderDetail } from '../../shop-order-detail.loader';
 import type { ShopOrderDetail } from '../../order.types';
 
 const BLOCKED_ORDER_STATUSES = new Set<OrderStatus>([
@@ -46,7 +48,8 @@ export class UpdateShopOrderShipmentUseCase {
   constructor(
     private readonly entityManager: EntityManager,
     private readonly notifyUserUseCase: NotifyUserUseCase,
-    private readonly eventEmitter: EventEmitter2
+    private readonly eventEmitter: EventEmitter2,
+    private readonly orderEventsService: OrderEventsService
   ) {}
 
   async execute(
@@ -76,6 +79,12 @@ export class UpdateShopOrderShipmentUseCase {
     if (BLOCKED_ORDER_STATUSES.has(order.status)) {
       throw new ShipmentUpdateNotAllowedError();
     }
+
+    const previousOrderStatus = order.status;
+    const previousShippingStatus = order.shippingStatus;
+    const previousTrackingNumber = order.trackingNumber;
+    const previousShippingCarrier = order.shippingCarrier;
+    const previousShipmentNote = order.shipmentNote;
 
     if (input.shippingStatus) {
       const allowedTransitions = ALLOWED_SHIPPING_TRANSITIONS[order.shippingStatus];
@@ -117,6 +126,71 @@ export class UpdateShopOrderShipmentUseCase {
       order.shipmentNote = input.shipmentNote.trim() || undefined;
     }
 
+    if (input.shippingStatus && input.shippingStatus !== previousShippingStatus) {
+      await this.orderEventsService.record(entityManager, {
+        order,
+        type: OrderEventType.SHIPPING_STATUS_CHANGED,
+        actorType: OrderEventActorType.SELLER,
+        source: 'shop_order_shipment',
+        payload: {
+          from: previousShippingStatus,
+          to: input.shippingStatus,
+        },
+      });
+    }
+
+    if (input.trackingNumber !== undefined && order.trackingNumber !== previousTrackingNumber) {
+      await this.orderEventsService.record(entityManager, {
+        order,
+        type: OrderEventType.TRACKING_NUMBER_UPDATED,
+        actorType: OrderEventActorType.SELLER,
+        source: 'shop_order_shipment',
+        payload: {
+          from: previousTrackingNumber ?? null,
+          to: order.trackingNumber ?? null,
+        },
+      });
+    }
+
+    if (input.shippingCarrier !== undefined && order.shippingCarrier !== previousShippingCarrier) {
+      await this.orderEventsService.record(entityManager, {
+        order,
+        type: OrderEventType.SHIPPING_CARRIER_UPDATED,
+        actorType: OrderEventActorType.SELLER,
+        source: 'shop_order_shipment',
+        payload: {
+          from: previousShippingCarrier ?? null,
+          to: order.shippingCarrier ?? null,
+        },
+      });
+    }
+
+    if (input.shipmentNote !== undefined && order.shipmentNote !== previousShipmentNote) {
+      await this.orderEventsService.record(entityManager, {
+        order,
+        type: OrderEventType.SHIPMENT_NOTE_UPDATED,
+        actorType: OrderEventActorType.SELLER,
+        source: 'shop_order_shipment',
+        payload: {
+          from: previousShipmentNote ?? null,
+          to: order.shipmentNote ?? null,
+        },
+      });
+    }
+
+    if (order.status !== previousOrderStatus) {
+      await this.orderEventsService.record(entityManager, {
+        order,
+        type: OrderEventType.ORDER_STATUS_CHANGED,
+        actorType: OrderEventActorType.SELLER,
+        source: 'shop_order_shipment',
+        payload: {
+          from: previousOrderStatus,
+          to: order.status,
+        },
+      });
+    }
+
     await entityManager.flush();
 
     if (order.user?.id && input.shippingStatus) {
@@ -155,12 +229,7 @@ export class UpdateShopOrderShipmentUseCase {
       });
     }
 
-    const items = await entityManager.getRepository(OrderItemEntity).find(
-      { order: order.id },
-      { populate: ['product', 'product.shop', 'product.images', 'product.images.variants', 'inventory'] }
-    );
-
-    return toShopOrderDetail(order, items);
+    return buildShopOrderDetail(entityManager, order);
   }
 
   private buildShippingBody(

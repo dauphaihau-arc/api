@@ -85,10 +85,14 @@ describe('OrderCheckoutOutboxService', () => {
       constructStripeWebhookEvent: jest.fn(),
       retrieveStripeCheckoutSession: jest.fn(),
     } as unknown as jest.Mocked<PaymentGateway>;
+    const orderEventsService = {
+      record: jest.fn().mockResolvedValue(undefined),
+    };
 
     const service = new OrderCheckoutOutboxService(
       entityManager,
-      paymentGateway
+      paymentGateway,
+      orderEventsService as never
     );
 
     return {
