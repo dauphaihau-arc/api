@@ -266,6 +266,17 @@ export interface ShopOrderListResult {
   limit: number;
   totalPages: number;
   totalResults: number;
+  statusCounts: {
+    all: number;
+    awaiting_payment: number;
+    pending: number;
+    paid: number;
+    refunded: number;
+    completed: number;
+    canceled: number;
+    expired: number;
+    archived: number;
+  };
 }
 
 export interface ShopOrderDetail extends ShopOrderSummary {

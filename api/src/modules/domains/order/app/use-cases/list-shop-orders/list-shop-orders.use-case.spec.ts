@@ -10,6 +10,7 @@ describe('ListShopOrdersUseCase', () => {
   it('applies list filters to the repository query', async () => {
     const orderRepository = {
       findAndCount: jest.fn().mockResolvedValue([[], 0]),
+      count: jest.fn().mockResolvedValue(0),
     };
     const orderItemRepository = {
       find: jest.fn(),
@@ -77,12 +78,60 @@ describe('ListShopOrdersUseCase', () => {
         limit: 10,
       }
     );
+    expect(orderRepository.count).toHaveBeenCalledWith({
+      shop: 'shop-1',
+      shippingStatus: { $in: [OrderShippingStatus.PRE_TRANSIT] },
+      createdAt: {
+        $gte: new Date('2026-06-01T00:00:00.000Z'),
+        $lte: new Date('2026-06-05T23:59:59.999Z'),
+      },
+      totalMinor: {
+        $gte: 1000,
+        $lte: 5000,
+      },
+      currency: { $in: ['USD', 'HKD'] },
+      paymentType: { $in: [PaymentType.CARD] },
+      $and: [
+        {
+          $or: [
+            { customerEmail: { $ilike: '%buyer@example.com%' } },
+            { orderNumber: { $ilike: '%buyer@example.com%' } },
+            { id: 'buyer@example.com' },
+          ],
+        },
+      ],
+    });
+    expect(orderRepository.count).toHaveBeenCalledWith({
+      shop: 'shop-1',
+      shippingStatus: { $in: [OrderShippingStatus.PRE_TRANSIT] },
+      createdAt: {
+        $gte: new Date('2026-06-01T00:00:00.000Z'),
+        $lte: new Date('2026-06-05T23:59:59.999Z'),
+      },
+      totalMinor: {
+        $gte: 1000,
+        $lte: 5000,
+      },
+      currency: { $in: ['USD', 'HKD'] },
+      paymentType: { $in: [PaymentType.CARD] },
+      $and: [
+        {
+          $or: [
+            { customerEmail: { $ilike: '%buyer@example.com%' } },
+            { orderNumber: { $ilike: '%buyer@example.com%' } },
+            { id: 'buyer@example.com' },
+          ],
+        },
+      ],
+      status: OrderStatus.PAID,
+    });
     expect(orderItemRepository.find).not.toHaveBeenCalled();
   });
 
   it('falls back to major-unit totals when totalMinor is missing for amount filters', async () => {
     const orderRepository = {
       findAndCount: jest.fn().mockResolvedValue([[], 0]),
+      count: jest.fn().mockResolvedValue(0),
     };
     const orderItemRepository = {
       find: jest.fn(),
@@ -179,6 +228,16 @@ describe('ListShopOrdersUseCase', () => {
         ],
         1,
       ]),
+      count: jest.fn()
+        .mockResolvedValueOnce(1)
+        .mockResolvedValueOnce(0)
+        .mockResolvedValueOnce(0)
+        .mockResolvedValueOnce(1)
+        .mockResolvedValueOnce(0)
+        .mockResolvedValueOnce(0)
+        .mockResolvedValueOnce(0)
+        .mockResolvedValueOnce(0)
+        .mockResolvedValueOnce(0),
     };
     const orderItemRepository = {
       find: jest.fn().mockResolvedValue([
@@ -233,5 +292,16 @@ describe('ListShopOrdersUseCase', () => {
     );
     expect(result.results).toHaveLength(1);
     expect(result.results[0]?.products[0]?.imageStorageKey).toBeUndefined();
+    expect(result.statusCounts).toEqual({
+      all: 1,
+      awaiting_payment: 0,
+      pending: 0,
+      paid: 1,
+      refunded: 0,
+      completed: 0,
+      canceled: 0,
+      expired: 0,
+      archived: 0,
+    });
   });
 });

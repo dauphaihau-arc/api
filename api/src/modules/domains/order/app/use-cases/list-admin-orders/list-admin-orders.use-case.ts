@@ -6,6 +6,8 @@ import { getRequiredOrderNumber } from '../../order-number';
 import { getOrderTotalMajor, getOrderTotalMinor } from '../../order-money';
 import type { AdminOrderListResult } from '../../order.types';
 
+const UUID_V4_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 @Injectable()
 export class ListAdminOrdersUseCase {
   constructor(private readonly entityManager: EntityManager) {}
@@ -23,8 +25,11 @@ export class ListAdminOrdersUseCase {
       where.$or = [
         { customerEmail: { $ilike: `%${search}%` } },
         { orderNumber: { $ilike: `%${search}%` } },
-        { id: search },
       ];
+
+      if (UUID_V4_REGEX.test(search)) {
+        where.$or.push({ id: search });
+      }
     }
 
     const [orders, totalResults] = await entityManager.getRepository(OrderEntity).findAndCount(

@@ -253,6 +253,7 @@ export function toShopOrderListResponse(result: ShopOrderListResult) {
     limit: result.limit,
     total_pages: result.totalPages,
     total_results: result.totalResults,
+    status_counts: result.statusCounts,
   };
 }
 
