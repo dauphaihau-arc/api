@@ -85,4 +85,5 @@ export const toShopProductListResponse = (
     has_next_page: result.meta.hasNextPage,
     has_previous_page: result.meta.hasPreviousPage,
   },
+  state_counts: result.stateCounts,
 });

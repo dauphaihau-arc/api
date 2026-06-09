@@ -66,4 +66,10 @@ export type ShopProductListResponse = {
     has_next_page: boolean;
     has_previous_page: boolean;
   };
+  state_counts: {
+    all: number;
+    active: number;
+    inactive: number;
+    draft: number;
+  };
 };

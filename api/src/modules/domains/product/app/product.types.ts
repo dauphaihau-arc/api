@@ -192,7 +192,14 @@ export interface ListShopProductsInput {
   search?: string;
 }
 
-export type ShopProductListResult = PaginatedResult<ProductDraftSummary>;
+export interface ShopProductListResult extends PaginatedResult<ProductDraftSummary> {
+  stateCounts: {
+    all: number;
+    active: number;
+    inactive: number;
+    draft: number;
+  };
+}
 
 export const PRODUCT_PUBLIC_LIST_DEFAULT_PAGE = 1;
 export const PRODUCT_PUBLIC_LIST_DEFAULT_LIMIT = 12;

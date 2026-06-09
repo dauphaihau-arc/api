@@ -27,16 +27,26 @@ describe('ListShopProductsUseCase', () => {
       createDraft: jest.fn(),
       findById: jest.fn(),
       findPublicByShopSlugAndProductSlug: jest.fn(),
-      listByShop: jest.fn().mockResolvedValue({
-        items: [draftProduct],
-        meta: {
-          page: 2,
-          limit: 1,
-          total: 3,
-          totalPages: 3,
-          hasNextPage: true,
-          hasPreviousPage: true,
-        },
+      listByShop: jest.fn().mockImplementation(async (input) => {
+        const totals = {
+          all: 3,
+          [ProductState.ACTIVE]: 1,
+          [ProductState.INACTIVE]: 1,
+          [ProductState.DRAFT]: 1,
+        } as const;
+        const total = input.state ? totals[input.state] : totals.all;
+
+        return {
+          items: input.page === 2 && input.limit === 1 ? [draftProduct] : [],
+          meta: {
+            page: input.page,
+            limit: input.limit,
+            total,
+            totalPages: total === 0 ? 0 : Math.ceil(total / input.limit),
+            hasNextPage: input.page < Math.ceil(total / input.limit),
+            hasPreviousPage: input.page > 1,
+          },
+        };
       }),
       listPublic: jest.fn(),
       replaceImages: jest.fn(),
@@ -76,10 +86,16 @@ describe('ListShopProductsUseCase', () => {
     expect(result.meta).toEqual({
       page: 2,
       limit: 1,
-      total: 3,
-      totalPages: 3,
-      hasNextPage: true,
+      total: 1,
+      totalPages: 1,
+      hasNextPage: false,
       hasPreviousPage: true,
+    });
+    expect(result.stateCounts).toEqual({
+      all: 3,
+      active: 1,
+      inactive: 1,
+      draft: 1,
     });
   });
 });

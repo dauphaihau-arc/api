@@ -139,6 +139,12 @@ export class MikroOrmProductRepository implements ProductRepository {
     return {
       items: pagedProducts.map((product) => this.toDraftSummary(product)),
       meta: buildPaginationMeta(input.page, input.limit, total),
+      stateCounts: {
+        all: total,
+        active: input.state === ProductState.ACTIVE ? total : 0,
+        inactive: input.state === ProductState.INACTIVE ? total : 0,
+        draft: input.state === ProductState.DRAFT ? total : 0,
+      },
     };
   }
 
