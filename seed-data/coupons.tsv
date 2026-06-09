@@ -1,66 +1,66 @@
 shop_slug	code	type	applies_to	amount_off	percent_off	max_uses	max_uses_per_user	min_order_type	min_order_value	min_products	is_active	is_auto_sale	start_date	end_date
-olive-atelier	OLIVE-FS	free_ship	all			100	3	number_of_products		2	true	false	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
-olive-atelier	OLIVE-FA	fixed_amount	specific	8		75	2	order_total	40		true	false	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
-olive-atelier	OLIVE-PC11	percentage	all		11	120	3	order_total	60		true	false	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
-olive-atelier	OLIVE-PC	percentage	all		10	999	5	none			true	true	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
-olive-atelier	OLIVE-PC-OIS	percentage	specific		14	999	5	none			true	true	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
-reed-workshop	REED-FS	free_ship	all			100	3	number_of_products		2	true	false	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
-reed-workshop	REED-FA	fixed_amount	specific	6		80	2	order_total	30		true	false	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
-reed-workshop	REED-PC11	percentage	all		11	120	3	order_total	60		true	false	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
-reed-workshop	REED-PC	percentage	all		12	999	5	none			true	true	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
-reed-workshop	REED-PC-OIS	percentage	specific		15	999	5	none			true	true	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
-sage-studio	SAGE-FS	free_ship	all			100	3	number_of_products		2	true	false	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
-sage-studio	SAGE-FA	fixed_amount	specific	7		80	2	order_total	35		true	false	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
-sage-studio	SAGE-PC11	percentage	all		11	120	3	order_total	60		true	false	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
-sage-studio	SAGE-PC	percentage	all		9	999	5	none			true	true	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
-sage-studio	SAGE-PC-OIS	percentage	specific		13	999	5	none			true	true	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
-bulk-catalog-lab	BCL-01	percentage	all		6	500	5	none			true	false	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
-bulk-catalog-lab	BCL-02	fixed_amount	all	7		500	5	order_total	22		true	false	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
-bulk-catalog-lab	BCL-03	free_ship	all			500	5	none			true	false	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
-bulk-catalog-lab	BCL-04	percentage	all		9	500	5	order_total	24		true	false	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
-bulk-catalog-lab	BCL-05	fixed_amount	all	10		500	5	none			true	false	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
-bulk-catalog-lab	BCL-06	free_ship	all			500	5	order_total	26		true	false	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
-bulk-catalog-lab	BCL-07	percentage	all		12	500	5	none			true	false	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
-bulk-catalog-lab	BCL-08	fixed_amount	all	13		500	5	order_total	28		true	false	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
-bulk-catalog-lab	BCL-09	free_ship	all			500	5	none			true	false	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
-bulk-catalog-lab	BCL-10	percentage	all		15	500	5	order_total	30		true	false	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
-bulk-catalog-lab	BCL-11	fixed_amount	all	6		500	5	none			true	false	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
-bulk-catalog-lab	BCL-12	free_ship	all			500	5	order_total	32		true	false	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
-bulk-catalog-lab	BCL-13	percentage	all		18	500	5	none			true	false	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
-bulk-catalog-lab	BCL-14	fixed_amount	all	9		500	5	order_total	34		true	false	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
-bulk-catalog-lab	BCL-15	free_ship	all			500	5	none			true	false	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
-bulk-catalog-lab	BCL-16	percentage	all		21	500	5	order_total	36		true	false	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
-bulk-catalog-lab	BCL-17	fixed_amount	all	12		500	5	none			true	false	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
-bulk-catalog-lab	BCL-18	free_ship	all			500	5	order_total	38		true	false	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
-bulk-catalog-lab	BCL-19	percentage	all		24	500	5	none			true	false	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
-bulk-catalog-lab	BCL-20	fixed_amount	all	5		500	5	order_total	40		true	false	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
-bulk-catalog-lab	BCL-21	free_ship	all			500	5	none			true	false	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
-bulk-catalog-lab	BCL-22	percentage	all		7	500	5	order_total	42		true	false	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
-bulk-catalog-lab	BCL-23	fixed_amount	all	8		500	5	none			true	false	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
-bulk-catalog-lab	BCL-24	free_ship	all			500	5	order_total	44		true	false	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
-bulk-catalog-lab	BCL-25	percentage	all		10	500	5	none			true	false	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
-bulk-catalog-lab	BCL-26	fixed_amount	all	11		500	5	order_total	46		true	false	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
-bulk-catalog-lab	BCL-27	free_ship	all			500	5	none			true	false	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
-bulk-catalog-lab	BCL-28	percentage	all		13	500	5	order_total	48		true	false	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
-bulk-catalog-lab	BCL-29	fixed_amount	all	14		500	5	none			true	false	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
-bulk-catalog-lab	BCL-30	free_ship	all			500	5	order_total	50		true	false	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
-bulk-catalog-lab	BCL-31	percentage	all		16	500	5	none			true	false	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
-bulk-catalog-lab	BCL-32	fixed_amount	all	7		500	5	order_total	52		true	false	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
-bulk-catalog-lab	BCL-33	free_ship	all			500	5	none			true	false	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
-bulk-catalog-lab	BCL-34	percentage	all		19	500	5	order_total	54		true	false	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
-bulk-catalog-lab	BCL-35	fixed_amount	all	10		500	5	none			true	false	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
-bulk-catalog-lab	BCL-36	free_ship	all			500	5	order_total	56		true	false	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
-bulk-catalog-lab	BCL-37	percentage	all		22	500	5	none			true	false	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
-bulk-catalog-lab	BCL-38	fixed_amount	all	13		500	5	order_total	58		true	false	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
-bulk-catalog-lab	BCL-39	free_ship	all			500	5	none			true	false	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
-bulk-catalog-lab	BCL-40	percentage	all		5	500	5	order_total	60		true	false	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
-bulk-catalog-lab	BCL-41	fixed_amount	all	6		500	5	none			true	false	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
-bulk-catalog-lab	BCL-42	free_ship	all			500	5	order_total	62		true	false	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
-bulk-catalog-lab	BCL-43	percentage	all		8	500	5	none			true	false	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
-bulk-catalog-lab	BCL-44	fixed_amount	all	9		500	5	order_total	64		true	false	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
-bulk-catalog-lab	BCL-45	free_ship	all			500	5	none			true	false	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
-bulk-catalog-lab	BCL-46	percentage	all		11	500	5	order_total	66		true	false	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
-bulk-catalog-lab	BCL-47	fixed_amount	all	12		500	5	none			true	false	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
-bulk-catalog-lab	BCL-48	free_ship	all			500	5	order_total	68		true	false	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
-bulk-catalog-lab	BCL-49	percentage	all		14	500	5	none			true	false	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
-bulk-catalog-lab	BCL-50	fixed_amount	all	5		500	5	order_total	70		true	false	2026-01-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
+olive-atelier	OLIVE-FS	free_ship	all			150	2	number_of_products		2	true	false	2026-03-01T00:00:00.000Z	2026-03-31T23:59:59.000Z
+olive-atelier	OLIVE-FA	fixed_amount	specific	12		60	1	order_total	75		true	false	2026-04-10T00:00:00.000Z	2026-05-12T23:59:59.000Z
+olive-atelier	OLIVE-PC11	percentage	all		15	90	2	order_total	120		true	false	2026-06-01T00:00:00.000Z	2026-06-18T23:59:59.000Z
+olive-atelier	OLIVE-PC	percentage	all		18	240	3	none			true	true	2026-06-12T00:00:00.000Z	2026-06-16T23:59:59.000Z
+olive-atelier	OLIVE-PC-OIS	percentage	specific		22	120	2	none			true	true	2026-07-03T00:00:00.000Z	2026-07-07T23:59:59.000Z
+reed-workshop	REED-FS	free_ship	all			90	2	number_of_products		2	true	false	2026-02-06T00:00:00.000Z	2026-02-22T23:59:59.000Z
+reed-workshop	REED-FA	fixed_amount	specific	35		40	1	order_total	250		true	false	2026-05-08T00:00:00.000Z	2026-05-25T23:59:59.000Z
+reed-workshop	REED-PC11	percentage	all		10	70	2	order_total	300		true	false	2026-06-20T00:00:00.000Z	2026-07-04T23:59:59.000Z
+reed-workshop	REED-PC	percentage	all		14	160	2	none			true	true	2026-08-14T00:00:00.000Z	2026-08-18T23:59:59.000Z
+reed-workshop	REED-PC-OIS	percentage	specific		17	50	1	none			true	true	2026-11-27T00:00:00.000Z	2026-11-30T23:59:59.000Z
+sage-studio	SAGE-FS	free_ship	all			110	2	number_of_products		2	true	false	2026-03-12T00:00:00.000Z	2026-04-02T23:59:59.000Z
+sage-studio	SAGE-FA	fixed_amount	specific	18		55	1	order_total	95		true	false	2026-04-18T00:00:00.000Z	2026-05-09T23:59:59.000Z
+sage-studio	SAGE-PC11	percentage	all		12	85	2	order_total	140		true	false	2026-09-01T00:00:00.000Z	2026-09-21T23:59:59.000Z
+sage-studio	SAGE-PC	percentage	all		16	140	2	none			true	true	2026-10-09T00:00:00.000Z	2026-10-13T23:59:59.000Z
+sage-studio	SAGE-PC-OIS	percentage	specific		20	45	1	none			true	true	2026-12-03T00:00:00.000Z	2026-12-07T23:59:59.000Z
+bulk-catalog-lab	BCL-01	percentage	all		8	180	2	none			true	false	2026-01-05T00:00:00.000Z	2026-02-02T23:59:59.000Z
+bulk-catalog-lab	BCL-02	fixed_amount	all	10		140	2	order_total	45		true	false	2026-01-12T00:00:00.000Z	2026-02-16T23:59:59.000Z
+bulk-catalog-lab	BCL-03	free_ship	all			220	3	none			true	false	2026-02-01T00:00:00.000Z	2026-02-28T23:59:59.000Z
+bulk-catalog-lab	BCL-04	percentage	all		12	175	2	order_total	60		true	false	2026-02-10T00:00:00.000Z	2026-03-10T23:59:59.000Z
+bulk-catalog-lab	BCL-05	fixed_amount	all	15		130	2	none			true	false	2026-03-01T00:00:00.000Z	2026-03-31T23:59:59.000Z
+bulk-catalog-lab	BCL-06	free_ship	all			210	3	order_total	50		true	false	2026-03-12T00:00:00.000Z	2026-04-08T23:59:59.000Z
+bulk-catalog-lab	BCL-07	percentage	all		18	160	2	none			true	false	2026-04-01T00:00:00.000Z	2026-04-30T23:59:59.000Z
+bulk-catalog-lab	BCL-08	fixed_amount	all	20		120	1	order_total	80		true	false	2026-04-09T00:00:00.000Z	2026-05-06T23:59:59.000Z
+bulk-catalog-lab	BCL-09	free_ship	all			240	3	none			true	false	2026-05-01T00:00:00.000Z	2026-05-31T23:59:59.000Z
+bulk-catalog-lab	BCL-10	percentage	all		15	170	2	order_total	95		true	false	2026-05-12T00:00:00.000Z	2026-06-09T23:59:59.000Z
+bulk-catalog-lab	BCL-11	fixed_amount	all	8		150	2	none			true	false	2026-06-01T00:00:00.000Z	2026-06-30T23:59:59.000Z
+bulk-catalog-lab	BCL-12	free_ship	all			200	2	order_total	120		true	false	2026-06-10T00:00:00.000Z	2026-07-15T23:59:59.000Z
+bulk-catalog-lab	BCL-13	percentage	all		20	145	1	none			true	false	2026-07-01T00:00:00.000Z	2026-07-31T23:59:59.000Z
+bulk-catalog-lab	BCL-14	fixed_amount	all	12		155	2	order_total	70		true	false	2026-07-08T00:00:00.000Z	2026-08-05T23:59:59.000Z
+bulk-catalog-lab	BCL-15	free_ship	all			260	3	none			true	false	2026-08-01T00:00:00.000Z	2026-08-31T23:59:59.000Z
+bulk-catalog-lab	BCL-16	percentage	all		22	135	1	order_total	110		true	false	2026-08-14T00:00:00.000Z	2026-09-10T23:59:59.000Z
+bulk-catalog-lab	BCL-17	fixed_amount	all	18		125	1	none			true	false	2026-09-01T00:00:00.000Z	2026-09-30T23:59:59.000Z
+bulk-catalog-lab	BCL-18	free_ship	all			205	2	order_total	65		true	false	2026-09-12T00:00:00.000Z	2026-10-08T23:59:59.000Z
+bulk-catalog-lab	BCL-19	percentage	all		25	115	1	none			true	false	2026-10-01T00:00:00.000Z	2026-10-31T23:59:59.000Z
+bulk-catalog-lab	BCL-20	fixed_amount	all	10		165	2	order_total	55		true	false	2026-10-10T00:00:00.000Z	2026-11-06T23:59:59.000Z
+bulk-catalog-lab	BCL-21	free_ship	all			230	3	none			true	false	2026-11-01T00:00:00.000Z	2026-11-30T23:59:59.000Z
+bulk-catalog-lab	BCL-22	percentage	all		9	185	2	order_total	40		true	false	2026-11-09T00:00:00.000Z	2026-12-05T23:59:59.000Z
+bulk-catalog-lab	BCL-23	fixed_amount	all	14		150	2	none			true	false	2026-11-20T00:00:00.000Z	2026-12-24T23:59:59.000Z
+bulk-catalog-lab	BCL-24	free_ship	all			250	3	order_total	85		true	false	2026-12-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
+bulk-catalog-lab	BCL-25	percentage	all		11	175	2	none			true	false	2026-01-15T00:00:00.000Z	2026-02-15T23:59:59.000Z
+bulk-catalog-lab	BCL-26	fixed_amount	all	16		135	1	order_total	100		true	false	2026-02-18T00:00:00.000Z	2026-03-20T23:59:59.000Z
+bulk-catalog-lab	BCL-27	free_ship	all			215	3	none			true	false	2026-03-20T00:00:00.000Z	2026-04-20T23:59:59.000Z
+bulk-catalog-lab	BCL-28	percentage	all		13	165	2	order_total	75		true	false	2026-04-22T00:00:00.000Z	2026-05-22T23:59:59.000Z
+bulk-catalog-lab	BCL-29	fixed_amount	all	9		170	2	none			true	false	2026-05-20T00:00:00.000Z	2026-06-20T23:59:59.000Z
+bulk-catalog-lab	BCL-30	free_ship	all			225	3	order_total	90		true	false	2026-06-22T00:00:00.000Z	2026-07-20T23:59:59.000Z
+bulk-catalog-lab	BCL-31	percentage	all		17	155	2	none			true	false	2026-07-20T00:00:00.000Z	2026-08-20T23:59:59.000Z
+bulk-catalog-lab	BCL-32	fixed_amount	all	11		145	2	order_total	60		true	false	2026-08-22T00:00:00.000Z	2026-09-18T23:59:59.000Z
+bulk-catalog-lab	BCL-33	free_ship	all			235	3	none			true	false	2026-09-20T00:00:00.000Z	2026-10-20T23:59:59.000Z
+bulk-catalog-lab	BCL-34	percentage	all		19	125	1	order_total	125		true	false	2026-10-22T00:00:00.000Z	2026-11-22T23:59:59.000Z
+bulk-catalog-lab	BCL-35	fixed_amount	all	13		140	1	none			true	false	2026-11-24T00:00:00.000Z	2026-12-20T23:59:59.000Z
+bulk-catalog-lab	BCL-36	free_ship	all			205	2	order_total	48		true	false	2026-01-25T00:00:00.000Z	2026-02-25T23:59:59.000Z
+bulk-catalog-lab	BCL-37	percentage	all		21	120	1	none			true	false	2026-02-26T00:00:00.000Z	2026-03-26T23:59:59.000Z
+bulk-catalog-lab	BCL-38	fixed_amount	all	17		130	1	order_total	105		true	false	2026-03-28T00:00:00.000Z	2026-04-28T23:59:59.000Z
+bulk-catalog-lab	BCL-39	free_ship	all			210	3	none			true	false	2026-04-30T00:00:00.000Z	2026-05-30T23:59:59.000Z
+bulk-catalog-lab	BCL-40	percentage	all		7	190	2	order_total	35		true	false	2026-05-28T00:00:00.000Z	2026-06-25T23:59:59.000Z
+bulk-catalog-lab	BCL-41	fixed_amount	all	6		180	2	none			true	false	2026-06-26T00:00:00.000Z	2026-07-26T23:59:59.000Z
+bulk-catalog-lab	BCL-42	free_ship	all			220	3	order_total	72		true	false	2026-07-28T00:00:00.000Z	2026-08-26T23:59:59.000Z
+bulk-catalog-lab	BCL-43	percentage	all		10	175	2	none			true	false	2026-08-28T00:00:00.000Z	2026-09-28T23:59:59.000Z
+bulk-catalog-lab	BCL-44	fixed_amount	all	12		150	2	order_total	88		true	false	2026-09-29T00:00:00.000Z	2026-10-27T23:59:59.000Z
+bulk-catalog-lab	BCL-45	free_ship	all			240	3	none			true	false	2026-10-29T00:00:00.000Z	2026-11-28T23:59:59.000Z
+bulk-catalog-lab	BCL-46	percentage	all		14	165	2	order_total	98		true	false	2026-11-27T00:00:00.000Z	2026-12-27T23:59:59.000Z
+bulk-catalog-lab	BCL-47	fixed_amount	all	15		145	2	none			true	false	2026-12-05T00:00:00.000Z	2026-12-31T23:59:59.000Z
+bulk-catalog-lab	BCL-48	free_ship	all			215	2	order_total	130		true	false	2026-06-15T00:00:00.000Z	2026-07-05T23:59:59.000Z
+bulk-catalog-lab	BCL-49	percentage	all		16	150	2	none			true	false	2026-09-05T00:00:00.000Z	2026-09-19T23:59:59.000Z
+bulk-catalog-lab	BCL-50	fixed_amount	all	9		160	2	order_total	58		true	false	2026-04-15T00:00:00.000Z	2026-05-15T23:59:59.000Z
