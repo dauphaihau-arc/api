@@ -35,5 +35,6 @@ export function toShopCouponListResponse(result: ShopCouponListResult) {
     limit: result.limit,
     total_pages: result.totalPages,
     total_results: result.totalResults,
+    type_counts: result.typeCounts,
   };
 }

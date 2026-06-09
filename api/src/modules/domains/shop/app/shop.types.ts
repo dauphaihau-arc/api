@@ -39,6 +39,11 @@ export interface ShopCouponListResult {
   limit: number;
   totalPages: number;
   totalResults: number;
+  typeCounts: {
+    all: number;
+    promo_code: number;
+    sale: number;
+  };
 }
 
 export interface CreateShopInput {

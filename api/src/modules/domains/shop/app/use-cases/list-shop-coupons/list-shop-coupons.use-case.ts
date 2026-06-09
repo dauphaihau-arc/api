@@ -36,22 +36,36 @@ export class ListShopCouponsUseCase {
       throw new ForbiddenException('You do not own this shop');
     }
 
-    const where: Record<string, unknown> = { shop: shopId };
+    const baseWhere: Record<string, unknown> = { shop: shopId };
 
     if (query.code) {
-      where.code = { $ilike: `%${query.code}%` };
+      baseWhere.code = { $ilike: `%${query.code}%` };
     }
 
-    if (query.is_auto_sale !== undefined) {
-      where.isAutoSale = query.is_auto_sale;
+    if (query.activeFrom || query.activeTo) {
+      if (query.activeFrom) {
+        baseWhere.startDate = { $gte: query.activeFrom };
+      }
+
+      if (query.activeTo) {
+        baseWhere.endDate = { $lte: query.activeTo };
+      }
     }
 
     const repository = entityManager.getRepository(CouponEntity);
-    const [results, totalResults] = await repository.findAndCount(where, {
-      orderBy: { createdAt: 'desc' },
-      offset: (query.page - 1) * query.limit,
-      limit: query.limit,
-    });
+    const where = query.is_auto_sale !== undefined
+      ? { ...baseWhere, isAutoSale: query.is_auto_sale }
+      : baseWhere;
+    const [[results, totalResults], allCount, promoCodeCount, saleCount] = await Promise.all([
+      repository.findAndCount(where, {
+        orderBy: { createdAt: 'desc' },
+        offset: (query.page - 1) * query.limit,
+        limit: query.limit,
+      }),
+      repository.count(baseWhere),
+      repository.count({ ...baseWhere, isAutoSale: false }),
+      repository.count({ ...baseWhere, isAutoSale: true }),
+    ]);
 
     return {
       results: results.map((coupon) => ({
@@ -80,6 +94,11 @@ export class ListShopCouponsUseCase {
       limit: query.limit,
       totalPages: Math.max(1, Math.ceil(totalResults / query.limit)),
       totalResults,
+      typeCounts: {
+        all: allCount,
+        promo_code: promoCodeCount,
+        sale: saleCount,
+      },
     };
   }
 }
