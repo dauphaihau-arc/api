@@ -1,3 +1,4 @@
+import type { FilterQuery } from '@mikro-orm/core';
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
 import type { ListAdminOrdersQueryDto } from '../../../api/rest/dto/list-admin-orders.query.dto';
@@ -14,7 +15,7 @@ export class ListAdminOrdersUseCase {
 
   async execute(query: ListAdminOrdersQueryDto): Promise<AdminOrderListResult> {
     const entityManager = this.entityManager.fork();
-    const where: Record<string, unknown> = {};
+    const where: FilterQuery<OrderEntity> = {};
 
     if (query.status) {
       where.status = query.status;
@@ -22,14 +23,16 @@ export class ListAdminOrdersUseCase {
 
     if (query.search?.trim()) {
       const search = query.search.trim();
-      where.$or = [
+      const searchConditions: FilterQuery<OrderEntity>[] = [
         { customerEmail: { $ilike: `%${search}%` } },
         { orderNumber: { $ilike: `%${search}%` } },
       ];
 
       if (UUID_V4_REGEX.test(search)) {
-        where.$or.push({ id: search });
+        searchConditions.push({ id: search });
       }
+
+      where.$or = searchConditions;
     }
 
     const [orders, totalResults] = await entityManager.getRepository(OrderEntity).findAndCount(
