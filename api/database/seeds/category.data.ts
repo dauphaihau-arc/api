@@ -290,6 +290,7 @@ export const categorySeedData: CategorySeedNode[] = [
   {
     name: 'Books, Films & Music',
     rank: 5,
+    imageFilename: 'categories/books-films-music.png',
     children: [
       {
         name: 'Books',

@@ -7,6 +7,10 @@ import { MikroORM } from '@mikro-orm/postgresql';
 import { validateAppEnv } from '../src/config/app-env.config';
 import { buildDatabaseConfig } from '../src/config/database.config';
 import { buildStorageConfig, type StorageConfig } from '../src/config/storage.config';
+import {
+  CATEGORY_IMAGE_VARIANT_SPECS,
+  type CategoryImageVariant
+} from '../src/modules/domains/category/app/config/category-image-variant.config';
 import { CategoryEntity } from '../src/modules/domains/category/infra/persistence/entities/category.entity';
 import { ProductImageService } from '../src/modules/domains/product/app/services/product-image.service';
 import { ProductImageEntity } from '../src/modules/domains/product/infra/persistence/entities/product-image.entity';
@@ -22,14 +26,14 @@ import {
   resolveOptionalSeedProductImagePaths,
   resolveSeedProductAssetDirectory,
   resolveSeedProductImagePaths,
-  slugifySeedValue,
+  slugifySeedValue
 } from '../database/seeds/product-seed-image-resolver';
 import {
   PRODUCT_IMAGE_ROOT_DIRS,
   PRODUCT_LOCAL_TSV_PATH,
   PRODUCT_TSV_PATH,
   SHOPS_LOCAL_TSV_PATH,
-  SHOPS_TSV_PATH,
+  SHOPS_TSV_PATH
 } from '../database/seeds/product-seed-paths';
 import { readOptionalTsvRows, readTsvRows } from '../database/seeds/shared/read-tsv-rows';
 
@@ -141,6 +145,63 @@ async function putSeedAsset(
   });
 }
 
+async function putCategorySeedVariants(
+  storageService: StorageService,
+  imageTransformService: SharpImageTransformService,
+  originalKey: string,
+  sourceFile: string
+): Promise<void> {
+  const original = await readFile(sourceFile);
+
+  for (const [variant, spec] of Object.entries(CATEGORY_IMAGE_VARIANT_SPECS) as Array<
+    [CategoryImageVariant, (typeof CATEGORY_IMAGE_VARIANT_SPECS)[CategoryImageVariant]]
+  >) {
+    const transformed = await imageTransformService.transform(original, spec);
+    const key = buildCategoryVariantStorageKey(originalKey, variant);
+
+    await storageService.putObject({
+      key,
+      body: transformed,
+      contentType: resolveImageVariantContentType(spec.format),
+    });
+    console.log(`Uploaded category asset variant -> ${key}`);
+  }
+}
+
+function buildCategoryVariantStorageKey(
+  originalKey: string,
+  variant: CategoryImageVariant
+): string {
+  const segments = originalKey.split('/').filter(Boolean);
+  const imageSegmentIndex = segments.lastIndexOf('images');
+  const originalSegment = segments[imageSegmentIndex + 1];
+
+  if (imageSegmentIndex === -1 || originalSegment !== 'original') {
+    throw new Error(`Unsupported category image storage key "${originalKey}".`);
+  }
+
+  return [
+    ...segments.slice(0, imageSegmentIndex + 1),
+    'variants',
+    `${variant}.webp`,
+  ].join('/');
+}
+
+function resolveImageVariantContentType(
+  format: 'webp' | 'jpg' | 'png' | 'avif'
+): string {
+  switch (format) {
+    case 'webp':
+      return 'image/webp';
+    case 'jpg':
+      return 'image/jpeg';
+    case 'png':
+      return 'image/png';
+    case 'avif':
+      return 'image/avif';
+  }
+}
+
 async function main(): Promise<void> {
   const storageService = buildStorageService();
 
@@ -157,10 +218,11 @@ async function main(): Promise<void> {
 
   try {
     const em = orm.em.fork();
+    const imageTransformService = new SharpImageTransformService();
     const productImageService = new ProductImageService(
       orm.em,
       storageService,
-      new SharpImageTransformService()
+      imageTransformService
     );
     const shopNamesBySlug = loadShopNamesBySlug();
     const productSeeds = loadProductSeedsMinimal();
@@ -194,6 +256,12 @@ async function main(): Promise<void> {
 
       await putSeedAsset(storageService, category.imageStorageKey, sourceFile);
       console.log(`Uploaded category asset -> ${category.imageStorageKey}`);
+      await putCategorySeedVariants(
+        storageService,
+        imageTransformService,
+        category.imageStorageKey,
+        sourceFile
+      );
     }
 
     for (const productSeed of productSeeds) {
@@ -245,7 +313,9 @@ async function main(): Promise<void> {
             productSeed.shopSlug,
             productSeed.title
           );
-      const images = product.images.getItems().sort((a, b) => a.rank - b.rank);
+      const images = product.images
+        .getItems()
+        .sort((leftImage, rightImage) => leftImage.rank - rightImage.rank);
 
       if (!assetDirectory && images.length === 0) {
         continue;
@@ -276,7 +346,8 @@ async function main(): Promise<void> {
       await productImageService.generateVariants(product.id);
       console.log(`Generated product image variants -> ${product.slug}`);
     }
-  } finally {
+  }
+  finally {
     await orm.close(true);
   }
 
