@@ -35,6 +35,7 @@ describe('LookupGuestOrdersUseCase', () => {
     const { useCase, find, itemFind } = buildUseCase();
     const orders = [{
       id: 'order-1',
+      orderNumber: 'ORD-1',
       shop: { id: 'shop-1', shopName: 'Shop 1', slug: 'shop-1' },
       paymentType: 'cash',
       promoCodes: [],
@@ -97,6 +98,7 @@ describe('LookupGuestOrdersUseCase', () => {
     const { useCase, find, itemFind } = buildUseCase();
     find.mockResolvedValue([{
       id: 'order-1',
+      orderNumber: 'ORD-1',
       shop: { id: 'shop-1', shopName: 'Shop 1', slug: 'shop-1' },
       paymentType: 'cash',
       promoCodes: [],
@@ -136,6 +138,7 @@ describe('LookupGuestOrdersUseCase', () => {
     execute.mockResolvedValue([{ id: 'order-1' }]);
     find.mockResolvedValue([{
       id: 'order-1',
+      orderNumber: 'ORD-1',
       shop: { id: 'shop-1', shopName: 'Shop 1', slug: 'shop-1' },
       paymentType: 'card',
       promoCodes: [],

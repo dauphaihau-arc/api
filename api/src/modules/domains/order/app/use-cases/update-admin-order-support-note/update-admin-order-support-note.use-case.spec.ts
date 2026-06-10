@@ -5,6 +5,7 @@ describe('UpdateAdminOrderSupportNoteUseCase', () => {
   it('stores a trimmed support note', async () => {
     const order = {
       id: 'order-1',
+      orderNumber: 'ORD-1',
       shop: {
         id: 'shop-1',
         shopName: 'Shop 1',
@@ -26,6 +27,11 @@ describe('UpdateAdminOrderSupportNoteUseCase', () => {
       shippingOriginCountries: ['US'],
       shippingToCountry: 'US',
       shippingEstimatedDelivery: new Date('2026-05-30T00:00:00.000Z'),
+      currency: 'USD',
+      subtotalMinor: 2500,
+      shippingMinor: 500,
+      discountMinor: 0,
+      totalMinor: 3000,
       subtotal: 25,
       totalShippingFee: 5,
       totalDiscount: 0,
@@ -56,6 +62,10 @@ describe('UpdateAdminOrderSupportNoteUseCase', () => {
       title: 'Product 1',
       imageUrl: 'https://example.com/product-1.png',
       quantity: 1,
+      unitPriceMinor: 2500,
+      originalAmountMinor: null,
+      lineTotalMinor: 2500,
+      currency: 'USD',
       price: 25,
       salePrice: undefined,
       variantName: 'Blue',

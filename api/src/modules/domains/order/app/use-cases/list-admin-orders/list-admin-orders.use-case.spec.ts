@@ -8,6 +8,7 @@ describe('ListAdminOrdersUseCase', () => {
     const orders = [
       {
         id: 'order-1',
+        orderNumber: 'ORD-1',
         shop: {
           id: 'shop-1',
           shopName: 'Shop 1',

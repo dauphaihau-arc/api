@@ -8,6 +8,7 @@ describe('GetMyOrderByIdUseCase', () => {
   it('returns a buyer-owned order with shipping details', async () => {
     const order = {
       id: 'order-1',
+      orderNumber: 'ORD-1',
       shop: {
         id: 'shop-1',
         shopName: 'Shop 1',

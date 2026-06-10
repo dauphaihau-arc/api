@@ -66,7 +66,6 @@ describe('ListShopOrdersUseCase', () => {
             $or: [
               { customerEmail: { $ilike: '%buyer@example.com%' } },
               { orderNumber: { $ilike: '%buyer@example.com%' } },
-              { id: 'buyer@example.com' },
             ],
           },
         ],
@@ -96,7 +95,6 @@ describe('ListShopOrdersUseCase', () => {
           $or: [
             { customerEmail: { $ilike: '%buyer@example.com%' } },
             { orderNumber: { $ilike: '%buyer@example.com%' } },
-            { id: 'buyer@example.com' },
           ],
         },
       ],
@@ -119,7 +117,6 @@ describe('ListShopOrdersUseCase', () => {
           $or: [
             { customerEmail: { $ilike: '%buyer@example.com%' } },
             { orderNumber: { $ilike: '%buyer@example.com%' } },
-            { id: 'buyer@example.com' },
           ],
         },
       ],
