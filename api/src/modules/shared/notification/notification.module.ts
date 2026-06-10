@@ -6,6 +6,8 @@ import { WEB_PUSH_CONFIG, buildWebPushConfig } from '~/config/web-push.config';
 import { CurrentUserEntity } from '~/modules/domains/auth/infra/persistence/entities/current-user.entity';
 import { QueueModule } from '../queue/queue.module';
 import { MeNotificationsController } from './api/rest/me-notifications.controller';
+import { NotificationCommandRepository } from './app/ports/notification-command.repository';
+import { NotificationQueryRepository } from './app/ports/notification-query.repository';
 import { NotificationRepository } from './app/ports/notification.repository';
 import { WebPushSender } from './app/ports/web-push-sender';
 import { WebPushSubscriptionRepository } from './app/ports/web-push-subscription.repository';
@@ -17,7 +19,9 @@ import { MarkMyNotificationAsReadUseCase } from './app/use-cases/mark-my-notific
 import { NotifyUserUseCase } from './app/use-cases/notify-user/notify-user.use-case';
 import { RegisterWebPushSubscriptionUseCase } from './app/use-cases/register-web-push-subscription/register-web-push-subscription.use-case';
 import { UnregisterWebPushSubscriptionUseCase } from './app/use-cases/unregister-web-push-subscription/unregister-web-push-subscription.use-case';
-import { MikroOrmNotificationRepository } from './infra/mikro-orm-notification.repository';
+import { DelegatingNotificationRepository } from './infra/notification.repository';
+import { MikroOrmNotificationCommandRepository } from './infra/mikro-orm-notification-command.repository';
+import { MikroOrmNotificationQueryRepository } from './infra/mikro-orm-notification-query.repository';
 import { NotificationEntity } from './infra/persistence/entities/notification.entity';
 import { WebPushSubscriptionEntity } from './infra/persistence/entities/web-push-subscription.entity';
 import { MikroOrmWebPushSubscriptionRepository } from './infra/mikro-orm-web-push-subscription.repository';
@@ -42,9 +46,20 @@ import { VapidWebPushSender } from './infra/web-push.sender';
         buildWebPushConfig(configService),
     },
     {
-      provide: NotificationRepository,
-      useClass: MikroOrmNotificationRepository,
+      provide: NotificationCommandRepository,
+      useExisting: MikroOrmNotificationCommandRepository,
     },
+    {
+      provide: NotificationQueryRepository,
+      useExisting: MikroOrmNotificationQueryRepository,
+    },
+    {
+      provide: NotificationRepository,
+      useExisting: DelegatingNotificationRepository,
+    },
+    DelegatingNotificationRepository,
+    MikroOrmNotificationCommandRepository,
+    MikroOrmNotificationQueryRepository,
     {
       provide: WebPushSubscriptionRepository,
       useClass: MikroOrmWebPushSubscriptionRepository,

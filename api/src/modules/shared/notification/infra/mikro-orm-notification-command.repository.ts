@@ -1,16 +1,16 @@
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
 import { CurrentUserEntity } from '~/modules/domains/auth/infra/persistence/entities/current-user.entity';
-import { NotificationRepository } from '../app/ports/notification.repository';
+import { NotificationCommandRepository } from '../app/ports/notification-command.repository';
 import type {
   CreateNotificationInput,
-  NotificationListRepositoryResult,
-  NotificationSummary
+  NotificationSummary,
 } from '../app/notification.types';
 import { NotificationEntity } from './persistence/entities/notification.entity';
+import { toNotificationSummary } from './notification-summary.mapper';
 
 @Injectable()
-export class MikroOrmNotificationRepository implements NotificationRepository {
+export class MikroOrmNotificationCommandRepository implements NotificationCommandRepository {
   constructor(private readonly entityManager: EntityManager) {}
 
   async create(input: CreateNotificationInput): Promise<NotificationSummary> {
@@ -27,35 +27,7 @@ export class MikroOrmNotificationRepository implements NotificationRepository {
 
     await entityManager.persistAndFlush(notification);
 
-    return this.toSummary(notification);
-  }
-
-  async findAllOwnedByUserId(
-    userId: string,
-    page: number,
-    limit: number
-  ): Promise<NotificationListRepositoryResult> {
-    const repository = this.entityManager.fork().getRepository(NotificationEntity);
-    const [notifications, total] = await repository.findAndCount(
-      { user: userId },
-      {
-        offset: (page - 1) * limit,
-        limit,
-        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-      }
-    );
-
-    return {
-      items: notifications.map((notification) => this.toSummary(notification)),
-      total,
-    };
-  }
-
-  countUnreadOwnedByUserId(userId: string): Promise<number> {
-    return this.entityManager
-      .fork()
-      .getRepository(NotificationEntity)
-      .count({ user: userId, readAt: null });
+    return toNotificationSummary(notification);
   }
 
   async markOwnedByIdAsRead(
@@ -78,32 +50,15 @@ export class MikroOrmNotificationRepository implements NotificationRepository {
       await entityManager.persistAndFlush(notification);
     }
 
-    return this.toSummary(notification);
+    return toNotificationSummary(notification);
   }
 
   async markAllOwnedByUserIdAsRead(userId: string): Promise<number> {
     const now = new Date();
-    const result = await this.entityManager.fork().nativeUpdate(
+    return this.entityManager.fork().nativeUpdate(
       NotificationEntity,
       { user: userId, readAt: null },
       { readAt: now, updatedAt: now }
     );
-
-    return result;
-  }
-
-  private toSummary(notification: NotificationEntity): NotificationSummary {
-    return {
-      id: notification.id,
-      userId: notification.user.id,
-      type: notification.type,
-      channel: notification.channel,
-      title: notification.title,
-      body: notification.body,
-      data: notification.data,
-      readAt: notification.readAt,
-      createdAt: notification.createdAt,
-      updatedAt: notification.updatedAt,
-    };
   }
 }
