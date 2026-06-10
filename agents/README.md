@@ -5,3 +5,4 @@ Focused instructions for coding agents. These files are meant to be read selecti
 - `repo-rules.md` - general repository expectations and working norms
 - `architecture.md` - module boundaries and architectural constraints
 - `testing.md` - how to verify changes and where to add tests
+- `repository-conventions.md` - how repositories should be split and what logic belongs there
