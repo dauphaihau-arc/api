@@ -1,0 +1,1 @@
+pnpm --dir api exec lint-staged
