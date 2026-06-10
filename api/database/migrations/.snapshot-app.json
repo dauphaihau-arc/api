@@ -1979,8 +1979,8 @@
           "enumItems": [],
           "mappedType": "integer"
         },
-        "compare_at_minor": {
-          "name": "compare_at_minor",
+        "original_amount_minor": {
+          "name": "original_amount_minor",
           "type": "int4",
           "unsigned": false,
           "autoincrement": false,
@@ -2074,22 +2074,6 @@
           "comment": null,
           "enumItems": [],
           "mappedType": "uuid"
-        },
-        "source_price_type": {
-          "name": "source_price_type",
-          "type": "varchar(20)",
-          "unsigned": false,
-          "autoincrement": false,
-          "primary": false,
-          "nullable": true,
-          "unique": false,
-          "length": 20,
-          "precision": null,
-          "scale": null,
-          "default": null,
-          "comment": null,
-          "enumItems": [],
-          "mappedType": "string"
         },
         "source_type": {
           "name": "source_type",
@@ -2274,22 +2258,6 @@
           "autoincrement": false,
           "primary": false,
           "nullable": false,
-          "unique": false,
-          "length": null,
-          "precision": 32,
-          "scale": 0,
-          "default": null,
-          "comment": null,
-          "enumItems": [],
-          "mappedType": "integer"
-        },
-        "original_amount_minor": {
-          "name": "original_amount_minor",
-          "type": "int4",
-          "unsigned": false,
-          "autoincrement": false,
-          "primary": false,
-          "nullable": true,
           "unique": false,
           "length": null,
           "precision": 32,
@@ -4342,8 +4310,8 @@
           "enumItems": [],
           "mappedType": "integer"
         },
-        "compare_at_minor": {
-          "name": "compare_at_minor",
+        "original_amount_minor": {
+          "name": "original_amount_minor",
           "type": "int4",
           "unsigned": false,
           "autoincrement": false,
@@ -4405,22 +4373,6 @@
           "comment": null,
           "enumItems": [],
           "mappedType": "uuid"
-        },
-        "source_price_type": {
-          "name": "source_price_type",
-          "type": "varchar(20)",
-          "unsigned": false,
-          "autoincrement": false,
-          "primary": false,
-          "nullable": true,
-          "unique": false,
-          "length": 20,
-          "precision": null,
-          "scale": null,
-          "default": null,
-          "comment": null,
-          "enumItems": [],
-          "mappedType": "string"
         },
         "source_type": {
           "name": "source_type",
@@ -4517,22 +4469,6 @@
           "comment": null,
           "enumItems": [],
           "mappedType": "datetime"
-        },
-        "original_amount_minor": {
-          "name": "original_amount_minor",
-          "type": "int4",
-          "unsigned": false,
-          "autoincrement": false,
-          "primary": false,
-          "nullable": true,
-          "unique": false,
-          "length": null,
-          "precision": 32,
-          "scale": 0,
-          "default": null,
-          "comment": null,
-          "enumItems": [],
-          "mappedType": "integer"
         }
       },
       "name": "order_items",
@@ -9531,22 +9467,6 @@
           "enumItems": [],
           "mappedType": "uuid"
         },
-        "price_type": {
-          "name": "price_type",
-          "type": "varchar(20)",
-          "unsigned": false,
-          "autoincrement": false,
-          "primary": false,
-          "nullable": false,
-          "unique": false,
-          "length": 20,
-          "precision": null,
-          "scale": null,
-          "default": null,
-          "comment": null,
-          "enumItems": [],
-          "mappedType": "string"
-        },
         "market_code": {
           "name": "market_code",
           "type": "varchar(20)",
@@ -9595,8 +9515,8 @@
           "enumItems": [],
           "mappedType": "integer"
         },
-        "compare_at_minor": {
-          "name": "compare_at_minor",
+        "original_amount_minor": {
+          "name": "original_amount_minor",
           "type": "int4",
           "unsigned": false,
           "autoincrement": false,
@@ -9675,21 +9595,21 @@
           "enumItems": [],
           "mappedType": "datetime"
         },
-        "original_amount_minor": {
-          "name": "original_amount_minor",
-          "type": "int4",
+        "price_type": {
+          "name": "price_type",
+          "type": "varchar(20)",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
-          "nullable": true,
+          "nullable": false,
           "unique": false,
-          "length": null,
-          "precision": 32,
-          "scale": 0,
+          "length": 20,
+          "precision": null,
+          "scale": null,
           "default": null,
           "comment": null,
           "enumItems": [],
-          "mappedType": "integer"
+          "mappedType": "string"
         }
       },
       "name": "variant_prices",
@@ -9704,7 +9624,19 @@
           "keyName": "variant_prices_active_base_unique",
           "unique": true,
           "primary": false,
-          "expression": "CREATE UNIQUE INDEX variant_prices_active_base_unique ON public.variant_prices USING btree (product_inventory_id) WHERE (((price_type)::text = 'base'::text) AND (active_to IS NULL))"
+          "expression": "CREATE UNIQUE INDEX variant_prices_active_base_unique ON public.variant_prices USING btree (product_inventory_id) WHERE ((market_code IS NULL) AND (active_to IS NULL))"
+        },
+        {
+          "columnNames": [
+            "product_inventory_id",
+            "market_code"
+          ],
+          "composite": true,
+          "constraint": false,
+          "keyName": "variant_prices_active_market_unique",
+          "unique": true,
+          "primary": false,
+          "expression": "CREATE UNIQUE INDEX variant_prices_active_market_unique ON public.variant_prices USING btree (product_inventory_id, market_code) WHERE ((market_code IS NOT NULL) AND (active_to IS NULL))"
         },
         {
           "columnNames": [
@@ -9714,17 +9646,6 @@
           "composite": true,
           "constraint": false,
           "keyName": "variant_prices_inventory_market_code_index",
-          "unique": false,
-          "primary": false
-        },
-        {
-          "columnNames": [
-            "product_inventory_id",
-            "price_type"
-          ],
-          "composite": true,
-          "constraint": false,
-          "keyName": "variant_prices_inventory_price_type_index",
           "unique": false,
           "primary": false
         },

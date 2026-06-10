@@ -4,6 +4,8 @@ import type {
   ListPublicProductsInput,
   PublicProductDetail,
   ProductDraftSummary,
+  PublicProductSuggestion,
+  SuggestPublicProductsInput,
   ShopProductListResult,
   PublicProductListResult,
   ReplaceProductAttributeValuesRepositoryInput,
@@ -33,6 +35,10 @@ export abstract class ProductRepository {
   abstract listPublic(
     input: ListPublicProductsInput
   ): Promise<PublicProductListResult>;
+
+  abstract suggestPublic(
+    input: SuggestPublicProductsInput
+  ): Promise<PublicProductSuggestion[]>;
 
   abstract replaceImages(
     input: ReplaceProductImagesRepositoryInput

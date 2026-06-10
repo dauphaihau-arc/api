@@ -11,22 +11,44 @@ import {
 import { SkipThrottle } from '@nestjs/throttler';
 import { GetPublicProductBySlugsUseCase } from '../../app/use-cases/get-public-product-by-slugs/get-public-product-by-slugs.use-case';
 import { ListPublicProductsUseCase } from '../../app/use-cases/list-public-products/list-public-products.use-case';
+import { SuggestPublicProductsUseCase } from '../../app/use-cases/suggest-public-products/suggest-public-products.use-case';
 import { ListPublicProductsQueryDto } from './dto/list-public-products.query.dto';
+import { SuggestPublicProductsQueryDto } from './dto/suggest-public-products.query.dto';
 import { toPublicProductDetailResponse } from './public-product-detail.presenter';
 import type { PublicProductDetailResponse } from './public-product-detail.response';
 import { toPublicProductListResponse } from './public-product-list.presenter';
 import type { PublicProductListResponse } from './public-product-list.response';
+import { toPublicProductSuggestionResponse } from './public-product-suggestion.presenter';
+import type { PublicProductSuggestionResponse } from './public-product-suggestion.response';
 
 @Controller('products')
 @ApiTags('Products')
 export class ProductController {
   constructor(
     private readonly listPublicProductsUseCase: ListPublicProductsUseCase,
-    private readonly getPublicProductBySlugsUseCase: GetPublicProductBySlugsUseCase
+    private readonly getPublicProductBySlugsUseCase: GetPublicProductBySlugsUseCase,
+    private readonly suggestPublicProductsUseCase: SuggestPublicProductsUseCase
   ) {}
 
+  @Get('suggestions')
+  @Header('Cache-Control', 'public, max-age=30')
+  @ApiOperation({ summary: 'Suggest public products for typeahead' })
+  @ApiOkResponse({
+    description: 'Matching public product suggestions.',
+    schema: { type: 'object' },
+  })
+  async suggestProducts(
+    @Query() query: SuggestPublicProductsQueryDto
+  ): Promise<{ items: PublicProductSuggestionResponse[] }> {
+    const result = await this.suggestPublicProductsUseCase.execute(
+      query.search,
+      query.limit
+    );
+
+    return { items: result.map(toPublicProductSuggestionResponse) };
+  }
+
   @Get()
-  @SkipThrottle()
   @Header('Cache-Control', 'public, max-age=60')
   @ApiOperation({ summary: 'List public products' })
   @ApiOkResponse({

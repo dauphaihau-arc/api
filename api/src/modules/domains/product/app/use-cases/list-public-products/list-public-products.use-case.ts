@@ -30,6 +30,13 @@ export class ListPublicProductsUseCase {
       ? await this.resolveCategorySubtreeIds(query.categoryId)
       : undefined;
 
+    if (query.categoryId && categoryIds?.length === 0) {
+      return {
+        items: [],
+        meta: buildPaginationMeta(query.page, query.limit, 0),
+      };
+    }
+
     const result = await this.productRepository.listPublic({
       page: query.page,
       limit: query.limit,

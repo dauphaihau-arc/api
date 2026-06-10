@@ -5,21 +5,66 @@ import { ProductController } from './product.controller';
 describe('ProductController', () => {
   const listPublicProductsUseCase = { execute: jest.fn() } as never;
   const getPublicProductBySlugsUseCase = { execute: jest.fn() } as never;
+  const suggestPublicProductsUseCase = { execute: jest.fn() } as never;
 
   const controller = new ProductController(
     listPublicProductsUseCase,
-    getPublicProductBySlugsUseCase
+    getPublicProductBySlugsUseCase,
+    suggestPublicProductsUseCase
   );
 
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('registers GET by-slug/:shopSlug/:productSlug on the controller method', () => {
+  it('registers GET by-slug/:shop_slug/:product_slug on the controller method', () => {
     const handler = ProductController.prototype.productBySlugs;
 
-    expect(Reflect.getMetadata(PATH_METADATA, handler)).toBe('by-slug/:shopSlug/:productSlug');
+    expect(Reflect.getMetadata(PATH_METADATA, handler)).toBe('by-slug/:shop_slug/:product_slug');
     expect(Reflect.getMetadata(METHOD_METADATA, handler)).toBe(RequestMethod.GET);
+  });
+
+  it('registers GET suggestions on the controller method', () => {
+    const handler = ProductController.prototype.suggestProducts;
+
+    expect(Reflect.getMetadata(PATH_METADATA, handler)).toBe('suggestions');
+    expect(Reflect.getMetadata(METHOD_METADATA, handler)).toBe(RequestMethod.GET);
+  });
+
+  it('returns suggested products for typeahead', async () => {
+    suggestPublicProductsUseCase.execute.mockResolvedValue([
+      {
+        id: 'product-1',
+        title: 'Handmade Bag',
+        slug: 'handmade-bag',
+        shop: {
+          id: 'shop-1',
+          publicId: 'public-shop-1',
+          shopName: 'Arc Store',
+          slug: 'arc-store',
+        },
+      },
+    ]);
+
+    await expect(controller.suggestProducts({
+      search: 'bag',
+      limit: 5,
+    })).resolves.toEqual({
+      items: [
+        {
+          id: 'product-1',
+          title: 'Handmade Bag',
+          slug: 'handmade-bag',
+          shop: {
+            id: 'shop-1',
+            public_id: 'public-shop-1',
+            shop_name: 'Arc Store',
+            slug: 'arc-store',
+          },
+        },
+      ],
+    });
+    expect(suggestPublicProductsUseCase.execute).toHaveBeenCalledWith('bag', 5);
   });
 
   it('returns product detail when looked up by shop slug and product slug', async () => {

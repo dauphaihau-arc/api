@@ -103,6 +103,9 @@ export class ProductEntity extends AbstractBaseEntity {
   @Property({ fieldName: 'published_at', nullable: true })
   publishedAt?: Date;
 
+  @Property({ fieldName: 'public_sort_prices', type: 'json', nullable: true })
+  publicSortPrices?: Record<string, number>;
+
   @OneToMany(() => ProductImageEntity, (image) => image.product)
   images = new Collection<ProductImageEntity>(this);
 

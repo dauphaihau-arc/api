@@ -236,6 +236,18 @@ export interface PublicProductListItem {
   createdAt: Date;
 }
 
+export interface PublicProductSuggestion {
+  id: string;
+  title: string;
+  slug: string;
+  shop: {
+    id: string;
+    publicId?: string;
+    shopName: string;
+    slug: string;
+  };
+}
+
 export interface PublicProductInventorySummary {
   id: string;
   productVariantId?: string;
@@ -287,3 +299,8 @@ export interface ListPublicProductsInput {
 }
 
 export type PublicProductListResult = PaginatedResult<PublicProductListItem>;
+
+export interface SuggestPublicProductsInput {
+  search: string;
+  limit: number;
+}
