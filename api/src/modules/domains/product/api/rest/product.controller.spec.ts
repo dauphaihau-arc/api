@@ -1,16 +1,27 @@
 import { NotFoundException, RequestMethod } from '@nestjs/common';
 import { METHOD_METADATA, PATH_METADATA } from '@nestjs/common/constants';
+import type { GetPublicProductBySlugsUseCase } from '../../app/use-cases/get-public-product-by-slugs/get-public-product-by-slugs.use-case';
+import type { ListPublicProductsUseCase } from '../../app/use-cases/list-public-products/list-public-products.use-case';
+import type { SuggestPublicProductsUseCase } from '../../app/use-cases/suggest-public-products/suggest-public-products.use-case';
+import { ProductVariantType } from '../../domain/enums/product-variant-type.enum';
+import { ProductWhoMade } from '../../domain/enums/product-who-made.enum';
 import { ProductController } from './product.controller';
 
 describe('ProductController', () => {
-  const listPublicProductsUseCase = { execute: jest.fn() } as never;
-  const getPublicProductBySlugsUseCase = { execute: jest.fn() } as never;
-  const suggestPublicProductsUseCase = { execute: jest.fn() } as never;
+  const listPublicProductsUseCase: Pick<jest.Mocked<ListPublicProductsUseCase>, 'execute'> = {
+    execute: jest.fn(),
+  };
+  const getPublicProductBySlugsUseCase: Pick<jest.Mocked<GetPublicProductBySlugsUseCase>, 'execute'> = {
+    execute: jest.fn(),
+  };
+  const suggestPublicProductsUseCase: Pick<jest.Mocked<SuggestPublicProductsUseCase>, 'execute'> = {
+    execute: jest.fn(),
+  };
 
   const controller = new ProductController(
-    listPublicProductsUseCase,
-    getPublicProductBySlugsUseCase,
-    suggestPublicProductsUseCase
+    listPublicProductsUseCase as never,
+    getPublicProductBySlugsUseCase as never,
+    suggestPublicProductsUseCase as never
   );
 
   beforeEach(() => {
@@ -80,9 +91,9 @@ describe('ProductController', () => {
       title: 'Handmade Bag',
       slug: 'handmade-bag',
       description: 'A detail page payload.',
-      whoMade: 'i_did',
+      whoMade: ProductWhoMade.I_DID,
       isDigital: false,
-      variantType: 'single',
+      variantType: ProductVariantType.SINGLE,
       variantGroupName: 'Color',
       variantSubGroupName: 'Size',
       images: [],

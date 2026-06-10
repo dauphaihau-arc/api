@@ -12,7 +12,8 @@ import {
   InvalidProductVariantConfigurationError,
   ProductSlugAlreadyExistsError
 } from '../../errors/product-app.error';
-import { ProductRepository } from '../../ports/product.repository';
+import { ProductCommandRepository } from '../../ports/product-command.repository';
+import { SellerProductQueryRepository } from '../../ports/seller-product-query.repository';
 import type { ProductDraftSummary } from '../../product.types';
 
 export interface CreateProductDraftInput {
@@ -39,7 +40,8 @@ export class CreateProductDraftUseCase {
   constructor(
     private readonly shopRepository: ShopRepository,
     private readonly categoryRepository: CategoryRepository,
-    private readonly productRepository: ProductRepository
+    private readonly sellerProductQueryRepository: SellerProductQueryRepository,
+    private readonly productCommandRepository: ProductCommandRepository
   ) {}
 
   async execute(
@@ -70,7 +72,7 @@ export class CreateProductDraftUseCase {
     }
 
     const slug = toSlug(input.title);
-    const existingProduct = await this.productRepository.findByShopIdAndSlug(
+    const existingProduct = await this.sellerProductQueryRepository.findByShopIdAndSlug(
       input.shopId,
       slug
     );
@@ -79,7 +81,7 @@ export class CreateProductDraftUseCase {
       return err(new ProductSlugAlreadyExistsError(slug));
     }
 
-    const product = await this.productRepository.createDraft({
+    const product = await this.productCommandRepository.createDraft({
       shopId: input.shopId,
       categoryId: input.categoryId,
       title: input.title.trim(),

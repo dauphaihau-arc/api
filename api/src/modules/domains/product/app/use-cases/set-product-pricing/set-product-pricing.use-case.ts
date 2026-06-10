@@ -10,7 +10,7 @@ import {
   ProductNotFoundError,
 } from '../../errors/product-app.error';
 import { ProductPricingRepository } from '../../ports/product-pricing.repository';
-import { ProductRepository } from '../../ports/product.repository';
+import { SellerProductQueryRepository } from '../../ports/seller-product-query.repository';
 import type { ProductDraftSummary } from '../../product.types';
 
 export interface SetProductPricingInput {
@@ -30,7 +30,7 @@ type SetProductPricingError =
 @Injectable()
 export class SetProductPricingUseCase {
   constructor(
-    private readonly productRepository: ProductRepository,
+    private readonly productRepository: SellerProductQueryRepository,
     private readonly productPricingRepository: ProductPricingRepository,
     private readonly shopRepository: ShopRepository,
     private readonly auditLogService: AuditLogService,

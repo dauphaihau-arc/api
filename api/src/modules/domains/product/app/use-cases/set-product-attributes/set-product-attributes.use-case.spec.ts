@@ -2,7 +2,8 @@ import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
 import { UserStatus } from '~/modules/domains/auth/domain/enums/user-status.enum';
 import type { CategoryRepository } from '~/modules/domains/category/app/ports/category.repository';
 import type { ShopRepository } from '~/modules/domains/shop/app/ports/shop.repository';
-import type { ProductRepository } from '../../ports/product.repository';
+import type { ProductCommandRepository } from '../../ports/product-command.repository';
+import type { SellerProductQueryRepository } from '../../ports/seller-product-query.repository';
 import type { ProductDraftSummary } from '../../product.types';
 import { SetProductAttributesUseCase } from './set-product-attributes.use-case';
 
@@ -35,13 +36,8 @@ describe('SetProductAttributesUseCase', () => {
   };
 
   function buildDeps() {
-    const productRepository: jest.Mocked<ProductRepository> = {
-      createDraft: jest.fn(),
+    const productRepository = {
       findById: jest.fn().mockResolvedValue(product),
-      findPublicByShopSlugAndProductSlug: jest.fn(),
-      listByShop: jest.fn(),
-      listPublic: jest.fn(),
-      replaceImages: jest.fn(),
       replaceAttributeValues: jest.fn().mockResolvedValue({
         ...product,
         attributes: [
@@ -55,14 +51,9 @@ describe('SetProductAttributesUseCase', () => {
           },
         ],
       }),
-      replaceVariants: jest.fn(),
-      replaceInventory: jest.fn(),
-      replaceShipping: jest.fn(),
-      updateDetails: jest.fn(),
-      updateState: jest.fn(),
-      publish: jest.fn(),
-      findByShopIdAndSlug: jest.fn(),
-    };
+    } as unknown as jest.Mocked<
+      SellerProductQueryRepository & ProductCommandRepository
+    >;
 
     const shopRepository: jest.Mocked<ShopRepository> = {
       create: jest.fn(),
@@ -118,6 +109,7 @@ describe('SetProductAttributesUseCase', () => {
     const { productRepository, shopRepository, categoryRepository } = buildDeps();
     const useCase = new SetProductAttributesUseCase(
       productRepository,
+      productRepository,
       shopRepository,
       categoryRepository
     );
@@ -147,6 +139,7 @@ describe('SetProductAttributesUseCase', () => {
   it('rejects missing required attributes', async () => {
     const { productRepository, shopRepository, categoryRepository } = buildDeps();
     const useCase = new SetProductAttributesUseCase(
+      productRepository,
       productRepository,
       shopRepository,
       categoryRepository

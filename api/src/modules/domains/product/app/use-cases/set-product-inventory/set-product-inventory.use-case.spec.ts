@@ -5,7 +5,8 @@ import type { ShopRepository } from "~/modules/domains/shop/app/ports/shop.repos
 import type { AuditLogService } from "~/modules/shared/audit/app/audit-log.service";
 import { PRODUCT_INVENTORY_UPDATED_SSE_EVENT } from "../../events/product-inventory-sse.event";
 import { ProductVariantType } from "../../../domain/enums/product-variant-type.enum";
-import type { ProductRepository } from "../../ports/product.repository";
+import type { ProductCommandRepository } from "../../ports/product-command.repository";
+import type { SellerProductQueryRepository } from "../../ports/seller-product-query.repository";
 import type { ProductDraftSummary } from "../../product.types";
 import { SetProductInventoryUseCase } from "./set-product-inventory.use-case";
 
@@ -46,15 +47,8 @@ describe("SetProductInventoryUseCase", () => {
   };
 
   function buildDeps(product = variantProduct) {
-    const productRepository: jest.Mocked<ProductRepository> = {
-      createDraft: jest.fn(),
+    const productRepository = {
       findById: jest.fn().mockResolvedValue(product),
-      findPublicByShopSlugAndProductSlug: jest.fn(),
-      listByShop: jest.fn(),
-      listPublic: jest.fn(),
-      replaceImages: jest.fn(),
-      replaceAttributeValues: jest.fn(),
-      replaceVariants: jest.fn(),
       replaceInventory: jest.fn().mockResolvedValue({
         ...product,
         inventory: [
@@ -66,12 +60,9 @@ describe("SetProductInventoryUseCase", () => {
           },
         ],
       }),
-      replaceShipping: jest.fn(),
-      updateDetails: jest.fn(),
-      updateState: jest.fn(),
-      publish: jest.fn(),
-      findByShopIdAndSlug: jest.fn(),
-    };
+    } as unknown as jest.Mocked<
+      SellerProductQueryRepository & ProductCommandRepository
+    >;
 
     const shopRepository: jest.Mocked<ShopRepository> = {
       create: jest.fn(),
@@ -104,6 +95,7 @@ describe("SetProductInventoryUseCase", () => {
     const { productRepository, shopRepository, auditLogService, eventEmitter } =
       buildDeps();
     const useCase = new SetProductInventoryUseCase(
+      productRepository,
       productRepository,
       shopRepository,
       auditLogService,
@@ -152,6 +144,7 @@ describe("SetProductInventoryUseCase", () => {
     const { productRepository, shopRepository, auditLogService, eventEmitter } =
       buildDeps();
     const useCase = new SetProductInventoryUseCase(
+      productRepository,
       productRepository,
       shopRepository,
       auditLogService,

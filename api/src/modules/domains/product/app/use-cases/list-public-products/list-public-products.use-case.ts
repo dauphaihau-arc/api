@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { buildPaginationMeta } from '~/common/application/pagination';
 import { CategoryRepository } from '~/modules/domains/category/app/ports/category.repository';
-import { ProductRepository } from '../../ports/product.repository';
+import { StorefrontProductQueryRepository } from '../../ports/storefront-product-query.repository';
 import type {
   ListPublicProductsInput,
   PublicProductListResult
@@ -21,7 +21,7 @@ export interface ListPublicProductsQuery {
 @Injectable()
 export class ListPublicProductsUseCase {
   constructor(
-    private readonly productRepository: ProductRepository,
+    private readonly productRepository: StorefrontProductQueryRepository,
     private readonly categoryRepository: CategoryRepository
   ) {}
 

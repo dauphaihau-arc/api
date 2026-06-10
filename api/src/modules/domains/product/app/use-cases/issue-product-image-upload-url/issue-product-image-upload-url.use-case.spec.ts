@@ -5,7 +5,7 @@ import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
 import { UserStatus } from '~/modules/domains/auth/domain/enums/user-status.enum';
 import type { StorageService } from '~/modules/shared/storage/app/ports/storage.service';
 import { ProductImageAssetType } from '../../../domain/enums/product-image-asset-type.enum';
-import type { ProductRepository } from '../../ports/product.repository';
+import type { SellerProductQueryRepository } from '../../ports/seller-product-query.repository';
 import type { ShopRepository } from '~/modules/domains/shop/app/ports/shop.repository';
 import { IssueProductImageUploadUrlUseCase } from './issue-product-image-upload-url.use-case';
 
@@ -51,8 +51,7 @@ describe('IssueProductImageUploadUrlUseCase', () => {
       }),
     };
 
-    const productRepository: jest.Mocked<ProductRepository> = {
-      createDraft: jest.fn(),
+    const productRepository: Pick<jest.Mocked<SellerProductQueryRepository>, 'findById'> = {
       findById: jest.fn().mockResolvedValue({
         id: 'product-1',
         publicId: 'productpub01',
@@ -72,18 +71,6 @@ describe('IssueProductImageUploadUrlUseCase', () => {
         variants: [],
         inventory: [],
       }),
-      findPublicByShopSlugAndProductSlug: jest.fn(),
-      listByShop: jest.fn(),
-      listPublic: jest.fn(),
-      replaceImages: jest.fn(),
-      replaceAttributeValues: jest.fn(),
-      replaceVariants: jest.fn(),
-      replaceInventory: jest.fn(),
-      replaceShipping: jest.fn(),
-      updateDetails: jest.fn(),
-      updateState: jest.fn(),
-      publish: jest.fn(),
-      findByShopIdAndSlug: jest.fn(),
     };
 
     const storageService: jest.Mocked<StorageService> = {
@@ -111,7 +98,7 @@ describe('IssueProductImageUploadUrlUseCase', () => {
     const useCase = new IssueProductImageUploadUrlUseCase(
       cacheManager as Cache,
       shopRepository,
-      productRepository,
+      productRepository as never,
       storageConfig,
       storageService
     );
@@ -151,7 +138,7 @@ describe('IssueProductImageUploadUrlUseCase', () => {
     const useCase = new IssueProductImageUploadUrlUseCase(
       cacheManager as Cache,
       shopRepository,
-      productRepository,
+      productRepository as never,
       storageConfig,
       storageService
     );

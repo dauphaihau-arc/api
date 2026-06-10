@@ -18,9 +18,9 @@ import { createPublicId } from '~/common/ids/public-id';
 import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
 import { buildStorageObjectKey, resolveImageExtension, resolveStorageEnvironmentSegment } from '~/modules/shared/storage/app/storage-key-builder';
 import { StorageService } from '~/modules/shared/storage/app/ports/storage.service';
-import { ProductRepository } from '../../ports/product.repository';
 import { ShopRepository } from '~/modules/domains/shop/app/ports/shop.repository';
 import { ProductImageAssetType } from '../../../domain/enums/product-image-asset-type.enum';
+import { SellerProductQueryRepository } from '../../ports/seller-product-query.repository';
 
 const UPLOAD_TICKET_TTL_MS = 15 * 60 * 1000;
 
@@ -41,7 +41,7 @@ export class IssueProductImageUploadUrlUseCase {
   constructor(
     @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
     private readonly shopRepository: ShopRepository,
-    private readonly productRepository: ProductRepository,
+    private readonly productRepository: SellerProductQueryRepository,
     @Inject(STORAGE_CONFIG) private readonly storageConfig: StorageConfig,
     private readonly storageService: StorageService
   ) {}

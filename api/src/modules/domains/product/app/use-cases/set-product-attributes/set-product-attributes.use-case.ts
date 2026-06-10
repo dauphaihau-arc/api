@@ -9,7 +9,8 @@ import {
   InvalidProductAttributeSelectionError,
   ProductNotFoundError
 } from '../../errors/product-app.error';
-import { ProductRepository } from '../../ports/product.repository';
+import { ProductCommandRepository } from '../../ports/product-command.repository';
+import { SellerProductQueryRepository } from '../../ports/seller-product-query.repository';
 import type { ProductDraftSummary } from '../../product.types';
 
 export interface SetProductAttributesInput {
@@ -28,7 +29,8 @@ type SetProductAttributesError =
 @Injectable()
 export class SetProductAttributesUseCase {
   constructor(
-    private readonly productRepository: ProductRepository,
+    private readonly sellerProductQueryRepository: SellerProductQueryRepository,
+    private readonly productCommandRepository: ProductCommandRepository,
     private readonly shopRepository: ShopRepository,
     private readonly categoryRepository: CategoryRepository
   ) {}
@@ -38,7 +40,7 @@ export class SetProductAttributesUseCase {
     productId: string,
     input: SetProductAttributesInput
   ): Promise<Result<ProductDraftSummary, SetProductAttributesError>> {
-    const existingProduct = await this.productRepository.findById(productId);
+    const existingProduct = await this.sellerProductQueryRepository.findById(productId);
 
     if (!existingProduct) {
       return err(new ProductNotFoundError(productId));
@@ -86,7 +88,7 @@ export class SetProductAttributesUseCase {
       return err(validationError);
     }
 
-    const product = await this.productRepository.replaceAttributeValues({
+    const product = await this.productCommandRepository.replaceAttributeValues({
       productId,
       attributes: input.attributes.map((attribute) => ({
         categoryAttributeId: attribute.categoryAttributeId,

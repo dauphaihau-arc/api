@@ -32,14 +32,18 @@ import { SetProductPricingUseCase } from './app/use-cases/set-product-pricing/se
 import { SetProductShippingUseCase } from './app/use-cases/set-product-shipping/set-product-shipping.use-case';
 import { SetProductVariantsUseCase } from './app/use-cases/set-product-variants/set-product-variants.use-case';
 import { UpdateProductDetailsUseCase } from './app/use-cases/update-product-details/update-product-details.use-case';
+import { ProductCommandRepository } from './app/ports/product-command.repository';
 import { ProductPricingRepository } from './app/ports/product-pricing.repository';
-import { ProductRepository } from './app/ports/product.repository';
+import { SellerProductQueryRepository } from './app/ports/seller-product-query.repository';
+import { StorefrontProductQueryRepository } from './app/ports/storefront-product-query.repository';
 import { ProductController } from './api/rest/product.controller';
 import { ProductInventoryEventsController } from './api/rest/product-inventory-events.controller';
 import { ProductUploadController } from './api/rest/product-upload.controller';
 import { ForwardProductInventoryUpdatedToSseListener } from './listeners/forward-product-inventory-updated-to-sse.listener';
 import { ShopProductsController } from '../shop/api/rest/shop-products.controller';
-import { MikroOrmProductRepository } from './infra/mikro-orm-product.repository';
+import { MikroOrmProductCommandRepository } from './infra/mikro-orm-product-command.repository';
+import { MikroOrmSellerProductQueryRepository } from './infra/mikro-orm-seller-product-query.repository';
+import { MikroOrmStorefrontProductQueryRepository } from './infra/mikro-orm-storefront-product-query.repository';
 import { ProductAttributeValueEntity } from './infra/persistence/entities/product-attribute-value.entity';
 import { ProductImageEntity } from './infra/persistence/entities/product-image.entity';
 import { ProductImageVariantEntity } from './infra/persistence/entities/product-image-variant.entity';
@@ -85,14 +89,25 @@ import { VariantPriceEntity } from './infra/persistence/entities/variant-price.e
   ],
   providers: [
     {
-      provide: ProductRepository,
-      useClass: MikroOrmProductRepository,
+      provide: StorefrontProductQueryRepository,
+      useExisting: MikroOrmStorefrontProductQueryRepository,
+    },
+    {
+      provide: SellerProductQueryRepository,
+      useExisting: MikroOrmSellerProductQueryRepository,
+    },
+    {
+      provide: ProductCommandRepository,
+      useExisting: MikroOrmProductCommandRepository,
     },
     {
       provide: ProductPricingRepository,
-      useExisting: ProductRepository,
+      useExisting: MikroOrmProductCommandRepository,
     },
     ProductImageService,
+    MikroOrmProductCommandRepository,
+    MikroOrmSellerProductQueryRepository,
+    MikroOrmStorefrontProductQueryRepository,
     ResolvedStorefrontPriceService,
     ConsumeProductImageUploadTicketUseCase,
     CreateProductDraftFacadeUseCase,
@@ -116,7 +131,10 @@ import { VariantPriceEntity } from './infra/persistence/entities/variant-price.e
     ForwardProductInventoryUpdatedToSseListener,
   ],
   exports: [
-    ProductRepository,
+    StorefrontProductQueryRepository,
+    SellerProductQueryRepository,
+    ProductCommandRepository,
+    ProductPricingRepository,
     ProductImageService,
     ResolvedStorefrontPriceService,
     ConsumeProductImageUploadTicketUseCase,

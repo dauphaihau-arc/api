@@ -4,7 +4,8 @@ import type { AuditLogService } from '~/modules/shared/audit/app/audit-log.servi
 import { ProductState } from '../../../domain/enums/product-state.enum';
 import { ProductShippingCharge } from '../../../domain/enums/product-shipping-charge.enum';
 import type { ShopRepository } from '~/modules/domains/shop/app/ports/shop.repository';
-import type { ProductRepository } from '../../ports/product.repository';
+import type { ProductCommandRepository } from '../../ports/product-command.repository';
+import type { SellerProductQueryRepository } from '../../ports/seller-product-query.repository';
 import type { ProductDraftSummary } from '../../product.types';
 import { PublishProductUseCase } from './publish-product.use-case';
 
@@ -68,25 +69,15 @@ describe('PublishProductUseCase', () => {
   };
 
   function buildDeps(product = readyProduct) {
-    const productRepository: jest.Mocked<ProductRepository> = {
-      createDraft: jest.fn(),
+    const productRepository = {
       findById: jest.fn().mockResolvedValue(product),
-      findPublicByShopSlugAndProductSlug: jest.fn(),
-      listByShop: jest.fn(),
-      listPublic: jest.fn(),
-      replaceImages: jest.fn(),
-      replaceAttributeValues: jest.fn(),
-      replaceVariants: jest.fn(),
-      replaceInventory: jest.fn(),
-      replaceShipping: jest.fn(),
-      updateDetails: jest.fn(),
-      updateState: jest.fn(),
       publish: jest.fn().mockResolvedValue({
         ...product,
         state: ProductState.ACTIVE,
       }),
-      findByShopIdAndSlug: jest.fn(),
-    };
+    } as unknown as jest.Mocked<
+      SellerProductQueryRepository & ProductCommandRepository
+    >;
 
     const shopRepository: jest.Mocked<ShopRepository> = {
       create: jest.fn(),
@@ -116,6 +107,7 @@ describe('PublishProductUseCase', () => {
     const { productRepository, shopRepository, auditLogService } = buildDeps();
     const useCase = new PublishProductUseCase(
       productRepository,
+      productRepository,
       shopRepository,
       auditLogService
     );
@@ -140,6 +132,7 @@ describe('PublishProductUseCase', () => {
     });
     const useCase = new PublishProductUseCase(
       productRepository,
+      productRepository,
       shopRepository,
       auditLogService
     );
@@ -163,6 +156,7 @@ describe('PublishProductUseCase', () => {
       ],
     });
     const useCase = new PublishProductUseCase(
+      productRepository,
       productRepository,
       shopRepository,
       auditLogService

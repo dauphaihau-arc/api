@@ -4,7 +4,8 @@ import type { ShopRepository } from '~/modules/domains/shop/app/ports/shop.repos
 import type { AuditLogService } from '~/modules/shared/audit/app/audit-log.service';
 import { ProductState } from '../../../domain/enums/product-state.enum';
 import { ProductShippingCharge } from '../../../domain/enums/product-shipping-charge.enum';
-import type { ProductRepository } from '../../ports/product.repository';
+import type { ProductCommandRepository } from '../../ports/product-command.repository';
+import type { SellerProductQueryRepository } from '../../ports/seller-product-query.repository';
 import type { ProductDraftSummary } from '../../product.types';
 import {
   BulkMutateShopProductsAction,
@@ -76,18 +77,8 @@ describe('BulkMutateShopProductsUseCase', () => {
       ...Object.entries(productOverrides),
     ]);
 
-    const productRepository: jest.Mocked<ProductRepository> = {
-      createDraft: jest.fn(),
+    const productRepository = {
       findById: jest.fn().mockImplementation(async id => products.get(id) ?? null),
-      findPublicByShopSlugAndProductSlug: jest.fn(),
-      listByShop: jest.fn(),
-      listPublic: jest.fn(),
-      replaceImages: jest.fn(),
-      replaceAttributeValues: jest.fn(),
-      replaceVariants: jest.fn(),
-      replaceInventory: jest.fn(),
-      replaceShipping: jest.fn(),
-      updateDetails: jest.fn(),
       updateState: jest.fn().mockImplementation(async (id, state) => {
         const product = products.get(id);
 
@@ -110,8 +101,9 @@ describe('BulkMutateShopProductsUseCase', () => {
         products.set(id, updatedProduct);
         return updatedProduct;
       }),
-      findByShopIdAndSlug: jest.fn(),
-    };
+    } as unknown as jest.Mocked<
+      SellerProductQueryRepository & ProductCommandRepository
+    >;
 
     const shopRepository: jest.Mocked<ShopRepository> = {
       create: jest.fn(),
@@ -147,6 +139,7 @@ describe('BulkMutateShopProductsUseCase', () => {
     });
     const useCase = new BulkMutateShopProductsUseCase(
       productRepository,
+      productRepository,
       shopRepository,
       auditLogService
     );
@@ -174,6 +167,7 @@ describe('BulkMutateShopProductsUseCase', () => {
       },
     });
     const useCase = new BulkMutateShopProductsUseCase(
+      productRepository,
       productRepository,
       shopRepository,
       auditLogService
@@ -215,6 +209,7 @@ describe('BulkMutateShopProductsUseCase', () => {
     });
     const useCase = new BulkMutateShopProductsUseCase(
       productRepository,
+      productRepository,
       shopRepository,
       auditLogService
     );
@@ -242,6 +237,7 @@ describe('BulkMutateShopProductsUseCase', () => {
   it('rejects deactivating draft products', async () => {
     const { productRepository, shopRepository, auditLogService } = buildDeps();
     const useCase = new BulkMutateShopProductsUseCase(
+      productRepository,
       productRepository,
       shopRepository,
       auditLogService

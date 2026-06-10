@@ -14,7 +14,8 @@ import {
   InvalidProductVariantConfigurationError,
   ProductNotFoundError
 } from '../../errors/product-app.error';
-import { ProductRepository } from '../../ports/product.repository';
+import { ProductCommandRepository } from '../../ports/product-command.repository';
+import { SellerProductQueryRepository } from '../../ports/seller-product-query.repository';
 import type { ProductDraftSummary } from '../../product.types';
 
 export interface SetProductInventoryInput {
@@ -33,7 +34,8 @@ type SetProductInventoryError =
 @Injectable()
 export class SetProductInventoryUseCase {
   constructor(
-    private readonly productRepository: ProductRepository,
+    private readonly sellerProductQueryRepository: SellerProductQueryRepository,
+    private readonly productCommandRepository: ProductCommandRepository,
     private readonly shopRepository: ShopRepository,
     private readonly auditLogService: AuditLogService,
     private readonly eventEmitter: EventEmitter2
@@ -44,7 +46,7 @@ export class SetProductInventoryUseCase {
     productId: string,
     input: SetProductInventoryInput
   ): Promise<Result<ProductDraftSummary, SetProductInventoryError>> {
-    const existingProduct = await this.productRepository.findById(productId);
+    const existingProduct = await this.sellerProductQueryRepository.findById(productId);
 
     if (!existingProduct) {
       return err(new ProductNotFoundError(productId));
@@ -73,7 +75,7 @@ export class SetProductInventoryUseCase {
       return err(validationError);
     }
 
-    const product = await this.productRepository.replaceInventory({
+    const product = await this.productCommandRepository.replaceInventory({
       productId,
       shopId: existingProduct.shopId,
       inventory: input.inventory.map((row) => ({

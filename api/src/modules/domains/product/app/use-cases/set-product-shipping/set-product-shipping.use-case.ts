@@ -8,7 +8,8 @@ import {
   InvalidProductVariantConfigurationError,
   ProductNotFoundError
 } from '../../errors/product-app.error';
-import { ProductRepository } from '../../ports/product.repository';
+import { ProductCommandRepository } from '../../ports/product-command.repository';
+import { SellerProductQueryRepository } from '../../ports/seller-product-query.repository';
 import type { ProductDraftSummary } from '../../product.types';
 
 export interface SetProductShippingInput {
@@ -31,7 +32,8 @@ type SetProductShippingError =
 @Injectable()
 export class SetProductShippingUseCase {
   constructor(
-    private readonly productRepository: ProductRepository,
+    private readonly sellerProductQueryRepository: SellerProductQueryRepository,
+    private readonly productCommandRepository: ProductCommandRepository,
     private readonly shopRepository: ShopRepository
   ) {}
 
@@ -40,7 +42,7 @@ export class SetProductShippingUseCase {
     productId: string,
     input: SetProductShippingInput
   ): Promise<Result<ProductDraftSummary, SetProductShippingError>> {
-    const existingProduct = await this.productRepository.findById(productId);
+    const existingProduct = await this.sellerProductQueryRepository.findById(productId);
 
     if (!existingProduct) {
       return err(new ProductNotFoundError(productId));
@@ -65,7 +67,7 @@ export class SetProductShippingUseCase {
       return err(validationError);
     }
 
-    const product = await this.productRepository.replaceShipping({
+    const product = await this.productCommandRepository.replaceShipping({
       productId,
       shopId: existingProduct.shopId,
       shipping: {

@@ -2,7 +2,8 @@ import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
 import { UserStatus } from '~/modules/domains/auth/domain/enums/user-status.enum';
 import type { ShopRepository } from '~/modules/domains/shop/app/ports/shop.repository';
 import { ProductShippingCharge } from '../../../domain/enums/product-shipping-charge.enum';
-import type { ProductRepository } from '../../ports/product.repository';
+import type { ProductCommandRepository } from '../../ports/product-command.repository';
+import type { SellerProductQueryRepository } from '../../ports/seller-product-query.repository';
 import type { ProductDraftSummary } from '../../product.types';
 import { SetProductShippingUseCase } from './set-product-shipping.use-case';
 
@@ -35,16 +36,8 @@ describe('SetProductShippingUseCase', () => {
   };
 
   function buildDeps() {
-    const productRepository: jest.Mocked<ProductRepository> = {
-      createDraft: jest.fn(),
+    const productRepository = {
       findById: jest.fn().mockResolvedValue(product),
-      findPublicByShopSlugAndProductSlug: jest.fn(),
-      listByShop: jest.fn(),
-      listPublic: jest.fn(),
-      replaceImages: jest.fn(),
-      replaceAttributeValues: jest.fn(),
-      replaceVariants: jest.fn(),
-      replaceInventory: jest.fn(),
       replaceShipping: jest.fn().mockResolvedValue({
         ...product,
         shipping: {
@@ -64,11 +57,9 @@ describe('SetProductShippingUseCase', () => {
           ],
         },
       }),
-      updateDetails: jest.fn(),
-      updateState: jest.fn(),
-      publish: jest.fn(),
-      findByShopIdAndSlug: jest.fn(),
-    };
+    } as unknown as jest.Mocked<
+      SellerProductQueryRepository & ProductCommandRepository
+    >;
 
     const shopRepository: jest.Mocked<ShopRepository> = {
       create: jest.fn(),
@@ -94,6 +85,7 @@ describe('SetProductShippingUseCase', () => {
   it('replaces shipping profile and destinations', async () => {
     const { productRepository, shopRepository } = buildDeps();
     const useCase = new SetProductShippingUseCase(
+      productRepository,
       productRepository,
       shopRepository
     );
@@ -136,6 +128,7 @@ describe('SetProductShippingUseCase', () => {
   it('rejects duplicate destination country codes', async () => {
     const { productRepository, shopRepository } = buildDeps();
     const useCase = new SetProductShippingUseCase(
+      productRepository,
       productRepository,
       shopRepository
     );

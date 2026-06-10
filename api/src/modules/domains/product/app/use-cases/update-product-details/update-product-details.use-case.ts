@@ -11,7 +11,8 @@ import {
   ProductNotFoundError,
   ProductSlugAlreadyExistsError
 } from '../../errors/product-app.error';
-import { ProductRepository } from '../../ports/product.repository';
+import { ProductCommandRepository } from '../../ports/product-command.repository';
+import { SellerProductQueryRepository } from '../../ports/seller-product-query.repository';
 import type { ProductDraftSummary } from '../../product.types';
 
 export interface UpdateProductDetailsInput {
@@ -33,7 +34,8 @@ type UpdateProductDetailsError =
 @Injectable()
 export class UpdateProductDetailsUseCase {
   constructor(
-    private readonly productRepository: ProductRepository,
+    private readonly sellerProductQueryRepository: SellerProductQueryRepository,
+    private readonly productCommandRepository: ProductCommandRepository,
     private readonly shopRepository: ShopRepository,
     private readonly auditLogService: AuditLogService
   ) {}
@@ -43,7 +45,7 @@ export class UpdateProductDetailsUseCase {
     productId: string,
     input: UpdateProductDetailsInput
   ): Promise<Result<ProductDraftSummary, UpdateProductDetailsError>> {
-    const existingProduct = await this.productRepository.findById(productId);
+    const existingProduct = await this.sellerProductQueryRepository.findById(productId);
 
     if (!existingProduct) {
       return err(new ProductNotFoundError(productId));
@@ -84,7 +86,7 @@ export class UpdateProductDetailsUseCase {
     }
 
     const slug = toSlug(nextProduct.title);
-    const slugConflict = await this.productRepository.findByShopIdAndSlug(
+    const slugConflict = await this.sellerProductQueryRepository.findByShopIdAndSlug(
       existingProduct.shopId,
       slug
     );
@@ -93,7 +95,7 @@ export class UpdateProductDetailsUseCase {
       return err(new ProductSlugAlreadyExistsError(slug));
     }
 
-    const product = await this.productRepository.updateDetails({
+    const product = await this.productCommandRepository.updateDetails({
       productId,
       title: nextProduct.title,
       slug,

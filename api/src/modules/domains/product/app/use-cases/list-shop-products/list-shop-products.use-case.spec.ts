@@ -1,4 +1,4 @@
-import type { ProductRepository } from '../../ports/product.repository';
+import type { SellerProductQueryRepository } from '../../ports/seller-product-query.repository';
 import { ProductState } from '../../../domain/enums/product-state.enum';
 import type { ProductDraftSummary } from '../../product.types';
 import { ListShopProductsUseCase } from './list-shop-products.use-case';
@@ -22,11 +22,8 @@ describe('ListShopProductsUseCase', () => {
     inventory: [],
   };
 
-  function buildRepository(): jest.Mocked<ProductRepository> {
+  function buildRepository(): Pick<jest.Mocked<SellerProductQueryRepository>, 'listByShop'> {
     return {
-      createDraft: jest.fn(),
-      findById: jest.fn(),
-      findPublicByShopSlugAndProductSlug: jest.fn(),
       listByShop: jest.fn().mockImplementation(async (input) => {
         const totals = {
           all: 3,
@@ -48,22 +45,12 @@ describe('ListShopProductsUseCase', () => {
           },
         };
       }),
-      listPublic: jest.fn(),
-      replaceImages: jest.fn(),
-      replaceAttributeValues: jest.fn(),
-      replaceVariants: jest.fn(),
-      replaceInventory: jest.fn(),
-      replaceShipping: jest.fn(),
-      updateDetails: jest.fn(),
-      updateState: jest.fn(),
-      publish: jest.fn(),
-      findByShopIdAndSlug: jest.fn(),
     };
   }
 
   it('returns paginated seller products with trimmed filters', async () => {
     const repository = buildRepository();
-    const useCase = new ListShopProductsUseCase(repository);
+    const useCase = new ListShopProductsUseCase(repository as never);
 
     const result = await useCase.execute({
       shopId: 'shop-1',

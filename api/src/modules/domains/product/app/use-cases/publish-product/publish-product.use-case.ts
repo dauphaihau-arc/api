@@ -8,7 +8,8 @@ import {
   ProductNotFoundError,
   ProductNotReadyToPublishError
 } from '../../errors/product-app.error';
-import { ProductRepository } from '../../ports/product.repository';
+import { ProductCommandRepository } from '../../ports/product-command.repository';
+import { SellerProductQueryRepository } from '../../ports/seller-product-query.repository';
 import type { ProductDraftSummary } from '../../product.types';
 import { validatePublishReadiness } from './publish-product-readiness';
 
@@ -20,7 +21,8 @@ type PublishProductError =
 @Injectable()
 export class PublishProductUseCase {
   constructor(
-    private readonly productRepository: ProductRepository,
+    private readonly sellerProductQueryRepository: SellerProductQueryRepository,
+    private readonly productCommandRepository: ProductCommandRepository,
     private readonly shopRepository: ShopRepository,
     private readonly auditLogService: AuditLogService
   ) {}
@@ -29,7 +31,7 @@ export class PublishProductUseCase {
     actor: AuthenticatedUser,
     productId: string
   ): Promise<Result<ProductDraftSummary, PublishProductError>> {
-    const product = await this.productRepository.findById(productId);
+    const product = await this.sellerProductQueryRepository.findById(productId);
 
     if (!product) {
       return err(new ProductNotFoundError(productId));
@@ -54,7 +56,7 @@ export class PublishProductUseCase {
       return err(readinessError);
     }
 
-    const publishedProduct = await this.productRepository.publish(productId);
+    const publishedProduct = await this.productCommandRepository.publish(productId);
 
     if (!publishedProduct) {
       return err(new ProductNotFoundError(productId));

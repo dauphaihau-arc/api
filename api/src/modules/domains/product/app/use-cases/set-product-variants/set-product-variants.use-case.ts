@@ -8,7 +8,8 @@ import {
   InvalidProductVariantConfigurationError,
   ProductNotFoundError
 } from '../../errors/product-app.error';
-import { ProductRepository } from '../../ports/product.repository';
+import { ProductCommandRepository } from '../../ports/product-command.repository';
+import { SellerProductQueryRepository } from '../../ports/seller-product-query.repository';
 import type { ProductDraftSummary } from '../../product.types';
 
 export interface SetProductVariantsInput {
@@ -26,7 +27,8 @@ type SetProductVariantsError =
 @Injectable()
 export class SetProductVariantsUseCase {
   constructor(
-    private readonly productRepository: ProductRepository,
+    private readonly sellerProductQueryRepository: SellerProductQueryRepository,
+    private readonly productCommandRepository: ProductCommandRepository,
     private readonly shopRepository: ShopRepository
   ) {}
 
@@ -35,7 +37,7 @@ export class SetProductVariantsUseCase {
     productId: string,
     input: SetProductVariantsInput
   ): Promise<Result<ProductDraftSummary, SetProductVariantsError>> {
-    const existingProduct = await this.productRepository.findById(productId);
+    const existingProduct = await this.sellerProductQueryRepository.findById(productId);
 
     if (!existingProduct) {
       return err(new ProductNotFoundError(productId));
@@ -63,7 +65,7 @@ export class SetProductVariantsUseCase {
       return err(validationError);
     }
 
-    const product = await this.productRepository.replaceVariants({
+    const product = await this.productCommandRepository.replaceVariants({
       productId,
       variants: input.variants.map((variant, index) => ({
         name: buildVariantName(variant.optionValue1, variant.optionValue2),

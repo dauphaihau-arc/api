@@ -4,7 +4,8 @@ import type { ShopRepository } from '~/modules/domains/shop/app/ports/shop.repos
 import { appJobDeduplicationKey, appJobName } from '~/common/jobs/job.types';
 import type { JobDispatcher } from '~/modules/shared/queue/app/ports/job-dispatcher';
 import type { StorageService } from '~/modules/shared/storage/app/ports/storage.service';
-import type { ProductRepository } from '../../ports/product.repository';
+import type { ProductCommandRepository } from '../../ports/product-command.repository';
+import type { SellerProductQueryRepository } from '../../ports/seller-product-query.repository';
 import type { ProductDraftSummary } from '../../product.types';
 import { SetProductImagesUseCase } from './set-product-images.use-case';
 
@@ -39,12 +40,8 @@ describe('SetProductImagesUseCase', () => {
   };
 
   function buildDeps() {
-    const productRepository: jest.Mocked<ProductRepository> = {
-      createDraft: jest.fn(),
+    const productRepository = {
       findById: jest.fn().mockResolvedValue(product),
-      findPublicByShopSlugAndProductSlug: jest.fn(),
-      listByShop: jest.fn(),
-      listPublic: jest.fn(),
       replaceImages: jest.fn().mockResolvedValue({
         product: {
           ...product,
@@ -59,15 +56,9 @@ describe('SetProductImagesUseCase', () => {
         },
         removedStorageKeys: ['products/product-1/images/old.jpg'],
       }),
-      replaceAttributeValues: jest.fn(),
-      replaceVariants: jest.fn(),
-      replaceInventory: jest.fn(),
-      replaceShipping: jest.fn(),
-      updateDetails: jest.fn(),
-      updateState: jest.fn(),
-      publish: jest.fn(),
-      findByShopIdAndSlug: jest.fn(),
-    };
+    } as unknown as jest.Mocked<
+      SellerProductQueryRepository & ProductCommandRepository
+    >;
 
     const storageService: jest.Mocked<StorageService> = {
       putObject: jest.fn().mockResolvedValue({
@@ -113,6 +104,7 @@ describe('SetProductImagesUseCase', () => {
   it('uploads files, replaces images, and deletes old storage keys', async () => {
     const { productRepository, shopRepository, storageService, jobDispatcher } = buildDeps();
     const useCase = new SetProductImagesUseCase(
+      productRepository,
       productRepository,
       shopRepository,
       storageService,

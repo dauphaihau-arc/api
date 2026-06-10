@@ -8,7 +8,8 @@ import {
   ActorCannotCreateProductDraftError,
   ProductNotFoundError
 } from '../../errors/product-app.error';
-import { ProductRepository } from '../../ports/product.repository';
+import { ProductCommandRepository } from '../../ports/product-command.repository';
+import { SellerProductQueryRepository } from '../../ports/seller-product-query.repository';
 import type { ProductDraftSummary } from '../../product.types';
 
 export interface SetProductImagesByKeysInput {
@@ -25,7 +26,8 @@ type SetProductImagesByKeysError =
 @Injectable()
 export class SetProductImagesByKeysUseCase {
   constructor(
-    private readonly productRepository: ProductRepository,
+    private readonly sellerProductQueryRepository: SellerProductQueryRepository,
+    private readonly productCommandRepository: ProductCommandRepository,
     private readonly shopRepository: ShopRepository,
     private readonly jobDispatcher: JobDispatcher
   ) {}
@@ -35,7 +37,7 @@ export class SetProductImagesByKeysUseCase {
     productId: string,
     input: SetProductImagesByKeysInput
   ): Promise<Result<ProductDraftSummary, SetProductImagesByKeysError>> {
-    const existingProduct = await this.productRepository.findById(productId);
+    const existingProduct = await this.sellerProductQueryRepository.findById(productId);
 
     if (!existingProduct) {
       return err(new ProductNotFoundError(productId));
@@ -54,7 +56,7 @@ export class SetProductImagesByKeysUseCase {
       }
     }
 
-    const replacedImages = await this.productRepository.replaceImages({
+    const replacedImages = await this.productCommandRepository.replaceImages({
       productId,
       images: input.images.map((image) => ({
         storageKey: image.storageKey.trim(),

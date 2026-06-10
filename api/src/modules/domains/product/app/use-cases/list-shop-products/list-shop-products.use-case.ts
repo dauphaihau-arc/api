@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { buildPaginationMeta } from '~/common/application/pagination';
 import { ProductState } from '../../../domain/enums/product-state.enum';
-import { ProductRepository } from '../../ports/product.repository';
+import { SellerProductQueryRepository } from '../../ports/seller-product-query.repository';
 import type {
   ListShopProductsInput,
   ShopProductListResult
@@ -18,7 +18,7 @@ export interface ListShopProductsQuery {
 
 @Injectable()
 export class ListShopProductsUseCase {
-  constructor(private readonly productRepository: ProductRepository) {}
+  constructor(private readonly productRepository: SellerProductQueryRepository) {}
 
   async execute(query: ListShopProductsQuery): Promise<ShopProductListResult> {
     const normalizedSearch = query.search?.trim() || undefined;

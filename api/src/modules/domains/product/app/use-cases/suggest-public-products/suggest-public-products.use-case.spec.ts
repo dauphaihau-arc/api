@@ -1,14 +1,9 @@
-import type { ProductRepository } from '../../ports/product.repository';
+import type { StorefrontProductQueryRepository } from '../../ports/storefront-product-query.repository';
 import { SuggestPublicProductsUseCase } from './suggest-public-products.use-case';
 
 describe('SuggestPublicProductsUseCase', () => {
-  function buildRepository(): jest.Mocked<ProductRepository> {
+  function buildRepository(): Pick<jest.Mocked<StorefrontProductQueryRepository>, 'suggestPublic'> {
     return {
-      createDraft: jest.fn(),
-      findById: jest.fn(),
-      findPublicByShopSlugAndProductSlug: jest.fn(),
-      listByShop: jest.fn(),
-      listPublic: jest.fn(),
       suggestPublic: jest.fn().mockResolvedValue([
         {
           id: 'product-1',
@@ -22,21 +17,12 @@ describe('SuggestPublicProductsUseCase', () => {
           },
         },
       ]),
-      replaceImages: jest.fn(),
-      replaceAttributeValues: jest.fn(),
-      replaceVariants: jest.fn(),
-      replaceInventory: jest.fn(),
-      replaceShipping: jest.fn(),
-      updateDetails: jest.fn(),
-      updateState: jest.fn(),
-      publish: jest.fn(),
-      findByShopIdAndSlug: jest.fn(),
     };
   }
 
   it('trims the query before delegating to the repository', async () => {
     const repository = buildRepository();
-    const useCase = new SuggestPublicProductsUseCase(repository);
+    const useCase = new SuggestPublicProductsUseCase(repository as never);
 
     await expect(useCase.execute('  mug  ', 4)).resolves.toEqual([
       {
@@ -59,7 +45,7 @@ describe('SuggestPublicProductsUseCase', () => {
 
   it('returns an empty list for short queries', async () => {
     const repository = buildRepository();
-    const useCase = new SuggestPublicProductsUseCase(repository);
+    const useCase = new SuggestPublicProductsUseCase(repository as never);
 
     await expect(useCase.execute(' a ')).resolves.toEqual([]);
     expect(repository.suggestPublic).not.toHaveBeenCalled();

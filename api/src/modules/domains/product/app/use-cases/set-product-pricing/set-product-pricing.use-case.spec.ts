@@ -4,7 +4,7 @@ import { UserStatus } from '~/modules/domains/auth/domain/enums/user-status.enum
 import type { ShopRepository } from '~/modules/domains/shop/app/ports/shop.repository';
 import type { AuditLogService } from '~/modules/shared/audit/app/audit-log.service';
 import type { ProductPricingRepository } from '../../ports/product-pricing.repository';
-import type { ProductRepository } from '../../ports/product.repository';
+import type { SellerProductQueryRepository } from '../../ports/seller-product-query.repository';
 import type { ProductDraftSummary } from '../../product.types';
 import { SetProductPricingUseCase } from './set-product-pricing.use-case';
 
@@ -44,21 +44,8 @@ describe('SetProductPricingUseCase', () => {
   };
 
   function buildDeps() {
-    const productRepository: jest.Mocked<ProductRepository> = {
-      createDraft: jest.fn(),
+    const productRepository: Pick<jest.Mocked<SellerProductQueryRepository>, 'findById'> = {
       findById: jest.fn().mockResolvedValue(product),
-      findPublicByShopSlugAndProductSlug: jest.fn(),
-      listByShop: jest.fn(),
-      listPublic: jest.fn(),
-      replaceImages: jest.fn(),
-      replaceAttributeValues: jest.fn(),
-      replaceVariants: jest.fn(),
-      replaceInventory: jest.fn(),
-      replaceShipping: jest.fn(),
-      updateDetails: jest.fn(),
-      updateState: jest.fn(),
-      publish: jest.fn(),
-      findByShopIdAndSlug: jest.fn(),
     };
 
     const productPricingRepository: jest.Mocked<ProductPricingRepository> = {
@@ -107,7 +94,7 @@ describe('SetProductPricingUseCase', () => {
   it('replaces pricing for an existing inventory row', async () => {
     const { productRepository, productPricingRepository, shopRepository, auditLogService, eventEmitter } = buildDeps();
     const useCase = new SetProductPricingUseCase(
-      productRepository,
+      productRepository as never,
       productPricingRepository,
       shopRepository,
       auditLogService,
@@ -148,7 +135,7 @@ describe('SetProductPricingUseCase', () => {
   it('rejects pricing rows that do not match existing inventory rows', async () => {
     const { productRepository, productPricingRepository, shopRepository, auditLogService, eventEmitter } = buildDeps();
     const useCase = new SetProductPricingUseCase(
-      productRepository,
+      productRepository as never,
       productPricingRepository,
       shopRepository,
       auditLogService,

@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { ProductRepository } from '../../ports/product.repository';
+import { StorefrontProductQueryRepository } from '../../ports/storefront-product-query.repository';
 import type { PublicProductSuggestion } from '../../product.types';
 
 export const PUBLIC_PRODUCT_SUGGESTIONS_DEFAULT_LIMIT = 5;
@@ -7,7 +7,7 @@ export const PUBLIC_PRODUCT_SUGGESTIONS_MIN_SEARCH_LENGTH = 2;
 
 @Injectable()
 export class SuggestPublicProductsUseCase {
-  constructor(private readonly productRepository: ProductRepository) {}
+  constructor(private readonly productRepository: StorefrontProductQueryRepository) {}
 
   async execute(
     search: string,

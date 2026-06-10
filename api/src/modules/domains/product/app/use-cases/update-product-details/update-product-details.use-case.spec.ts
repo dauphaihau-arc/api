@@ -3,7 +3,8 @@ import { UserStatus } from '~/modules/domains/auth/domain/enums/user-status.enum
 import type { ShopRepository } from '~/modules/domains/shop/app/ports/shop.repository';
 import type { AuditLogService } from '~/modules/shared/audit/app/audit-log.service';
 import { ProductVariantType } from '../../../domain/enums/product-variant-type.enum';
-import type { ProductRepository } from '../../ports/product.repository';
+import type { ProductCommandRepository } from '../../ports/product-command.repository';
+import type { SellerProductQueryRepository } from '../../ports/seller-product-query.repository';
 import type { ProductDraftSummary } from '../../product.types';
 import { UpdateProductDetailsUseCase } from './update-product-details.use-case';
 
@@ -37,17 +38,8 @@ describe('UpdateProductDetailsUseCase', () => {
   };
 
   function buildDeps(currentProduct = product) {
-    const productRepository: jest.Mocked<ProductRepository> = {
-      createDraft: jest.fn(),
+    const productRepository = {
       findById: jest.fn().mockResolvedValue(currentProduct),
-      findPublicByShopSlugAndProductSlug: jest.fn(),
-      listByShop: jest.fn(),
-      listPublic: jest.fn(),
-      replaceImages: jest.fn(),
-      replaceAttributeValues: jest.fn(),
-      replaceVariants: jest.fn(),
-      replaceInventory: jest.fn(),
-      replaceShipping: jest.fn(),
       updateDetails: jest.fn().mockImplementation(async (input) => ({
         ...currentProduct,
         title: input.title,
@@ -59,10 +51,10 @@ describe('UpdateProductDetailsUseCase', () => {
         variantGroupName: input.variantGroupName,
         variantSubGroupName: input.variantSubGroupName,
       })),
-      updateState: jest.fn(),
-      publish: jest.fn(),
       findByShopIdAndSlug: jest.fn().mockResolvedValue(null),
-    };
+    } as unknown as jest.Mocked<
+      SellerProductQueryRepository & ProductCommandRepository
+    >;
 
     const shopRepository: jest.Mocked<ShopRepository> = {
       create: jest.fn(),
@@ -91,6 +83,7 @@ describe('UpdateProductDetailsUseCase', () => {
   it('updates base fields and regenerates the slug from title', async () => {
     const { productRepository, shopRepository, auditLogService } = buildDeps();
     const useCase = new UpdateProductDetailsUseCase(
+      productRepository,
       productRepository,
       shopRepository,
       auditLogService
@@ -135,6 +128,7 @@ describe('UpdateProductDetailsUseCase', () => {
       variantGroupName: undefined,
     });
     const useCase = new UpdateProductDetailsUseCase(
+      productRepository,
       productRepository,
       shopRepository,
       auditLogService

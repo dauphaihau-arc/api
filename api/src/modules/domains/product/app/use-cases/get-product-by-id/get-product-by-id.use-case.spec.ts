@@ -1,4 +1,4 @@
-import type { ProductRepository } from '../../ports/product.repository';
+import type { SellerProductQueryRepository } from '../../ports/seller-product-query.repository';
 import type { ProductDraftSummary } from '../../product.types';
 import { GetProductByIdUseCase } from './get-product-by-id.use-case';
 
@@ -21,28 +21,15 @@ describe('GetProductByIdUseCase', () => {
     inventory: [],
   };
 
-  function buildRepository(): jest.Mocked<ProductRepository> {
+  function buildRepository(): Pick<jest.Mocked<SellerProductQueryRepository>, 'findById'> {
     return {
-      createDraft: jest.fn(),
       findById: jest.fn().mockResolvedValue(product),
-      findPublicByShopSlugAndProductSlug: jest.fn(),
-      listByShop: jest.fn(),
-      listPublic: jest.fn(),
-      replaceImages: jest.fn(),
-      replaceAttributeValues: jest.fn(),
-      replaceVariants: jest.fn(),
-      replaceInventory: jest.fn(),
-      replaceShipping: jest.fn(),
-      updateDetails: jest.fn(),
-      updateState: jest.fn(),
-      publish: jest.fn(),
-      findByShopIdAndSlug: jest.fn(),
     };
   }
 
   it('returns the product when found', async () => {
     const repository = buildRepository();
-    const useCase = new GetProductByIdUseCase(repository);
+    const useCase = new GetProductByIdUseCase(repository as never);
 
     const result = await useCase.execute(product.id);
 
@@ -53,7 +40,7 @@ describe('GetProductByIdUseCase', () => {
   it('returns null when missing', async () => {
     const repository = buildRepository();
     repository.findById.mockResolvedValue(null);
-    const useCase = new GetProductByIdUseCase(repository);
+    const useCase = new GetProductByIdUseCase(repository as never);
 
     const result = await useCase.execute('missing-product');
 

@@ -7,7 +7,8 @@ import { ShopRepository } from '~/modules/domains/shop/app/ports/shop.repository
 import { JobDispatcher } from '~/modules/shared/queue/app/ports/job-dispatcher';
 import { buildStorageObjectKey, resolveImageExtension, resolveStorageEnvironmentSegment } from '~/modules/shared/storage/app/storage-key-builder';
 import { StorageService } from '~/modules/shared/storage/app/ports/storage.service';
-import { ProductRepository } from '../../ports/product.repository';
+import { ProductCommandRepository } from '../../ports/product-command.repository';
+import { SellerProductQueryRepository } from '../../ports/seller-product-query.repository';
 import type { ProductDraftSummary } from '../../product.types';
 import {
   ActorCannotCreateProductDraftError,
@@ -31,7 +32,8 @@ type SetProductImagesError =
 @Injectable()
 export class SetProductImagesUseCase {
   constructor(
-    private readonly productRepository: ProductRepository,
+    private readonly sellerProductQueryRepository: SellerProductQueryRepository,
+    private readonly productCommandRepository: ProductCommandRepository,
     private readonly shopRepository: ShopRepository,
     private readonly storageService: StorageService,
     private readonly jobDispatcher: JobDispatcher
@@ -42,7 +44,7 @@ export class SetProductImagesUseCase {
     productId: string,
     input: SetProductImagesInput
   ): Promise<Result<ProductDraftSummary, SetProductImagesError>> {
-    const existingProduct = await this.productRepository.findById(productId);
+    const existingProduct = await this.sellerProductQueryRepository.findById(productId);
 
     if (!existingProduct) {
       return err(new ProductNotFoundError(productId));
@@ -85,7 +87,7 @@ export class SetProductImagesUseCase {
         })
       );
 
-      const replacedImages = await this.productRepository.replaceImages({
+      const replacedImages = await this.productCommandRepository.replaceImages({
         productId,
         images: storedImages,
       });

@@ -1,4 +1,4 @@
-import type { ProductRepository } from '../../ports/product.repository';
+import type { StorefrontProductQueryRepository } from '../../ports/storefront-product-query.repository';
 import type { PublicProductDetail } from '../../product.types';
 import { GetPublicProductBySlugsUseCase } from './get-public-product-by-slugs.use-case';
 
@@ -22,28 +22,15 @@ describe('GetPublicProductBySlugsUseCase', () => {
     inventory: [],
   };
 
-  function buildRepository(): jest.Mocked<ProductRepository> {
+  function buildRepository(): Pick<jest.Mocked<StorefrontProductQueryRepository>, 'findPublicByShopSlugAndProductSlug'> {
     return {
-      createDraft: jest.fn(),
-      findById: jest.fn(),
       findPublicByShopSlugAndProductSlug: jest.fn().mockResolvedValue(product),
-      listByShop: jest.fn(),
-      listPublic: jest.fn(),
-      replaceImages: jest.fn(),
-      replaceAttributeValues: jest.fn(),
-      replaceVariants: jest.fn(),
-      replaceInventory: jest.fn(),
-      replaceShipping: jest.fn(),
-      updateDetails: jest.fn(),
-      updateState: jest.fn(),
-      publish: jest.fn(),
-      findByShopIdAndSlug: jest.fn(),
     };
   }
 
   it('returns the public product when found by slugs', async () => {
     const repository = buildRepository();
-    const useCase = new GetPublicProductBySlugsUseCase(repository);
+    const useCase = new GetPublicProductBySlugsUseCase(repository as never);
 
     const result = await useCase.execute(product.shop.slug, product.slug);
 

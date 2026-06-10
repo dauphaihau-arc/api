@@ -3,7 +3,8 @@ import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
 import { ShopRepository } from '~/modules/domains/shop/app/ports/shop.repository';
 import { AuditLogService } from '~/modules/shared/audit/app/audit-log.service';
 import { ProductState } from '../../../domain/enums/product-state.enum';
-import { ProductRepository } from '../../ports/product.repository';
+import { ProductCommandRepository } from '../../ports/product-command.repository';
+import { SellerProductQueryRepository } from '../../ports/seller-product-query.repository';
 import type { ProductDraftSummary } from '../../product.types';
 import { validatePublishReadiness } from '../publish-product/publish-product-readiness';
 
@@ -33,7 +34,8 @@ export interface BulkMutateShopProductsResult {
 @Injectable()
 export class BulkMutateShopProductsUseCase {
   constructor(
-    private readonly productRepository: ProductRepository,
+    private readonly sellerProductQueryRepository: SellerProductQueryRepository,
+    private readonly productCommandRepository: ProductCommandRepository,
     private readonly shopRepository: ShopRepository,
     private readonly auditLogService: AuditLogService
   ) {}
@@ -66,7 +68,7 @@ export class BulkMutateShopProductsUseCase {
     const failed: BulkMutateShopProductsFailure[] = [];
 
     for (const productId of input.productIds) {
-      const product = await this.productRepository.findById(productId);
+      const product = await this.sellerProductQueryRepository.findById(productId);
 
       if (!product || product.shopId !== input.shopId) {
         failed.push({
@@ -116,7 +118,7 @@ export class BulkMutateShopProductsUseCase {
         };
       }
 
-      const publishedProduct = await this.productRepository.publish(product.id);
+      const publishedProduct = await this.productCommandRepository.publish(product.id);
 
       if (!publishedProduct) {
         return {
@@ -168,7 +170,7 @@ export class BulkMutateShopProductsUseCase {
       };
     }
 
-    const updatedProduct = await this.productRepository.updateState(product.id, nextState);
+    const updatedProduct = await this.productCommandRepository.updateState(product.id, nextState);
 
     if (!updatedProduct) {
       return {
