@@ -27,8 +27,12 @@ import { UpdateMyAddressUseCase } from './app/use-cases/update-my-address/update
 import { UserResolver } from './api/graphql/user.resolver';
 import { MeAddressesController } from './api/rest/me-addresses.controller';
 import { UserController } from './api/rest/user.controller';
+import { UserAddressCommandRepository } from './app/ports/user-address-command.repository';
+import { UserAddressQueryRepository } from './app/ports/user-address-query.repository';
 import { UserAddressRepository } from './app/ports/user-address.repository';
-import { MikroOrmUserAddressRepository } from './infra/mikro-orm-user-address.repository';
+import { DelegatingUserAddressRepository } from './infra/user-address.repository';
+import { MikroOrmUserAddressCommandRepository } from './infra/mikro-orm-user-address-command.repository';
+import { MikroOrmUserAddressQueryRepository } from './infra/mikro-orm-user-address-query.repository';
 import { MikroOrmUserRepository } from './infra/mikro-orm-user.repository';
 import { UserAddressEntity } from './infra/persistence/entities/user-address.entity';
 
@@ -68,9 +72,20 @@ import { UserAddressEntity } from './infra/persistence/entities/user-address.ent
       useClass: MikroOrmUserRepository,
     },
     {
-      provide: UserAddressRepository,
-      useClass: MikroOrmUserAddressRepository,
+      provide: UserAddressCommandRepository,
+      useExisting: MikroOrmUserAddressCommandRepository,
     },
+    {
+      provide: UserAddressQueryRepository,
+      useExisting: MikroOrmUserAddressQueryRepository,
+    },
+    {
+      provide: UserAddressRepository,
+      useExisting: DelegatingUserAddressRepository,
+    },
+    DelegatingUserAddressRepository,
+    MikroOrmUserAddressCommandRepository,
+    MikroOrmUserAddressQueryRepository,
     CreateUserUseCase,
     GetUserByIdUseCase,
     ListUsersUseCase,
