@@ -24,7 +24,6 @@ import { WsRedisAdapterService } from '../infra/ws-redis-adapter.service';
 import { WsPublisher } from '../infra/ws.publisher';
 
 type AuthenticatedSocket = Socket & {
-  // eslint-disable-next-line id-denylist
   data: Socket['data'] & {
     authenticatedUser?: AuthenticatedUser;
   };

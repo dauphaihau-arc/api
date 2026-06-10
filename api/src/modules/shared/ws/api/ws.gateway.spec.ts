@@ -28,7 +28,6 @@ describe('WsGateway', () => {
   function buildSocket(overrides?: Record<string, unknown>) {
     return {
       id: 'socket-1',
-      // eslint-disable-next-line id-denylist
       data: {},
       emit: jest.fn(),
       disconnect: jest.fn(),
@@ -151,7 +150,6 @@ describe('WsGateway', () => {
     };
     const gateway = buildGateway({ entityManager });
     const client = buildSocket({
-      // eslint-disable-next-line id-denylist
       data: {
         authenticatedUser: {
           userId: 'user-1',
