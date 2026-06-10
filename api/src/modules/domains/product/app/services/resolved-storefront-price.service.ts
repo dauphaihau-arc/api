@@ -6,7 +6,7 @@ import { RequestContextService } from '~/modules/shared/request-context/request-
 import type { ProductInventoryEntity } from '../../infra/persistence/entities/product-inventory.entity';
 import {
   getActiveBasePrice,
-  getActiveMarketPrice,
+  getActiveMarketPrice
 } from '../../infra/variant-price-read';
 
 export interface ResolvedStorefrontPrice {
@@ -29,11 +29,11 @@ export class ResolvedStorefrontPriceService {
   constructor(
     private readonly requestContextService: RequestContextService,
     private readonly fxRateService: FxRateService,
-    private readonly roundingPolicyService: RoundingPolicyService,
+    private readonly roundingPolicyService: RoundingPolicyService
   ) {}
 
   async resolveForCurrentRequest(
-    inventory: ProductInventoryEntity,
+    inventory: ProductInventoryEntity
   ): Promise<ResolvedStorefrontPrice | undefined> {
     return this.resolve(inventory, this.getCurrentMarketContext());
   }
@@ -52,7 +52,7 @@ export class ResolvedStorefrontPriceService {
       const exactMarketPrice = getActiveMarketPrice(
         inventory,
         normalizedContext.marketCode,
-        normalizedContext.currency,
+        normalizedContext.currency
       );
 
       if (exactMarketPrice) {
@@ -191,7 +191,7 @@ function convertBasePrice(input: {
       ? {
         originalAmountMinor: input.roundingPolicyService.toMinorUnits(
           compareAtMajor,
-          input.targetCurrency,
+          input.targetCurrency
         ),
       }
       : {}),

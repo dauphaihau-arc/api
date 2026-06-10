@@ -12,7 +12,7 @@ import {
   getOrderSubtotalMajor,
   getOrderSubtotalMinor,
   getOrderTotalMinor,
-  getOrderTotalMajor,
+  getOrderTotalMajor
 } from '../../order-money';
 import { getRequiredOrderNumber } from '../../order-number';
 import type { OrderListResult } from '../../order.types';

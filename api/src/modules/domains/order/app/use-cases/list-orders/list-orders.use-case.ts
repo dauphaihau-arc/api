@@ -16,7 +16,7 @@ import {
   getOrderSubtotalMajor,
   getOrderSubtotalMinor,
   getOrderTotalMinor,
-  getOrderTotalMajor,
+  getOrderTotalMajor
 } from '../../order-money';
 import { getRequiredOrderNumber } from '../../order-number';
 import type { OrderListResult } from '../../order.types';
@@ -155,7 +155,7 @@ export class ListOrdersUseCase {
 
 function matchesCustomerState(
   order: Pick<OrderEntity, 'status' | 'shippingStatus'>,
-  state: NonNullable<ListMyOrdersQueryDto['state']>,
+  state: NonNullable<ListMyOrdersQueryDto['state']>
 ): boolean {
   switch (state) {
     case 'awaiting_payment':

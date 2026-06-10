@@ -1,6 +1,6 @@
 import type {
   CreateNotificationInput,
-  NotificationSummary,
+  NotificationSummary
 } from '../notification.types';
 
 export abstract class NotificationCommandRepository {

@@ -22,8 +22,8 @@ export function initializeSentry(runtime: 'api' | 'worker'): void {
       || 'development',
     release: process.env.SENTRY_RELEASE?.trim() || undefined,
     tracesSampleRate: Number(
-      process.env.SENTRY_TRACES_SAMPLE_RATE
-      ?? (process.env.NODE_ENV === 'production' ? '0' : '0')
+      process.env.SENTRY_TRACES_SAMPLE_RATE ??
+      (process.env.NODE_ENV === 'production' ? '0' : '0')
     ),
     sendDefaultPii: false,
     initialScope: {

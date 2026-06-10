@@ -6,7 +6,7 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiParam,
-  ApiTags,
+  ApiTags
 } from '@nestjs/swagger';
 import { SkipThrottle } from '@nestjs/throttler';
 import { resolveOrThrow } from '~/common/application/result';

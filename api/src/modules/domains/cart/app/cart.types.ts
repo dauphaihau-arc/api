@@ -320,16 +320,16 @@ export function buildCartResponse(
     summary: summaryOverride
       ? toSummaryResponse(summaryOverride, summaryOverride.currency ?? currency)
       : {
-          currency,
-          subtotal_minor: toMinorUnits(subtotalPrice, currency),
-          discount_minor: 0,
-          subtotal_after_discount_minor: toMinorUnits(subtotalPrice, currency),
-          shipping_minor: 0,
-          total_minor: toMinorUnits(subtotalPrice, currency),
-          total_selected_quantity: cart.items
-            .filter((item) => item.isSelectOrder)
-            .reduce((sum, item) => sum + item.quantity, 0),
-          total_quantity: totalQuantity,
-        },
+        currency,
+        subtotal_minor: toMinorUnits(subtotalPrice, currency),
+        discount_minor: 0,
+        subtotal_after_discount_minor: toMinorUnits(subtotalPrice, currency),
+        shipping_minor: 0,
+        total_minor: toMinorUnits(subtotalPrice, currency),
+        total_selected_quantity: cart.items
+          .filter((item) => item.isSelectOrder)
+          .reduce((sum, item) => sum + item.quantity, 0),
+        total_quantity: totalQuantity,
+      },
   };
 }

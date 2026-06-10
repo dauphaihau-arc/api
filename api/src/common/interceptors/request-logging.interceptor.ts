@@ -17,17 +17,17 @@ import type { StructuredLogRecord } from '../logging/structured-log.types';
 import { buildStructuredLog } from '../utils/structured-log';
 
 function isSseRequest(request: Request): boolean {
-  const acceptHeader = request.headers.accept
+  const acceptHeader = request.headers.accept;
 
   if (typeof acceptHeader === 'string' && acceptHeader.includes('text/event-stream')) {
-    return true
+    return true;
   }
 
   if (Array.isArray(acceptHeader) && acceptHeader.some(value => value.includes('text/event-stream'))) {
-    return true
+    return true;
   }
 
-  return request.path.endsWith('/events')
+  return request.path.endsWith('/events');
 }
 
 @Injectable()

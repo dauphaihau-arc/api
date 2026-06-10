@@ -11,14 +11,14 @@ import { StorageService } from '~/modules/shared/storage/app/ports/storage.servi
 import {
   CartRepository,
   type DeleteOwnedCartItemInput,
-  type UpdateOwnedCartItemInput,
+  type UpdateOwnedCartItemInput
 } from '../app/ports/cart.repository';
 import type {
   CartActor,
   CartInventoryCandidate,
   CartInventorySnapshot,
   CartItemSnapshot,
-  CartSnapshot,
+  CartSnapshot
 } from '../app/cart.types';
 import { CartKind } from '../domain/enums/cart-kind.enum';
 import { CartEntity } from './persistence/entities/cart.entity';

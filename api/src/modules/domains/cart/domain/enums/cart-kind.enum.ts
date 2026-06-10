@@ -1,4 +1,4 @@
 export enum CartKind {
   ACTIVE = 'active',
-  BUY_NOW = 'buy_now',
+  BUY_NOW = 'buy_now'
 }

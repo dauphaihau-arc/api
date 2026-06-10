@@ -1,7 +1,9 @@
 import { BadRequestException } from '@nestjs/common';
 import { Expose, Transform } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEmail, IsOptional, IsString, ValidateIf } from 'class-validator';
+import {
+  IsEmail, IsOptional, IsString, ValidateIf 
+} from 'class-validator';
 
 export class LookupGuestOrdersQueryDto {
   @ValidateIf((dto: LookupGuestOrdersQueryDto) => !dto.sessionId && !dto.token)

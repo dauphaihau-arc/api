@@ -93,7 +93,7 @@ describe('Auth flow (e2e)', () => {
     app.useGlobalFilters(
       new GlobalExceptionFilter(
         app.get(RequestContextService),
-        exceptionLogger,
+        exceptionLogger
       )
     );
     app.useGlobalInterceptors(
@@ -101,7 +101,7 @@ describe('Auth flow (e2e)', () => {
       new RequestLoggingInterceptor(
         app.get(RequestContextService),
         app.get(ObservabilityService),
-        requestLogger,
+        requestLogger
       )
     );
     app.setGlobalPrefix(API_PREFIX);
@@ -298,7 +298,7 @@ describe('Auth flow (e2e)', () => {
     const cookies = registerResponse.headers['set-cookie'];
     const response = await readSseHandshake(
       app,
-      Array.isArray(cookies) ? cookies.map((cookie) => cookie.split(';')[0]).join('; ') : '',
+      Array.isArray(cookies) ? cookies.map((cookie) => cookie.split(';')[0]).join('; ') : ''
     );
 
     expect(response.status).toBe(200);

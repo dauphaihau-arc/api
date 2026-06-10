@@ -7,7 +7,7 @@ import { OrderShippingStatus } from '../../../domain/enums/order-shipping-status
 import { OrderStatus } from '../../../domain/enums/order-status.enum';
 import {
   SellerRefundActionNotAllowedError,
-  SellerRefundNotAllowedError,
+  SellerRefundNotAllowedError
 } from '../../errors/order-app.error';
 import { UpdateShopOrderRefundUseCase } from './update-shop-order-refund.use-case';
 

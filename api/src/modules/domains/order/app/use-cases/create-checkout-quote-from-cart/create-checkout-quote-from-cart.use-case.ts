@@ -43,9 +43,9 @@ export class CreateCheckoutQuoteFromCartUseCase {
       },
       cart,
       presentmentCurrency:
-        body.presentmentCurrency
-        ?? userPreferences?.currency
-        ?? this.requestContextService.get().currency,
+        body.presentmentCurrency ??
+        userPreferences?.currency ??
+        this.requestContextService.get().currency,
       shopAdjustments: body.shopAdjustments,
       shippingAddress: {
         fullName: address.fullName,

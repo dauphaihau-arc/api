@@ -6,7 +6,7 @@ import {
   IsString,
   IsUUID,
   MaxLength,
-  ValidateNested,
+  ValidateNested
 } from 'class-validator';
 
 class ShopAdjustmentDto {
@@ -36,9 +36,9 @@ export class CreateCheckoutQuoteFromCartDto {
   @ApiPropertyOptional({ name: 'presentment_currency' })
   @Expose({ name: 'presentment_currency' })
   @Transform(({ value, obj: source }) =>
-    value
-    ?? source.presentmentCurrency
-    ?? source.presentment_currency)
+    value ??
+    source.presentmentCurrency ??
+    source.presentment_currency)
   @IsString()
   presentmentCurrency?: string;
 

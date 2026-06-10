@@ -64,6 +64,15 @@ describe('OrderCheckoutService', () => {
     totalSelectedQuantity: 2,
     totalQuantity: 2,
   };
+  const shippingAddress = {
+    fullName: 'Member User',
+    address1: '123 Main St',
+    city: 'Los Angeles',
+    country: 'US',
+    state: 'CA',
+    zip: '90001',
+    phone: '123456789',
+  };
 
   function buildService(options?: {
     processResult?: { id: string; url: string } | undefined;
@@ -203,15 +212,7 @@ describe('OrderCheckoutService', () => {
       cart,
       {
         paymentType: PaymentType.CARD,
-        shippingAddress: {
-          fullName: 'Member User',
-          address1: '123 Main St',
-          city: 'Los Angeles',
-          country: 'US',
-          state: 'CA',
-          zip: '90001',
-          phone: '123456789',
-        },
+        shippingAddress,
         isTempCart: false,
       }
     );
@@ -267,15 +268,7 @@ describe('OrderCheckoutService', () => {
       cart,
       {
         paymentType: PaymentType.CARD,
-        shippingAddress: {
-          fullName: 'Member User',
-          address1: '123 Main St',
-          city: 'Los Angeles',
-          country: 'US',
-          state: 'CA',
-          zip: '90001',
-          phone: '123456789',
-        },
+        shippingAddress,
         isTempCart: false,
       }
     );
@@ -301,15 +294,7 @@ describe('OrderCheckoutService', () => {
       cart,
       {
         paymentType: PaymentType.CASH,
-        shippingAddress: {
-          fullName: 'Member User',
-          address1: '123 Main St',
-          city: 'Los Angeles',
-          country: 'US',
-          state: 'CA',
-          zip: '90001',
-          phone: '123456789',
-        },
+        shippingAddress,
         isTempCart: false,
       }
     );
@@ -401,15 +386,7 @@ describe('OrderCheckoutService', () => {
           shippingMinor: 0,
           discountMinor: 0,
           totalMinor: 1800,
-          shippingAddress: {
-            fullName: 'Member User',
-            address1: '123 Main St',
-            city: 'Los Angeles',
-            country: 'US',
-            state: 'CA',
-            zip: '90001',
-            phone: '123456789',
-          },
+          shippingAddress,
           shops: [
             {
               shopId: 'shop-1',

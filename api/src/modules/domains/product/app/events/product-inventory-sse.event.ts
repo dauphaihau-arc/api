@@ -31,8 +31,8 @@ export function resolveProductInventorySseStatus(
 }
 
 export function buildProductInventoryUpdatedSseEvent(
-  input: Omit<ProductInventoryUpdatedSseEventPayload, 'status' | 'occurredAt'>
-    & Partial<Pick<ProductInventoryUpdatedSseEventPayload, 'status' | 'occurredAt'>>
+  input: Omit<ProductInventoryUpdatedSseEventPayload, 'status' | 'occurredAt'> &
+    Partial<Pick<ProductInventoryUpdatedSseEventPayload, 'status' | 'occurredAt'>>
 ): ProductInventoryUpdatedSseEventPayload {
   return {
     productId: input.productId,

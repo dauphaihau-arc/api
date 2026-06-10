@@ -19,7 +19,7 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiParam,
-  ApiTags,
+  ApiTags
 } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { UseInterceptors } from '@nestjs/common';
@@ -39,7 +39,7 @@ import {
 import {
   buildListUsersQuery,
   DEFAULT_USER_LIST_SORT,
-  USER_LIST_SORT_FIELDS,
+  USER_LIST_SORT_FIELDS
 } from '../../app/user.types';
 import { CreateUserDto } from './dto/create-user.dto';
 import { ListUsersQueryDto } from './dto/list-users.query.dto';

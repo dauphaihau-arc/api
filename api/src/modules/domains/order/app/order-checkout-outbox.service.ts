@@ -259,8 +259,8 @@ export class OrderCheckoutOutboxService {
 
       event.status = OutboxEventStatus.PENDING;
       event.availableAt = new Date(
-        Date.now()
-          + RETRY_DELAYS_MS[
+        Date.now() +
+          RETRY_DELAYS_MS[
             Math.min(attemptCount - 1, RETRY_DELAYS_MS.length - 1)
           ]
       );

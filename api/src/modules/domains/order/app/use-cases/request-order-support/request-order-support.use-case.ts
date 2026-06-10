@@ -18,12 +18,12 @@ import {
   getOrderSubtotalMajor,
   getOrderSubtotalMinor,
   getOrderTotalMinor,
-  getOrderTotalMajor,
+  getOrderTotalMajor
 } from '../../order-money';
 import type { MyOrderDetail } from '../../order.types';
 import {
   buildSellerOrderSupportRequestedNotification,
-  getSellerOrderNotificationRecipientId,
+  getSellerOrderNotificationRecipientId
 } from '../../seller-order-notification';
 
 @Injectable()

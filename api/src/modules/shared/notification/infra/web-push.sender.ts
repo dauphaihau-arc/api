@@ -70,7 +70,7 @@ export class VapidWebPushSender implements WebPushSender {
         && 'statusCode' in error
         && typeof error.statusCode === 'number'
       )
-        ? error.statusCode
+        ? Number(error.statusCode)
         : undefined;
 
       throw new WebPushDeliveryError(

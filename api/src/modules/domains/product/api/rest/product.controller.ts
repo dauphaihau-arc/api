@@ -6,7 +6,7 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiParam,
-  ApiTags,
+  ApiTags
 } from '@nestjs/swagger';
 import { SkipThrottle } from '@nestjs/throttler';
 import { GetPublicProductBySlugsUseCase } from '../../app/use-cases/get-public-product-by-slugs/get-public-product-by-slugs.use-case';

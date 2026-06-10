@@ -6,7 +6,7 @@ import type {
   CategorySuggestion,
   CategorySummary,
   CreateCategoryAttributeInput,
-  CreateCategoryInput,
+  CreateCategoryInput
 } from '../app/category.types';
 
 @Injectable()

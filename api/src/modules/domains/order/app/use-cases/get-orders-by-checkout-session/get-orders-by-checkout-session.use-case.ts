@@ -3,7 +3,7 @@ import { PaymentGateway } from '~/modules/shared/payment/app/ports/payment-gatew
 import {
   CheckoutSessionExpiredError,
   CheckoutSessionIdRequiredError,
-  CheckoutSessionNotFoundError,
+  CheckoutSessionNotFoundError
 } from '../../errors/order-app.error';
 import { OrderPaymentService } from '../../order-payment.service';
 

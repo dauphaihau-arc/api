@@ -10,7 +10,7 @@ import { fromMinorUnits, toMinorUnits } from '~/common/utils/money';
 import { MARKETPLACE_CURRENCIES } from '~/config/marketplace.config';
 import {
   buildProductInventoryUpdatedSseEvent,
-  PRODUCT_INVENTORY_UPDATED_SSE_EVENT,
+  PRODUCT_INVENTORY_UPDATED_SSE_EVENT
 } from '~/modules/domains/product/app/events/product-inventory-sse.event';
 import { NotifyUserUseCase } from '~/modules/shared/notification/app/use-cases/notify-user/notify-user.use-case';
 import type { CartSnapshot } from '../../cart/app/cart.types';
@@ -32,14 +32,14 @@ import { OrderCheckoutOutboxService } from './order-checkout-outbox.service';
 import { OrderEventsService } from './order-events.service';
 import {
   buildSellerOrderCreatedNotification,
-  getSellerOrderNotificationRecipientId,
+  getSellerOrderNotificationRecipientId
 } from './seller-order-notification';
 import { getRequiredOrderNumber } from './order-number';
 import type {
   CheckoutActor,
   CreateOrderResult,
   ShippingAddressInput,
-  ShopAdjustmentInput,
+  ShopAdjustmentInput
 } from './order.types';
 
 @Injectable()

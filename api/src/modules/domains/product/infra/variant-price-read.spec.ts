@@ -1,6 +1,6 @@
 import {
   getActiveBasePrice,
-  getInventoryPricingSnapshot,
+  getInventoryPricingSnapshot
 } from './variant-price-read';
 
 describe('variant-price-read', () => {

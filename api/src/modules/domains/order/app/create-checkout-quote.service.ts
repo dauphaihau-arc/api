@@ -9,7 +9,7 @@ import { ProductInventoryEntity } from '~/modules/domains/product/infra/persiste
 import { RequestContextService } from '~/modules/shared/request-context/request-context.service';
 import {
   CheckoutQuoteActorType,
-  CheckoutQuoteEntity,
+  CheckoutQuoteEntity
 } from '../infra/persistence/entities/checkout-quote.entity';
 import { CheckoutQuoteItemEntity } from '../infra/persistence/entities/checkout-quote-item.entity';
 import { CheckoutQuoteNoItemsError } from './errors/order-app.error';
@@ -18,7 +18,7 @@ import type {
   CheckoutQuoteShopSummary,
   PricedCartItem,
   ShippingAddressInput,
-  ShopAdjustmentInput,
+  ShopAdjustmentInput
 } from './order.types';
 
 const QUOTE_TTL_MS = 30 * 60 * 1000;
@@ -28,7 +28,7 @@ export class CreateCheckoutQuoteService {
   constructor(
     private readonly entityManager: EntityManager,
     private readonly couponPricingService: CouponPricingService,
-    private readonly requestContextService: RequestContextService,
+    private readonly requestContextService: RequestContextService
   ) {}
 
   async createFromCart(input: {
@@ -103,11 +103,11 @@ export class CreateCheckoutQuoteService {
     entityManager.persist(quote);
 
     const items = allItems.map((item) => {
-      const unitPriceCheckoutMinor = item.unitPriceMinor
-        ?? toMinorUnits(item.effectiveUnitPrice, checkoutCurrency);
+      const unitPriceCheckoutMinor = item.unitPriceMinor ??
+        toMinorUnits(item.effectiveUnitPrice, checkoutCurrency);
       const sourceCurrency = item.sourceCurrency ?? checkoutCurrency;
-      const unitPriceSourceMinor = item.sourceUnitPriceMinor
-        ?? unitPriceCheckoutMinor;
+      const unitPriceSourceMinor = item.sourceUnitPriceMinor ??
+        unitPriceCheckoutMinor;
       const originalAmountMinor = item.originalAmountMinor != null
         ? item.originalAmountMinor
         : item.effectiveUnitPrice < item.price

@@ -2,7 +2,7 @@ import { IsEnum } from 'class-validator';
 
 export enum ShopOrderRefundAction {
   REQUEST = 'request',
-  RETRY = 'retry',
+  RETRY = 'retry'
 }
 
 export class UpdateShopOrderRefundDto {

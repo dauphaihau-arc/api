@@ -15,7 +15,7 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiParam,
-  ApiTags,
+  ApiTags
 } from '@nestjs/swagger';
 import { RequirePermissions } from '~/common/decorators/require-permissions.decorator';
 import { CurrentUser } from '~/common/decorators/current-user.decorator';
@@ -34,11 +34,11 @@ import { UpdateShopOrderShipmentDto } from './dto/update-shop-order-shipment.dto
 import { UpdateShopOrderStatusDto } from './dto/update-shop-order-status.dto';
 import {
   toShopOrderDetailResponse,
-  toShopOrderListResponse,
+  toShopOrderListResponse
 } from './order.response';
 import {
   isOrderAppError,
-  mapOrderAppErrorToHttpException,
+  mapOrderAppErrorToHttpException
 } from './order-http-error-mapper';
 
 @Controller('shops/:shop_id/orders')

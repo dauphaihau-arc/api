@@ -4,7 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { parseDurationToMilliseconds } from '~/libs/duration';
 
 type GuestOrderTrackingTokenPayload = {
-  v: 1;
+  ['v']: 1;
   exp: number;
 } & (
   | { sessionId: string }
@@ -22,12 +22,12 @@ export class GuestOrderTrackingTokenService {
   issue(input: ResolvedGuestOrderTrackingLink): string {
     const payload: GuestOrderTrackingTokenPayload = 'sessionId' in input
       ? {
-        v: 1,
+        ['v']: 1,
         exp: Date.now() + this.getTokenTtlInMilliseconds(),
         sessionId: input.sessionId,
       }
       : {
-        v: 1,
+        ['v']: 1,
         exp: Date.now() + this.getTokenTtlInMilliseconds(),
         email: input.email.trim().toLowerCase(),
         orderIds: input.orderIds.map((value) => value.trim()).filter(Boolean),
@@ -112,7 +112,7 @@ export class GuestOrderTrackingTokenService {
       return false;
     }
 
-    if (!('v' in value) || value.v !== 1 || !('exp' in value) || typeof value.exp !== 'number') {
+    if (!('v' in value) || value['v'] !== 1 || !('exp' in value) || typeof value.exp !== 'number') {
       return false;
     }
 

@@ -10,7 +10,7 @@ import { OrderCheckoutOutboxService } from './order-checkout-outbox.service';
 
 @Injectable()
 export class OrderCheckoutOutboxWorkerService
-  implements OnModuleInit, OnApplicationShutdown {
+implements OnModuleInit, OnApplicationShutdown {
   private readonly logger = new Logger(OrderCheckoutOutboxWorkerService.name);
   private interval?: NodeJS.Timeout;
 

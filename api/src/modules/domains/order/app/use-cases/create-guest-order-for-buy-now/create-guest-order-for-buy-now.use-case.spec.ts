@@ -104,7 +104,9 @@ describe('CreateGuestOrderForBuyNowUseCase', () => {
     } as unknown as jest.Mocked<LoadCheckoutQuoteService>;
     const orderCheckoutService = {
       createOrders: jest.fn().mockResolvedValue({
-        orderShops: [{ id: 'order-1', shopId: 'shop-1', shopName: 'Shop 1', shopSlug: 'shop-1' }],
+        orderShops: [{
+          id: 'order-1', shopId: 'shop-1', shopName: 'Shop 1', shopSlug: 'shop-1', 
+        }],
       }),
     } as unknown as jest.Mocked<OrderCheckoutService>;
     const jobDispatcher = {

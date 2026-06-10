@@ -19,7 +19,7 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiParam,
-  ApiTags,
+  ApiTags
 } from '@nestjs/swagger';
 import { CurrentUser } from '~/common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '~/modules/domains/auth/api/guard/jwt-auth.guard';

@@ -13,7 +13,7 @@ export function getOrderItemAmountMinor(
     | 'currency'
     | 'id'
   >,
-  fallbackCurrency?: string,
+  fallbackCurrency?: string
 ): number {
   if (item.unitPriceMinor != null) {
     return item.unitPriceMinor;
@@ -38,13 +38,13 @@ export function getOrderItemAmountMinor(
 }
 
 export function getOrderItemOriginalAmountMinor(
-  item: Pick<OrderItemEntity, 'originalAmountMinor'>,
+  item: Pick<OrderItemEntity, 'originalAmountMinor'>
 ): number | null {
   return item.originalAmountMinor ?? null;
 }
 
 export function getOrderSubtotalMinor(
-  order: Pick<OrderEntity, 'subtotalMinor' | 'subtotal' | 'currency' | 'id'>,
+  order: Pick<OrderEntity, 'subtotalMinor' | 'subtotal' | 'currency' | 'id'>
 ): number {
   if (order.subtotalMinor != null) {
     return order.subtotalMinor;
@@ -58,7 +58,7 @@ export function getOrderSubtotalMinor(
 }
 
 export function getOrderShippingMinor(
-  order: Pick<OrderEntity, 'shippingMinor' | 'totalShippingFee' | 'currency' | 'id'>,
+  order: Pick<OrderEntity, 'shippingMinor' | 'totalShippingFee' | 'currency' | 'id'>
 ): number {
   if (order.shippingMinor != null) {
     return order.shippingMinor;
@@ -72,7 +72,7 @@ export function getOrderShippingMinor(
 }
 
 export function getOrderDiscountMinor(
-  order: Pick<OrderEntity, 'discountMinor' | 'totalDiscount' | 'currency' | 'id'>,
+  order: Pick<OrderEntity, 'discountMinor' | 'totalDiscount' | 'currency' | 'id'>
 ): number {
   if (order.discountMinor != null) {
     return order.discountMinor;
@@ -86,7 +86,7 @@ export function getOrderDiscountMinor(
 }
 
 export function getOrderTotalMinor(
-  order: Pick<OrderEntity, 'totalMinor' | 'total' | 'currency' | 'id'>,
+  order: Pick<OrderEntity, 'totalMinor' | 'total' | 'currency' | 'id'>
 ): number {
   if (order.totalMinor != null) {
     return order.totalMinor;
@@ -100,25 +100,25 @@ export function getOrderTotalMinor(
 }
 
 export function getOrderSubtotalMajor(
-  order: Pick<OrderEntity, 'subtotalMinor' | 'subtotal' | 'currency' | 'id'>,
+  order: Pick<OrderEntity, 'subtotalMinor' | 'subtotal' | 'currency' | 'id'>
 ): number {
   return fromMinorUnits(getOrderSubtotalMinor(order), order.currency);
 }
 
 export function getOrderShippingMajor(
-  order: Pick<OrderEntity, 'shippingMinor' | 'totalShippingFee' | 'currency' | 'id'>,
+  order: Pick<OrderEntity, 'shippingMinor' | 'totalShippingFee' | 'currency' | 'id'>
 ): number {
   return fromMinorUnits(getOrderShippingMinor(order), order.currency);
 }
 
 export function getOrderDiscountMajor(
-  order: Pick<OrderEntity, 'discountMinor' | 'totalDiscount' | 'currency' | 'id'>,
+  order: Pick<OrderEntity, 'discountMinor' | 'totalDiscount' | 'currency' | 'id'>
 ): number {
   return fromMinorUnits(getOrderDiscountMinor(order), order.currency);
 }
 
 export function getOrderTotalMajor(
-  order: Pick<OrderEntity, 'totalMinor' | 'total' | 'currency' | 'id'>,
+  order: Pick<OrderEntity, 'totalMinor' | 'total' | 'currency' | 'id'>
 ): number {
   return fromMinorUnits(getOrderTotalMinor(order), order.currency);
 }

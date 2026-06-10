@@ -13,7 +13,7 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiParam,
-  ApiTags,
+  ApiTags
 } from '@nestjs/swagger';
 import { RequirePermissions } from '~/common/decorators/require-permissions.decorator';
 import { CurrentUser } from '~/common/decorators/current-user.decorator';

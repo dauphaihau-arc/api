@@ -14,7 +14,7 @@ import {
   OrderNotFoundError,
   SellerOrderCancelNotAllowedError,
   SellerOrderStatusUpdateNotAllowedError,
-  SellerShippedOrderCancelNotAllowedError,
+  SellerShippedOrderCancelNotAllowedError
 } from '../../errors/order-app.error';
 import { ORDER_UPDATED_SSE_EVENT } from '../../events/order-sse.event';
 import { buildScopedOrderIdentifierWhere } from '../../order-identifier';

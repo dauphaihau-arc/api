@@ -9,7 +9,7 @@ import {
   ApiCookieAuth,
   ApiOkResponse,
   ApiOperation,
-  ApiTags,
+  ApiTags
 } from '@nestjs/swagger';
 import { CurrentUser } from '~/common/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../../app/auth.types';

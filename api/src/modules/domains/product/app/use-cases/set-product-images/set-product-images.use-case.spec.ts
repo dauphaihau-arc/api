@@ -102,7 +102,9 @@ describe('SetProductImagesUseCase', () => {
   }
 
   it('uploads files, replaces images, and deletes old storage keys', async () => {
-    const { productRepository, shopRepository, storageService, jobDispatcher } = buildDeps();
+    const {
+      productRepository, shopRepository, storageService, jobDispatcher, 
+    } = buildDeps();
     const useCase = new SetProductImagesUseCase(
       productRepository,
       productRepository,

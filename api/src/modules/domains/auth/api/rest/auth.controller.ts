@@ -20,7 +20,7 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiQuery,
-  ApiTags,
+  ApiTags
 } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { Throttle } from '@nestjs/throttler';

@@ -1,5 +1,5 @@
 import type { UserAddressSummary } from '../app/user-address.types';
-import { UserAddressEntity } from './persistence/entities/user-address.entity';
+import type { UserAddressEntity } from './persistence/entities/user-address.entity';
 
 export function toUserAddressSummary(address: UserAddressEntity): UserAddressSummary {
   return {

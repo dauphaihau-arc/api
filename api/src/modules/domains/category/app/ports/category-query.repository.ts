@@ -1,6 +1,6 @@
 import type {
   CategorySuggestion,
-  CategorySummary,
+  CategorySummary
 } from '../category.types';
 
 export abstract class CategoryQueryRepository {

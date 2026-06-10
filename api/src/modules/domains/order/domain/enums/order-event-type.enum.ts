@@ -11,5 +11,5 @@ export enum OrderEventType {
   REFUND_REQUESTED = 'refund_requested',
   REFUND_SUCCEEDED = 'refund_succeeded',
   REFUND_FAILED = 'refund_failed',
-  REFUND_NOT_REQUIRED = 'refund_not_required',
+  REFUND_NOT_REQUIRED = 'refund_not_required'
 }

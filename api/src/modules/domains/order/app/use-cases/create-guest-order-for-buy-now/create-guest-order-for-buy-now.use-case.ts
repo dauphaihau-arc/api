@@ -15,7 +15,7 @@ import { doesCartMatchCheckoutQuote } from '../../checkout-quote-cart-matcher';
 import { buildGuestOrderTrackingUrl } from '../../guest-order-tracking-url.builder';
 import {
   CheckoutQuoteCartChangedError,
-  TemporaryCartNotFoundError,
+  TemporaryCartNotFoundError
 } from '../../errors/order-app.error';
 import { GuestOrderTrackingTokenService } from '../../guest-order-tracking-token.service';
 import { LoadCheckoutQuoteService } from '../../load-checkout-quote.service';

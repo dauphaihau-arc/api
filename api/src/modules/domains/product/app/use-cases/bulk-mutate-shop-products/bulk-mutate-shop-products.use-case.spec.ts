@@ -9,7 +9,7 @@ import type { SellerProductQueryRepository } from '../../ports/seller-product-qu
 import type { ProductDraftSummary } from '../../product.types';
 import {
   BulkMutateShopProductsAction,
-  BulkMutateShopProductsUseCase,
+  BulkMutateShopProductsUseCase
 } from './bulk-mutate-shop-products.use-case';
 
 describe('BulkMutateShopProductsUseCase', () => {
@@ -78,8 +78,8 @@ describe('BulkMutateShopProductsUseCase', () => {
     ]);
 
     const productRepository = {
-      findById: jest.fn().mockImplementation(async id => products.get(id) ?? null),
-      updateState: jest.fn().mockImplementation(async (id, state) => {
+      findById: jest.fn().mockImplementation(async (id: string) => products.get(id) ?? null),
+      updateState: jest.fn().mockImplementation(async (id: string, state: ProductState) => {
         const product = products.get(id);
 
         if (!product) {
@@ -90,7 +90,7 @@ describe('BulkMutateShopProductsUseCase', () => {
         products.set(id, updatedProduct);
         return updatedProduct;
       }),
-      publish: jest.fn().mockImplementation(async id => {
+      publish: jest.fn().mockImplementation(async (id: string) => {
         const product = products.get(id);
 
         if (!product) {

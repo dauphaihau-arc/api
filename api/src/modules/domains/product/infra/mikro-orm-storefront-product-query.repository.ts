@@ -124,7 +124,7 @@ implements StorefrontProductQueryRepository {
       .filter((product): product is PublicListLoadedProduct => product !== undefined)
       .filter(product => this.shouldIncludeInPublicList(product));
 
-    const pagedProducts = input.order === 'price_asc' || input.order === 'price_desc'
+    const pagedProducts = (input.order === 'price_asc' || input.order === 'price_desc')
       && !canUseDenormalizedPriceSort
       ? await this.sortProductsByComparablePrice(orderedProducts, input.order, input.page, input.limit)
       : orderedProducts;
@@ -457,7 +457,7 @@ implements StorefrontProductQueryRepository {
   }
 
   private async getResolvedPublicPricing(
-    inventory: ProductInventoryEntity,
+    inventory: ProductInventoryEntity
   ): Promise<{ amountMinor?: number; originalAmountMinor?: number; currency?: string }> {
     const pricing = await this.resolvedStorefrontPriceService.resolveForCurrentRequest(inventory);
 

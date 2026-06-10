@@ -123,7 +123,9 @@ describe('UpdateShopOrderShipmentUseCase', () => {
   }
 
   it('updates shipment details and marks the order as shipped', async () => {
-    const { useCase, order, fakeEntityManager, notifyUserUseCase } = buildUseCase();
+    const {
+      useCase, order, fakeEntityManager, notifyUserUseCase, 
+    } = buildUseCase();
 
     const result = await useCase.execute('shop-1', 'order-1', {
       shippingStatus: OrderShippingStatus.SHIPPED,

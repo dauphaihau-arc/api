@@ -12,7 +12,7 @@ describe('ExchangeRateSyncService', () => {
     };
     const transactionalEntityManager = {
       getRepository: jest.fn().mockReturnValue(repository),
-      create: jest.fn((_: unknown, payload: Record<string, unknown>) => payload),
+      create: jest.fn((_entity: unknown, payload: Record<string, unknown>) => payload),
       persist: jest.fn((payload: Record<string, unknown>) => {
         persistedRecords.push(payload);
       }),

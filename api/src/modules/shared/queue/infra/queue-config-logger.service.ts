@@ -1,4 +1,6 @@
-import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import {
+  Inject, Injectable, Logger, OnModuleInit 
+} from '@nestjs/common';
 import { QUEUE_CONFIG } from '~/config/queue.config';
 import type { QueueConfig } from '~/config/queue.config';
 

@@ -5,7 +5,7 @@ import { UserAddressCommandRepository } from '../app/ports/user-address-command.
 import type {
   CreateMyAddressInput,
   UpdateMyAddressInput,
-  UserAddressSummary,
+  UserAddressSummary
 } from '../app/user-address.types';
 import { UserAddressEntity } from './persistence/entities/user-address.entity';
 import { toUserAddressSummary } from './user-address-summary.mapper';

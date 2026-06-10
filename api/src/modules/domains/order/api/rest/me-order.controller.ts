@@ -16,7 +16,7 @@ import {
   ApiOperation,
   ApiParam,
   ApiQuery,
-  ApiTags,
+  ApiTags
 } from '@nestjs/swagger';
 import { CurrentUser } from '~/common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '~/modules/domains/auth/api/guard/jwt-auth.guard';
@@ -24,7 +24,7 @@ import { PermissionsGuard } from '~/modules/domains/auth/api/guard/permissions.g
 import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
 import {
   isOrderAppError,
-  mapOrderAppErrorToHttpException,
+  mapOrderAppErrorToHttpException
 } from './order-http-error-mapper';
 import { CreateCheckoutQuoteForBuyNowUseCase } from '../../app/use-cases/create-checkout-quote-for-buy-now/create-checkout-quote-for-buy-now.use-case';
 import { CreateOrderForBuyNowUseCase } from '../../app/use-cases/create-order-for-buy-now/create-order-for-buy-now.use-case';

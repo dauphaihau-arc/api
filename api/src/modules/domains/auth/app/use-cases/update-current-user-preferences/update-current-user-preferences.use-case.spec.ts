@@ -1,7 +1,7 @@
 import type { UserPreferences } from '~/config/marketplace.config';
 import type { AuthenticatedUser } from '../../auth.types';
 import type { UserPreferenceRepository } from '../../ports/user-preference.repository';
-import { GetCurrentUserUseCase } from '../get-current-user/get-current-user.use-case';
+import type { GetCurrentUserUseCase } from '../get-current-user/get-current-user.use-case';
 import { UpdateCurrentUserPreferencesUseCase } from './update-current-user-preferences.use-case';
 
 describe('UpdateCurrentUserPreferencesUseCase', () => {

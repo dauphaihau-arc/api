@@ -1,7 +1,7 @@
 import type {
   CategorySummary,
   CreateCategoryAttributeInput,
-  CreateCategoryInput,
+  CreateCategoryInput
 } from '../category.types';
 
 export abstract class CategoryCommandRepository {

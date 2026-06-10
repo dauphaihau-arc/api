@@ -5,7 +5,7 @@ import {
   HttpException,
   HttpStatus,
   Post,
-  UnauthorizedException,
+  UnauthorizedException
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ApiExcludeController } from '@nestjs/swagger';

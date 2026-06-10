@@ -1,6 +1,6 @@
 import {
   MARKETPLACE_MARKETS,
-  type MarketplaceCurrency,
+  type MarketplaceCurrency
 } from '~/config/marketplace.config';
 import type { ProductInventoryEntity } from './persistence/entities/product-inventory.entity';
 import type { VariantPriceEntity } from './persistence/entities/variant-price.entity';
@@ -17,19 +17,19 @@ export interface InventoryPricingContext {
 }
 
 export function getActiveBasePrice(
-  inventory: ProductInventoryEntity,
+  inventory: ProductInventoryEntity
 ): VariantPriceEntity | undefined {
   return inventory.prices
     .getItems()
     .find(
-      (price) => !price.marketCode && !price.activeTo,
+      (price) => !price.marketCode && !price.activeTo
     );
 }
 
 export function getActiveMarketPrice(
   inventory: ProductInventoryEntity,
   marketCode: string,
-  currency?: string,
+  currency?: string
 ): VariantPriceEntity | undefined {
   return inventory.prices
     .getItems()
@@ -48,7 +48,7 @@ export function getActiveMarketPrice(
 
 export function getInventoryPricingSnapshot(
   inventory: ProductInventoryEntity,
-  context?: InventoryPricingContext,
+  context?: InventoryPricingContext
 ): InventoryPricingSnapshot | undefined {
   const normalizedContext = normalizePricingContext(context);
   const activePrice = selectActivePrice(inventory, normalizedContext);
@@ -68,7 +68,7 @@ export function getInventoryPricingSnapshot(
 
 function selectActivePrice(
   inventory: ProductInventoryEntity,
-  context?: Required<InventoryPricingContext>,
+  context?: Required<InventoryPricingContext>
 ): VariantPriceEntity | undefined {
   const requestedCurrency = context?.currency;
   const marketCode = context?.marketCode;
@@ -103,7 +103,7 @@ function selectActivePrice(
 }
 
 function normalizePricingContext(
-  context?: InventoryPricingContext,
+  context?: InventoryPricingContext
 ): Required<InventoryPricingContext> | undefined {
   const marketCode = context?.marketCode?.trim();
 

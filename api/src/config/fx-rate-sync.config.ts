@@ -1,7 +1,7 @@
 import type { ConfigService } from '@nestjs/config';
 import {
   MARKETPLACE_MARKETS,
-  type MarketplaceCurrency,
+  type MarketplaceCurrency
 } from './marketplace.config';
 import { parseDurationToMilliseconds } from '../libs/duration';
 

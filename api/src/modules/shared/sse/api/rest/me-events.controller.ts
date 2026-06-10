@@ -5,7 +5,7 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiProduces,
-  ApiTags,
+  ApiTags
 } from '@nestjs/swagger';
 import type { Observable } from 'rxjs';
 import { CurrentUser } from '~/common/decorators/current-user.decorator';

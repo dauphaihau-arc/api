@@ -5,7 +5,7 @@ import {
   ApiOperation,
   ApiParam,
   ApiProduces,
-  ApiTags,
+  ApiTags
 } from '@nestjs/swagger';
 import type { Observable } from 'rxjs';
 import { SsePublisher } from '~/modules/shared/sse/infra/sse.publisher';

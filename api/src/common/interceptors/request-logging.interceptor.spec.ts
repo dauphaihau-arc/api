@@ -2,7 +2,7 @@ import {
   HttpException,
   HttpStatus,
   type CallHandler,
-  type ExecutionContext,
+  type ExecutionContext
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { lastValueFrom, throwError } from 'rxjs';

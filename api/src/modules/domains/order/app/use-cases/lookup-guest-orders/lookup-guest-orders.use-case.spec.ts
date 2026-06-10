@@ -130,7 +130,9 @@ describe('LookupGuestOrdersUseCase', () => {
   });
 
   it('looks up guest orders by checkout session id without requiring email', async () => {
-    const { useCase, find, itemFind, execute } = buildUseCase();
+    const {
+      useCase, find, itemFind, execute, 
+    } = buildUseCase();
     execute.mockResolvedValue([{ id: 'order-1' }]);
     find.mockResolvedValue([{
       id: 'order-1',
@@ -162,7 +164,7 @@ describe('LookupGuestOrdersUseCase', () => {
     });
 
     expect(execute).toHaveBeenCalledWith(
-      expect.stringContaining(`where payment_details ->> 'checkout_session_id' = ?`),
+      expect.stringContaining('where payment_details ->> \'checkout_session_id\' = ?'),
       ['cs_test_123']
     );
     expect(find).toHaveBeenCalledWith(

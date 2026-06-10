@@ -7,7 +7,7 @@ import {
   Result
 } from '~/common/application/result';
 import type {
-  AuthResponse,
+  AuthResponse
 } from '../../auth.types';
 import {
   EmailAlreadyRegisteredError,

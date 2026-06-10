@@ -2,7 +2,7 @@ import { LockMode } from '@mikro-orm/core';
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
 import {
-  buildProductInventoryUpdatedSseEvent,
+  buildProductInventoryUpdatedSseEvent
 } from '~/modules/domains/product/app/events/product-inventory-sse.event';
 import { CouponUsageEntity } from '../../coupon/infra/persistence/entities/coupon-usage.entity';
 import { ProductInventoryEntity } from '../../product/infra/persistence/entities/product-inventory.entity';

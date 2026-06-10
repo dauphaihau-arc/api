@@ -8,7 +8,7 @@ type SellerOrderNotificationData = Record<string, unknown> & {
   actor?: 'buyer' | 'admin' | 'system';
   status?: string;
   refundStatus?: 'succeeded' | 'failed';
-}
+};
 
 export function getSellerOrderNotificationRecipientId(input: {
   shop?: {

@@ -4,7 +4,7 @@ import {
   Counter,
   Gauge,
   Histogram,
-  Registry,
+  Registry
 } from 'prom-client';
 import { Client } from 'pg';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
@@ -179,7 +179,7 @@ export class ObservabilityService {
       query: (...args: unknown[]) => unknown;
     };
     const originalQuery = clientPrototype.query;
-    const observabilityService = this;
+    const recordDbQuery = this.recordDbQuery.bind(this);
 
     clientPrototype.query = function instrumentedQuery(...args: unknown[]) {
       const operation = extractSqlOperation(args[0]);
@@ -196,7 +196,7 @@ export class ObservabilityService {
         ) => void;
 
         args[callbackIndex] = (error: Error | null, result: unknown) => {
-          observabilityService.recordDbQuery(
+          recordDbQuery(
             operation,
             statement,
             startedAt,
@@ -214,17 +214,17 @@ export class ObservabilityService {
       if (result && typeof (result as Promise<unknown>).then === 'function') {
         return (result as Promise<unknown>)
           .then((value) => {
-            observabilityService.recordDbQuery(operation, statement, startedAt, 'ok');
+            recordDbQuery(operation, statement, startedAt, 'ok');
 
             return value;
           })
           .catch((error: unknown) => {
-            observabilityService.recordDbQuery(operation, statement, startedAt, 'error');
+            recordDbQuery(operation, statement, startedAt, 'error');
             throw error;
           });
       }
 
-      observabilityService.recordDbQuery(operation, statement, startedAt, 'ok');
+      recordDbQuery(operation, statement, startedAt, 'ok');
 
       return result;
     };
@@ -306,7 +306,7 @@ export class ObservabilityService {
       'paused',
       'prioritized',
       'waiting',
-      'waiting-children',
+      'waiting-children'
     );
 
     for (const [state, count] of Object.entries(counts)) {

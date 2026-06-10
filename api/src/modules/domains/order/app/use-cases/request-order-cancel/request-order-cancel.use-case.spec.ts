@@ -152,18 +152,18 @@ describe('RequestOrderCancelUseCase', () => {
 
     const result = await useCase.execute(actor, 'order-1', {
       cancelReason: 'Changed my mind',
-    })
+    });
 
-    expect(order.status).toBe(OrderStatus.CANCELED)
-    expect(order.cancelRequestedAt).toBeInstanceOf(Date)
-    expect(order.canceledAt).toBeInstanceOf(Date)
-    expect(order.cancelReason).toBe('Changed my mind')
-    expect(cancellationService.cancelOrder).toHaveBeenCalled()
-    expect(fakeEntityManager.flush).toHaveBeenCalled()
+    expect(order.status).toBe(OrderStatus.CANCELED);
+    expect(order.cancelRequestedAt).toBeInstanceOf(Date);
+    expect(order.canceledAt).toBeInstanceOf(Date);
+    expect(order.cancelReason).toBe('Changed my mind');
+    expect(cancellationService.cancelOrder).toHaveBeenCalled();
+    expect(fakeEntityManager.flush).toHaveBeenCalled();
     expect(jobDispatcher.dispatch).toHaveBeenCalledWith('order.send-seller-order-update-email', {
       orderId: 'order-1',
       eventType: 'canceled',
-    })
+    });
     expect(notifyUserUseCase.execute).toHaveBeenCalledWith(expect.objectContaining({
       userId: 'seller-1',
       type: 'seller.order.cancel_requested',
@@ -174,17 +174,17 @@ describe('RequestOrderCancelUseCase', () => {
         orderNumber: 'ORD-20260604-000001',
         shopId: 'shop-1',
       }),
-    }))
-    expect(result.status).toBe(OrderStatus.CANCELED)
-  })
+    }));
+    expect(result.status).toBe(OrderStatus.CANCELED);
+  });
 
   it('rejects canceling shipped orders', async () => {
     const { useCase } = buildUseCase({
       shippingStatus: OrderShippingStatus.SHIPPED,
-    })
+    });
 
     await expect(
       useCase.execute(actor, 'order-1', {})
-    ).rejects.toThrow(BuyerShippedOrderCancelNotAllowedError)
-  })
-})
+    ).rejects.toThrow(BuyerShippedOrderCancelNotAllowedError);
+  });
+});

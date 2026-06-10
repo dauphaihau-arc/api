@@ -8,7 +8,7 @@ import { GetMyAddressUseCase } from '~/modules/domains/user/app/use-cases/get-my
 import type { CreateCheckoutQuoteForBuyNowDto } from '../../../api/rest/dto/create-checkout-quote-for-buy-now.dto';
 import {
   AddressNotFoundError,
-  TemporaryCartNotFoundError,
+  TemporaryCartNotFoundError
 } from '../../errors/order-app.error';
 import { CreateCheckoutQuoteService } from '../../create-checkout-quote.service';
 
@@ -62,9 +62,9 @@ export class CreateCheckoutQuoteForBuyNowUseCase {
         phone: address.phone,
       },
       presentmentCurrency:
-        body.presentmentCurrency
-        ?? userPreferences?.currency
-        ?? this.requestContextService.get().currency,
+        body.presentmentCurrency ??
+        userPreferences?.currency ??
+        this.requestContextService.get().currency,
       shopAdjustments,
     });
   }

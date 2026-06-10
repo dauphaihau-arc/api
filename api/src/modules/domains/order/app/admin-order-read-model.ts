@@ -12,7 +12,7 @@ import {
   getOrderSubtotalMajor,
   getOrderSubtotalMinor,
   getOrderTotalMinor,
-  getOrderTotalMajor,
+  getOrderTotalMajor
 } from './order-money';
 
 export function toAdminOrderDetail(

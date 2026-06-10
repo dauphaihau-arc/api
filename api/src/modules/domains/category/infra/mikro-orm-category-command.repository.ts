@@ -4,7 +4,7 @@ import { CategoryCommandRepository } from '../app/ports/category-command.reposit
 import type {
   CategorySummary,
   CreateCategoryAttributeInput,
-  CreateCategoryInput,
+  CreateCategoryInput
 } from '../app/category.types';
 import { CategoryAttributeOptionEntity } from './persistence/entities/category-attribute-option.entity';
 import { CategoryAttributeEntity } from './persistence/entities/category-attribute.entity';

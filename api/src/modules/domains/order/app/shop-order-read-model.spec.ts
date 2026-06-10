@@ -1,6 +1,6 @@
 import { ProductImageVariant } from '../../product/domain/enums/product-image-variant.enum';
 import { ProductImageVariantEntity } from '../../product/infra/persistence/entities/product-image-variant.entity';
-import { ProductImageEntity } from '../../product/infra/persistence/entities/product-image.entity';
+import type { ProductImageEntity } from '../../product/infra/persistence/entities/product-image.entity';
 import { toShopOrderDetail } from './shop-order-read-model';
 import type { OrderEntity } from '../infra/persistence/entities/order.entity';
 import type { OrderItemEntity } from '../infra/persistence/entities/order-item.entity';

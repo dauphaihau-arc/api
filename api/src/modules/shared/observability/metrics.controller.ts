@@ -1,9 +1,11 @@
-import { Controller, Get, Header, Res } from '@nestjs/common';
+import {
+  Controller, Get, Header, Res 
+} from '@nestjs/common';
 import {
   ApiOkResponse,
   ApiOperation,
   ApiProduces,
-  ApiTags,
+  ApiTags
 } from '@nestjs/swagger';
 import { SkipThrottle } from '@nestjs/throttler';
 import type { Response } from 'express';

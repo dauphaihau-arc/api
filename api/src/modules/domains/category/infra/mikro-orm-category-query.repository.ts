@@ -4,7 +4,7 @@ import { StorageService } from '~/modules/shared/storage/app/ports/storage.servi
 import { CategoryQueryRepository } from '../app/ports/category-query.repository';
 import type {
   CategorySuggestion,
-  CategorySummary,
+  CategorySummary
 } from '../app/category.types';
 import { CategoryEntity } from './persistence/entities/category.entity';
 import { toCategorySummary } from './category-summary.projector';

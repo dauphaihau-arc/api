@@ -5,7 +5,7 @@ import {
   IsOptional,
   IsString,
   IsUUID,
-  MaxLength,
+  MaxLength
 } from 'class-validator';
 
 export class CreateCheckoutQuoteForBuyNowDto {
@@ -38,9 +38,9 @@ export class CreateCheckoutQuoteForBuyNowDto {
   @ApiPropertyOptional({ name: 'presentment_currency' })
   @Expose({ name: 'presentment_currency' })
   @Transform(({ value, obj: source }) =>
-    value
-    ?? source.presentmentCurrency
-    ?? source.presentment_currency)
+    value ??
+    source.presentmentCurrency ??
+    source.presentment_currency)
   @IsString()
   presentmentCurrency?: string;
 }

@@ -46,7 +46,7 @@ export class FxRateService {
         orderBy: {
           effectiveAt: 'desc',
         },
-      },
+      }
     );
 
     if (!rate) {

@@ -1,4 +1,6 @@
-import { IsEnum, IsString, MaxLength, MinLength } from 'class-validator';
+import {
+  IsEnum, IsString, MaxLength, MinLength 
+} from 'class-validator';
 import { MARKETPLACE_CURRENCIES, type MarketplaceCurrency } from '~/config/marketplace.config';
 
 export class CreateShopDto {

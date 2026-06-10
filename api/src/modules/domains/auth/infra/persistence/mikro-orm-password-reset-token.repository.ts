@@ -10,7 +10,7 @@ import { PasswordResetTokenEntity } from './entities/password-reset-token.entity
 
 @Injectable()
 export class MikroOrmPasswordResetTokenRepository
-  implements PasswordResetTokenRepository {
+implements PasswordResetTokenRepository {
   constructor(private readonly entityManager: EntityManager) {}
 
   async create(

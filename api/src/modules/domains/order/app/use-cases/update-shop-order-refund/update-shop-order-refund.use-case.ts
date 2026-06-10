@@ -16,7 +16,7 @@ import {
   OrderNotFoundError,
   SellerRefundActionNotAllowedError,
   SellerRefundNotAllowedError,
-  SellerRefundRequiresCardPaymentError,
+  SellerRefundRequiresCardPaymentError
 } from '../../errors/order-app.error';
 import { OrderEventsService } from '../../order-events.service';
 import { buildScopedOrderIdentifierWhere } from '../../order-identifier';

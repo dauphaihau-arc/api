@@ -13,7 +13,7 @@ import { OrderEntity } from '../infra/persistence/entities/order.entity';
 import { OrderEventsService } from './order-events.service';
 import {
   buildSellerOrderRefundNotification,
-  getSellerOrderNotificationRecipientId,
+  getSellerOrderNotificationRecipientId
 } from './seller-order-notification';
 import { getRequiredOrderNumber } from './order-number';
 

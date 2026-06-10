@@ -1,6 +1,6 @@
-import { EntityManager } from '@mikro-orm/postgresql';
+import type { EntityManager } from '@mikro-orm/postgresql';
 import { OrderEventEntity } from '../infra/persistence/entities/order-event.entity';
-import { OrderEntity } from '../infra/persistence/entities/order.entity';
+import type { OrderEntity } from '../infra/persistence/entities/order.entity';
 import { OrderItemEntity } from '../infra/persistence/entities/order-item.entity';
 import { toShopOrderDetail } from './shop-order-read-model';
 import type { ShopOrderDetail } from './order.types';

@@ -172,7 +172,7 @@ describe('ListOrdersUseCase', () => {
         page: 1,
         limit: 20,
         shippingStatus: OrderShippingStatus.PRE_TRANSIT,
-      },
+      }
     );
     const canceled = await useCase.execute(
       { userId: 'user-1' } as never,
@@ -180,7 +180,7 @@ describe('ListOrdersUseCase', () => {
         page: 1,
         limit: 20,
         status: OrderStatus.CANCELED,
-      },
+      }
     );
     const searchedByProduct = await useCase.execute(
       { userId: 'user-1' } as never,
@@ -188,7 +188,7 @@ describe('ListOrdersUseCase', () => {
         page: 1,
         limit: 20,
         search: 'hoodie',
-      },
+      }
     );
     const searchedByShop = await useCase.execute(
       { userId: 'user-1' } as never,
@@ -196,7 +196,7 @@ describe('ListOrdersUseCase', () => {
         page: 1,
         limit: 20,
         search: 'red mart',
-      },
+      }
     );
     const awaitingPayment = await useCase.execute(
       { userId: 'user-1' } as never,
@@ -204,7 +204,7 @@ describe('ListOrdersUseCase', () => {
         page: 1,
         limit: 20,
         state: 'awaiting_payment',
-      },
+      }
     );
     const processing = await useCase.execute(
       { userId: 'user-1' } as never,
@@ -212,7 +212,7 @@ describe('ListOrdersUseCase', () => {
         page: 1,
         limit: 20,
         state: 'processing',
-      },
+      }
     );
     const shipped = await useCase.execute(
       { userId: 'user-1' } as never,
@@ -220,7 +220,7 @@ describe('ListOrdersUseCase', () => {
         page: 1,
         limit: 20,
         state: 'shipped',
-      },
+      }
     );
     const delivered = await useCase.execute(
       { userId: 'user-1' } as never,
@@ -228,7 +228,7 @@ describe('ListOrdersUseCase', () => {
         page: 1,
         limit: 20,
         state: 'delivered',
-      },
+      }
     );
     const refunded = await useCase.execute(
       { userId: 'user-1' } as never,
@@ -236,7 +236,7 @@ describe('ListOrdersUseCase', () => {
         page: 1,
         limit: 20,
         state: 'refunded',
-      },
+      }
     );
 
     expect(notShipped.orderShops.map((order) => order.id)).toEqual([

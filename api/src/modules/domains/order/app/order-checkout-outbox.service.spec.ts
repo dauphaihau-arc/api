@@ -104,7 +104,9 @@ describe('OrderCheckoutOutboxService', () => {
   }
 
   it('creates a Stripe session and marks the outbox event processed', async () => {
-    const { service, paymentGateway, outboxEvent, order } = buildService();
+    const {
+      service, paymentGateway, outboxEvent, order, 
+    } = buildService();
 
     const result = await service.processEventById('outbox-1');
 

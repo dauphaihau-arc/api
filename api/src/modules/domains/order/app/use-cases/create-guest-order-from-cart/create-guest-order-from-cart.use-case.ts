@@ -15,7 +15,7 @@ import { buildGuestOrderTrackingUrl } from '../../guest-order-tracking-url.build
 import { GuestOrderTrackingTokenService } from '../../guest-order-tracking-token.service';
 import {
   CartNotFoundError,
-  CheckoutQuoteCartChangedError,
+  CheckoutQuoteCartChangedError
 } from '../../errors/order-app.error';
 import { LoadCheckoutQuoteService } from '../../load-checkout-quote.service';
 import { OrderCheckoutService } from '../../order-checkout.service';

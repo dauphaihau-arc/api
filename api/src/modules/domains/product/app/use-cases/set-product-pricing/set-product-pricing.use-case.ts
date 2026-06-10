@@ -7,7 +7,7 @@ import { AuditLogService } from '~/modules/shared/audit/app/audit-log.service';
 import {
   ActorCannotCreateProductDraftError,
   InvalidProductVariantConfigurationError,
-  ProductNotFoundError,
+  ProductNotFoundError
 } from '../../errors/product-app.error';
 import { ProductPricingRepository } from '../../ports/product-pricing.repository';
 import { SellerProductQueryRepository } from '../../ports/seller-product-query.repository';

@@ -1,6 +1,6 @@
 import {
   toUserListResponse,
-  toUserResponse,
+  toUserResponse
 } from './user.response';
 
 describe('user.response', () => {

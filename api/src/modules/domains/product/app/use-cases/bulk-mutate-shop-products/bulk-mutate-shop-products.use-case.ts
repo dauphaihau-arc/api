@@ -11,7 +11,7 @@ import { validatePublishReadiness } from '../publish-product/publish-product-rea
 export enum BulkMutateShopProductsAction {
   PUBLISH = 'publish',
   DEACTIVATE = 'deactivate',
-  REMOVE = 'remove',
+  REMOVE = 'remove'
 }
 
 export interface BulkMutateShopProductsInput {

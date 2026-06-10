@@ -52,7 +52,7 @@ describe('BulkDeleteShopCouponsUseCase', () => {
           id.$in.map((couponId: string) => coupons.get(couponId)).filter(Boolean)
         ),
       }),
-      remove: jest.fn().mockImplementation((coupon) => {
+      remove: jest.fn().mockImplementation((coupon: { id: string }) => {
         removed.push(coupon.id);
       }),
       flush: jest.fn().mockResolvedValue(undefined),

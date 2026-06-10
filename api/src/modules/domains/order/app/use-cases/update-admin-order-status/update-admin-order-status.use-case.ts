@@ -13,7 +13,7 @@ import { buildOrderIdentifierWhere } from '../../order-identifier';
 import {
   AdminOrderStatusOverrideNotAllowedError,
   AdminRefundNotAllowedError,
-  OrderNotFoundError,
+  OrderNotFoundError
 } from '../../errors/order-app.error';
 import { ORDER_UPDATED_SSE_EVENT } from '../../events/order-sse.event';
 import type { AdminOrderDetail } from '../../order.types';

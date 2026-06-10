@@ -4,7 +4,7 @@ import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import {
   buildProductInventoryUpdatedSseEvent,
-  PRODUCT_INVENTORY_UPDATED_SSE_EVENT,
+  PRODUCT_INVENTORY_UPDATED_SSE_EVENT
 } from '~/modules/domains/product/app/events/product-inventory-sse.event';
 import { CouponUsageEntity } from '../../coupon/infra/persistence/entities/coupon-usage.entity';
 import { ProductInventoryEntity } from '../../product/infra/persistence/entities/product-inventory.entity';
@@ -118,7 +118,7 @@ export class OrderPaymentService {
         { populate: ['coupon'] }
       );
 
-      const inventoryEvents: ReturnType<typeof buildProductInventoryUpdatedSseEvent>[] = [];
+      const restockedInventoryEvents: ReturnType<typeof buildProductInventoryUpdatedSseEvent>[] = [];
 
       for (const item of orderItems) {
         const inventory = await entityManager.getRepository(ProductInventoryEntity).findOne(
@@ -128,7 +128,7 @@ export class OrderPaymentService {
 
         if (inventory) {
           inventory.stock += item.quantity;
-          inventoryEvents.push(buildProductInventoryUpdatedSseEvent({
+          restockedInventoryEvents.push(buildProductInventoryUpdatedSseEvent({
             productId: item.product.id,
             inventoryId: inventory.id,
             stock: inventory.stock,
@@ -165,7 +165,7 @@ export class OrderPaymentService {
       }
 
       await entityManager.flush();
-      return inventoryEvents;
+      return restockedInventoryEvents;
     });
 
     for (const inventoryEvent of inventoryEvents) {

@@ -7,7 +7,7 @@ import type {
   OrderShippingAddressSummary,
   ShopOrderDetail,
   ShopOrderSummary,
-  OrderTimelineEvent,
+  OrderTimelineEvent
 } from './order.types';
 import {
   getOrderDiscountMajor,
@@ -19,7 +19,7 @@ import {
   getOrderSubtotalMajor,
   getOrderSubtotalMinor,
   getOrderTotalMinor,
-  getOrderTotalMajor,
+  getOrderTotalMajor
 } from './order-money';
 
 function resolveOrderItemImageStorageKey(item: OrderItemEntity): string | undefined {

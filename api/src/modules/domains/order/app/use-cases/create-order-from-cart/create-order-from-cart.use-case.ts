@@ -5,7 +5,7 @@ import { doesCartMatchCheckoutQuote } from '../../checkout-quote-cart-matcher';
 import type { CreateOrderFromCartDto } from '../../../api/rest/dto/create-order-from-cart.dto';
 import {
   CartNotFoundError,
-  CheckoutQuoteCartChangedError,
+  CheckoutQuoteCartChangedError
 } from '../../errors/order-app.error';
 import { LoadCheckoutQuoteService } from '../../load-checkout-quote.service';
 import { OrderCheckoutService } from '../../order-checkout.service';

@@ -67,18 +67,18 @@ export const toShopProductDetailResponse = (
   })),
   shipping: product.shipping
     ? {
-        id: product.shipping.id,
-        origin_country: product.shipping.originCountry,
-        origin_zip: product.shipping.originZip,
-        process_time_label: product.shipping.processTimeLabel,
-        destinations: product.shipping.destinations.map((destination) => ({
-          id: destination.id,
-          country_code: destination.countryCode,
-          delivery_time_label: destination.deliveryTimeLabel,
-          service: destination.service,
-          charge_type: destination.chargeType,
-          rank: destination.rank,
-        })),
-      }
+      id: product.shipping.id,
+      origin_country: product.shipping.originCountry,
+      origin_zip: product.shipping.originZip,
+      process_time_label: product.shipping.processTimeLabel,
+      destinations: product.shipping.destinations.map((destination) => ({
+        id: destination.id,
+        country_code: destination.countryCode,
+        delivery_time_label: destination.deliveryTimeLabel,
+        service: destination.service,
+        charge_type: destination.chargeType,
+        rank: destination.rank,
+      })),
+    }
     : undefined,
 });

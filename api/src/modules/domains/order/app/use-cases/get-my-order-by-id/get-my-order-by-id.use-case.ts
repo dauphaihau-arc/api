@@ -16,7 +16,7 @@ import {
   getOrderSubtotalMajor,
   getOrderSubtotalMinor,
   getOrderTotalMinor,
-  getOrderTotalMajor,
+  getOrderTotalMajor
 } from '../../order-money';
 import type { MyOrderDetail } from '../../order.types';
 

@@ -15,7 +15,7 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiParam,
-  ApiTags,
+  ApiTags
 } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { CurrentUser } from '~/common/decorators/current-user.decorator';

@@ -6,7 +6,7 @@ import { doesCartMatchCheckoutQuote } from '../../checkout-quote-cart-matcher';
 import type { CreateOrderForBuyNowDto } from '../../../api/rest/dto/create-order-for-buy-now.dto';
 import {
   CheckoutQuoteCartChangedError,
-  TemporaryCartNotFoundError,
+  TemporaryCartNotFoundError
 } from '../../errors/order-app.error';
 import { LoadCheckoutQuoteService } from '../../load-checkout-quote.service';
 import { OrderCheckoutService } from '../../order-checkout.service';

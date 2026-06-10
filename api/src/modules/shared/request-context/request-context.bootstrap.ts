@@ -42,10 +42,10 @@ export function extractRequestContext(request: RequestLike): RequestContext {
       request.get?.('user-agent') ?? getHeaderValue(request.headers, 'user-agent')
     ),
     marketCode: normalizeValue(
-      request.get?.('x-market-code')
-      ?? request.get?.('x-market')
-      ?? getHeaderValue(request.headers, 'x-market-code')
-      ?? getHeaderValue(request.headers, 'x-market')
+      request.get?.('x-market-code') ??
+      request.get?.('x-market') ??
+      getHeaderValue(request.headers, 'x-market-code') ??
+      getHeaderValue(request.headers, 'x-market')
     ),
     currency: normalizeValue(
       request.get?.('x-currency') ?? getHeaderValue(request.headers, 'x-currency')

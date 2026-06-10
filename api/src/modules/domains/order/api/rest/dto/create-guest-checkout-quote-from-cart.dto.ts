@@ -5,7 +5,7 @@ import {
   IsOptional,
   IsString,
   MaxLength,
-  ValidateNested,
+  ValidateNested
 } from 'class-validator';
 import { ShippingAddressDto } from './shipping-address.dto';
 
@@ -36,9 +36,9 @@ export class CreateGuestCheckoutQuoteFromCartDto {
   @ApiPropertyOptional({ name: 'presentment_currency' })
   @Expose({ name: 'presentment_currency' })
   @Transform(({ value, obj: source }) =>
-    value
-    ?? source.presentmentCurrency
-    ?? source.presentment_currency)
+    value ??
+    source.presentmentCurrency ??
+    source.presentment_currency)
   @IsString()
   presentmentCurrency?: string;
 

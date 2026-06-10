@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import {
   MARKETPLACE_MARKETS,
-  type MarketplaceMarket,
+  type MarketplaceMarket
 } from '~/config/marketplace.config';
 
 export interface MarketplaceConfigResult {

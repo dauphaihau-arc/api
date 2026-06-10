@@ -4,7 +4,7 @@ import { UserAddressQueryRepository } from '../app/ports/user-address-query.repo
 import type {
   ListMyAddressesQuery,
   ListMyAddressesRepositoryResult,
-  UserAddressSummary,
+  UserAddressSummary
 } from '../app/user-address.types';
 import { UserAddressEntity } from './persistence/entities/user-address.entity';
 import { toUserAddressSummary } from './user-address-summary.mapper';

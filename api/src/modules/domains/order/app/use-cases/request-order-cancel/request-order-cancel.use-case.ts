@@ -16,7 +16,7 @@ import { OrderItemEntity } from '../../../infra/persistence/entities/order-item.
 import {
   BuyerOrderCancelNotAllowedError,
   BuyerShippedOrderCancelNotAllowedError,
-  OrderNotFoundError,
+  OrderNotFoundError
 } from '../../errors/order-app.error';
 import { OrderCancellationService } from '../../order-cancellation.service';
 import { buildScopedOrderIdentifierWhere } from '../../order-identifier';
@@ -31,12 +31,12 @@ import {
   getOrderSubtotalMajor,
   getOrderSubtotalMinor,
   getOrderTotalMinor,
-  getOrderTotalMajor,
+  getOrderTotalMajor
 } from '../../order-money';
 import type { MyOrderDetail } from '../../order.types';
 import {
   buildSellerOrderCancelRequestedNotification,
-  getSellerOrderNotificationRecipientId,
+  getSellerOrderNotificationRecipientId
 } from '../../seller-order-notification';
 import { OrderEventsService } from '../../order-events.service';
 

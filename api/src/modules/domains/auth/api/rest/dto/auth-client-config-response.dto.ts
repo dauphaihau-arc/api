@@ -82,15 +82,15 @@ export class AuthClientConfigResponseDto {
           lowercase: true,
           uppercase: true,
           number: true,
-          special_character: true
+          special_character: true,
         },
         message:
-          'Password must contain at least 1 uppercase letter, 1 lowercase letter, 1 number, and 1 special character'
+          'Password must contain at least 1 uppercase letter, 1 lowercase letter, 1 number, and 1 special character',
       },
       session: {
         access_token_ttl_seconds: authConfig.jwtAccessTtlSeconds,
-        refresh_token_ttl_seconds: authConfig.jwtRefreshTtlSeconds
-      }
+        refresh_token_ttl_seconds: authConfig.jwtRefreshTtlSeconds,
+      },
     };
   }
 }

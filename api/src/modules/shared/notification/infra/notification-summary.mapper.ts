@@ -1,5 +1,5 @@
 import type { NotificationSummary } from '../app/notification.types';
-import { NotificationEntity } from './persistence/entities/notification.entity';
+import type { NotificationEntity } from './persistence/entities/notification.entity';
 
 export function toNotificationSummary(notification: NotificationEntity): NotificationSummary {
   return {

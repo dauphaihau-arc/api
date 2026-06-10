@@ -30,17 +30,17 @@ export const toPublicProductDetailResponse = (
     variants_generated_at: image.variantsGeneratedAt,
     variants: image.variants
       ? Object.fromEntries(
-          image.variants.map((variant) => [
-            variant.variant,
-            {
-              storage_key: variant.storageKey,
-              url: variant.url,
-              width: variant.width,
-              height: variant.height,
-              format: variant.format,
-            },
-          ])
-        )
+        image.variants.map((variant) => [
+          variant.variant,
+          {
+            storage_key: variant.storageKey,
+            url: variant.url,
+            width: variant.width,
+            height: variant.height,
+            format: variant.format,
+          },
+        ])
+      )
       : undefined,
   })),
   variants: product.variants.map((variant) => ({
@@ -66,16 +66,16 @@ export const toPublicProductDetailResponse = (
   })),
   shipping: product.shipping
     ? {
-        origin_country: product.shipping.originCountry,
-        process_time_label: product.shipping.processTimeLabel,
-        destinations: product.shipping.destinations.map((destination) => ({
-          id: destination.id,
-          country_code: destination.countryCode,
-          delivery_time_label: destination.deliveryTimeLabel,
-          service: destination.service,
-          charge_type: destination.chargeType,
-          rank: destination.rank,
-        })),
-      }
+      origin_country: product.shipping.originCountry,
+      process_time_label: product.shipping.processTimeLabel,
+      destinations: product.shipping.destinations.map((destination) => ({
+        id: destination.id,
+        country_code: destination.countryCode,
+        delivery_time_label: destination.deliveryTimeLabel,
+        service: destination.service,
+        charge_type: destination.chargeType,
+        rank: destination.rank,
+      })),
+    }
     : undefined,
 });

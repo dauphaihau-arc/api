@@ -6,7 +6,7 @@ import {
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
-  ApiTags,
+  ApiTags
 } from '@nestjs/swagger';
 import { RequirePermissions } from '~/common/decorators/require-permissions.decorator';
 import { resolveOrThrow } from '~/common/application/result';

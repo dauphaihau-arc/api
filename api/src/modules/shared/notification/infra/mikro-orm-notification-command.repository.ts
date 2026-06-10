@@ -4,7 +4,7 @@ import { CurrentUserEntity } from '~/modules/domains/auth/infra/persistence/enti
 import { NotificationCommandRepository } from '../app/ports/notification-command.repository';
 import type {
   CreateNotificationInput,
-  NotificationSummary,
+  NotificationSummary
 } from '../app/notification.types';
 import { NotificationEntity } from './persistence/entities/notification.entity';
 import { toNotificationSummary } from './notification-summary.mapper';

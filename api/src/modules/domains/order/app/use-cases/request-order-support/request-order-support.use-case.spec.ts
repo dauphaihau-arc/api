@@ -13,7 +13,7 @@ describe('RequestOrderSupportUseCase', () => {
       sessionId: 'session-1',
       roles: [],
       permissions: [],
-    }
+    };
     const order = {
       id: 'order-1',
       orderNumber: 'ORD-20260604-000001',
@@ -61,7 +61,7 @@ describe('RequestOrderSupportUseCase', () => {
         zip: '90001',
       },
       updatedAt: new Date('2026-05-23T00:00:00.000Z'),
-    }
+    };
     const items = [{
       id: 'item-1',
       product: { id: 'product-1', slug: 'product-1', shop: { slug: 'shop-1' } },
@@ -78,7 +78,7 @@ describe('RequestOrderSupportUseCase', () => {
       variantGroupName: undefined,
       variantSubGroupName: undefined,
       percentCouponPercent: null,
-    }]
+    }];
     const fakeEntityManager = {
       getRepository: jest.fn((entity: { name?: string }) => {
         switch (entity?.name) {
@@ -98,14 +98,14 @@ describe('RequestOrderSupportUseCase', () => {
 
     const useCase = new RequestOrderSupportUseCase({
       fork: jest.fn(() => fakeEntityManager),
-    } as unknown as EntityManager, notifyUserUseCase)
+    } as unknown as EntityManager, notifyUserUseCase);
 
     const result = await useCase.execute(actor, 'order-1', {
       supportNote: 'Need help changing the address',
-    })
+    });
 
-    expect(order.customerSupportNote).toBe('Need help changing the address')
-    expect(fakeEntityManager.flush).toHaveBeenCalled()
+    expect(order.customerSupportNote).toBe('Need help changing the address');
+    expect(fakeEntityManager.flush).toHaveBeenCalled();
     expect(notifyUserUseCase.execute).toHaveBeenCalledWith(expect.objectContaining({
       userId: 'seller-1',
       type: 'seller.order.support_requested',
@@ -116,7 +116,7 @@ describe('RequestOrderSupportUseCase', () => {
         orderNumber: 'ORD-20260604-000001',
         shopId: 'shop-1',
       }),
-    }))
-    expect(result.customerSupportNote).toBe('Need help changing the address')
-  })
-})
+    }));
+    expect(result.customerSupportNote).toBe('Need help changing the address');
+  });
+});

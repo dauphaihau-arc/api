@@ -55,7 +55,7 @@ implements ProductCommandRepository, ProductPricingRepository {
   constructor(
     private readonly entityManager: EntityManager,
     private readonly storageService: StorageService,
-    private readonly resolvedStorefrontPriceService: ResolvedStorefrontPriceService,
+    private readonly resolvedStorefrontPriceService: ResolvedStorefrontPriceService
   ) {}
 
   async replaceImages(
@@ -211,7 +211,9 @@ implements ProductCommandRepository, ProductPricingRepository {
 
   async replacePricing(input: {
     productId: string;
-    pricing: Array<{ inventoryId: string; amountMinor: number; originalAmountMinor?: number; currency: string }>;
+    pricing: Array<{
+      inventoryId: string; amountMinor: number; originalAmountMinor?: number; currency: string 
+    }>;
   }): Promise<ProductDraftSummary | null> {
     const entityManager = this.entityManager.fork();
     const repository = entityManager.getRepository(ProductEntity);

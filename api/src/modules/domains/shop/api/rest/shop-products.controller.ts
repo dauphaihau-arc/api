@@ -24,7 +24,7 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiParam,
-  ApiTags,
+  ApiTags
 } from '@nestjs/swagger';
 import { RequirePermissions } from '~/common/decorators/require-permissions.decorator';
 import { FilesInterceptor } from '@nestjs/platform-express';

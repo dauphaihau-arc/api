@@ -24,7 +24,7 @@ function toSnakeCaseValue(value: unknown): unknown {
     Object.entries(value).map(([key, nestedValue]) => [
       toSnakeCaseKey(key),
       toSnakeCaseValue(nestedValue),
-    ]),
+    ])
   );
 }
 

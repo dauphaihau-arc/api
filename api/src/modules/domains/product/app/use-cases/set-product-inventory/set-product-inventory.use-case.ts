@@ -6,7 +6,7 @@ import { ShopRepository } from '~/modules/domains/shop/app/ports/shop.repository
 import { AuditLogService } from '~/modules/shared/audit/app/audit-log.service';
 import {
   buildProductInventoryUpdatedSseEvent,
-  PRODUCT_INVENTORY_UPDATED_SSE_EVENT,
+  PRODUCT_INVENTORY_UPDATED_SSE_EVENT
 } from '../../events/product-inventory-sse.event';
 import { ProductVariantType } from '../../../domain/enums/product-variant-type.enum';
 import {

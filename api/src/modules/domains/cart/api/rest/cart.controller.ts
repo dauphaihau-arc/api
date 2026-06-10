@@ -9,13 +9,13 @@ import {
   Query,
   Req,
   Res,
-  UseGuards,
+  UseGuards
 } from '@nestjs/common';
 import {
   ApiCookieAuth,
   ApiOkResponse,
   ApiOperation,
-  ApiTags,
+  ApiTags
 } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { resolveOrThrow } from '~/common/application/result';
@@ -30,7 +30,7 @@ import { UpdateCartItemUseCase } from '../../app/use-cases/update-cart-item/upda
 import {
   buildCartResponse,
   type CartActor,
-  type CartResponse,
+  type CartResponse
 } from '../../app/cart.types';
 import { mapCartAppErrorToHttpException } from './cart-http-error-mapper';
 import { AddCartItemDto } from './dto/add-cart-item.dto';

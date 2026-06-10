@@ -10,7 +10,7 @@ import { WebPushSubscriptionEntity } from './persistence/entities/web-push-subsc
 
 @Injectable()
 export class MikroOrmWebPushSubscriptionRepository
-  implements WebPushSubscriptionRepository {
+implements WebPushSubscriptionRepository {
   constructor(private readonly entityManager: EntityManager) {}
 
   async upsert(

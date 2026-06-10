@@ -11,7 +11,7 @@ export function IsAuthPassword(): PropertyDecorator {
     MaxLength(AUTH_PASSWORD_MAX_LENGTH)(target, propertyKey);
     Matches(AUTH_PASSWORD_PATTERN, {
       message:
-        'password must contain at least 1 uppercase letter, 1 lowercase letter, 1 number, and 1 special character'
+        'password must contain at least 1 uppercase letter, 1 lowercase letter, 1 number, and 1 special character',
     })(target, propertyKey);
   };
 }

@@ -1,9 +1,9 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { FX_RATE_SYNC_CONFIG } from '~/config/fx-rate-sync.config';
 import type { FxRateSyncConfig } from '~/config/fx-rate-sync.config';
-import {
-  type ExchangeRateProvider,
-  type ExchangeRateProviderQuote,
+import type {
+  ExchangeRateProvider,
+  ExchangeRateProviderQuote
 } from './exchange-rate-provider';
 
 interface OpenExchangeRatesLatestResponse {

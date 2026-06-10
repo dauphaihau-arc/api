@@ -2,17 +2,17 @@ import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
 import {
   CheckoutQuoteActorType,
-  CheckoutQuoteEntity,
+  CheckoutQuoteEntity
 } from '../infra/persistence/entities/checkout-quote.entity';
 import {
   CheckoutQuoteExpiredError,
-  CheckoutQuoteNotFoundError,
+  CheckoutQuoteNotFoundError
 } from './errors/order-app.error';
 import type {
   CheckoutQuoteItemSummary,
   CheckoutQuoteShopSummary,
   ShippingAddressInput,
-  ShopAdjustmentInput,
+  ShopAdjustmentInput
 } from './order.types';
 
 export interface LoadedCheckoutQuote {
@@ -181,8 +181,8 @@ function parsePricedShops(
       quantity: item.quantity,
       sourceCurrency: item.source_currency ?? item.currency,
       unitPriceSourceMinor: item.unit_price_source_minor ?? item.original_amount_minor ?? item.unit_price_minor,
-      lineTotalSourceMinor: item.line_total_source_minor
-        ?? (item.unit_price_source_minor ?? item.original_amount_minor ?? item.unit_price_minor) * item.quantity,
+      lineTotalSourceMinor: item.line_total_source_minor ??
+        (item.unit_price_source_minor ?? item.original_amount_minor ?? item.unit_price_minor) * item.quantity,
       checkoutCurrency: item.checkout_currency ?? item.currency,
       unitPriceCheckoutMinor: item.unit_price_checkout_minor ?? item.unit_price_minor,
       lineTotalCheckoutMinor: item.line_total_checkout_minor ?? item.line_total_minor,

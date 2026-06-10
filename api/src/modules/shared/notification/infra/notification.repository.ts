@@ -5,7 +5,7 @@ import { NotificationRepository } from '../app/ports/notification.repository';
 import type {
   CreateNotificationInput,
   NotificationListRepositoryResult,
-  NotificationSummary,
+  NotificationSummary
 } from '../app/notification.types';
 
 @Injectable()

@@ -6,7 +6,7 @@ import { ExchangeRateEntity } from './infra/persistence/entities/exchange-rate.e
 import {
   EXCHANGE_RATE_PROVIDER,
   type ExchangeRateProvider,
-  type ExchangeRateProviderQuote,
+  type ExchangeRateProviderQuote
 } from './exchange-rate-provider';
 
 export interface ExchangeRateSyncResult {

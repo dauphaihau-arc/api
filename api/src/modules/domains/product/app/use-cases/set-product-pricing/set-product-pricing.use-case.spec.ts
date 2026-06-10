@@ -92,7 +92,9 @@ describe('SetProductPricingUseCase', () => {
   }
 
   it('replaces pricing for an existing inventory row', async () => {
-    const { productRepository, productPricingRepository, shopRepository, auditLogService, eventEmitter } = buildDeps();
+    const {
+      productRepository, productPricingRepository, shopRepository, auditLogService, eventEmitter, 
+    } = buildDeps();
     const useCase = new SetProductPricingUseCase(
       productRepository as never,
       productPricingRepository,
@@ -133,7 +135,9 @@ describe('SetProductPricingUseCase', () => {
   });
 
   it('rejects pricing rows that do not match existing inventory rows', async () => {
-    const { productRepository, productPricingRepository, shopRepository, auditLogService, eventEmitter } = buildDeps();
+    const {
+      productRepository, productPricingRepository, shopRepository, auditLogService, eventEmitter, 
+    } = buildDeps();
     const useCase = new SetProductPricingUseCase(
       productRepository as never,
       productPricingRepository,

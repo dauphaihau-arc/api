@@ -7,7 +7,7 @@ import type {
   ListMyAddressesQuery,
   ListMyAddressesRepositoryResult,
   UpdateMyAddressInput,
-  UserAddressSummary,
+  UserAddressSummary
 } from '../app/user-address.types';
 
 @Injectable()

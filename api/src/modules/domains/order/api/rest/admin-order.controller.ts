@@ -13,7 +13,7 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiParam,
-  ApiTags,
+  ApiTags
 } from '@nestjs/swagger';
 import { RequirePermissions } from '~/common/decorators/require-permissions.decorator';
 import { JwtAuthGuard } from '~/modules/domains/auth/api/guard/jwt-auth.guard';
@@ -29,7 +29,7 @@ import { UpdateAdminOrderStatusDto } from './dto/update-admin-order-status.dto';
 import { UpdateAdminOrderSupportNoteDto } from './dto/update-admin-order-support-note.dto';
 import {
   isOrderAppError,
-  mapOrderAppErrorToHttpException,
+  mapOrderAppErrorToHttpException
 } from './order-http-error-mapper';
 import { toAdminOrderDetailResponse, toAdminOrderListResponse } from './order.response';
 
