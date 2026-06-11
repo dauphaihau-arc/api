@@ -1,0 +1,17 @@
+default:
+  @just --list
+
+run *scenario:
+  node ./scripts/run-autocannon.mjs {{scenario}}
+
+catalog-list:
+  node ./scripts/run-autocannon.mjs catalog-list
+
+catalog-detail:
+  node ./scripts/run-autocannon.mjs catalog-detail
+
+catalog-detail-by-slug shop_slug product_slug:
+  SHOP_SLUG={{shop_slug}} PRODUCT_SLUG={{product_slug}} node ./scripts/run-autocannon.mjs catalog-detail
+
+catalog-suggest:
+  node ./scripts/run-autocannon.mjs catalog-suggest

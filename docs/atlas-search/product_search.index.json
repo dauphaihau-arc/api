@@ -1,0 +1,57 @@
+{
+  "name": "product_search",
+  "definition": {
+    "mappings": {
+      "dynamic": false,
+      "fields": {
+        "title": {
+          "type": "string",
+          "analyzer": "lucene.standard"
+        },
+        "description": {
+          "type": "string",
+          "analyzer": "lucene.standard"
+        },
+        "keywords": {
+          "type": "string"
+        },
+        "state": {
+          "type": "token"
+        },
+        "categoryId": {
+          "type": "token"
+        },
+        "isDigital": {
+          "type": "boolean"
+        },
+        "whoMade": {
+          "type": "token"
+        },
+        "flags": {
+          "type": "document",
+          "fields": {
+            "hasImages": {
+              "type": "boolean"
+            }
+          }
+        },
+        "price": {
+          "type": "document",
+          "fields": {
+            "minAmountMinor": {
+              "type": "number"
+            }
+          }
+        },
+        "ranking": {
+          "type": "document",
+          "fields": {
+            "createdAt": {
+              "type": "date"
+            }
+          }
+        }
+      }
+    }
+  }
+}

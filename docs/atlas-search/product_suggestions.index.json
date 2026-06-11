@@ -1,0 +1,29 @@
+{
+  "name": "product_suggestions",
+  "definition": {
+    "mappings": {
+      "dynamic": false,
+      "fields": {
+        "suggest": [
+          {
+            "type": "autocomplete",
+            "tokenization": "edgeGram",
+            "minGrams": 2,
+            "maxGrams": 20,
+            "foldDiacritics": true
+          }
+        ],
+        "title": {
+          "type": "string",
+          "analyzer": "lucene.standard"
+        },
+        "keywords": {
+          "type": "string"
+        },
+        "state": {
+          "type": "token"
+        }
+      }
+    }
+  }
+}

@@ -14,6 +14,7 @@ Top-level structure:
 - `agents/` - agent guidance, architecture notes, testing notes, and repo rules
 - `infra/` - local Docker Compose services for core dependencies and the observability stack
 - `docs/` - supporting documentation and migration notes
+- `perf/` - reusable local performance scenarios and runners
 - `seed-data/` - TSV seed files used for reference and demo data
 
 ## Implemented Patterns and Capabilities
@@ -201,6 +202,7 @@ just db-migration-up
 just db-seed
 just db-seed-demo
 just storage-seed
+cd perf && just catalog-list
 cd api && pnpm test
 ```
 
