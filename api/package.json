@@ -14,7 +14,7 @@
     "pnpm": "9.3.0"
   },
   "scripts": {
-    "prepare": "husky",
+    "prepare": "cd .. && api/node_modules/.bin/husky",
     "build": "node ./node_modules/@nestjs/cli/bin/nest.js build && tsc-alias -p tsconfig.build.json",
     "clean:dist": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
     "db:migration:create": "mikro-orm migration:create",
