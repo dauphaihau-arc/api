@@ -11,6 +11,7 @@ build/
 **/coverage/
 **/build/
 *.tsbuildinfo
+.eslintcache
 package-lock.json
 
 # Environment files

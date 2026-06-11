@@ -35,7 +35,7 @@
     "start:worker": "NODE_OPTIONS=\"--import ./instrumentation.mjs${NODE_OPTIONS:+ $NODE_OPTIONS}\" node -r tsconfig-paths/register ./node_modules/@nestjs/cli/bin/nest.js start --entryFile worker",
     "start:worker:dev": "pnpm clean:dist && NODE_OPTIONS=\"--import ./instrumentation.mjs${NODE_OPTIONS:+ $NODE_OPTIONS}\" node -r tsconfig-paths/register ./node_modules/@nestjs/cli/bin/nest.js start --watch --entryFile worker",
     "start:worker:prod": "NODE_OPTIONS=\"--import ./instrumentation.mjs${NODE_OPTIONS:+ $NODE_OPTIONS}\" node dist/src/worker.js",
-    "lint": "eslint \"{src,apps,libs,test}/**/*.ts\"",
+    "lint": "eslint --cache --cache-location .eslintcache \"{src,apps,libs,test}/**/*.ts\"",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
