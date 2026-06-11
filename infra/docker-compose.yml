@@ -85,6 +85,21 @@ services:
       timeout: 5s
       retries: 5
 
+  mongodb:
+    profiles: ["catalog-nosql"]
+    image: mongo:7
+    container_name: arc-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.126.0
     container_name: arc-otel-collector
@@ -171,6 +186,7 @@ volumes:
   postgres_data:
   minio_data:
   redis_data:
+  mongodb_data:
   loki_data:
   prometheus_data:
   tempo_data:

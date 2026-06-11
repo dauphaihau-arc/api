@@ -4,7 +4,7 @@ api_dir := "api"
 # --------- Infrastructure
 
 infra-up:
-  docker compose -f {{ compose_file }} up -d
+  docker compose -f {{ compose_file }} --profile catalog-nosql up -d
 
 infra-down:
   docker compose -f {{ compose_file }} down
@@ -12,7 +12,7 @@ infra-down:
 # Wipes all named volumes, including Postgres, MinIO, and Redis data.
 infra-fresh:
   docker compose -f {{ compose_file }} down -v
-  docker compose -f {{ compose_file }} up -d
+  docker compose -f {{ compose_file }} --profile catalog-nosql up -d
 
 stack-up:
   docker compose -f {{ compose_file }} --profile app up -d --build
@@ -152,6 +152,20 @@ db-seed-infisical project_id *env_name:
   ENV_ARG='{{ if env_name != "" { "--env=" + env_name } else { "" } }}' && \
   pnpm exec infisical run --projectId="{{ project_id }}" $ENV_ARG --token="$INFISICAL_TOKEN" -- pnpm db:seed
 
+catalog-backfill:
+  cd {{ api_dir }} && \
+  test -f ".env" && \
+  set -a && \
+  . ".env" && \
+  set +a && \
+  if [ "${CATALOG_STORE_DRIVER:-postgres}" = "mongodb" ]; then pnpm catalog:backfill; else echo "Skipping catalog backfill (CATALOG_STORE_DRIVER=${CATALOG_STORE_DRIVER:-postgres})"; fi
+
+catalog-backfill-infisical project_id *env_name:
+  cd {{ api_dir }} && \
+  test -n "$INFISICAL_TOKEN" && \
+  ENV_ARG='{{ if env_name != "" { "--env=" + env_name } else { "" } }}' && \
+  pnpm exec infisical run --projectId="{{ project_id }}" $ENV_ARG --token="$INFISICAL_TOKEN" -- sh -c 'if [ "${CATALOG_STORE_DRIVER:-postgres}" = "mongodb" ]; then pnpm catalog:backfill; else echo "Skipping catalog backfill (CATALOG_STORE_DRIVER=${CATALOG_STORE_DRIVER:-postgres})"; fi'
+
 db-clear:
   cd {{ api_dir }} && \
   test -f ".env" && \
@@ -169,20 +183,24 @@ db-clear-infisical project_id *env_name:
 # Clears schema, reruns migrations via the seed script, then seeds reference data.
 db-fresh: db-clear
   just db-seed
+  just catalog-backfill
 
 # Clears schema, reruns migrations via the seed script, then seeds the full demo dataset.
 db-fresh-demo: db-clear
   just db-seed-demo
+  just catalog-backfill
 
 # Clears schema, reruns migrations via the seed script, then seeds reference data.
 db-fresh-infisical project_id *env_name:
   just db-clear-infisical {{project_id}} {{env_name}}
   just db-seed-infisical {{project_id}} {{env_name}}
+  just catalog-backfill-infisical {{project_id}} {{env_name}}
 
 # Clears schema, reruns migrations via the seed script, then seeds the full demo dataset.
 db-fresh-demo-infisical project_id *env_name:
   just db-clear-infisical {{project_id}} {{env_name}}
   just db-seed-demo-infisical {{project_id}} {{env_name}}
+  just catalog-backfill-infisical {{project_id}} {{env_name}}
 
 
 redis-clear:
