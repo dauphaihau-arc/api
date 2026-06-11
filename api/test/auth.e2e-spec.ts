@@ -414,7 +414,7 @@ type CookieAssertion = {
   value: string;
 };
 
-function expectAuthCookies(setCookieHeader?: string[]): {
+function expectAuthCookies(setCookieHeader?: string | string[]): {
   accessToken: CookieAssertion;
   refreshToken: CookieAssertion;
 } {
@@ -425,10 +425,15 @@ function expectAuthCookies(setCookieHeader?: string[]): {
 }
 
 function parseCookieAssertion(
-  setCookieHeader: string[] | undefined,
+  setCookieHeader: string | string[] | undefined,
   cookieName: string
 ): CookieAssertion {
-  const rawCookie = setCookieHeader?.find((cookie) =>
+  const cookieHeaders = Array.isArray(setCookieHeader)
+    ? setCookieHeader
+    : setCookieHeader
+      ? [setCookieHeader]
+      : undefined;
+  const rawCookie = cookieHeaders?.find((cookie) =>
     cookie.startsWith(`${cookieName}=`)
   );
 
@@ -472,7 +477,9 @@ async function readSseHandshake(
 
           settled = true;
           callback(error, body);
-          response.destroy();
+          (response as unknown as NodeJS.ReadableStream & {
+            socket?: { destroy(): void };
+          }).socket?.destroy();
         };
 
         response.setEncoding('utf8');

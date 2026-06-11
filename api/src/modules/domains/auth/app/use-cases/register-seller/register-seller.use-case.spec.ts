@@ -44,6 +44,7 @@ describe('RegisterSellerUseCase', () => {
     };
     const userPreferenceRepository: jest.Mocked<UserPreferenceRepository> = {
       create: jest.fn().mockResolvedValue(undefined),
+      save: jest.fn().mockResolvedValue(undefined),
       findByUserId: jest.fn(),
     };
     const shopRepository: jest.Mocked<ShopRepository> = {

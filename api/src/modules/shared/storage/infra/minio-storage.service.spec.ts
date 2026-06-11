@@ -74,6 +74,7 @@ describe('MinioStorageService', () => {
       .mockResolvedValueOnce({})
       .mockRejectedValueOnce(new S3ServiceException({
         name: 'NotFound',
+        $fault: 'client',
         $metadata: {
           httpStatusCode: 404,
         },
@@ -91,6 +92,7 @@ describe('MinioStorageService', () => {
       .mockResolvedValueOnce({})
       .mockRejectedValueOnce(new S3ServiceException({
         name: 'NotFound',
+        $fault: 'client',
         $metadata: {
           httpStatusCode: 404,
         },
@@ -116,6 +118,7 @@ describe('MinioStorageService', () => {
     send
       .mockRejectedValueOnce(new S3ServiceException({
         name: 'NotFound',
+        $fault: 'client',
         $metadata: {
           httpStatusCode: 404,
         },

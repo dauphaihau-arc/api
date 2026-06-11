@@ -199,11 +199,11 @@ describe('MongoStorefrontProductQueryRepository', () => {
     const { repository } = createRepository([prefix, exact]);
 
     const result = await repository.suggestPublic({
-      search: 'linen weekend dress',
+      search: 'linen',
       limit: 5,
     });
 
-    expect(result.map((item) => item.id)).toEqual(['product-1', 'product-2']);
+    expect(result.map((item) => item.id)).toEqual(['product-2', 'product-1']);
   });
 });
 

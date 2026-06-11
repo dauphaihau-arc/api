@@ -12,11 +12,11 @@ describe('CategoryController', () => {
   const suggestCategoriesUseCase = { execute: jest.fn() };
 
   const controller = new CategoryController(
-    createCategoryUseCase,
-    listCategoriesUseCase,
-    createCategoryAttributeUseCase,
-    getCategoryAttributesUseCase,
-    suggestCategoriesUseCase
+    createCategoryUseCase as never,
+    listCategoriesUseCase as never,
+    createCategoryAttributeUseCase as never,
+    getCategoryAttributesUseCase as never,
+    suggestCategoriesUseCase as never
   );
 
   beforeEach(() => {

@@ -44,6 +44,7 @@ describe('RegisterUseCase', () => {
     };
     const userPreferenceRepository: jest.Mocked<UserPreferenceRepository> = {
       create: jest.fn().mockResolvedValue(undefined),
+      save: jest.fn().mockResolvedValue(undefined),
       findByUserId: jest.fn(),
     };
     const passwordHasher: jest.Mocked<PasswordHasher> = {
@@ -147,6 +148,7 @@ describe('RegisterUseCase', () => {
     };
     const userPreferenceRepository: jest.Mocked<UserPreferenceRepository> = {
       create: jest.fn().mockResolvedValue(undefined),
+      save: jest.fn().mockResolvedValue(undefined),
       findByUserId: jest.fn(),
     };
     const passwordHasher: jest.Mocked<PasswordHasher> = {

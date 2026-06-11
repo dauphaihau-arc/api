@@ -6,6 +6,7 @@ import { Test } from '@nestjs/testing';
 import type { INestApplication } from '@nestjs/common';
 import { ClassSerializerInterceptor, ValidationPipe } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { PinoLogger } from 'nestjs-pino';
 import request from 'supertest';
 import type { App } from 'supertest/types';
 import { GlobalExceptionFilter } from '../src/common/filters/global-exception.filter';
@@ -18,6 +19,8 @@ import { ProductVariantType } from '../src/modules/domains/product/domain/enums/
 import { ProductWhoMade } from '../src/modules/domains/product/domain/enums/product-who-made.enum';
 import { StorageService } from '../src/modules/shared/storage/app/ports/storage.service';
 import { LocalFileStorageService } from '../src/modules/shared/storage/infra/local-file-storage.service';
+import { ObservabilityService } from '../src/modules/shared/observability/observability.service';
+import { RequestContextService } from '../src/modules/shared/request-context/request-context.service';
 import { createTestDatabase, dropTestDatabase } from './e2e-postgres';
 
 jest.setTimeout(30_000);
@@ -86,10 +89,21 @@ describe('Commerce flow (e2e)', () => {
         forbidNonWhitelisted: true,
       })
     );
-    app.useGlobalFilters(new GlobalExceptionFilter());
+    const exceptionLogger = await app.resolve(PinoLogger);
+    const requestLogger = await app.resolve(PinoLogger);
+    app.useGlobalFilters(
+      new GlobalExceptionFilter(
+        app.get(RequestContextService),
+        exceptionLogger
+      )
+    );
     app.useGlobalInterceptors(
       new ClassSerializerInterceptor(app.get(Reflector)),
-      new RequestLoggingInterceptor()
+      new RequestLoggingInterceptor(
+        app.get(RequestContextService),
+        app.get(ObservabilityService),
+        requestLogger
+      )
     );
     app.setGlobalPrefix(API_PREFIX);
     await app.init();

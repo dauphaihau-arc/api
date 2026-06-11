@@ -65,6 +65,8 @@ describe('UpdateShopOrderRefundUseCase', () => {
       supportNote: undefined,
       paymentDetails: {
         payment_intent_id: 'pi_test_1',
+        refund_requested_at: undefined,
+        refund_failed_reason: undefined,
         ...(refundStatus ? { refund_status: refundStatus } : {}),
       },
       createdAt: new Date('2026-05-23T00:00:00.000Z'),

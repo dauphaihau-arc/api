@@ -11,10 +11,11 @@ describe('ConsumeProductImageUploadTicketUseCase', () => {
   }) {
     const cacheStore = new Map<string, unknown>();
     const cacheManager: Pick<Cache, 'get' | 'del'> = {
-      get: jest.fn(async (key: string) => cacheStore.get(key)),
-      del: jest.fn(async (key: string) => {
+      get: (jest.fn(async (key: string) => cacheStore.get(key)) as unknown) as Cache['get'],
+      del: (jest.fn(async (key: string) => {
         cacheStore.delete(key);
-      }),
+        return true;
+      }) as unknown) as Cache['del'],
     };
 
     const storageService: jest.Mocked<StorageService> = {

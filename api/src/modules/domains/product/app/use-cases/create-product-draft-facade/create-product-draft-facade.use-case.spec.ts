@@ -2,6 +2,7 @@ import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
 import { UserStatus } from '~/modules/domains/auth/domain/enums/user-status.enum';
 import { ProductShippingCharge } from '../../../domain/enums/product-shipping-charge.enum';
 import { ProductVariantType } from '../../../domain/enums/product-variant-type.enum';
+import type { ProductAppError } from '../../errors/product-app.error';
 import {
   InvalidProductVariantConfigurationError,
   ProductDraftIncompleteError
@@ -162,7 +163,7 @@ describe('CreateProductDraftFacadeUseCase', () => {
                 countryCode: 'US',
                 deliveryTimeLabel: '3-5 business days',
                 service: 'Standard',
-                chargeType: ProductShippingCharge.FIXED,
+                chargeType: ProductShippingCharge.FIXED_PRICE,
                 rank: 1,
               },
             ],
@@ -255,7 +256,7 @@ describe('CreateProductDraftFacadeUseCase', () => {
             countryCode: 'US',
             deliveryTimeLabel: '3-5 business days',
             service: 'Standard',
-            chargeType: ProductShippingCharge.FIXED,
+            chargeType: ProductShippingCharge.FIXED_PRICE,
           },
         ],
       },
@@ -322,8 +323,9 @@ describe('CreateProductDraftFacadeUseCase', () => {
     expect(result.isOk).toBe(false);
     if (!result.isOk) {
       expect(result.error).toBeInstanceOf(ProductDraftIncompleteError);
-      expect(result.error.failedStep).toBe('inventory');
-      expect(result.error.message).toContain('unknown variant client key');
+      const error = result.error as ProductDraftIncompleteError;
+      expect(error.failedStep).toBe('inventory');
+      expect(error.message).toContain('unknown variant client key');
     }
     expect(setProductInventoryUseCase.execute).not.toHaveBeenCalled();
   });
@@ -349,7 +351,7 @@ describe('CreateProductDraftFacadeUseCase', () => {
             countryCode: 'US',
             deliveryTimeLabel: '3-5 business days',
             service: 'Standard',
-            chargeType: ProductShippingCharge.FIXED,
+            chargeType: ProductShippingCharge.FIXED_PRICE,
           },
         ],
       },
@@ -358,8 +360,11 @@ describe('CreateProductDraftFacadeUseCase', () => {
     expect(result.isOk).toBe(false);
     if (!result.isOk) {
       expect(result.error).toBeInstanceOf(ProductDraftIncompleteError);
-      expect(result.error.failedStep).toBe('shipping');
-      expect(result.error.productId).toBe(draft.id);
+      const error = result.error as ProductAppError;
+      expect(error).toMatchObject({
+        failedStep: 'shipping',
+        productId: draft.id,
+      });
     }
   });
 });

@@ -8,38 +8,38 @@ describe('ShopProductsController', () => {
     findByActorUserId: jest.fn(),
     findOwnedById: jest.fn(),
     findById: jest.fn(),
-  } as never;
-  const createProductDraftFacadeUseCase = { execute: jest.fn() } as never;
-  const createProductDraftUseCase = { execute: jest.fn() } as never;
-  const getProductByIdUseCase = { execute: jest.fn() } as never;
-  const listShopProductsUseCase = { execute: jest.fn() } as never;
-  const publishProductUseCase = { execute: jest.fn() } as never;
-  const setProductImagesByKeysUseCase = { execute: jest.fn() } as never;
-  const setProductImagesUseCase = { execute: jest.fn() } as never;
-  const setProductAttributesUseCase = { execute: jest.fn() } as never;
-  const setProductVariantsUseCase = { execute: jest.fn() } as never;
-  const setProductInventoryUseCase = { execute: jest.fn() } as never;
-  const setProductPricingUseCase = { execute: jest.fn() } as never;
-  const setProductShippingUseCase = { execute: jest.fn() } as never;
-  const updateProductDetailsUseCase = { execute: jest.fn() } as never;
-  const bulkMutateShopProductsUseCase = { execute: jest.fn() } as never;
+  };
+  const createProductDraftFacadeUseCase = { execute: jest.fn() };
+  const createProductDraftUseCase = { execute: jest.fn() };
+  const getProductByIdUseCase = { execute: jest.fn() };
+  const listShopProductsUseCase = { execute: jest.fn() };
+  const publishProductUseCase = { execute: jest.fn() };
+  const setProductImagesByKeysUseCase = { execute: jest.fn() };
+  const setProductImagesUseCase = { execute: jest.fn() };
+  const setProductAttributesUseCase = { execute: jest.fn() };
+  const setProductVariantsUseCase = { execute: jest.fn() };
+  const setProductInventoryUseCase = { execute: jest.fn() };
+  const setProductPricingUseCase = { execute: jest.fn() };
+  const setProductShippingUseCase = { execute: jest.fn() };
+  const updateProductDetailsUseCase = { execute: jest.fn() };
+  const bulkMutateShopProductsUseCase = { execute: jest.fn() };
 
   const controller = new ShopProductsController(
-    shopRepository,
-    createProductDraftFacadeUseCase,
-    createProductDraftUseCase,
-    getProductByIdUseCase,
-    listShopProductsUseCase,
-    publishProductUseCase,
-    setProductImagesByKeysUseCase,
-    setProductImagesUseCase,
-    setProductAttributesUseCase,
-    setProductVariantsUseCase,
-    setProductInventoryUseCase,
-    setProductPricingUseCase,
-    setProductShippingUseCase,
-    updateProductDetailsUseCase,
-    bulkMutateShopProductsUseCase
+    shopRepository as never,
+    createProductDraftFacadeUseCase as never,
+    createProductDraftUseCase as never,
+    getProductByIdUseCase as never,
+    listShopProductsUseCase as never,
+    publishProductUseCase as never,
+    setProductImagesByKeysUseCase as never,
+    setProductImagesUseCase as never,
+    setProductAttributesUseCase as never,
+    setProductVariantsUseCase as never,
+    setProductInventoryUseCase as never,
+    setProductPricingUseCase as never,
+    setProductShippingUseCase as never,
+    updateProductDetailsUseCase as never,
+    bulkMutateShopProductsUseCase as never
   );
 
   beforeEach(() => {
