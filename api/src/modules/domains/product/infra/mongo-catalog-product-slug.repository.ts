@@ -1,6 +1,6 @@
 import {
   Inject,
-  Injectable,
+  Injectable
 } from '@nestjs/common';
 import { CATALOG_CONFIG, type CatalogConfig } from '~/config/catalog.config';
 import {

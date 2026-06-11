@@ -1,5 +1,5 @@
 import { ProductImageVariant } from '../domain/enums/product-image-variant.enum';
-import { ProductState } from '../domain/enums/product-state.enum';
+import type { ProductState } from '../domain/enums/product-state.enum';
 import type { ProductEntity } from './persistence/entities/product.entity';
 import { getInventoryPricingSnapshot } from './variant-price-read';
 

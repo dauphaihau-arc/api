@@ -71,7 +71,8 @@ implements CatalogProductDocumentRepository {
         activeDocuments,
         latestUpdatedAt: latestDocument?.updatedAt,
       };
-    } catch (error) {
+    }
+    catch (error) {
       this.logger.warn(
         `Unable to load catalog document stats: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
