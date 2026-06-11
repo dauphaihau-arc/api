@@ -1,7 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { err, ok, type Result } from '~/common/application/result';
+import { appJobDeduplicationKey, appJobName } from '~/common/jobs/job.types';
 import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
 import { ShopRepository } from '~/modules/domains/shop/app/ports/shop.repository';
+import { JobDispatcher } from '~/modules/shared/queue/app/ports/job-dispatcher';
 import { ProductShippingCharge } from '../../../domain/enums/product-shipping-charge.enum';
 import {
   ActorCannotCreateProductDraftError,
@@ -34,7 +36,8 @@ export class SetProductShippingUseCase {
   constructor(
     private readonly sellerProductQueryRepository: SellerProductQueryRepository,
     private readonly productCommandRepository: ProductCommandRepository,
-    private readonly shopRepository: ShopRepository
+    private readonly shopRepository: ShopRepository,
+    private readonly jobDispatcher?: JobDispatcher
   ) {}
 
   async execute(
@@ -87,6 +90,16 @@ export class SetProductShippingUseCase {
     if (!product) {
       return err(new ProductNotFoundError(productId));
     }
+
+    await this.jobDispatcher?.dispatch(
+      appJobName.projectCatalogProduct,
+      { productId: product.id },
+      {
+        deduplicationKey: appJobDeduplicationKey.projectCatalogProduct(
+          product.id
+        ),
+      }
+    );
 
     return ok(product);
   }

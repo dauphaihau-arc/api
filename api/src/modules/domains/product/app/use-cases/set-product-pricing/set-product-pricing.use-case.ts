@@ -1,9 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { err, ok, type Result } from '~/common/application/result';
+import { appJobDeduplicationKey, appJobName } from '~/common/jobs/job.types';
 import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
 import { ShopRepository } from '~/modules/domains/shop/app/ports/shop.repository';
 import { AuditLogService } from '~/modules/shared/audit/app/audit-log.service';
+import { JobDispatcher } from '~/modules/shared/queue/app/ports/job-dispatcher';
 import {
   ActorCannotCreateProductDraftError,
   InvalidProductVariantConfigurationError,
@@ -34,7 +36,8 @@ export class SetProductPricingUseCase {
     private readonly productPricingRepository: ProductPricingRepository,
     private readonly shopRepository: ShopRepository,
     private readonly auditLogService: AuditLogService,
-    private readonly eventEmitter: EventEmitter2
+    private readonly eventEmitter: EventEmitter2,
+    private readonly jobDispatcher?: JobDispatcher
   ) {}
 
   async execute(
@@ -95,6 +98,15 @@ export class SetProductPricingUseCase {
         sessionId: actor.sessionId,
       },
     });
+    await this.jobDispatcher?.dispatch(
+      appJobName.projectCatalogProduct,
+      { productId: product.id },
+      {
+        deduplicationKey: appJobDeduplicationKey.projectCatalogProduct(
+          product.id
+        ),
+      }
+    );
 
     void this.eventEmitter;
 

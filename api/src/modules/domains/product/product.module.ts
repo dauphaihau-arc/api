@@ -1,6 +1,7 @@
 import { MikroOrmModule } from '@mikro-orm/nestjs';
 import { forwardRef, Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ConfigService } from '@nestjs/config';
 import { IdempotencyModule } from '../../shared/idempotency/idempotency.module';
 import { CacheModule } from '../../shared/cache/cache.module';
 import { StorageModule } from '../../shared/storage/storage.module';
@@ -13,6 +14,8 @@ import { CategoryModule } from '../category/category.module';
 import { ShopModule } from '../shop/shop.module';
 import { ProductImageService } from './app/services/product-image.service';
 import { ResolvedStorefrontPriceService } from './app/services/resolved-storefront-price.service';
+import { CatalogStatusService } from './app/services/catalog-status.service';
+import { CatalogProductProjectorService } from './app/services/catalog-product-projector.service';
 import { CreateProductDraftFacadeUseCase } from './app/use-cases/create-product-draft-facade/create-product-draft-facade.use-case';
 import { ConsumeProductImageUploadTicketUseCase } from './app/use-cases/consume-product-image-upload-ticket/consume-product-image-upload-ticket.use-case';
 import { CreateProductDraftUseCase } from './app/use-cases/create-product-draft/create-product-draft.use-case';
@@ -34,8 +37,12 @@ import { SetProductVariantsUseCase } from './app/use-cases/set-product-variants/
 import { UpdateProductDetailsUseCase } from './app/use-cases/update-product-details/update-product-details.use-case';
 import { ProductCommandRepository } from './app/ports/product-command.repository';
 import { ProductPricingRepository } from './app/ports/product-pricing.repository';
+import { CatalogProductDocumentRepository } from './app/ports/catalog-product-document.repository';
+import { CatalogSearchDocumentRepository } from './app/ports/catalog-search-document.repository';
+import { CatalogProductSlugRepository } from './app/ports/catalog-product-slug.repository';
 import { SellerProductQueryRepository } from './app/ports/seller-product-query.repository';
 import { StorefrontProductQueryRepository } from './app/ports/storefront-product-query.repository';
+import { InternalCatalogController } from './api/rest/internal-catalog.controller';
 import { ProductController } from './api/rest/product.controller';
 import { ProductInventoryEventsController } from './api/rest/product-inventory-events.controller';
 import { ProductUploadController } from './api/rest/product-upload.controller';
@@ -44,6 +51,12 @@ import { ShopProductsController } from '../shop/api/rest/shop-products.controlle
 import { MikroOrmProductCommandRepository } from './infra/mikro-orm-product-command.repository';
 import { MikroOrmSellerProductQueryRepository } from './infra/mikro-orm-seller-product-query.repository';
 import { MikroOrmStorefrontProductQueryRepository } from './infra/mikro-orm-storefront-product-query.repository';
+import { MongoCatalogProductDocumentRepository } from './infra/mongo-catalog-product-document.repository';
+import { MongoCatalogSearchDocumentRepository } from './infra/mongo-catalog-search-document.repository';
+import { MongoCatalogProductSlugRepository } from './infra/mongo-catalog-product-slug.repository';
+import { AtlasSearchStorefrontProductQueryRepository } from './infra/atlas-search-storefront-product-query.repository';
+import { MongoStorefrontProductQueryRepository } from './infra/mongo-storefront-product-query.repository';
+import { CatalogMongoAccess } from './infra/catalog-mongo.access';
 import { ProductAttributeValueEntity } from './infra/persistence/entities/product-attribute-value.entity';
 import { ProductImageEntity } from './infra/persistence/entities/product-image.entity';
 import { ProductImageVariantEntity } from './infra/persistence/entities/product-image-variant.entity';
@@ -54,6 +67,7 @@ import { ProductShippingProfileEntity } from './infra/persistence/entities/produ
 import { ProductVariantEntity } from './infra/persistence/entities/product-variant.entity';
 import { ProductEntity } from './infra/persistence/entities/product.entity';
 import { VariantPriceEntity } from './infra/persistence/entities/variant-price.entity';
+import { CATALOG_CONFIG, buildCatalogConfig } from '~/config/catalog.config';
 
 @Module({
   imports: [
@@ -82,6 +96,7 @@ import { VariantPriceEntity } from './infra/persistence/entities/variant-price.e
     ]),
   ],
   controllers: [
+    InternalCatalogController,
     ProductController,
     ProductInventoryEventsController,
     ProductUploadController,
@@ -89,12 +104,49 @@ import { VariantPriceEntity } from './infra/persistence/entities/variant-price.e
   ],
   providers: [
     {
+      provide: CATALOG_CONFIG,
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) =>
+        buildCatalogConfig(configService),
+    },
+    {
       provide: StorefrontProductQueryRepository,
-      useExisting: MikroOrmStorefrontProductQueryRepository,
+      inject: [
+        CATALOG_CONFIG,
+        AtlasSearchStorefrontProductQueryRepository,
+        MikroOrmStorefrontProductQueryRepository,
+        MongoStorefrontProductQueryRepository,
+      ],
+      useFactory: (
+        catalogConfig: ReturnType<typeof buildCatalogConfig>,
+        atlasSearchStorefrontProductQueryRepository: AtlasSearchStorefrontProductQueryRepository,
+        mikroOrmStorefrontProductQueryRepository: MikroOrmStorefrontProductQueryRepository,
+        mongoStorefrontProductQueryRepository: MongoStorefrontProductQueryRepository
+      ) => {
+        if (catalogConfig.driver !== 'mongodb') {
+          return mikroOrmStorefrontProductQueryRepository;
+        }
+
+        return catalogConfig.searchDriver === 'atlas'
+          ? atlasSearchStorefrontProductQueryRepository
+          : mongoStorefrontProductQueryRepository;
+      },
     },
     {
       provide: SellerProductQueryRepository,
       useExisting: MikroOrmSellerProductQueryRepository,
+    },
+    {
+      provide: CatalogProductDocumentRepository,
+      useExisting: MongoCatalogProductDocumentRepository,
+    },
+    {
+      provide: CatalogProductSlugRepository,
+      useExisting: MongoCatalogProductSlugRepository,
+    },
+    {
+      provide: CatalogSearchDocumentRepository,
+      useExisting: MongoCatalogSearchDocumentRepository,
     },
     {
       provide: ProductCommandRepository,
@@ -105,9 +157,17 @@ import { VariantPriceEntity } from './infra/persistence/entities/variant-price.e
       useExisting: MikroOrmProductCommandRepository,
     },
     ProductImageService,
+    CatalogMongoAccess,
+    AtlasSearchStorefrontProductQueryRepository,
+    MongoCatalogProductDocumentRepository,
+    MongoCatalogSearchDocumentRepository,
+    MongoCatalogProductSlugRepository,
+    MongoStorefrontProductQueryRepository,
     MikroOrmProductCommandRepository,
     MikroOrmSellerProductQueryRepository,
     MikroOrmStorefrontProductQueryRepository,
+    CatalogStatusService,
+    CatalogProductProjectorService,
     ResolvedStorefrontPriceService,
     ConsumeProductImageUploadTicketUseCase,
     CreateProductDraftFacadeUseCase,
@@ -131,11 +191,16 @@ import { VariantPriceEntity } from './infra/persistence/entities/variant-price.e
     ForwardProductInventoryUpdatedToSseListener,
   ],
   exports: [
+    CATALOG_CONFIG,
     StorefrontProductQueryRepository,
     SellerProductQueryRepository,
+    CatalogProductDocumentRepository,
+    CatalogSearchDocumentRepository,
+    CatalogProductSlugRepository,
     ProductCommandRepository,
     ProductPricingRepository,
     ProductImageService,
+    CatalogProductProjectorService,
     ResolvedStorefrontPriceService,
     ConsumeProductImageUploadTicketUseCase,
     CreateProductDraftFacadeUseCase,

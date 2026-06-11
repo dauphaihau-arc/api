@@ -32,6 +32,13 @@ const appEnvBaseSchema = z.object({
   DB_USER: z.string().trim().min(1).optional(),
   DB_PASSWORD: z.string().trim().min(1).optional(),
   DB_NAME: z.string().trim().min(1).optional(),
+  CATALOG_STORE_DRIVER: z.enum(['postgres', 'mongodb']).default('postgres'),
+  CATALOG_SEARCH_DRIVER: z.enum(['mongodb', 'atlas']).default('mongodb'),
+  CATALOG_MONGODB_URI: z.url().optional(),
+  CATALOG_MONGODB_DB_NAME: z.string().trim().min(1).optional(),
+  CATALOG_MONGODB_PRODUCTS_COLLECTION: z.string().trim().min(1).optional(),
+  CATALOG_MONGODB_SLUGS_COLLECTION: z.string().trim().min(1).optional(),
+  CATALOG_MONGODB_SEARCH_COLLECTION: z.string().trim().min(1).optional(),
   DB_LOG_QUERIES: z.enum(['true', 'false']).default('false'),
   DB_SLOW_QUERY_THRESHOLD_MS: positiveIntegerString.default('250'),
   REDIS_URL: z.url().default('redis://127.0.0.1:6379'),
@@ -217,6 +224,24 @@ const appEnvSchema = appEnvBaseSchema.superRefine((env, context) => {
       message:
         'Expected AUTH_COOKIE_SECURE=true when AUTH_COOKIE_SAME_SITE is none.',
     });
+  }
+
+  if (env.CATALOG_STORE_DRIVER === 'mongodb') {
+    for (const field of [
+      'CATALOG_MONGODB_URI',
+      'CATALOG_MONGODB_DB_NAME',
+      'CATALOG_MONGODB_PRODUCTS_COLLECTION',
+      'CATALOG_MONGODB_SLUGS_COLLECTION',
+      'CATALOG_MONGODB_SEARCH_COLLECTION',
+    ] as const) {
+      if (!env[field]) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [field],
+          message: `Expected ${field} when CATALOG_STORE_DRIVER is mongodb.`,
+        });
+      }
+    }
   }
 
   if (

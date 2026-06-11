@@ -9,6 +9,7 @@ import {
 } from '~/common/jobs/job.types';
 import { RefreshExchangeRatesJob } from '~/common/jobs/refresh-exchange-rates.job';
 import { GenerateProductImageVariantsJob } from '~/common/jobs/generate-product-image-variants.job';
+import { ProjectCatalogProductJob } from '~/common/jobs/project-catalog-product.job';
 import { ProcessOrderRefundJob } from '~/common/jobs/process-order-refund.job';
 import { SendGuestOrderConfirmationEmailJob } from '~/common/jobs/send-guest-order-confirmation-email.job';
 import { SendPasswordResetEmailJob } from '~/common/jobs/send-password-reset-email.job';
@@ -34,7 +35,8 @@ export class AppJobRunner {
     private readonly sendRefundFailedEmailJob: SendRefundFailedEmailJob,
     private readonly sendSellerOrderUpdateEmailJob: SendSellerOrderUpdateEmailJob,
     private readonly sendWebPushNotificationJob: SendWebPushNotificationJob,
-    private readonly generateProductImageVariantsJob: GenerateProductImageVariantsJob
+    private readonly generateProductImageVariantsJob: GenerateProductImageVariantsJob,
+    private readonly projectCatalogProductJob: ProjectCatalogProductJob
   ) {}
 
   async run<TName extends AppJobName>(
@@ -101,6 +103,11 @@ export class AppJobRunner {
           case appJobName.generateProductImageVariants:
             await this.generateProductImageVariantsJob.run(
               payload as AppJobPayloadMap[typeof appJobName.generateProductImageVariants]
+            );
+            return;
+          case appJobName.projectCatalogProduct:
+            await this.projectCatalogProductJob.run(
+              payload as AppJobPayloadMap[typeof appJobName.projectCatalogProduct]
             );
             return;
         }

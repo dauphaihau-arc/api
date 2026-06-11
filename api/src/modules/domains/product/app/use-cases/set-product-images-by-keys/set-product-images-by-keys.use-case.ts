@@ -75,6 +75,15 @@ export class SetProductImagesByKeysUseCase {
         deduplicationKey: appJobDeduplicationKey.generateProductImageVariants(productId),
       }
     );
+    await this.jobDispatcher.dispatch(
+      appJobName.projectCatalogProduct,
+      { productId: replacedImages.product.id },
+      {
+        deduplicationKey: appJobDeduplicationKey.projectCatalogProduct(
+          replacedImages.product.id
+        ),
+      }
+    );
 
     return ok(replacedImages.product);
   }

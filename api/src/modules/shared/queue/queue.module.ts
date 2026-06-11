@@ -13,6 +13,7 @@ import { PaymentModule } from '../payment/payment.module';
 import Redis from 'ioredis';
 import { RefreshExchangeRatesJob } from '~/common/jobs/refresh-exchange-rates.job';
 import { GenerateProductImageVariantsJob } from '~/common/jobs/generate-product-image-variants.job';
+import { ProjectCatalogProductJob } from '~/common/jobs/project-catalog-product.job';
 import { SendGuestOrderConfirmationEmailJob } from '~/common/jobs/send-guest-order-confirmation-email.job';
 import { SendPasswordResetEmailJob } from '~/common/jobs/send-password-reset-email.job';
 import { SendRefundFailedEmailJob } from '~/common/jobs/send-refund-failed-email.job';
@@ -135,6 +136,7 @@ const queueModuleLogger = new Logger('QueueModule');
     SendRefundFailedEmailJob,
     SendSellerOrderUpdateEmailJob,
     GenerateProductImageVariantsJob,
+    ProjectCatalogProductJob,
     {
       provide: JobDispatcher,
       inject: [QUEUE_CONFIG, BULLMQ_CONNECTION, AppJobRunner],

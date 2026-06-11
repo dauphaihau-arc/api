@@ -27,7 +27,7 @@ export class HealthController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Check service health',
-    description: 'Runs database and storage connectivity checks.',
+    description: 'Runs database, storage, and catalog connectivity checks.',
   })
   @ApiOkResponse({
     type: HealthCheckResponseDto,
@@ -51,7 +51,7 @@ export class HealthController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Check service readiness',
-    description: 'Runs database, storage, Redis, and queue readiness checks.',
+    description: 'Runs database, storage, catalog, Redis, and queue readiness checks.',
   })
   @ApiOkResponse({
     type: HealthCheckResponseDto,

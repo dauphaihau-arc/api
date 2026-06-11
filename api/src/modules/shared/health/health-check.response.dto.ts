@@ -25,6 +25,11 @@ class HealthComponentsResponseDto {
 
   @ApiProperty({
     type: () => HealthComponentResponseDto,
+  })
+  catalog!: HealthComponentResponseDto;
+
+  @ApiProperty({
+    type: () => HealthComponentResponseDto,
     required: false,
   })
   redis?: HealthComponentResponseDto;

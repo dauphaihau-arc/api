@@ -9,6 +9,7 @@ export const appJobName = {
   sendSellerOrderUpdateEmail: 'order.send-seller-order-update-email',
   sendWebPushNotification: 'notification.send-web-push',
   generateProductImageVariants: 'product.generate-image-variants',
+  projectCatalogProduct: 'catalog.project-product',
 } as const;
 
 export interface AppJobPayloadMap {
@@ -53,6 +54,9 @@ export interface AppJobPayloadMap {
     data?: Record<string, unknown>;
   };
   [appJobName.generateProductImageVariants]: {
+    productId: string;
+  };
+  [appJobName.projectCatalogProduct]: {
     productId: string;
   };
 }
@@ -107,6 +111,12 @@ export const appJobDeduplicationKey = {
   generateProductImageVariants(productId: string): string {
     return buildJobDeduplicationKey(
       appJobName.generateProductImageVariants,
+      productId
+    );
+  },
+  projectCatalogProduct(productId: string): string {
+    return buildJobDeduplicationKey(
+      appJobName.projectCatalogProduct,
       productId
     );
   },
