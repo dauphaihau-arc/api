@@ -136,6 +136,9 @@ describe('OrderCheckoutOutboxService', () => {
     const { service, outboxEvent, order } = buildService({
       paymentFails: true,
     });
+    const loggerErrorSpy = jest
+      .spyOn(service['logger'], 'error')
+      .mockImplementation(() => undefined);
 
     const result = await service.processEventById('outbox-1');
 
@@ -145,5 +148,9 @@ describe('OrderCheckoutOutboxService', () => {
     expect(outboxEvent.attemptCount).toBe(1);
     expect(outboxEvent.lastError).toBe('Stripe down');
     expect(outboxEvent.availableAt.getTime()).toBeGreaterThan(Date.now());
+    expect(loggerErrorSpy).toHaveBeenCalledWith(
+      'Failed processing outbox event outbox-1: Stripe down',
+      expect.any(String)
+    );
   });
 });
