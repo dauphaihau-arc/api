@@ -17,6 +17,7 @@ export class ListMyChatConversationsUseCase {
     query: ChatConversationListQuery
   ): Promise<ChatConversationListResult> {
     const repository = this.entityManager.fork().getRepository(ChatConversationEntity);
+
     const [conversations, total] = await repository.findAndCount(
       { buyerUser: actor.userId },
       {

@@ -120,6 +120,19 @@ db-migration-down-infisical project_id *env_name:
 # -------------------- Seeding
 # See docs/seeding.md for seed mode guidance and command examples.
 
+# Clears schema, seeds the full demo dataset, refreshes catalog products, and uploads seeded assets.
+seed-full: db-clear
+  just db-seed-demo
+  just refresh-catalog-products
+  just storage-fresh
+
+# Clears schema, seeds the full demo dataset, refreshes catalog products, and uploads seeded assets.
+seed-full-infisical project_id *env_name:
+  just db-clear-infisical {{project_id}} {{env_name}}
+  just db-seed-demo-infisical {{project_id}} {{env_name}}
+  just refresh-catalog-products-infisical {{project_id}} {{env_name}}
+  just storage-fresh-infisical {{project_id}} {{env_name}}
+
 db-seed-demo:
   cd {{ api_dir }} && \
   test -f ".env" && \
@@ -152,19 +165,19 @@ db-seed-infisical project_id *env_name:
   ENV_ARG='{{ if env_name != "" { "--env=" + env_name } else { "" } }}' && \
   pnpm exec infisical run --projectId="{{ project_id }}" $ENV_ARG --token="$INFISICAL_TOKEN" -- pnpm db:seed
 
-catalog-backfill:
+refresh-catalog-products:
   cd {{ api_dir }} && \
   test -f ".env" && \
   set -a && \
   . ".env" && \
   set +a && \
-  if [ "${CATALOG_STORE_DRIVER:-postgres}" = "mongodb" ]; then pnpm catalog:backfill; else echo "Skipping catalog backfill (CATALOG_STORE_DRIVER=${CATALOG_STORE_DRIVER:-postgres})"; fi
+  if [ "${CATALOG_STORE_DRIVER:-postgres}" = "mongodb" ]; then pnpm catalog:refresh-products; else echo "Skipping catalog products refresh (CATALOG_STORE_DRIVER=${CATALOG_STORE_DRIVER:-postgres})"; fi
 
-catalog-backfill-infisical project_id *env_name:
+refresh-catalog-products-infisical project_id *env_name:
   cd {{ api_dir }} && \
   test -n "$INFISICAL_TOKEN" && \
   ENV_ARG='{{ if env_name != "" { "--env=" + env_name } else { "" } }}' && \
-  pnpm exec infisical run --projectId="{{ project_id }}" $ENV_ARG --token="$INFISICAL_TOKEN" -- sh -c 'if [ "${CATALOG_STORE_DRIVER:-postgres}" = "mongodb" ]; then pnpm catalog:backfill; else echo "Skipping catalog backfill (CATALOG_STORE_DRIVER=${CATALOG_STORE_DRIVER:-postgres})"; fi'
+  pnpm exec infisical run --projectId="{{ project_id }}" $ENV_ARG --token="$INFISICAL_TOKEN" -- sh -c 'if [ "${CATALOG_STORE_DRIVER:-postgres}" = "mongodb" ]; then pnpm catalog:refresh-products; else echo "Skipping catalog products refresh (CATALOG_STORE_DRIVER=${CATALOG_STORE_DRIVER:-postgres})"; fi'
 
 db-clear:
   cd {{ api_dir }} && \
@@ -183,24 +196,25 @@ db-clear-infisical project_id *env_name:
 # Clears schema, reruns migrations via the seed script, then seeds reference data.
 db-fresh: db-clear
   just db-seed
-  just catalog-backfill
+  just refresh-catalog-products
 
 # Clears schema, reruns migrations via the seed script, then seeds the full demo dataset.
 db-fresh-demo: db-clear
   just db-seed-demo
-  just catalog-backfill
+  just refresh-catalog-products
 
 # Clears schema, reruns migrations via the seed script, then seeds reference data.
 db-fresh-infisical project_id *env_name:
   just db-clear-infisical {{project_id}} {{env_name}}
   just db-seed-infisical {{project_id}} {{env_name}}
-  just catalog-backfill-infisical {{project_id}} {{env_name}}
+  just refresh-catalog-products-infisical {{project_id}} {{env_name}}
 
 # Clears schema, reruns migrations via the seed script, then seeds the full demo dataset.
 db-fresh-demo-infisical project_id *env_name:
   just db-clear-infisical {{project_id}} {{env_name}}
   just db-seed-demo-infisical {{project_id}} {{env_name}}
-  just catalog-backfill-infisical {{project_id}} {{env_name}}
+  just refresh-catalog-products-infisical {{project_id}} {{env_name}}
+
 
 
 redis-clear:

@@ -24,6 +24,8 @@ type MongoSlugCollectionLike<TDocument> = {
   createIndexes(indexes: Array<Record<string, unknown>>): Promise<void>;
 };
 
+type ExistingSlugDocument = Pick<CatalogProductSlugDocument, '_id'>;
+
 @Injectable()
 export class MongoCatalogProductSlugRepository
 implements CatalogProductSlugRepository {
@@ -65,8 +67,18 @@ implements CatalogProductSlugRepository {
     }
 
     const collection = await this.getCollection();
-    await collection.updateOne(
+
+    const existingDocument = await collection.findOne(
       { productId: document.productId },
+      { projection: { _id: 1 } }
+    ) as ExistingSlugDocument | null;
+
+    if (existingDocument && existingDocument._id !== document._id) {
+      await collection.deleteOne({ _id: existingDocument._id });
+    }
+
+    await collection.updateOne(
+      { _id: document._id },
       { $set: document },
       { upsert: true }
     );

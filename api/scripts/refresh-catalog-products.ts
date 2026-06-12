@@ -14,6 +14,34 @@ import { MinioStorageService } from '../src/modules/shared/storage/infra/minio-s
 import { ProductState } from '../src/modules/domains/product/domain/enums/product-state.enum';
 import type { StorageService } from '../src/modules/shared/storage/app/ports/storage.service';
 
+type MongoDeleteManyCollectionLike = {
+  deleteMany(filter: Record<string, never>): Promise<{ deletedCount?: number }>;
+};
+
+async function runWithTimeout(
+  label: string,
+  operation: Promise<void>,
+  timeoutMs = 5_000
+): Promise<void> {
+  let timeoutHandle: NodeJS.Timeout | undefined;
+
+  try {
+    await Promise.race([
+      operation,
+      new Promise<never>((_, reject) => {
+        timeoutHandle = setTimeout(() => {
+          reject(new Error(`${label} timed out after ${timeoutMs}ms`));
+        }, timeoutMs);
+      }),
+    ]);
+  }
+  finally {
+    if (timeoutHandle) {
+      clearTimeout(timeoutHandle);
+    }
+  }
+}
+
 async function main() {
   console.log('Starting catalog backfill');
   const orm = await MikroORM.init({
@@ -75,6 +103,29 @@ async function main() {
     ]);
     console.log('MongoDB connectivity OK');
 
+    console.log('Clearing existing catalog projection collections');
+    const [
+      productsDeleteResult,
+      slugsDeleteResult,
+      searchDeleteResult,
+    ] = await Promise.all([
+      catalogMongoAccess.getCollection<MongoDeleteManyCollectionLike>(
+        catalogConfig.mongodbProductsCollection
+      ).then((collection) => collection.deleteMany({})),
+      catalogMongoAccess.getCollection<MongoDeleteManyCollectionLike>(
+        catalogConfig.mongodbSlugsCollection
+      ).then((collection) => collection.deleteMany({})),
+      catalogMongoAccess.getCollection<MongoDeleteManyCollectionLike>(
+        catalogConfig.mongodbSearchCollection
+      ).then((collection) => collection.deleteMany({})),
+    ]);
+    console.log(
+      'Cleared catalog collections:' +
+      ` products=${productsDeleteResult.deletedCount ?? 0}` +
+      ` slugs=${slugsDeleteResult.deletedCount ?? 0}` +
+      ` search=${searchDeleteResult.deletedCount ?? 0}`
+    );
+
     const productIds = await orm.em.fork().find(
       ProductEntity,
       { state: ProductState.ACTIVE },
@@ -93,7 +144,8 @@ async function main() {
         console.log(`Projecting ${index + 1}/${productIds.length} -> ${product.id}`);
         await projector.projectProduct(product.id);
         processed += 1;
-      } catch (error) {
+      }
+      catch (error) {
         console.error(`Failed projecting product ${product.id}`);
         throw error;
       }
@@ -102,13 +154,39 @@ async function main() {
     console.log(
       `Catalog backfill completed: projected ${processed}/${productIds.length} active products`
     );
-  } finally {
-    await catalogMongoAccess.onApplicationShutdown();
-    await orm.close(true);
+  }
+  finally {
+    console.log('Closing catalog MongoDB connection');
+    try {
+      await runWithTimeout(
+        'Catalog MongoDB shutdown',
+        catalogMongoAccess.onApplicationShutdown()
+      );
+      console.log('Catalog MongoDB connection closed');
+    }
+    catch (error) {
+      console.warn(
+        `Catalog MongoDB shutdown did not finish cleanly: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+
+    console.log('Closing PostgreSQL connection');
+    try {
+      await runWithTimeout('PostgreSQL shutdown', orm.close(true));
+      console.log('PostgreSQL connection closed');
+    }
+    catch (error) {
+      console.warn(
+        `PostgreSQL shutdown did not finish cleanly: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
   }
 }
 
 void main().catch((error) => {
   console.error(error);
   process.exit(1);
+}).then(() => {
+  console.log('Catalog backfill shutdown complete');
+  process.exit(0);
 });
