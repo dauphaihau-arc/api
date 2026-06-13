@@ -9,6 +9,11 @@ export const PRODUCT_INVENTORY_LOCAL_TSV_PATH = path.join(
   SEED_DATA_DIR,
   'product-inventory.local.tsv'
 );
+export const PRODUCT_ATTRIBUTES_TSV_PATH = path.join(SEED_DATA_DIR, 'product-attributes.tsv');
+export const PRODUCT_ATTRIBUTES_LOCAL_TSV_PATH = path.join(
+  SEED_DATA_DIR,
+  'product-attributes.local.tsv'
+);
 export const EXCHANGE_RATES_TSV_PATH = path.join(SEED_DATA_DIR, 'exchange-rates.tsv');
 export const EXCHANGE_RATES_LOCAL_TSV_PATH = path.join(
   SEED_DATA_DIR,

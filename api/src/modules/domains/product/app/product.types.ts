@@ -78,9 +78,11 @@ export interface ReplaceProductImagesRepositoryResult {
 export interface ProductAttributeValueSummary {
   id: string;
   categoryAttributeId: string;
+  categoryAttributeKey: string;
   categoryAttributeName: string;
   inputType: string;
   selectedOptionId?: string;
+  selectedOptionKey?: string;
   selectedOptionValue?: string;
   selectedText?: string;
 }
@@ -295,10 +297,28 @@ export interface ListPublicProductsInput {
   title?: string;
   isDigital?: boolean;
   whoMade?: ProductWhoMade;
+  attributeFilters?: Array<{
+    attributeId?: string;
+    selectedOptionIds?: string[];
+    selectedOptionKeys?: string[];
+    attributeName: string;
+    selectedOptionValues: string[];
+  }>;
   order?: PublicProductSortOrder;
 }
 
 export type PublicProductListResult = PaginatedResult<PublicProductListItem>;
+
+export interface PublicProductFacetOption {
+  optionKey: string;
+  value: string;
+}
+
+export interface PublicProductFacet {
+  facetKey: string;
+  attributeName: string;
+  options: PublicProductFacetOption[];
+}
 
 export interface SuggestPublicProductsInput {
   search: string;

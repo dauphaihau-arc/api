@@ -13,17 +13,22 @@ import { GetPublicProductBySlugsUseCase } from '../../app/use-cases/get-public-p
 import { ListPublicProductsUseCase } from '../../app/use-cases/list-public-products/list-public-products.use-case';
 import { SuggestPublicProductsUseCase } from '../../app/use-cases/suggest-public-products/suggest-public-products.use-case';
 import { ListPublicProductsQueryDto } from './dto/list-public-products.query.dto';
+import { ListPublicProductsQueryPipe } from './list-public-products-query.pipe';
 import { SuggestPublicProductsQueryDto } from './dto/suggest-public-products.query.dto';
 import { toPublicProductDetailResponse } from './public-product-detail.presenter';
 import type { PublicProductDetailResponse } from './public-product-detail.response';
 import { toPublicProductListResponse } from './public-product-list.presenter';
 import type { PublicProductListResponse } from './public-product-list.response';
+import { toPublicProductFacetResponse } from './public-product-facet.presenter';
+import type { PublicProductFacetResponse } from './public-product-facet.response';
 import { toPublicProductSuggestionResponse } from './public-product-suggestion.presenter';
 import type { PublicProductSuggestionResponse } from './public-product-suggestion.response';
 
 @Controller('products')
 @ApiTags('Products')
 export class ProductController {
+  private readonly listPublicProductsQueryPipe = new ListPublicProductsQueryPipe();
+
   constructor(
     private readonly listPublicProductsUseCase: ListPublicProductsUseCase,
     private readonly getPublicProductBySlugsUseCase: GetPublicProductBySlugsUseCase,
@@ -56,11 +61,36 @@ export class ProductController {
     schema: { type: 'object' },
   })
   async listProducts(
-    @Query() query: ListPublicProductsQueryDto
+    @Query() rawQuery: Record<string, unknown>
   ): Promise<PublicProductListResponse> {
+    const query = await this.listPublicProductsQueryPipe.transform(rawQuery, {
+      type: 'query',
+      metatype: ListPublicProductsQueryDto,
+      data: undefined,
+    });
     const result = await this.listPublicProductsUseCase.execute(query);
 
     return toPublicProductListResponse(result);
+  }
+
+  @Get('facets')
+  @Header('Cache-Control', 'public, max-age=60')
+  @ApiOperation({ summary: 'List public product facets' })
+  @ApiOkResponse({
+    description: 'Public product facets.',
+    schema: { type: 'object' },
+  })
+  async listProductFacets(
+    @Query() rawQuery: Record<string, unknown>
+  ): Promise<PublicProductFacetResponse> {
+    const query = await this.listPublicProductsQueryPipe.transform(rawQuery, {
+      type: 'query',
+      metatype: ListPublicProductsQueryDto,
+      data: undefined,
+    });
+    const result = await this.listPublicProductsUseCase.executeFacets(query);
+
+    return toPublicProductFacetResponse(result);
   }
 
   @Get('by-slug/:shop_slug/:product_slug')

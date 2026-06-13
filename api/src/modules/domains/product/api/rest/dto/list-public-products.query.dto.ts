@@ -5,6 +5,7 @@ import {
   IsEnum,
   IsIn,
   IsOptional,
+  IsArray,
   IsString,
   IsUUID,
   Max,
@@ -95,6 +96,15 @@ export class ListPublicProductsQueryDto {
   @Transform(({ value, obj: source }) => value ?? source.who_made)
   @IsEnum(ProductWhoMade)
   whoMade?: ProductWhoMade;
+
+  @IsOptional()
+  @IsArray()
+  attributeFilters?: Array<{
+    attribute_id?: string;
+    selected_option_ids?: string[];
+    attribute_name: string;
+    selected_option_values: string[];
+  }>;
 
   @IsOptional()
   @IsIn(PUBLIC_PRODUCT_SORT_ORDERS)

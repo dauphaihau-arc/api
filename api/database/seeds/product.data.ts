@@ -1,10 +1,12 @@
 import { ProductVariantType } from '../../src/modules/domains/product/domain/enums/product-variant-type.enum';
 import { ProductWhoMade } from '../../src/modules/domains/product/domain/enums/product-who-made.enum';
 import {
+  PRODUCT_ATTRIBUTES_LOCAL_TSV_PATH,
+  PRODUCT_ATTRIBUTES_TSV_PATH,
   PRODUCT_INVENTORY_LOCAL_TSV_PATH,
   PRODUCT_INVENTORY_TSV_PATH,
   PRODUCT_LOCAL_TSV_PATH,
-  PRODUCT_TSV_PATH,
+  PRODUCT_TSV_PATH
 } from './product-seed-paths';
 import { readOptionalTsvRows, readTsvRows } from './shared/read-tsv-rows';
 
@@ -25,6 +27,10 @@ export type ProductSeed = {
     salePrice?: number;
     optionValue1?: string;
     optionValue2?: string;
+  }>;
+  attributes: Array<{
+    attributeKey: string;
+    optionValue: string;
   }>;
 };
 
@@ -49,6 +55,13 @@ type InventoryCsvRow = {
   sale_price: string;
   option_value_1: string;
   option_value_2: string;
+};
+
+type ProductAttributeCsvRow = {
+  product_title: string;
+  shop_slug: string;
+  attribute_key: string;
+  option_value: string;
 };
 
 function parseCategoryPath(value: string, productKey: string): string[] {
@@ -151,8 +164,13 @@ function loadProductSeeds(): ProductSeed[] {
     ...readTsvRows<InventoryCsvRow>(PRODUCT_INVENTORY_TSV_PATH),
     ...readOptionalTsvRows<InventoryCsvRow>(PRODUCT_INVENTORY_LOCAL_TSV_PATH),
   ];
+  const attributeRows = [
+    ...readTsvRows<ProductAttributeCsvRow>(PRODUCT_ATTRIBUTES_TSV_PATH),
+    ...readOptionalTsvRows<ProductAttributeCsvRow>(PRODUCT_ATTRIBUTES_LOCAL_TSV_PATH),
+  ];
 
   const inventoryByProductKey = new Map<ProductSeed['shopSlug'], ProductSeed['inventory']>();
+  const attributesByProductKey = new Map<ProductSeed['shopSlug'], ProductSeed['attributes']>();
 
   inventoryRows.forEach((row, index) => {
     const inventoryKey = `${row.shop_slug}::${row.product_title}#${index + 2}`;
@@ -169,6 +187,26 @@ function loadProductSeeds(): ProductSeed[] {
     });
 
     inventoryByProductKey.set(productKey, inventory);
+  });
+
+  attributeRows.forEach((row, index) => {
+    const attributeSeedKey = `${row.shop_slug}::${row.product_title}#${index + 2}`;
+    const productKey = buildProductKey(row.shop_slug, row.product_title);
+    const attributeKey = row.attribute_key.trim();
+    const optionValue = row.option_value.trim();
+
+    if (!attributeKey || !optionValue) {
+      throw new Error(
+        `Missing attribute_key or option_value for product attribute seed ${attributeSeedKey}`
+      );
+    }
+
+    const attributes = attributesByProductKey.get(productKey) ?? [];
+    attributes.push({
+      attributeKey,
+      optionValue,
+    });
+    attributesByProductKey.set(productKey, attributes);
   });
 
   return productRows.map((row, index) => {
@@ -191,6 +229,7 @@ function loadProductSeeds(): ProductSeed[] {
       variantGroupName: row.variant_group_name.trim() || undefined,
       variantSubGroupName: row.variant_sub_group_name.trim() || undefined,
       inventory,
+      attributes: attributesByProductKey.get(lookupKey) ?? [],
     };
   });
 }

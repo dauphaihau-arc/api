@@ -94,6 +94,20 @@ describe('catalog-product-document.mapper', () => {
           }],
         },
       }],
+      attributeValues: {
+        getItems: () => [{
+          categoryAttribute: {
+            id: 'attribute-1',
+            name: 'Material',
+            rank: 1,
+          },
+          selectedOption: {
+            id: 'option-linen',
+            value: 'Linen',
+          },
+          selectedText: undefined,
+        }],
+      },
     } as never;
 
     const document = toCatalogProductDocument(
@@ -126,6 +140,12 @@ describe('catalog-product-document.mapper', () => {
       shipping: {
         originCountry: 'US',
       },
+      attributes: [{
+        categoryAttributeId: 'attribute-1',
+        categoryAttributeName: 'Material',
+        selectedOptionId: 'option-linen',
+        selectedOptionValue: 'Linen',
+      }],
     });
 
     expect(document.images[0]?.url).toBe(

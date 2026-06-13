@@ -8,8 +8,9 @@ import { ProductWhoMade } from '../../domain/enums/product-who-made.enum';
 import { ProductController } from './product.controller';
 
 describe('ProductController', () => {
-  const listPublicProductsUseCase: Pick<jest.Mocked<ListPublicProductsUseCase>, 'execute'> = {
+  const listPublicProductsUseCase: Pick<jest.Mocked<ListPublicProductsUseCase>, 'execute' | 'executeFacets'> = {
     execute: jest.fn(),
+    executeFacets: jest.fn(),
   };
   const getPublicProductBySlugsUseCase: Pick<jest.Mocked<GetPublicProductBySlugsUseCase>, 'execute'> = {
     execute: jest.fn(),
@@ -40,6 +41,97 @@ describe('ProductController', () => {
 
     expect(Reflect.getMetadata(PATH_METADATA, handler)).toBe('suggestions');
     expect(Reflect.getMetadata(METHOD_METADATA, handler)).toBe(RequestMethod.GET);
+  });
+
+  it('registers GET facets on the controller method', () => {
+    const handler = ProductController.prototype.listProductFacets;
+
+    expect(Reflect.getMetadata(PATH_METADATA, handler)).toBe('facets');
+    expect(Reflect.getMetadata(METHOD_METADATA, handler)).toBe(RequestMethod.GET);
+  });
+
+  it('returns public product facets', async () => {
+    listPublicProductsUseCase.executeFacets.mockResolvedValue([
+      {
+        facetKey: 'material',
+        attributeName: 'Material',
+        options: [
+          { optionKey: 'linen', value: 'Linen' },
+        ],
+      },
+    ]);
+
+    await expect(controller.listProductFacets({
+      page: '1',
+      limit: '12',
+      category_id: '19e56f7f-2dbd-4e4b-95fc-99f82f6d5b0e',
+      attr_material: 'cotton,linen',
+    })).resolves.toEqual({
+      facets: [
+        {
+          facet_key: 'material',
+          attribute_name: 'Material',
+          options: [
+            { option_key: 'linen', value: 'Linen' },
+          ],
+        },
+      ],
+    });
+    expect(listPublicProductsUseCase.executeFacets).toHaveBeenCalledWith({
+      page: 1,
+      limit: 12,
+      categoryId: '19e56f7f-2dbd-4e4b-95fc-99f82f6d5b0e',
+      attributeFilters: [
+        {
+          attribute_id: 'material',
+          attribute_name: 'material',
+          selected_option_keys: ['cotton', 'linen'],
+          selected_option_values: ['cotton', 'linen'],
+        },
+      ],
+    });
+  });
+
+  it('normalizes list product queries before executing the use case', async () => {
+    listPublicProductsUseCase.execute.mockResolvedValue({
+      items: [],
+      meta: {
+        page: 1,
+        limit: 16,
+        total: 0,
+        totalPages: 0,
+        hasNextPage: false,
+        hasPreviousPage: false,
+      },
+    });
+
+    await controller.listProducts({
+      page: '1',
+      limit: '16',
+      category_id: '19e56f7f-2dbd-4e4b-95fc-99f82f6d5b0e',
+      attr_bag_size: 'large',
+      attr_color: 'blue,green',
+    });
+
+    expect(listPublicProductsUseCase.execute).toHaveBeenCalledWith({
+      page: 1,
+      limit: 16,
+      categoryId: '19e56f7f-2dbd-4e4b-95fc-99f82f6d5b0e',
+      attributeFilters: [
+        {
+          attribute_id: 'bag_size',
+          attribute_name: 'bag_size',
+          selected_option_keys: ['large'],
+          selected_option_values: ['large'],
+        },
+        {
+          attribute_id: 'color',
+          attribute_name: 'color',
+          selected_option_keys: ['blue', 'green'],
+          selected_option_values: ['blue', 'green'],
+        },
+      ],
+    });
   });
 
   it('returns suggested products for typeahead', async () => {

@@ -2,18 +2,22 @@ import { Inject, Injectable } from '@nestjs/common';
 import { buildPaginationMeta } from '~/common/application/pagination';
 import { CATALOG_CONFIG, type CatalogConfig } from '~/config/catalog.config';
 import { ProductState } from '../domain/enums/product-state.enum';
+import { toCanonicalFacetOption } from '../app/shoe-size-groups';
 import { CatalogProductSlugRepository } from '../app/ports/catalog-product-slug.repository';
 import { StorefrontProductQueryRepository } from '../app/ports/storefront-product-query.repository';
 import { CatalogMongoAccess } from './catalog-mongo.access';
 import type {
   ListPublicProductsInput,
+  PublicProductFacet,
   PublicProductDetail,
   PublicProductListItem,
   PublicProductListResult,
   PublicProductSuggestion,
   SuggestPublicProductsInput
 } from '../app/product.types';
+import { PUBLIC_PRODUCT_FACET_PRIORITY } from '../app/product-facet.constants';
 import type { CatalogProductDocument } from './catalog-product-document.mapper';
+import { isInferredFacetSupported } from './inferred-facets';
 
 type MongoCollectionLike<TDocument> = {
   find(
@@ -98,6 +102,18 @@ implements StorefrontProductQueryRepository {
     };
   }
 
+  async listPublicFacets(
+    input: ListPublicProductsInput
+  ): Promise<PublicProductFacet[]> {
+    const collection = await this.getCollection();
+    const filter = this.buildListFilter(input);
+    const documents = await collection.find(filter).toArray();
+
+    return buildFacetResult(
+      documents.filter((document) => this.shouldIncludeInPublicList(document))
+    );
+  }
+
   async suggestPublic(
     input: SuggestPublicProductsInput
   ): Promise<PublicProductSuggestion[]> {
@@ -154,6 +170,48 @@ implements StorefrontProductQueryRepository {
 
     if (input.whoMade) {
       andFilters.push({ whoMade: input.whoMade });
+    }
+
+    if (input.attributeFilters?.length) {
+      for (const attributeFilter of input.attributeFilters) {
+        const structuredFilter = {
+          attributes: {
+            $elemMatch: {
+              ...(attributeFilter.attributeId
+                ? { categoryAttributeKey: attributeFilter.attributeId }
+                : { categoryAttributeName: attributeFilter.attributeName }),
+              ...(attributeFilter.selectedOptionIds?.length
+                ? { selectedOptionId: { $in: attributeFilter.selectedOptionIds } }
+                : attributeFilter.selectedOptionKeys?.length
+                  ? { selectedOptionKey: { $in: attributeFilter.selectedOptionKeys } }
+                  : { selectedOptionValue: { $in: attributeFilter.selectedOptionValues } }),
+            },
+          },
+        };
+
+        if (attributeFilter.attributeId && isInferredFacetSupported(attributeFilter.attributeId)) {
+          andFilters.push({
+            $or: [
+              structuredFilter,
+              {
+                inferredFacets: {
+                  $elemMatch: {
+                    facetKey: attributeFilter.attributeId,
+                    ...(attributeFilter.selectedOptionKeys?.length
+                      ? { optionKey: { $in: attributeFilter.selectedOptionKeys } }
+                      : { value: { $in: attributeFilter.selectedOptionValues } }),
+                  },
+                },
+              },
+            ],
+          });
+          continue;
+        }
+
+        andFilters.push({
+          ...structuredFilter,
+        });
+      }
     }
 
     if (input.search?.trim()) {
@@ -339,6 +397,63 @@ function compareSuggestionDocuments(
   }
 
   return right.sort.createdAt.getTime() - left.sort.createdAt.getTime();
+}
+
+function buildFacetResult(documents: CatalogProductDocument[]): PublicProductFacet[] {
+  const facets = new Map<string, {
+    facetKey: string;
+    attributeName: string;
+    options: Map<string, string>;
+  }>();
+
+  documents.forEach((document) => {
+    (document.attributes ?? []).forEach((attribute) => {
+      if (!attribute.selectedOptionId || !attribute.selectedOptionValue) {
+        return;
+      }
+
+      const existingFacet = facets.get(attribute.categoryAttributeKey) ?? {
+        facetKey: attribute.categoryAttributeKey,
+        attributeName: attribute.categoryAttributeName,
+        options: new Map(),
+      };
+      const canonicalOption = toCanonicalFacetOption(
+        attribute.categoryAttributeKey,
+        attribute.selectedOptionValue
+      );
+      existingFacet.options.set(canonicalOption.optionKey, canonicalOption.value);
+      facets.set(attribute.categoryAttributeKey, existingFacet);
+    });
+  });
+
+  return Array.from(facets.values())
+    .map((facet) => ({
+      facetKey: facet.facetKey,
+      attributeName: facet.attributeName,
+      options: Array.from(facet.options.entries())
+        .sort((left, right) => left[1].localeCompare(right[1]))
+        .map(([optionKey, value]) => ({
+          optionKey,
+          value,
+        })),
+    }))
+    .sort(compareFacetNames);
+}
+
+function compareFacetNames(
+  left: Pick<PublicProductFacet, 'attributeName'>,
+  right: Pick<PublicProductFacet, 'attributeName'>
+): number {
+  const leftIndex = PUBLIC_PRODUCT_FACET_PRIORITY.indexOf(left.attributeName as never);
+  const rightIndex = PUBLIC_PRODUCT_FACET_PRIORITY.indexOf(right.attributeName as never);
+  const normalizedLeftIndex = leftIndex === -1 ? Number.MAX_SAFE_INTEGER : leftIndex;
+  const normalizedRightIndex = rightIndex === -1 ? Number.MAX_SAFE_INTEGER : rightIndex;
+
+  if (normalizedLeftIndex !== normalizedRightIndex) {
+    return normalizedLeftIndex - normalizedRightIndex;
+  }
+
+  return left.attributeName.localeCompare(right.attributeName);
 }
 
 function getSuggestionRank(

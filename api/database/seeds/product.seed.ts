@@ -7,11 +7,10 @@ import { ProductState } from '../../src/modules/domains/product/domain/enums/pro
 import { ProductImageVariantStatus } from '../../src/modules/domains/product/domain/enums/product-image-variant-status.enum';
 import { ProductShippingCharge } from '../../src/modules/domains/product/domain/enums/product-shipping-charge.enum';
 import { ProductVariantType } from '../../src/modules/domains/product/domain/enums/product-variant-type.enum';
-import { ProductWhoMade } from '../../src/modules/domains/product/domain/enums/product-who-made.enum';
 import type { MarketplaceCurrency } from '../../src/config/marketplace.config';
 import {
   buildStorageObjectKey,
-  resolveStorageEnvironmentSegment,
+  resolveStorageEnvironmentSegment
 } from '../../src/modules/shared/storage/app/storage-key-builder';
 import { ProductAttributeValueEntity } from '../../src/modules/domains/product/infra/persistence/entities/product-attribute-value.entity';
 import { ProductImageEntity } from '../../src/modules/domains/product/infra/persistence/entities/product-image.entity';
@@ -28,7 +27,7 @@ import { PRODUCT_IMAGE_ROOT_DIRS } from './product-seed-paths';
 import {
   resolveOptionalSeedProductImagePaths,
   resolveSeedProductImagePaths,
-  slugifySeedValue,
+  slugifySeedValue
 } from './product-seed-image-resolver';
 
 function slugify(value: string): string {
@@ -71,7 +70,7 @@ const CURRENCY_DECIMALS: Record<MarketplaceCurrency, number> = {
 
 function toMinorUnits(amount: number, currency: MarketplaceCurrency): number {
   const decimals = CURRENCY_DECIMALS[currency];
-  return Math.round(amount * 10 ** decimals);
+  return Math.round(amount * (10 ** decimals));
 }
 
 function buildVariantKey(
@@ -87,20 +86,23 @@ function buildVariantKey(
     : `${inventorySeed.optionValue1 ?? ''}`;
 }
 
-async function findCategoryByPath(em: EntityManager, path: string[]): Promise<CategoryEntity> {
+async function findCategoryByPath(
+  em: EntityManager,
+  categoryPath: string[]
+): Promise<CategoryEntity> {
   let parent: CategoryEntity | null = null;
   let category: CategoryEntity | null = null;
 
-  for (const name of path) {
+  for (const name of categoryPath) {
     category = await em.findOne(CategoryEntity, { name, parent: parent ?? null });
     if (!category) {
-      throw new Error(`Missing seeded category path: ${path.join(' > ')}`);
+      throw new Error(`Missing seeded category path: ${categoryPath.join(' > ')}`);
     }
     parent = category;
   }
 
   if (!category) {
-    throw new Error(`Missing seeded category path: ${path.join(' > ')}`);
+    throw new Error(`Missing seeded category path: ${categoryPath.join(' > ')}`);
   }
 
   return category;
@@ -155,7 +157,8 @@ async function syncProductImages(
 async function syncProductAttributes(
   em: EntityManager,
   product: ProductEntity,
-  category: CategoryEntity
+  category: CategoryEntity,
+  productSeed: ProductSeed
 ): Promise<void> {
   for (const value of await em.find(ProductAttributeValueEntity, { product })) {
     em.remove(value);
@@ -167,10 +170,26 @@ async function syncProductAttributes(
     { category },
     { orderBy: { rank: 'asc' }, populate: ['options'] }
   );
+  const selectedValuesByAttributeKey = new Map(
+    productSeed.attributes.map((attribute) => [attribute.attributeKey, attribute.optionValue])
+  );
 
-  for (const [index, attribute] of attributes.entries()) {
+  for (const attribute of attributes) {
     const options = attribute.options.getItems().sort((a, b) => a.rank - b.rank);
-    const selectedOption = options[index % Math.max(options.length, 1)];
+    const selectedOptionValue = selectedValuesByAttributeKey.get(attribute.key);
+
+    if (!selectedOptionValue) {
+      continue;
+    }
+
+    const selectedOption = options.find((option) => option.value === selectedOptionValue);
+
+    if (!selectedOption) {
+      throw new Error(
+        `Missing option "${selectedOptionValue}" for attribute "${attribute.key}" on seeded product "${productSeed.shopSlug}::${productSeed.title}"`
+      );
+    }
+
     em.persist(
       em.create(ProductAttributeValueEntity, {
         product,
@@ -217,8 +236,8 @@ async function syncProductVariants(
       variantType === ProductVariantType.COMBINE
         ? `${inventorySeed.optionValue1} / ${inventorySeed.optionValue2}`
         : (inventorySeed.optionValue1 ?? 'Default');
-    const variant = existingVariantsByKey.get(key)
-      ?? em.create(ProductVariantEntity, { product, name: variantName, rank: index + 1 });
+    const variant = existingVariantsByKey.get(key) ??
+      em.create(ProductVariantEntity, { product, name: variantName, rank: index + 1 });
 
     variant.product = product;
     variant.name = variantName;
@@ -265,8 +284,8 @@ async function syncProductInventory(
   }> = [];
   inventorySeeds.forEach((inventorySeed) => {
     const variantKey = buildVariantKey(variantType, inventorySeed);
-    const inventory = existingInventoriesBySku.get(inventorySeed.sku)
-      ?? em.create(ProductInventoryEntity, {
+    const inventory = existingInventoriesBySku.get(inventorySeed.sku) ??
+      em.create(ProductInventoryEntity, {
         shop,
         product,
         sku: inventorySeed.sku,
@@ -292,8 +311,8 @@ async function syncProductInventory(
     const activeBasePrice = inventory.prices
       .getItems()
       .find((price) => !price.marketCode && !price.activeTo);
-    const price = activeBasePrice
-      ?? em.create(VariantPriceEntity, {
+    const price = activeBasePrice ??
+      em.create(VariantPriceEntity, {
         productInventory: inventory,
         priceType: VARIANT_PRICE_TYPES.BASE,
         currency: shop.currency,
@@ -456,7 +475,7 @@ export async function seedProducts(
         );
 
     await syncProductImages(em, shop, product, imageFilenames);
-    await syncProductAttributes(em, product, category);
+    await syncProductAttributes(em, product, category, productSeed);
     const variantsByKey = await syncProductVariants(
       em,
       product,

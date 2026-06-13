@@ -55,9 +55,13 @@ export function toProductDraftSummary(
       .map((attributeValue) => ({
         id: attributeValue.id,
         categoryAttributeId: attributeValue.categoryAttribute.id,
+        categoryAttributeKey: attributeValue.categoryAttribute.key,
         categoryAttributeName: attributeValue.categoryAttribute.name,
         inputType: attributeValue.categoryAttribute.inputType,
         selectedOptionId: attributeValue.selectedOption?.id,
+        selectedOptionKey: attributeValue.selectedOption?.value
+          ? toFacetKey(attributeValue.selectedOption.value)
+          : undefined,
         selectedOptionValue: attributeValue.selectedOption?.value,
         selectedText: attributeValue.selectedText,
       })),
@@ -129,4 +133,12 @@ function getSummaryPricing(
     ...(pricing?.originalAmountMinor !== undefined ? { originalAmountMinor: pricing.originalAmountMinor } : {}),
     currency: pricing?.currency,
   };
+}
+
+function toFacetKey(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
 }

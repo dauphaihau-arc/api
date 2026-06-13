@@ -8,12 +8,16 @@ import { StorefrontProductQueryRepository } from '../app/ports/storefront-produc
 import { ResolvedStorefrontPriceService } from '../app/services/resolved-storefront-price.service';
 import type {
   ListPublicProductsInput,
+  PublicProductFacet,
   PublicProductDetail,
   PublicProductListResult,
   PublicProductSuggestion,
   SuggestPublicProductsInput
 } from '../app/product.types';
+import { PUBLIC_PRODUCT_FACET_PRIORITY } from '../app/product-facet.constants';
+import { toCanonicalFacetOption } from '../app/shoe-size-groups';
 import { ProductState } from '../domain/enums/product-state.enum';
+import { getInferredFacetTerms, isInferredFacetSupported } from './inferred-facets';
 import { ProductInventoryEntity } from './persistence/entities/product-inventory.entity';
 import { ProductEntity } from './persistence/entities/product.entity';
 import {
@@ -138,6 +142,56 @@ implements StorefrontProductQueryRepository {
       ),
       meta: buildPaginationMeta(input.page, input.limit, total),
     };
+  }
+
+  async listPublicFacets(
+    input: ListPublicProductsInput
+  ): Promise<PublicProductFacet[]> {
+    const entityManager = this.entityManager.fork();
+    const matchingProductIds = await this.findPublicProductIds(entityManager, input);
+
+    if (matchingProductIds.length === 0) {
+      return [];
+    }
+
+    const rows = await entityManager.getConnection().execute<Array<{
+      attribute_key: string;
+      attribute_name: string;
+      option_value: string;
+    }>>(
+      `
+        select
+          ca.key as attribute_key,
+          ca.name as attribute_name,
+          cao.value as option_value
+        from product_attribute_values pav
+        inner join category_attributes ca on ca.id = pav.category_attribute_id
+        inner join category_attribute_options cao on cao.id = pav.selected_option_id
+        where pav.product_id in (${matchingProductIds.map(() => '?').join(', ')})
+        group by ca.key, ca.name, cao.value
+        order by ca.name asc, cao.value asc
+      `,
+      matchingProductIds
+    );
+
+    const facets = new Map<string, PublicProductFacet>();
+
+    rows.forEach((row) => {
+      const facet = facets.get(row.attribute_key) ?? {
+        facetKey: row.attribute_key,
+        attributeName: row.attribute_name,
+        options: [],
+      };
+      const canonicalOption = toCanonicalFacetOption(row.attribute_key, row.option_value);
+
+      if (!facet.options.some((option) => option.optionKey === canonicalOption.optionKey)) {
+        facet.options.push(canonicalOption);
+      }
+
+      facets.set(row.attribute_key, facet);
+    });
+
+    return Array.from(facets.values()).sort(compareFacetNames);
   }
 
   async suggestPublic(
@@ -282,6 +336,89 @@ implements StorefrontProductQueryRepository {
     if (input.whoMade) {
       clauses.push('and p.who_made = ?');
       params.push(input.whoMade);
+    }
+
+    if (input.attributeFilters?.length) {
+      input.attributeFilters.forEach((attributeFilter) => {
+        if (attributeFilter.attributeId && attributeFilter.selectedOptionIds?.length) {
+          clauses.push(`
+            and exists (
+              select 1
+              from product_attribute_values pav
+              where pav.product_id = p.id
+                and pav.category_attribute_id = ?
+                and pav.selected_option_id in (${attributeFilter.selectedOptionIds.map(() => '?').join(', ')})
+            )
+          `);
+          params.push(
+            attributeFilter.attributeId,
+            ...attributeFilter.selectedOptionIds
+          );
+          return;
+        }
+
+        if (attributeFilter.attributeId && isInferredFacetSupported(attributeFilter.attributeId)) {
+          const inferredTerms = (
+            attributeFilter.selectedOptionKeys?.length
+              ? attributeFilter.selectedOptionKeys.flatMap((optionKey) =>
+                getInferredFacetTerms(attributeFilter.attributeId as never, optionKey)
+              )
+              : attributeFilter.selectedOptionValues.flatMap((optionValue) =>
+                getInferredFacetTerms(
+                  attributeFilter.attributeId as never,
+                  toFacetKey(optionValue)
+                )
+              )
+          ).filter(Boolean);
+
+          clauses.push(`
+            and (
+              exists (
+                select 1
+                from product_attribute_values pav
+                inner join category_attributes ca on ca.id = pav.category_attribute_id
+                inner join category_attribute_options cao on cao.id = pav.selected_option_id
+                where pav.product_id = p.id
+                  and ca.key = ?
+                  and ${attributeFilter.selectedOptionKeys?.length
+                    ? `${toFacetKeySql('cao.value')} in (${attributeFilter.selectedOptionKeys.map(() => '?').join(', ')})`
+                    : `cao.value in (${attributeFilter.selectedOptionValues.map(() => '?').join(', ')})`}
+              )
+              ${inferredTerms.length > 0
+                ? `or (${inferredTerms.map(() => '(lower(p.title) like ? escape \'\\\' or lower(p.description) like ? escape \'\\\')').join(' or ')})`
+                : ''}
+            )
+          `);
+          params.push(
+            attributeFilter.attributeId,
+            ...(attributeFilter.selectedOptionKeys?.length
+              ? attributeFilter.selectedOptionKeys
+              : attributeFilter.selectedOptionValues),
+            ...inferredTerms.flatMap((term) => [`%${this.escapeSearchPattern(term.toLowerCase())}%`, `%${this.escapeSearchPattern(term.toLowerCase())}%`])
+          );
+          return;
+        }
+
+        clauses.push(`
+          and exists (
+            select 1
+            from product_attribute_values pav
+            inner join category_attributes ca on ca.id = pav.category_attribute_id
+            inner join category_attribute_options cao on cao.id = pav.selected_option_id
+            where pav.product_id = p.id
+              and ca.key = ?
+              and ${attributeFilter.selectedOptionKeys?.length
+                ? `${toFacetKeySql('cao.value')} in (${attributeFilter.selectedOptionKeys.map(() => '?').join(', ')})`
+                : `cao.value in (${attributeFilter.selectedOptionValues.map(() => '?').join(', ')})`}
+          )
+        `);
+        params.push(
+          attributeFilter.attributeId ?? attributeFilter.attributeName,
+          ...(attributeFilter.selectedOptionKeys?.length
+            ? attributeFilter.selectedOptionKeys
+            : attributeFilter.selectedOptionValues)
+        );
+      });
     }
 
     if (normalizedSearch) {
@@ -467,4 +604,32 @@ implements StorefrontProductQueryRepository {
       currency: pricing?.currency,
     };
   }
+}
+
+function compareFacetNames(
+  left: Pick<PublicProductFacet, 'attributeName'>,
+  right: Pick<PublicProductFacet, 'attributeName'>
+): number {
+  const leftIndex = PUBLIC_PRODUCT_FACET_PRIORITY.indexOf(left.attributeName as never);
+  const rightIndex = PUBLIC_PRODUCT_FACET_PRIORITY.indexOf(right.attributeName as never);
+  const normalizedLeftIndex = leftIndex === -1 ? Number.MAX_SAFE_INTEGER : leftIndex;
+  const normalizedRightIndex = rightIndex === -1 ? Number.MAX_SAFE_INTEGER : rightIndex;
+
+  if (normalizedLeftIndex !== normalizedRightIndex) {
+    return normalizedLeftIndex - normalizedRightIndex;
+  }
+
+  return left.attributeName.localeCompare(right.attributeName);
+}
+
+function toFacetKey(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+}
+
+function toFacetKeySql(expression: string): string {
+  return `trim(both '_' from regexp_replace(lower(${expression}), '[^a-z0-9]+', '_', 'g'))`;
 }

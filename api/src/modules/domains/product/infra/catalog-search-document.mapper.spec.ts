@@ -71,6 +71,20 @@ describe('catalog-search-document.mapper', () => {
           },
         }],
       },
+      attributeValues: {
+        getItems: () => [{
+          categoryAttribute: {
+            id: 'attribute-1',
+            name: 'Material',
+            rank: 1,
+          },
+          selectedOption: {
+            id: 'option-linen',
+            value: 'Linen',
+          },
+          selectedText: undefined,
+        }],
+      },
     } as never;
 
     const document = toCatalogSearchDocument(
@@ -98,6 +112,12 @@ describe('catalog-search-document.mapper', () => {
       flags: {
         hasImages: true,
       },
+      attributes: [{
+        categoryAttributeId: 'attribute-1',
+        categoryAttributeName: 'Material',
+        selectedOptionId: 'option-linen',
+        selectedOptionValue: 'Linen',
+      }],
       ranking: {
         popularityScore: 18,
       },

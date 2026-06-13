@@ -85,6 +85,15 @@ describe('MongoStorefrontProductQueryRepository', () => {
         rank: 1,
       }],
     },
+    attributes: [{
+      categoryAttributeId: 'attribute-1',
+      categoryAttributeKey: 'material',
+      categoryAttributeName: 'Material',
+      selectedOptionId: 'option-linen',
+      selectedOptionKey: 'linen',
+      selectedOptionValue: 'Linen',
+    }],
+    inferredFacets: [],
     search: {
       suggest: ['linen weekend dress'],
       keywords: ['linen weekend dress', 'olive atelier'],
@@ -205,6 +214,158 @@ describe('MongoStorefrontProductQueryRepository', () => {
 
     expect(result.map((item) => item.id)).toEqual(['product-2', 'product-1']);
   });
+
+  it('filters public products by category attribute option ids', async () => {
+    const cottonDocument = {
+      ...sampleDocument,
+      _id: 'product-2',
+      productId: 'product-2',
+      slug: 'cotton-weekend-dress',
+      title: 'Cotton Weekend Dress',
+      titleNormalized: 'cotton weekend dress',
+      attributes: [{
+        categoryAttributeId: 'attribute-1',
+        categoryAttributeKey: 'material',
+        categoryAttributeName: 'Material',
+        selectedOptionId: 'option-cotton',
+        selectedOptionKey: 'cotton',
+        selectedOptionValue: 'Cotton',
+      }],
+    };
+    const { repository } = createRepository([sampleDocument, cottonDocument]);
+
+    const result = await repository.listPublic({
+      page: 1,
+      limit: 10,
+      attributeFilters: [{
+        attributeId: 'material',
+        selectedOptionIds: ['option-linen'],
+        attributeName: 'Material',
+        selectedOptionValues: ['Linen'],
+      }],
+    });
+
+    expect(result.items.map((item) => item.id)).toEqual(['product-1']);
+  });
+
+  it('matches relaxed color filters from inferred content signals', async () => {
+    const beigeDocument = {
+      ...sampleDocument,
+      _id: 'product-3',
+      productId: 'product-3',
+      slug: 'oatmeal-pants',
+      title: 'Oatmeal Wide Pants',
+      titleNormalized: 'oatmeal wide pants',
+      attributes: [],
+      inferredFacets: [{
+        facetKey: 'color',
+        optionKey: 'beige',
+        value: 'Beige',
+      }],
+    };
+    const { repository } = createRepository([sampleDocument, beigeDocument]);
+
+    const result = await repository.listPublic({
+      page: 1,
+      limit: 10,
+      attributeFilters: [{
+        attributeId: 'color',
+        selectedOptionKeys: ['beige'],
+        attributeName: 'Color',
+        selectedOptionValues: ['Beige'],
+      }],
+    });
+
+    expect(result.items.map((item) => item.id)).toEqual(['product-3']);
+  });
+
+  it('aggregates public product facets from matching products', async () => {
+    const cottonDocument = {
+      ...sampleDocument,
+      _id: 'product-2',
+      productId: 'product-2',
+      slug: 'cotton-weekend-dress',
+      title: 'Cotton Weekend Dress',
+      titleNormalized: 'cotton weekend dress',
+      attributes: [{
+        categoryAttributeId: 'attribute-1',
+        categoryAttributeKey: 'material',
+        categoryAttributeName: 'Material',
+        selectedOptionId: 'option-cotton',
+        selectedOptionValue: 'Cotton',
+      }],
+    };
+    const { repository } = createRepository([sampleDocument, cottonDocument]);
+
+    const result = await repository.listPublicFacets({
+      page: 1,
+      limit: 10,
+      categoryIds: ['category-1'],
+    });
+
+    expect(result).toEqual([
+      {
+        facetKey: 'material',
+        attributeName: 'Material',
+        options: [
+          { optionKey: 'cotton', value: 'Cotton' },
+          { optionKey: 'linen', value: 'Linen' },
+        ],
+      },
+    ]);
+  });
+
+  it('groups shoe-size facets into canonical storefront options', async () => {
+    const usDocument = {
+      ...sampleDocument,
+      _id: 'product-2',
+      productId: 'product-2',
+      slug: 'shoe-us-8',
+      title: 'Shoe US 8',
+      titleNormalized: 'shoe us 8',
+      attributes: [{
+        categoryAttributeId: 'attribute-shoe-size',
+        categoryAttributeKey: 'shoe_size',
+        categoryAttributeName: 'Size',
+        selectedOptionId: 'option-us-8',
+        selectedOptionKey: 'us_8',
+        selectedOptionValue: 'US 8',
+      }],
+    };
+    const euDocument = {
+      ...sampleDocument,
+      _id: 'product-3',
+      productId: 'product-3',
+      slug: 'shoe-eu-41',
+      title: 'Shoe EU 41',
+      titleNormalized: 'shoe eu 41',
+      attributes: [{
+        categoryAttributeId: 'attribute-shoe-size',
+        categoryAttributeKey: 'shoe_size',
+        categoryAttributeName: 'Size',
+        selectedOptionId: 'option-eu-41',
+        selectedOptionKey: 'eu_41',
+        selectedOptionValue: 'EU 41',
+      }],
+    };
+    const { repository } = createRepository([usDocument, euDocument]);
+
+    const result = await repository.listPublicFacets({
+      page: 1,
+      limit: 10,
+      categoryIds: ['category-1'],
+    });
+
+    expect(result).toEqual([
+      {
+        facetKey: 'shoe_size',
+        attributeName: 'Size',
+        options: [
+          { optionKey: 'us_8_eu_41', value: 'US 8 / EU 41' },
+        ],
+      },
+    ]);
+  });
 });
 
 function createCursor(documents: CatalogProductDocument[]) {
@@ -310,10 +471,30 @@ function matchesFilter(
         return false;
       }
 
-      const matcher = (value as { $elemMatch: { $regex: unknown } }).$elemMatch;
-      return arrayValue.some((entry) =>
-        new RegExp(String(matcher.$regex)).test(String(entry))
-      );
+      const matcher = (value as { $elemMatch: Record<string, unknown> }).$elemMatch;
+      return arrayValue.some((entry) => {
+        if (matcher.$regex !== undefined) {
+          return new RegExp(String(matcher.$regex)).test(String(entry));
+        }
+
+        if (!entry || typeof entry !== 'object') {
+          return false;
+        }
+
+        return Object.entries(matcher).every(([matcherKey, matcherValue]) => {
+          const nestedActualValue = (entry as Record<string, unknown>)[matcherKey];
+
+          if (
+            matcherValue
+            && typeof matcherValue === 'object'
+            && '$in' in (matcherValue as Record<string, unknown>)
+          ) {
+            return ((matcherValue as { $in: unknown[] }).$in).includes(nestedActualValue);
+          }
+
+          return nestedActualValue === matcherValue;
+        });
+      });
     }
 
     return actualValue === value;

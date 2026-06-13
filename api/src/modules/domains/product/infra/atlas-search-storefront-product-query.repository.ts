@@ -2,19 +2,23 @@ import { Inject, Injectable } from '@nestjs/common';
 import { buildPaginationMeta } from '~/common/application/pagination';
 import { CATALOG_CONFIG, type CatalogConfig } from '~/config/catalog.config';
 import { ProductState } from '../domain/enums/product-state.enum';
+import { toCanonicalFacetOption } from '../app/shoe-size-groups';
 import { CatalogProductSlugRepository } from '../app/ports/catalog-product-slug.repository';
 import { StorefrontProductQueryRepository } from '../app/ports/storefront-product-query.repository';
 import { CatalogMongoAccess } from './catalog-mongo.access';
 import type {
   ListPublicProductsInput,
+  PublicProductFacet,
   PublicProductDetail,
   PublicProductListItem,
   PublicProductListResult,
   PublicProductSuggestion,
   SuggestPublicProductsInput
 } from '../app/product.types';
+import { PUBLIC_PRODUCT_FACET_PRIORITY } from '../app/product-facet.constants';
 import type { CatalogProductDocument } from './catalog-product-document.mapper';
 import type { CatalogSearchDocument } from './catalog-search-document.mapper';
+import { getInferredFacetTerms, isInferredFacetSupported } from './inferred-facets';
 
 type MongoAggregateCursorLike<TDocument> = {
   toArray(): Promise<TDocument[]>;
@@ -128,6 +132,70 @@ implements StorefrontProductQueryRepository {
     };
   }
 
+  async listPublicFacets(
+    input: ListPublicProductsInput
+  ): Promise<PublicProductFacet[]> {
+    this.assertAtlasSearchEnabled();
+
+    const searchCollection = await this.getSearchCollection();
+    const documents = await searchCollection.aggregate<{
+      _id: {
+        attributeKey: string;
+        attributeName: string;
+        optionValue: string;
+      };
+    }>([
+      {
+        $search: this.buildListSearchStage(input),
+      },
+      {
+        $unwind: '$attributes',
+      },
+      {
+        $match: {
+          'attributes.categoryAttributeName': { $exists: true, $ne: null },
+          'attributes.categoryAttributeKey': { $exists: true, $ne: null },
+          'attributes.selectedOptionValue': { $exists: true, $ne: null },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            attributeKey: '$attributes.categoryAttributeKey',
+            attributeName: '$attributes.categoryAttributeName',
+            optionValue: '$attributes.selectedOptionValue',
+          },
+        },
+      },
+      {
+        $sort: {
+          '_id.attributeName': 1,
+          '_id.optionValue': 1,
+        },
+      },
+    ]).toArray();
+
+    const facets = new Map<string, PublicProductFacet>();
+
+    documents.forEach((row) => {
+      const facet = facets.get(row._id.attributeKey) ?? {
+        facetKey: row._id.attributeKey,
+        attributeName: row._id.attributeName,
+        options: [] as PublicProductFacet['options'],
+      };
+      const canonicalOption = toCanonicalFacetOption(row._id.attributeKey, row._id.optionValue);
+      const hasOption = facet.options.some((option) => option.optionKey === canonicalOption.optionKey);
+
+      if (!hasOption) {
+        facet.options.push(canonicalOption);
+      }
+
+      facets.set(row._id.attributeKey, facet);
+    });
+
+    return Array.from(facets.values()).sort(compareFacetNames);
+  }
+
   async suggestPublic(
     input: SuggestPublicProductsInput
   ): Promise<PublicProductSuggestion[]> {
@@ -232,6 +300,100 @@ implements StorefrontProductQueryRepository {
       });
     }
 
+    if (input.attributeFilters?.length) {
+      input.attributeFilters.forEach((attributeFilter) => {
+        const structuredOperator = {
+          embeddedDocument: {
+            path: 'attributes',
+            operator: {
+              compound: {
+                filter: [
+                  attributeFilter.attributeId
+                    ? {
+                      equals: {
+                        path: 'attributes.categoryAttributeKey',
+                        value: attributeFilter.attributeId,
+                      },
+                    }
+                    : {
+                      equals: {
+                        path: 'attributes.categoryAttributeName',
+                        value: attributeFilter.attributeName,
+                      },
+                    },
+                  attributeFilter.selectedOptionIds?.length
+                    ? {
+                      in: {
+                        path: 'attributes.selectedOptionId',
+                        value: attributeFilter.selectedOptionIds,
+                      },
+                    }
+                    : attributeFilter.selectedOptionKeys?.length
+                      ? {
+                        in: {
+                          path: 'attributes.selectedOptionKey',
+                          value: attributeFilter.selectedOptionKeys,
+                        },
+                      }
+                      : {
+                        in: {
+                          path: 'attributes.selectedOptionValue',
+                          value: attributeFilter.selectedOptionValues,
+                        },
+                      },
+                ],
+              },
+            },
+          },
+        };
+
+        if (attributeFilter.attributeId && isInferredFacetSupported(attributeFilter.attributeId)) {
+          const inferredTerms = (
+            attributeFilter.selectedOptionKeys?.length
+              ? attributeFilter.selectedOptionKeys.flatMap((optionKey) =>
+                getInferredFacetTerms(attributeFilter.attributeId as never, optionKey)
+              )
+              : attributeFilter.selectedOptionValues.flatMap((optionValue) =>
+                getInferredFacetTerms(attributeFilter.attributeId as never, toFacetKey(optionValue))
+              )
+          ).filter(Boolean);
+
+          const inferredOperators = attributeFilter.selectedOptionKeys?.length
+            ? [{
+              embeddedDocument: {
+                path: 'inferredFacets',
+                operator: {
+                  compound: {
+                    filter: [
+                      { equals: { path: 'inferredFacets.facetKey', value: attributeFilter.attributeId } },
+                      { in: { path: 'inferredFacets.optionKey', value: attributeFilter.selectedOptionKeys } },
+                    ],
+                  },
+                },
+              },
+            }]
+            : inferredTerms.map((term) => ({
+              phrase: {
+                path: ['title', 'description'],
+                query: term,
+              },
+            }));
+
+          filter.push({
+            compound: {
+              should: [structuredOperator, ...inferredOperators],
+              minimumShouldMatch: 1,
+            },
+          });
+          return;
+        }
+
+        filter.push({
+          ...structuredOperator,
+        });
+      });
+    }
+
     const should: Array<Record<string, unknown>> = [];
 
     if (input.search?.trim()) {
@@ -308,6 +470,30 @@ implements StorefrontProductQueryRepository {
       throw new Error('Atlas Search storefront repository requires CATALOG_SEARCH_DRIVER=atlas');
     }
   }
+}
+
+function compareFacetNames(
+  left: Pick<PublicProductFacet, 'attributeName'>,
+  right: Pick<PublicProductFacet, 'attributeName'>
+): number {
+  const leftIndex = PUBLIC_PRODUCT_FACET_PRIORITY.indexOf(left.attributeName as never);
+  const rightIndex = PUBLIC_PRODUCT_FACET_PRIORITY.indexOf(right.attributeName as never);
+  const normalizedLeftIndex = leftIndex === -1 ? Number.MAX_SAFE_INTEGER : leftIndex;
+  const normalizedRightIndex = rightIndex === -1 ? Number.MAX_SAFE_INTEGER : rightIndex;
+
+  if (normalizedLeftIndex !== normalizedRightIndex) {
+    return normalizedLeftIndex - normalizedRightIndex;
+  }
+
+  return left.attributeName.localeCompare(right.attributeName);
+}
+
+function toFacetKey(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
 }
 
 function toPublicProductListItemFromSearchDocument(

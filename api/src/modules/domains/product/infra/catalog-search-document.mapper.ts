@@ -1,6 +1,7 @@
 import type { ProductState } from '../domain/enums/product-state.enum';
 import type { ProductVariantType } from '../domain/enums/product-variant-type.enum';
 import type { ProductEntity } from './persistence/entities/product.entity';
+import { inferFacetSignalsFromText } from './inferred-facets';
 import { getInventoryPricingSnapshot } from './variant-price-read';
 
 export interface CatalogSearchDocument {
@@ -18,6 +19,20 @@ export interface CatalogSearchDocument {
   isDigital: boolean;
   whoMade: ProductEntity['whoMade'];
   variantType?: ProductVariantType;
+  attributes: Array<{
+    categoryAttributeId: string;
+    categoryAttributeKey: string;
+    categoryAttributeName: string;
+    selectedOptionId?: string;
+    selectedOptionKey?: string;
+    selectedOptionValue?: string;
+    selectedText?: string;
+  }>;
+  inferredFacets: Array<{
+    facetKey: string;
+    optionKey: string;
+    value: string;
+  }>;
   suggest: string[];
   keywords: string[];
   image?: {
@@ -98,6 +113,27 @@ export function toCatalogSearchDocument(
     isDigital: product.isDigital,
     whoMade: product.whoMade,
     variantType: product.variantType,
+    attributes: product.attributeValues
+      .getItems()
+      .slice()
+      .sort(
+        (left, right) => left.categoryAttribute.rank - right.categoryAttribute.rank
+      )
+      .map((attributeValue) => ({
+        categoryAttributeId: attributeValue.categoryAttribute.id,
+        categoryAttributeKey: attributeValue.categoryAttribute.key,
+        categoryAttributeName: attributeValue.categoryAttribute.name,
+        selectedOptionId: attributeValue.selectedOption?.id,
+        selectedOptionKey: attributeValue.selectedOption?.value
+          ? toFacetKey(attributeValue.selectedOption.value)
+          : undefined,
+        selectedOptionValue: attributeValue.selectedOption?.value,
+        selectedText: attributeValue.selectedText,
+      })),
+    inferredFacets: inferFacetSignalsFromText({
+      title: product.title,
+      description: product.description,
+    }),
     suggest: uniqueStrings([
       product.title,
       product.slug.replaceAll('-', ' '),
@@ -161,4 +197,12 @@ function normalizeSearchText(value?: string | null): string {
 
 function uniqueStrings(values: string[]): string[] {
   return Array.from(new Set(values.filter(Boolean)));
+}
+
+function toFacetKey(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
 }
