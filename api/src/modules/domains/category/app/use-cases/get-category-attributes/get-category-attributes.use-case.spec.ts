@@ -22,6 +22,7 @@ describe('GetCategoryAttributesUseCase', () => {
       attributes: [
         {
           id: 'attribute-1',
+          key: 'material',
           name: 'Material',
           inputType: 'select',
           isRequired: false,
@@ -45,6 +46,7 @@ describe('GetCategoryAttributesUseCase', () => {
       expect(result.value).toEqual([
         {
           id: 'attribute-1',
+          key: 'material',
           name: 'Material',
           inputType: 'select',
           isRequired: false,

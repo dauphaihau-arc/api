@@ -22,6 +22,7 @@ export const toCategoryAttributeResponse = (
   attribute: CategoryAttributeSummary
 ): CategoryAttributeResponse => ({
   id: attribute.id,
+  key: attribute.key,
   name: attribute.name,
   input_type: attribute.inputType,
   is_required: attribute.isRequired,
@@ -38,6 +39,7 @@ export const toCategoryResponse = (
   rank: category.rank,
   image_storage_key: category.imageStorageKey,
   image_url: category.imageUrl,
+  featured_facet_keys: category.featuredFacetKeys,
   attributes: category.attributes.map(toCategoryAttributeResponse),
 });
 

@@ -10,6 +10,11 @@ import {
 } from 'class-validator';
 
 export class CreateCategoryAttributeDto {
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  key?: string;
+
   @IsString()
   @MinLength(1)
   name!: string;

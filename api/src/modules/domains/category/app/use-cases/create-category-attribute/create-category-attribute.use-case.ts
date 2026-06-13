@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { toSlug } from '~/common/utils/slugify';
 import { err, ok, type Result } from '~/common/application/result';
 import { CategoryNotFoundError } from '../../errors/category-app.error';
 import { CategoryRepository } from '../../ports/category.repository';
@@ -6,6 +7,7 @@ import type { CategorySummary } from '../../category.types';
 
 export interface CreateCategoryAttributeInput {
   categoryId: string;
+  key?: string;
   name: string;
   inputType?: string;
   isRequired?: boolean;
@@ -22,6 +24,7 @@ export class CreateCategoryAttributeUseCase {
   ): Promise<Result<CategorySummary, CategoryNotFoundError>> {
     const category = await this.categoryRepository.createAttribute({
       categoryId: input.categoryId,
+      key: input.key?.trim() || toSlug(input.name).replaceAll('-', '_'),
       name: input.name.trim(),
       inputType: input.inputType?.trim() || undefined,
       isRequired: input.isRequired,

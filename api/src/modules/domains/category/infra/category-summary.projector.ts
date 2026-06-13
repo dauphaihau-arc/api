@@ -12,6 +12,7 @@ export function toCategorySummary(
     name: category.name,
     rank: category.rank,
     imageStorageKey: category.imageStorageKey,
+    featuredFacetKeys: category.featuredFacetKeys,
     imageUrl: category.imageStorageKey
       ? storageService.getPublicUrl(category.imageStorageKey)
       : undefined,
@@ -20,6 +21,7 @@ export function toCategorySummary(
       .sort((left, right) => left.rank - right.rank)
       .map((attribute) => ({
         id: attribute.id,
+        key: attribute.key,
         name: attribute.name,
         inputType: attribute.inputType,
         isRequired: attribute.isRequired,

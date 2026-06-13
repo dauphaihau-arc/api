@@ -5,11 +5,13 @@ export interface CategorySummary {
   rank: number;
   imageStorageKey?: string;
   imageUrl?: string;
+  featuredFacetKeys?: string[];
   attributes: CategoryAttributeSummary[];
 }
 
 export interface CategoryAttributeSummary {
   id: string;
+  key: string;
   name: string;
   inputType: string;
   isRequired: boolean;
@@ -34,10 +36,12 @@ export interface CreateCategoryInput {
   name: string;
   rank: number;
   imageStorageKey?: string;
+  featuredFacetKeys?: string[];
 }
 
 export interface CreateCategoryAttributeInput {
   categoryId: string;
+  key?: string;
   name: string;
   inputType?: string;
   isRequired?: boolean;

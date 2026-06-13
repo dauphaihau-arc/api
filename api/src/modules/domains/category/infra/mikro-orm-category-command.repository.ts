@@ -1,5 +1,6 @@
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
+import { toSlug } from '~/common/utils/slugify';
 import { CategoryCommandRepository } from '../app/ports/category-command.repository';
 import type {
   CategorySummary,
@@ -29,6 +30,7 @@ export class MikroOrmCategoryCommandRepository implements CategoryCommandReposit
       name: input.name,
       rank: input.rank,
       imageStorageKey: input.imageStorageKey,
+      featuredFacetKeys: input.featuredFacetKeys,
     });
 
     await entityManager.persistAndFlush(category);
@@ -53,6 +55,7 @@ export class MikroOrmCategoryCommandRepository implements CategoryCommandReposit
 
     const attribute = entityManager.create(CategoryAttributeEntity, {
       category,
+      key: input.key?.trim() || toSlug(input.name).replaceAll('-', '_'),
       name: input.name,
       inputType: input.inputType ?? 'select',
       isRequired: input.isRequired ?? false,

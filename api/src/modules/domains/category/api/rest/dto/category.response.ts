@@ -6,6 +6,7 @@ export type CategoryAttributeOptionResponse = {
 
 export type CategoryAttributeResponse = {
   id: string;
+  key: string;
   name: string;
   input_type: string;
   is_required: boolean;
@@ -20,6 +21,7 @@ export type CategoryResponse = {
   rank: number;
   image_storage_key?: string;
   image_url?: string;
+  featured_facet_keys?: string[];
   attributes: CategoryAttributeResponse[];
 };
 

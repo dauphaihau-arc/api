@@ -33,6 +33,9 @@ export class CategoryEntity extends AbstractBaseEntity {
   @Property({ fieldName: 'image_storage_key', length: 500, nullable: true })
   imageStorageKey?: string;
 
+  @Property({ fieldName: 'featured_facet_keys', type: 'json', nullable: true })
+  featuredFacetKeys?: string[];
+
   @OneToMany(
     () => CategoryAttributeEntity,
     (attribute) => attribute.category

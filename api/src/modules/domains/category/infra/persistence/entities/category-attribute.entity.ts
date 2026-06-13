@@ -14,13 +14,16 @@ import { CategoryEntity } from './category.entity';
 
 @Entity({ tableName: 'category_attributes' })
 @Index({ properties: ['category'] })
-@Unique({ properties: ['category', 'name'] })
+@Unique({ properties: ['category', 'key'] })
 export class CategoryAttributeEntity extends AbstractBaseEntity {
   @ManyToOne(() => CategoryEntity, {
     fieldName: 'category_id',
     deleteRule: 'cascade',
   })
   category!: CategoryEntity;
+
+  @Property({ fieldName: 'key', length: 255 })
+  key!: string;
 
   @Property({ fieldName: 'name', length: 255 })
   name!: string;

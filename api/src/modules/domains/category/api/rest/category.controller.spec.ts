@@ -119,6 +119,7 @@ describe('CategoryController', () => {
     getCategoryAttributesUseCase.execute.mockResolvedValue(ok([
       {
         id: 'attribute-1',
+        key: 'material',
         name: 'Material',
         inputType: 'select',
         isRequired: false,
@@ -137,6 +138,7 @@ describe('CategoryController', () => {
       attributes: [
         {
           id: 'attribute-1',
+          key: 'material',
           name: 'Material',
           input_type: 'select',
           is_required: false,
