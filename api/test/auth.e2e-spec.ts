@@ -25,6 +25,7 @@ jest.setTimeout(30_000);
 
 const API_PREFIX = '/v1';
 const expectedMemberPermissions: string[] = [];
+const VALID_TEST_PASSWORD = 'Password123!';
 
 describe('Auth flow (e2e)', () => {
   let app: INestApplication<App>;
@@ -35,7 +36,7 @@ describe('Auth flow (e2e)', () => {
 
   beforeAll(async () => {
     originalEnv = { ...process.env };
-    testDb = await createTestDatabase();
+    testDb = await createTestDatabase('auth');
     storageRoot = await mkdtemp(path.join(os.tmpdir(), 'api-auth-e2e-'));
 
     process.env.NODE_ENV = 'test';
@@ -136,7 +137,7 @@ describe('Auth flow (e2e)', () => {
       .post(`${API_PREFIX}/auth/register`)
       .send({
         email,
-        password: 'password123',
+        password: VALID_TEST_PASSWORD,
         displayName: 'Member User',
         preferences: {
           region: 'Vietnam',
@@ -190,7 +191,7 @@ describe('Auth flow (e2e)', () => {
       .post(`${API_PREFIX}/auth/login`)
       .send({
         email,
-        password: 'password123',
+        password: VALID_TEST_PASSWORD,
       })
       .expect(200);
     const loginBody = loginResponse.body as unknown as AuthUserResponse;
@@ -263,7 +264,7 @@ describe('Auth flow (e2e)', () => {
       .post(`${API_PREFIX}/auth/register`)
       .send({
         email,
-        password: 'password123',
+        password: VALID_TEST_PASSWORD,
         displayName: 'Default Member User',
       })
       .expect(201);
@@ -290,7 +291,7 @@ describe('Auth flow (e2e)', () => {
       .post(`${API_PREFIX}/auth/register`)
       .send({
         email,
-        password: 'password123',
+        password: VALID_TEST_PASSWORD,
         displayName: 'SSE Member User',
       })
       .expect(201);
@@ -317,7 +318,7 @@ describe('Auth flow (e2e)', () => {
         .set('X-Forwarded-For', registerIp)
         .send({
           email: `${registerEmailPrefix}-${attempt}@example.com`,
-          password: 'password123',
+          password: VALID_TEST_PASSWORD,
           displayName: `Register Attempt ${attempt + 1}`,
         })
         .expect(201);
@@ -328,7 +329,7 @@ describe('Auth flow (e2e)', () => {
       .set('X-Forwarded-For', registerIp)
       .send({
         email: `${registerEmailPrefix}-blocked@example.com`,
-        password: 'password123',
+        password: VALID_TEST_PASSWORD,
         displayName: 'Blocked Register Attempt',
       })
       .expect(429);
@@ -347,7 +348,7 @@ describe('Auth flow (e2e)', () => {
         .set('X-Forwarded-For', loginIp)
         .send({
           email: 'missing-user@example.com',
-          password: 'password123',
+          password: VALID_TEST_PASSWORD,
         })
         .expect(401);
     }
@@ -357,7 +358,7 @@ describe('Auth flow (e2e)', () => {
       .set('X-Forwarded-For', loginIp)
       .send({
         email: 'missing-user@example.com',
-        password: 'password123',
+        password: VALID_TEST_PASSWORD,
       })
       .expect(429);
 

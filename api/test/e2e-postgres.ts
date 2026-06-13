@@ -13,8 +13,14 @@ type TestDatabaseContext = {
   };
 };
 
-export async function createTestDatabase(): Promise<TestDatabaseContext> {
-  const dbName = `auth_e2e_${randomUUID().replace(/-/g, '_')}`;
+function normalizeDbPrefix(prefix: string): string {
+  return prefix.replace(/[^a-z0-9_]/gi, '_').toLowerCase();
+}
+
+export async function createTestDatabase(
+  suiteName = 'api'
+): Promise<TestDatabaseContext> {
+  const dbName = `arc_e2e_${normalizeDbPrefix(suiteName)}_${randomUUID().replace(/-/g, '_')}`;
   const rootConfig = {
     host: process.env.DB_HOST ?? '127.0.0.1',
     port: Number(process.env.DB_PORT ?? 5432),

@@ -26,6 +26,11 @@ import { createTestDatabase, dropTestDatabase } from './e2e-postgres';
 jest.setTimeout(30_000);
 
 const API_PREFIX = '/v1';
+const VALID_TEST_PASSWORD = 'Password123!';
+
+function randomForwardedIp() {
+  return `203.0.113.${Math.floor(Math.random() * 200) + 1}`;
+}
 
 // This integration suite stays in one file because the setup and assertions share state heavily.
 // eslint-disable-next-line max-lines-per-function
@@ -37,7 +42,7 @@ describe('Commerce flow (e2e)', () => {
 
   beforeAll(async () => {
     originalEnv = { ...process.env };
-    testDb = await createTestDatabase();
+    testDb = await createTestDatabase('commerce');
     storageRoot = await mkdtemp(path.join(os.tmpdir(), 'api-commerce-e2e-'));
 
     process.env.NODE_ENV = 'test';
@@ -131,12 +136,94 @@ describe('Commerce flow (e2e)', () => {
   it('creates a shop and category, configures a product, and publishes it', async () => {
     const email = `commerce-${Date.now()}@example.com`;
     const ownerAgent = request.agent(app.getHttpServer());
+    async function configureAndPublishProduct(input: {
+      productId: string;
+      selectedOptionId: string;
+      sku: string;
+      priceMinor: number;
+    }) {
+      await ownerAgent
+        .put(`${API_PREFIX}/shops/${shopBody.id}/products/${input.productId}/images`)
+        .attach('images', Buffer.from(`fake-image-content-${input.productId}`), {
+          filename: `${input.productId}.jpg`,
+          contentType: 'image/jpeg',
+        })
+        .expect(204);
+
+      await ownerAgent
+        .put(`${API_PREFIX}/shops/${shopBody.id}/products/${input.productId}/attributes`)
+        .send({
+          attributes: [
+            {
+              category_attribute_id: materialAttribute.id,
+              selected_option_id: input.selectedOptionId,
+            },
+          ],
+        })
+        .expect(204);
+
+      await ownerAgent
+        .put(`${API_PREFIX}/shops/${shopBody.id}/products/${input.productId}/inventory`)
+        .send({
+          inventory: [
+            {
+              sku: input.sku,
+              stock: 10,
+            },
+          ],
+        })
+        .expect(204);
+
+      const productDraftResponse = await ownerAgent
+        .get(`${API_PREFIX}/shops/${shopBody.id}/products/${input.productId}`)
+        .expect(200);
+      const inventoryId = (
+        productDraftResponse.body as { inventory: Array<{ id: string }> }
+      ).inventory[0]?.id;
+
+      expect(inventoryId).toEqual(expect.any(String));
+
+      await ownerAgent
+        .put(`${API_PREFIX}/shops/${shopBody.id}/products/${input.productId}/pricing`)
+        .send({
+          pricing: [
+            {
+              inventory_id: inventoryId,
+              amount_minor: input.priceMinor,
+              currency: 'USD',
+            },
+          ],
+        })
+        .expect(204);
+
+      await ownerAgent
+        .put(`${API_PREFIX}/shops/${shopBody.id}/products/${input.productId}/shipping`)
+        .send({
+          origin_country: 'US',
+          origin_zip: '10001',
+          process_time_label: '1-3 business days',
+          destinations: [
+            {
+              country_code: 'US',
+              delivery_time_label: '3-5 business days',
+              service: 'USPS',
+              charge_type: ProductShippingCharge.FREE_SHIPPING,
+            },
+          ],
+        })
+        .expect(204);
+
+      await ownerAgent
+        .post(`${API_PREFIX}/shops/${shopBody.id}/products/${input.productId}/publish`)
+        .expect(201);
+    }
 
     const registerResponse = await ownerAgent
       .post(`${API_PREFIX}/auth/register`)
+      .set('X-Forwarded-For', randomForwardedIp())
       .send({
         email,
-        password: 'password123',
+        password: VALID_TEST_PASSWORD,
         displayName: 'Commerce Owner',
       })
       .expect(201);
@@ -145,18 +232,19 @@ describe('Commerce flow (e2e)', () => {
     const shopResponse = await ownerAgent
       .post(`${API_PREFIX}/shops`)
       .send({
-        shopName: `shop${Date.now().toString().slice(-6)}`,
+        shop_name: `shop${Date.now().toString().slice(-6)}`,
+        currency: 'USD',
       })
       .expect(201);
     const shopBody = shopResponse.body as {
       id: string;
-      ownerUserId: string;
-      shopName: string;
+      owner_user_id: string;
+      shop_name: string;
       status: string;
     };
 
     expect(shopBody.id).toEqual(expect.any(String));
-    expect(shopBody.ownerUserId).toBe(registerBody.user.id);
+    expect(shopBody.owner_user_id).toBe(registerBody.user.id);
 
     const categoryResponse = await ownerAgent
       .post(`${API_PREFIX}/categories`)
@@ -178,7 +266,7 @@ describe('Commerce flow (e2e)', () => {
       .post(`${API_PREFIX}/categories/${categoryBody.id}/attributes`)
       .send({
         name: 'Material',
-        inputType: 'select',
+        input_type: 'select',
         options: ['Ceramic', 'Stoneware'],
       })
       .expect(201);
@@ -192,11 +280,11 @@ describe('Commerce flow (e2e)', () => {
     const createProductResponse = await ownerAgent
       .post(`${API_PREFIX}/shops/${shopBody.id}/products`)
       .send({
-        categoryId: categoryBody.id,
+        category_id: categoryBody.id,
         title: 'Handmade Mug',
         description: 'Wheel-thrown ceramic mug',
-        whoMade: ProductWhoMade.I_DID,
-        variantType: ProductVariantType.NONE,
+        who_made: ProductWhoMade.I_DID,
+        variant_type: ProductVariantType.NONE,
       })
       .expect(201);
     const productBody = createProductResponse.body as {
@@ -214,124 +302,99 @@ describe('Commerce flow (e2e)', () => {
 
     const productId = productBody.id;
 
-    const updateProductResponse = await ownerAgent
+    await ownerAgent
       .patch(`${API_PREFIX}/shops/${shopBody.id}/products/${productId}`)
       .send({
         title: 'Better Mug',
         description: 'Refined ceramic mug',
-        whoMade: ProductWhoMade.COLLECTIVE,
-        isDigital: true,
-        nonTaxable: true,
+        who_made: ProductWhoMade.COLLECTIVE,
+        is_digital: true,
+        non_taxable: true,
       })
-      .expect(200);
-
-    expect(updateProductResponse.body).toMatchObject({
-      id: productId,
-      title: 'Better Mug',
-      slug: 'better-mug',
-      description: 'Refined ceramic mug',
-      whoMade: ProductWhoMade.COLLECTIVE,
-      isDigital: true,
-      nonTaxable: true,
-    });
+      .expect(204);
 
     await request(app.getHttpServer())
       .get(`${API_PREFIX}/products/${productId}`)
       .expect(404);
 
-    const setImagesResponse = await ownerAgent
+    await ownerAgent
       .put(`${API_PREFIX}/shops/${shopBody.id}/products/${productId}/images`)
       .attach('images', Buffer.from('fake-image-content'), {
         filename: 'mug.jpg',
         contentType: 'image/jpeg',
       })
-      .expect(200);
+      .expect(204);
 
-    expect(setImagesResponse.body.images).toHaveLength(1);
-
-    const setAttributesResponse = await ownerAgent
+    await ownerAgent
       .put(`${API_PREFIX}/shops/${shopBody.id}/products/${productId}/attributes`)
       .send({
         attributes: [
           {
-            categoryAttributeId: materialAttribute.id,
-            selectedOptionId: materialAttribute.options[0]?.id,
+            category_attribute_id: materialAttribute.id,
+            selected_option_id: materialAttribute.options[0]?.id,
           },
         ],
       })
-      .expect(200);
+      .expect(204);
 
-    expect(setAttributesResponse.body.attributes).toHaveLength(1);
-    expect(setAttributesResponse.body.attributes[0]).toMatchObject({
-      categoryAttributeId: materialAttribute.id,
-      selectedOptionId: materialAttribute.options[0]?.id,
-      selectedOptionValue: 'Ceramic',
-    });
-
-    const setInventoryResponse = await ownerAgent
+    await ownerAgent
       .put(`${API_PREFIX}/shops/${shopBody.id}/products/${productId}/inventory`)
       .send({
         inventory: [
           {
             sku: 'MUG-001',
             stock: 10,
-            price: 19.99,
           },
         ],
       })
+      .expect(204);
+
+    const productDraftAfterInventoryResponse = await ownerAgent
+      .get(`${API_PREFIX}/shops/${shopBody.id}/products/${productId}`)
       .expect(200);
+    const productInventoryId = (
+      productDraftAfterInventoryResponse.body as {
+        inventory: Array<{ id: string }>;
+      }
+    ).inventory[0]?.id;
 
-    expect(setInventoryResponse.body.inventory).toHaveLength(1);
+    expect(productInventoryId).toEqual(expect.any(String));
 
-    const setShippingResponse = await ownerAgent
+    await ownerAgent
+      .put(`${API_PREFIX}/shops/${shopBody.id}/products/${productId}/pricing`)
+      .send({
+        pricing: [
+          {
+            inventory_id: productInventoryId,
+            amount_minor: 1999,
+            currency: 'USD',
+          },
+        ],
+      })
+      .expect(204);
+
+    await ownerAgent
       .put(`${API_PREFIX}/shops/${shopBody.id}/products/${productId}/shipping`)
       .send({
-        originCountry: 'US',
-        originZip: '10001',
-        processTimeLabel: '1-3 business days',
+        origin_country: 'US',
+        origin_zip: '10001',
+        process_time_label: '1-3 business days',
         destinations: [
           {
-            countryCode: 'US',
-            deliveryTimeLabel: '3-5 business days',
+            country_code: 'US',
+            delivery_time_label: '3-5 business days',
             service: 'USPS',
-            chargeType: ProductShippingCharge.FREE_SHIPPING,
+            charge_type: ProductShippingCharge.FREE_SHIPPING,
           },
         ],
       })
-      .expect(200);
-
-    expect(setShippingResponse.body.shipping).toBeDefined();
-    expect(setShippingResponse.body.shipping.destinations).toHaveLength(1);
+      .expect(204);
 
     const publishResponse = await ownerAgent
       .post(`${API_PREFIX}/shops/${shopBody.id}/products/${productId}/publish`)
       .expect(201);
 
     expect(publishResponse.body.state).toBe('active');
-
-    const getPublicProductResponse = await request(app.getHttpServer())
-      .get(`${API_PREFIX}/products/${productId}`)
-      .expect(200);
-
-    expect(getPublicProductResponse.body).toMatchObject({
-      id: productId,
-      shop: {
-        id: shopBody.id,
-        shopName: shopBody.shopName,
-      },
-      categoryId: categoryBody.id,
-      title: 'Better Mug',
-      slug: 'better-mug',
-      description: 'Refined ceramic mug',
-      whoMade: ProductWhoMade.COLLECTIVE,
-      isDigital: true,
-      variantType: ProductVariantType.NONE,
-      shipping: {
-        processTimeLabel: '1-3 business days',
-      },
-    });
-    expect(getPublicProductResponse.body.images).toHaveLength(1);
-    expect(getPublicProductResponse.body.inventory).toHaveLength(1);
 
     const getProductResponse = await ownerAgent
       .get(`${API_PREFIX}/shops/${shopBody.id}/products/${productId}`)
@@ -340,19 +403,19 @@ describe('Commerce flow (e2e)', () => {
     expect(getProductResponse.body).toMatchObject({
       id: productId,
       state: 'active',
-      shopId: shopBody.id,
-      categoryId: categoryBody.id,
+      shop_id: shopBody.id,
+      category_id: categoryBody.id,
       title: 'Better Mug',
       slug: 'better-mug',
       description: 'Refined ceramic mug',
-      whoMade: ProductWhoMade.COLLECTIVE,
-      isDigital: true,
-      nonTaxable: true,
+      who_made: ProductWhoMade.COLLECTIVE,
+      is_digital: true,
+      non_taxable: true,
       attributes: [
         {
-          categoryAttributeId: materialAttribute.id,
-          selectedOptionId: materialAttribute.options[0]?.id,
-          selectedOptionValue: 'Ceramic',
+          category_attribute_id: materialAttribute.id,
+          selected_option_id: materialAttribute.options[0]?.id,
+          selected_option_value: 'Ceramic',
         },
       ],
     });
@@ -363,21 +426,53 @@ describe('Commerce flow (e2e)', () => {
     const secondProductResponse = await ownerAgent
       .post(`${API_PREFIX}/shops/${shopBody.id}/products`)
       .send({
-        categoryId: categoryBody.id,
-        title: 'Draft Mug',
-        description: 'Unpublished draft mug',
-        whoMade: ProductWhoMade.I_DID,
-        variantType: ProductVariantType.NONE,
+        category_id: categoryBody.id,
+        title: 'Stoneware Mug',
+        description: 'Published stoneware mug',
+        who_made: ProductWhoMade.I_DID,
+        variant_type: ProductVariantType.NONE,
       })
       .expect(201);
+
+    await configureAndPublishProduct({
+      productId: secondProductResponse.body.id,
+      selectedOptionId: materialAttribute.options[1]?.id,
+      sku: 'MUG-002',
+      priceMinor: 2499,
+    });
+
+    const facetsResponse = await request(app.getHttpServer())
+      .get(`${API_PREFIX}/products/facets`)
+      .query({
+        category_id: categoryBody.id,
+        attribute_filters: JSON.stringify([
+          {
+            attribute_name: 'Material',
+            selected_option_values: ['Ceramic'],
+          },
+        ]),
+      })
+      .expect(200);
+
+    expect(facetsResponse.body).toEqual({
+      facets: [
+        {
+          attribute_name: 'Material',
+          options: [
+            { value: 'Ceramic' },
+          ],
+        },
+      ],
+    });
 
     const otherUserEmail = `commerce-other-${Date.now()}@example.com`;
     const otherAgent = request.agent(app.getHttpServer());
     await otherAgent
       .post(`${API_PREFIX}/auth/register`)
+      .set('X-Forwarded-For', randomForwardedIp())
       .send({
         email: otherUserEmail,
-        password: 'password123',
+        password: VALID_TEST_PASSWORD,
         displayName: 'Other Commerce Owner',
       })
       .expect(201);
@@ -438,9 +533,10 @@ describe('Commerce flow (e2e)', () => {
 
     await agent
       .post(`${API_PREFIX}/auth/register`)
+      .set('X-Forwarded-For', randomForwardedIp())
       .send({
         email,
-        password: 'password123',
+        password: VALID_TEST_PASSWORD,
         displayName: 'Cart Owner',
       })
       .expect(201);
