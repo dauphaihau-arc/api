@@ -297,6 +297,8 @@ export interface ListPublicProductsInput {
   title?: string;
   isDigital?: boolean;
   whoMade?: ProductWhoMade;
+  minPriceMinor?: number;
+  maxPriceMinor?: number;
   attributeFilters?: Array<{
     attributeId?: string;
     selectedOptionIds?: string[];

@@ -17,6 +17,8 @@ describe('ListPublicProductsQueryPipe', () => {
       limit: '16',
       is_digital: 'true',
       who_made: 'i_did',
+      min_price: '20000',
+      max_price: '50000',
       // Public API uses `s` as the search query parameter.
       // eslint-disable-next-line id-length
       s: 'bag',
@@ -26,6 +28,8 @@ describe('ListPublicProductsQueryPipe', () => {
       limit: 16,
       isDigital: true,
       whoMade: 'i_did',
+      minPrice: 20000,
+      maxPrice: 50000,
       search: 'bag',
     });
   });

@@ -2,25 +2,45 @@ import type { CategoryRepository } from '~/modules/domains/category/app/ports/ca
 import type { StorefrontProductQueryRepository } from '../../ports/storefront-product-query.repository';
 import { ListPublicProductsUseCase } from './list-public-products.use-case';
 
-describe('ListPublicProductsUseCase', () => {
-  const productRepository: Pick<jest.Mocked<StorefrontProductQueryRepository>, 'listPublic' | 'listPublicFacets'> = {
-    listPublic: jest.fn(),
-    listPublicFacets: jest.fn(),
+type ProductRepositoryMock = Pick<
+  jest.Mocked<StorefrontProductQueryRepository>,
+  'listPublic' | 'listPublicFacets'
+>;
+
+type CategoryRepositoryMock = Pick<
+  jest.Mocked<CategoryRepository>,
+  'findById' | 'findAllByParentId'
+>;
+
+const createProductRepositoryMock = (): ProductRepositoryMock => ({
+  listPublic: jest.fn(),
+  listPublicFacets: jest.fn(),
+});
+
+const createCategoryRepositoryMock = (): CategoryRepositoryMock => ({
+  findById: jest.fn(),
+  findAllByParentId: jest.fn(),
+});
+
+const createUseCaseHarness = () => {
+  const productRepository = createProductRepositoryMock();
+  const categoryRepository = createCategoryRepositoryMock();
+
+  return {
+    productRepository,
+    categoryRepository,
+    useCase: new ListPublicProductsUseCase(
+      productRepository as never,
+      categoryRepository as never
+    ),
   };
-  const categoryRepository: Pick<jest.Mocked<CategoryRepository>, 'findById' | 'findAllByParentId'> = {
-    findById: jest.fn(),
-    findAllByParentId: jest.fn(),
-  };
+};
 
-  const useCase = new ListPublicProductsUseCase(
-    productRepository as never,
-    categoryRepository as never
-  );
-
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
+const registerMissingCategorySpec = ({
+  categoryRepository,
+  productRepository,
+  useCase,
+}: ReturnType<typeof createUseCaseHarness>) => {
   it('returns an empty result when a requested category does not exist', async () => {
     categoryRepository.findById.mockResolvedValue(null);
 
@@ -41,6 +61,16 @@ describe('ListPublicProductsUseCase', () => {
     });
     expect(productRepository.listPublic).not.toHaveBeenCalled();
   });
+};
+
+describe('ListPublicProductsUseCase', function () {
+  const { productRepository, categoryRepository, useCase } = createUseCaseHarness();
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  registerMissingCategorySpec({ categoryRepository, productRepository, useCase });
 
   it('normalizes id-based attribute filters for facet queries', async () => {
     categoryRepository.findById.mockResolvedValue({
@@ -71,6 +101,8 @@ describe('ListPublicProductsUseCase', () => {
       title: undefined,
       isDigital: undefined,
       whoMade: undefined,
+      minPriceMinor: undefined,
+      maxPriceMinor: undefined,
       attributeFilters: [{
         attributeId: 'attribute-1',
         selectedOptionIds: ['option-1', 'option-2'],
@@ -110,6 +142,8 @@ describe('ListPublicProductsUseCase', () => {
       title: undefined,
       isDigital: undefined,
       whoMade: undefined,
+      minPriceMinor: undefined,
+      maxPriceMinor: undefined,
       attributeFilters: [{
         attributeId: 'shoe_size',
         selectedOptionKeys: ['us_6_5', 'eu_39', 'us_6_5_eu_39'],
@@ -166,6 +200,47 @@ describe('ListPublicProductsUseCase', () => {
         options: [{ optionKey: 'cotton', value: 'Cotton' }],
       },
     ]);
+  });
+
+  it('passes price bounds through to the product repository', async () => {
+    categoryRepository.findById.mockResolvedValue({
+      id: 'category-1',
+      attributes: [],
+    } as never);
+    categoryRepository.findAllByParentId.mockResolvedValue([]);
+    productRepository.listPublic.mockResolvedValue({
+      items: [],
+      meta: {
+        page: 1,
+        limit: 12,
+        total: 0,
+        totalPages: 0,
+        hasNextPage: false,
+        hasPreviousPage: false,
+      },
+    });
+
+    await useCase.execute({
+      page: 1,
+      limit: 12,
+      categoryId: 'category-1',
+      minPrice: 20000,
+      maxPrice: 50000,
+    });
+
+    expect(productRepository.listPublic).toHaveBeenCalledWith({
+      page: 1,
+      limit: 12,
+      categoryIds: ['category-1'],
+      search: undefined,
+      title: undefined,
+      isDigital: undefined,
+      whoMade: undefined,
+      minPriceMinor: 20000,
+      maxPriceMinor: 50000,
+      attributeFilters: undefined,
+      order: undefined,
+    });
   });
 
   it('inherits featured facets from the nearest ancestor for leaf categories', async () => {

@@ -191,6 +191,57 @@ describe('MongoStorefrontProductQueryRepository', () => {
     expect(result.items.map((item) => item.id)).toEqual(['product-2', 'product-1']);
   });
 
+  it('filters public products by min and max price using catalog sort price', async () => {
+    const lowerPricedDocument: CatalogProductDocument = {
+      ...sampleDocument,
+      _id: 'product-2',
+      productId: 'product-2',
+      slug: 'everyday-cap',
+      title: 'Everyday Cap',
+      titleNormalized: 'everyday cap',
+      sort: {
+        ...sampleDocument.sort,
+        minPriceAmountMinor: 2999,
+        maxPriceAmountMinor: 2999,
+      },
+      primaryInventory: {
+        ...sampleDocument.primaryInventory!,
+        amountMinor: 2999,
+      },
+    };
+    const higherPricedDocument: CatalogProductDocument = {
+      ...sampleDocument,
+      _id: 'product-3',
+      productId: 'product-3',
+      slug: 'statement-coat',
+      title: 'Statement Coat',
+      titleNormalized: 'statement coat',
+      sort: {
+        ...sampleDocument.sort,
+        minPriceAmountMinor: 19100,
+        maxPriceAmountMinor: 19100,
+      },
+      primaryInventory: {
+        ...sampleDocument.primaryInventory!,
+        amountMinor: 19100,
+      },
+    };
+    const { repository } = createRepository([
+      lowerPricedDocument,
+      sampleDocument,
+      higherPricedDocument,
+    ]);
+
+    const result = await repository.listPublic({
+      page: 1,
+      limit: 10,
+      minPriceMinor: 5000,
+      maxPriceMinor: 10000,
+    });
+
+    expect(result.items.map((item) => item.id)).toEqual(['product-1']);
+  });
+
   it('suggests products ordered by title relevance', async () => {
     const exact = sampleDocument;
     const prefix = {
@@ -459,6 +510,16 @@ function matchesFilter(
 
     if (value && typeof value === 'object' && '$in' in (value as Record<string, unknown>)) {
       return ((value as { $in: unknown[] }).$in).includes(actualValue);
+    }
+
+    if (value && typeof value === 'object' && '$gte' in (value as Record<string, unknown>)) {
+      return typeof actualValue === 'number'
+        && actualValue >= Number((value as { $gte: unknown }).$gte);
+    }
+
+    if (value && typeof value === 'object' && '$lte' in (value as Record<string, unknown>)) {
+      return typeof actualValue === 'number'
+        && actualValue <= Number((value as { $lte: unknown }).$lte);
     }
 
     if (value && typeof value === 'object' && '$regex' in (value as Record<string, unknown>)) {

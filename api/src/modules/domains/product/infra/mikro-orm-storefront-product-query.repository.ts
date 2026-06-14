@@ -338,6 +338,54 @@ implements StorefrontProductQueryRepository {
       params.push(input.whoMade);
     }
 
+    if (input.minPriceMinor !== undefined || input.maxPriceMinor !== undefined) {
+      const sortPriceKey = this.getRequestSortPriceKey();
+      const comparablePriceExpression = sortPriceKey
+        ? `
+            coalesce(
+              (p.public_sort_prices ->> ?)::integer,
+              (
+                select min(vp.amount_minor)
+                from product_inventory pi2
+                inner join variant_prices vp on vp.product_inventory_id = pi2.id
+                where pi2.product_id = p.id
+                  and vp.price_type = 'base'
+                  and vp.active_to is null
+              )
+            )
+          `
+        : `
+            (
+              select min(vp.amount_minor)
+              from product_inventory pi2
+              inner join variant_prices vp on vp.product_inventory_id = pi2.id
+              where pi2.product_id = p.id
+                and vp.price_type = 'base'
+                and vp.active_to is null
+            )
+          `;
+
+      if (input.minPriceMinor !== undefined) {
+        clauses.push(`
+          and ${comparablePriceExpression} >= ?
+        `);
+        if (sortPriceKey) {
+          params.push(sortPriceKey);
+        }
+        params.push(input.minPriceMinor);
+      }
+
+      if (input.maxPriceMinor !== undefined) {
+        clauses.push(`
+          and ${comparablePriceExpression} <= ?
+        `);
+        if (sortPriceKey) {
+          params.push(sortPriceKey);
+        }
+        params.push(input.maxPriceMinor);
+      }
+    }
+
     if (input.attributeFilters?.length) {
       input.attributeFilters.forEach((attributeFilter) => {
         if (attributeFilter.attributeId && attributeFilter.selectedOptionIds?.length) {

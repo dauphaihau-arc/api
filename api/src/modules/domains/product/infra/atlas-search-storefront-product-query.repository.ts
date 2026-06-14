@@ -300,6 +300,24 @@ implements StorefrontProductQueryRepository {
       });
     }
 
+    if (input.minPriceMinor !== undefined) {
+      filter.push({
+        range: {
+          path: 'price.minAmountMinor',
+          gte: input.minPriceMinor,
+        },
+      });
+    }
+
+    if (input.maxPriceMinor !== undefined) {
+      filter.push({
+        range: {
+          path: 'price.minAmountMinor',
+          lte: input.maxPriceMinor,
+        },
+      });
+    }
+
     if (input.attributeFilters?.length) {
       input.attributeFilters.forEach((attributeFilter) => {
         const structuredOperator = {

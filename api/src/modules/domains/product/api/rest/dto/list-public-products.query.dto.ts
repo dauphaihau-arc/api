@@ -6,6 +6,7 @@ import {
   IsIn,
   IsOptional,
   IsArray,
+  IsInt,
   IsString,
   IsUUID,
   Max,
@@ -96,6 +97,24 @@ export class ListPublicProductsQueryDto {
   @Transform(({ value, obj: source }) => value ?? source.who_made)
   @IsEnum(ProductWhoMade)
   whoMade?: ProductWhoMade;
+
+  @IsOptional()
+  @ApiPropertyOptional({ name: 'min_price' })
+  @Expose({ name: 'min_price' })
+  @Transform(({ value, obj: source }) => value ?? source.min_price)
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  minPrice?: number;
+
+  @IsOptional()
+  @ApiPropertyOptional({ name: 'max_price' })
+  @Expose({ name: 'max_price' })
+  @Transform(({ value, obj: source }) => value ?? source.max_price)
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  maxPrice?: number;
 
   @IsOptional()
   @IsArray()

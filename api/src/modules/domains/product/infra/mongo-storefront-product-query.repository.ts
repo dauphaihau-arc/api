@@ -172,6 +172,18 @@ implements StorefrontProductQueryRepository {
       andFilters.push({ whoMade: input.whoMade });
     }
 
+    if (input.minPriceMinor !== undefined) {
+      andFilters.push({
+        'sort.minPriceAmountMinor': { $gte: input.minPriceMinor },
+      });
+    }
+
+    if (input.maxPriceMinor !== undefined) {
+      andFilters.push({
+        'sort.minPriceAmountMinor': { $lte: input.maxPriceMinor },
+      });
+    }
+
     if (input.attributeFilters?.length) {
       for (const attributeFilter of input.attributeFilters) {
         const structuredFilter = {

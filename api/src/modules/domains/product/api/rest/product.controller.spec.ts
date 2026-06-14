@@ -65,6 +65,8 @@ describe('ProductController', () => {
       page: '1',
       limit: '12',
       category_id: '19e56f7f-2dbd-4e4b-95fc-99f82f6d5b0e',
+      min_price: '20000',
+      max_price: '50000',
       attr_material: 'cotton,linen',
     })).resolves.toEqual({
       facets: [
@@ -81,6 +83,8 @@ describe('ProductController', () => {
       page: 1,
       limit: 12,
       categoryId: '19e56f7f-2dbd-4e4b-95fc-99f82f6d5b0e',
+      minPrice: 20000,
+      maxPrice: 50000,
       attributeFilters: [
         {
           attribute_id: 'material',
@@ -109,6 +113,8 @@ describe('ProductController', () => {
       page: '1',
       limit: '16',
       category_id: '19e56f7f-2dbd-4e4b-95fc-99f82f6d5b0e',
+      min_price: '20000',
+      max_price: '50000',
       attr_bag_size: 'large',
       attr_color: 'blue,green',
     });
@@ -117,6 +123,8 @@ describe('ProductController', () => {
       page: 1,
       limit: 16,
       categoryId: '19e56f7f-2dbd-4e4b-95fc-99f82f6d5b0e',
+      minPrice: 20000,
+      maxPrice: 50000,
       attributeFilters: [
         {
           attribute_id: 'bag_size',

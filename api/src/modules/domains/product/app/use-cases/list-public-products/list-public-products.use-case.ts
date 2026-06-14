@@ -23,6 +23,8 @@ export interface ListPublicProductsQuery {
   title?: string;
   isDigital?: boolean;
   whoMade?: ListPublicProductsInput['whoMade'];
+  minPrice?: number;
+  maxPrice?: number;
   attributeFilters?: Array<{
     attribute_id?: string;
     selected_option_ids?: string[];
@@ -58,6 +60,8 @@ export class ListPublicProductsUseCase {
       title: query.title?.trim() || undefined,
       isDigital: query.isDigital,
       whoMade: query.whoMade,
+      minPriceMinor: query.minPrice,
+      maxPriceMinor: query.maxPrice,
       attributeFilters: this.normalizeAttributeFilters(query.attributeFilters),
       order: query.order,
     });
@@ -69,44 +73,37 @@ export class ListPublicProductsUseCase {
   }
 
   async executeFacets(query: ListPublicProductsQuery): Promise<PublicProductFacet[]> {
-    try {
-      const category = query.categoryId
-        ? await this.categoryRepository.findById(query.categoryId)
-        : null;
-      const featuredFacetCategory = category
-        ? await this.resolveFeaturedFacetCategory(category)
-        : null;
-      const categoryIds = await this.resolveQueryCategoryIds(query.categoryId);
+    const category = query.categoryId
+      ? await this.categoryRepository.findById(query.categoryId)
+      : null;
+    const featuredFacetCategory = category
+      ? await this.resolveFeaturedFacetCategory(category)
+      : null;
+    const categoryIds = await this.resolveQueryCategoryIds(query.categoryId);
 
-      if (query.categoryId && categoryIds?.length === 0) {
-        return [];
-      }
-
-      const facets = await this.productRepository.listPublicFacets({
-        page: query.page,
-        limit: query.limit,
-        categoryIds,
-        search: query.search?.trim() || undefined,
-        title: query.title?.trim() || undefined,
-        isDigital: query.isDigital,
-        whoMade: query.whoMade,
-        attributeFilters: this.normalizeAttributeFilters(query.attributeFilters),
-        order: query.order,
-      });
-
-      return await this.mergeFeaturedFacets({
-        category,
-        featuredFacetCategory,
-        facets,
-      });
+    if (query.categoryId && categoryIds?.length === 0) {
+      return [];
     }
-    catch (error) {
-      console.error('executeFacets failed', {
-        query,
-        error,
-      });
-      throw error;
-    }
+
+    const facets = await this.productRepository.listPublicFacets({
+      page: query.page,
+      limit: query.limit,
+      categoryIds,
+      search: query.search?.trim() || undefined,
+      title: query.title?.trim() || undefined,
+      isDigital: query.isDigital,
+      whoMade: query.whoMade,
+      minPriceMinor: query.minPrice,
+      maxPriceMinor: query.maxPrice,
+      attributeFilters: this.normalizeAttributeFilters(query.attributeFilters),
+      order: query.order,
+    });
+
+    return this.mergeFeaturedFacets({
+      category,
+      featuredFacetCategory,
+      facets,
+    });
   }
 
   private normalizeAttributeFilters(
