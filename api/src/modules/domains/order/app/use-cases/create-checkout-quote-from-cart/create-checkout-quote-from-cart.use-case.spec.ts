@@ -1,5 +1,4 @@
 import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
-import type { UserPreferenceRepository } from '~/modules/domains/auth/app/ports/user-preference.repository';
 import { UserStatus } from '~/modules/domains/auth/domain/enums/user-status.enum';
 import type { CartRepository } from '~/modules/domains/cart/app/ports/cart.repository';
 import type { GetMyAddressUseCase } from '~/modules/domains/user/app/use-cases/get-my-address/get-my-address.use-case';
@@ -45,23 +44,15 @@ describe('CreateCheckoutQuoteFromCartUseCase', () => {
         phone: '0123',
       }),
     } as unknown as jest.Mocked<GetMyAddressUseCase>;
-    const userPreferenceRepository = {
-      findByUserId: jest.fn().mockResolvedValue({ currency: 'VND' }),
-    } as unknown as jest.Mocked<UserPreferenceRepository>;
     const createCheckoutQuoteService = {
       createFromCart: jest.fn().mockResolvedValue({
         quoteId: 'quote-1',
       }),
     } as unknown as jest.Mocked<CreateCheckoutQuoteService>;
-    const requestContextService = {
-      get: jest.fn().mockReturnValue({ currency: 'VND' }),
-    };
 
     const useCase = new CreateCheckoutQuoteFromCartUseCase(
       cartRepository,
       getMyAddressUseCase,
-      userPreferenceRepository,
-      requestContextService as never,
       createCheckoutQuoteService
     );
 

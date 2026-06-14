@@ -6,6 +6,7 @@ import { AuthModule } from '../auth/auth.module';
 import { CurrentUserEntity } from '../auth/infra/persistence/entities/current-user.entity';
 import { CartModule } from '../cart/cart.module';
 import { CouponModule } from '../coupon/coupon.module';
+import { ProductModule } from '../product/product.module';
 import { CouponUsageEntity } from '../coupon/infra/persistence/entities/coupon-usage.entity';
 import { ProductEntity } from '../product/infra/persistence/entities/product.entity';
 import { ProductInventoryEntity } from '../product/infra/persistence/entities/product-inventory.entity';
@@ -70,6 +71,7 @@ import { UpdateShopOrderRefundUseCase } from './app/use-cases/update-shop-order-
     forwardRef(() => AuthModule),
     CartModule,
     CouponModule,
+    ProductModule,
     PaymentModule,
     NotificationModule,
     forwardRef(() => QueueModule),

@@ -127,7 +127,13 @@ describe('MongoStorefrontProductQueryRepository', () => {
       ),
     } as unknown as CatalogProductSlugRepository, {
       getCollection: jest.fn(),
-    } as unknown as CatalogMongoAccess);
+    } as unknown as CatalogMongoAccess, {
+      resolveCurrentRequest: jest.fn().mockResolvedValue(undefined),
+    } as never, {
+      getLatestRate: jest.fn(),
+    } as never, {
+      toMinorUnits: jest.fn(),
+    } as never);
 
     const fakeCollection = {
       findOne: jest.fn(async (filter: Record<string, unknown>) =>

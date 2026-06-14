@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { CartRepository } from '~/modules/domains/cart/app/ports/cart.repository';
-import { RequestContextService } from '~/modules/shared/request-context/request-context.service';
 import type { CreateGuestCheckoutQuoteFromCartDto } from '../../../api/rest/dto/create-guest-checkout-quote-from-cart.dto';
 import { CartNotFoundError } from '../../errors/order-app.error';
 import { CreateCheckoutQuoteService } from '../../create-checkout-quote.service';
@@ -9,7 +8,6 @@ import { CreateCheckoutQuoteService } from '../../create-checkout-quote.service'
 export class CreateGuestCheckoutQuoteFromCartUseCase {
   constructor(
     private readonly cartRepository: CartRepository,
-    private readonly requestContextService: RequestContextService,
     private readonly createCheckoutQuoteService: CreateCheckoutQuoteService
   ) {}
 
@@ -29,7 +27,7 @@ export class CreateGuestCheckoutQuoteFromCartUseCase {
         guestSessionId,
       },
       cart,
-      presentmentCurrency: body.presentmentCurrency ?? this.requestContextService.get().currency,
+      presentmentCurrency: body.presentmentCurrency,
       shopAdjustments: body.shopAdjustments,
       shippingAddress: {
         fullName: body.shippingAddress.fullName,

@@ -1,11 +1,10 @@
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
 import { buildPaginationMeta } from '~/common/application/pagination';
-import { MARKETPLACE_MARKETS } from '~/config/marketplace.config';
 import { StorageService } from '~/modules/shared/storage/app/ports/storage.service';
-import { RequestContextService } from '~/modules/shared/request-context/request-context.service';
 import { StorefrontProductQueryRepository } from '../app/ports/storefront-product-query.repository';
 import { ResolvedStorefrontPriceService } from '../app/services/resolved-storefront-price.service';
+import { StorefrontMarketContextService } from '../app/services/storefront-market-context.service';
 import type {
   ListPublicProductsInput,
   PublicProductFacet,
@@ -33,7 +32,7 @@ implements StorefrontProductQueryRepository {
     private readonly entityManager: EntityManager,
     private readonly storageService: StorageService,
     private readonly resolvedStorefrontPriceService: ResolvedStorefrontPriceService,
-    private readonly requestContextService: RequestContextService
+    private readonly storefrontMarketContextService: StorefrontMarketContextService
   ) {}
 
   async findPublicByShopSlugAndProductSlug(
@@ -78,8 +77,9 @@ implements StorefrontProductQueryRepository {
   ): Promise<PublicProductListResult> {
     const entityManager = this.entityManager.fork();
     const repository = entityManager.getRepository(ProductEntity);
-    const total = await this.countPublicProductIds(entityManager, input);
-    const canUseDenormalizedPriceSort = this.canUseDenormalizedPriceSort(input.order);
+    const sortPriceKey = await this.getRequestSortPriceKey();
+    const total = await this.countPublicProductIds(entityManager, input, sortPriceKey);
+    const canUseDenormalizedPriceSort = this.canUseDenormalizedPriceSort(input.order, sortPriceKey);
 
     if (total === 0) {
       return {
@@ -93,12 +93,12 @@ implements StorefrontProductQueryRepository {
         ? await this.findPublicProductIds(entityManager, input, {
           limit: input.limit,
           offset: (input.page - 1) * input.limit,
-        })
-        : await this.findPublicProductIds(entityManager, input)
+        }, sortPriceKey)
+        : await this.findPublicProductIds(entityManager, input, undefined, sortPriceKey)
       : await this.findPublicProductIds(entityManager, input, {
         limit: input.limit,
         offset: (input.page - 1) * input.limit,
-      });
+      }, sortPriceKey);
 
     if (pagedProductIds.length === 0) {
       return {
@@ -148,7 +148,12 @@ implements StorefrontProductQueryRepository {
     input: ListPublicProductsInput
   ): Promise<PublicProductFacet[]> {
     const entityManager = this.entityManager.fork();
-    const matchingProductIds = await this.findPublicProductIds(entityManager, input);
+    const matchingProductIds = await this.findPublicProductIds(
+      entityManager,
+      input,
+      undefined,
+      await this.getRequestSortPriceKey()
+    );
 
     if (matchingProductIds.length === 0) {
       return [];
@@ -270,9 +275,10 @@ implements StorefrontProductQueryRepository {
 
   private async countPublicProductIds(
     entityManager: EntityManager,
-    input: ListPublicProductsInput
+    input: ListPublicProductsInput,
+    sortPriceKey?: string
   ): Promise<number> {
-    const { whereClause, params } = this.buildPublicListWhereClause(input);
+    const { whereClause, params } = this.buildPublicListWhereClause(input, sortPriceKey);
     const rows = await entityManager.getConnection().execute<{ total: string }[]>(
       `
         select count(distinct p.id)::text as total
@@ -292,10 +298,11 @@ implements StorefrontProductQueryRepository {
     pagination?: {
       limit: number;
       offset: number;
-    }
+    },
+    sortPriceKey?: string
   ): Promise<string[]> {
-    const { whereClause, params } = this.buildPublicListWhereClause(input);
-    const { orderByClause, params: orderingParams } = this.buildPublicListOrdering(input);
+    const { whereClause, params } = this.buildPublicListWhereClause(input, sortPriceKey);
+    const { orderByClause, params: orderingParams } = this.buildPublicListOrdering(input, sortPriceKey);
     const paginationClause = pagination
       ? `limit ${pagination.limit} offset ${pagination.offset}`
       : '';
@@ -316,7 +323,8 @@ implements StorefrontProductQueryRepository {
   }
 
   private buildPublicListWhereClause(
-    input: ListPublicProductsInput
+    input: ListPublicProductsInput,
+    sortPriceKey?: string
   ): { whereClause: string; params: unknown[] } {
     const clauses = ['where p.state = ?'];
     const params: unknown[] = [ProductState.ACTIVE];
@@ -339,7 +347,6 @@ implements StorefrontProductQueryRepository {
     }
 
     if (input.minPriceMinor !== undefined || input.maxPriceMinor !== undefined) {
-      const sortPriceKey = this.getRequestSortPriceKey();
       const comparablePriceExpression = sortPriceKey
         ? `
             coalesce(
@@ -507,10 +514,11 @@ implements StorefrontProductQueryRepository {
   }
 
   private buildPublicListOrdering(
-    input: ListPublicProductsInput
+    input: ListPublicProductsInput,
+    sortPriceKey?: string
   ): { orderByClause: string; params: unknown[] } {
     const normalizedSearch = input.search?.trim().toLowerCase();
-    const denormalizedPriceSort = this.getDenormalizedPriceSortOrdering(input.order);
+    const denormalizedPriceSort = this.getDenormalizedPriceSortOrdering(input.order, sortPriceKey);
 
     if (denormalizedPriceSort) {
       return denormalizedPriceSort;
@@ -548,13 +556,12 @@ implements StorefrontProductQueryRepository {
   }
 
   private getDenormalizedPriceSortOrdering(
-    order?: ListPublicProductsInput['order']
+    order?: ListPublicProductsInput['order'],
+    sortPriceKey?: string
   ): { orderByClause: string; params: unknown[] } | null {
     if (order !== 'price_asc' && order !== 'price_desc') {
       return null;
     }
-
-    const sortPriceKey = this.getRequestSortPriceKey();
 
     if (!sortPriceKey) {
       return null;
@@ -574,28 +581,15 @@ implements StorefrontProductQueryRepository {
   }
 
   private canUseDenormalizedPriceSort(
-    order?: ListPublicProductsInput['order']
+    order?: ListPublicProductsInput['order'],
+    sortPriceKey?: string
   ): boolean {
     return (order === 'price_asc' || order === 'price_desc')
-      && this.getRequestSortPriceKey() !== undefined;
+      && sortPriceKey !== undefined;
   }
 
-  private getRequestSortPriceKey(): string | undefined {
-    const requestContext = this.requestContextService.get();
-    const marketCode = requestContext.marketCode?.trim();
-    const currency = requestContext.currency?.trim();
-
-    if (!marketCode || !currency) {
-      return undefined;
-    }
-
-    const market = MARKETPLACE_MARKETS.find((entry) => entry.code === marketCode && entry.enabled);
-
-    if (!market || market.defaultCurrency !== currency) {
-      return undefined;
-    }
-
-    return `${market.code}:${market.defaultCurrency}`;
+  private async getRequestSortPriceKey(): Promise<string | undefined> {
+    return this.storefrontMarketContextService.getCurrentSortPriceKey();
   }
 
   private async sortProductsByComparablePrice(

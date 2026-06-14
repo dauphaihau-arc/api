@@ -1,7 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { buildPaginationMeta } from '~/common/application/pagination';
 import { CATALOG_CONFIG, type CatalogConfig } from '~/config/catalog.config';
+import { FxRateService } from '~/modules/shared/currency/fx-rate.service';
+import { RoundingPolicyService } from '~/modules/shared/currency/rounding-policy.service';
 import { ProductState } from '../domain/enums/product-state.enum';
+import { StorefrontMarketContextService } from '../app/services/storefront-market-context.service';
 import { toCanonicalFacetOption } from '../app/shoe-size-groups';
 import { CatalogProductSlugRepository } from '../app/ports/catalog-product-slug.repository';
 import { StorefrontProductQueryRepository } from '../app/ports/storefront-product-query.repository';
@@ -47,7 +50,10 @@ implements StorefrontProductQueryRepository {
     @Inject(CATALOG_CONFIG)
     private readonly catalogConfig: CatalogConfig,
     private readonly catalogProductSlugRepository: CatalogProductSlugRepository,
-    private readonly catalogMongoAccess: CatalogMongoAccess
+    private readonly catalogMongoAccess: CatalogMongoAccess,
+    private readonly storefrontMarketContextService: StorefrontMarketContextService,
+    private readonly fxRateService: FxRateService,
+    private readonly roundingPolicyService: RoundingPolicyService
   ) {}
 
   async findPublicByShopSlugAndProductSlug(
@@ -76,7 +82,29 @@ implements StorefrontProductQueryRepository {
     input: ListPublicProductsInput
   ): Promise<PublicProductListResult> {
     const collection = await this.getCollection();
-    const filter = this.buildListFilter(input);
+    const shouldResolvePriceInMemory = this.shouldResolvePriceInMemory(input);
+    const filter = this.buildListFilter(input, {
+      includePriceConstraints: !shouldResolvePriceInMemory,
+    });
+
+    if (shouldResolvePriceInMemory) {
+      const documents = await collection.find(filter).toArray();
+      const matchingItems = await Promise.all(
+        documents
+          .filter((document) => this.shouldIncludeInPublicList(document))
+          .map((document) => this.toPublicProductListItem(document))
+      );
+      const filteredItems = matchingItems
+        .filter((item) => this.matchesResolvedPrice(item, input))
+        .sort((left, right) => compareResolvedListItems(left, right, input.order));
+      const total = filteredItems.length;
+
+      return {
+        items: filteredItems.slice((input.page - 1) * input.limit, input.page * input.limit),
+        meta: buildPaginationMeta(input.page, input.limit, total),
+      };
+    }
+
     const total = await collection.countDocuments(filter);
 
     if (total === 0) {
@@ -92,9 +120,11 @@ implements StorefrontProductQueryRepository {
       .limit(input.limit)
       .toArray();
 
-    const items = documents
-      .filter((document) => this.shouldIncludeInPublicList(document))
-      .map((document) => this.toPublicProductListItem(document));
+    const items = await Promise.all(
+      documents
+        .filter((document) => this.shouldIncludeInPublicList(document))
+        .map((document) => this.toPublicProductListItem(document))
+    );
 
     return {
       items,
@@ -106,12 +136,15 @@ implements StorefrontProductQueryRepository {
     input: ListPublicProductsInput
   ): Promise<PublicProductFacet[]> {
     const collection = await this.getCollection();
-    const filter = this.buildListFilter(input);
+    const filter = this.buildListFilter(input, {
+      includePriceConstraints: !this.shouldResolvePriceInMemory(input),
+    });
     const documents = await collection.find(filter).toArray();
+    const visibleDocuments = this.shouldResolvePriceInMemory(input)
+      ? await this.filterDocumentsByResolvedPrice(documents, input)
+      : documents.filter((document) => this.shouldIncludeInPublicList(document));
 
-    return buildFacetResult(
-      documents.filter((document) => this.shouldIncludeInPublicList(document))
-    );
+    return buildFacetResult(visibleDocuments);
   }
 
   async suggestPublic(
@@ -151,7 +184,8 @@ implements StorefrontProductQueryRepository {
   }
 
   private buildListFilter(
-    input: ListPublicProductsInput
+    input: ListPublicProductsInput,
+    options?: { includePriceConstraints?: boolean }
   ): Record<string, unknown> {
     const filter: Record<string, unknown> = {
       state: ProductState.ACTIVE,
@@ -172,13 +206,13 @@ implements StorefrontProductQueryRepository {
       andFilters.push({ whoMade: input.whoMade });
     }
 
-    if (input.minPriceMinor !== undefined) {
+    if (options?.includePriceConstraints !== false && input.minPriceMinor !== undefined) {
       andFilters.push({
         'sort.minPriceAmountMinor': { $gte: input.minPriceMinor },
       });
     }
 
-    if (input.maxPriceMinor !== undefined) {
+    if (options?.includePriceConstraints !== false && input.maxPriceMinor !== undefined) {
       andFilters.push({
         'sort.minPriceAmountMinor': { $lte: input.maxPriceMinor },
       });
@@ -272,13 +306,24 @@ implements StorefrontProductQueryRepository {
     };
   }
 
+  private shouldResolvePriceInMemory(input: ListPublicProductsInput): boolean {
+    return input.minPriceMinor !== undefined
+      || input.maxPriceMinor !== undefined
+      || input.order === 'price_asc'
+      || input.order === 'price_desc';
+  }
+
   private shouldIncludeInPublicList(document: CatalogProductDocument): boolean {
     return document.state === ProductState.ACTIVE && document.images.length > 0;
   }
 
-  private toPublicProductListItem(
+  private async toPublicProductListItem(
     document: CatalogProductDocument
-  ): PublicProductListItem {
+  ): Promise<PublicProductListItem> {
+    const inventory = document.primaryInventory
+      ? await this.resolveCatalogInventoryPricing(document.primaryInventory)
+      : undefined;
+
     return {
       id: document.productId,
       shop: {
@@ -292,22 +337,22 @@ implements StorefrontProductQueryRepository {
       slug: document.slug,
       image: document.primaryImage,
       variantType: document.variantType,
-      inventory: document.primaryInventory
+      inventory: inventory
         ? {
-          amountMinor: document.primaryInventory.amountMinor,
-          originalAmountMinor: document.primaryInventory.originalAmountMinor,
-          currency: document.primaryInventory.currency,
-          stock: document.primaryInventory.stock,
-          sku: document.primaryInventory.sku,
+          amountMinor: inventory.amountMinor,
+          originalAmountMinor: inventory.originalAmountMinor,
+          currency: inventory.currency,
+          stock: inventory.stock,
+          sku: inventory.sku,
         }
         : undefined,
       createdAt: document.sort.createdAt,
     };
   }
 
-  private toPublicProductDetail(
+  private async toPublicProductDetail(
     document: CatalogProductDocument
-  ): PublicProductDetail {
+  ): Promise<PublicProductDetail> {
     return {
       id: document.productId,
       shop: {
@@ -353,15 +398,9 @@ implements StorefrontProductQueryRepository {
         imageStorageKey: variant.imageStorageKey,
         rank: variant.rank,
       })),
-      inventory: document.inventory.map((inventory) => ({
-        id: inventory.id,
-        productVariantId: inventory.productVariantId,
-        sku: inventory.sku,
-        stock: inventory.stock,
-        amountMinor: inventory.amountMinor,
-        originalAmountMinor: inventory.originalAmountMinor,
-        currency: inventory.currency,
-      })),
+      inventory: await Promise.all(document.inventory.map((inventory) =>
+        this.resolveCatalogInventoryPricing(inventory)
+      )),
       shipping: document.shipping
         ? {
           originCountry: document.shipping.originCountry,
@@ -390,6 +429,102 @@ implements StorefrontProductQueryRepository {
       this.catalogConfig.mongodbProductsCollection
     );
   }
+
+  private async resolveCatalogInventoryPricing(input: {
+    id: string;
+    productVariantId?: string;
+    sku?: string;
+    stock: number;
+    amountMinor?: number;
+    originalAmountMinor?: number;
+    currency?: string;
+  }) {
+    const basePricing = {
+      id: input.id,
+      productVariantId: input.productVariantId,
+      sku: input.sku,
+      stock: input.stock,
+      amountMinor: input.amountMinor,
+      originalAmountMinor: input.originalAmountMinor,
+      currency: input.currency,
+    };
+    const context = await this.storefrontMarketContextService.resolveCurrentRequest();
+
+    if (
+      !context?.currency
+      || !basePricing.currency
+      || basePricing.amountMinor == null
+      || context.currency === basePricing.currency
+    ) {
+      return basePricing;
+    }
+
+    const rate = await this.fxRateService.getLatestRate({
+      fromCurrency: basePricing.currency,
+      toCurrency: context.currency,
+    });
+
+    if (!rate) {
+      return basePricing;
+    }
+
+    const amountMajor = toMajorUnits(basePricing.amountMinor, basePricing.currency) * Number(rate.rate);
+    const originalAmountMajor = basePricing.originalAmountMinor != null
+      ? toMajorUnits(basePricing.originalAmountMinor, basePricing.currency) * Number(rate.rate)
+      : undefined;
+
+    return {
+      ...basePricing,
+      amountMinor: this.roundingPolicyService.toMinorUnits(amountMajor, context.currency),
+      originalAmountMinor: originalAmountMajor != null
+        ? this.roundingPolicyService.toMinorUnits(originalAmountMajor, context.currency)
+        : undefined,
+      currency: context.currency,
+    };
+  }
+
+  private async filterDocumentsByResolvedPrice(
+    documents: CatalogProductDocument[],
+    input: ListPublicProductsInput
+  ): Promise<CatalogProductDocument[]> {
+    const resolvedDocuments = await Promise.all(
+      documents
+        .filter((document) => this.shouldIncludeInPublicList(document))
+        .map(async (document) => ({
+          document,
+          item: await this.toPublicProductListItem(document),
+        }))
+    );
+
+    return resolvedDocuments
+      .filter(({ item }) => this.matchesResolvedPrice(item, input))
+      .map(({ document }) => document);
+  }
+
+  private matchesResolvedPrice(
+    item: PublicProductListItem,
+    input: ListPublicProductsInput
+  ): boolean {
+    const amountMinor = item.inventory?.amountMinor;
+
+    if (amountMinor == null) {
+      return false;
+    }
+
+    if (input.minPriceMinor !== undefined && amountMinor < input.minPriceMinor) {
+      return false;
+    }
+
+    if (input.maxPriceMinor !== undefined && amountMinor > input.maxPriceMinor) {
+      return false;
+    }
+
+    return true;
+  }
+}
+
+function toMajorUnits(amountMinor: number, currency: string): number {
+  return amountMinor / (currency === 'JPY' || currency === 'KRW' || currency === 'VND' ? 1 : 100);
 }
 
 function escapeRegex(value: string): string {
@@ -409,6 +544,25 @@ function compareSuggestionDocuments(
   }
 
   return right.sort.createdAt.getTime() - left.sort.createdAt.getTime();
+}
+
+function compareResolvedListItems(
+  left: PublicProductListItem,
+  right: PublicProductListItem,
+  order?: ListPublicProductsInput['order']
+): number {
+  if (order === 'price_asc' || order === 'price_desc') {
+    const leftAmount = left.inventory?.amountMinor ?? (order === 'price_asc' ? Number.MAX_SAFE_INTEGER : -1);
+    const rightAmount = right.inventory?.amountMinor ?? (order === 'price_asc' ? Number.MAX_SAFE_INTEGER : -1);
+
+    if (leftAmount !== rightAmount) {
+      return order === 'price_asc'
+        ? leftAmount - rightAmount
+        : rightAmount - leftAmount;
+    }
+  }
+
+  return right.createdAt.getTime() - left.createdAt.getTime();
 }
 
 function buildFacetResult(documents: CatalogProductDocument[]): PublicProductFacet[] {

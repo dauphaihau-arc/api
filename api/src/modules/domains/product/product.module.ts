@@ -10,10 +10,12 @@ import { ImageTransformModule } from '../../shared/image-transform/image-transfo
 import { CurrencyModule } from '../../shared/currency/currency.module';
 import { QueueModule } from '../../shared/queue/queue.module';
 import { SseModule } from '../../shared/sse/sse.module';
+import { AuthModule } from '../auth/auth.module';
 import { CategoryModule } from '../category/category.module';
 import { ShopModule } from '../shop/shop.module';
 import { ProductImageService } from './app/services/product-image.service';
 import { ResolvedStorefrontPriceService } from './app/services/resolved-storefront-price.service';
+import { StorefrontMarketContextService } from './app/services/storefront-market-context.service';
 import { CatalogStatusService } from './app/services/catalog-status.service';
 import { CatalogProductProjectorService } from './app/services/catalog-product-projector.service';
 import { CreateProductDraftFacadeUseCase } from './app/use-cases/create-product-draft-facade/create-product-draft-facade.use-case';
@@ -74,6 +76,7 @@ import { CATALOG_CONFIG, buildCatalogConfig } from '~/config/catalog.config';
     ConfigModule,
     CacheModule,
     IdempotencyModule,
+    forwardRef(() => AuthModule),
     ShopModule,
     CategoryModule,
     StorageModule,
@@ -168,6 +171,7 @@ import { CATALOG_CONFIG, buildCatalogConfig } from '~/config/catalog.config';
     MikroOrmStorefrontProductQueryRepository,
     CatalogStatusService,
     CatalogProductProjectorService,
+    StorefrontMarketContextService,
     ResolvedStorefrontPriceService,
     ConsumeProductImageUploadTicketUseCase,
     CreateProductDraftFacadeUseCase,
@@ -201,6 +205,7 @@ import { CATALOG_CONFIG, buildCatalogConfig } from '~/config/catalog.config';
     ProductPricingRepository,
     ProductImageService,
     CatalogProductProjectorService,
+    StorefrontMarketContextService,
     ResolvedStorefrontPriceService,
     ConsumeProductImageUploadTicketUseCase,
     CreateProductDraftFacadeUseCase,

@@ -1,5 +1,7 @@
 import { NotFoundException, RequestMethod } from '@nestjs/common';
 import { METHOD_METADATA, PATH_METADATA } from '@nestjs/common/constants';
+import { GUARDS_METADATA } from '@nestjs/common/constants';
+import { OptionalJwtAuthGuard } from '~/modules/domains/auth/api/guard/optional-jwt-auth.guard';
 import type { GetPublicProductBySlugsUseCase } from '../../app/use-cases/get-public-product-by-slugs/get-public-product-by-slugs.use-case';
 import type { ListPublicProductsUseCase } from '../../app/use-cases/list-public-products/list-public-products.use-case';
 import type { SuggestPublicProductsUseCase } from '../../app/use-cases/suggest-public-products/suggest-public-products.use-case';
@@ -34,6 +36,10 @@ describe('ProductController', () => {
 
     expect(Reflect.getMetadata(PATH_METADATA, handler)).toBe('by-slug/:shop_slug/:product_slug');
     expect(Reflect.getMetadata(METHOD_METADATA, handler)).toBe(RequestMethod.GET);
+  });
+
+  it('applies optional auth to public product routes', () => {
+    expect(Reflect.getMetadata(GUARDS_METADATA, ProductController)).toEqual([OptionalJwtAuthGuard]);
   });
 
   it('registers GET suggestions on the controller method', () => {

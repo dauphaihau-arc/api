@@ -2,12 +2,12 @@ import { Injectable } from '@nestjs/common';
 import { MARKETPLACE_MARKETS } from '~/config/marketplace.config';
 import { FxRateService, type ExchangeRateSnapshot } from '~/modules/shared/currency/fx-rate.service';
 import { RoundingPolicyService } from '~/modules/shared/currency/rounding-policy.service';
-import { RequestContextService } from '~/modules/shared/request-context/request-context.service';
 import type { ProductInventoryEntity } from '../../infra/persistence/entities/product-inventory.entity';
 import {
   getActiveBasePrice,
   getActiveMarketPrice
 } from '../../infra/variant-price-read';
+import { StorefrontMarketContextService } from './storefront-market-context.service';
 
 export interface ResolvedStorefrontPrice {
   amountMinor: number;
@@ -27,7 +27,7 @@ export interface ResolvedStorefrontPrice {
 @Injectable()
 export class ResolvedStorefrontPriceService {
   constructor(
-    private readonly requestContextService: RequestContextService,
+    private readonly storefrontMarketContextService: StorefrontMarketContextService,
     private readonly fxRateService: FxRateService,
     private readonly roundingPolicyService: RoundingPolicyService
   ) {}
@@ -35,7 +35,10 @@ export class ResolvedStorefrontPriceService {
   async resolveForCurrentRequest(
     inventory: ProductInventoryEntity
   ): Promise<ResolvedStorefrontPrice | undefined> {
-    return this.resolve(inventory, this.getCurrentMarketContext());
+    return this.resolve(
+      inventory,
+      await this.storefrontMarketContextService.resolveCurrentRequest()
+    );
   }
 
   async resolve(
@@ -131,15 +134,6 @@ export class ResolvedStorefrontPriceService {
       roundingPolicyService: this.roundingPolicyService,
       rate,
     });
-  }
-
-  private getCurrentMarketContext() {
-    const requestContext = this.requestContextService.get();
-
-    return {
-      marketCode: requestContext.marketCode,
-      currency: requestContext.currency,
-    };
   }
 }
 

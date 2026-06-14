@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ClsService } from 'nestjs-cls';
 import type { AuthenticatedUser } from '../../domains/auth/app/auth.types';
+import type { StorefrontMarketContext } from '../../domains/product/app/services/storefront-market-context.service';
 import {
   REQUEST_CONTEXT_CLS_KEYS,
   type RequestContext
@@ -67,5 +68,13 @@ export class RequestContextService {
     this.clsService.set(REQUEST_CONTEXT_CLS_KEYS.actorId, user.userId);
     this.clsService.set(REQUEST_CONTEXT_CLS_KEYS.actorEmail, user.email);
     this.clsService.set(REQUEST_CONTEXT_CLS_KEYS.sessionId, user.sessionId);
+  }
+
+  getStorefrontMarketContext(): StorefrontMarketContext | undefined {
+    return this.clsService.get(REQUEST_CONTEXT_CLS_KEYS.storefrontMarketContext);
+  }
+
+  setStorefrontMarketContext(context: StorefrontMarketContext): void {
+    this.clsService.set(REQUEST_CONTEXT_CLS_KEYS.storefrontMarketContext, context);
   }
 }

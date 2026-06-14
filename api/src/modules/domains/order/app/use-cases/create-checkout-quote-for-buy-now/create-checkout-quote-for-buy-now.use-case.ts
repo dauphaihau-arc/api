@@ -1,9 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
-import { UserPreferenceRepository } from '~/modules/domains/auth/app/ports/user-preference.repository';
 import { CartRepository } from '~/modules/domains/cart/app/ports/cart.repository';
 import { CartKind } from '~/modules/domains/cart/domain/enums/cart-kind.enum';
-import { RequestContextService } from '~/modules/shared/request-context/request-context.service';
 import { GetMyAddressUseCase } from '~/modules/domains/user/app/use-cases/get-my-address/get-my-address.use-case';
 import type { CreateCheckoutQuoteForBuyNowDto } from '../../../api/rest/dto/create-checkout-quote-for-buy-now.dto';
 import {
@@ -17,8 +15,6 @@ export class CreateCheckoutQuoteForBuyNowUseCase {
   constructor(
     private readonly cartRepository: CartRepository,
     private readonly getMyAddressUseCase: GetMyAddressUseCase,
-    private readonly userPreferenceRepository: UserPreferenceRepository,
-    private readonly requestContextService: RequestContextService,
     private readonly createCheckoutQuoteService: CreateCheckoutQuoteService
   ) {}
 
@@ -43,8 +39,6 @@ export class CreateCheckoutQuoteForBuyNowUseCase {
       ? [{ shopId: firstShop, promoCodes: body.promoCodes, note: body.note }]
       : [];
 
-    const userPreferences = await this.userPreferenceRepository.findByUserId(actor.userId);
-
     return this.createCheckoutQuoteService.createFromCart({
       actor: {
         type: 'user',
@@ -61,10 +55,7 @@ export class CreateCheckoutQuoteForBuyNowUseCase {
         zip: address.zip,
         phone: address.phone,
       },
-      presentmentCurrency:
-        body.presentmentCurrency ??
-        userPreferences?.currency ??
-        this.requestContextService.get().currency,
+      presentmentCurrency: body.presentmentCurrency,
       shopAdjustments,
     });
   }

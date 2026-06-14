@@ -5,8 +5,8 @@ import { MARKETPLACE_CURRENCIES } from '~/config/marketplace.config';
 import { CurrentUserEntity } from '~/modules/domains/auth/infra/persistence/entities/current-user.entity';
 import type { CartSnapshot } from '~/modules/domains/cart/app/cart.types';
 import { CouponPricingService } from '~/modules/domains/coupon/app/coupon-pricing.service';
+import { StorefrontMarketContextService } from '~/modules/domains/product/app/services/storefront-market-context.service';
 import { ProductInventoryEntity } from '~/modules/domains/product/infra/persistence/entities/product-inventory.entity';
-import { RequestContextService } from '~/modules/shared/request-context/request-context.service';
 import {
   CheckoutQuoteActorType,
   CheckoutQuoteEntity
@@ -28,7 +28,7 @@ export class CreateCheckoutQuoteService {
   constructor(
     private readonly entityManager: EntityManager,
     private readonly couponPricingService: CouponPricingService,
-    private readonly requestContextService: RequestContextService
+    private readonly storefrontMarketContextService: StorefrontMarketContextService
   ) {}
 
   async createFromCart(input: {
@@ -40,7 +40,11 @@ export class CreateCheckoutQuoteService {
     presentmentCurrency?: string;
     shopAdjustments?: ShopAdjustmentInput[];
   }): Promise<CheckoutQuoteResult> {
-    const presentmentCurrency = normalizePresentmentCurrency(input.presentmentCurrency);
+    const storefrontMarketContext =
+      await this.storefrontMarketContextService.resolveCurrentRequest();
+    const presentmentCurrency = normalizePresentmentCurrency(
+      input.presentmentCurrency ?? storefrontMarketContext?.currency
+    );
     const pricedCart = await this.couponPricingService.priceCart({
       userId: input.actor.type === 'user' ? input.actor.userId : undefined,
       cart: input.cart,
@@ -70,8 +74,8 @@ export class CreateCheckoutQuoteService {
         : { guestSessionId: input.actor.guestSessionId }),
       cartId: input.cart.id,
       ...(presentmentCurrency ? { presentmentCurrency } : {}),
-      ...(this.requestContextService.get().marketCode
-        ? { marketCode: this.requestContextService.get().marketCode }
+      ...(storefrontMarketContext?.marketCode
+        ? { marketCode: storefrontMarketContext.marketCode }
         : {}),
       checkoutCurrency,
       subtotalMinor: toMinorUnits(pricedCart.subtotalPrice, checkoutCurrency),

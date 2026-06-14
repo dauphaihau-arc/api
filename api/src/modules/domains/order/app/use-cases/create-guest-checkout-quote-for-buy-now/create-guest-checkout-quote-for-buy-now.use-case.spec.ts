@@ -48,13 +48,9 @@ describe('CreateGuestCheckoutQuoteForBuyNowUseCase', () => {
         quoteId: 'quote-1',
       }),
     } as unknown as jest.Mocked<CreateCheckoutQuoteService>;
-    const requestContextService = {
-      get: jest.fn().mockReturnValue({ currency: 'VND' }),
-    };
 
     const useCase = new CreateGuestCheckoutQuoteForBuyNowUseCase(
       cartRepository,
-      requestContextService as never,
       createCheckoutQuoteService
     );
 

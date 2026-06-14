@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { CartRepository } from '~/modules/domains/cart/app/ports/cart.repository';
 import { CartKind } from '~/modules/domains/cart/domain/enums/cart-kind.enum';
-import { RequestContextService } from '~/modules/shared/request-context/request-context.service';
 import type { CreateGuestCheckoutQuoteForBuyNowDto } from '../../../api/rest/dto/create-guest-checkout-quote-for-buy-now.dto';
 import { TemporaryCartNotFoundError } from '../../errors/order-app.error';
 import { CreateCheckoutQuoteService } from '../../create-checkout-quote.service';
@@ -10,7 +9,6 @@ import { CreateCheckoutQuoteService } from '../../create-checkout-quote.service'
 export class CreateGuestCheckoutQuoteForBuyNowUseCase {
   constructor(
     private readonly cartRepository: CartRepository,
-    private readonly requestContextService: RequestContextService,
     private readonly createCheckoutQuoteService: CreateCheckoutQuoteService
   ) {}
 
@@ -45,7 +43,7 @@ export class CreateGuestCheckoutQuoteForBuyNowUseCase {
         zip: body.shippingAddress.zip,
         phone: body.shippingAddress.phone,
       },
-      presentmentCurrency: body.presentmentCurrency ?? this.requestContextService.get().currency,
+      presentmentCurrency: body.presentmentCurrency,
       shopAdjustments,
     });
   }

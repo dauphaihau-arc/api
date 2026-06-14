@@ -19,6 +19,7 @@ export const REQUEST_CONTEXT_CLS_KEYS = {
   actorId: 'requestContext.actorId',
   actorEmail: 'requestContext.actorEmail',
   sessionId: 'requestContext.sessionId',
+  storefrontMarketContext: 'requestContext.storefrontMarketContext',
 } as const;
 
 export type RequestLike = {

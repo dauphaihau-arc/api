@@ -1,5 +1,5 @@
 import {
-  Controller, Get, Header, NotFoundException, Param, Query
+  Controller, Get, Header, NotFoundException, Param, Query, UseGuards
 } from '@nestjs/common';
 import {
   ApiNotFoundResponse,
@@ -9,6 +9,7 @@ import {
   ApiTags
 } from '@nestjs/swagger';
 import { SkipThrottle } from '@nestjs/throttler';
+import { OptionalJwtAuthGuard } from '~/modules/domains/auth/api/guard/optional-jwt-auth.guard';
 import { GetPublicProductBySlugsUseCase } from '../../app/use-cases/get-public-product-by-slugs/get-public-product-by-slugs.use-case';
 import { ListPublicProductsUseCase } from '../../app/use-cases/list-public-products/list-public-products.use-case';
 import { SuggestPublicProductsUseCase } from '../../app/use-cases/suggest-public-products/suggest-public-products.use-case';
@@ -26,6 +27,7 @@ import type { PublicProductSuggestionResponse } from './public-product-suggestio
 
 @Controller('products')
 @ApiTags('Products')
+@UseGuards(OptionalJwtAuthGuard)
 export class ProductController {
   private readonly listPublicProductsQueryPipe = new ListPublicProductsQueryPipe();
 
