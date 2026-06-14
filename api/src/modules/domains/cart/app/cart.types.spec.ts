@@ -50,6 +50,7 @@ describe('buildCartResponse', () => {
             shopSlug: 'clay-house',
             title: 'Bowl',
             variantType: 'single',
+            variantGroupName: 'Size',
             variantName: 'Large',
             stock: 4,
             currency: 'USD',
@@ -117,7 +118,7 @@ describe('buildCartResponse', () => {
                   },
                   title: 'Bowl',
                   variant_type: 'single',
-                  variant_group_name: undefined,
+                  variant_group_name: 'Size',
                   variant_sub_group_name: undefined,
                   image_url: undefined,
                 },
@@ -127,7 +128,7 @@ describe('buildCartResponse', () => {
                   currency: 'USD',
                   stock: 4,
                   sku: undefined,
-                  variant_name: 'Large',
+                  variant_name: 'Size: Large',
                 },
               },
             ],
@@ -165,7 +166,7 @@ describe('buildCartResponse', () => {
               image_url: undefined,
             },
             inventory: {
-              variant_name: 'Large',
+              variant_name: 'Size: Large',
             },
             quantity: 1,
           },
@@ -274,5 +275,53 @@ describe('buildCartResponse', () => {
     expect(response.cart?.shop_groups[0]?.total_minor).toBe(3750);
     expect(response.summary.subtotal_minor).toBe(3750);
     expect(response.summary.total_minor).toBe(3750);
+  });
+
+  it('formats multi-attribute variant names with their attribute titles', () => {
+    const cart: CartSnapshot = {
+      id: 'cart-4',
+      userId: 'user-4',
+      guestSessionId: null,
+      kind: CartKind.ACTIVE,
+      items: [
+        {
+          id: 'item-5',
+          quantity: 1,
+          isSelectOrder: true,
+          updatedAt: new Date('2026-05-15T10:00:00.000Z'),
+          inventory: {
+            inventoryId: 'inventory-5',
+            productId: 'product-5',
+            productSlug: 'linen-shirt',
+            shopId: 'shop-4',
+            shopName: 'South Studio',
+            shopSlug: 'south-studio',
+            title: 'Linen Shirt',
+            variantType: 'double',
+            variantGroupName: 'Color',
+            variantSubGroupName: 'Size',
+            variantName: 'Blue / Large',
+            stock: 5,
+            currency: 'USD',
+            pricing: {
+              amountMinor: 2500,
+              currency: 'USD',
+              sourceCurrency: 'USD',
+              sourceUnitAmountMinor: 2500,
+            },
+            productState: 'active',
+          },
+        },
+      ],
+    };
+
+    const response = buildCartResponse(cart);
+
+    expect(response.cart?.shop_groups[0]?.items[0]?.inventory.variant_name).toBe(
+      'Color: Blue / Size: Large'
+    );
+    expect(response.cart?.recent_items[0]?.inventory.variant_name).toBe(
+      'Color: Blue / Size: Large'
+    );
   });
 });

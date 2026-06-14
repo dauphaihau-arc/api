@@ -192,6 +192,35 @@ function minorUnitDivisor(currency: string): number {
   return currency === 'JPY' || currency === 'KRW' || currency === 'VND' ? 1 : 100;
 }
 
+function formatVariantName(
+  variantName?: string,
+  variantGroupName?: string,
+  variantSubGroupName?: string
+): string | undefined {
+  if (!variantName) {
+    return undefined;
+  }
+
+  const labels = [variantGroupName, variantSubGroupName].filter(
+    (label): label is string => Boolean(label?.trim())
+  );
+
+  if (labels.length === 0) {
+    return variantName;
+  }
+
+  const values = variantName
+    .split('/')
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+  if (values.length !== labels.length) {
+    return labels.length === 1 ? `${labels[0]}: ${variantName}` : variantName;
+  }
+
+  return values.map((value, index) => `${labels[index]}: ${value}`).join(' / ');
+}
+
 export function buildCartResponse(
   cart: CartSnapshot | null,
   summaryOverride?: CartSummaryInput,
@@ -280,7 +309,11 @@ export function buildCartResponse(
         currency: resolvedPricing.currency,
         stock: item.inventory.stock,
         sku: item.inventory.sku,
-        variant_name: item.inventory.variantName,
+        variant_name: formatVariantName(
+          item.inventory.variantName,
+          item.inventory.variantGroupName,
+          item.inventory.variantSubGroupName
+        ),
       },
     });
 
@@ -309,7 +342,11 @@ export function buildCartResponse(
           image_url: item.inventory.imageUrl,
         },
         inventory: {
-          variant_name: item.inventory.variantName,
+          variant_name: formatVariantName(
+            item.inventory.variantName,
+            item.inventory.variantGroupName,
+            item.inventory.variantSubGroupName
+          ),
         },
         quantity: item.quantity,
       })),
