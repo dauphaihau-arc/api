@@ -2,7 +2,7 @@ import type { EntityManager } from '@mikro-orm/postgresql';
 import { CouponEntity } from '../../src/modules/domains/coupon/infra/persistence/entities/coupon.entity';
 import { ProductEntity } from '../../src/modules/domains/product/infra/persistence/entities/product.entity';
 import type { ShopEntity } from '../../src/modules/domains/shop/infra/persistence/entities/shop.entity';
-import { couponSeeds } from './coupon.data';
+import { couponSeeds } from './coupon.seed-loader';
 
 export async function seedCoupons(
   em: EntityManager,

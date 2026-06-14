@@ -22,7 +22,7 @@ import { VARIANT_PRICE_TYPES } from '../../src/modules/domains/product/infra/per
 import { ProductVariantEntity } from '../../src/modules/domains/product/infra/persistence/entities/product-variant.entity';
 import { ProductEntity } from '../../src/modules/domains/product/infra/persistence/entities/product.entity';
 import type { ShopEntity } from '../../src/modules/domains/shop/infra/persistence/entities/shop.entity';
-import { productSeeds, type ProductSeed } from './product.data';
+import { productSeeds, type ProductSeed } from './product.seed-loader';
 import { PRODUCT_IMAGE_ROOT_DIRS } from './product-seed-paths';
 import {
   resolveOptionalSeedProductImagePaths,

@@ -1,4 +1,5 @@
 import * as path from 'node:path';
+import ms, { type StringValue } from 'ms';
 import { CouponAppliesTo } from '../../src/modules/domains/coupon/domain/enums/coupon-applies-to.enum';
 import { CouponMinOrderType } from '../../src/modules/domains/coupon/domain/enums/coupon-min-order-type.enum';
 import { CouponType } from '../../src/modules/domains/coupon/domain/enums/coupon-type.enum';
@@ -37,6 +38,7 @@ type CouponRow = {
   min_products: string;
   is_active: string;
   is_auto_sale: string;
+  period: string;
   start_date: string;
   end_date: string;
 };
@@ -129,6 +131,67 @@ function buildCouponKey(shopSlug: string, code: string): string {
   return `${shopSlug}::${code}`;
 }
 
+function parsePeriodOffset(value: string, couponKey: string): number {
+  const normalized = value.trim().toLowerCase();
+
+  if (normalized === 'now') {
+    return 0;
+  }
+
+  const parsed = ms(normalized as StringValue);
+  if (parsed === undefined) {
+    throw new Error(`Invalid period offset "${value}" for coupon seed ${couponKey}`);
+  }
+
+  return parsed;
+}
+
+function toIsoDate(value: Date): string {
+  return value.toISOString();
+}
+
+function resolveCouponWindow(row: CouponRow, couponKey: string): { startDate: string; endDate: string } {
+  const period = row.period.trim();
+  const startDate = row.start_date.trim();
+  const endDate = row.end_date.trim();
+
+  if (!period) {
+    if (!startDate || !endDate) {
+      throw new Error(
+        `Coupon seed ${couponKey} must define either period or both start_date and end_date`
+      );
+    }
+
+    return { startDate, endDate };
+  }
+
+  if (startDate || endDate) {
+    throw new Error(
+      `Coupon seed ${couponKey} cannot define period together with start_date or end_date`
+    );
+  }
+
+  const [startOffsetRaw, endOffsetRaw, extraSegment] = period.split('..');
+  if (!startOffsetRaw || !endOffsetRaw || extraSegment !== undefined) {
+    throw new Error(
+      `Invalid period "${period}" for coupon seed ${couponKey}; expected <start>..<end>`
+    );
+  }
+
+  const seededAt = new Date();
+  const resolvedStartDate = new Date(seededAt.getTime() + parsePeriodOffset(startOffsetRaw, couponKey));
+  const resolvedEndDate = new Date(seededAt.getTime() + parsePeriodOffset(endOffsetRaw, couponKey));
+
+  if (resolvedEndDate <= resolvedStartDate) {
+    throw new Error(`Coupon seed ${couponKey} must resolve to end_date after start_date`);
+  }
+
+  return {
+    startDate: toIsoDate(resolvedStartDate),
+    endDate: toIsoDate(resolvedEndDate),
+  };
+}
+
 function loadCouponSeeds(): CouponSeed[] {
   const couponRows = readTsvRows<CouponRow>(COUPONS_TSV_PATH);
   const couponProductRows = readTsvRows<CouponProductRow>(COUPON_PRODUCTS_TSV_PATH);
@@ -150,6 +213,7 @@ function loadCouponSeeds(): CouponSeed[] {
   return couponRows.map((row, index) => {
     const couponKey = `${row.shop_slug}::${row.code}#${index + 2}`;
     const lookupKey = buildCouponKey(row.shop_slug.trim(), row.code.trim());
+    const couponWindow = resolveCouponWindow(row, couponKey);
 
     return {
       shopSlug: row.shop_slug.trim(),
@@ -166,8 +230,8 @@ function loadCouponSeeds(): CouponSeed[] {
       minProducts: parseOptionalNumber(row.min_products, 'min_products', couponKey),
       isActive: parseBoolean(row.is_active, 'is_active', couponKey),
       isAutoSale: parseBoolean(row.is_auto_sale, 'is_auto_sale', couponKey),
-      startDate: row.start_date.trim(),
-      endDate: row.end_date.trim(),
+      startDate: couponWindow.startDate,
+      endDate: couponWindow.endDate,
     };
   });
 }

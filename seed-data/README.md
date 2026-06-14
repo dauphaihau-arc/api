@@ -40,6 +40,9 @@ Rules:
 - Exchange-rate TSV should contain direct currency pairs because current FX lookup reads `from_currency -> to_currency` rows directly.
 - Coupon metadata lives in `seed-data/coupons.tsv`.
 - Coupon-to-product mappings live in `seed-data/coupon-products.tsv`.
+- Coupon seeds may use a seed-only `period` column instead of explicit `start_date` and `end_date`.
+- `period` uses `<start>..<end>` offsets relative to seed runtime, where each side is `now` or an `ms`-style duration like `4d`, `12h`, or `30m`.
+- When `period` is set, leave `start_date` and `end_date` blank. When `period` is blank, both `start_date` and `end_date` are required.
 - Product images are auto-discovered from the folder derived from `shop_slug` and `title` in [product.seed.ts](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/api/database/seeds/product.seed.ts:41).
 - Product images should live under shop and product slug directories, for example `seed-data/images/products/olive-atelier/linen-weekend-dress/`.
 - Draft products can omit image folders entirely; active products still require seeded images.
