@@ -2,16 +2,16 @@
 
 ## Purpose
 
-This document defines the target pricing design for multi-currency support in ARC.
+This document describes the current multi-currency pricing design in ARC.
 
-It focuses on the steady-state model:
+It focuses on the implemented steady-state model:
 
 - how prices are owned
 - how currencies are separated by concern
 - what data must be persisted
 - what invariants the system must enforce
 
-It does not describe migration sequencing, rollout phases, or implementation order.
+Where the schema supports more than the current seller-facing API exposes, those gaps are called out explicitly.
 
 For quote lifecycle details, see [checkout-quote-design.md](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/docs/checkout-quote-design.md).
 
@@ -46,7 +46,8 @@ The catalog price is the seller-authored price for a sellable item.
 Rules:
 
 - every sellable item has one active base price
-- optional market-specific prices may override the base price
+- the schema and read side support optional market-specific override rows
+- the current seller pricing write API updates base prices only
 - catalog prices are the only source for merchandise pricing
 - catalog prices are not derived from cart, checkout, or payment state
 
@@ -87,7 +88,7 @@ Rules:
 The system separates pricing into four layers:
 
 1. catalog/base price
-2. optional market override price
+2. optional market override price when such rows exist
 3. display projection
 4. checkout quote
 
@@ -97,6 +98,11 @@ Interpretation:
 - market override is canonical for a specific market when present
 - display projection is derived for browsing
 - checkout quote is the persisted transactional truth for purchase
+
+Current implementation note:
+
+- seller-facing pricing writes currently create base price rows only
+- market override rows are supported by persistence and read-time resolution but are not exposed through the normal seller pricing write API
 
 ## Price Resolution
 
@@ -124,12 +130,13 @@ For end-to-end lifecycle examples, see [multi-currency-pricing-flows.md](/Volume
 
 Catalog pricing belongs to a dedicated price record rather than inventory stock fields.
 
-Conceptual shape:
+Current shape:
 
 ```ts
 variant_prices
 - id
 - product_inventory_id
+- price_type
 - market_code nullable
 - currency
 - amount_minor
@@ -144,16 +151,22 @@ For field-level semantics of the pricing record, see [variant-prices-table.md](/
 
 Semantics:
 
+- `price_type = base | market` mirrors whether the row is a base price or a market override
 - `market_code = null` means the base price
 - non-null `market_code` means a market-specific canonical override
 - `amount_minor` is the effective sell price
 - `original_amount_minor` is an optional compare-at price
 
+Current implementation note:
+
+- the seller pricing write path currently closes the active base row and inserts a new base row in the shop currency
+- it does not currently expose `market_code` input for sellers to create or update market override rows
+
 ### Checkout quote
 
 Checkout must persist the priced purchase before order creation.
 
-Conceptual shape:
+Current shape:
 
 ```ts
 checkout_quotes
@@ -178,7 +191,7 @@ checkout_quotes
 checkout_quote_items
 - id
 - quote_id
-- product_inventory_id
+- inventory_id
 - quantity
 - source_price_id
 - source_currency
@@ -197,9 +210,11 @@ checkout_quote_items
 - fx_source nullable
 - fx_effective_at nullable
 - fx_source_timestamp nullable
-- title_snapshot
-- image_url_snapshot nullable
-- metadata jsonb nullable
+- title
+- image_url nullable
+- variant_group_name nullable
+- variant_sub_group_name nullable
+- variant_name nullable
 ```
 
 Semantics:
@@ -217,27 +232,32 @@ Semantics:
 
 Orders persist the final purchased amounts in checkout currency.
 
-Conceptual shape:
+Current shape:
 
 ```ts
 orders
 - currency
 - subtotal_minor
-- total_shipping_minor
-- total_discount_minor
+- shipping_minor
+- discount_minor
 - total_minor
-- checkout_quote_id nullable
+- payment_details jsonb
 
 order_items
-- product_inventory_id
+- inventory_id
 - source_price_id nullable
-- pricing_source
+- source_type
 - unit_price_minor
 - original_amount_minor nullable
 - currency
 - line_total_minor
-- title_snapshot
-- image_url_snapshot
+- title
+- image_url nullable
+- market_code nullable
+- fx_rate nullable
+- fx_source nullable
+- fx_effective_at nullable
+- fx_source_timestamp nullable
 ```
 
 Semantics:
@@ -245,6 +265,7 @@ Semantics:
 - order totals must match the accepted quote totals
 - order items are immutable snapshots
 - order item currency matches order currency
+- quote linkage is currently stored in `orders.payment_details.quote_id` rather than a dedicated `checkout_quote_id` column
 
 ## Service Responsibilities
 

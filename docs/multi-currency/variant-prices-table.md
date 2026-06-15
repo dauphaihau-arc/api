@@ -2,10 +2,16 @@
 
 `variant_prices` stores versioned catalog prices for a sellable inventory row instead of keeping a single mutable price on `product_inventory`.
 
-`market_code` now acts as the row discriminator:
+It is important to distinguish schema capability from the current seller-facing write path:
 
-- `market_code = null`: base/default seller price
-- `market_code = 'VN'` or another market: seller-defined override for that market
+- the table supports both base rows and market override rows
+- the current seller pricing write API creates and rotates base rows only
+- market override rows are available to the read side when present, but are not created through the normal seller pricing endpoint today
+
+`market_code` and `price_type` together identify the role of a row:
+
+- `price_type = 'base'` and `market_code = null`: base/default seller price
+- `price_type = 'market'` and non-null `market_code`: market-specific override for that market
 
 ## Purpose of `amount_minor` and `original_amount_minor`
 
@@ -62,9 +68,21 @@ Example:
 
 The current migration and entity match this model:
 
+- `price_type` is required
 - `active_from` is required
 - `active_to` is nullable
 - the partial unique index on base prices allows only one row per inventory item where `market_code is null` and `active_to is null`
 - the partial unique index on market overrides allows only one active row per inventory item and market code
 
 That means the database already treats `active_to is null` as the currently active base price.
+
+## Current write-path behavior
+
+The current seller pricing update flow:
+
+- closes the active base row for each inventory item
+- inserts a new base row with the shop currency
+- does not accept `market_code` input
+- does not create or rotate market override rows
+
+So this table is more expressive than the current seller-facing pricing API.

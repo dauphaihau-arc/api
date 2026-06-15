@@ -1,6 +1,6 @@
 # Multi-Currency Pricing Flows
 
-This document captures end-to-end lifecycle examples for the multi-currency pricing model.
+This document captures end-to-end lifecycle examples for the current multi-currency pricing model.
 
 For the target model, invariants, and data design, see [multi-currency-pricing-design.md](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/docs/multi-currency/multi-currency-pricing-design.md).
 
@@ -9,7 +9,6 @@ For the target model, invariants, and data design, see [multi-currency-pricing-d
 ```text
 seller creates product pricing
 -> base price
--> optional market override price
 -> price resolution
 -> FX service when needed
 -> localized pricing service
@@ -19,8 +18,9 @@ seller creates product pricing
 
 Summary:
 
-- seller authors canonical catalog pricing
-- backend decides whether to use a market override or base-price conversion
+- seller authors canonical base pricing
+- the current seller pricing write API does not expose market override creation
+- backend decides whether to use an existing market override or base-price conversion
 - storefront receives backend-resolved display pricing
 
 ## Flow 2: Seller views product pricing in seller dashboard
@@ -28,15 +28,14 @@ Summary:
 ```text
 seller opens seller dashboard
 -> backend loads canonical catalog price
--> backend loads optional market override prices
--> backend returns seller-authored pricing model
--> seller dashboard displays canonical and market-specific prices
+-> backend returns one resolved base pricing snapshot per inventory row
+-> seller dashboard displays current base pricing
 ```
 
 Summary:
 
-- seller dashboard should show owned pricing data, not derived checkout pricing
-- dashboard pricing is management-facing and should preserve canonical price intent
+- seller dashboard currently exposes the base pricing snapshot used by the product draft summary
+- market override rows may exist in persistence, but they are not surfaced through the normal seller pricing write/read flow today
 
 ## Flow 3: Buyer creates checkout from storefront
 
@@ -56,3 +55,4 @@ Summary:
 - storefront display currency may differ from checkout currency
 - transactional pricing becomes authoritative at quote creation
 - payment uses persisted quote amounts and does not reprice
+- orders currently keep quote linkage in `payment_details.quote_id`
