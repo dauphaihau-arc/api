@@ -228,13 +228,20 @@ export interface PublicProductListItem {
     }>;
   };
   variantType?: ProductVariantType;
-  inventory?: {
-    amountMinor?: number;
-    originalAmountMinor?: number;
+  pricing?: {
+    minAmountMinor?: number;
+    maxAmountMinor?: number;
+    originalMinAmountMinor?: number;
+    originalMaxAmountMinor?: number;
     currency?: string;
-    stock: number;
-    sku?: string;
   };
+  availability: {
+    inStock: boolean;
+    lowStock: boolean;
+    stockTotal: number;
+  };
+  variantCount: number;
+  hasFreeShipping?: boolean;
   createdAt: Date;
 }
 
@@ -253,6 +260,8 @@ export interface PublicProductSuggestion {
 export interface PublicProductInventorySummary {
   id: string;
   productVariantId?: string;
+  optionValue1?: string;
+  optionValue2?: string;
   sku?: string;
   stock: number;
   amountMinor?: number;
@@ -283,6 +292,7 @@ export interface PublicProductDetail {
   variantType?: ProductVariantType;
   variantGroupName?: string;
   variantSubGroupName?: string;
+  stockNoticeThreshold: number;
   images: ProductImageSummary[];
   variants: ProductVariantSummary[];
   inventory: PublicProductInventorySummary[];

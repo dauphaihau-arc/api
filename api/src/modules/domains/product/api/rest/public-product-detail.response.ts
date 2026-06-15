@@ -17,6 +17,7 @@ export type PublicProductDetailResponse = {
   variant_type?: PublicProductDetail['variantType'];
   variant_group_name?: string;
   variant_sub_group_name?: string;
+  stock_notice_threshold: number;
   images: Array<{
     id: string;
     storage_key: string;
@@ -44,6 +45,8 @@ export type PublicProductDetailResponse = {
   inventory: Array<{
     id: string;
     product_variant_id?: string;
+    option_value_1?: string;
+    option_value_2?: string;
     sku?: string;
     stock: number;
     amount_minor?: number;

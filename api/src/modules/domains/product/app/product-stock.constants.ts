@@ -1,0 +1,1 @@
+export const PRODUCT_STOCK_NOTICE_THRESHOLD = 10;

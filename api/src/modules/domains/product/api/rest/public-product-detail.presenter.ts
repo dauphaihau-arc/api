@@ -20,6 +20,7 @@ export const toPublicProductDetailResponse = (
   variant_type: product.variantType,
   variant_group_name: product.variantGroupName,
   variant_sub_group_name: product.variantSubGroupName,
+  stock_notice_threshold: product.stockNoticeThreshold,
   images: product.images.map((image) => ({
     id: image.id,
     storage_key: image.storageKey,
@@ -54,6 +55,8 @@ export const toPublicProductDetailResponse = (
   inventory: product.inventory.map((inventory) => ({
     id: inventory.id,
     product_variant_id: inventory.productVariantId,
+    option_value_1: inventory.optionValue1,
+    option_value_2: inventory.optionValue2,
     sku: inventory.sku,
     stock: inventory.stock,
     ...(inventory.amountMinor !== undefined

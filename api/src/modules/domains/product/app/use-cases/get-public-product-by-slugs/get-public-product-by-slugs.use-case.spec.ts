@@ -17,6 +17,7 @@ describe('GetPublicProductBySlugsUseCase', () => {
     whoMade: 'i_did' as PublicProductDetail['whoMade'],
     isDigital: false,
     variantType: 'none' as PublicProductDetail['variantType'],
+    stockNoticeThreshold: 10,
     images: [],
     variants: [],
     inventory: [],

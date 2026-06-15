@@ -20,13 +20,20 @@ export type PublicProductListResponse = {
       }>;
     };
     variant_type?: PublicProductListItem['variantType'];
-    inventory?: {
-      amount_minor?: number;
-      original_amount_minor?: number;
+    pricing?: {
+      min_amount_minor?: number;
+      max_amount_minor?: number;
+      original_min_amount_minor?: number;
+      original_max_amount_minor?: number;
       currency?: string;
-      stock: number;
-      sku?: string;
     };
+    availability: {
+      in_stock: boolean;
+      low_stock: boolean;
+      stock_total: number;
+    };
+    variant_count: number;
+    has_free_shipping?: boolean;
     created_at: Date;
   }>;
   meta: {

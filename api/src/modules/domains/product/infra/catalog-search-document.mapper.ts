@@ -39,18 +39,17 @@ export interface CatalogSearchDocument {
     storageKey: string;
     url?: string;
   };
+  variantCount: number;
   price: {
     minAmountMinor?: number;
     maxAmountMinor?: number;
     currency?: string;
+    originalMinAmountMinor?: number;
+    originalMaxAmountMinor?: number;
   };
   inventory: {
     inStock: boolean;
     totalStock: number;
-    amountMinor?: number;
-    originalAmountMinor?: number;
-    currency?: string;
-    sku?: string;
   };
   media: {
     primaryImageUrl?: string;
@@ -94,6 +93,9 @@ export function toCatalogSearchDocument(
     .filter((snapshot): snapshot is NonNullable<typeof snapshot> => snapshot != null);
   const priceValues = pricingSnapshots
     .map((snapshot) => snapshot.amountMinor)
+    .filter((value): value is number => value != null);
+  const originalPriceValues = pricingSnapshots
+    .map((snapshot) => snapshot.originalAmountMinor)
     .filter((value): value is number => value != null);
   const primaryImage = sortedImages[0];
   const totalStock = sortedInventory.reduce((sum, row) => sum + row.stock, 0);
@@ -156,6 +158,7 @@ export function toCatalogSearchDocument(
         url: getPublicUrl(primaryImage.storageKey),
       }
       : undefined,
+    variantCount: sortedVariants.length,
     price: {
       ...(priceValues.length > 0
         ? { minAmountMinor: Math.min(...priceValues) }
@@ -163,15 +166,17 @@ export function toCatalogSearchDocument(
       ...(priceValues.length > 0
         ? { maxAmountMinor: Math.max(...priceValues) }
         : {}),
+      ...(originalPriceValues.length > 0
+        ? { originalMinAmountMinor: Math.min(...originalPriceValues) }
+        : {}),
+      ...(originalPriceValues.length > 0
+        ? { originalMaxAmountMinor: Math.max(...originalPriceValues) }
+        : {}),
       currency: pricingSnapshots[0]?.currency,
     },
     inventory: {
       inStock: sortedInventory.some((row) => row.stock > 0),
       totalStock,
-      amountMinor: pricingSnapshots[0]?.amountMinor,
-      originalAmountMinor: pricingSnapshots[0]?.originalAmountMinor,
-      currency: pricingSnapshots[0]?.currency,
-      sku: sortedInventory[0]?.sku,
     },
     media: {
       primaryImageUrl: primaryImage

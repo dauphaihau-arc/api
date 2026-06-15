@@ -32,21 +32,34 @@ export const toPublicProductListResponse = (
       }
       : undefined,
     variant_type: product.variantType,
-    inventory: product.inventory
+    pricing: product.pricing
       ? {
-        stock: product.inventory.stock,
-        sku: product.inventory.sku,
-        ...(product.inventory.amountMinor !== undefined
-          ? { amount_minor: product.inventory.amountMinor }
+        ...(product.pricing.minAmountMinor !== undefined
+          ? { min_amount_minor: product.pricing.minAmountMinor }
           : {}),
-        ...(product.inventory.originalAmountMinor !== undefined
-          ? { original_amount_minor: product.inventory.originalAmountMinor }
+        ...(product.pricing.maxAmountMinor !== undefined
+          ? { max_amount_minor: product.pricing.maxAmountMinor }
           : {}),
-        ...(product.inventory.currency
-          ? { currency: product.inventory.currency }
+        ...(product.pricing.originalMinAmountMinor !== undefined
+          ? { original_min_amount_minor: product.pricing.originalMinAmountMinor }
+          : {}),
+        ...(product.pricing.originalMaxAmountMinor !== undefined
+          ? { original_max_amount_minor: product.pricing.originalMaxAmountMinor }
+          : {}),
+        ...(product.pricing.currency
+          ? { currency: product.pricing.currency }
           : {}),
       }
       : undefined,
+    availability: {
+      in_stock: product.availability.inStock,
+      low_stock: product.availability.lowStock,
+      stock_total: product.availability.stockTotal,
+    },
+    variant_count: product.variantCount,
+    ...(product.hasFreeShipping !== undefined
+      ? { has_free_shipping: product.hasFreeShipping }
+      : {}),
     created_at: product.createdAt,
   })),
   meta: {

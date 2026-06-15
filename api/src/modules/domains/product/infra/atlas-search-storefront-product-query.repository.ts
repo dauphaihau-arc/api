@@ -19,6 +19,7 @@ import { PUBLIC_PRODUCT_FACET_PRIORITY } from '../app/product-facet.constants';
 import type { CatalogProductDocument } from './catalog-product-document.mapper';
 import type { CatalogSearchDocument } from './catalog-search-document.mapper';
 import { getInferredFacetTerms, isInferredFacetSupported } from './inferred-facets';
+import { PRODUCT_STOCK_NOTICE_THRESHOLD } from '../app/product-stock.constants';
 
 type MongoAggregateCursorLike<TDocument> = {
   toArray(): Promise<TDocument[]>;
@@ -534,13 +535,20 @@ function toPublicProductListItemFromSearchDocument(
       }
       : undefined,
     variantType: document.variantType,
-    inventory: {
-      amountMinor: document.inventory.amountMinor,
-      originalAmountMinor: document.inventory.originalAmountMinor,
-      currency: document.inventory.currency,
-      stock: document.inventory.totalStock,
-      sku: document.inventory.sku,
+    pricing: {
+      minAmountMinor: document.price.minAmountMinor,
+      maxAmountMinor: document.price.maxAmountMinor,
+      originalMinAmountMinor: document.price.originalMinAmountMinor,
+      originalMaxAmountMinor: document.price.originalMaxAmountMinor,
+      currency: document.price.currency,
     },
+    availability: {
+      inStock: document.inventory.inStock,
+      lowStock: document.inventory.totalStock > 0
+        && document.inventory.totalStock < PRODUCT_STOCK_NOTICE_THRESHOLD,
+      stockTotal: document.inventory.totalStock,
+    },
+    variantCount: document.variantCount,
     createdAt: document.ranking.createdAt,
   };
 }
@@ -548,6 +556,10 @@ function toPublicProductListItemFromSearchDocument(
 function toPublicProductDetail(
   document: CatalogProductDocument
 ): PublicProductDetail {
+  const variantsById = new Map(
+    document.variants.map((variant) => [variant.id, variant] as const)
+  );
+
   return {
     id: document.productId,
     shop: {
@@ -565,6 +577,7 @@ function toPublicProductDetail(
     variantType: document.variantType,
     variantGroupName: document.variantGroupName,
     variantSubGroupName: document.variantSubGroupName,
+    stockNoticeThreshold: PRODUCT_STOCK_NOTICE_THRESHOLD,
     images: document.images.map((image) => ({
       id: image.id,
       storageKey: image.storageKey,
@@ -596,6 +609,12 @@ function toPublicProductDetail(
     inventory: document.inventory.map((inventory) => ({
       id: inventory.id,
       productVariantId: inventory.productVariantId,
+      optionValue1: inventory.productVariantId
+        ? variantsById.get(inventory.productVariantId)?.optionValue1
+        : undefined,
+      optionValue2: inventory.productVariantId
+        ? variantsById.get(inventory.productVariantId)?.optionValue2
+        : undefined,
       sku: inventory.sku,
       stock: inventory.stock,
       amountMinor: inventory.amountMinor,

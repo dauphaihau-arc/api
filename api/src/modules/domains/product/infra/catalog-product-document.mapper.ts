@@ -54,6 +54,7 @@ export interface CatalogProductDocument {
     imageStorageKey?: string;
     rank: number;
   }>;
+  variantCount: number;
   inventory: Array<{
     id: string;
     productVariantId?: string;
@@ -230,6 +231,7 @@ export function toCatalogProductDocument(
       imageStorageKey: variant.imageStorageKey,
       rank: variant.rank,
     })),
+    variantCount: sortedVariants.length,
     inventory,
     primaryInventory: inventory[0],
     shipping: product.shippingProfiles.length > 0

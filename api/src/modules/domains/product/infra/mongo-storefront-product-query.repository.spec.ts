@@ -55,6 +55,7 @@ describe('MongoStorefrontProductQueryRepository', () => {
       optionValue1: 'Small',
       rank: 1,
     }],
+    variantCount: 1,
     inventory: [{
       id: 'inventory-1',
       productVariantId: 'variant-1',
@@ -167,6 +168,7 @@ describe('MongoStorefrontProductQueryRepository', () => {
       },
       inventory: [{
         id: 'inventory-1',
+        optionValue1: 'Small',
         amountMinor: 7900,
       }],
     });
@@ -195,6 +197,18 @@ describe('MongoStorefrontProductQueryRepository', () => {
 
     expect(result.meta.total).toBe(2);
     expect(result.items.map((item) => item.id)).toEqual(['product-2', 'product-1']);
+    expect(result.items[0]).toMatchObject({
+      pricing: {
+        minAmountMinor: 7900,
+        maxAmountMinor: 7900,
+      },
+      availability: {
+        inStock: true,
+        lowStock: false,
+        stockTotal: 12,
+      },
+      variantCount: 1,
+    });
   });
 
   it('filters public products by min and max price using catalog sort price', async () => {
@@ -210,6 +224,10 @@ describe('MongoStorefrontProductQueryRepository', () => {
         minPriceAmountMinor: 2999,
         maxPriceAmountMinor: 2999,
       },
+      inventory: [{
+        ...sampleDocument.inventory[0],
+        amountMinor: 2999,
+      }],
       primaryInventory: {
         ...sampleDocument.primaryInventory!,
         amountMinor: 2999,
@@ -227,6 +245,10 @@ describe('MongoStorefrontProductQueryRepository', () => {
         minPriceAmountMinor: 19100,
         maxPriceAmountMinor: 19100,
       },
+      inventory: [{
+        ...sampleDocument.inventory[0],
+        amountMinor: 19100,
+      }],
       primaryInventory: {
         ...sampleDocument.primaryInventory!,
         amountMinor: 19100,

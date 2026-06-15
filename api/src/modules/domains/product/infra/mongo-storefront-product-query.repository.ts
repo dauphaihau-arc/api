@@ -4,6 +4,7 @@ import { CATALOG_CONFIG, type CatalogConfig } from '~/config/catalog.config';
 import { FxRateService } from '~/modules/shared/currency/fx-rate.service';
 import { RoundingPolicyService } from '~/modules/shared/currency/rounding-policy.service';
 import { ProductState } from '../domain/enums/product-state.enum';
+import { ProductShippingCharge } from '../domain/enums/product-shipping-charge.enum';
 import { StorefrontMarketContextService } from '../app/services/storefront-market-context.service';
 import { toCanonicalFacetOption } from '../app/shoe-size-groups';
 import { CatalogProductSlugRepository } from '../app/ports/catalog-product-slug.repository';
@@ -21,6 +22,7 @@ import type {
 import { PUBLIC_PRODUCT_FACET_PRIORITY } from '../app/product-facet.constants';
 import type { CatalogProductDocument } from './catalog-product-document.mapper';
 import { isInferredFacetSupported } from './inferred-facets';
+import { PRODUCT_STOCK_NOTICE_THRESHOLD } from '../app/product-stock.constants';
 
 type MongoCollectionLike<TDocument> = {
   find(
@@ -320,9 +322,11 @@ implements StorefrontProductQueryRepository {
   private async toPublicProductListItem(
     document: CatalogProductDocument
   ): Promise<PublicProductListItem> {
-    const inventory = document.primaryInventory
-      ? await this.resolveCatalogInventoryPricing(document.primaryInventory)
-      : undefined;
+    const resolvedInventory = await Promise.all(
+      document.inventory.map((inventory) => this.resolveCatalogInventoryPricing(inventory))
+    );
+    const priceSummary = summarizeResolvedCatalogPricing(resolvedInventory);
+    const stockTotal = resolvedInventory.reduce((sum, inventory) => sum + inventory.stock, 0);
 
     return {
       id: document.productId,
@@ -337,15 +341,16 @@ implements StorefrontProductQueryRepository {
       slug: document.slug,
       image: document.primaryImage,
       variantType: document.variantType,
-      inventory: inventory
-        ? {
-          amountMinor: inventory.amountMinor,
-          originalAmountMinor: inventory.originalAmountMinor,
-          currency: inventory.currency,
-          stock: inventory.stock,
-          sku: inventory.sku,
-        }
-        : undefined,
+      pricing: priceSummary,
+      availability: {
+        inStock: stockTotal > 0,
+        lowStock: stockTotal > 0 && stockTotal < PRODUCT_STOCK_NOTICE_THRESHOLD,
+        stockTotal,
+      },
+      variantCount: document.variantCount,
+      hasFreeShipping: document.shipping?.destinations.some(
+        (destination) => destination.chargeType === ProductShippingCharge.FREE_SHIPPING
+      ),
       createdAt: document.sort.createdAt,
     };
   }
@@ -353,6 +358,10 @@ implements StorefrontProductQueryRepository {
   private async toPublicProductDetail(
     document: CatalogProductDocument
   ): Promise<PublicProductDetail> {
+    const variantsById = new Map(
+      document.variants.map((variant) => [variant.id, variant] as const)
+    );
+
     return {
       id: document.productId,
       shop: {
@@ -370,6 +379,7 @@ implements StorefrontProductQueryRepository {
       variantType: document.variantType,
       variantGroupName: document.variantGroupName,
       variantSubGroupName: document.variantSubGroupName,
+      stockNoticeThreshold: PRODUCT_STOCK_NOTICE_THRESHOLD,
       images: document.images.map((image) => ({
         id: image.id,
         storageKey: image.storageKey,
@@ -398,9 +408,17 @@ implements StorefrontProductQueryRepository {
         imageStorageKey: variant.imageStorageKey,
         rank: variant.rank,
       })),
-      inventory: await Promise.all(document.inventory.map((inventory) =>
-        this.resolveCatalogInventoryPricing(inventory)
-      )),
+      inventory: await Promise.all(document.inventory.map(async (inventory) => {
+        const variant = inventory.productVariantId
+          ? variantsById.get(inventory.productVariantId)
+          : undefined;
+
+        return {
+          ...(await this.resolveCatalogInventoryPricing(inventory)),
+          optionValue1: variant?.optionValue1,
+          optionValue2: variant?.optionValue2,
+        };
+      })),
       shipping: document.shipping
         ? {
           originCountry: document.shipping.originCountry,
@@ -505,7 +523,7 @@ implements StorefrontProductQueryRepository {
     item: PublicProductListItem,
     input: ListPublicProductsInput
   ): boolean {
-    const amountMinor = item.inventory?.amountMinor;
+    const amountMinor = item.pricing?.minAmountMinor;
 
     if (amountMinor == null) {
       return false;
@@ -552,8 +570,8 @@ function compareResolvedListItems(
   order?: ListPublicProductsInput['order']
 ): number {
   if (order === 'price_asc' || order === 'price_desc') {
-    const leftAmount = left.inventory?.amountMinor ?? (order === 'price_asc' ? Number.MAX_SAFE_INTEGER : -1);
-    const rightAmount = right.inventory?.amountMinor ?? (order === 'price_asc' ? Number.MAX_SAFE_INTEGER : -1);
+    const leftAmount = left.pricing?.minAmountMinor ?? (order === 'price_asc' ? Number.MAX_SAFE_INTEGER : -1);
+    const rightAmount = right.pricing?.minAmountMinor ?? (order === 'price_asc' ? Number.MAX_SAFE_INTEGER : -1);
 
     if (leftAmount !== rightAmount) {
       return order === 'price_asc'
@@ -563,6 +581,35 @@ function compareResolvedListItems(
   }
 
   return right.createdAt.getTime() - left.createdAt.getTime();
+}
+
+function summarizeResolvedCatalogPricing(pricingRows: Array<{
+  amountMinor?: number;
+  originalAmountMinor?: number;
+  currency?: string;
+}>): PublicProductListItem['pricing'] {
+  const amountValues = pricingRows
+    .map((pricing) => pricing.amountMinor)
+    .filter((value): value is number => value != null);
+  const originalAmountValues = pricingRows
+    .map((pricing) => pricing.originalAmountMinor)
+    .filter((value): value is number => value != null);
+
+  if (amountValues.length === 0 && originalAmountValues.length === 0 && !pricingRows[0]?.currency) {
+    return undefined;
+  }
+
+  return {
+    ...(amountValues.length > 0 ? { minAmountMinor: Math.min(...amountValues) } : {}),
+    ...(amountValues.length > 0 ? { maxAmountMinor: Math.max(...amountValues) } : {}),
+    ...(originalAmountValues.length > 0
+      ? { originalMinAmountMinor: Math.min(...originalAmountValues) }
+      : {}),
+    ...(originalAmountValues.length > 0
+      ? { originalMaxAmountMinor: Math.max(...originalAmountValues) }
+      : {}),
+    currency: pricingRows.find((pricing) => pricing.currency)?.currency,
+  };
 }
 
 function buildFacetResult(documents: CatalogProductDocument[]): PublicProductFacet[] {

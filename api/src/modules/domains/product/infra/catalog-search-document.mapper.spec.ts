@@ -101,9 +101,12 @@ describe('catalog-search-document.mapper', () => {
         inStock: true,
         totalStock: 12,
       },
+      variantCount: 1,
       price: {
         minAmountMinor: 7900,
         maxAmountMinor: 7900,
+        originalMinAmountMinor: 9900,
+        originalMaxAmountMinor: 9900,
         currency: 'USD',
       },
       media: {

@@ -112,11 +112,15 @@ implements StorefrontProductQueryRepository {
       {
         populate: [
           'shop',
+          'category',
           'images',
           'images.variants',
+          'variants',
           'inventoryRecords',
           'inventoryRecords.prices',
           'inventoryRecords.productVariant',
+          'shippingProfiles',
+          'shippingProfiles.destinations',
         ],
       }
     );
