@@ -9,6 +9,8 @@ import type { CartSnapshot } from '../../cart/app/cart.types';
 import type { PricedCartSummary } from './order.types';
 import { PaymentType } from '../domain/enums/payment-type.enum';
 import { OrderStatus } from '../domain/enums/order-status.enum';
+import type { OrderTotalPolicyService } from './order-total-policy.service';
+import { OrderTotalLimitExceededError } from './errors/order-app.error';
 
 describe('OrderCheckoutService', () => {
   const cart: CartSnapshot = {
@@ -160,6 +162,12 @@ describe('OrderCheckoutService', () => {
     const eventEmitter: Pick<jest.Mocked<EventEmitter2>, 'emit'> = {
       emit: jest.fn(),
     };
+    const orderTotalPolicyService: Pick<
+      jest.Mocked<OrderTotalPolicyService>,
+      'assertWithinLimit'
+    > = {
+      assertWithinLimit: jest.fn(),
+    };
     const notifyUserUseCase = {
       execute: jest.fn().mockResolvedValue(undefined),
     } as unknown as jest.Mocked<NotifyUserUseCase>;
@@ -173,13 +181,15 @@ describe('OrderCheckoutService', () => {
       orderCheckoutOutboxService,
       orderEventsService as never,
       notifyUserUseCase,
-      eventEmitter as unknown as EventEmitter2
+      eventEmitter as unknown as EventEmitter2,
+      orderTotalPolicyService as unknown as OrderTotalPolicyService
     );
 
     return {
       service,
       eventEmitter,
       notifyUserUseCase,
+      orderTotalPolicyService,
       fakeEntityManager,
       orderRepository,
       orderItemRepository,
@@ -192,6 +202,7 @@ describe('OrderCheckoutService', () => {
       service,
       eventEmitter,
       notifyUserUseCase,
+      orderTotalPolicyService,
       orderRepository,
       orderItemRepository,
       orderCheckoutOutboxService,
@@ -227,6 +238,10 @@ describe('OrderCheckoutService', () => {
         totalMinor: 1800,
       })
     );
+    expect(orderTotalPolicyService.assertWithinLimit).toHaveBeenCalledWith({
+      totalMinor: 1800,
+      currency: 'USD',
+    });
     expect(orderItemRepository.create).toHaveBeenCalledWith(
       expect.objectContaining({
         unitPriceMinor: 900,
@@ -256,7 +271,7 @@ describe('OrderCheckoutService', () => {
   });
 
   it('returns checkout pending when immediate outbox processing does not produce a checkout URL', async () => {
-    const { service } = buildService();
+    const { service, orderTotalPolicyService } = buildService();
 
     const result = await service.createOrders(
       {
@@ -273,6 +288,10 @@ describe('OrderCheckoutService', () => {
       }
     );
 
+    expect(orderTotalPolicyService.assertWithinLimit).toHaveBeenCalledWith({
+      totalMinor: 1800,
+      currency: 'USD',
+    });
     expect(result.checkoutSessionUrl).toBeUndefined();
     expect(result.checkoutPending).toBe(true);
   });
@@ -353,6 +372,7 @@ describe('OrderCheckoutService', () => {
   it('copies quote minor-unit amounts and provenance into persisted orders', async () => {
     const {
       service,
+      orderTotalPolicyService,
       orderRepository,
       orderItemRepository,
     } = buildService();
@@ -478,6 +498,10 @@ describe('OrderCheckoutService', () => {
         totalMinor: 1800,
       })
     );
+    expect(orderTotalPolicyService.assertWithinLimit).toHaveBeenCalledWith({
+      totalMinor: 1800,
+      currency: 'USD',
+    });
     expect(orderItemRepository.create).toHaveBeenCalledWith(
       expect.objectContaining({
         unitPriceMinor: 900,
@@ -491,5 +515,35 @@ describe('OrderCheckoutService', () => {
         fxSource: 'seed',
       })
     );
+  });
+
+  it('rejects orders above the configured order-total limit before persistence', async () => {
+    const {
+      service,
+      orderRepository,
+      orderTotalPolicyService,
+    } = buildService();
+    orderTotalPolicyService.assertWithinLimit.mockImplementation(() => {
+      throw new OrderTotalLimitExceededError('USD');
+    });
+
+    await expect(
+      service.createOrders(
+        {
+          type: 'user',
+          userId: 'user-1',
+          email: 'member@example.com',
+        },
+        'cart-1',
+        cart,
+        {
+          paymentType: PaymentType.CARD,
+          shippingAddress,
+          isTempCart: false,
+        }
+      )
+    ).rejects.toThrow(OrderTotalLimitExceededError);
+
+    expect(orderRepository.create).not.toHaveBeenCalled();
   });
 });

@@ -1,7 +1,11 @@
 import { MikroOrmModule } from '@mikro-orm/nestjs';
 import { forwardRef, Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ProcessOrderRefundJob } from '~/common/jobs/process-order-refund.job';
+import {
+  CHECKOUT_CONFIG,
+  buildCheckoutConfig
+} from '~/config/checkout.config';
 import { AuthModule } from '../auth/auth.module';
 import { CurrentUserEntity } from '../auth/infra/persistence/entities/current-user.entity';
 import { CartModule } from '../cart/cart.module';
@@ -21,6 +25,7 @@ import { OrderCancellationService } from './app/order-cancellation.service';
 import { OrderCheckoutService } from './app/order-checkout.service';
 import { OrderRefundService } from './app/order-refund.service';
 import { OrderPaymentService } from './app/order-payment.service';
+import { OrderTotalPolicyService } from './app/order-total-policy.service';
 import { GuestOrderTrackingTokenService } from './app/guest-order-tracking-token.service';
 import { CreateGuestCheckoutQuoteForBuyNowUseCase } from './app/use-cases/create-guest-checkout-quote-for-buy-now/create-guest-checkout-quote-for-buy-now.use-case';
 import { CreateGuestOrderForBuyNowUseCase } from './app/use-cases/create-guest-order-for-buy-now/create-guest-order-for-buy-now.use-case';
@@ -101,7 +106,14 @@ import { UpdateShopOrderRefundUseCase } from './app/use-cases/update-shop-order-
     ShopOrderController,
   ],
   providers: [
+    {
+      provide: CHECKOUT_CONFIG,
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) =>
+        buildCheckoutConfig(configService),
+    },
     OrderCheckoutService,
+    OrderTotalPolicyService,
     CreateCheckoutQuoteService,
     LoadCheckoutQuoteService,
     OrderCancellationService,

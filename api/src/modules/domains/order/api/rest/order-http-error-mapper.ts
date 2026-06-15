@@ -22,6 +22,7 @@ import {
   InvalidShippingStatusTransitionError,
   OrderAppError,
   OrderNotFoundError,
+  OrderTotalLimitExceededError,
   SellerRefundActionNotAllowedError,
   SellerRefundNotAllowedError,
   SellerRefundRequiresCardPaymentError,
@@ -72,6 +73,7 @@ export function mapOrderAppErrorToHttpException(
     || error instanceof CheckoutQuoteNoItemsError
     || error instanceof CheckoutQuoteCartChangedError
     || error instanceof CheckoutQuoteExpiredError
+    || error instanceof OrderTotalLimitExceededError
   ) {
     return new BadRequestException(error.message);
   }

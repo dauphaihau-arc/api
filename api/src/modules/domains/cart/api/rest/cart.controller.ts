@@ -1,4 +1,5 @@
 import {
+  Inject,
   Body,
   Controller,
   Delete,
@@ -19,6 +20,11 @@ import {
 } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { resolveOrThrow } from '~/common/application/result';
+import {
+  CHECKOUT_CONFIG,
+  getMaxOrderTotalMinor,
+  type CheckoutConfig
+} from '~/config/checkout.config';
 import { OptionalJwtAuthGuard } from '~/modules/domains/auth/api/guard/optional-jwt-auth.guard';
 import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
 import { CouponPricingService } from '~/modules/domains/coupon/app/coupon-pricing.service';
@@ -47,6 +53,8 @@ type CartRequest = Request & { user?: AuthenticatedUser | null };
 @ApiCookieAuth('accessCookie')
 export class CartController {
   constructor(
+    @Inject(CHECKOUT_CONFIG)
+    private readonly checkoutConfig: CheckoutConfig,
     private readonly couponPricingService: CouponPricingService,
     private readonly guestCartSessionService: GuestCartSessionService,
     private readonly getCartUseCase: GetCartUseCase,
@@ -70,11 +78,11 @@ export class CartController {
     const actor = this.resolveReadActor(request);
 
     if (!actor) {
-      return buildCartResponse(null, undefined, { ownerType: 'guest' });
+      return this.buildResponse(null, undefined, { ownerType: 'guest' });
     }
 
     const cart = await this.getCartUseCase.execute(actor, query.cartId);
-    return buildCartResponse(cart);
+    return this.buildResponse(cart);
   }
 
   @Post('items')
@@ -99,7 +107,7 @@ export class CartController {
       mapCartAppErrorToHttpException
     );
 
-    return buildCartResponse(cart);
+    return this.buildResponse(cart);
   }
 
   @Post('merge')
@@ -114,7 +122,7 @@ export class CartController {
     @Res({ passthrough: true }) response: Response
   ): Promise<CartResponse> {
     if (!request.user?.userId) {
-      return buildCartResponse(null, undefined, { ownerType: 'guest' });
+      return this.buildResponse(null, undefined, { ownerType: 'guest' });
     }
 
     const guestSessionId = this.guestCartSessionService.extractSessionId(request);
@@ -125,7 +133,7 @@ export class CartController {
         userId: request.user.userId,
       });
 
-      return buildCartResponse(cart, undefined, {
+      return this.buildResponse(cart, undefined, {
         ownerType: 'user',
         requiresSignInForCheckout: false,
       });
@@ -138,7 +146,7 @@ export class CartController {
 
     this.guestCartSessionService.clearSession(response);
 
-    return buildCartResponse(cart, undefined, {
+    return this.buildResponse(cart, undefined, {
       ownerType: 'user',
       requiresSignInForCheckout: false,
     });
@@ -168,7 +176,7 @@ export class CartController {
         })
         : null;
 
-      return buildCartResponse(
+      return this.buildResponse(
         cart,
         priced
           ? {
@@ -196,7 +204,7 @@ export class CartController {
     );
 
     if (!cart) {
-      return buildCartResponse(null, undefined, {
+      return this.buildResponse(null, undefined, {
         ownerType: actor.type,
         requiresSignInForCheckout: false,
       });
@@ -208,7 +216,7 @@ export class CartController {
       shopAdjustments: body.additionInfoShopCarts,
     });
 
-    return buildCartResponse(cart, {
+    return this.buildResponse(cart, {
       currency: priced.currency,
       subtotalPrice: priced.subtotalPrice,
       totalDiscount: priced.totalDiscount,
@@ -238,9 +246,24 @@ export class CartController {
       mapCartAppErrorToHttpException
     );
 
-    return buildCartResponse(cart, undefined, {
+    return this.buildResponse(cart, undefined, {
       ownerType: actor.type,
       requiresSignInForCheckout: false,
+    });
+  }
+
+  private buildResponse(
+    cart: Parameters<typeof buildCartResponse>[0],
+    summaryOverride?: Parameters<typeof buildCartResponse>[1],
+    options?: Parameters<typeof buildCartResponse>[2]
+  ): CartResponse {
+    const currency = summaryOverride?.currency ??
+      cart?.items[0]?.inventory.pricing.currency ??
+      'USD';
+
+    return buildCartResponse(cart, summaryOverride, {
+      ...options,
+      maxOrderTotalMinor: getMaxOrderTotalMinor(this.checkoutConfig, currency),
     });
   }
 

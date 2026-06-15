@@ -10,6 +10,11 @@ import { CartKind } from '../../domain/enums/cart-kind.enum';
 
 describe('CartController', () => {
   function buildController() {
+    const checkoutConfig = {
+      maxOrderTotalByCurrencyMinor: {
+        USD: 99999999,
+      },
+    };
     const couponPricingService = {
       priceCart: jest.fn(),
     } as unknown as jest.Mocked<CouponPricingService>;
@@ -35,6 +40,7 @@ describe('CartController', () => {
     } as unknown as jest.Mocked<RemoveCartItemUseCase>;
 
     const controller = new CartController(
+      checkoutConfig as never,
       couponPricingService,
       guestCartSessionService,
       getCartUseCase,
@@ -63,6 +69,9 @@ describe('CartController', () => {
       cart: null,
       cart_owner_type: 'guest',
       requires_sign_in_for_checkout: false,
+      checkout_policy: {
+        max_order_total_minor: 99999999,
+      },
       summary: {
         currency: 'USD',
         subtotal_minor: 0,

@@ -126,6 +126,9 @@ export interface CartResponse {
   } | null;
   cart_owner_type?: CartOwnerType;
   requires_sign_in_for_checkout?: boolean;
+  checkout_policy?: {
+    max_order_total_minor: number;
+  };
   summary: {
     currency: string;
     subtotal_minor: number;
@@ -227,6 +230,7 @@ export function buildCartResponse(
   options?: {
     ownerType?: CartOwnerType;
     requiresSignInForCheckout?: boolean;
+    maxOrderTotalMinor?: number;
   }
 ): CartResponse {
   const currency = resolveCartCurrency(cart);
@@ -249,6 +253,13 @@ export function buildCartResponse(
       cart: null,
       cart_owner_type: ownerType,
       requires_sign_in_for_checkout: requiresSignInForCheckout,
+      ...(options?.maxOrderTotalMinor != null
+        ? {
+          checkout_policy: {
+            max_order_total_minor: options.maxOrderTotalMinor,
+          },
+        }
+        : {}),
       summary: summaryOverride
         ? toSummaryResponse(summaryOverride, summaryOverride.currency ?? currency)
         : emptySummary,
@@ -354,6 +365,13 @@ export function buildCartResponse(
     },
     cart_owner_type: ownerType,
     requires_sign_in_for_checkout: requiresSignInForCheckout,
+    ...(options?.maxOrderTotalMinor != null
+      ? {
+        checkout_policy: {
+          max_order_total_minor: options.maxOrderTotalMinor,
+        },
+      }
+      : {}),
     summary: summaryOverride
       ? toSummaryResponse(summaryOverride, summaryOverride.currency ?? currency)
       : {

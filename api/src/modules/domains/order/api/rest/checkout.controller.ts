@@ -1,4 +1,5 @@
 import {
+  Inject,
   Body,
   Controller,
   Get,
@@ -17,6 +18,7 @@ import {
 } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import type { Request } from 'express';
+import { CHECKOUT_CONFIG, type CheckoutConfig } from '~/config/checkout.config';
 import { GuestCartSessionService } from '~/modules/domains/cart/api/rest/guest-cart-session.service';
 import { CreateGuestCheckoutQuoteForBuyNowUseCase } from '../../app/use-cases/create-guest-checkout-quote-for-buy-now/create-guest-checkout-quote-for-buy-now.use-case';
 import { CreateGuestOrderForBuyNowUseCase } from '../../app/use-cases/create-guest-order-for-buy-now/create-guest-order-for-buy-now.use-case';
@@ -53,6 +55,8 @@ const checkoutRouteRateLimits = {
 @ApiTags('Checkout')
 export class CheckoutController {
   constructor(
+    @Inject(CHECKOUT_CONFIG)
+    private readonly checkoutConfig: CheckoutConfig,
     private readonly guestCartSessionService: GuestCartSessionService,
     private readonly createGuestCheckoutQuoteFromCartUseCase: CreateGuestCheckoutQuoteFromCartUseCase,
     private readonly createGuestCheckoutQuoteForBuyNowUseCase: CreateGuestCheckoutQuoteForBuyNowUseCase,
@@ -137,7 +141,8 @@ export class CheckoutController {
 
     try {
       return toCheckoutQuoteResponse(
-        await this.createGuestCheckoutQuoteFromCartUseCase.execute(guestSessionId, body)
+        await this.createGuestCheckoutQuoteFromCartUseCase.execute(guestSessionId, body),
+        this.checkoutConfig
       );
     }
     catch (error) {
@@ -191,7 +196,8 @@ export class CheckoutController {
 
     try {
       return toCheckoutQuoteResponse(
-        await this.createGuestCheckoutQuoteForBuyNowUseCase.execute(guestSessionId, body)
+        await this.createGuestCheckoutQuoteForBuyNowUseCase.execute(guestSessionId, body),
+        this.checkoutConfig
       );
     }
     catch (error) {

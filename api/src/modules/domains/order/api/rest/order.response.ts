@@ -10,6 +10,8 @@ import type {
   ShopOrderSummary
 } from '../../app/order.types';
 import { toMinorUnits } from '~/common/utils/money';
+import type { CheckoutConfig } from '~/config/checkout.config';
+import { getMaxOrderTotalMinor } from '~/config/checkout.config';
 
 function toPaymentResponse(order: {
   paymentType: string;
@@ -67,11 +69,24 @@ export function toCreateOrderResponse(result: CreateOrderResult) {
   };
 }
 
-export function toCheckoutQuoteResponse(result: CheckoutQuoteResult) {
+export function toCheckoutQuoteResponse(
+  result: CheckoutQuoteResult,
+  checkoutConfig?: CheckoutConfig
+) {
   return {
     quote_id: result.quoteId,
     presentment_currency: result.presentmentCurrency,
     checkout_currency: result.checkoutCurrency,
+    ...(checkoutConfig
+      ? {
+        checkout_policy: {
+          max_order_total_minor: getMaxOrderTotalMinor(
+            checkoutConfig,
+            result.checkoutCurrency
+          ),
+        },
+      }
+      : {}),
     subtotal_minor: result.subtotalMinor,
     shipping_minor: result.shippingMinor,
     discount_minor: result.discountMinor,

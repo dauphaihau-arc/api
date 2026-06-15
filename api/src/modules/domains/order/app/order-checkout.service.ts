@@ -41,6 +41,7 @@ import type {
   ShippingAddressInput,
   ShopAdjustmentInput
 } from './order.types';
+import { OrderTotalPolicyService } from './order-total-policy.service';
 
 @Injectable()
 export class OrderCheckoutService {
@@ -50,7 +51,8 @@ export class OrderCheckoutService {
     private readonly orderCheckoutOutboxService: OrderCheckoutOutboxService,
     private readonly orderEventsService: OrderEventsService,
     private readonly notifyUserUseCase: NotifyUserUseCase,
-    private readonly eventEmitter: EventEmitter2
+    private readonly eventEmitter: EventEmitter2,
+    private readonly orderTotalPolicyService: OrderTotalPolicyService
   ) {}
 
   async createOrders(
@@ -79,10 +81,18 @@ export class OrderCheckoutService {
         shopAdjustments: input.shopAdjustments,
       });
     const pricedShops = quote?.shops ?? pricedCart?.shops ?? [];
+    const totalMinor = quote
+      ? quote.totalMinor
+      : toMinorUnits(pricedCart?.totalPrice ?? 0, currency);
 
     if (pricedShops.length === 0) {
       throw new BadRequestException('No selected cart items to order');
     }
+
+    this.orderTotalPolicyService.assertWithinLimit({
+      totalMinor,
+      currency,
+    });
 
     const result = await this.entityManager.transactional(async (entityManager) => {
       const inventoryRepository = entityManager.getRepository(ProductInventoryEntity);

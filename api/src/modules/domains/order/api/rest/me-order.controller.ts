@@ -1,4 +1,5 @@
 import {
+  Inject,
   Body,
   Controller,
   Delete,
@@ -19,6 +20,7 @@ import {
   ApiTags
 } from '@nestjs/swagger';
 import { CurrentUser } from '~/common/decorators/current-user.decorator';
+import { CHECKOUT_CONFIG, type CheckoutConfig } from '~/config/checkout.config';
 import { JwtAuthGuard } from '~/modules/domains/auth/api/guard/jwt-auth.guard';
 import { PermissionsGuard } from '~/modules/domains/auth/api/guard/permissions.guard';
 import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
@@ -56,6 +58,8 @@ import {
 @ApiCookieAuth('accessCookie')
 export class MeOrderController {
   constructor(
+    @Inject(CHECKOUT_CONFIG)
+    private readonly checkoutConfig: CheckoutConfig,
     private readonly listOrdersUseCase: ListOrdersUseCase,
     private readonly createCheckoutQuoteFromCartUseCase: CreateCheckoutQuoteFromCartUseCase,
     private readonly createCheckoutQuoteForBuyNowUseCase: CreateCheckoutQuoteForBuyNowUseCase,
@@ -158,7 +162,8 @@ export class MeOrderController {
   ) {
     try {
       return toCheckoutQuoteResponse(
-        await this.createCheckoutQuoteFromCartUseCase.execute(currentUser, body)
+        await this.createCheckoutQuoteFromCartUseCase.execute(currentUser, body),
+        this.checkoutConfig
       );
     }
     catch (error) {
@@ -178,7 +183,8 @@ export class MeOrderController {
   ) {
     try {
       return toCheckoutQuoteResponse(
-        await this.createCheckoutQuoteForBuyNowUseCase.execute(currentUser, body)
+        await this.createCheckoutQuoteForBuyNowUseCase.execute(currentUser, body),
+        this.checkoutConfig
       );
     }
     catch (error) {

@@ -48,6 +48,12 @@ export class CheckoutQuoteCartChangedError extends OrderAppError {
   }
 }
 
+export class OrderTotalLimitExceededError extends OrderAppError {
+  constructor(currency: string) {
+    super(`Order total exceeds the allowed maximum for ${currency}`);
+  }
+}
+
 export class OrderNotFoundError extends OrderAppError {
   constructor() {
     super('Order was not found');

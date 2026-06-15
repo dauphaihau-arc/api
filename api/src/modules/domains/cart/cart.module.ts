@@ -2,6 +2,7 @@ import { MikroOrmModule } from '@mikro-orm/nestjs';
 import { forwardRef, Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { CART_CONFIG, buildCartConfig } from '~/config/cart.config';
+import { CHECKOUT_CONFIG, buildCheckoutConfig } from '~/config/checkout.config';
 import { StorageModule } from '../../shared/storage/storage.module';
 import { AuthModule } from '../auth/auth.module';
 import { CouponModule } from '../coupon/coupon.module';
@@ -48,6 +49,11 @@ import { CartItemEntity } from './infra/persistence/entities/cart-item.entity';
       provide: CART_CONFIG,
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => buildCartConfig(configService),
+    },
+    {
+      provide: CHECKOUT_CONFIG,
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => buildCheckoutConfig(configService),
     },
     {
       provide: CartRepository,

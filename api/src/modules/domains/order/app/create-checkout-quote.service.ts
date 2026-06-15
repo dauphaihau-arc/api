@@ -20,6 +20,7 @@ import type {
   ShippingAddressInput,
   ShopAdjustmentInput
 } from './order.types';
+import { OrderTotalPolicyService } from './order-total-policy.service';
 
 const QUOTE_TTL_MS = 30 * 60 * 1000;
 
@@ -28,7 +29,8 @@ export class CreateCheckoutQuoteService {
   constructor(
     private readonly entityManager: EntityManager,
     private readonly couponPricingService: CouponPricingService,
-    private readonly storefrontMarketContextService: StorefrontMarketContextService
+    private readonly storefrontMarketContextService: StorefrontMarketContextService,
+    private readonly orderTotalPolicyService: OrderTotalPolicyService
   ) {}
 
   async createFromCart(input: {
@@ -64,6 +66,15 @@ export class CreateCheckoutQuoteService {
     const quoteRepository = entityManager.getRepository(CheckoutQuoteEntity);
     const quoteItemRepository = entityManager.getRepository(CheckoutQuoteItemEntity);
     const expiresAt = new Date(Date.now() + QUOTE_TTL_MS);
+    const subtotalMinor = toMinorUnits(pricedCart.subtotalPrice, checkoutCurrency);
+    const shippingMinor = toMinorUnits(pricedCart.totalShippingFee, checkoutCurrency);
+    const discountMinor = toMinorUnits(pricedCart.totalDiscount, checkoutCurrency);
+    const totalMinor = toMinorUnits(pricedCart.totalPrice, checkoutCurrency);
+
+    this.orderTotalPolicyService.assertWithinLimit({
+      totalMinor,
+      currency: checkoutCurrency,
+    });
 
     const quote = quoteRepository.create({
       actorType: input.actor.type === 'user'
@@ -78,10 +89,10 @@ export class CreateCheckoutQuoteService {
         ? { marketCode: storefrontMarketContext.marketCode }
         : {}),
       checkoutCurrency,
-      subtotalMinor: toMinorUnits(pricedCart.subtotalPrice, checkoutCurrency),
-      shippingMinor: toMinorUnits(pricedCart.totalShippingFee, checkoutCurrency),
-      discountMinor: toMinorUnits(pricedCart.totalDiscount, checkoutCurrency),
-      totalMinor: toMinorUnits(pricedCart.totalPrice, checkoutCurrency),
+      subtotalMinor,
+      shippingMinor,
+      discountMinor,
+      totalMinor,
       shippingAddress: {
         full_name: input.shippingAddress.fullName,
         address1: input.shippingAddress.address1,
