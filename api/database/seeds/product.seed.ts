@@ -34,6 +34,20 @@ function slugify(value: string): string {
   return slugifySeedValue(value);
 }
 
+function hashSeed(value: string): number {
+  let hash = 0;
+
+  for (let index = 0; index < value.length; index += 1) {
+    hash = ((hash * 31) + value.charCodeAt(index)) >>> 0;
+  }
+
+  return hash;
+}
+
+function pickDeterministicValue<T>(seed: string, values: readonly T[]): T {
+  return values[hashSeed(seed) % values.length];
+}
+
 const CURRENCY_DECIMALS: Record<MarketplaceCurrency, number> = {
   USD: 2,
   AUD: 2,
@@ -353,12 +367,45 @@ async function syncProductShipping(
   }
   await em.flush();
 
+  const shippingSeed = `${shop.slug}:${product.slug}`;
+  const originZip = pickDeterministicValue(shippingSeed, [
+    '10001',
+    '11201',
+    '20001',
+    '30301',
+    '60601',
+    '73301',
+    '85001',
+    '94105',
+  ]);
+  const processTimeLabel = pickDeterministicValue(`${shippingSeed}:process`, [
+    '1 business day',
+    '1-2 business days',
+    '2-3 business days',
+  ]);
+  const deliveryTimeLabel = pickDeterministicValue(`${shippingSeed}:delivery`, [
+    '1-3 business days',
+    '2-5 business days',
+    '3-5 business days',
+    '3-7 business days',
+  ]);
+  const service = pickDeterministicValue(`${shippingSeed}:service`, [
+    'standard',
+    'ground',
+    'economy',
+  ]);
+  const chargeType = pickDeterministicValue(`${shippingSeed}:charge`, [
+    ProductShippingCharge.FREE_SHIPPING,
+    ProductShippingCharge.FIXED_PRICE,
+    ProductShippingCharge.FIXED_PRICE,
+  ]);
+
   const shippingProfile = em.create(ProductShippingProfileEntity, {
     product,
     shop,
     originCountry: 'US',
-    originZip: '27006',
-    processTimeLabel: '1 business day',
+    originZip,
+    processTimeLabel,
   });
   em.persist(shippingProfile);
   await em.flush();
@@ -367,9 +414,9 @@ async function syncProductShipping(
     em.create(ProductShippingDestinationEntity, {
       shippingProfile,
       countryCode: 'US',
-      deliveryTimeLabel: '1-3 business days',
-      service: 'standard',
-      chargeType: ProductShippingCharge.FREE_SHIPPING,
+      deliveryTimeLabel,
+      service,
+      chargeType,
       rank: 1,
     })
   );
