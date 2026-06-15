@@ -1,12 +1,18 @@
 import 'reflect-metadata';
 import { existsSync } from 'node:fs';
-import { readFile } from 'node:fs/promises';
+import { readFile, readdir, stat } from 'node:fs/promises';
 import * as path from 'node:path';
+import { ListObjectsV2Command, S3Client } from '@aws-sdk/client-s3';
 import { TableNotFoundException } from '@mikro-orm/core';
 import { MikroORM } from '@mikro-orm/postgresql';
 import { validateAppEnv } from '../src/config/app-env.config';
 import { buildDatabaseConfig } from '../src/config/database.config';
-import { buildStorageConfig, type StorageConfig } from '../src/config/storage.config';
+import {
+  buildStorageConfig,
+  type LocalStorageConfig,
+  type MinioStorageConfig,
+  type StorageConfig
+} from '../src/config/storage.config';
 import {
   CATEGORY_IMAGE_VARIANT_SPECS,
   type CategoryImageVariant
@@ -68,12 +74,34 @@ const CATEGORY_VARIANT_CONCURRENCY = 3;
 const PRODUCT_UPLOAD_CONCURRENCY = 4;
 const PRODUCT_PROCESSING_CONCURRENCY = 2;
 
+type StorageUsageSummary = {
+  objectCount: number;
+  totalBytes: number;
+};
+
 function formatDurationMs(durationMs: number): string {
   if (durationMs < 1_000) {
     return `${durationMs.toFixed(0)}ms`;
   }
 
   return `${(durationMs / 1_000).toFixed(2)}s`;
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1_024) {
+    return `${bytes} B`;
+  }
+
+  const units = ['KB', 'MB', 'GB', 'TB'];
+  let value = bytes / 1_024;
+  let unitIndex = 0;
+
+  while (value >= 1_024 && unitIndex < units.length - 1) {
+    value /= 1_024;
+    unitIndex += 1;
+  }
+
+  return `${value.toFixed(2)} ${units[unitIndex]}`;
 }
 
 async function measureStep<T>(
@@ -210,20 +238,96 @@ function resolveProductSeedAssets(productSeed: MinimalProductSeed): ResolvedProd
   };
 }
 
-function buildStorageService(): StorageService {
-  const env = validateAppEnv(process.env);
-  const config = buildStorageConfig({
-    get: ((key: string | symbol, defaultValue?: unknown) =>
-      env[key as string] ?? defaultValue) as never,
-  });
-
-  return createStorageService(config);
-}
-
 function createStorageService(config: StorageConfig): StorageService {
   return config.driver === 'local'
     ? new LocalFileStorageService(config)
     : new MinioStorageService(config);
+}
+
+async function collectStorageUsage(
+  config: StorageConfig
+): Promise<StorageUsageSummary> {
+  return config.driver === 'local'
+    ? collectLocalStorageUsage(config)
+    : collectMinioStorageUsage(config);
+}
+
+async function collectLocalStorageUsage(
+  config: LocalStorageConfig
+): Promise<StorageUsageSummary> {
+  const rootPath = path.resolve(config.localRoot);
+
+  if (!existsSync(rootPath)) {
+    return { objectCount: 0, totalBytes: 0 };
+  }
+
+  let objectCount = 0;
+  let totalBytes = 0;
+
+  async function walk(directoryPath: string): Promise<void> {
+    const entries = await readdir(directoryPath, { withFileTypes: true });
+
+    for (const entry of entries) {
+      const entryPath = path.join(directoryPath, entry.name);
+
+      if (entry.isDirectory()) {
+        await walk(entryPath);
+        continue;
+      }
+
+      if (!entry.isFile()) {
+        continue;
+      }
+
+      const fileStat = await stat(entryPath);
+      objectCount += 1;
+      totalBytes += fileStat.size;
+    }
+  }
+
+  await walk(rootPath);
+
+  return { objectCount, totalBytes };
+}
+
+async function collectMinioStorageUsage(
+  config: MinioStorageConfig
+): Promise<StorageUsageSummary> {
+  const client = new S3Client({
+    region: config.region,
+    endpoint: config.endpoint,
+    forcePathStyle: config.forcePathStyle,
+    credentials: {
+      accessKeyId: config.accessKey,
+      secretAccessKey: config.secretKey,
+    },
+  });
+
+  let objectCount = 0;
+  let totalBytes = 0;
+  let continuationToken: string | undefined;
+
+  do {
+    const response = await client.send(new ListObjectsV2Command({
+      Bucket: config.bucket,
+      ContinuationToken: continuationToken,
+    }));
+
+    for (const object of response.Contents ?? []) {
+      if (!object.Key) {
+        continue;
+      }
+
+      objectCount += 1;
+      totalBytes += object.Size ?? 0;
+    }
+
+    continuationToken = response.IsTruncated
+      ? response.NextContinuationToken
+      : undefined;
+  } while (continuationToken);
+
+  return { objectCount, totalBytes };
 }
 
 async function putSeedAsset(
@@ -305,7 +409,12 @@ function resolveImageVariantContentType(
 
 async function main(): Promise<void> {
   const scriptStartedAt = performance.now();
-  const storageService = buildStorageService();
+  const env = validateAppEnv(process.env);
+  const storageConfig = buildStorageConfig({
+    get: ((key: string | symbol, defaultValue?: unknown) =>
+      env[key as string] ?? defaultValue) as never,
+  });
+  const storageService = createStorageService(storageConfig);
 
   const orm = await MikroORM.init({
     ...buildDatabaseConfig(process.env),
@@ -471,6 +580,13 @@ async function main(): Promise<void> {
     await orm.close(true);
   }
 
+  const storageUsage = await measureStep(
+    'measure storage usage',
+    async () => collectStorageUsage(storageConfig)
+  );
+  console.log(
+    `[perf] storage_usage objects=${storageUsage.objectCount} total_size=${formatBytes(storageUsage.totalBytes)} (${storageUsage.totalBytes} bytes)`
+  );
   console.log(`[perf] total script time ${formatDurationMs(performance.now() - scriptStartedAt)}`);
   console.log('Seed asset upload complete.');
 }
