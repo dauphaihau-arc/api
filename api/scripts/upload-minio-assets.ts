@@ -4,7 +4,7 @@ import { readFile, readdir, stat } from 'node:fs/promises';
 import * as path from 'node:path';
 import { ListObjectsV2Command, S3Client } from '@aws-sdk/client-s3';
 import { TableNotFoundException } from '@mikro-orm/core';
-import { MikroORM } from '@mikro-orm/postgresql';
+import { MikroORM, type EntityManager } from '@mikro-orm/postgresql';
 import { validateAppEnv } from '../src/config/app-env.config';
 import { buildDatabaseConfig } from '../src/config/database.config';
 import {
@@ -19,12 +19,17 @@ import {
 } from '../src/modules/domains/category/app/config/category-image-variant.config';
 import { CategoryEntity } from '../src/modules/domains/category/infra/persistence/entities/category.entity';
 import { ProductImageService } from '../src/modules/domains/product/app/services/product-image.service';
+import { ProductImageVariantStatus } from '../src/modules/domains/product/domain/enums/product-image-variant-status.enum';
 import { ProductImageEntity } from '../src/modules/domains/product/infra/persistence/entities/product-image.entity';
 import { ProductImageVariantEntity } from '../src/modules/domains/product/infra/persistence/entities/product-image-variant.entity';
 import { ProductEntity } from '../src/modules/domains/product/infra/persistence/entities/product.entity';
 import { ShopEntity } from '../src/modules/domains/shop/infra/persistence/entities/shop.entity';
 import { SharpImageTransformService } from '../src/modules/shared/image-transform/infra/sharp-image-transform.service';
 import type { StorageService } from '../src/modules/shared/storage/app/ports/storage.service';
+import {
+  buildStorageObjectKey,
+  resolveStorageEnvironmentSegment
+} from '../src/modules/shared/storage/app/storage-key-builder';
 import { LocalFileStorageService } from '../src/modules/shared/storage/infra/local-file-storage.service';
 import { MinioStorageService } from '../src/modules/shared/storage/infra/minio-storage.service';
 import {
@@ -236,6 +241,62 @@ function resolveProductSeedAssets(productSeed: MinimalProductSeed): ResolvedProd
     assetDirectory: assetDirectory ?? null,
     imageFilenames,
   };
+}
+
+function buildSeedProductImageStorageKey(
+  shop: ShopEntity,
+  product: ProductEntity,
+  imageFilename: string
+): string {
+  const normalizedFilename = path.basename(imageFilename.trim());
+  const extension = path.extname(normalizedFilename).replace(/^\./, '').toLowerCase();
+  const filenameWithoutExtension = normalizedFilename.slice(
+    0,
+    normalizedFilename.length - extension.length - 1
+  );
+
+  if (!extension || !filenameWithoutExtension) {
+    throw new Error(`Invalid product image filename "${imageFilename}".`);
+  }
+
+  return buildStorageObjectKey({
+    env: resolveStorageEnvironmentSegment(process.env.NODE_ENV),
+    visibility: 'public',
+    path: [
+      { domain: 'shops', id: shop.publicId ?? shop.id },
+      { domain: 'products', id: product.publicId ?? product.id },
+    ],
+    collection: 'images',
+    assetPath: [filenameWithoutExtension],
+    extension,
+    filename: 'original',
+  });
+}
+
+async function syncSeedProductImages(
+  em: EntityManager,
+  shop: ShopEntity,
+  product: ProductEntity,
+  imageFilenames: string[]
+): Promise<ProductImageEntity[]> {
+  for (const image of await em.find(ProductImageEntity, { product })) {
+    em.remove(image);
+  }
+  await em.flush();
+
+  const images = imageFilenames.map((imageFilename, index) =>
+    em.create(ProductImageEntity, {
+      product,
+      storageKey: buildSeedProductImageStorageKey(shop, product, imageFilename),
+      rank: index + 1,
+      variantStatus: ProductImageVariantStatus.PENDING,
+    })
+  );
+
+  images.forEach((image) => em.persist(image));
+  await em.flush();
+
+  return images;
 }
 
 function createStorageService(config: StorageConfig): StorageService {
@@ -528,14 +589,15 @@ async function main(): Promise<void> {
             );
           }
 
-          const images = product.images
+          let images = product.images
             .getItems()
             .sort((leftImage, rightImage) => leftImage.rank - rightImage.rank);
 
           if (images.length !== imageFilenames.length) {
-            throw new Error(
-              `Image count mismatch for seeded product "${productSeed.title}".`
+            console.warn(
+              `Reconciling seeded product images for "${productSeed.title}" (${images.length} database rows vs ${imageFilenames.length} seed assets).`
             );
+            images = await syncSeedProductImages(em, shop, product, imageFilenames);
           }
 
           if (!assetDirectory) {
