@@ -2,7 +2,7 @@ import type { ConfigService } from '@nestjs/config';
 
 export interface CatalogConfig {
   driver: 'postgres' | 'mongodb';
-  searchDriver: 'mongodb' | 'atlas';
+  searchDriver: 'atlas';
   mongodbUri: string;
   mongodbDbName: string;
   mongodbProductsCollection: string;
@@ -20,9 +20,9 @@ export function buildCatalogConfig(
       'CATALOG_STORE_DRIVER',
       'postgres'
     ),
-    searchDriver: configService.get<'mongodb' | 'atlas'>(
+    searchDriver: configService.get<'atlas'>(
       'CATALOG_SEARCH_DRIVER',
-      'mongodb'
+      'atlas'
     ),
     mongodbUri: configService.get<string>(
       'CATALOG_MONGODB_URI',

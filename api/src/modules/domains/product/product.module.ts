@@ -49,38 +49,36 @@ import { CatalogProductSlugRepository } from './app/ports/catalog-product-slug.r
 import { ProductRecommendationQueryRepository } from './app/ports/product-recommendation-query.repository';
 import { SellerProductQueryRepository } from './app/ports/seller-product-query.repository';
 import { StorefrontProductQueryRepository } from './app/ports/storefront-product-query.repository';
-import { InternalCatalogController } from './api/rest/internal-catalog.controller';
-import { ProductActivityController } from './api/rest/product-activity.controller';
-import { ProductController } from './api/rest/product.controller';
-import { ProductRecommendationController } from './api/rest/product-recommendation.controller';
-import { ProductActivitySessionService } from './api/rest/product-activity-session.service';
+import { InternalCatalogController } from './api/rest/internal/internal-catalog.controller';
+import { ProductActivityController } from './api/rest/activity/product-activity.controller';
+import { ProductController } from './api/rest/storefront/product.controller';
+import { ProductRecommendationController } from './api/rest/recommendations/product-recommendation.controller';
+import { ProductActivitySessionService } from './api/rest/activity/product-activity-session.service';
 import { ProductInventoryEventsController } from './api/rest/product-inventory-events.controller';
-import { ProductUploadController } from './api/rest/product-upload.controller';
+import { ProductUploadController } from './api/rest/uploads/product-upload.controller';
 import { ForwardProductInventoryUpdatedToSseListener } from './listeners/forward-product-inventory-updated-to-sse.listener';
 import { ShopProductsController } from '../shop/api/rest/shop-products.controller';
-import { AtlasProductRecommendationQueryRepository } from './infra/atlas-product-recommendation-query.repository';
-import { MikroOrmProductCommandRepository } from './infra/mikro-orm-product-command.repository';
-import { MikroOrmProductRecommendationQueryRepository } from './infra/mikro-orm-product-recommendation-query.repository';
-import { MikroOrmSellerProductQueryRepository } from './infra/mikro-orm-seller-product-query.repository';
-import { MikroOrmStorefrontProductQueryRepository } from './infra/mikro-orm-storefront-product-query.repository';
-import { MongoCatalogProductDocumentRepository } from './infra/mongo-catalog-product-document.repository';
-import { MongoCatalogSearchDocumentRepository } from './infra/mongo-catalog-search-document.repository';
-import { MongoCatalogProductSlugRepository } from './infra/mongo-catalog-product-slug.repository';
-import { AtlasSearchStorefrontProductQueryRepository } from './infra/atlas-search-storefront-product-query.repository';
-import { MongoProductRecommendationQueryRepository } from './infra/mongo-product-recommendation-query.repository';
-import { MongoStorefrontProductQueryRepository } from './infra/mongo-storefront-product-query.repository';
-import { CatalogMongoAccess } from './infra/catalog-mongo.access';
-import { ProductAttributeValueEntity } from './infra/persistence/entities/product-attribute-value.entity';
-import { ProductImageEntity } from './infra/persistence/entities/product-image.entity';
-import { ProductImageVariantEntity } from './infra/persistence/entities/product-image-variant.entity';
-import { ProductInventoryReservationEntity } from './infra/persistence/entities/product-inventory-reservation.entity';
-import { ProductInventoryEntity } from './infra/persistence/entities/product-inventory.entity';
-import { ProductShippingDestinationEntity } from './infra/persistence/entities/product-shipping-destination.entity';
-import { ProductShippingProfileEntity } from './infra/persistence/entities/product-shipping-profile.entity';
-import { ProductVariantEntity } from './infra/persistence/entities/product-variant.entity';
-import { ProductViewHistoryEntity } from './infra/persistence/entities/product-view-history.entity';
-import { ProductEntity } from './infra/persistence/entities/product.entity';
-import { VariantPriceEntity } from './infra/persistence/entities/variant-price.entity';
+import { AtlasProductRecommendationQueryRepository } from './infra/search/atlas/repositories/atlas-product-recommendation-query.repository';
+import { MikroOrmProductCommandRepository } from './infra/persistence/mikro-orm/repositories/mikro-orm-product-command.repository';
+import { MikroOrmProductRecommendationQueryRepository } from './infra/persistence/mikro-orm/repositories/mikro-orm-product-recommendation-query.repository';
+import { MikroOrmSellerProductQueryRepository } from './infra/persistence/mikro-orm/repositories/mikro-orm-seller-product-query.repository';
+import { MikroOrmStorefrontProductQueryRepository } from './infra/persistence/mikro-orm/repositories/mikro-orm-storefront-product-query.repository';
+import { MongoCatalogProductDocumentRepository } from './infra/catalog/mongo/repositories/mongo-catalog-product-document.repository';
+import { MongoCatalogSearchDocumentRepository } from './infra/catalog/mongo/repositories/mongo-catalog-search-document.repository';
+import { MongoCatalogProductSlugRepository } from './infra/catalog/mongo/repositories/mongo-catalog-product-slug.repository';
+import { AtlasSearchStorefrontProductQueryRepository } from './infra/search/atlas/repositories/atlas-search-storefront-product-query.repository';
+import { CatalogMongoAccess } from './infra/catalog/mongo/access/catalog-mongo.access';
+import { ProductAttributeValueEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-attribute-value.entity';
+import { ProductImageEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-image.entity';
+import { ProductImageVariantEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-image-variant.entity';
+import { ProductInventoryReservationEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-inventory-reservation.entity';
+import { ProductInventoryEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-inventory.entity';
+import { ProductShippingDestinationEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-shipping-destination.entity';
+import { ProductShippingProfileEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-shipping-profile.entity';
+import { ProductVariantEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-variant.entity';
+import { ProductViewHistoryEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-view-history.entity';
+import { ProductEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product.entity';
+import { VariantPriceEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/variant-price.entity';
 import { CATALOG_CONFIG, buildCatalogConfig } from '~/config/catalog.config';
 
 @Module({
@@ -133,22 +131,15 @@ import { CATALOG_CONFIG, buildCatalogConfig } from '~/config/catalog.config';
         CATALOG_CONFIG,
         AtlasSearchStorefrontProductQueryRepository,
         MikroOrmStorefrontProductQueryRepository,
-        MongoStorefrontProductQueryRepository,
       ],
       useFactory: (
         catalogConfig: ReturnType<typeof buildCatalogConfig>,
         atlasSearchStorefrontProductQueryRepository: AtlasSearchStorefrontProductQueryRepository,
-        mikroOrmStorefrontProductQueryRepository: MikroOrmStorefrontProductQueryRepository,
-        mongoStorefrontProductQueryRepository: MongoStorefrontProductQueryRepository
-      ) => {
-        if (catalogConfig.driver !== 'mongodb') {
-          return mikroOrmStorefrontProductQueryRepository;
-        }
-
-        return catalogConfig.searchDriver === 'atlas'
+        mikroOrmStorefrontProductQueryRepository: MikroOrmStorefrontProductQueryRepository
+      ) =>
+        catalogConfig.driver === 'mongodb'
           ? atlasSearchStorefrontProductQueryRepository
-          : mongoStorefrontProductQueryRepository;
-      },
+          : mikroOrmStorefrontProductQueryRepository,
     },
     {
       provide: ProductRecommendationQueryRepository,
@@ -156,22 +147,15 @@ import { CATALOG_CONFIG, buildCatalogConfig } from '~/config/catalog.config';
         CATALOG_CONFIG,
         AtlasProductRecommendationQueryRepository,
         MikroOrmProductRecommendationQueryRepository,
-        MongoProductRecommendationQueryRepository,
       ],
       useFactory: (
         catalogConfig: ReturnType<typeof buildCatalogConfig>,
         atlasProductRecommendationQueryRepository: AtlasProductRecommendationQueryRepository,
-        mikroOrmProductRecommendationQueryRepository: MikroOrmProductRecommendationQueryRepository,
-        mongoProductRecommendationQueryRepository: MongoProductRecommendationQueryRepository
-      ) => {
-        if (catalogConfig.driver !== 'mongodb') {
-          return mikroOrmProductRecommendationQueryRepository;
-        }
-
-        return catalogConfig.searchDriver === 'atlas'
+        mikroOrmProductRecommendationQueryRepository: MikroOrmProductRecommendationQueryRepository
+      ) =>
+        catalogConfig.driver === 'mongodb'
           ? atlasProductRecommendationQueryRepository
-          : mongoProductRecommendationQueryRepository;
-      },
+          : mikroOrmProductRecommendationQueryRepository,
     },
     {
       provide: SellerProductQueryRepository,
@@ -201,11 +185,9 @@ import { CATALOG_CONFIG, buildCatalogConfig } from '~/config/catalog.config';
     ProductImageService,
     CatalogMongoAccess,
     AtlasSearchStorefrontProductQueryRepository,
-    MongoProductRecommendationQueryRepository,
     MongoCatalogProductDocumentRepository,
     MongoCatalogSearchDocumentRepository,
     MongoCatalogProductSlugRepository,
-    MongoStorefrontProductQueryRepository,
     MikroOrmProductCommandRepository,
     MikroOrmProductRecommendationQueryRepository,
     MikroOrmSellerProductQueryRepository,
