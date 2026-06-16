@@ -58,18 +58,18 @@ import { BulkMutateShopProductsUseCase } from '~/modules/domains/product/app/use
 import type {
   ProductDraftSummary
 } from '~/modules/domains/product/app/product.types';
-import { BulkMutateShopProductsDto } from '~/modules/domains/product/api/rest/dto/bulk-mutate-shop-products.dto';
-import { CreateProductDraftFacadeDto } from '~/modules/domains/product/api/rest/dto/create-product-draft-facade.dto';
-import { CreateProductDto } from '~/modules/domains/product/api/rest/dto/create-product.dto';
-import { ListShopProductsQueryDto } from '~/modules/domains/product/api/rest/dto/list-shop-products.query.dto';
-import { SetProductAttributesDto } from '~/modules/domains/product/api/rest/dto/set-product-attributes.dto';
-import { SetProductImagesByKeysDto } from '~/modules/domains/product/api/rest/dto/set-product-images-by-keys.dto';
-import { SetProductInventoryDto } from '~/modules/domains/product/api/rest/dto/set-product-inventory.dto';
-import { SetProductPricingDto } from '~/modules/domains/product/api/rest/dto/set-product-pricing.dto';
-import { SetProductShippingDto } from '~/modules/domains/product/api/rest/dto/set-product-shipping.dto';
-import { SetProductVariantsDto } from '~/modules/domains/product/api/rest/dto/set-product-variants.dto';
-import { UpdateProductDto } from '~/modules/domains/product/api/rest/dto/update-product.dto';
-import { mapProductAppErrorToHttpException } from '~/modules/domains/product/api/rest/product-http-error-mapper';
+import { BulkMutateShopProductsDto } from '~/modules/domains/shop/api/rest/dto/bulk-mutate-shop-products.dto';
+import { CreateProductDraftFacadeDto } from '~/modules/domains/shop/api/rest/dto/create-product-draft-facade.dto';
+import { CreateProductDto } from '~/modules/domains/shop/api/rest/dto/create-product.dto';
+import { ListShopProductsQueryDto } from '~/modules/domains/shop/api/rest/dto/list-shop-products.query.dto';
+import { SetProductAttributesDto } from '~/modules/domains/shop/api/rest/dto/set-product-attributes.dto';
+import { SetProductImagesByKeysDto } from '~/modules/domains/shop/api/rest/dto/set-product-images-by-keys.dto';
+import { SetProductInventoryDto } from '~/modules/domains/shop/api/rest/dto/set-product-inventory.dto';
+import { SetProductPricingDto } from '~/modules/domains/shop/api/rest/dto/set-product-pricing.dto';
+import { SetProductShippingDto } from '~/modules/domains/shop/api/rest/dto/set-product-shipping.dto';
+import { SetProductVariantsDto } from '~/modules/domains/shop/api/rest/dto/set-product-variants.dto';
+import { UpdateProductDto } from '~/modules/domains/shop/api/rest/dto/update-product.dto';
+import { mapProductAppErrorToHttpException } from '~/modules/domains/shop/api/rest/product-http-error-mapper';
 import { ShopRepository } from '../../app/ports/shop.repository';
 import { toShopProductDetailResponse } from './shop-product-detail.presenter';
 import type { ShopProductDetailResponse } from './shop-product-detail.response';
