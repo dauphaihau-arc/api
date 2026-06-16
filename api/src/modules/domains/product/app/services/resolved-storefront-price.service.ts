@@ -2,11 +2,11 @@ import { Injectable } from '@nestjs/common';
 import { MARKETPLACE_MARKETS } from '~/config/marketplace.config';
 import { FxRateService, type ExchangeRateSnapshot } from '~/modules/shared/currency/fx-rate.service';
 import { RoundingPolicyService } from '~/modules/shared/currency/rounding-policy.service';
-import type { ProductInventoryEntity } from '../../infra/persistence/entities/product-inventory.entity';
+import type { ProductInventoryEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-inventory.entity';
 import {
   getActiveBasePrice,
   getActiveMarketPrice
-} from '../../infra/variant-price-read';
+} from '../../infra/persistence/mikro-orm/reads/variant-price-read';
 import { StorefrontMarketContextService } from './storefront-market-context.service';
 
 export interface ResolvedStorefrontPrice {

@@ -2,7 +2,7 @@ import { EntityManager } from '@mikro-orm/postgresql';
 import { Inject, Injectable } from '@nestjs/common';
 import { CATALOG_CONFIG, type CatalogConfig } from '~/config/catalog.config';
 import { ProductState } from '../../domain/enums/product-state.enum';
-import { ProductEntity } from '../../infra/persistence/entities/product.entity';
+import { ProductEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product.entity';
 import {
   CatalogProductDocumentRepository,
   type CatalogProductDocumentStats

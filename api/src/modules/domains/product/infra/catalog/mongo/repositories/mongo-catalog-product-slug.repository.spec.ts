@@ -1,4 +1,4 @@
-import { ProductState } from '../domain/enums/product-state.enum';
+import { ProductState } from '../../../../domain/enums/product-state.enum';
 import { MongoCatalogProductSlugRepository } from './mongo-catalog-product-slug.repository';
 
 describe('MongoCatalogProductSlugRepository', () => {

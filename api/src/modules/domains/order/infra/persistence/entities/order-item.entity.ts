@@ -2,8 +2,8 @@ import {
   Entity, Index, ManyToOne, Property 
 } from '@mikro-orm/core';
 import { AbstractBaseEntity } from '~/common/database/abstract-base.entity';
-import { ProductEntity } from '~/modules/domains/product/infra/persistence/entities/product.entity';
-import { ProductInventoryEntity } from '~/modules/domains/product/infra/persistence/entities/product-inventory.entity';
+import { ProductEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product.entity';
+import { ProductInventoryEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-inventory.entity';
 import { OrderEntity } from './order.entity';
 
 @Entity({ tableName: 'order_items' })

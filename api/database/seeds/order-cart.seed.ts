@@ -11,9 +11,9 @@ import { OrderStatus } from '~/modules/domains/order/domain/enums/order-status.e
 import { PaymentType } from '~/modules/domains/order/domain/enums/payment-type.enum';
 import { OrderEntity } from '~/modules/domains/order/infra/persistence/entities/order.entity';
 import { OrderItemEntity } from '~/modules/domains/order/infra/persistence/entities/order-item.entity';
-import { ProductImageEntity } from '~/modules/domains/product/infra/persistence/entities/product-image.entity';
-import { ProductInventoryEntity } from '~/modules/domains/product/infra/persistence/entities/product-inventory.entity';
-import { getInventoryPricingSnapshot } from '~/modules/domains/product/infra/variant-price-read';
+import { ProductImageEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-image.entity';
+import { ProductInventoryEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-inventory.entity';
+import { getInventoryPricingSnapshot } from '~/modules/domains/product/infra/persistence/mikro-orm/reads/variant-price-read';
 
 type OrderSeed = {
   inventoryId: string;
@@ -192,7 +192,7 @@ export async function seedOrderCartDemo(
           ? Number(((subtotal * coupon.percentOff) / 100).toFixed(2))
           : 0;
     const total = Number((subtotal + orderSeed.shippingFee - totalDiscount).toFixed(2));
-    const createdAt = new Date(Date.UTC(2026, 4, 10 + index * 2, 9, 30, 0));
+    const createdAt = new Date(Date.UTC(2026, 4, 10 + (index * 2), 9, 30, 0));
 
     const order = em.create(OrderEntity, {
       user,
@@ -211,7 +211,7 @@ export async function seedOrderCartDemo(
       shippingAddress: buildShippingAddress(),
       shippingOriginCountries: ['US'],
       shippingToCountry: 'US',
-      shippingEstimatedDelivery: new Date(Date.UTC(2026, 4, 15 + index * 2, 0, 0, 0)),
+      shippingEstimatedDelivery: new Date(Date.UTC(2026, 4, 15 + (index * 2), 0, 0, 0)),
       paymentDetails: {
         provider: 'seed',
         checkoutSessionId: `seed-session-${index + 1}`,

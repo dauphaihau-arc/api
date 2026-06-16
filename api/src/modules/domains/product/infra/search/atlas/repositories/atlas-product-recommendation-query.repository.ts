@@ -1,17 +1,17 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { CATALOG_CONFIG, type CatalogConfig } from '~/config/catalog.config';
-import { ProductRecommendationQueryRepository } from '../app/ports/product-recommendation-query.repository';
+import { ProductRecommendationQueryRepository } from '../../../../app/ports/product-recommendation-query.repository';
 import type {
   ListPublicProductsByShopSlugInput,
   PublicProductListItem,
   RecommendPublicProductsInput
-} from '../app/product.types';
-import { compareRecommendationCandidates } from '../app/services/public-product-recommendation-scoring';
-import { ProductState } from '../domain/enums/product-state.enum';
-import { CatalogMongoAccess } from './catalog-mongo.access';
-import type { CatalogProductDocument } from './catalog-product-document.mapper';
-import type { CatalogSearchDocument } from './catalog-search-document.mapper';
-import { PRODUCT_STOCK_NOTICE_THRESHOLD } from '../app/product-stock.constants';
+} from '../../../../app/product.types';
+import { compareRecommendationCandidates } from '../../../../app/services/public-product-recommendation-scoring';
+import { ProductState } from '../../../../domain/enums/product-state.enum';
+import { CatalogMongoAccess } from '../../../catalog/mongo/access/catalog-mongo.access';
+import type { CatalogProductDocument } from '../../../catalog/mongo/documents/catalog-product-document.mapper';
+import type { CatalogSearchDocument } from '../../../catalog/mongo/documents/catalog-search-document.mapper';
+import { PRODUCT_STOCK_NOTICE_THRESHOLD } from '../../../../app/product-stock.constants';
 
 type MongoAggregateCursorLike<TDocument> = {
   toArray(): Promise<TDocument[]>;

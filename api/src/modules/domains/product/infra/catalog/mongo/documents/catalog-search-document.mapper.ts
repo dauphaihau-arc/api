@@ -1,8 +1,8 @@
-import type { ProductState } from '../domain/enums/product-state.enum';
-import type { ProductVariantType } from '../domain/enums/product-variant-type.enum';
+import type { ProductState } from '../../../../domain/enums/product-state.enum';
+import type { ProductVariantType } from '../../../../domain/enums/product-variant-type.enum';
 import type { ProductEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product.entity';
-import { inferFacetSignalsFromText } from './inferred-facets';
-import { getInventoryPricingSnapshot } from './persistence/mikro-orm/reads/variant-price-read';
+import { inferFacetSignalsFromText } from '../../../inferred-facets';
+import { getInventoryPricingSnapshot } from '../../../persistence/mikro-orm/reads/variant-price-read';
 
 export interface CatalogSearchDocument {
   _id: string;

@@ -6,9 +6,9 @@ import { CATALOG_CONFIG, type CatalogConfig } from '~/config/catalog.config';
 import {
   type CatalogProductSlugDocument,
   CatalogProductSlugRepository
-} from '../app/ports/catalog-product-slug.repository';
-import { ProductState } from '../domain/enums/product-state.enum';
-import { CatalogMongoAccess } from './catalog/mongo/access/catalog-mongo.access';
+} from '../../../../app/ports/catalog-product-slug.repository';
+import { ProductState } from '../../../../domain/enums/product-state.enum';
+import { CatalogMongoAccess } from '../access/catalog-mongo.access';
 
 type MongoSlugCollectionLike<TDocument> = {
   updateOne(

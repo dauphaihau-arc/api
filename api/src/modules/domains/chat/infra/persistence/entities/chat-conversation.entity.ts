@@ -8,7 +8,7 @@ import {
 } from '@mikro-orm/core';
 import { AbstractBaseEntity } from '~/common/database/abstract-base.entity';
 import { CurrentUserEntity } from '~/modules/domains/auth/infra/persistence/entities/current-user.entity';
-import { ProductEntity } from '~/modules/domains/product/infra/persistence/entities/product.entity';
+import { ProductEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product.entity';
 import { ShopEntity } from '~/modules/domains/shop/infra/persistence/entities/shop.entity';
 import { ChatMessageEntity } from './chat-message.entity';
 

@@ -2,7 +2,7 @@ import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
 import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
 import { CurrentUserEntity } from '~/modules/domains/auth/infra/persistence/entities/current-user.entity';
-import { ProductEntity } from '~/modules/domains/product/infra/persistence/entities/product.entity';
+import { ProductEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product.entity';
 import { ShopEntity } from '~/modules/domains/shop/infra/persistence/entities/shop.entity';
 import { toChatConversationSummary } from '../../chat-read-model';
 import type { ChatConversationSummary } from '../../chat.types';

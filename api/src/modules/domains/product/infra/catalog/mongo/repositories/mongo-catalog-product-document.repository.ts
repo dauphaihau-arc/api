@@ -7,10 +7,10 @@ import { CATALOG_CONFIG, type CatalogConfig } from '~/config/catalog.config';
 import {
   type CatalogProductDocumentStats,
   CatalogProductDocumentRepository
-} from '../app/ports/catalog-product-document.repository';
-import { ProductState } from '../domain/enums/product-state.enum';
-import { CatalogMongoAccess } from './catalog/mongo/access/catalog-mongo.access';
-import type { CatalogProductDocument } from './catalog/mongo/documents/catalog-product-document.mapper';
+} from '../../../../app/ports/catalog-product-document.repository';
+import { ProductState } from '../../../../domain/enums/product-state.enum';
+import { CatalogMongoAccess } from '../access/catalog-mongo.access';
+import type { CatalogProductDocument } from '../documents/catalog-product-document.mapper';
 
 type MongoProductCollectionLike = {
   updateOne(

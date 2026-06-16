@@ -1,21 +1,21 @@
 import { EntityManager, EntityRepository } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
 import { StorageService } from '~/modules/shared/storage/app/ports/storage.service';
-import { ProductRecommendationQueryRepository } from '../app/ports/product-recommendation-query.repository';
+import { ProductRecommendationQueryRepository } from '../../../../app/ports/product-recommendation-query.repository';
 import type {
   ListPublicProductsByShopSlugInput,
   PublicProductListItem,
   RecommendPublicProductsInput
-} from '../app/product.types';
-import { compareRecommendationCandidates } from '../app/services/public-product-recommendation-scoring';
-import { ResolvedStorefrontPriceService } from '../app/services/resolved-storefront-price.service';
-import { ProductState } from '../domain/enums/product-state.enum';
+} from '../../../../app/product.types';
+import { compareRecommendationCandidates } from '../../../../app/services/public-product-recommendation-scoring';
+import { ResolvedStorefrontPriceService } from '../../../../app/services/resolved-storefront-price.service';
+import { ProductState } from '../../../../domain/enums/product-state.enum';
 import { ProductInventoryEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-inventory.entity';
 import { ProductEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product.entity';
 import {
   getPrimaryInventory,
   toPublicProductListItem
-} from './storefront-product.projector';
+} from '../../../projection/storefront-product.projector';
 
 @Injectable()
 export class MikroOrmProductRecommendationQueryRepository

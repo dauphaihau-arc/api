@@ -1,4 +1,4 @@
-import type { CatalogSearchDocument } from '../../infra/catalog-search-document.mapper';
+import type { CatalogSearchDocument } from '../../infra/catalog/mongo/documents/catalog-search-document.mapper';
 
 export abstract class CatalogSearchDocumentRepository {
   abstract ping(): Promise<void>;

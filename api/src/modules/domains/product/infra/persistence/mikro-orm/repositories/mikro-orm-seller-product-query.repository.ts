@@ -2,15 +2,15 @@ import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
 import { buildPaginationMeta } from '~/common/application/pagination';
 import { StorageService } from '~/modules/shared/storage/app/ports/storage.service';
-import { SellerProductQueryRepository } from '../app/ports/seller-product-query.repository';
+import { SellerProductQueryRepository } from '../../../../app/ports/seller-product-query.repository';
 import type {
   ListShopProductsInput,
   ProductDraftSummary,
   ShopProductListResult
-} from '../app/product.types';
-import { ProductState } from '../domain/enums/product-state.enum';
+} from '../../../../app/product.types';
+import { ProductState } from '../../../../domain/enums/product-state.enum';
 import { ProductEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product.entity';
-import { toProductDraftSummary } from './product-draft-summary.projector';
+import { toProductDraftSummary } from '../../../projection/product-draft-summary.projector';
 
 @Injectable()
 export class MikroOrmSellerProductQueryRepository

@@ -8,7 +8,7 @@ import {
   Unique
 } from '@mikro-orm/core';
 import { AbstractBaseEntity } from '~/common/database/abstract-base.entity';
-import { ProductAttributeValueEntity } from '~/modules/domains/product/infra/persistence/entities/product-attribute-value.entity';
+import { ProductAttributeValueEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-attribute-value.entity';
 import { CategoryAttributeOptionEntity } from './category-attribute-option.entity';
 import { CategoryEntity } from './category.entity';
 

@@ -6,7 +6,7 @@ import { CurrentUserEntity } from '~/modules/domains/auth/infra/persistence/enti
 import type { CartSnapshot } from '~/modules/domains/cart/app/cart.types';
 import { CouponPricingService } from '~/modules/domains/coupon/app/coupon-pricing.service';
 import { StorefrontMarketContextService } from '~/modules/domains/product/app/services/storefront-market-context.service';
-import { ProductInventoryEntity } from '~/modules/domains/product/infra/persistence/entities/product-inventory.entity';
+import { ProductInventoryEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-inventory.entity';
 import {
   CheckoutQuoteActorType,
   CheckoutQuoteEntity

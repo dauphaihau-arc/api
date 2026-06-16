@@ -6,9 +6,9 @@ import { StorageService } from '~/modules/shared/storage/app/ports/storage.servi
 import { PRODUCT_IMAGE_VARIANT_SPECS } from '../config/product-image-variant.config';
 import { ProductImageVariant } from '../../domain/enums/product-image-variant.enum';
 import { ProductImageVariantStatus } from '../../domain/enums/product-image-variant-status.enum';
-import { ProductImageVariantEntity } from '../../infra/persistence/entities/product-image-variant.entity';
-import { ProductEntity } from '../../infra/persistence/entities/product.entity';
-import type { ProductImageEntity } from '../../infra/persistence/entities/product-image.entity';
+import { ProductImageVariantEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-image-variant.entity';
+import { ProductEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product.entity';
+import type { ProductImageEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-image.entity';
 
 function formatDurationMs(durationMs: number): string {
   if (durationMs < 1_000) {

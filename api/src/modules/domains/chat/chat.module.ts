@@ -2,7 +2,7 @@ import { MikroOrmModule } from '@mikro-orm/nestjs';
 import { Module } from '@nestjs/common';
 import { WsModule } from '../../shared/ws/ws.module';
 import { CurrentUserEntity } from '../auth/infra/persistence/entities/current-user.entity';
-import { ProductEntity } from '../product/infra/persistence/entities/product.entity';
+import { ProductEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product.entity';
 import { ShopModule } from '../shop/shop.module';
 import { ShopEntity } from '../shop/infra/persistence/entities/shop.entity';
 import { MeChatController } from './api/rest/me-chat.controller';

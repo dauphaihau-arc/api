@@ -20,9 +20,9 @@ import {
 import { CategoryEntity } from '../src/modules/domains/category/infra/persistence/entities/category.entity';
 import { ProductImageService } from '../src/modules/domains/product/app/services/product-image.service';
 import { ProductImageVariantStatus } from '../src/modules/domains/product/domain/enums/product-image-variant-status.enum';
-import { ProductImageEntity } from '../src/modules/domains/product/infra/persistence/entities/product-image.entity';
-import { ProductImageVariantEntity } from '../src/modules/domains/product/infra/persistence/entities/product-image-variant.entity';
-import { ProductEntity } from '../src/modules/domains/product/infra/persistence/entities/product.entity';
+import { ProductImageEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-image.entity';
+import { ProductImageVariantEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-image-variant.entity';
+import { ProductEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product.entity';
 import { ShopEntity } from '../src/modules/domains/shop/infra/persistence/entities/shop.entity';
 import { SharpImageTransformService } from '../src/modules/shared/image-transform/infra/sharp-image-transform.service';
 import type { StorageService } from '../src/modules/shared/storage/app/ports/storage.service';

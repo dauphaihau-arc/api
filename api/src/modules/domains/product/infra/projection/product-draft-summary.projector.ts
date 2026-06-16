@@ -1,8 +1,8 @@
 import type { StorageService } from '~/modules/shared/storage/app/ports/storage.service';
-import type { ProductDraftSummary } from '../app/product.types';
+import type { ProductDraftSummary } from '../../app/product.types';
 import type { ProductInventoryEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-inventory.entity';
 import type { ProductEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product.entity';
-import { getInventoryPricingSnapshot } from './persistence/mikro-orm/reads/variant-price-read';
+import { getInventoryPricingSnapshot } from '../persistence/mikro-orm/reads/variant-price-read';
 
 export function toProductDraftSummary(
   product: ProductEntity,

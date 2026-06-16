@@ -1,7 +1,7 @@
 import {
   getActiveBasePrice,
   getInventoryPricingSnapshot
-} from './persistence/mikro-orm/reads/variant-price-read';
+} from './variant-price-read';
 
 describe('variant-price-read', () => {
   function createInventory(prices: Array<{

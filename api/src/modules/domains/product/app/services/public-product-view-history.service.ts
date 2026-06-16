@@ -5,8 +5,8 @@ import { StorefrontProductQueryRepository } from '../ports/storefront-product-qu
 import type { PublicProductListItem } from '../product.types';
 import { GetPublicProductBySlugsUseCase } from '../use-cases/get-public-product-by-slugs/get-public-product-by-slugs.use-case';
 import { ProductState } from '../../domain/enums/product-state.enum';
-import { ProductEntity } from '../../infra/persistence/entities/product.entity';
-import { ProductViewHistoryEntity } from '../../infra/persistence/entities/product-view-history.entity';
+import { ProductEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product.entity';
+import { ProductViewHistoryEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-view-history.entity';
 
 @Injectable()
 export class PublicProductViewHistoryService {

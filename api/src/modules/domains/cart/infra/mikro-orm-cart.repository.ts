@@ -4,8 +4,8 @@ import { CART_CONFIG } from '~/config/cart.config';
 import type { CartConfig } from '~/config/cart.config';
 import { CurrentUserEntity } from '~/modules/domains/auth/infra/persistence/entities/current-user.entity';
 import { ResolvedStorefrontPriceService } from '~/modules/domains/product/app/services/resolved-storefront-price.service';
-import { ProductImageEntity } from '~/modules/domains/product/infra/persistence/entities/product-image.entity';
-import { ProductInventoryEntity } from '~/modules/domains/product/infra/persistence/entities/product-inventory.entity';
+import { ProductImageEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-image.entity';
+import { ProductInventoryEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-inventory.entity';
 import { ProductVariantType } from '~/modules/domains/product/domain/enums/product-variant-type.enum';
 import { StorageService } from '~/modules/shared/storage/app/ports/storage.service';
 import {

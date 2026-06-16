@@ -5,7 +5,7 @@ import {
   buildProductInventoryUpdatedSseEvent
 } from '~/modules/domains/product/app/events/product-inventory-sse.event';
 import { CouponUsageEntity } from '../../coupon/infra/persistence/entities/coupon-usage.entity';
-import { ProductInventoryEntity } from '../../product/infra/persistence/entities/product-inventory.entity';
+import { ProductInventoryEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-inventory.entity';
 import { OrderStatus } from '../domain/enums/order-status.enum';
 import { OrderEntity } from '../infra/persistence/entities/order.entity';
 import { OrderItemEntity } from '../infra/persistence/entities/order-item.entity';

@@ -1,9 +1,9 @@
-import { ProductState } from '../domain/enums/product-state.enum';
-import { ProductVariantType } from '../domain/enums/product-variant-type.enum';
-import { ProductWhoMade } from '../domain/enums/product-who-made.enum';
-import { ProductImageVariant } from '../domain/enums/product-image-variant.enum';
-import { ProductImageVariantStatus } from '../domain/enums/product-image-variant-status.enum';
-import { ProductShippingCharge } from '../domain/enums/product-shipping-charge.enum';
+import { ProductState } from '../../../../domain/enums/product-state.enum';
+import { ProductVariantType } from '../../../../domain/enums/product-variant-type.enum';
+import { ProductWhoMade } from '../../../../domain/enums/product-who-made.enum';
+import { ProductImageVariant } from '../../../../domain/enums/product-image-variant.enum';
+import { ProductImageVariantStatus } from '../../../../domain/enums/product-image-variant-status.enum';
+import { ProductShippingCharge } from '../../../../domain/enums/product-shipping-charge.enum';
 import { toCatalogProductDocument } from './catalog-product-document.mapper';
 
 describe('catalog-product-document.mapper', () => {

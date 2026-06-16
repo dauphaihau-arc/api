@@ -1,6 +1,6 @@
-import { ProductState } from '../domain/enums/product-state.enum';
+import { ProductState } from '../../../../domain/enums/product-state.enum';
 import type { ProductEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product.entity';
-import type { CatalogProductSlugDocument } from '../app/ports/catalog-product-slug.repository';
+import type { CatalogProductSlugDocument } from '../../../../app/ports/catalog-product-slug.repository';
 
 export function toCatalogProductSlugDocument(
   product: ProductEntity

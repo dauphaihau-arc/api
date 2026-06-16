@@ -2,9 +2,9 @@ import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
 import { MARKETPLACE_MARKETS } from '~/config/marketplace.config';
 import { StorageService } from '~/modules/shared/storage/app/ports/storage.service';
-import { ProductCommandRepository } from '../app/ports/product-command.repository';
-import { ProductPricingRepository } from '../app/ports/product-pricing.repository';
-import { ResolvedStorefrontPriceService } from '../app/services/resolved-storefront-price.service';
+import { ProductCommandRepository } from '../../../../app/ports/product-command.repository';
+import { ProductPricingRepository } from '../../../../app/ports/product-pricing.repository';
+import { ResolvedStorefrontPriceService } from '../../../../app/services/resolved-storefront-price.service';
 import type {
   CreateProductDraftRepositoryInput,
   ProductDraftSummary,
@@ -15,9 +15,9 @@ import type {
   ReplaceProductShippingRepositoryInput,
   ReplaceProductVariantsRepositoryInput,
   UpdateProductDetailsRepositoryInput
-} from '../app/product.types';
-import { ProductImageVariantStatus } from '../domain/enums/product-image-variant-status.enum';
-import { ProductState } from '../domain/enums/product-state.enum';
+} from '../../../../app/product.types';
+import { ProductImageVariantStatus } from '../../../../domain/enums/product-image-variant-status.enum';
+import { ProductState } from '../../../../domain/enums/product-state.enum';
 import { CategoryAttributeOptionEntity } from '~/modules/domains/category/infra/persistence/entities/category-attribute-option.entity';
 import { CategoryAttributeEntity } from '~/modules/domains/category/infra/persistence/entities/category-attribute.entity';
 import { CategoryEntity } from '~/modules/domains/category/infra/persistence/entities/category.entity';
@@ -30,8 +30,8 @@ import { ProductShippingDestinationEntity } from '~/modules/domains/product/infr
 import { ProductShippingProfileEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-shipping-profile.entity';
 import { ProductVariantEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-variant.entity';
 import { VARIANT_PRICE_TYPES, VariantPriceEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/variant-price.entity';
-import { getInventoryPricingSnapshot } from './variant-price-read';
-import { toProductDraftSummary } from './product-draft-summary.projector';
+import { getInventoryPricingSnapshot } from '../reads/variant-price-read';
+import { toProductDraftSummary } from '../../../projection/product-draft-summary.projector';
 
 @Injectable()
 export class MikroOrmProductCommandRepository

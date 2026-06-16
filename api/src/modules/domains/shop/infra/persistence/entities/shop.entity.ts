@@ -11,7 +11,7 @@ import { AbstractBaseEntity } from '~/common/database/abstract-base.entity';
 import { createPublicId } from '~/common/ids/public-id';
 import type { MarketplaceCurrency } from '~/config/marketplace.config';
 import { CurrentUserEntity } from '~/modules/domains/auth/infra/persistence/entities/current-user.entity';
-import { ProductEntity } from '~/modules/domains/product/infra/persistence/entities/product.entity';
+import { ProductEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product.entity';
 
 @Entity({ tableName: 'shops' })
 @Index({ properties: ['ownerUser'] })

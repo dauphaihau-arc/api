@@ -7,7 +7,7 @@ import {
   PRODUCT_INVENTORY_UPDATED_SSE_EVENT
 } from '~/modules/domains/product/app/events/product-inventory-sse.event';
 import { CouponUsageEntity } from '../../coupon/infra/persistence/entities/coupon-usage.entity';
-import { ProductInventoryEntity } from '../../product/infra/persistence/entities/product-inventory.entity';
+import { ProductInventoryEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-inventory.entity';
 import { OrderEventActorType } from '../domain/enums/order-event-actor-type.enum';
 import { OrderEventType } from '../domain/enums/order-event-type.enum';
 import { OrderStatus } from '../domain/enums/order-status.enum';

@@ -7,7 +7,7 @@ import {
   Property
 } from '@mikro-orm/core';
 import { AbstractBaseEntity } from '~/common/database/abstract-base.entity';
-import { ProductEntity } from '~/modules/domains/product/infra/persistence/entities/product.entity';
+import { ProductEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product.entity';
 import { CategoryAttributeEntity } from './category-attribute.entity';
 
 @Entity({ tableName: 'categories' })

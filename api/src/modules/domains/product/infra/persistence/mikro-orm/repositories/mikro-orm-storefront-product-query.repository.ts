@@ -2,9 +2,9 @@ import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
 import { buildPaginationMeta } from '~/common/application/pagination';
 import { StorageService } from '~/modules/shared/storage/app/ports/storage.service';
-import { StorefrontProductQueryRepository } from '../app/ports/storefront-product-query.repository';
-import { ResolvedStorefrontPriceService } from '../app/services/resolved-storefront-price.service';
-import { StorefrontMarketContextService } from '../app/services/storefront-market-context.service';
+import { StorefrontProductQueryRepository } from '../../../../app/ports/storefront-product-query.repository';
+import { ResolvedStorefrontPriceService } from '../../../../app/services/resolved-storefront-price.service';
+import { StorefrontMarketContextService } from '../../../../app/services/storefront-market-context.service';
 import type {
   ListPublicProductsInput,
   PublicProductFacet,
@@ -13,17 +13,18 @@ import type {
   PublicProductListResult,
   PublicProductSuggestion,
   SuggestPublicProductsInput
-} from '../app/product.types';
-import { PUBLIC_PRODUCT_FACET_PRIORITY } from '../app/product-facet.constants';
-import { toCanonicalFacetOption } from '../app/shoe-size-groups';
-import { ProductState } from '../domain/enums/product-state.enum';
-import { getInferredFacetTerms, isInferredFacetSupported } from './inferred-facets';
+} from '../../../../app/product.types';
+import { PUBLIC_PRODUCT_FACET_PRIORITY } from '../../../../app/product-facet.constants';
+import { toCanonicalFacetOption } from '../../../../app/shoe-size-groups';
+import { ProductState } from '../../../../domain/enums/product-state.enum';
+import { getInferredFacetTerms, isInferredFacetSupported } from '../../../inferred-facets';
 import { ProductInventoryEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-inventory.entity';
 import { ProductEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product.entity';
 import {
+  getPrimaryInventory,
   toPublicProductDetail,
   toPublicProductListItem
-} from './storefront-product.projector';
+} from '../../../projection/storefront-product.projector';
 
 @Injectable()
 export class MikroOrmStorefrontProductQueryRepository
@@ -662,6 +663,18 @@ implements StorefrontProductQueryRepository {
     const start = (page - 1) * limit;
 
     return sortedProducts.slice(start, start + limit).map(({ product }) => product);
+  }
+
+  private async getComparablePrice(product: ProductEntity): Promise<number> {
+    const inventory = getPrimaryInventory(product);
+
+    if (!inventory) {
+      return Number.POSITIVE_INFINITY;
+    }
+
+    const pricing = await this.resolvedStorefrontPriceService.resolveForCurrentRequest(inventory);
+
+    return pricing?.amountMinor ?? Number.POSITIVE_INFINITY;
   }
 
   private shouldIncludeInPublicList(product: ProductEntity): boolean {

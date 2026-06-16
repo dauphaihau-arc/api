@@ -1,4 +1,4 @@
-import type { CatalogProductDocument } from '../../infra/catalog-product-document.mapper';
+import type { CatalogProductDocument } from '../../infra/catalog/mongo/documents/catalog-product-document.mapper';
 
 export interface CatalogProductDocumentStats {
   totalDocuments: number;

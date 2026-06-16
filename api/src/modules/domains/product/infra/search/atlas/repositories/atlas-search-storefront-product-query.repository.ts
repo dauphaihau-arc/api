@@ -1,11 +1,11 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { buildPaginationMeta } from '~/common/application/pagination';
 import { CATALOG_CONFIG, type CatalogConfig } from '~/config/catalog.config';
-import { ProductState } from '../domain/enums/product-state.enum';
-import { toCanonicalFacetOption } from '../app/shoe-size-groups';
-import { CatalogProductSlugRepository } from '../app/ports/catalog-product-slug.repository';
-import { StorefrontProductQueryRepository } from '../app/ports/storefront-product-query.repository';
-import { CatalogMongoAccess } from './catalog-mongo.access';
+import { ProductState } from '../../../../domain/enums/product-state.enum';
+import { toCanonicalFacetOption } from '../../../../app/shoe-size-groups';
+import { CatalogProductSlugRepository } from '../../../../app/ports/catalog-product-slug.repository';
+import { StorefrontProductQueryRepository } from '../../../../app/ports/storefront-product-query.repository';
+import { CatalogMongoAccess } from '../../../catalog/mongo/access/catalog-mongo.access';
 import type {
   ListPublicProductsInput,
   PublicProductFacet,
@@ -14,12 +14,12 @@ import type {
   PublicProductListResult,
   PublicProductSuggestion,
   SuggestPublicProductsInput
-} from '../app/product.types';
-import { PUBLIC_PRODUCT_FACET_PRIORITY } from '../app/product-facet.constants';
-import type { CatalogProductDocument } from './catalog-product-document.mapper';
-import type { CatalogSearchDocument } from './catalog-search-document.mapper';
-import { getInferredFacetTerms, isInferredFacetSupported } from './inferred-facets';
-import { PRODUCT_STOCK_NOTICE_THRESHOLD } from '../app/product-stock.constants';
+} from '../../../../app/product.types';
+import { PUBLIC_PRODUCT_FACET_PRIORITY } from '../../../../app/product-facet.constants';
+import type { CatalogProductDocument } from '../../../catalog/mongo/documents/catalog-product-document.mapper';
+import type { CatalogSearchDocument } from '../../../catalog/mongo/documents/catalog-search-document.mapper';
+import { getInferredFacetTerms, isInferredFacetSupported } from '../../../inferred-facets';
+import { PRODUCT_STOCK_NOTICE_THRESHOLD } from '../../../../app/product-stock.constants';
 
 type MongoAggregateCursorLike<TDocument> = {
   toArray(): Promise<TDocument[]>;

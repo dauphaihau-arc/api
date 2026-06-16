@@ -3,9 +3,9 @@ import {
   Injectable
 } from '@nestjs/common';
 import { CATALOG_CONFIG, type CatalogConfig } from '~/config/catalog.config';
-import { CatalogSearchDocumentRepository } from '../app/ports/catalog-search-document.repository';
-import { CatalogMongoAccess } from './catalog/mongo/access/catalog-mongo.access';
-import type { CatalogSearchDocument } from './catalog/mongo/documents/catalog-search-document.mapper';
+import { CatalogSearchDocumentRepository } from '../../../../app/ports/catalog-search-document.repository';
+import { CatalogMongoAccess } from '../access/catalog-mongo.access';
+import type { CatalogSearchDocument } from '../documents/catalog-search-document.mapper';
 
 type MongoSearchCollectionLike = {
   updateOne(

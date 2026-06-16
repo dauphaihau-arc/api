@@ -6,10 +6,10 @@ import { ProductState } from '../../domain/enums/product-state.enum';
 import { CatalogProductDocumentRepository } from '../ports/catalog-product-document.repository';
 import { CatalogSearchDocumentRepository } from '../ports/catalog-search-document.repository';
 import { CatalogProductSlugRepository } from '../ports/catalog-product-slug.repository';
-import { toCatalogProductDocument } from '../../infra/catalog-product-document.mapper';
-import { toCatalogSearchDocument } from '../../infra/catalog-search-document.mapper';
-import { toCatalogProductSlugDocument } from '../../infra/catalog-product-slug.mapper';
-import { ProductEntity } from '../../infra/persistence/entities/product.entity';
+import { toCatalogProductDocument } from '../../infra/catalog/mongo/documents/catalog-product-document.mapper';
+import { toCatalogSearchDocument } from '../../infra/catalog/mongo/documents/catalog-search-document.mapper';
+import { toCatalogProductSlugDocument } from '../../infra/catalog/mongo/documents/catalog-product-slug.mapper';
+import { ProductEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product.entity';
 
 @Injectable()
 export class CatalogProductProjectorService {

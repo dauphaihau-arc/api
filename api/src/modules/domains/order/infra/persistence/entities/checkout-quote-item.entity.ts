@@ -2,7 +2,7 @@ import {
   Entity, Index, ManyToOne, Property 
 } from '@mikro-orm/core';
 import { AbstractBaseEntity } from '~/common/database/abstract-base.entity';
-import { ProductInventoryEntity } from '~/modules/domains/product/infra/persistence/entities/product-inventory.entity';
+import { ProductInventoryEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-inventory.entity';
 import { CheckoutQuoteEntity } from './checkout-quote.entity';
 
 @Entity({ tableName: 'checkout_quote_items' })

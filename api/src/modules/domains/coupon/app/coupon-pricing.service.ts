@@ -17,7 +17,7 @@ import {
 import { CouponType } from '../domain/enums/coupon-type.enum';
 import { CouponUsageEntity } from '../infra/persistence/entities/coupon-usage.entity';
 import { CouponEntity } from '../infra/persistence/entities/coupon.entity';
-import { ProductShippingProfileEntity } from '../../product/infra/persistence/entities/product-shipping-profile.entity';
+import { ProductShippingProfileEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-shipping-profile.entity';
 
 @Injectable()
 export class CouponPricingService {

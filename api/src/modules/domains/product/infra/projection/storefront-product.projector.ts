@@ -2,13 +2,13 @@ import type { StorageService } from '~/modules/shared/storage/app/ports/storage.
 import type {
   PublicProductDetail,
   PublicProductListItem
-} from '../app/product.types';
-import { ProductImageVariant } from '../domain/enums/product-image-variant.enum';
+} from '../../app/product.types';
+import { ProductImageVariant } from '../../domain/enums/product-image-variant.enum';
 import type { ProductInventoryEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-inventory.entity';
 import type { ProductImageEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-image.entity';
 import type { ProductEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product.entity';
-import { ProductShippingCharge } from '../domain/enums/product-shipping-charge.enum';
-import { PRODUCT_STOCK_NOTICE_THRESHOLD } from '../app/product-stock.constants';
+import { ProductShippingCharge } from '../../domain/enums/product-shipping-charge.enum';
+import { PRODUCT_STOCK_NOTICE_THRESHOLD } from '../../app/product-stock.constants';
 
 type PublicPricing = {
   amountMinor?: number;
