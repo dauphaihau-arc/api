@@ -54,7 +54,7 @@ import { ProductActivityController } from './api/rest/activity/product-activity.
 import { ProductController } from './api/rest/storefront/product.controller';
 import { ProductRecommendationController } from './api/rest/recommendations/product-recommendation.controller';
 import { ProductActivitySessionService } from './api/rest/activity/product-activity-session.service';
-import { ProductInventoryEventsController } from './api/rest/product-inventory-events.controller';
+import { ProductInventoryEventsController } from './api/rest/inventory-events/product-inventory-events.controller';
 import { ProductUploadController } from './api/rest/uploads/product-upload.controller';
 import { ForwardProductInventoryUpdatedToSseListener } from './listeners/forward-product-inventory-updated-to-sse.listener';
 import { ShopProductsController } from '../shop/api/rest/shop-products.controller';
