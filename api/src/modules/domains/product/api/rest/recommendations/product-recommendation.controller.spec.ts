@@ -2,6 +2,7 @@ import { RequestMethod } from '@nestjs/common';
 import { METHOD_METADATA, PATH_METADATA } from '@nestjs/common/constants';
 import { GUARDS_METADATA } from '@nestjs/common/constants';
 import { OptionalJwtAuthGuard } from '~/modules/domains/auth/api/guard/optional-jwt-auth.guard';
+import type { PublicProductOrderHistoryService } from '../../../app/services/public-product-order-history.service';
 import type { PublicProductViewHistoryService } from '../../../app/services/public-product-view-history.service';
 import type { GetPublicProductRecommendationSectionsUseCase } from '../../../app/use-cases/get-public-product-recommendation-sections/get-public-product-recommendation-sections.use-case';
 import type { RecommendPublicProductsUseCase } from '../../../app/use-cases/recommend-public-products/recommend-public-products.use-case';
@@ -15,6 +16,9 @@ describe('ProductRecommendationController', () => {
   const getPublicProductRecommendationSectionsUseCase: Pick<jest.Mocked<GetPublicProductRecommendationSectionsUseCase>, 'execute'> = {
     execute: jest.fn(),
   };
+  const publicProductOrderHistoryService: Pick<jest.Mocked<PublicProductOrderHistoryService>, 'listBestSellingProducts'> = {
+    listBestSellingProducts: jest.fn(),
+  };
   const publicProductViewHistoryService: Pick<jest.Mocked<PublicProductViewHistoryService>, 'listRecentViews' | 'listTrendingProducts'> = {
     listRecentViews: jest.fn(),
     listTrendingProducts: jest.fn(),
@@ -26,6 +30,7 @@ describe('ProductRecommendationController', () => {
   const controller = new ProductRecommendationController(
     recommendPublicProductsUseCase as never,
     getPublicProductRecommendationSectionsUseCase as never,
+    publicProductOrderHistoryService as never,
     publicProductViewHistoryService as never,
     productActivitySessionService as never
   );
@@ -59,6 +64,13 @@ describe('ProductRecommendationController', () => {
     const handler = ProductRecommendationController.prototype.listTrendingProducts;
 
     expect(Reflect.getMetadata(PATH_METADATA, handler)).toBe('trending');
+    expect(Reflect.getMetadata(METHOD_METADATA, handler)).toBe(RequestMethod.GET);
+  });
+
+  it('registers GET best-sellers on the controller method', () => {
+    const handler = ProductRecommendationController.prototype.listBestSellingProducts;
+
+    expect(Reflect.getMetadata(PATH_METADATA, handler)).toBe('best-sellers');
     expect(Reflect.getMetadata(METHOD_METADATA, handler)).toBe(RequestMethod.GET);
   });
 
@@ -181,11 +193,6 @@ describe('ProductRecommendationController', () => {
             },
           ],
         },
-        {
-          type: 'customers_also_viewed',
-          title: 'Customers also viewed',
-          items: [],
-        },
       ],
     });
     expect(getPublicProductRecommendationSectionsUseCase.execute).toHaveBeenCalledWith('arc-store', 'handmade-bag', 6);
@@ -292,6 +299,55 @@ describe('ProductRecommendationController', () => {
     });
     expect(publicProductViewHistoryService.listTrendingProducts).toHaveBeenCalledWith({
       limit: 6,
+    });
+  });
+
+  it('returns best-selling products', async () => {
+    publicProductOrderHistoryService.listBestSellingProducts.mockResolvedValue([
+      {
+        id: 'product-5',
+        shop: {
+          id: 'shop-1',
+          publicId: 'public-shop-1',
+          shopName: 'Arc Store',
+          slug: 'arc-store',
+        },
+        title: 'Best Seller Product',
+        slug: 'best-seller-product',
+        availability: {
+          inStock: true,
+          lowStock: false,
+          stockTotal: 15,
+        },
+        variantCount: 1,
+        createdAt: new Date('2026-01-04T00:00:00.000Z'),
+      },
+    ]);
+
+    await expect(controller.listBestSellingProducts({ limit: 8 })).resolves.toEqual({
+      items: [
+        {
+          id: 'product-5',
+          shop: {
+            id: 'shop-1',
+            public_id: 'public-shop-1',
+            shop_name: 'Arc Store',
+            slug: 'arc-store',
+          },
+          title: 'Best Seller Product',
+          slug: 'best-seller-product',
+          availability: {
+            in_stock: true,
+            low_stock: false,
+            stock_total: 15,
+          },
+          variant_count: 1,
+          created_at: new Date('2026-01-04T00:00:00.000Z'),
+        },
+      ],
+    });
+    expect(publicProductOrderHistoryService.listBestSellingProducts).toHaveBeenCalledWith({
+      limit: 8,
     });
   });
 });

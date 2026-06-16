@@ -34,6 +34,7 @@ import { seedAuth } from './seeds/auth.seed';
 import { seedCategories } from './seeds/category.seed';
 import { seedCoupons } from './seeds/coupon.seed';
 import { seedExchangeRates } from './seeds/exchange-rate.seed';
+import { seedBulkOrderDemo } from './seeds/order-bulk.seed';
 import { seedOrderCartDemo } from './seeds/order-cart.seed';
 import { seedProducts } from './seeds/product.seed';
 import { seedProductViewHistory } from './seeds/product-view-history.seed';
@@ -103,6 +104,7 @@ async function main() {
 
     const { usersByEmail } = await runSeedStep('Seeding auth', async () => seedAuth(em));
     await runSeedStep('Seeding categories', async () => seedCategories(em));
+
     const { shopsBySlug } = await runSeedStep('Seeding shops', async () =>
       seedShops(em, usersByEmail)
     );
@@ -115,15 +117,12 @@ async function main() {
     await runSeedStep('Seeding demo orders and carts', async () =>
       seedOrderCartDemo(em, usersByEmail)
     );
+    await runSeedStep('Seeding bulk bestseller orders', async () =>
+      seedBulkOrderDemo(em)
+    );
 
     console.log('Seed completed');
     console.log(`[seed] Total duration: ${formatDuration(Date.now() - seedStartedAt)}`);
-    console.log('Users:');
-    console.log('- admin@example.com / Password123! (admin)');
-    console.log('- member@example.com / Password123! (customer)');
-    console.log('- maker.olive@example.com / Password123! (seller)');
-    console.log('- maker.mason@example.com / Password123! (seller)');
-    console.log('- maker.sage@example.com / Password123! (seller)');
   }
   finally {
     await orm.close(true);

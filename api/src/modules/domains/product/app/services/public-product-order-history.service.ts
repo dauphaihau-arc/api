@@ -14,6 +14,58 @@ export class PublicProductOrderHistoryService {
     private readonly storefrontProductQueryRepository: StorefrontProductQueryRepository
   ) {}
 
+  async listBestSellingProducts(input: {
+    limit: number;
+    windowDays?: number;
+  }): Promise<PublicProductListItem[]> {
+    const entityManager = this.entityManager.fork();
+    const lookbackStart = new Date(
+      Date.now() - ((input.windowDays ?? 180) * 24 * 60 * 60 * 1000)
+    );
+    const candidateLimit = Math.max(input.limit * 4, input.limit);
+    const qualifyingStatuses = [OrderStatus.PAID, OrderStatus.COMPLETED];
+
+    const rows = await entityManager.getConnection().execute<Array<{
+      product_id: string;
+    }>>(
+      `
+        select oi.product_id
+        from order_items oi
+        inner join orders o on o.id = oi.order_id
+        inner join products p on p.id = oi.product_id
+        where o.status in (?, ?)
+          and o.created_at >= ?
+          and p.state = ?
+          and exists (
+            select 1
+            from product_images pi
+            where pi.product_id = p.id
+          )
+        group by oi.product_id
+        order by count(distinct oi.order_id) desc, max(o.created_at) desc
+        limit ?
+      `,
+      [
+        qualifyingStatuses[0],
+        qualifyingStatuses[1],
+        lookbackStart,
+        ProductState.ACTIVE,
+        candidateLimit,
+      ]
+    );
+    const productIds = rows.map((row) => row.product_id);
+
+    if (productIds.length === 0) {
+      return [];
+    }
+
+    const products = await this.storefrontProductQueryRepository.findPublicByIds(productIds);
+
+    return products
+      .filter((product) => product.availability.inStock)
+      .slice(0, input.limit);
+  }
+
   async listFrequentlyBoughtTogether(input: {
     shopSlug: string;
     productSlug: string;

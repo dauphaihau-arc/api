@@ -7,6 +7,7 @@ import {
 import { OptionalJwtAuthGuard } from '~/modules/domains/auth/api/guard/optional-jwt-auth.guard';
 import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
 import type { Request } from 'express';
+import { PublicProductOrderHistoryService } from '../../../app/services/public-product-order-history.service';
 import { PublicProductViewHistoryService } from '../../../app/services/public-product-view-history.service';
 import { GetPublicProductRecommendationSectionsUseCase } from '../../../app/use-cases/get-public-product-recommendation-sections/get-public-product-recommendation-sections.use-case';
 import { RecommendPublicProductsUseCase } from '../../../app/use-cases/recommend-public-products/recommend-public-products.use-case';
@@ -27,6 +28,7 @@ export class ProductRecommendationController {
   constructor(
     private readonly recommendPublicProductsUseCase: RecommendPublicProductsUseCase,
     private readonly getPublicProductRecommendationSectionsUseCase: GetPublicProductRecommendationSectionsUseCase,
+    private readonly publicProductOrderHistoryService: PublicProductOrderHistoryService,
     private readonly publicProductViewHistoryService: PublicProductViewHistoryService,
     private readonly productActivitySessionService: ProductActivitySessionService
   ) {}
@@ -62,6 +64,23 @@ export class ProductRecommendationController {
     @Query() query: RecentPublicProductsQueryDto
   ): Promise<PublicProductRecommendationsResponse> {
     const result = await this.publicProductViewHistoryService.listTrendingProducts({
+      limit: query.limit,
+    });
+
+    return toPublicProductRecommendationsResponse(result);
+  }
+
+  @Get('best-sellers')
+  @Header('Cache-Control', 'public, max-age=60')
+  @ApiOperation({ summary: 'List best-selling public products' })
+  @ApiOkResponse({
+    description: 'Best-selling public products.',
+    schema: { type: 'object' },
+  })
+  async listBestSellingProducts(
+    @Query() query: RecentPublicProductsQueryDto
+  ): Promise<PublicProductRecommendationsResponse> {
+    const result = await this.publicProductOrderHistoryService.listBestSellingProducts({
       limit: query.limit,
     });
 
