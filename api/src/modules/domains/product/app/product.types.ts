@@ -336,3 +336,27 @@ export interface SuggestPublicProductsInput {
   search: string;
   limit: number;
 }
+
+export interface RecommendPublicProductsInput {
+  shopSlug: string;
+  productSlug: string;
+  limit: number;
+}
+
+export interface ListPublicProductsByShopSlugInput {
+  shopSlug: string;
+  limit: number;
+  excludeProductSlug?: string;
+}
+
+export type PublicProductRecommendationSectionType =
+  | 'similar_products'
+  | 'from_same_seller'
+  | 'customers_also_viewed'
+  | 'frequently_bought_together';
+
+export interface PublicProductRecommendationSection {
+  type: PublicProductRecommendationSectionType;
+  title: string;
+  items: PublicProductListItem[];
+}

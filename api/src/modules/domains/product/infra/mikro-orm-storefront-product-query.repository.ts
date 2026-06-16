@@ -9,6 +9,7 @@ import type {
   ListPublicProductsInput,
   PublicProductFacet,
   PublicProductDetail,
+  PublicProductListItem,
   PublicProductListResult,
   PublicProductSuggestion,
   SuggestPublicProductsInput
@@ -20,7 +21,6 @@ import { getInferredFacetTerms, isInferredFacetSupported } from './inferred-face
 import { ProductInventoryEntity } from './persistence/entities/product-inventory.entity';
 import { ProductEntity } from './persistence/entities/product.entity';
 import {
-  getPrimaryInventory,
   toPublicProductDetail,
   toPublicProductListItem
 } from './storefront-product.projector';
@@ -70,6 +70,47 @@ implements StorefrontProductQueryRepository {
         storageService: this.storageService,
       })
       : null;
+  }
+
+  async findPublicByIds(productIds: string[]): Promise<PublicProductListItem[]> {
+    if (productIds.length === 0) {
+      return [];
+    }
+
+    const repository = this.entityManager.fork().getRepository(ProductEntity);
+    const products = await repository.find(
+      {
+        id: { $in: productIds },
+        state: ProductState.ACTIVE,
+      },
+      {
+        populate: [
+          'shop',
+          'category',
+          'images',
+          'images.variants',
+          'variants',
+          'inventoryRecords',
+          'inventoryRecords.prices',
+          'inventoryRecords.productVariant',
+          'shippingProfiles',
+          'shippingProfiles.destinations',
+        ],
+      }
+    );
+    const productsById = new Map(products.map((product) => [product.id, product] as const));
+    type LoadedRecentProduct = (typeof products)[number];
+    const orderedProducts = productIds
+      .map((productId) => productsById.get(productId))
+      .filter((product): product is LoadedRecentProduct => product != null)
+      .filter((product) => this.shouldIncludeInPublicList(product));
+
+    return Promise.all(
+      orderedProducts.map((product) => toPublicProductListItem(product, {
+        resolvePricing: (inventory) => this.getResolvedPublicPricing(inventory),
+        storageService: this.storageService,
+      }))
+    );
   }
 
   async listPublic(
@@ -625,18 +666,6 @@ implements StorefrontProductQueryRepository {
 
   private shouldIncludeInPublicList(product: ProductEntity): boolean {
     return product.state === ProductState.ACTIVE && product.images.getItems().length > 0;
-  }
-
-  private async getComparablePrice(product: ProductEntity): Promise<number> {
-    const inventory = getPrimaryInventory(product);
-
-    if (!inventory) {
-      return Number.POSITIVE_INFINITY;
-    }
-
-    const pricing = await this.resolvedStorefrontPriceService.resolveForCurrentRequest(inventory);
-
-    return pricing?.amountMinor ?? Number.POSITIVE_INFINITY;
   }
 
   private async getResolvedPublicPricing(

@@ -2,6 +2,7 @@ import type {
   PublicProductFacet,
   ListPublicProductsInput,
   PublicProductDetail,
+  PublicProductListItem,
   PublicProductListResult,
   PublicProductSuggestion,
   SuggestPublicProductsInput
@@ -12,6 +13,10 @@ export abstract class StorefrontProductQueryRepository {
     shopSlug: string,
     productSlug: string
   ): Promise<PublicProductDetail | null>;
+
+  abstract findPublicByIds(
+    productIds: string[]
+  ): Promise<PublicProductListItem[]>;
 
   abstract listPublic(
     input: ListPublicProductsInput

@@ -70,6 +70,28 @@ implements StorefrontProductQueryRepository {
     return document ? toPublicProductDetail(document) : null;
   }
 
+  async findPublicByIds(productIds: string[]): Promise<PublicProductListItem[]> {
+    if (productIds.length === 0) {
+      return [];
+    }
+
+    const collection = await this.getProductsCollection();
+    const documents = await collection.aggregate<CatalogProductDocument>([
+      {
+        $match: {
+          productId: { $in: productIds },
+          state: ProductState.ACTIVE,
+        },
+      },
+    ]).toArray();
+    const documentsById = new Map(documents.map((document) => [document.productId, document] as const));
+
+    return productIds
+      .map((productId) => documentsById.get(productId))
+      .filter((document): document is CatalogProductDocument => Boolean(document?.images.length))
+      .map((document) => toPublicProductListItemFromCatalogDocument(document));
+  }
+
   async listPublic(
     input: ListPublicProductsInput
   ): Promise<PublicProductListResult> {
@@ -128,7 +150,7 @@ implements StorefrontProductQueryRepository {
     ]).toArray();
 
     return {
-      items: documents.map(toPublicProductListItemFromSearchDocument),
+      items: documents.map((document) => toPublicProductListItemFromSearchDocument(document)),
       meta: buildPaginationMeta(input.page, input.limit, total),
     };
   }
@@ -489,6 +511,7 @@ implements StorefrontProductQueryRepository {
       throw new Error('Atlas Search storefront repository requires CATALOG_SEARCH_DRIVER=atlas');
     }
   }
+
 }
 
 function compareFacetNames(
@@ -550,6 +573,39 @@ function toPublicProductListItemFromSearchDocument(
     },
     variantCount: document.variantCount,
     createdAt: document.ranking.createdAt,
+  };
+}
+
+function toPublicProductListItemFromCatalogDocument(
+  document: CatalogProductDocument
+): PublicProductListItem {
+  const totalStock = document.inventory.reduce((sum, inventory) => sum + inventory.stock, 0);
+
+  return {
+    id: document.productId,
+    shop: {
+      id: document.shopId,
+      publicId: document.shopPublicId,
+      shopName: document.shopName,
+      slug: document.shopSlug,
+    },
+    categoryId: document.categoryId,
+    title: document.title,
+    slug: document.slug,
+    image: document.primaryImage,
+    variantType: document.variantType,
+    pricing: {
+      minAmountMinor: document.sort.minPriceAmountMinor,
+      maxAmountMinor: document.sort.maxPriceAmountMinor,
+      currency: document.primaryInventory?.currency,
+    },
+    availability: {
+      inStock: totalStock > 0,
+      lowStock: totalStock > 0 && totalStock < PRODUCT_STOCK_NOTICE_THRESHOLD,
+      stockTotal: totalStock,
+    },
+    variantCount: document.variantCount,
+    createdAt: document.sort.createdAt,
   };
 }
 

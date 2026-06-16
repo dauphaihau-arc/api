@@ -24,6 +24,7 @@ import { ProductInventoryEntity } from '../src/modules/domains/product/infra/per
 import { ProductShippingDestinationEntity } from '../src/modules/domains/product/infra/persistence/entities/product-shipping-destination.entity';
 import { ProductShippingProfileEntity } from '../src/modules/domains/product/infra/persistence/entities/product-shipping-profile.entity';
 import { ProductVariantEntity } from '../src/modules/domains/product/infra/persistence/entities/product-variant.entity';
+import { ProductViewHistoryEntity } from '../src/modules/domains/product/infra/persistence/entities/product-view-history.entity';
 import { ProductEntity } from '../src/modules/domains/product/infra/persistence/entities/product.entity';
 import { ExchangeRateEntity } from '../src/modules/shared/currency/infra/persistence/entities/exchange-rate.entity';
 import { OrderEntity } from '../src/modules/domains/order/infra/persistence/entities/order.entity';
@@ -35,6 +36,7 @@ import { seedCoupons } from './seeds/coupon.seed';
 import { seedExchangeRates } from './seeds/exchange-rate.seed';
 import { seedOrderCartDemo } from './seeds/order-cart.seed';
 import { seedProducts } from './seeds/product.seed';
+import { seedProductViewHistory } from './seeds/product-view-history.seed';
 import { seedShops } from './seeds/shop.seed';
 
 function formatDuration(ms: number): string {
@@ -89,6 +91,7 @@ async function main() {
       ProductInventoryReservationEntity,
       ProductShippingProfileEntity,
       ProductShippingDestinationEntity,
+      ProductViewHistoryEntity,
       ExchangeRateEntity,
     ],
   });
@@ -105,6 +108,9 @@ async function main() {
     );
     await runSeedStep('Seeding exchange rates', async () => seedExchangeRates(em));
     await runSeedStep('Seeding products', async () => seedProducts(em, shopsBySlug));
+    await runSeedStep('Seeding product view history', async () =>
+      seedProductViewHistory(em, usersByEmail)
+    );
     await runSeedStep('Seeding coupons', async () => seedCoupons(em, shopsBySlug));
     await runSeedStep('Seeding demo orders and carts', async () =>
       seedOrderCartDemo(em, usersByEmail)
@@ -118,7 +124,8 @@ async function main() {
     console.log('- maker.olive@example.com / Password123! (seller)');
     console.log('- maker.mason@example.com / Password123! (seller)');
     console.log('- maker.sage@example.com / Password123! (seller)');
-  } finally {
+  }
+  finally {
     await orm.close(true);
   }
 }

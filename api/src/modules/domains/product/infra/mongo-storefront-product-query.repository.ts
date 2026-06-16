@@ -80,6 +80,28 @@ implements StorefrontProductQueryRepository {
     return document ? this.toPublicProductDetail(document) : null;
   }
 
+  async findPublicByIds(productIds: string[]): Promise<PublicProductListItem[]> {
+    if (productIds.length === 0) {
+      return [];
+    }
+
+    const collection = await this.getCollection();
+    const documents = await collection.find({
+      productId: { $in: productIds },
+      state: ProductState.ACTIVE,
+    }).toArray();
+    const documentsById = new Map(
+      documents
+        .filter((document) => this.shouldIncludeInPublicList(document))
+        .map((document) => [document.productId, document] as const)
+    );
+    const orderedDocuments = productIds
+      .map((productId) => documentsById.get(productId))
+      .filter((document): document is CatalogProductDocument => document != null);
+
+    return Promise.all(orderedDocuments.map((document) => this.toPublicProductListItem(document)));
+  }
+
   async listPublic(
     input: ListPublicProductsInput
   ): Promise<PublicProductListResult> {
@@ -539,6 +561,7 @@ implements StorefrontProductQueryRepository {
 
     return true;
   }
+
 }
 
 function toMajorUnits(amountMinor: number, currency: string): number {

@@ -13,6 +13,8 @@ Expected layout:
 - `seed-data/products.local.tsv` (optional, local-only)
 - `seed-data/product-inventory.tsv`
 - `seed-data/product-inventory.local.tsv` (optional, local-only)
+- `seed-data/product-view-history.tsv`
+- `seed-data/product-view-history.local.tsv` (optional, local-only)
 - `seed-data/exchange-rates.tsv`
 - `seed-data/exchange-rates.local.tsv` (optional, local-only)
 - `seed-data/coupons.tsv`
@@ -34,6 +36,12 @@ Rules:
 - Optional local-only product rows can live in `seed-data/products.local.tsv`.
 - Product inventory and variant rows live in `seed-data/product-inventory.tsv`.
 - Optional local-only inventory rows can live in `seed-data/product-inventory.local.tsv`.
+- Product view-history rows live in `seed-data/product-view-history.tsv`.
+- Optional local-only product view-history rows can live in `seed-data/product-view-history.local.tsv`.
+- Each product view-history row must reference `shop_slug` + `product_title` and include a parseable `viewed_at` timestamp.
+- For one-off rows, provide exactly one of `user_email` or `guest_session_id`.
+- For expanded guest traffic, provide `guest_session_prefix` plus `guest_session_count`; the seeder will generate `<prefix>001`, `<prefix>002`, and so on.
+- `viewed_at_step_minutes` is optional for expanded guest traffic and defaults to `5`.
 - Inventory TSV money columns are seed inputs only. Canonical sell prices are stored in `variant_prices`, not on `product_inventory`.
 - Exchange-rate seed rows live in `seed-data/exchange-rates.tsv`.
 - Optional local-only exchange rates can live in `seed-data/exchange-rates.local.tsv`.
@@ -65,5 +73,6 @@ Local-only workflow:
 - Put extra local auth users in `seed-data/auth-users.local.tsv`.
 - Put extra local products in `seed-data/products.local.tsv`.
 - Put matching local inventory rows in `seed-data/product-inventory.local.tsv`.
+- Put local-only product view-history rows in `seed-data/product-view-history.local.tsv`.
 - Put matching local images in `seed-data/images/products-local/<shop-slug>/<product-slug>/`.
 - Put local-only shops in `seed-data/shops.local.tsv` when products need a new local `shop_slug`.
