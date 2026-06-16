@@ -43,6 +43,7 @@ Do not use this skill for general explanation-only questions when no edits are w
 10. For `active` products, the seed expects a real image folder with `hero.*` or `main.*`.
 11. When adding a product, pre-create the local image folder path under `seed-data/images/products-local/<shop-slug>/<product-slug>/` by default.
 12. If the user is adding a product for local seeding, prefer setting it to `active` so they can drop images into the pre-created folder immediately.
+13. If the user indicates they will add the images themselves, still keep the product `active` by default, create the folder, and clearly remind them that seeding will fail until they place a real `hero.*` or `main.*` image there.
 
 ## Project Conventions
 
@@ -90,6 +91,7 @@ When `db-seed` or `db-seed-demo` fails:
 5. Create the image folder under `seed-data/images/products-local/<shop-slug>/<product-slug>/`
 6. Default new local products to `active` and leave the folder ready for `hero.*` or `main.*`
 7. Use `draft` only when the user explicitly wants an incomplete non-public seed row
+8. If the user says they will add images later, do not downgrade the product to `draft` just for that reason; keep it `active` and call out the required image filename pattern.
 
 ### Add variants
 
@@ -104,5 +106,6 @@ When making changes with this skill:
 
 - state whether the product is `draft` or `active`
 - call out image requirements if `active`
+- if the user plans to add images later, explicitly note that the folder is prepared and that a real `hero.*` or `main.*` file is still required before running the seed successfully
 - mention any inferred values from external listing content
 - verify that product and inventory rows align
