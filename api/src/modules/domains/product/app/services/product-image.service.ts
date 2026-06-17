@@ -1,12 +1,11 @@
-import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable, Logger } from '@nestjs/common';
 import { buildStorageObjectKey, resolveStorageEnvironmentSegment } from '~/modules/shared/storage/app/storage-key-builder';
 import { ImageTransformService } from '~/modules/shared/image-transform/app/ports/image-transform.service';
 import { StorageService } from '~/modules/shared/storage/app/ports/storage.service';
 import { PRODUCT_IMAGE_VARIANT_SPECS } from '../config/product-image-variant.config';
+import { ProductImageVariantGenerationRepository } from '../ports/product-image-variant-generation.repository';
 import { ProductImageVariant } from '../../domain/enums/product-image-variant.enum';
 import { ProductImageVariantStatus } from '../../domain/enums/product-image-variant-status.enum';
-import { ProductImageVariantEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-image-variant.entity';
 import { ProductEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product.entity';
 import type { ProductImageEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-image.entity';
 
@@ -23,19 +22,15 @@ export class ProductImageService {
   private readonly logger = new Logger(ProductImageService.name);
 
   constructor(
-    private readonly entityManager: EntityManager,
+    private readonly productImageVariantGenerationRepository: ProductImageVariantGenerationRepository,
     private readonly storageService: StorageService,
     private readonly imageTransformService: ImageTransformService
   ) {}
 
   async generateVariants(productId: string): Promise<void> {
     const startedAt = performance.now();
-    const entityManager = this.entityManager.fork();
-    const product = await entityManager.getRepository(ProductEntity).findOne(
-      { id: productId },
-      {
-        populate: ['shop', 'images', 'images.variants'],
-      }
+    const product = await this.productImageVariantGenerationRepository.findProductForVariantGeneration(
+      productId
     );
 
     if (!product) {
@@ -49,14 +44,14 @@ export class ProductImageService {
     }
 
     const markProcessingStartedAt = performance.now();
-    await entityManager.flush();
+    await this.productImageVariantGenerationRepository.flush();
     this.logger.debug(
       `[perf] product ${product.slug} mark-processing flush ${formatDurationMs(performance.now() - markProcessingStartedAt)}`
     );
 
     for (const image of product.images.getItems()) {
       try {
-        await this.generateVariantsForImage(entityManager, product, image);
+        await this.generateVariantsForImage(product, image);
         image.variantStatus = ProductImageVariantStatus.READY;
         image.variantError = undefined;
         image.variantsGeneratedAt = new Date();
@@ -70,7 +65,7 @@ export class ProductImageService {
     }
 
     const finalFlushStartedAt = performance.now();
-    await entityManager.flush();
+    await this.productImageVariantGenerationRepository.flush();
     this.logger.debug(
       `[perf] product ${product.slug} final variant flush ${formatDurationMs(performance.now() - finalFlushStartedAt)}`
     );
@@ -80,7 +75,6 @@ export class ProductImageService {
   }
 
   private async generateVariantsForImage(
-    entityManager: EntityManager,
     product: ProductEntity,
     image: ProductImageEntity
   ): Promise<void> {
@@ -141,7 +135,7 @@ export class ProductImageService {
           continue;
         }
 
-        const variantEntity = entityManager.create(ProductImageVariantEntity, {
+        const variantEntity = this.productImageVariantGenerationRepository.createVariant({
           image,
           variant,
           storageKey: key,
@@ -151,7 +145,6 @@ export class ProductImageService {
         });
 
         image.variants.add(variantEntity);
-        entityManager.persist(variantEntity);
       }
 
       const staleVariants = image.variants
@@ -160,7 +153,7 @@ export class ProductImageService {
 
       for (const staleVariant of staleVariants) {
         image.variants.remove(staleVariant);
-        entityManager.remove(staleVariant);
+        this.productImageVariantGenerationRepository.removeVariant(staleVariant);
         const staleDeleteStartedAt = performance.now();
         await this.storageService.deleteObject(staleVariant.storageKey);
         staleDeleteDurationMs += performance.now() - staleDeleteStartedAt;

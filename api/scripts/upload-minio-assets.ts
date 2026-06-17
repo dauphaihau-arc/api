@@ -22,6 +22,7 @@ import { ProductImageService } from '../src/modules/domains/product/app/services
 import { ProductImageVariantStatus } from '../src/modules/domains/product/domain/enums/product-image-variant-status.enum';
 import { ProductImageEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-image.entity';
 import { ProductImageVariantEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-image-variant.entity';
+import { MikroOrmProductImageVariantGenerationRepository } from '~/modules/domains/product/infra/persistence/mikro-orm/repositories/mikro-orm-product-image-variant-generation.repository';
 import { ProductEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product.entity';
 import { ShopEntity } from '../src/modules/domains/shop/infra/persistence/entities/shop.entity';
 import { SharpImageTransformService } from '../src/modules/shared/image-transform/infra/sharp-image-transform.service';
@@ -491,8 +492,11 @@ async function main(): Promise<void> {
   try {
     const em = orm.em.fork();
     const imageTransformService = new SharpImageTransformService();
+    const productImageVariantGenerationRepository = new MikroOrmProductImageVariantGenerationRepository(
+      orm.em
+    );
     const productImageService = new ProductImageService(
-      orm.em,
+      productImageVariantGenerationRepository,
       storageService,
       imageTransformService
     );

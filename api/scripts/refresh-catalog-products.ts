@@ -8,6 +8,7 @@ import { CatalogMongoAccess } from '~/modules/domains/product/infra/catalog/mong
 import { MongoCatalogProductDocumentRepository } from '~/modules/domains/product/infra/catalog/mongo/repositories/mongo-catalog-product-document.repository';
 import { MongoCatalogSearchDocumentRepository } from '~/modules/domains/product/infra/catalog/mongo/repositories/mongo-catalog-search-document.repository';
 import { MongoCatalogProductSlugRepository } from '~/modules/domains/product/infra/catalog/mongo/repositories/mongo-catalog-product-slug.repository';
+import { MikroOrmCatalogProductProjectorSourceRepository } from '~/modules/domains/product/infra/persistence/mikro-orm/repositories/mikro-orm-catalog-product-projector-source.repository';
 import { ProductEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product.entity';
 import { LocalFileStorageService } from '../src/modules/shared/storage/infra/local-file-storage.service';
 import { MinioStorageService } from '../src/modules/shared/storage/infra/minio-storage.service';
@@ -85,8 +86,11 @@ async function main() {
     catalogConfig,
     catalogMongoAccess
   );
+  const catalogProjectorSourceRepository = new MikroOrmCatalogProductProjectorSourceRepository(
+    orm.em
+  );
   const projector = new CatalogProductProjectorService(
-    orm.em,
+    catalogProjectorSourceRepository,
     storageService,
     catalogConfig,
     catalogRepository,

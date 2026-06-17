@@ -43,10 +43,14 @@ import { SetProductVariantsUseCase } from './app/use-cases/set-product-variants/
 import { UpdateProductDetailsUseCase } from './app/use-cases/update-product-details/update-product-details.use-case';
 import { ProductCommandRepository } from './app/ports/product-command.repository';
 import { ProductPricingRepository } from './app/ports/product-pricing.repository';
+import { ProductImageVariantGenerationRepository } from './app/ports/product-image-variant-generation.repository';
 import { CatalogProductDocumentRepository } from './app/ports/catalog-product-document.repository';
+import { CatalogProductProjectorSourceRepository } from './app/ports/catalog-product-projector-source.repository';
 import { CatalogSearchDocumentRepository } from './app/ports/catalog-search-document.repository';
 import { CatalogProductSlugRepository } from './app/ports/catalog-product-slug.repository';
 import { ProductRecommendationQueryRepository } from './app/ports/product-recommendation-query.repository';
+import { PublicProductOrderHistoryRepository } from './app/ports/public-product-order-history.repository';
+import { PublicProductViewHistoryRepository } from './app/ports/public-product-view-history.repository';
 import { SellerProductQueryRepository } from './app/ports/seller-product-query.repository';
 import { StorefrontProductQueryRepository } from './app/ports/storefront-product-query.repository';
 import { InternalCatalogController } from './api/rest/internal/internal-catalog.controller';
@@ -60,6 +64,10 @@ import { ForwardProductInventoryUpdatedToSseListener } from './listeners/forward
 import { ShopProductsController } from '../shop/api/rest/shop-products.controller';
 import { AtlasProductRecommendationQueryRepository } from './infra/search/atlas/repositories/atlas-product-recommendation-query.repository';
 import { MikroOrmProductCommandRepository } from './infra/persistence/mikro-orm/repositories/mikro-orm-product-command.repository';
+import { MikroOrmCatalogProductProjectorSourceRepository } from './infra/persistence/mikro-orm/repositories/mikro-orm-catalog-product-projector-source.repository';
+import { MikroOrmProductImageVariantGenerationRepository } from './infra/persistence/mikro-orm/repositories/mikro-orm-product-image-variant-generation.repository';
+import { MikroOrmPublicProductOrderHistoryRepository } from './infra/persistence/mikro-orm/repositories/mikro-orm-public-product-order-history.repository';
+import { MikroOrmPublicProductViewHistoryRepository } from './infra/persistence/mikro-orm/repositories/mikro-orm-public-product-view-history.repository';
 import { MikroOrmProductRecommendationQueryRepository } from './infra/persistence/mikro-orm/repositories/mikro-orm-product-recommendation-query.repository';
 import { MikroOrmSellerProductQueryRepository } from './infra/persistence/mikro-orm/repositories/mikro-orm-seller-product-query.repository';
 import { MikroOrmStorefrontProductQueryRepository } from './infra/persistence/mikro-orm/repositories/mikro-orm-storefront-product-query.repository';
@@ -162,8 +170,20 @@ import { CATALOG_CONFIG, buildCatalogConfig } from '~/config/catalog.config';
       useExisting: MikroOrmSellerProductQueryRepository,
     },
     {
+      provide: PublicProductOrderHistoryRepository,
+      useExisting: MikroOrmPublicProductOrderHistoryRepository,
+    },
+    {
+      provide: PublicProductViewHistoryRepository,
+      useExisting: MikroOrmPublicProductViewHistoryRepository,
+    },
+    {
       provide: CatalogProductDocumentRepository,
       useExisting: MongoCatalogProductDocumentRepository,
+    },
+    {
+      provide: CatalogProductProjectorSourceRepository,
+      useExisting: MikroOrmCatalogProductProjectorSourceRepository,
     },
     {
       provide: CatalogProductSlugRepository,
@@ -181,6 +201,10 @@ import { CATALOG_CONFIG, buildCatalogConfig } from '~/config/catalog.config';
       provide: ProductPricingRepository,
       useExisting: MikroOrmProductCommandRepository,
     },
+    {
+      provide: ProductImageVariantGenerationRepository,
+      useExisting: MikroOrmProductImageVariantGenerationRepository,
+    },
     AtlasProductRecommendationQueryRepository,
     ProductImageService,
     CatalogMongoAccess,
@@ -188,7 +212,11 @@ import { CATALOG_CONFIG, buildCatalogConfig } from '~/config/catalog.config';
     MongoCatalogProductDocumentRepository,
     MongoCatalogSearchDocumentRepository,
     MongoCatalogProductSlugRepository,
+    MikroOrmCatalogProductProjectorSourceRepository,
     MikroOrmProductCommandRepository,
+    MikroOrmProductImageVariantGenerationRepository,
+    MikroOrmPublicProductOrderHistoryRepository,
+    MikroOrmPublicProductViewHistoryRepository,
     MikroOrmProductRecommendationQueryRepository,
     MikroOrmSellerProductQueryRepository,
     MikroOrmStorefrontProductQueryRepository,
