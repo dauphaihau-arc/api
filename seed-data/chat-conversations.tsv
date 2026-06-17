@@ -1,0 +1,4 @@
+conversation_key	buyer_email	shop_slug	product_title	status	buyer_last_read_at	seller_last_read_at	created_at
+olive-dress-member	member@example.com	olive-atelier	Linen Weekend Dress	open	2026-06-10T09:06:00.000Z	2026-06-10T09:02:00.000Z	2026-06-10T08:00:00.000Z
+reed-sony-member	member@example.com	reed-workshop	Sony WH-1000XM6 Wireless Headphones	open	2026-06-11T10:22:00.000Z	2026-06-11T10:22:00.000Z	2026-06-11T10:00:00.000Z
+juno-dualsense-member	member@example.com	juno-console	PlayStation DualSense Wireless Controller	open	2026-06-12T14:05:00.000Z	2026-06-12T14:12:00.000Z	2026-06-12T14:00:00.000Z

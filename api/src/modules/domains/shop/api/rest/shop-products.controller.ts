@@ -24,8 +24,10 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiParam,
+  ApiResponse,
   ApiTags
 } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { RequirePermissions } from '~/common/decorators/require-permissions.decorator';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { resolveOrThrow } from '~/common/application/result';
@@ -41,6 +43,7 @@ import {
   type CreateProductDraftInput
 } from '~/modules/domains/product/app/use-cases/create-product-draft/create-product-draft.use-case';
 import { GetProductByIdUseCase } from '~/modules/domains/product/app/use-cases/get-product-by-id/get-product-by-id.use-case';
+import { GenerateProductDescriptionUseCase } from '~/modules/domains/product/app/use-cases/generate-product-description/generate-product-description.use-case';
 import { ListShopProductsUseCase } from '~/modules/domains/product/app/use-cases/list-shop-products/list-shop-products.use-case';
 import { PublishProductUseCase } from '~/modules/domains/product/app/use-cases/publish-product/publish-product.use-case';
 import {
@@ -61,6 +64,10 @@ import type {
 import { BulkMutateShopProductsDto } from '~/modules/domains/shop/api/rest/dto/bulk-mutate-shop-products.dto';
 import { CreateProductDraftFacadeDto } from '~/modules/domains/shop/api/rest/dto/create-product-draft-facade.dto';
 import { CreateProductDto } from '~/modules/domains/shop/api/rest/dto/create-product.dto';
+import {
+  GenerateProductDescriptionDto,
+  GenerateProductDescriptionResponseDto
+} from '~/modules/domains/shop/api/rest/dto/generate-product-description.dto';
 import { ListShopProductsQueryDto } from '~/modules/domains/shop/api/rest/dto/list-shop-products.query.dto';
 import { SetProductAttributesDto } from '~/modules/domains/shop/api/rest/dto/set-product-attributes.dto';
 import { SetProductImagesByKeysDto } from '~/modules/domains/shop/api/rest/dto/set-product-images-by-keys.dto';
@@ -76,6 +83,14 @@ import type { ShopProductDetailResponse } from './shop-product-detail.response';
 import { toShopProductListResponse } from './shop-product-list.presenter';
 import type { ShopProductListResponse } from './shop-product-list.response';
 
+const shopProductRouteRateLimits = {
+  generateDescription: {
+    limit: 5,
+    ttl: 60_000,
+    blockDuration: 300_000,
+  },
+} as const;
+
 @Controller('shops/:shop_id/products')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @RequirePermissions('shops.manage')
@@ -87,6 +102,7 @@ export class ShopProductsController {
     private readonly createProductDraftFacadeUseCase: CreateProductDraftFacadeUseCase,
     private readonly createProductDraftUseCase: CreateProductDraftUseCase,
     private readonly getProductByIdUseCase: GetProductByIdUseCase,
+    private readonly generateProductDescriptionUseCase: GenerateProductDescriptionUseCase,
     private readonly listShopProductsUseCase: ListShopProductsUseCase,
     private readonly publishProductUseCase: PublishProductUseCase,
     private readonly setProductImagesByKeysUseCase: SetProductImagesByKeysUseCase,
@@ -196,6 +212,29 @@ export class ShopProductsController {
     }).then((result) =>
       resolveOrThrow(result, mapProductAppErrorToHttpException)
     ).then(toShopProductDetailResponse);
+  }
+
+  @Post('ai/generate-description')
+  @Throttle({
+    default: shopProductRouteRateLimits.generateDescription,
+  })
+  @Header('Cache-Control', 'private, no-store')
+  @ApiOperation({ summary: 'Generate a product description with AI' })
+  @ApiParam({ name: 'shop_id', type: String })
+  @ApiResponse({
+    status: 200,
+    type: GenerateProductDescriptionResponseDto,
+  })
+  async generateProductDescription(
+    @Param('shop_id') shopId: string,
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Body() body: GenerateProductDescriptionDto
+  ): Promise<GenerateProductDescriptionResponseDto> {
+    await this.assertActorCanManageShop(currentUser, shopId);
+
+    return {
+      description: await this.generateProductDescriptionUseCase.execute(body),
+    };
   }
 
   @Post('bulk-mutate')

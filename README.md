@@ -48,6 +48,7 @@ Top-level structure:
 - **DTO validation plus config schema validation** - request DTOs use Nest validation, while environment configuration is validated with Zod at startup
 - **Rate limiting** - Nest throttling protects the global API surface and sensitive endpoints
 - **Idempotency keys on selected writes** - selected write endpoints can safely deduplicate repeated client requests and replay cached responses
+- **Shared AI text generation integration** - seller tooling can call a shared OpenAI-backed text generation service for assisted product description drafting, while keeping provider-specific infrastructure in `shared/ai` and product-specific prompting in the product domain
 - **SSE endpoints** - Server-Sent Events are available for user event streams and product inventory updates
 - **Authenticated WebSocket chat gateway** - Socket.IO-based realtime chat delivery is available on `/ws`, with cookie-authenticated connections, per-conversation authorization, and Redis-backed room fanout. See [`docs/chat-websocket-flow.md`](docs/chat-websocket-flow.md)
 - **Signed object access** - S3-compatible presigned URLs are used for controlled file access

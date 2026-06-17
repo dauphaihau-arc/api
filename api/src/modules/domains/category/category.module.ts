@@ -52,6 +52,7 @@ import { StorageModule } from '../../shared/storage/storage.module';
     SuggestCategoriesUseCase,
   ],
   exports: [
+    CategoryQueryRepository,
     CategoryRepository,
     CreateCategoryUseCase,
     ListCategoriesUseCase,

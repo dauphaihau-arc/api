@@ -29,6 +29,8 @@ import { resolveOrThrow } from '~/common/application/result';
 import { parseDurationToMilliseconds } from '~/libs/duration';
 import type { AuthConfig } from '~/config/auth.config';
 import { AUTH_CONFIG } from '~/config/auth.config';
+import type { OpenAiConfig } from '~/config/openai.config';
+import { OPENAI_CONFIG } from '~/config/openai.config';
 import type { AuthenticatedUser } from '../../app/auth.types';
 import { GetCurrentUserUseCase } from '../../app/use-cases/get-current-user/get-current-user.use-case';
 import { LoginUseCase } from '../../app/use-cases/login/login.use-case';
@@ -92,7 +94,9 @@ export class AuthController {
     private readonly resetPasswordUseCase: ResetPasswordUseCase,
     private readonly authCookieService: AuthCookieService,
     @Inject(AUTH_CONFIG)
-    private readonly authConfig: AuthConfig
+    private readonly authConfig: AuthConfig,
+    @Inject(OPENAI_CONFIG)
+    private readonly openAiConfig: OpenAiConfig
   ) {}
 
   @Post('register')
@@ -202,7 +206,10 @@ export class AuthController {
     type: AuthClientConfigResponseDto,
   })
   getClientConfig(): AuthClientConfigResponseDto {
-    return AuthClientConfigResponseDto.create(this.authConfig);
+    return AuthClientConfigResponseDto.create(
+      this.authConfig,
+      this.openAiConfig
+    );
   }
 
   @Get('verify-token')

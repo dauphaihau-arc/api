@@ -6,6 +6,7 @@ import { IdempotencyModule } from '../../shared/idempotency/idempotency.module';
 import { CacheModule } from '../../shared/cache/cache.module';
 import { StorageModule } from '../../shared/storage/storage.module';
 import { AuditModule } from '../../shared/audit/audit.module';
+import { AiModule } from '../../shared/ai/ai.module';
 import { ImageTransformModule } from '../../shared/image-transform/image-transform.module';
 import { CurrencyModule } from '../../shared/currency/currency.module';
 import { QueueModule } from '../../shared/queue/queue.module';
@@ -30,6 +31,7 @@ import { ListPublicProductsUseCase } from './app/use-cases/list-public-products/
 import { ListShopProductsUseCase } from './app/use-cases/list-shop-products/list-shop-products.use-case';
 import { RecommendPublicProductsUseCase } from './app/use-cases/recommend-public-products/recommend-public-products.use-case';
 import { SuggestPublicProductsUseCase } from './app/use-cases/suggest-public-products/suggest-public-products.use-case';
+import { GenerateProductDescriptionUseCase } from './app/use-cases/generate-product-description/generate-product-description.use-case';
 import { PublicProductViewHistoryService } from './app/services/public-product-view-history.service';
 import { BulkMutateShopProductsUseCase } from './app/use-cases/bulk-mutate-shop-products/bulk-mutate-shop-products.use-case';
 import { PublishProductUseCase } from './app/use-cases/publish-product/publish-product.use-case';
@@ -98,6 +100,7 @@ import { CATALOG_CONFIG, buildCatalogConfig } from '~/config/catalog.config';
     ShopModule,
     CategoryModule,
     StorageModule,
+    AiModule,
     ImageTransformModule,
     CurrencyModule,
     forwardRef(() => QueueModule),
@@ -233,6 +236,7 @@ import { CATALOG_CONFIG, buildCatalogConfig } from '~/config/catalog.config';
     GetProductByIdUseCase,
     GetPublicProductBySlugsUseCase,
     GetPublicProductRecommendationSectionsUseCase,
+    GenerateProductDescriptionUseCase,
     IssueProductImageUploadUrlUseCase,
     ListPublicProductsUseCase,
     ListShopProductsUseCase,

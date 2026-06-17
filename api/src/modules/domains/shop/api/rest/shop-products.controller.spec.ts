@@ -12,6 +12,7 @@ describe('ShopProductsController', () => {
   const createProductDraftFacadeUseCase = { execute: jest.fn() };
   const createProductDraftUseCase = { execute: jest.fn() };
   const getProductByIdUseCase = { execute: jest.fn() };
+  const generateProductDescriptionUseCase = { execute: jest.fn() };
   const listShopProductsUseCase = { execute: jest.fn() };
   const publishProductUseCase = { execute: jest.fn() };
   const setProductImagesByKeysUseCase = { execute: jest.fn() };
@@ -29,6 +30,7 @@ describe('ShopProductsController', () => {
     createProductDraftFacadeUseCase as never,
     createProductDraftUseCase as never,
     getProductByIdUseCase as never,
+    generateProductDescriptionUseCase as never,
     listShopProductsUseCase as never,
     publishProductUseCase as never,
     setProductImagesByKeysUseCase as never,

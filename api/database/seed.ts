@@ -10,12 +10,15 @@ import { CurrentUserCredentialEntity } from '../src/modules/domains/auth/infra/p
 import { CurrentUserEntity } from '../src/modules/domains/auth/infra/persistence/entities/current-user.entity';
 import { CartEntity } from '../src/modules/domains/cart/infra/persistence/entities/cart.entity';
 import { CartItemEntity } from '../src/modules/domains/cart/infra/persistence/entities/cart-item.entity';
+import { ChatConversationEntity } from '../src/modules/domains/chat/infra/persistence/entities/chat-conversation.entity';
+import { ChatMessageEntity } from '../src/modules/domains/chat/infra/persistence/entities/chat-message.entity';
 import { EmailVerificationTokenEntity } from '../src/modules/domains/auth/infra/persistence/entities/email-verification-token.entity';
 import { PasswordResetTokenEntity } from '../src/modules/domains/auth/infra/persistence/entities/password-reset-token.entity';
 import { PermissionEntity } from '../src/modules/domains/auth/infra/persistence/entities/permission.entity';
 import { RolePermissionEntity } from '../src/modules/domains/auth/infra/persistence/entities/role-permission.entity';
 import { RoleEntity } from '../src/modules/domains/auth/infra/persistence/entities/role.entity';
 import { UserRoleEntity } from '../src/modules/domains/auth/infra/persistence/entities/user-role.entity';
+import { UserPreferenceEntity } from '../src/modules/domains/auth/infra/persistence/entities/user-preference.entity';
 import { UserSessionEntity } from '../src/modules/domains/auth/infra/persistence/entities/user-session.entity';
 import { ProductAttributeValueEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-attribute-value.entity';
 import { ProductImageEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-image.entity';
@@ -30,8 +33,10 @@ import { ExchangeRateEntity } from '../src/modules/shared/currency/infra/persist
 import { OrderEntity } from '../src/modules/domains/order/infra/persistence/entities/order.entity';
 import { OrderItemEntity } from '../src/modules/domains/order/infra/persistence/entities/order-item.entity';
 import { ShopEntity } from '../src/modules/domains/shop/infra/persistence/entities/shop.entity';
+import { UserAddressEntity } from '../src/modules/domains/user/infra/persistence/entities/user-address.entity';
 import { seedAuth } from './seeds/auth.seed';
 import { seedCategories } from './seeds/category.seed';
+import { seedChat } from './seeds/chat.seed';
 import { seedCoupons } from './seeds/coupon.seed';
 import { seedExchangeRates } from './seeds/exchange-rate.seed';
 import { seedBulkOrderDemo } from './seeds/order-bulk.seed';
@@ -39,6 +44,7 @@ import { seedOrderCartDemo } from './seeds/order-cart.seed';
 import { seedProducts } from './seeds/product.seed';
 import { seedProductViewHistory } from './seeds/product-view-history.seed';
 import { seedShops } from './seeds/shop.seed';
+import { seedUserProfiles } from './seeds/user-profile.seed';
 
 function formatDuration(ms: number): string {
   if (ms < 1_000) {
@@ -70,12 +76,15 @@ async function main() {
       UserSessionEntity,
       PasswordResetTokenEntity,
       EmailVerificationTokenEntity,
+      UserPreferenceEntity,
       RoleEntity,
       PermissionEntity,
       UserRoleEntity,
       RolePermissionEntity,
       CartEntity,
       CartItemEntity,
+      ChatConversationEntity,
+      ChatMessageEntity,
       CategoryEntity,
       CategoryAttributeEntity,
       CategoryAttributeOptionEntity,
@@ -94,6 +103,7 @@ async function main() {
       ProductShippingDestinationEntity,
       ProductViewHistoryEntity,
       ExchangeRateEntity,
+      UserAddressEntity,
     ],
   });
 
@@ -103,6 +113,9 @@ async function main() {
     await runSeedStep('Applying migrations', async () => orm.getMigrator().up());
 
     const { usersByEmail } = await runSeedStep('Seeding auth', async () => seedAuth(em));
+    await runSeedStep('Seeding user profiles', async () =>
+      seedUserProfiles(em, usersByEmail)
+    );
     await runSeedStep('Seeding categories', async () => seedCategories(em));
 
     const { shopsBySlug } = await runSeedStep('Seeding shops', async () =>
@@ -110,6 +123,9 @@ async function main() {
     );
     await runSeedStep('Seeding exchange rates', async () => seedExchangeRates(em));
     await runSeedStep('Seeding products', async () => seedProducts(em, shopsBySlug));
+    await runSeedStep('Seeding chat conversations', async () =>
+      seedChat(em, usersByEmail)
+    );
     await runSeedStep('Seeding product view history', async () =>
       seedProductViewHistory(em, usersByEmail)
     );

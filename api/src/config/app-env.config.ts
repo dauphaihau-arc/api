@@ -111,6 +111,15 @@ const appEnvBaseSchema = z.object({
   OPEN_EXCHANGE_RATES_BASE_URL: z
     .url()
     .default('https://openexchangerates.org/api'),
+  OPENAI_API_KEY: z.string().trim().min(1).optional(),
+  AI_PRODUCT_DESCRIPTION_ENABLED: z.enum(['true', 'false']).default('true'),
+  OPENAI_BASE_URL: z.url().default('https://api.openai.com/v1'),
+  OPENAI_PRODUCT_DESCRIPTION_MODEL: z
+    .string()
+    .trim()
+    .min(1)
+    .default('gpt-5.4-nano'),
+  OPENAI_TIMEOUT_MS: positiveIntegerString.default('10000'),
   STORAGE_DRIVER: z.enum(['local', 'minio']).default('local'),
   STORAGE_LOCAL_ROOT: z.string().trim().min(1).default('./storage'),
   STORAGE_PUBLIC_BASE_URL: z.url().optional(),

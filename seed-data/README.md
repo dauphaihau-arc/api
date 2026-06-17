@@ -9,12 +9,20 @@ Expected layout:
 - `seed-data/auth-role-permissions.tsv`
 - `seed-data/auth-users.tsv`
 - `seed-data/auth-users.local.tsv` (optional, local-only)
+- `seed-data/user-addresses.tsv`
+- `seed-data/user-addresses.local.tsv` (optional, local-only)
+- `seed-data/user-preferences.tsv`
+- `seed-data/user-preferences.local.tsv` (optional, local-only)
 - `seed-data/products.tsv`
 - `seed-data/products.local.tsv` (optional, local-only)
 - `seed-data/product-inventory.tsv`
 - `seed-data/product-inventory.local.tsv` (optional, local-only)
 - `seed-data/product-view-history.tsv`
 - `seed-data/product-view-history.local.tsv` (optional, local-only)
+- `seed-data/chat-conversations.tsv`
+- `seed-data/chat-conversations.local.tsv` (optional, local-only)
+- `seed-data/chat-messages.tsv`
+- `seed-data/chat-messages.local.tsv` (optional, local-only)
 - `seed-data/exchange-rates.tsv`
 - `seed-data/exchange-rates.local.tsv` (optional, local-only)
 - `seed-data/coupons.tsv`
@@ -29,6 +37,13 @@ Rules:
 - Auth reference data lives in `seed-data/auth-roles.tsv`, `seed-data/auth-permissions.tsv`, and `seed-data/auth-role-permissions.tsv`.
 - Seeded auth users live in `seed-data/auth-users.tsv`.
 - Optional local-only auth users can live in `seed-data/auth-users.local.tsv`.
+- User address rows live in `seed-data/user-addresses.tsv`.
+- Optional local-only address rows can live in `seed-data/user-addresses.local.tsv`.
+- Each address row must reference a seeded `user_email`.
+- At most one seeded address per user may set `is_primary=true`.
+- User preference rows live in `seed-data/user-preferences.tsv`.
+- Optional local-only preference rows can live in `seed-data/user-preferences.local.tsv`.
+- Preference rows must use supported marketplace values for `region`, `language`, and `currency`.
 - Shop metadata lives in `seed-data/shops.tsv` and should use `shop_slug` as the stable seed identifier.
 - Optional local-only shops can live in `seed-data/shops.local.tsv`.
 - Product metadata lives in `seed-data/products.tsv`.
@@ -42,6 +57,15 @@ Rules:
 - For one-off rows, provide exactly one of `user_email` or `guest_session_id`.
 - For expanded guest traffic, provide `guest_session_prefix` plus `guest_session_count`; the seeder will generate `<prefix>001`, `<prefix>002`, and so on.
 - `viewed_at_step_minutes` is optional for expanded guest traffic and defaults to `5`.
+- Chat conversation rows live in `seed-data/chat-conversations.tsv`.
+- Optional local-only conversation rows can live in `seed-data/chat-conversations.local.tsv`.
+- Each chat conversation row must include a stable `conversation_key`, `buyer_email`, `shop_slug`, and `created_at`.
+- `product_title` is optional and must match the seeded product title exactly when present.
+- Chat message rows live in `seed-data/chat-messages.tsv`.
+- Optional local-only message rows can live in `seed-data/chat-messages.local.tsv`.
+- Each chat message row references `conversation_key` and must include `sender_email`, `body`, and `created_at`.
+- `metadata_json` is optional and must be a JSON object when provided.
+- Seeded chat conversation state is derived from the message timeline plus `buyer_last_read_at` and `seller_last_read_at`.
 - Inventory TSV money columns are seed inputs only. Canonical sell prices are stored in `variant_prices`, not on `product_inventory`.
 - Exchange-rate seed rows live in `seed-data/exchange-rates.tsv`.
 - Optional local-only exchange rates can live in `seed-data/exchange-rates.local.tsv`.
@@ -71,8 +95,12 @@ Local-only workflow:
 
 - Add machine-specific ignore rules to `.git/info/exclude` instead of `.gitignore`.
 - Put extra local auth users in `seed-data/auth-users.local.tsv`.
+- Put local-only user address rows in `seed-data/user-addresses.local.tsv`.
+- Put local-only user preference rows in `seed-data/user-preferences.local.tsv`.
 - Put extra local products in `seed-data/products.local.tsv`.
 - Put matching local inventory rows in `seed-data/product-inventory.local.tsv`.
 - Put local-only product view-history rows in `seed-data/product-view-history.local.tsv`.
+- Put local-only chat conversation rows in `seed-data/chat-conversations.local.tsv`.
+- Put local-only chat message rows in `seed-data/chat-messages.local.tsv`.
 - Put matching local images in `seed-data/images/products-local/<shop-slug>/<product-slug>/`.
 - Put local-only shops in `seed-data/shops.local.tsv` when products need a new local `shop_slug`.

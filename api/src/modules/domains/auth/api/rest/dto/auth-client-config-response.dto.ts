@@ -1,4 +1,5 @@
 import type { AuthConfig } from '~/config/auth.config';
+import type { OpenAiConfig } from '~/config/openai.config';
 import { ApiProperty } from '@nestjs/swagger';
 import {
   AUTH_PASSWORD_MAX_LENGTH,
@@ -57,6 +58,13 @@ class AuthSessionConfigResponseDto {
   refresh_token_ttl_seconds!: number;
 }
 
+class AuthAiConfigResponseDto {
+  @ApiProperty({
+    name: 'product_description_enabled',
+  })
+  product_description_enabled!: boolean;
+}
+
 export class AuthClientConfigResponseDto {
   @ApiProperty()
   version!: string;
@@ -71,7 +79,15 @@ export class AuthClientConfigResponseDto {
   })
   session!: AuthSessionConfigResponseDto;
 
-  static create(authConfig: AuthConfig): AuthClientConfigResponseDto {
+  @ApiProperty({
+    type: () => AuthAiConfigResponseDto,
+  })
+  ai!: AuthAiConfigResponseDto;
+
+  static create(
+    authConfig: AuthConfig,
+    openAiConfig: Pick<OpenAiConfig, 'productDescriptionEnabled'>
+  ): AuthClientConfigResponseDto {
     return {
       version: '2026-05-20',
       password: {
@@ -90,6 +106,9 @@ export class AuthClientConfigResponseDto {
       session: {
         access_token_ttl_seconds: authConfig.jwtAccessTtlSeconds,
         refresh_token_ttl_seconds: authConfig.jwtRefreshTtlSeconds,
+      },
+      ai: {
+        product_description_enabled: openAiConfig.productDescriptionEnabled,
       },
     };
   }

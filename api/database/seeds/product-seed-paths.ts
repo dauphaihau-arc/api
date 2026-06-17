@@ -19,6 +19,26 @@ export const PRODUCT_VIEW_HISTORY_LOCAL_TSV_PATH = path.join(
   SEED_DATA_DIR,
   'product-view-history.local.tsv'
 );
+export const CHAT_CONVERSATIONS_TSV_PATH = path.join(SEED_DATA_DIR, 'chat-conversations.tsv');
+export const CHAT_CONVERSATIONS_LOCAL_TSV_PATH = path.join(
+  SEED_DATA_DIR,
+  'chat-conversations.local.tsv'
+);
+export const CHAT_MESSAGES_TSV_PATH = path.join(SEED_DATA_DIR, 'chat-messages.tsv');
+export const CHAT_MESSAGES_LOCAL_TSV_PATH = path.join(
+  SEED_DATA_DIR,
+  'chat-messages.local.tsv'
+);
+export const USER_ADDRESSES_TSV_PATH = path.join(SEED_DATA_DIR, 'user-addresses.tsv');
+export const USER_ADDRESSES_LOCAL_TSV_PATH = path.join(
+  SEED_DATA_DIR,
+  'user-addresses.local.tsv'
+);
+export const USER_PREFERENCES_TSV_PATH = path.join(SEED_DATA_DIR, 'user-preferences.tsv');
+export const USER_PREFERENCES_LOCAL_TSV_PATH = path.join(
+  SEED_DATA_DIR,
+  'user-preferences.local.tsv'
+);
 export const EXCHANGE_RATES_TSV_PATH = path.join(SEED_DATA_DIR, 'exchange-rates.tsv');
 export const EXCHANGE_RATES_LOCAL_TSV_PATH = path.join(
   SEED_DATA_DIR,

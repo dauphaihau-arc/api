@@ -4,6 +4,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { AUTH_CONFIG, buildAuthConfig } from '~/config/auth.config';
+import { AiModule } from '../../shared/ai/ai.module';
 import { CacheModule } from '../../shared/cache/cache.module';
 import { AuthSessionRepository } from './app/ports/auth-session.repository';
 import { AuthTokenService } from './app/ports/auth-token.service';
@@ -70,6 +71,7 @@ const authEntities = [
 @Module({
   imports: [
     ConfigModule,
+    AiModule,
     CacheModule,
     IdempotencyModule,
     forwardRef(() => QueueModule),

@@ -1,0 +1,9 @@
+user_email	region	language	currency
+admin@example.com	United States	en	USD
+member@example.com	Vietnam	en	VND
+maker.olive@example.com	United States	en	USD
+maker.mason@example.com	United States	fr	EUR
+maker.sage@example.com	United States	en	JPY
+maker.hazel@example.com	United States	en	CAD
+maker.juno@example.com	United States	en	AUD
+bulk.catalog@example.com	United States	en	SGD

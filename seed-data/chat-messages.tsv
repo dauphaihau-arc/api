@@ -1,0 +1,28 @@
+conversation_key	sender_email	body	message_type	metadata_json	created_at	edited_at
+olive-dress-member	member@example.com	Hi, is the Linen Weekend Dress slightly see-through in daylight?	text		2026-06-10T08:01:00.000Z	
+olive-dress-member	maker.olive@example.com	It has a light airy weave, but we lined the main body so it is not sheer for everyday wear.	text		2026-06-10T08:05:00.000Z	
+olive-dress-member	member@example.com	Good to know. Does it fit loose at the waist?	text		2026-06-10T08:08:00.000Z	
+olive-dress-member	maker.olive@example.com	Yes, it is cut relaxed through the waist and meant to drape instead of sitting tight.	text		2026-06-10T08:11:00.000Z	
+olive-dress-member	member@example.com	That sounds close to what I want. I usually sit between a small and medium, so I am trying to figure out which one will give me that loose look without feeling oversized.	text		2026-06-10T08:14:00.000Z	
+olive-dress-member	maker.olive@example.com	If you are between sizes, small will still look relaxed because the shoulder and waist are already cut easy. Medium gives more volume through the skirt and a bit more length.	text		2026-06-10T08:18:00.000Z	
+olive-dress-member	member@example.com	Would the medium be much longer? I am about 165 cm and I do not want it to hit too low on the calf.	text		2026-06-10T08:22:00.000Z	
+olive-dress-member	maker.olive@example.com	On someone around 165 cm, the small usually lands mid-calf and the medium drops a little lower, closer to lower calf. The difference is noticeable but not dramatic.	text		2026-06-10T08:27:00.000Z	
+olive-dress-member	member@example.com	That helps. Is the fabric soft from the start or does it need a few washes to relax?	text		2026-06-10T08:31:00.000Z	
+olive-dress-member	maker.olive@example.com	It feels soft right away, but the linen does relax even more after the first couple of washes. It gets a slightly more fluid drape over time.	text		2026-06-10T08:35:00.000Z	
+olive-dress-member	member@example.com	Does it wrinkle very easily when packed for travel? I am thinking of taking it on a short trip next month.	text		2026-06-10T08:39:00.000Z	
+olive-dress-member	maker.olive@example.com	It will show natural linen creasing if folded in a suitcase, but hanging it overnight usually softens most of the wrinkles. A quick steam makes it crisp again if needed.	text		2026-06-10T08:43:00.000Z	
+olive-dress-member	member@example.com	Okay. One more thing, are there pockets? I almost always ask because that decides whether I wear a dress often.	text		2026-06-10T08:47:00.000Z	
+olive-dress-member	maker.olive@example.com	Yes, it has side seam pockets on both sides. They sit flat enough that they do not bulk out the shape.	text		2026-06-10T08:51:00.000Z	
+olive-dress-member	member@example.com	Great, that is a big plus. How should I wash it to keep the shape?	text		2026-06-10T08:55:00.000Z	
+olive-dress-member	maker.olive@example.com	Cold gentle wash, mild detergent, and hang dry is best. If you prefer a cleaner silhouette, steam or warm iron while it is still slightly damp.	text		2026-06-10T08:58:00.000Z	
+olive-dress-member	member@example.com	Last question, when would it ship if I order this afternoon? I am in Ho Chi Minh City.	text		2026-06-10T09:02:00.000Z	
+olive-dress-member	maker.olive@example.com	If the order comes through today, I can usually dispatch the next business day. Delivery timing depends on the selected service, but I can pack it quickly on my side.	text		2026-06-10T09:06:00.000Z	
+reed-sony-member	member@example.com	Are the Sony WH-1000XM6 headphones foldable for travel?	text		2026-06-11T10:02:00.000Z	
+reed-sony-member	maker.mason@example.com	Yes, the hinges fold inward and the set packs down easily for a backpack or carry case.	text		2026-06-11T10:06:00.000Z	
+reed-sony-member	member@example.com	Can they still be used with a cable when the battery is low?	text		2026-06-11T10:12:00.000Z	
+reed-sony-member	maker.mason@example.com	Yes, you can keep listening over a wired connection as well.	text		2026-06-11T10:16:00.000Z	
+reed-sony-member	member@example.com	Perfect, that covers what I needed.	text		2026-06-11T10:22:00.000Z	
+juno-dualsense-member	member@example.com	Does the DualSense controller include a charging cable in this listing?	text		2026-06-12T14:01:00.000Z	
+juno-dualsense-member	maker.juno@example.com	This listing is for the controller only, so you would need a separate USB-C cable.	text		2026-06-12T14:04:00.000Z	
+juno-dualsense-member	member@example.com	Understood. Is it the standard white finish?	text		2026-06-12T14:05:00.000Z	
+juno-dualsense-member	maker.juno@example.com	Yes, standard white with the usual black accent trim.	text		2026-06-12T14:12:00.000Z	

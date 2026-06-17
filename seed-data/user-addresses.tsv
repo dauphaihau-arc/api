@@ -1,0 +1,9 @@
+user_email	full_name	address1	address2	city	state	zip	country	phone	is_primary
+admin@example.com	System Admin	1 Admin Plaza	Suite 100	San Francisco	CA	94105	United States	+1-415-555-0100	true
+member@example.com	Default Member	88 Market Street	Apt 5B	Ho Chi Minh City	District 1	700000	Vietnam	+84-28-5550-0101	true
+maker.olive@example.com	Olive Hart	214 Valencia Street	Studio 3	San Francisco	CA	94110	United States	+1-415-555-0110	true
+maker.mason@example.com	Mason Reed	16 Rue des Ateliers		Bordeaux	Gironde	33000	France	+33-5-55-01-0111	true
+maker.sage@example.com	Sage Lane	3-14-2 Jingumae	Unit 4	Shibuya-ku	Tokyo	150-0001	Japan	+81-3-5550-0112	true
+maker.hazel@example.com	Hazel Quinn	48 King Street West	Floor 2	Toronto	ON	M5H 1A1	Canada	+1-416-555-0113	true
+maker.juno@example.com	Juno Park	22 Hardware Lane	Studio 7	Melbourne	VIC	3000	Australia	+61-3-5550-0114	true
+bulk.catalog@example.com	Bulk Catalog Owner	900 Seed Lab Way	Bay 12	Singapore	Central	018956	Singapore	+65-5550-0115	true
