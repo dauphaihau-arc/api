@@ -193,7 +193,7 @@ export class AuthController {
     description: 'Password reset request accepted.',
   })
   async forgotPassword(@Body() body: ForgotPasswordDto): Promise<void> {
-    await this.requestPasswordResetUseCase.execute(body.email);
+    await this.requestPasswordResetUseCase.execute(body.email, body.app);
   }
 
   @Get('client-config')

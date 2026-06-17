@@ -9,7 +9,7 @@ import { RoleKey } from '../../../domain/value-objects/role-key';
 import { RequestPasswordResetUseCase } from './request-password-reset.use-case';
 
 describe('RequestPasswordResetUseCase', () => {
-  it('creates a reset token and queues an email when the user exists', async () => {
+  it('creates a storefront reset token and queues an email when the user exists', async () => {
     const authUserRepository: jest.Mocked<AuthUserRepository> = {
       findByEmail: jest.fn().mockResolvedValue({
         id: 'user-1',
@@ -45,7 +45,17 @@ describe('RequestPasswordResetUseCase', () => {
       dispatch: jest.fn().mockResolvedValue(undefined),
     };
     const configService: Pick<jest.Mocked<ConfigService>, 'get'> = {
-      get: jest.fn().mockReturnValue('http://localhost:4000'),
+      get: jest.fn((key: string) => {
+        if (key === 'APP_BASE_URL') {
+          return 'http://localhost:4000';
+        }
+
+        if (key === 'SELLER_APP_BASE_URL') {
+          return 'http://localhost:4001';
+        }
+
+        return undefined;
+      }),
     };
     const useCase = new RequestPasswordResetUseCase(
       authUserRepository,
@@ -55,7 +65,7 @@ describe('RequestPasswordResetUseCase', () => {
       configService as unknown as ConfigService
     );
 
-    await useCase.execute('member@example.com');
+    await useCase.execute('member@example.com', 'storefront');
 
     expect(passwordResetTokenRepository.invalidateActiveTokensForUser).toHaveBeenCalledWith(
       'user-1'
@@ -75,6 +85,74 @@ describe('RequestPasswordResetUseCase', () => {
         displayName: 'Member User',
         resetUrl: expect.stringMatching(
           /^http:\/\/localhost:4000\/reset\?t=/
+        ),
+      })
+    );
+  });
+
+  it('creates a seller reset token with the seller app URL', async () => {
+    const authUserRepository: jest.Mocked<AuthUserRepository> = {
+      findByEmail: jest.fn().mockResolvedValue({
+        id: 'user-1',
+        version: 1,
+        email: Email.create('seller@example.com'),
+        displayName: 'Seller User',
+        status: UserStatus.ACTIVE,
+        roles: [RoleKey.create('seller')],
+        permissions: [],
+      }),
+      findById: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      updatePassword: jest.fn(),
+      assignRole: jest.fn(),
+      ensureRole: jest.fn(),
+    };
+    const passwordResetTokenRepository: jest.Mocked<PasswordResetTokenRepository> = {
+      create: jest.fn().mockResolvedValue({
+        id: 'token-1',
+        userId: 'user-1',
+        tokenHash: 'hashed-token',
+        expiresAt: new Date('2026-01-01T01:00:00.000Z'),
+      }),
+      findByTokenHash: jest.fn(),
+      save: jest.fn(),
+      invalidateActiveTokensForUser: jest.fn().mockResolvedValue(undefined),
+    };
+    const tokenHasher: jest.Mocked<TokenHasher> = {
+      hash: jest.fn().mockReturnValue('hashed-token'),
+    };
+    const jobDispatcher: jest.Mocked<JobDispatcher> = {
+      dispatch: jest.fn().mockResolvedValue(undefined),
+    };
+    const configService: Pick<jest.Mocked<ConfigService>, 'get'> = {
+      get: jest.fn((key: string) => {
+        if (key === 'APP_BASE_URL') {
+          return 'http://localhost:4000';
+        }
+
+        if (key === 'SELLER_APP_BASE_URL') {
+          return 'http://localhost:4001';
+        }
+
+        return undefined;
+      }),
+    };
+    const useCase = new RequestPasswordResetUseCase(
+      authUserRepository,
+      passwordResetTokenRepository,
+      tokenHasher,
+      jobDispatcher,
+      configService as unknown as ConfigService
+    );
+
+    await useCase.execute('seller@example.com', 'seller');
+
+    expect(jobDispatcher.dispatch).toHaveBeenCalledWith(
+      'user.send-password-reset-email',
+      expect.objectContaining({
+        resetUrl: expect.stringMatching(
+          /^http:\/\/localhost:4001\/reset\?t=/
         ),
       })
     );
@@ -113,7 +191,7 @@ describe('RequestPasswordResetUseCase', () => {
       configService as unknown as ConfigService
     );
 
-    await useCase.execute('missing@example.com');
+    await useCase.execute('missing@example.com', 'seller');
 
     expect(passwordResetTokenRepository.create).not.toHaveBeenCalled();
     expect(jobDispatcher.dispatch).not.toHaveBeenCalled();

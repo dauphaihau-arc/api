@@ -11,6 +11,8 @@ import { JobDispatcher } from '~/modules/shared/queue/app/ports/job-dispatcher';
 const PASSWORD_RESET_TOKEN_BYTES = 32;
 const PASSWORD_RESET_TOKEN_TTL_MS = 60 * 60 * 1000;
 
+type PasswordResetApp = 'storefront' | 'seller';
+
 @Injectable()
 export class RequestPasswordResetUseCase {
   private readonly logger = new Logger(RequestPasswordResetUseCase.name);
@@ -23,7 +25,7 @@ export class RequestPasswordResetUseCase {
     private readonly configService: ConfigService
   ) {}
 
-  async execute(emailRaw: string): Promise<void> {
+  async execute(emailRaw: string, app: PasswordResetApp): Promise<void> {
     const email = Email.create(emailRaw);
     const user = await this.authUserRepository.findByEmail(email);
 
@@ -50,7 +52,7 @@ export class RequestPasswordResetUseCase {
         userId: user.id,
         email: user.email.toString(),
         displayName: user.displayName,
-        resetUrl: this.buildResetUrl(rawToken),
+        resetUrl: this.buildResetUrl(rawToken, app),
       }
     );
 
@@ -59,12 +61,13 @@ export class RequestPasswordResetUseCase {
     );
   }
 
-  private buildResetUrl(token: string): string {
-    const appBaseUrl = this.configService.get<string>('APP_BASE_URL')?.trim();
+  private buildResetUrl(token: string, app: PasswordResetApp): string {
+    const configKey = app === 'seller' ? 'SELLER_APP_BASE_URL' : 'APP_BASE_URL';
+    const appBaseUrl = this.configService.get<string>(configKey)?.trim();
     const baseUrl = appBaseUrl?.replace(/\/$/, '');
 
     if (!baseUrl) {
-      throw new Error('APP_BASE_URL must be configured for password reset');
+      throw new Error(`${configKey} must be configured for password reset`);
     }
 
     return `${baseUrl}/reset?t=${encodeURIComponent(token)}`;
