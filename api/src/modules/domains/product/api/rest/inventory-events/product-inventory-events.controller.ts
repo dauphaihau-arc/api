@@ -9,7 +9,7 @@ import {
 } from '@nestjs/swagger';
 import type { Observable } from 'rxjs';
 import { SsePublisher } from '~/modules/shared/sse/infra/sse.publisher';
-import { buildProductInventoryChannelKey } from '../../app/events/product-inventory-sse.event';
+import { buildProductInventoryChannelKey } from '../../../app/events/product-inventory-sse.event';
 
 @Controller('products/:product_id/inventory')
 @ApiTags('Product Inventory')
