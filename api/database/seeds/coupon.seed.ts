@@ -4,11 +4,56 @@ import { ProductEntity } from '~/modules/domains/product/infra/persistence/mikro
 import type { ShopEntity } from '../../src/modules/domains/shop/infra/persistence/entities/shop.entity';
 import { couponSeeds } from './coupon.seed-loader';
 
+function resolveProgressInterval(total: number, maxSteps = 5): number {
+  return Math.max(1, Math.ceil(total / maxSteps));
+}
+
+function formatDuration(ms: number): string {
+  if (ms < 1_000) {
+    return `${ms}ms`;
+  }
+
+  return `${(ms / 1_000).toFixed(1)}s`;
+}
+
 export async function seedCoupons(
   em: EntityManager,
-  shopsBySlug: Map<string, ShopEntity>
+  shopsBySlug: Map<string, ShopEntity>,
 ): Promise<void> {
-  for (const couponSeed of couponSeeds) {
+  const progressInterval = resolveProgressInterval(couponSeeds.length);
+  const startedAt = Date.now();
+  const targetShops = Array.from(
+    new Map(
+      couponSeeds.flatMap((couponSeed) => {
+        const shop = shopsBySlug.get(couponSeed.shopSlug);
+
+        return shop ? [[shop.slug, shop] as const] : [];
+      }),
+    ).values(),
+  );
+  const existingProducts = targetShops.length > 0
+    ? await em.find(ProductEntity, { shop: { $in: targetShops } }, { populate: ['shop'] })
+    : [];
+  const existingProductsByShopSlugAndTitle = new Map(
+    existingProducts.map((product) => [`${product.shop.slug}::${product.title}`, product]),
+  );
+  const existingCoupons = targetShops.length > 0
+    ? await em.find(
+      CouponEntity,
+      {
+        shop: { $in: targetShops },
+        code: { $in: couponSeeds.map((couponSeed) => couponSeed.code) },
+      },
+      { populate: ['shop'] },
+    )
+    : [];
+  const existingCouponsByShopSlugAndCode = new Map(
+    existingCoupons.map((coupon) => [`${coupon.shop.slug}::${coupon.code}`, coupon]),
+  );
+
+  console.log(`[seed][coupons] Upserting ${couponSeeds.length} coupons`);
+
+  for (const [index, couponSeed] of couponSeeds.entries()) {
     const shop = shopsBySlug.get(couponSeed.shopSlug);
 
     if (!shop) {
@@ -19,14 +64,11 @@ export async function seedCoupons(
 
     if (couponSeed.appliesProductTitles?.length) {
       for (const title of couponSeed.appliesProductTitles) {
-        const product = await em.findOne(ProductEntity, {
-          shop,
-          title,
-        });
+        const product = existingProductsByShopSlugAndTitle.get(`${shop.slug}::${title}`);
 
         if (!product) {
           throw new Error(
-            `Missing seeded product "${title}" for coupon ${couponSeed.code}`
+            `Missing seeded product "${title}" for coupon ${couponSeed.code}`,
           );
         }
 
@@ -35,10 +77,7 @@ export async function seedCoupons(
     }
 
     const coupon =
-      (await em.findOne(CouponEntity, {
-        shop,
-        code: couponSeed.code,
-      })) ??
+      existingCouponsByShopSlugAndCode.get(`${shop.slug}::${couponSeed.code}`) ??
       em.create(CouponEntity, {
         shop,
         code: couponSeed.code,
@@ -58,6 +97,7 @@ export async function seedCoupons(
         isActive: couponSeed.isActive,
         isAutoSale: couponSeed.isAutoSale,
       });
+    existingCouponsByShopSlugAndCode.set(`${shop.slug}::${couponSeed.code}`, coupon);
 
     coupon.shop = shop;
     coupon.code = couponSeed.code;
@@ -78,6 +118,12 @@ export async function seedCoupons(
     coupon.usesCount = 0;
 
     em.persist(coupon);
+
+    if ((index + 1) % progressInterval === 0 || index + 1 === couponSeeds.length) {
+      console.log(
+        `[seed][coupons] Processed ${index + 1}/${couponSeeds.length} coupons in ${formatDuration(Date.now() - startedAt)}`,
+      );
+    }
   }
 
   await em.flush();

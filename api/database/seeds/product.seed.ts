@@ -10,7 +10,7 @@ import { ProductVariantType } from '../../src/modules/domains/product/domain/enu
 import type { MarketplaceCurrency } from '../../src/config/marketplace.config';
 import {
   buildStorageObjectKey,
-  resolveStorageEnvironmentSegment
+  resolveStorageEnvironmentSegment,
 } from '../../src/modules/shared/storage/app/storage-key-builder';
 import { ProductAttributeValueEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-attribute-value.entity';
 import { ProductImageEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-image.entity';
@@ -27,7 +27,7 @@ import { PRODUCT_IMAGE_ROOT_DIRS } from './product-seed-paths';
 import {
   resolveOptionalSeedProductImagePaths,
   resolveSeedProductImagePaths,
-  slugifySeedValue
+  slugifySeedValue,
 } from './product-seed-image-resolver';
 
 function slugify(value: string): string {
@@ -87,9 +87,17 @@ function toMinorUnits(amount: number, currency: MarketplaceCurrency): number {
   return Math.round(amount * (10 ** decimals));
 }
 
+function formatDuration(ms: number): string {
+  if (ms < 1_000) {
+    return `${ms}ms`;
+  }
+
+  return `${(ms / 1_000).toFixed(1)}s`;
+}
+
 function buildVariantKey(
   variantType: ProductVariantType,
-  inventorySeed: ProductSeed['inventory'][number]
+  inventorySeed: ProductSeed['inventory'][number],
 ): string | undefined {
   if (variantType === ProductVariantType.NONE) {
     return undefined;
@@ -102,8 +110,16 @@ function buildVariantKey(
 
 async function findCategoryByPath(
   em: EntityManager,
-  categoryPath: string[]
+  categoryPath: string[],
+  cache: Map<string, CategoryEntity>,
 ): Promise<CategoryEntity> {
+  const cacheKey = categoryPath.join(' > ');
+  const cachedCategory = cache.get(cacheKey);
+
+  if (cachedCategory) {
+    return cachedCategory;
+  }
+
   let parent: CategoryEntity | null = null;
   let category: CategoryEntity | null = null;
 
@@ -119,6 +135,7 @@ async function findCategoryByPath(
     throw new Error(`Missing seeded category path: ${categoryPath.join(' > ')}`);
   }
 
+  cache.set(cacheKey, category);
   return category;
 }
 
@@ -126,19 +143,16 @@ async function syncProductImages(
   em: EntityManager,
   shop: ShopEntity,
   product: ProductEntity,
-  imageFilenames: string[]
+  imageFilenames: string[],
 ): Promise<void> {
-  for (const image of await em.find(ProductImageEntity, { product })) {
-    em.remove(image);
-  }
-  await em.flush();
+  await em.nativeDelete(ProductImageEntity, { product: product.id });
 
   imageFilenames.forEach((imageFilename, index) => {
     const normalizedFilename = basename(imageFilename.trim());
     const extension = extname(normalizedFilename).replace(/^\./, '').toLowerCase();
     const filenameWithoutExtension = normalizedFilename.slice(
       0,
-      normalizedFilename.length - extension.length - 1
+      normalizedFilename.length - extension.length - 1,
     );
 
     if (!extension || !filenameWithoutExtension) {
@@ -165,27 +179,23 @@ async function syncProductImages(
       variantStatus: ProductImageVariantStatus.PENDING,
     }));
   });
-  await em.flush();
 }
 
 async function syncProductAttributes(
   em: EntityManager,
   product: ProductEntity,
   category: CategoryEntity,
-  productSeed: ProductSeed
+  productSeed: ProductSeed,
 ): Promise<void> {
-  for (const value of await em.find(ProductAttributeValueEntity, { product })) {
-    em.remove(value);
-  }
-  await em.flush();
+  await em.nativeDelete(ProductAttributeValueEntity, { product: product.id });
 
   const attributes = await em.find(
     CategoryAttributeEntity,
     { category },
-    { orderBy: { rank: 'asc' }, populate: ['options'] }
+    { orderBy: { rank: 'asc' }, populate: ['options'] },
   );
   const selectedValuesByAttributeKey = new Map(
-    productSeed.attributes.map((attribute) => [attribute.attributeKey, attribute.optionValue])
+    productSeed.attributes.map((attribute) => [attribute.attributeKey, attribute.optionValue]),
   );
 
   for (const attribute of attributes) {
@@ -200,7 +210,7 @@ async function syncProductAttributes(
 
     if (!selectedOption) {
       throw new Error(
-        `Missing option "${selectedOptionValue}" for attribute "${attribute.key}" on seeded product "${productSeed.shopSlug}::${productSeed.title}"`
+        `Missing option "${selectedOptionValue}" for attribute "${attribute.key}" on seeded product "${productSeed.shopSlug}::${productSeed.title}"`,
       );
     }
 
@@ -209,18 +219,16 @@ async function syncProductAttributes(
         product,
         categoryAttribute: attribute,
         selectedOption,
-      })
+      }),
     );
   }
-
-  await em.flush();
 }
 
 async function syncProductVariants(
   em: EntityManager,
   product: ProductEntity,
   variantType: ProductVariantType,
-  inventorySeeds: ProductSeed['inventory']
+  inventorySeeds: ProductSeed['inventory'],
 ): Promise<Map<string, ProductVariantEntity>> {
   const variantsByKey = new Map<string, ProductVariantEntity>();
   if (variantType === ProductVariantType.NONE) {
@@ -234,7 +242,7 @@ async function syncProductVariants(
         ? `${variant.optionValue1 ?? ''}::${variant.optionValue2 ?? ''}`
         : `${variant.optionValue1 ?? ''}`,
       variant,
-    ])
+    ]),
   );
 
   const seenKeys = new Set<string>();
@@ -263,7 +271,6 @@ async function syncProductVariants(
     em.persist(variant);
   });
 
-  await em.flush();
   return variantsByKey;
 }
 
@@ -273,7 +280,7 @@ async function syncProductInventory(
   shop: ShopEntity,
   variantType: ProductVariantType,
   inventorySeeds: ProductSeed['inventory'],
-  variantsByKey: Map<string, ProductVariantEntity>
+  variantsByKey: Map<string, ProductVariantEntity>,
 ): Promise<void> {
   const inventorySeedSkus = inventorySeeds
     .map((inventorySeed) => inventorySeed.sku.trim())
@@ -284,12 +291,12 @@ async function syncProductInventory(
       shop,
       sku: { $in: inventorySeedSkus },
     },
-    { populate: ['prices', 'productVariant'] }
+    { populate: ['prices', 'productVariant'] },
   );
   const existingInventoriesBySku = new Map(
     existingInventories
       .filter((inventory) => inventory.sku)
-      .map((inventory) => [inventory.sku as string, inventory])
+      .map((inventory) => [inventory.sku as string, inventory]),
   );
 
   const createdInventories: Array<{
@@ -319,8 +326,6 @@ async function syncProductInventory(
     em.persist(inventory);
   });
 
-  await em.flush();
-
   createdInventories.forEach(({ inventory, seed }) => {
     const activeBasePrice = inventory.prices
       .getItems()
@@ -344,28 +349,22 @@ async function syncProductInventory(
 
     em.persist(price);
   });
-
-  await em.flush();
 }
 
 async function syncProductShipping(
   em: EntityManager,
   product: ProductEntity,
-  shop: ShopEntity
+  shop: ShopEntity,
 ): Promise<void> {
-  const profiles = await em.find(
-    ProductShippingProfileEntity,
-    { product },
-    { populate: ['destinations'] }
-  );
+  const profiles = await em.find(ProductShippingProfileEntity, { product });
+  const profileIds = profiles.map((profile) => profile.id);
 
-  for (const profile of profiles) {
-    for (const destination of profile.destinations.getItems()) {
-      em.remove(destination);
-    }
-    em.remove(profile);
+  if (profileIds.length > 0) {
+    await em.nativeDelete(ProductShippingDestinationEntity, {
+      shippingProfile: { $in: profileIds },
+    });
+    await em.nativeDelete(ProductShippingProfileEntity, { id: { $in: profileIds } });
   }
-  await em.flush();
 
   const shippingSeed = `${shop.slug}:${product.slug}`;
   const originZip = pickDeterministicValue(shippingSeed, [
@@ -408,7 +407,6 @@ async function syncProductShipping(
     processTimeLabel,
   });
   em.persist(shippingProfile);
-  await em.flush();
 
   em.persist(
     em.create(ProductShippingDestinationEntity, {
@@ -418,14 +416,13 @@ async function syncProductShipping(
       service,
       chargeType,
       rank: 1,
-    })
+    }),
   );
-  await em.flush();
 }
 
 async function pruneSyntheticBulkCatalogProducts(
   em: EntityManager,
-  shopsBySlug: Map<string, ShopEntity>
+  shopsBySlug: Map<string, ShopEntity>,
 ): Promise<void> {
   const syntheticShopSlug = 'bulk-catalog-lab';
   const shop = shopsBySlug.get(syntheticShopSlug);
@@ -437,7 +434,7 @@ async function pruneSyntheticBulkCatalogProducts(
   const seededSlugs = new Set(
     productSeeds
       .filter((seed) => seed.shopSlug === syntheticShopSlug)
-      .map((seed) => slugify(seed.title))
+      .map((seed) => slugify(seed.title)),
   );
 
   const existingProducts = await em.find(ProductEntity, { shop });
@@ -453,19 +450,37 @@ async function pruneSyntheticBulkCatalogProducts(
   if (staleProducts.length > 0) {
     await em.flush();
     console.log(
-      `[seed][products] Retired ${staleProducts.length} stale synthetic products for ${syntheticShopSlug}`
+      `[seed][products] Retired ${staleProducts.length} stale synthetic products for ${syntheticShopSlug}`,
     );
   }
 }
 
 export async function seedProducts(
   em: EntityManager,
-  shopsBySlug: Map<string, ShopEntity>
+  shopsBySlug: Map<string, ShopEntity>,
 ): Promise<void> {
   const totalProducts = productSeeds.length;
+  const startedAt = Date.now();
   console.log(`[seed][products] Upserting ${totalProducts} products`);
 
   await pruneSyntheticBulkCatalogProducts(em, shopsBySlug);
+
+  const categoryByPath = new Map<string, CategoryEntity>();
+  const shops = Array.from(
+    new Map(
+      productSeeds.flatMap((productSeed) => {
+        const shop = shopsBySlug.get(productSeed.shopSlug);
+
+        return shop ? [[shop.slug, shop] as const] : [];
+      }),
+    ).values(),
+  );
+  const existingProducts = shops.length > 0
+    ? await em.find(ProductEntity, { shop: { $in: shops } }, { populate: ['shop'] })
+    : [];
+  const existingProductsByShopSlugAndSlug = new Map(
+    existingProducts.map((product) => [`${product.shop.slug}::${product.slug}`, product]),
+  );
 
   for (const [index, productSeed] of productSeeds.entries()) {
     const shop = shopsBySlug.get(productSeed.shopSlug);
@@ -473,10 +488,11 @@ export async function seedProducts(
       throw new Error(`Missing seeded shop: ${productSeed.shopSlug}`);
     }
 
-    const category = await findCategoryByPath(em, productSeed.categoryPath);
+    const category = await findCategoryByPath(em, productSeed.categoryPath, categoryByPath);
     const slug = slugify(productSeed.title);
+    const productKey = `${shop.slug}::${slug}`;
     const product =
-      (await em.findOne(ProductEntity, { shop, slug })) ??
+      existingProductsByShopSlugAndSlug.get(productKey) ??
       em.create(ProductEntity, {
         shop,
         slug,
@@ -488,7 +504,9 @@ export async function seedProducts(
         nonTaxable: false,
         views: 0,
         ratingAverage: 0,
+        reviewCount: 0,
       });
+    existingProductsByShopSlugAndSlug.set(productKey, product);
 
     product.category = category;
     product.title = productSeed.title;
@@ -502,8 +520,8 @@ export async function seedProducts(
       product.state === ProductState.ACTIVE ? new Date() : undefined;
     product.views = 0;
     product.ratingAverage = 0;
+    product.reviewCount = 0;
     em.persist(product);
-    await em.flush();
 
     const imageRootDirs = process.env.SEED_ASSETS_PRODUCTS_DIR
       ? [path.resolve(process.cwd(), process.env.SEED_ASSETS_PRODUCTS_DIR)]
@@ -513,12 +531,12 @@ export async function seedProducts(
         ? resolveOptionalSeedProductImagePaths(
           imageRootDirs,
           productSeed.shopSlug,
-          productSeed.title
+          productSeed.title,
         )
         : resolveSeedProductImagePaths(
           imageRootDirs,
           productSeed.shopSlug,
-          productSeed.title
+          productSeed.title,
         );
 
     await syncProductImages(em, shop, product, imageFilenames);
@@ -527,7 +545,7 @@ export async function seedProducts(
       em,
       product,
       productSeed.variantType,
-      productSeed.inventory
+      productSeed.inventory,
     );
     await syncProductInventory(
       em,
@@ -535,12 +553,15 @@ export async function seedProducts(
       shop,
       productSeed.variantType,
       productSeed.inventory,
-      variantsByKey
+      variantsByKey,
     );
     await syncProductShipping(em, product, shop);
+    await em.flush();
 
     if ((index + 1) % 10 === 0 || index + 1 === totalProducts) {
-      console.log(`[seed][products] Processed ${index + 1}/${totalProducts}`);
+      console.log(
+        `[seed][products] Processed ${index + 1}/${totalProducts} in ${formatDuration(Date.now() - startedAt)}`,
+      );
     }
   }
 }

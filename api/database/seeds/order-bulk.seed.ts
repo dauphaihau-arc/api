@@ -23,7 +23,7 @@ const SEED_BUYER_COUNT = 320;
 const BEST_SELLER_PRODUCT_COUNT = 20;
 const BEST_SELLER_TOP_COUNT = 160;
 const BEST_SELLER_COUNT_STEP = 5;
-const NOISE_ORDERS_PER_PRODUCT = 8;
+const NOISE_ORDERS_PER_PRODUCT = 10;
 const ORDER_BATCH_SIZE = 100;
 const LOOKBACK_DAYS = 170;
 const RECENT_PAID_WINDOW_DAYS = 21;
@@ -98,6 +98,14 @@ const CITIES = [
   },
 ] as const;
 
+function formatDuration(ms: number): string {
+  if (ms < 1_000) {
+    return `${ms}ms`;
+  }
+
+  return `${(ms / 1_000).toFixed(1)}s`;
+}
+
 type SeedBuyer = {
   index: number;
   user: CurrentUserEntity;
@@ -118,10 +126,15 @@ type WeightedProductTarget = {
 };
 
 export async function seedBulkOrderDemo(em: EntityManager): Promise<void> {
+  const startedAt = Date.now();
   const buyers = await recreateSeedBuyers(em);
   const { bestSellerTargets, noiseTargets } = await loadWeightedTargets(em);
-  const totalOrders = bestSellerTargets.reduce((sum, target) => sum + target.orderCount, 0)
-    + noiseTargets.reduce((sum, target) => sum + target.orderCount, 0);
+  const totalOrders = bestSellerTargets.reduce((sum, target) => sum + target.orderCount, 0) +
+    noiseTargets.reduce((sum, target) => sum + target.orderCount, 0);
+
+  console.log(
+    `[seed][bulk-orders] Upserting ${buyers.length} seed buyers and ${totalOrders} bulk orders`,
+  );
 
   let orderSequence = 0;
 
@@ -138,6 +151,9 @@ export async function seedBulkOrderDemo(em: EntityManager): Promise<void> {
 
       if (orderSequence % ORDER_BATCH_SIZE === 0) {
         await em.flush();
+        console.log(
+          `[seed][bulk-orders] Processed ${orderSequence}/${totalOrders} orders in ${formatDuration(Date.now() - startedAt)}`,
+        );
       }
     }
   }
@@ -155,11 +171,17 @@ export async function seedBulkOrderDemo(em: EntityManager): Promise<void> {
 
       if (orderSequence % ORDER_BATCH_SIZE === 0) {
         await em.flush();
+        console.log(
+          `[seed][bulk-orders] Processed ${orderSequence}/${totalOrders} orders in ${formatDuration(Date.now() - startedAt)}`,
+        );
       }
     }
   }
 
   await em.flush();
+  console.log(
+    `[seed][bulk-orders] Processed ${orderSequence}/${totalOrders} orders in ${formatDuration(Date.now() - startedAt)}`,
+  );
 }
 
 async function recreateSeedBuyers(em: EntityManager): Promise<SeedBuyer[]> {
@@ -178,7 +200,7 @@ async function recreateSeedBuyers(em: EntityManager): Promise<SeedBuyer[]> {
       get(key: string) {
         return process.env[key];
       },
-    })
+    }),
   );
   const passwordHash = await passwordService.hash(SEED_BUYER_PASSWORD);
   const verifiedAt = new Date(Date.UTC(2026, 0, 1, 0, 0, 0));
@@ -226,7 +248,7 @@ async function loadWeightedTargets(em: EntityManager): Promise<{
         'inventoryRecords.prices',
         'inventoryRecords.productVariant',
       ],
-    }
+    },
   );
 
   const candidates = products
@@ -236,7 +258,7 @@ async function loadWeightedTargets(em: EntityManager): Promise<{
 
   if (candidates.length < BEST_SELLER_PRODUCT_COUNT) {
     throw new Error(
-      `Need at least ${BEST_SELLER_PRODUCT_COUNT} active storefront-ready products, found ${candidates.length}`
+      `Need at least ${BEST_SELLER_PRODUCT_COUNT} active storefront-ready products, found ${candidates.length}`,
     );
   }
 
@@ -248,7 +270,6 @@ async function loadWeightedTargets(em: EntityManager): Promise<{
     }));
   const noiseTargets = candidates
     .slice(BEST_SELLER_PRODUCT_COUNT)
-    .slice(0, 12)
     .map((candidate) => ({
       candidate,
       orderCount: NOISE_ORDERS_PER_PRODUCT,

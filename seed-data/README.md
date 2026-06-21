@@ -19,6 +19,9 @@ Expected layout:
 - `seed-data/product-inventory.local.tsv` (optional, local-only)
 - `seed-data/product-view-history.tsv`
 - `seed-data/product-view-history.local.tsv` (optional, local-only)
+- `seed-data/order-scenarios.local.tsv` (optional, local-only)
+- `seed-data/product-reviews.tsv`
+- `seed-data/product-reviews.local.tsv` (optional, local-only)
 - `seed-data/chat-conversations.tsv`
 - `seed-data/chat-conversations.local.tsv` (optional, local-only)
 - `seed-data/chat-messages.tsv`
@@ -30,6 +33,8 @@ Expected layout:
 - `seed-data/images/categories/`
 - `seed-data/images/products/<shop-slug>/<product-slug>/`
 - `seed-data/images/products-local/<shop-slug>/<product-slug>/` (optional, local-only)
+- `seed-data/images/reviews/<shop-slug>/<product-slug>/<reviewer-email-slug>/`
+- `seed-data/images/reviews-local/<shop-slug>/<product-slug>/<reviewer-email-slug>/` (optional, local-only)
 
 Rules:
 
@@ -57,6 +62,22 @@ Rules:
 - For one-off rows, provide exactly one of `user_email` or `guest_session_id`.
 - For expanded guest traffic, provide `guest_session_prefix` plus `guest_session_count`; the seeder will generate `<prefix>001`, `<prefix>002`, and so on.
 - `viewed_at_step_minutes` is optional for expanded guest traffic and defaults to `5`.
+- Optional local-only order scenarios can live in `seed-data/order-scenarios.local.tsv`.
+- Each local order scenario row must include `user_email` and a positive integer `order_count`.
+- Local order scenarios generate diversified historical orders in code, including mixed order statuses, shipping statuses, multi-item baskets, and coupon/no-coupon coverage.
+- Curated product review rows live in `seed-data/product-reviews.tsv`.
+- Optional local-only review rows can live in `seed-data/product-reviews.local.tsv`.
+- A header-only `seed-data/product-reviews.local.tsv` template is tracked so local product review rows can be added without copying the schema by hand.
+- `seed-data/product-reviews.tsv` should use customer emails that come from `seed-data/auth-users.tsv`.
+- `seed-data/product-reviews.local.tsv` should use customer emails that come from `seed-data/auth-users.local.tsv`.
+- Each review row must reference a seeded `shop_slug`, exact `product_title`, and `user_email` that already has an eligible seeded order for that product.
+- `rating` must be an integer from `1` to `5`.
+- `status` is optional and defaults to `published`; supported values are `published` and `hidden`.
+- `include_images` is optional and defaults to `false`. When true, the seeder requires real review photos from `seed-data/images/reviews/` or `seed-data/images/reviews-local/`.
+- `image_count` is optional and defaults to `1`.
+- `created_at` is optional and, when omitted, is derived from the seeded delivery timeline.
+- The demo seed also generates a large procedural review corpus from delivered seed orders after applying the curated rows, so `product-reviews.tsv` is intended for pinned showcase cases rather than full volume.
+- Auto-generated procedural reviews do not attach images.
 - Chat conversation rows live in `seed-data/chat-conversations.tsv`.
 - Optional local-only conversation rows can live in `seed-data/chat-conversations.local.tsv`.
 - Each chat conversation row must include a stable `conversation_key`, `buyer_email`, `shop_slug`, and `created_at`.
@@ -80,6 +101,12 @@ Rules:
 - Draft products can omit image folders entirely; active products still require seeded images.
 - Local-only product images can live under `seed-data/images/products-local/` with the same shop/product slug structure. The local folder is checked before the tracked folder.
 - Each product folder must contain one `hero.*` image. Additional images should be named `detail-*` and are uploaded after `hero.*`.
+- Review images should live under `seed-data/images/reviews/<shop-slug>/<product-slug>/<reviewer-email-slug>/`.
+- Use the slugified reviewer email for the last folder segment. Example: `member@example.com` becomes `member-example-com`.
+- Example review image folder: `seed-data/images/reviews/olive-atelier/canvas-market-tote/member-example-com/`.
+- Review images are sorted alphabetically and the first `image_count` files are attached to the matching curated review row.
+- Local-only review images can live under `seed-data/images/reviews-local/` with the same shop/product/reviewer structure. The local folder is checked before the tracked folder.
+- Supported review image extensions are `.jpg`, `.jpeg`, `.png`, and `.webp`.
 - Supported product image extensions are `.jpg`, `.jpeg`, `.png`, and `.webp`.
 - `product-inventory.tsv` should contain one row per SKU. Non-variant products still need one inventory row.
 - Keep filenames aligned with the relative keys referenced in [category.data.ts](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/api/database/seeds/category.data.ts:62).
@@ -100,7 +127,10 @@ Local-only workflow:
 - Put extra local products in `seed-data/products.local.tsv`.
 - Put matching local inventory rows in `seed-data/product-inventory.local.tsv`.
 - Put local-only product view-history rows in `seed-data/product-view-history.local.tsv`.
+- Put local-only bulk order scenarios in `seed-data/order-scenarios.local.tsv`.
+- Put local-only product review rows in `seed-data/product-reviews.local.tsv`.
 - Put local-only chat conversation rows in `seed-data/chat-conversations.local.tsv`.
 - Put local-only chat message rows in `seed-data/chat-messages.local.tsv`.
 - Put matching local images in `seed-data/images/products-local/<shop-slug>/<product-slug>/`.
+- Put local-only review images in `seed-data/images/reviews-local/<shop-slug>/<product-slug>/<reviewer-email-slug>/`.
 - Put local-only shops in `seed-data/shops.local.tsv` when products need a new local `shop_slug`.

@@ -16,9 +16,10 @@ type DatabaseEnv = Partial<
 
 export function buildDatabaseConfig(
   env: DatabaseEnv,
-  options?: { includeEntityGlobs?: boolean }
+  options?: { includeEntityGlobs?: boolean; debug?: boolean },
 ): Options<PostgreSqlDriver> {
   const includeEntityGlobs = options?.includeEntityGlobs ?? false;
+  const debug = options?.debug ?? env.NODE_ENV !== 'production';
   const connectionUrl = env.DATABASE_URL?.trim();
 
   if (connectionUrl) {
@@ -39,7 +40,7 @@ export function buildDatabaseConfig(
           },
         }
         : {}),
-      debug: env.NODE_ENV !== 'production',
+      debug,
       ...(includeEntityGlobs
         ? {
           entities: ['dist/**/*.entity.js'],
@@ -61,7 +62,7 @@ export function buildDatabaseConfig(
     user: env.DB_USER ?? 'postgres',
     password: env.DB_PASSWORD ?? 'postgres',
     dbName: env.DB_NAME ?? 'app',
-    debug: env.NODE_ENV !== 'production',
+    debug,
     ...(includeEntityGlobs
       ? {
         entities: ['dist/**/*.entity.js'],

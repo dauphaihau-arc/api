@@ -5,7 +5,7 @@ import {
   MARKETPLACE_REGIONS,
   type MarketplaceCurrency,
   type MarketplaceLanguage,
-  type MarketplaceRegion
+  type MarketplaceRegion,
 } from '../../src/config/marketplace.config';
 import type { CurrentUserEntity } from '../../src/modules/domains/auth/infra/persistence/entities/current-user.entity';
 import { UserPreferenceEntity } from '../../src/modules/domains/auth/infra/persistence/entities/user-preference.entity';
@@ -14,7 +14,7 @@ import {
   USER_ADDRESSES_LOCAL_TSV_PATH,
   USER_ADDRESSES_TSV_PATH,
   USER_PREFERENCES_LOCAL_TSV_PATH,
-  USER_PREFERENCES_TSV_PATH
+  USER_PREFERENCES_TSV_PATH,
 } from './product-seed-paths';
 import { readOptionalTsvRows, readTsvRows } from './shared/read-tsv-rows';
 
@@ -151,9 +151,21 @@ function loadUserPreferenceSeeds(): UserPreferenceSeed[] {
 const userAddressSeeds = loadUserAddressSeeds();
 const userPreferenceSeeds = loadUserPreferenceSeeds();
 
+function resolveProgressInterval(total: number, maxSteps = 5): number {
+  return Math.max(1, Math.ceil(total / maxSteps));
+}
+
+function formatDuration(ms: number): string {
+  if (ms < 1_000) {
+    return `${ms}ms`;
+  }
+
+  return `${(ms / 1_000).toFixed(1)}s`;
+}
+
 export async function seedUserProfiles(
   em: EntityManager,
-  usersByEmail: Map<string, CurrentUserEntity>
+  usersByEmail: Map<string, CurrentUserEntity>,
 ): Promise<void> {
   const addressSeedsByUserEmail = new Map<string, UserAddressSeed[]>();
 
@@ -163,7 +175,25 @@ export async function seedUserProfiles(
     addressSeedsByUserEmail.set(seed.userEmail, existing);
   });
 
-  for (const [userEmail, seeds] of addressSeedsByUserEmail) {
+  const addressGroups = Array.from(addressSeedsByUserEmail.entries());
+  const addressProgressInterval = resolveProgressInterval(addressGroups.length);
+  const preferenceProgressInterval = resolveProgressInterval(userPreferenceSeeds.length);
+  const addressesStartedAt = Date.now();
+  const preferenceUsers = userPreferenceSeeds
+    .map((seed) => usersByEmail.get(seed.userEmail))
+    .filter((user): user is CurrentUserEntity => Boolean(user));
+  const existingPreferences = preferenceUsers.length > 0
+    ? await em.find(UserPreferenceEntity, { user: { $in: preferenceUsers.map((user) => user.id) } }, { populate: ['user'] })
+    : [];
+  const existingPreferencesByUserId = new Map(
+    existingPreferences.map((preference) => [preference.user.id, preference]),
+  );
+
+  console.log(
+    `[seed][profiles] Upserting ${userAddressSeeds.length} addresses across ${addressGroups.length} users`,
+  );
+
+  for (const [index, [userEmail, seeds]] of addressGroups.entries()) {
     const user = usersByEmail.get(userEmail);
 
     if (!user) {
@@ -176,9 +206,7 @@ export async function seedUserProfiles(
       throw new Error(`Multiple primary addresses seeded for user ${userEmail}`);
     }
 
-    const existingAddresses = await em.find(UserAddressEntity, { user });
-    existingAddresses.forEach((address) => em.remove(address));
-    await em.flush();
+    await em.nativeDelete(UserAddressEntity, { user: user.id });
 
     seeds.forEach((seed) => {
       em.persist(em.create(UserAddressEntity, {
@@ -196,25 +224,44 @@ export async function seedUserProfiles(
     });
 
     await em.flush();
+
+    if ((index + 1) % addressProgressInterval === 0 || index + 1 === addressGroups.length) {
+      console.log(
+        `[seed][profiles] Processed ${index + 1}/${addressGroups.length} address groups in ${formatDuration(Date.now() - addressesStartedAt)}`,
+      );
+    }
   }
 
-  for (const seed of userPreferenceSeeds) {
+  console.log(`[seed][profiles] Upserting ${userPreferenceSeeds.length} preferences`);
+  const preferencesStartedAt = Date.now();
+
+  for (const [index, seed] of userPreferenceSeeds.entries()) {
     const user = usersByEmail.get(seed.userEmail);
 
     if (!user) {
       throw new Error(`Missing seeded user for preference seed: ${seed.userEmail}`);
     }
 
-    const existingPreference = await em.findOne(UserPreferenceEntity, { user });
+    const existingPreference = existingPreferencesByUserId.get(user.id);
 
     if (!existingPreference) {
-      em.persist(em.create(UserPreferenceEntity, {
+      const preference = em.create(UserPreferenceEntity, {
         user,
         region: seed.region,
         language: seed.language,
         currency: seed.currency,
-      }));
+      });
+      existingPreferencesByUserId.set(user.id, preference);
+      em.persist(preference);
       await em.flush();
+      if (
+        (index + 1) % preferenceProgressInterval === 0
+        || index + 1 === userPreferenceSeeds.length
+      ) {
+        console.log(
+          `[seed][profiles] Processed ${index + 1}/${userPreferenceSeeds.length} preferences in ${formatDuration(Date.now() - preferencesStartedAt)}`,
+        );
+      }
       continue;
     }
 
@@ -222,5 +269,14 @@ export async function seedUserProfiles(
     existingPreference.language = seed.language;
     existingPreference.currency = seed.currency;
     await em.flush();
+
+    if (
+      (index + 1) % preferenceProgressInterval === 0
+      || index + 1 === userPreferenceSeeds.length
+    ) {
+      console.log(
+        `[seed][profiles] Processed ${index + 1}/${userPreferenceSeeds.length} preferences in ${formatDuration(Date.now() - preferencesStartedAt)}`,
+      );
+    }
   }
 }

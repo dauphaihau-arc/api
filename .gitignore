@@ -41,6 +41,7 @@ yarn-error.log*
 
 # Local seed data
 seed-data/*.local.tsv
+seed-data/images/*-local/
 
 # Keep the main app migration snapshot tracked; ignore transient snapshots.
 api/database/migrations/.snapshot-*.json

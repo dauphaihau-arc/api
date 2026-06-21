@@ -7,6 +7,18 @@ import {
 } from './product-seed-paths';
 import { readOptionalTsvRows, readTsvRows } from './shared/read-tsv-rows';
 
+function resolveProgressInterval(total: number, maxSteps = 5): number {
+  return Math.max(1, Math.ceil(total / maxSteps));
+}
+
+function formatDuration(ms: number): string {
+  if (ms < 1_000) {
+    return `${ms}ms`;
+  }
+
+  return `${(ms / 1_000).toFixed(1)}s`;
+}
+
 type ExchangeRateSeed = {
   fromCurrency: MarketplaceCurrency;
   toCurrency: MarketplaceCurrency;
@@ -51,12 +63,18 @@ function loadExchangeRateSeeds(): ExchangeRateSeed[] {
 
 export async function seedExchangeRates(em: EntityManager): Promise<void> {
   const exchangeRateSeeds = loadExchangeRateSeeds();
+  const progressInterval = resolveProgressInterval(exchangeRateSeeds.length);
+  const startedAt = Date.now();
+  const existingRates = await em.find(ExchangeRateEntity, {});
+  const existingRatesByPair = new Map(
+    existingRates.map((rate) => [`${rate.fromCurrency}::${rate.toCurrency}`, rate]),
+  );
 
-  for (const seed of exchangeRateSeeds) {
-    const existing = await em.findOne(ExchangeRateEntity, {
-      fromCurrency: seed.fromCurrency,
-      toCurrency: seed.toCurrency,
-    });
+  console.log(`[seed][exchange-rates] Upserting ${exchangeRateSeeds.length} exchange rates`);
+
+  for (const [index, seed] of exchangeRateSeeds.entries()) {
+    const pairKey = `${seed.fromCurrency}::${seed.toCurrency}`;
+    const existing = existingRatesByPair.get(pairKey);
 
     if (existing) {
       existing.rate = seed.rate;
@@ -64,17 +82,28 @@ export async function seedExchangeRates(em: EntityManager): Promise<void> {
       existing.effectiveAt = new Date();
       existing.expiresAt = undefined;
       existing.sourceTimestamp = new Date();
-      continue;
+    }
+    else {
+      const exchangeRate = em.create(ExchangeRateEntity, {
+        fromCurrency: seed.fromCurrency,
+        toCurrency: seed.toCurrency,
+        rate: seed.rate,
+        effectiveAt: new Date(),
+        source: seed.source,
+        sourceTimestamp: new Date(),
+      });
+      existingRatesByPair.set(pairKey, exchangeRate);
+      em.persist(exchangeRate);
     }
 
-    em.persist(em.create(ExchangeRateEntity, {
-      fromCurrency: seed.fromCurrency,
-      toCurrency: seed.toCurrency,
-      rate: seed.rate,
-      effectiveAt: new Date(),
-      source: seed.source,
-      sourceTimestamp: new Date(),
-    }));
+    if (
+      (index + 1) % progressInterval === 0
+      || index + 1 === exchangeRateSeeds.length
+    ) {
+      console.log(
+        `[seed][exchange-rates] Processed ${index + 1}/${exchangeRateSeeds.length} exchange rates in ${formatDuration(Date.now() - startedAt)}`,
+      );
+    }
   }
 
   await em.flush();

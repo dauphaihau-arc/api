@@ -11,25 +11,29 @@ import {
   buildStorageConfig,
   type LocalStorageConfig,
   type MinioStorageConfig,
-  type StorageConfig
+  type StorageConfig,
 } from '../src/config/storage.config';
 import {
   CATEGORY_IMAGE_VARIANT_SPECS,
-  type CategoryImageVariant
+  type CategoryImageVariant,
 } from '../src/modules/domains/category/app/config/category-image-variant.config';
 import { CategoryEntity } from '../src/modules/domains/category/infra/persistence/entities/category.entity';
 import { ProductImageService } from '../src/modules/domains/product/app/services/product-image.service';
+import { ReviewImageService } from '../src/modules/domains/product/app/services/review-image.service';
 import { ProductImageVariantStatus } from '../src/modules/domains/product/domain/enums/product-image-variant-status.enum';
 import { ProductImageEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-image.entity';
 import { ProductImageVariantEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-image-variant.entity';
+import { ProductReviewImageEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-review-image.entity';
+import { ProductReviewImageVariantEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-review-image-variant.entity';
 import { MikroOrmProductImageVariantGenerationRepository } from '~/modules/domains/product/infra/persistence/mikro-orm/repositories/mikro-orm-product-image-variant-generation.repository';
+import { MikroOrmReviewImageVariantGenerationRepository } from '~/modules/domains/product/infra/persistence/mikro-orm/repositories/mikro-orm-review-image-variant-generation.repository';
 import { ProductEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product.entity';
 import { ShopEntity } from '../src/modules/domains/shop/infra/persistence/entities/shop.entity';
 import { SharpImageTransformService } from '../src/modules/shared/image-transform/infra/sharp-image-transform.service';
 import type { StorageService } from '../src/modules/shared/storage/app/ports/storage.service';
 import {
   buildStorageObjectKey,
-  resolveStorageEnvironmentSegment
+  resolveStorageEnvironmentSegment,
 } from '../src/modules/shared/storage/app/storage-key-builder';
 import { LocalFileStorageService } from '../src/modules/shared/storage/infra/local-file-storage.service';
 import { MinioStorageService } from '../src/modules/shared/storage/infra/minio-storage.service';
@@ -38,15 +42,17 @@ import {
   resolveOptionalSeedProductImagePaths,
   resolveSeedProductAssetDirectory,
   resolveSeedProductImagePaths,
-  slugifySeedValue
+  slugifySeedValue,
 } from '../database/seeds/product-seed-image-resolver';
 import {
   PRODUCT_IMAGE_ROOT_DIRS,
   PRODUCT_LOCAL_TSV_PATH,
   PRODUCT_TSV_PATH,
+  REVIEW_IMAGE_ROOT_DIRS,
   SHOPS_LOCAL_TSV_PATH,
-  SHOPS_TSV_PATH
+  SHOPS_TSV_PATH,
 } from '../database/seeds/product-seed-paths';
+import { buildSeedReviewImageStorageKey } from '../database/seeds/review-seed-image-resolver';
 import { readOptionalTsvRows, readTsvRows } from '../database/seeds/shared/read-tsv-rows';
 
 type ShopCsvRow = {
@@ -72,12 +78,19 @@ type ResolvedProductSeedAssets = {
   imageFilenames: string[];
 };
 
+type SeedReviewImageAsset = {
+  sourceFile: string;
+  storageKey: string;
+};
+
 const ROOT_DIR = path.resolve(__dirname, '../..');
 const SEED_ASSETS_DIR = path.join(ROOT_DIR, 'seed-data');
 const CATEGORY_ASSETS_DIR = path.join(SEED_ASSETS_DIR, 'images', 'categories');
 const CATEGORY_UPLOAD_CONCURRENCY = 4;
 const CATEGORY_VARIANT_CONCURRENCY = 3;
 const PRODUCT_UPLOAD_CONCURRENCY = 4;
+const REVIEW_UPLOAD_CONCURRENCY = 4;
+const REVIEW_VARIANT_CONCURRENCY = 3;
 const PRODUCT_PROCESSING_CONCURRENCY = 2;
 
 type StorageUsageSummary = {
@@ -112,7 +125,7 @@ function formatBytes(bytes: number): string {
 
 async function measureStep<T>(
   label: string,
-  work: () => Promise<T>
+  work: () => Promise<T>,
 ): Promise<T> {
   const startedAt = performance.now();
   console.log(`[perf] start ${label}`);
@@ -137,7 +150,7 @@ function assertFileExists(filePath: string): void {
 async function mapWithConcurrency<T>(
   items: readonly T[],
   concurrency: number,
-  worker: (item: T, index: number) => Promise<void>
+  worker: (item: T, index: number) => Promise<void>,
 ): Promise<void> {
   if (items.length === 0) {
     return;
@@ -158,7 +171,7 @@ async function mapWithConcurrency<T>(
 
         await worker(items[currentIndex], currentIndex);
       }
-    })
+    }),
   );
 }
 
@@ -183,7 +196,7 @@ function loadShopNamesBySlug(): Map<string, string> {
   ];
 
   return new Map(
-    rows.map((row) => [row.shop_slug.trim(), row.shop_name.trim()])
+    rows.map((row) => [row.shop_slug.trim(), row.shop_name.trim()]),
   );
 }
 
@@ -196,7 +209,7 @@ function loadProductSeedsMinimal(): MinimalProductSeed[] {
   return rows.map((row, index) => {
     if (!row.shop_slug.trim() || !row.category_path.trim() || !row.title.trim()) {
       throw new Error(
-        `Product seed row ${index + 2} must include shop_slug, category_path, and title`
+        `Product seed row ${index + 2} must include shop_slug, category_path, and title`,
       );
     }
 
@@ -218,24 +231,24 @@ function resolveProductSeedAssets(productSeed: MinimalProductSeed): ResolvedProd
       ? resolveOptionalSeedProductImagePaths(
         PRODUCT_IMAGE_ROOT_DIRS,
         productSeed.shopSlug,
-        productSeed.title
+        productSeed.title,
       )
       : resolveSeedProductImagePaths(
         PRODUCT_IMAGE_ROOT_DIRS,
         productSeed.shopSlug,
-        productSeed.title
+        productSeed.title,
       );
   const assetDirectory =
     productSeed.state === 'draft'
       ? resolveOptionalSeedProductAssetDirectory(
         PRODUCT_IMAGE_ROOT_DIRS,
         productSeed.shopSlug,
-        productSeed.title
+        productSeed.title,
       )
       : resolveSeedProductAssetDirectory(
         PRODUCT_IMAGE_ROOT_DIRS,
         productSeed.shopSlug,
-        productSeed.title
+        productSeed.title,
       );
 
   return {
@@ -247,13 +260,13 @@ function resolveProductSeedAssets(productSeed: MinimalProductSeed): ResolvedProd
 function buildSeedProductImageStorageKey(
   shop: ShopEntity,
   product: ProductEntity,
-  imageFilename: string
+  imageFilename: string,
 ): string {
   const normalizedFilename = path.basename(imageFilename.trim());
   const extension = path.extname(normalizedFilename).replace(/^\./, '').toLowerCase();
   const filenameWithoutExtension = normalizedFilename.slice(
     0,
-    normalizedFilename.length - extension.length - 1
+    normalizedFilename.length - extension.length - 1,
   );
 
   if (!extension || !filenameWithoutExtension) {
@@ -278,7 +291,7 @@ async function syncSeedProductImages(
   em: EntityManager,
   shop: ShopEntity,
   product: ProductEntity,
-  imageFilenames: string[]
+  imageFilenames: string[],
 ): Promise<ProductImageEntity[]> {
   for (const image of await em.find(ProductImageEntity, { product })) {
     em.remove(image);
@@ -291,7 +304,7 @@ async function syncSeedProductImages(
       storageKey: buildSeedProductImageStorageKey(shop, product, imageFilename),
       rank: index + 1,
       variantStatus: ProductImageVariantStatus.PENDING,
-    })
+    }),
   );
 
   images.forEach((image) => em.persist(image));
@@ -307,7 +320,7 @@ function createStorageService(config: StorageConfig): StorageService {
 }
 
 async function collectStorageUsage(
-  config: StorageConfig
+  config: StorageConfig,
 ): Promise<StorageUsageSummary> {
   return config.driver === 'local'
     ? collectLocalStorageUsage(config)
@@ -315,7 +328,7 @@ async function collectStorageUsage(
 }
 
 async function collectLocalStorageUsage(
-  config: LocalStorageConfig
+  config: LocalStorageConfig,
 ): Promise<StorageUsageSummary> {
   const rootPath = path.resolve(config.localRoot);
 
@@ -353,7 +366,7 @@ async function collectLocalStorageUsage(
 }
 
 async function collectMinioStorageUsage(
-  config: MinioStorageConfig
+  config: MinioStorageConfig,
 ): Promise<StorageUsageSummary> {
   const client = new S3Client({
     region: config.region,
@@ -395,7 +408,7 @@ async function collectMinioStorageUsage(
 async function putSeedAsset(
   storageService: StorageService,
   key: string,
-  sourceFile: string
+  sourceFile: string,
 ): Promise<void> {
   assertFileExists(sourceFile);
 
@@ -410,7 +423,7 @@ async function putCategorySeedVariants(
   storageService: StorageService,
   imageTransformService: SharpImageTransformService,
   originalKey: string,
-  sourceFile: string
+  sourceFile: string,
 ): Promise<void> {
   const original = await readFile(sourceFile);
 
@@ -431,13 +444,13 @@ async function putCategorySeedVariants(
         contentType: resolveImageVariantContentType(spec.format),
       });
       console.log(`Uploaded category asset variant -> ${key}`);
-    }
+    },
   );
 }
 
 function buildCategoryVariantStorageKey(
   originalKey: string,
-  variant: CategoryImageVariant
+  variant: CategoryImageVariant,
 ): string {
   const segments = originalKey.split('/').filter(Boolean);
   const imageSegmentIndex = segments.lastIndexOf('images');
@@ -455,7 +468,7 @@ function buildCategoryVariantStorageKey(
 }
 
 function resolveImageVariantContentType(
-  format: 'webp' | 'jpg' | 'png' | 'avif'
+  format: 'webp' | 'jpg' | 'png' | 'avif',
 ): string {
   switch (format) {
     case 'webp':
@@ -467,6 +480,82 @@ function resolveImageVariantContentType(
     case 'avif':
       return 'image/avif';
   }
+}
+
+async function collectSeedReviewImageAssets(
+  rootDirs: readonly string[],
+): Promise<SeedReviewImageAsset[]> {
+  const assetsByStorageKey = new Map<string, SeedReviewImageAsset>();
+
+  for (const rootDir of rootDirs) {
+    if (!existsSync(rootDir)) {
+      continue;
+    }
+
+    const shopEntries = await readdir(rootDir, { withFileTypes: true });
+
+    for (const shopEntry of shopEntries) {
+      if (!shopEntry.isDirectory() || shopEntry.name.startsWith('.')) {
+        continue;
+      }
+
+      const shopDir = path.join(rootDir, shopEntry.name);
+      const productEntries = await readdir(shopDir, { withFileTypes: true });
+
+      for (const productEntry of productEntries) {
+        if (!productEntry.isDirectory() || productEntry.name.startsWith('.')) {
+          continue;
+        }
+
+        const productDir = path.join(shopDir, productEntry.name);
+        const reviewerEntries = await readdir(productDir, { withFileTypes: true });
+
+        for (const reviewerEntry of reviewerEntries) {
+          if (!reviewerEntry.isDirectory() || reviewerEntry.name.startsWith('.')) {
+            continue;
+          }
+
+          const reviewerDir = path.join(productDir, reviewerEntry.name);
+          const imageEntries = await readdir(reviewerDir, { withFileTypes: true });
+
+          for (const imageEntry of imageEntries) {
+            if (!imageEntry.isFile() || imageEntry.name.startsWith('.')) {
+              continue;
+            }
+
+            const extension = path.extname(imageEntry.name).toLowerCase();
+            if (!['.jpg', '.jpeg', '.png', '.webp'].includes(extension)) {
+              continue;
+            }
+
+            const relativeImagePath = path.posix.join(
+              shopEntry.name,
+              productEntry.name,
+              reviewerEntry.name,
+              imageEntry.name,
+            );
+
+            const asset = {
+              sourceFile: path.join(reviewerDir, imageEntry.name),
+              storageKey: buildSeedReviewImageStorageKey(
+                shopEntry.name,
+                productEntry.name,
+                reviewerEntry.name,
+                relativeImagePath,
+              ),
+            };
+
+            if (!assetsByStorageKey.has(asset.storageKey)) {
+              assetsByStorageKey.set(asset.storageKey, asset);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return Array.from(assetsByStorageKey.values())
+    .sort((left, right) => left.sourceFile.localeCompare(right.sourceFile));
 }
 
 async function main(): Promise<void> {
@@ -486,6 +575,8 @@ async function main(): Promise<void> {
       ProductEntity,
       ProductImageEntity,
       ProductImageVariantEntity,
+      ProductReviewImageEntity,
+      ProductReviewImageVariantEntity,
     ],
   });
 
@@ -493,12 +584,20 @@ async function main(): Promise<void> {
     const em = orm.em.fork();
     const imageTransformService = new SharpImageTransformService();
     const productImageVariantGenerationRepository = new MikroOrmProductImageVariantGenerationRepository(
-      orm.em
+      orm.em,
+    );
+    const reviewImageVariantGenerationRepository = new MikroOrmReviewImageVariantGenerationRepository(
+      orm.em,
     );
     const productImageService = new ProductImageService(
       productImageVariantGenerationRepository,
       storageService,
-      imageTransformService
+      imageTransformService,
+    );
+    const reviewImageService = new ReviewImageService(
+      reviewImageVariantGenerationRepository,
+      storageService,
+      imageTransformService,
     );
     const shopNamesBySlug = loadShopNamesBySlug();
     const productSeeds = loadProductSeedsMinimal();
@@ -507,13 +606,13 @@ async function main(): Promise<void> {
     try {
       categories = await em.find(
         CategoryEntity,
-        { imageStorageKey: { $ne: null } }
+        { imageStorageKey: { $ne: null } },
       );
     }
     catch (error) {
       if (error instanceof TableNotFoundException) {
         throw new Error(
-          'Seed tables not found. Run "just db-seed" or "just db-seed-demo" before "just storage-seed".'
+          'Seed tables not found. Run "just db-seed" or "just db-seed-demo" before "just storage-seed".',
         );
       }
 
@@ -522,7 +621,7 @@ async function main(): Promise<void> {
 
     const categoriesWithImages = categories.filter((category) => category.imageStorageKey);
     console.log(
-      `[perf] category_count=${categoriesWithImages.length} category_upload_concurrency=${CATEGORY_UPLOAD_CONCURRENCY} category_variant_concurrency=${CATEGORY_VARIANT_CONCURRENCY}`
+      `[perf] category_count=${categoriesWithImages.length} category_upload_concurrency=${CATEGORY_UPLOAD_CONCURRENCY} category_variant_concurrency=${CATEGORY_VARIANT_CONCURRENCY}`,
     );
 
     await measureStep('upload categories', async () =>
@@ -537,7 +636,7 @@ async function main(): Promise<void> {
 
           const sourceFile = path.join(
             CATEGORY_ASSETS_DIR,
-            path.basename(imageStorageKey)
+            path.basename(imageStorageKey),
           );
 
           await putSeedAsset(storageService, imageStorageKey, sourceFile);
@@ -546,14 +645,14 @@ async function main(): Promise<void> {
             storageService,
             imageTransformService,
             imageStorageKey,
-            sourceFile
+            sourceFile,
           );
-        }
-      )
+        },
+      ),
     );
 
     console.log(
-      `[perf] product_count=${productSeeds.length} product_processing_concurrency=${PRODUCT_PROCESSING_CONCURRENCY} product_upload_concurrency=${PRODUCT_UPLOAD_CONCURRENCY}`
+      `[perf] product_count=${productSeeds.length} product_processing_concurrency=${PRODUCT_PROCESSING_CONCURRENCY} product_upload_concurrency=${PRODUCT_UPLOAD_CONCURRENCY}`,
     );
 
     await measureStep('process products', async () =>
@@ -564,7 +663,7 @@ async function main(): Promise<void> {
           const { assetDirectory, imageFilenames } = resolveProductSeedAssets(productSeed);
           if (!assetDirectory && imageFilenames.length === 0) {
             console.log(
-              `[perf] skip assetless seed ${productSeed.shopSlug}/${slugifySeedValue(productSeed.title)}`
+              `[perf] skip assetless seed ${productSeed.shopSlug}/${slugifySeedValue(productSeed.title)}`,
             );
             return;
           }
@@ -577,19 +676,19 @@ async function main(): Promise<void> {
           const shop = await em.findOne(ShopEntity, { shopName });
           if (!shop) {
             throw new Error(
-              `Missing seeded shop: ${shopName}. Run the database seed first with "just db-seed" (or "just db-seed-demo"), then rerun "just storage-seed".`
+              `Missing seeded shop: ${shopName}. Run the database seed first with "just db-seed" (or "just db-seed-demo"), then rerun "just storage-seed".`,
             );
           }
 
           const product = await em.findOne(
             ProductEntity,
             { shop, slug: slugifySeedValue(productSeed.title) },
-            { populate: ['images', 'images.variants'] }
+            { populate: ['images', 'images.variants'] },
           );
 
           if (!product) {
             throw new Error(
-              `Missing seeded product: ${productSeed.title}. Run the database seed first with "just db-seed" (or "just db-seed-demo"), then rerun "just storage-seed".`
+              `Missing seeded product: ${productSeed.title}. Run the database seed first with "just db-seed" (or "just db-seed-demo"), then rerun "just storage-seed".`,
             );
           }
 
@@ -599,14 +698,14 @@ async function main(): Promise<void> {
 
           if (images.length !== imageFilenames.length) {
             console.warn(
-              `Reconciling seeded product images for "${productSeed.title}" (${images.length} database rows vs ${imageFilenames.length} seed assets).`
+              `Reconciling seeded product images for "${productSeed.title}" (${images.length} database rows vs ${imageFilenames.length} seed assets).`,
             );
             images = await syncSeedProductImages(em, shop, product, imageFilenames);
           }
 
           if (!assetDirectory) {
             throw new Error(
-              `Missing product asset directory for seeded product "${productSeed.title}".`
+              `Missing product asset directory for seeded product "${productSeed.title}".`,
             );
           }
 
@@ -618,28 +717,72 @@ async function main(): Promise<void> {
                 const imageFilename = imageFilenames[index];
                 if (!imageFilename) {
                   throw new Error(
-                    `Missing source image filename for seeded product "${productSeed.title}" at index ${index}.`
+                    `Missing source image filename for seeded product "${productSeed.title}" at index ${index}.`,
                   );
                 }
 
                 const sourceFile = path.join(
                   assetDirectory,
-                  path.basename(imageFilename)
+                  path.basename(imageFilename),
                 );
 
                 await putSeedAsset(storageService, image.storageKey, sourceFile);
                 console.log(`Uploaded product asset -> ${image.storageKey}`);
-              }
-            )
+              },
+            ),
           );
 
           await measureStep(
             `generate variants for ${product.slug}`,
-            async () => productImageService.generateVariants(product.id)
+            async () => productImageService.generateVariants(product.id),
           );
           console.log(`Generated product image variants -> ${product.slug}`);
-        }
+        },
+      ),
+    );
+
+    const reviewImageAssets = await measureStep(
+      'scan review image assets',
+      async () => collectSeedReviewImageAssets(REVIEW_IMAGE_ROOT_DIRS),
+    );
+    console.log(
+      `[perf] review_image_count=${reviewImageAssets.length} review_upload_concurrency=${REVIEW_UPLOAD_CONCURRENCY} review_variant_concurrency=${REVIEW_VARIANT_CONCURRENCY}`,
+    );
+
+    await measureStep('upload review images', async () =>
+      mapWithConcurrency(
+        reviewImageAssets,
+        REVIEW_UPLOAD_CONCURRENCY,
+        async (asset) => {
+          await putSeedAsset(storageService, asset.storageKey, asset.sourceFile);
+          console.log(`Uploaded review asset -> ${asset.storageKey}`);
+        },
+      ),
+    );
+
+    const reviewImageStorageKeys = reviewImageAssets.map((asset) => asset.storageKey);
+    const reviewImages = reviewImageStorageKeys.length > 0
+      ? await em.find(
+        ProductReviewImageEntity,
+        {
+          storageKey: { $in: reviewImageStorageKeys },
+        },
+        {
+          fields: ['id', 'storageKey'],
+          orderBy: { createdAt: 'asc' },
+        },
       )
+      : [];
+
+    await measureStep('generate review image variants', async () =>
+      mapWithConcurrency(
+        reviewImages,
+        REVIEW_VARIANT_CONCURRENCY,
+        async (reviewImage) => {
+          await reviewImageService.generateVariants(reviewImage.id);
+          console.log(`Generated review image variants -> ${reviewImage.storageKey}`);
+        },
+      ),
     );
   }
   finally {
@@ -648,10 +791,10 @@ async function main(): Promise<void> {
 
   const storageUsage = await measureStep(
     'measure storage usage',
-    async () => collectStorageUsage(storageConfig)
+    async () => collectStorageUsage(storageConfig),
   );
   console.log(
-    `[perf] storage_usage objects=${storageUsage.objectCount} total_size=${formatBytes(storageUsage.totalBytes)} (${storageUsage.totalBytes} bytes)`
+    `[perf] storage_usage objects=${storageUsage.objectCount} total_size=${formatBytes(storageUsage.totalBytes)} (${storageUsage.totalBytes} bytes)`,
   );
   console.log(`[perf] total script time ${formatDurationMs(performance.now() - scriptStartedAt)}`);
   console.log('Seed asset upload complete.');

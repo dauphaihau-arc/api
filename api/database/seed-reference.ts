@@ -12,7 +12,7 @@ import { seedCategories } from './seeds/category.seed';
 
 async function main() {
   const orm = await MikroORM.init({
-    ...buildDatabaseConfig(process.env),
+    ...buildDatabaseConfig(process.env, { debug: false }),
     entities: [
       RoleEntity,
       PermissionEntity,
@@ -32,7 +32,8 @@ async function main() {
 
     console.log('Production seed completed');
     console.log('Seeded reference data only: roles, permissions, categories');
-  } finally {
+  }
+  finally {
     await orm.close(true);
   }
 }

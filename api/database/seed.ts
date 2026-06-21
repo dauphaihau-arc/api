@@ -24,6 +24,8 @@ import { ProductAttributeValueEntity } from '~/modules/domains/product/infra/per
 import { ProductImageEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-image.entity';
 import { ProductInventoryReservationEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-inventory-reservation.entity';
 import { ProductInventoryEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-inventory.entity';
+import { ProductReviewEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-review.entity';
+import { ProductReviewImageEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-review-image.entity';
 import { ProductShippingDestinationEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-shipping-destination.entity';
 import { ProductShippingProfileEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-shipping-profile.entity';
 import { ProductVariantEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-variant.entity';
@@ -39,9 +41,12 @@ import { seedCategories } from './seeds/category.seed';
 import { seedChat } from './seeds/chat.seed';
 import { seedCoupons } from './seeds/coupon.seed';
 import { seedExchangeRates } from './seeds/exchange-rate.seed';
+import { seedLocalOrderScenarios } from './seeds/local-order-scenario.seed';
 import { seedBulkOrderDemo } from './seeds/order-bulk.seed';
 import { seedOrderCartDemo } from './seeds/order-cart.seed';
+import { seedLocalProductReviewOrders } from './seeds/product-review-local-order.seed';
 import { seedProducts } from './seeds/product.seed';
+import { seedProductReviews } from './seeds/product-review.seed';
 import { seedProductViewHistory } from './seeds/product-view-history.seed';
 import { seedShops } from './seeds/shop.seed';
 import { seedUserProfiles } from './seeds/user-profile.seed';
@@ -69,7 +74,7 @@ async function main() {
   console.log('[seed] Starting demo seed');
 
   const orm = await MikroORM.init({
-    ...buildDatabaseConfig(process.env),
+    ...buildDatabaseConfig(process.env, { debug: false }),
     entities: [
       CurrentUserEntity,
       CurrentUserCredentialEntity,
@@ -99,6 +104,8 @@ async function main() {
       ProductVariantEntity,
       ProductInventoryEntity,
       ProductInventoryReservationEntity,
+      ProductReviewEntity,
+      ProductReviewImageEntity,
       ProductShippingProfileEntity,
       ProductShippingDestinationEntity,
       ProductViewHistoryEntity,
@@ -114,27 +121,36 @@ async function main() {
 
     const { usersByEmail } = await runSeedStep('Seeding auth', async () => seedAuth(em));
     await runSeedStep('Seeding user profiles', async () =>
-      seedUserProfiles(em, usersByEmail)
+      seedUserProfiles(em, usersByEmail),
     );
     await runSeedStep('Seeding categories', async () => seedCategories(em));
 
     const { shopsBySlug } = await runSeedStep('Seeding shops', async () =>
-      seedShops(em, usersByEmail)
+      seedShops(em, usersByEmail),
     );
     await runSeedStep('Seeding exchange rates', async () => seedExchangeRates(em));
     await runSeedStep('Seeding products', async () => seedProducts(em, shopsBySlug));
     await runSeedStep('Seeding chat conversations', async () =>
-      seedChat(em, usersByEmail)
+      seedChat(em, usersByEmail),
     );
     await runSeedStep('Seeding product view history', async () =>
-      seedProductViewHistory(em, usersByEmail)
+      seedProductViewHistory(em, usersByEmail),
     );
     await runSeedStep('Seeding coupons', async () => seedCoupons(em, shopsBySlug));
     await runSeedStep('Seeding demo orders and carts', async () =>
-      seedOrderCartDemo(em, usersByEmail)
+      seedOrderCartDemo(em, usersByEmail),
     );
     await runSeedStep('Seeding bulk bestseller orders', async () =>
-      seedBulkOrderDemo(em)
+      seedBulkOrderDemo(em),
+    );
+    await runSeedStep('Seeding local order scenarios', async () =>
+      seedLocalOrderScenarios(em),
+    );
+    await runSeedStep('Seeding exact local review orders', async () =>
+      seedLocalProductReviewOrders(em),
+    );
+    await runSeedStep('Seeding product reviews', async () =>
+      seedProductReviews(em),
     );
 
     console.log('Seed completed');

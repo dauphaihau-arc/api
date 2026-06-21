@@ -52,21 +52,41 @@ function loadShopSeeds(): ShopSeed[] {
 
 const shopSeeds: ShopSeed[] = loadShopSeeds();
 
+function resolveProgressInterval(total: number, maxSteps = 5): number {
+  return Math.max(1, Math.ceil(total / maxSteps));
+}
+
+function formatDuration(ms: number): string {
+  if (ms < 1_000) {
+    return `${ms}ms`;
+  }
+
+  return `${(ms / 1_000).toFixed(1)}s`;
+}
+
 export async function seedShops(
   em: EntityManager,
-  usersByEmail: Map<string, CurrentUserEntity>
+  usersByEmail: Map<string, CurrentUserEntity>,
 ): Promise<{ shopsBySlug: Map<string, ShopEntity>; shopsByName: Map<string, ShopEntity> }> {
   const shopsBySlug = new Map<string, ShopEntity>();
   const shopsByName = new Map<string, ShopEntity>();
+  const progressInterval = resolveProgressInterval(shopSeeds.length);
+  const startedAt = Date.now();
+  const existingShops = await em.find(ShopEntity, {
+    slug: { $in: shopSeeds.map((shopSeed) => shopSeed.shopSlug) },
+  });
+  const existingShopsBySlug = new Map(existingShops.map((shop) => [shop.slug, shop]));
 
-  for (const shopSeed of shopSeeds) {
+  console.log(`[seed][shops] Upserting ${shopSeeds.length} shops`);
+
+  for (const [index, shopSeed] of shopSeeds.entries()) {
     const owner = usersByEmail.get(shopSeed.ownerEmail);
     if (!owner) {
       throw new Error(`Missing shop owner seed user: ${shopSeed.ownerEmail}`);
     }
 
     const shop =
-      (await em.findOne(ShopEntity, { slug: shopSeed.shopSlug })) ??
+      existingShopsBySlug.get(shopSeed.shopSlug) ??
       em.create(ShopEntity, {
         ownerUser: owner,
         shopName: shopSeed.shopName,
@@ -75,6 +95,7 @@ export async function seedShops(
         status: 'active',
         currency: shopSeed.currency,
       });
+    existingShopsBySlug.set(shopSeed.shopSlug, shop);
 
     shop.ownerUser = owner;
     shop.slug = shopSeed.shopSlug;
@@ -84,6 +105,12 @@ export async function seedShops(
     em.persist(shop);
     shopsBySlug.set(shopSeed.shopSlug, shop);
     shopsByName.set(shop.shopName, shop);
+
+    if ((index + 1) % progressInterval === 0 || index + 1 === shopSeeds.length) {
+      console.log(
+        `[seed][shops] Processed ${index + 1}/${shopSeeds.length} shops in ${formatDuration(Date.now() - startedAt)}`,
+      );
+    }
   }
 
   await em.flush();

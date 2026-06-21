@@ -11,7 +11,6 @@ import { OrderStatus } from '~/modules/domains/order/domain/enums/order-status.e
 import { PaymentType } from '~/modules/domains/order/domain/enums/payment-type.enum';
 import { OrderEntity } from '~/modules/domains/order/infra/persistence/entities/order.entity';
 import { OrderItemEntity } from '~/modules/domains/order/infra/persistence/entities/order-item.entity';
-import { ProductImageEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-image.entity';
 import { ProductInventoryEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-inventory.entity';
 import { getInventoryPricingSnapshot } from '~/modules/domains/product/infra/persistence/mikro-orm/reads/variant-price-read';
 
@@ -58,6 +57,14 @@ type SeedInventory = {
   entity: ProductInventoryEntity;
 };
 
+function formatDuration(ms: number): string {
+  if (ms < 1_000) {
+    return `${ms}ms`;
+  }
+
+  return `${(ms / 1_000).toFixed(1)}s`;
+}
+
 function calculateUnitPrice(inventory: ProductInventoryEntity): number {
   const pricing = getInventoryPricingSnapshot(inventory);
 
@@ -86,17 +93,17 @@ async function loadInventories(em: EntityManager): Promise<Map<string, SeedInven
     em.findOneOrFail(
       ProductInventoryEntity,
       { product: { title: 'Canvas Market Tote' } },
-      { populate: ['product', 'product.images', 'product.shop', 'product.shop.ownerUser', 'productVariant', 'prices'] }
+      { populate: ['product', 'product.images', 'product.shop', 'product.shop.ownerUser', 'productVariant', 'prices'] },
     ),
     em.findOneOrFail(
       ProductInventoryEntity,
       { product: { title: 'Sony WH-1000XM6 Wireless Headphones' } },
-      { populate: ['product', 'product.images', 'product.shop', 'productVariant', 'prices'] }
+      { populate: ['product', 'product.images', 'product.shop', 'productVariant', 'prices'] },
     ),
     em.findOneOrFail(
       ProductInventoryEntity,
       { product: { title: 'Minimal Horizon Print' } },
-      { populate: ['product', 'product.images', 'product.shop', 'productVariant', 'prices'] }
+      { populate: ['product', 'product.images', 'product.shop', 'productVariant', 'prices'] },
     ),
   ]);
 
@@ -111,7 +118,7 @@ async function loadCoupons(em: EntityManager): Promise<Map<string, CouponEntity>
   const coupons = await em.find(
     CouponEntity,
     { code: { $in: ['OLIVE-FA', 'REED-PC'] } },
-    { populate: ['shop'] }
+    { populate: ['shop'] },
   );
 
   return new Map(coupons.map((coupon) => [coupon.code, coupon]));
@@ -135,8 +142,9 @@ async function resetDemoCommerceData(em: EntityManager, user: CurrentUserEntity)
 
 export async function seedOrderCartDemo(
   em: EntityManager,
-  usersByEmail: Map<string, CurrentUserEntity>
+  usersByEmail: Map<string, CurrentUserEntity>,
 ): Promise<void> {
+  const startedAt = Date.now();
   const user = usersByEmail.get(DEMO_USER_EMAIL);
   if (!user) {
     throw new Error(`Missing demo user seed: ${DEMO_USER_EMAIL}`);
@@ -146,6 +154,10 @@ export async function seedOrderCartDemo(
 
   const inventories = await loadInventories(em);
   const couponsByCode = await loadCoupons(em);
+
+  console.log(
+    `[seed][demo-commerce] Building ${CART_ITEMS.length} cart items and ${ORDER_SEEDS.length} demo orders`,
+  );
 
   const cart = em.create(CartEntity, {
     user,
@@ -168,11 +180,14 @@ export async function seedOrderCartDemo(
         productInventory: inventory,
         quantity: cartItemSeed.quantity,
         isSelectOrder: true,
-      })
+      }),
     );
   }
 
   await em.flush();
+  console.log(
+    `[seed][demo-commerce] Seeded cart with ${CART_ITEMS.length} items in ${formatDuration(Date.now() - startedAt)}`,
+  );
 
   for (const [index, orderSeed] of ORDER_SEEDS.entries()) {
     const inventory = inventories.get(orderSeed.inventoryId)?.entity;
@@ -180,7 +195,7 @@ export async function seedOrderCartDemo(
       throw new Error(`Missing demo inventory seed: ${orderSeed.inventoryId}`);
     }
 
-    const image = await em.findOne(ProductImageEntity, { product: inventory.product }, { orderBy: { rank: 'asc' } });
+    const image = inventory.product.images.getItems().sort((left, right) => left.rank - right.rank)[0];
     const pricing = getInventoryPricingSnapshot(inventory);
     const unitPrice = calculateUnitPrice(inventory);
     const subtotal = unitPrice * orderSeed.quantity;
@@ -199,8 +214,8 @@ export async function seedOrderCartDemo(
       customerEmail: user.email.toString(),
       shop: inventory.shop,
       paymentType: PaymentType.CARD,
-      status: OrderStatus.PAID,
-      shippingStatus: index === 0 ? OrderShippingStatus.DELIVERED : OrderShippingStatus.SHIPPED,
+      status: OrderStatus.COMPLETED,
+      shippingStatus: OrderShippingStatus.DELIVERED,
       currency: 'USD',
       subtotal,
       totalShippingFee: orderSeed.shippingFee,
@@ -211,7 +226,9 @@ export async function seedOrderCartDemo(
       shippingAddress: buildShippingAddress(),
       shippingOriginCountries: ['US'],
       shippingToCountry: 'US',
-      shippingEstimatedDelivery: new Date(Date.UTC(2026, 4, 15 + (index * 2), 0, 0, 0)),
+      shippingEstimatedDelivery: new Date(Date.UTC(2026, 4, 12 + (index * 2), 18, 0, 0)),
+      shippedAt: new Date(Date.UTC(2026, 4, 11 + (index * 2), 8, 30, 0)),
+      deliveredAt: new Date(Date.UTC(2026, 4, 12 + (index * 2), 12, 0, 0)),
       paymentDetails: {
         provider: 'seed',
         checkoutSessionId: `seed-session-${index + 1}`,
@@ -220,7 +237,6 @@ export async function seedOrderCartDemo(
       updatedAt: createdAt,
     });
     em.persist(order);
-    await em.flush();
 
     em.persist(
       em.create(OrderItemEntity, {
@@ -242,7 +258,7 @@ export async function seedOrderCartDemo(
         percentCouponCode: coupon?.type === CouponType.PERCENTAGE ? coupon.code : undefined,
         percentCouponPercent:
           coupon?.type === CouponType.PERCENTAGE ? coupon.percentOff : undefined,
-      })
+      }),
     );
 
     if (coupon) {
@@ -255,12 +271,15 @@ export async function seedOrderCartDemo(
           code: coupon.code,
           createdAt,
           updatedAt: createdAt,
-        })
+        }),
       );
       em.persist(coupon);
     }
 
     await em.flush();
+    console.log(
+      `[seed][demo-commerce] Processed ${index + 1}/${ORDER_SEEDS.length} demo orders in ${formatDuration(Date.now() - startedAt)}`,
+    );
   }
 }
 

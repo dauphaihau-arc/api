@@ -6,7 +6,7 @@ import {
   CHAT_CONVERSATIONS_LOCAL_TSV_PATH,
   CHAT_CONVERSATIONS_TSV_PATH,
   CHAT_MESSAGES_LOCAL_TSV_PATH,
-  CHAT_MESSAGES_TSV_PATH
+  CHAT_MESSAGES_TSV_PATH,
 } from './product-seed-paths';
 import { readOptionalTsvRows, readTsvRows } from './shared/read-tsv-rows';
 import { ChatConversationEntity } from '../../src/modules/domains/chat/infra/persistence/entities/chat-conversation.entity';
@@ -67,7 +67,7 @@ function parseRequiredDate(value: string, fieldName: string, seedKey: string): D
 function parseOptionalDate(
   value: string,
   fieldName: string,
-  seedKey: string
+  seedKey: string,
 ): Date | undefined {
   const normalized = value.trim();
 
@@ -81,7 +81,7 @@ function parseOptionalDate(
 function parseMetadata(
   value: string,
   fieldName: string,
-  seedKey: string
+  seedKey: string,
 ): Record<string, unknown> | undefined {
   const normalized = value.trim();
 
@@ -96,7 +96,7 @@ function parseMetadata(
   }
   catch (error) {
     throw new Error(
-      `Invalid ${fieldName} JSON for chat seed ${seedKey}: ${error instanceof Error ? error.message : 'Unknown JSON parse error'}`
+      `Invalid ${fieldName} JSON for chat seed ${seedKey}: ${error instanceof Error ? error.message : 'Unknown JSON parse error'}`,
     );
   }
 
@@ -136,7 +136,7 @@ function loadConversationSeeds(): ConversationSeed[] {
       sellerLastReadAt: parseOptionalDate(
         row.seller_last_read_at,
         'seller_last_read_at',
-        seedKey
+        seedKey,
       ),
       createdAt: parseRequiredDate(row.created_at, 'created_at', seedKey),
     };
@@ -177,10 +177,24 @@ function loadMessageSeeds(): MessageSeed[] {
 const conversationSeeds = loadConversationSeeds();
 const messageSeeds = loadMessageSeeds();
 
+function resolveProgressInterval(total: number, maxSteps = 5): number {
+  return Math.max(1, Math.ceil(total / maxSteps));
+}
+
+function formatDuration(ms: number): string {
+  if (ms < 1_000) {
+    return `${ms}ms`;
+  }
+
+  return `${(ms / 1_000).toFixed(1)}s`;
+}
+
 export async function seedChat(
   em: EntityManager,
-  usersByEmail: Map<string, CurrentUserEntity>
+  usersByEmail: Map<string, CurrentUserEntity>,
 ): Promise<void> {
+  const progressInterval = resolveProgressInterval(conversationSeeds.length);
+  const startedAt = Date.now();
   const messagesByConversationKey = new Map<string, MessageSeed[]>();
 
   messageSeeds.forEach((seed) => {
@@ -189,7 +203,11 @@ export async function seedChat(
     messagesByConversationKey.set(seed.conversationKey, messages);
   });
 
-  for (const conversationSeed of conversationSeeds) {
+  console.log(
+    `[seed][chat] Upserting ${conversationSeeds.length} conversations with ${messageSeeds.length} messages`,
+  );
+
+  for (const [index, conversationSeed] of conversationSeeds.entries()) {
     const buyer = usersByEmail.get(conversationSeed.buyerEmail);
 
     if (!buyer) {
@@ -214,7 +232,7 @@ export async function seedChat(
 
       if (!product) {
         throw new Error(
-          `Missing seeded product "${conversationSeed.productTitle}" for shop "${conversationSeed.shopSlug}"`
+          `Missing seeded product "${conversationSeed.productTitle}" for shop "${conversationSeed.shopSlug}"`,
         );
       }
     }
@@ -234,7 +252,7 @@ export async function seedChat(
         shop,
         product: product?.id ?? null,
       },
-      { populate: ['messages'] }
+      { populate: ['messages'] },
     );
 
     const conversation = existingConversation ?? em.create(ChatConversationEntity, {
@@ -294,5 +312,14 @@ export async function seedChat(
 
     em.persist(conversation);
     await em.flush();
+
+    if (
+      (index + 1) % progressInterval === 0
+      || index + 1 === conversationSeeds.length
+    ) {
+      console.log(
+        `[seed][chat] Processed ${index + 1}/${conversationSeeds.length} conversations in ${formatDuration(Date.now() - startedAt)}`,
+      );
+    }
   }
 }

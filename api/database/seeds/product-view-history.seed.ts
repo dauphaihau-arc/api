@@ -4,9 +4,21 @@ import { ProductEntity } from '~/modules/domains/product/infra/persistence/mikro
 import { ProductViewHistoryEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-view-history.entity';
 import {
   PRODUCT_VIEW_HISTORY_LOCAL_TSV_PATH,
-  PRODUCT_VIEW_HISTORY_TSV_PATH
+  PRODUCT_VIEW_HISTORY_TSV_PATH,
 } from './product-seed-paths';
 import { readOptionalTsvRows, readTsvRows } from './shared/read-tsv-rows';
+
+function resolveProgressInterval(total: number, maxSteps = 5): number {
+  return Math.max(1, Math.ceil(total / maxSteps));
+}
+
+function formatDuration(ms: number): string {
+  if (ms < 1_000) {
+    return `${ms}ms`;
+  }
+
+  return `${(ms / 1_000).toFixed(1)}s`;
+}
 
 type ProductViewHistorySeed = {
   shopSlug: string;
@@ -30,7 +42,7 @@ type ProductViewHistorySeedRow = {
 function parseOptionalPositiveInteger(
   value: string,
   fieldName: string,
-  seedKey: string
+  seedKey: string,
 ): number | undefined {
   const normalized = value.trim();
 
@@ -79,13 +91,13 @@ function loadProductViewHistorySeeds(): ProductViewHistorySeed[] {
     const guestSessionCount = parseOptionalPositiveInteger(
       row.guest_session_count,
       'guest_session_count',
-      seedKey
+      seedKey,
     );
     const viewedAt = parseViewedAt(row.viewed_at, seedKey);
     const viewedAtStepMinutes = parseOptionalPositiveInteger(
       row.viewed_at_step_minutes,
       'viewed_at_step_minutes',
-      seedKey
+      seedKey,
     ) ?? 5;
 
     if (!shopSlug) {
@@ -98,13 +110,13 @@ function loadProductViewHistorySeeds(): ProductViewHistorySeed[] {
 
     if (guestSessionId && (guestSessionPrefix || guestSessionCount)) {
       throw new Error(
-        `Product view history seed ${seedKey} cannot mix guest_session_id with guest_session_prefix or guest_session_count`
+        `Product view history seed ${seedKey} cannot mix guest_session_id with guest_session_prefix or guest_session_count`,
       );
     }
 
     if (userEmail && (guestSessionId || guestSessionPrefix || guestSessionCount)) {
       throw new Error(
-        `Product view history seed ${seedKey} cannot mix user_email with guest session fields`
+        `Product view history seed ${seedKey} cannot mix user_email with guest session fields`,
       );
     }
 
@@ -128,7 +140,7 @@ function loadProductViewHistorySeeds(): ProductViewHistorySeed[] {
 
     if (!guestSessionPrefix || !guestSessionCount) {
       throw new Error(
-        `Product view history seed ${seedKey} must define user_email, guest_session_id, or guest_session_prefix with guest_session_count`
+        `Product view history seed ${seedKey} must define user_email, guest_session_id, or guest_session_prefix with guest_session_count`,
       );
     }
 
@@ -143,19 +155,46 @@ function loadProductViewHistorySeeds(): ProductViewHistorySeed[] {
 
 export async function seedProductViewHistory(
   em: EntityManager,
-  usersByEmail: Map<string, CurrentUserEntity>
+  usersByEmail: Map<string, CurrentUserEntity>,
 ): Promise<void> {
   const seeds = loadProductViewHistorySeeds();
+  const progressInterval = resolveProgressInterval(seeds.length);
+  const startedAt = Date.now();
+  const shopSlugs = Array.from(new Set(seeds.map((seed) => seed.shopSlug)));
+  const products = shopSlugs.length > 0
+    ? await em.find(
+      ProductEntity,
+      { shop: { slug: { $in: shopSlugs } } },
+      { populate: ['shop'] },
+    )
+    : [];
+  const productsByShopSlugAndTitle = new Map(
+    products.map((product) => [`${product.shop.slug}::${product.title}`, product]),
+  );
+  const existingRecords = products.length > 0
+    ? await em.find(
+      ProductViewHistoryEntity,
+      { product: { $in: products.map((product) => product.id) } },
+      { populate: ['user', 'product'] },
+    )
+    : [];
+  const existingRecordsByKey = new Map<string, ProductViewHistoryEntity>();
 
-  for (const seed of seeds) {
-    const product = await em.findOne(ProductEntity, {
-      title: seed.productTitle,
-      shop: { slug: seed.shopSlug },
-    });
+  existingRecords.forEach((record) => {
+    const key = record.user
+      ? `${record.product.id}::user::${record.user.id}`
+      : `${record.product.id}::guest::${record.guestSessionId ?? ''}`;
+    existingRecordsByKey.set(key, record);
+  });
+
+  console.log(`[seed][view-history] Upserting ${seeds.length} view records`);
+
+  for (const [index, seed] of seeds.entries()) {
+    const product = productsByShopSlugAndTitle.get(`${seed.shopSlug}::${seed.productTitle}`);
 
     if (!product) {
       throw new Error(
-        `Missing seeded product for product view history: ${seed.shopSlug}::${seed.productTitle}`
+        `Missing seeded product for product view history: ${seed.shopSlug}::${seed.productTitle}`,
       );
     }
 
@@ -164,9 +203,10 @@ export async function seedProductViewHistory(
       throw new Error(`Missing seeded user for product view history: ${seed.userEmail}`);
     }
 
-    const existing = seed.userEmail
-      ? await em.findOne(ProductViewHistoryEntity, { product, user })
-      : await em.findOne(ProductViewHistoryEntity, { product, guestSessionId: seed.guestSessionId });
+    const existingKey = user
+      ? `${product.id}::user::${user.id}`
+      : `${product.id}::guest::${seed.guestSessionId ?? ''}`;
+    const existing = existingRecordsByKey.get(existingKey);
 
     const record = existing ?? em.create(ProductViewHistoryEntity, {
       product,
@@ -179,7 +219,14 @@ export async function seedProductViewHistory(
     record.user = user;
     record.guestSessionId = seed.guestSessionId;
     record.viewedAt = seed.viewedAt;
+    existingRecordsByKey.set(existingKey, record);
     em.persist(record);
+
+    if ((index + 1) % progressInterval === 0 || index + 1 === seeds.length) {
+      console.log(
+        `[seed][view-history] Processed ${index + 1}/${seeds.length} view records in ${formatDuration(Date.now() - startedAt)}`,
+      );
+    }
   }
 
   await em.flush();

@@ -266,6 +266,20 @@ storage-clear-infisical project_id *env_name:
 storage-fresh: storage-clear
   just storage-seed
 
+review-image-variants-backfill:
+  cd {{ api_dir }} && \
+  test -f ".env" && \
+  set -a && \
+  . ".env" && \
+  set +a && \
+  pnpm ts-node -r tsconfig-paths/register ./scripts/backfill-review-image-variants.ts
+
+review-image-variants-backfill-infisical project_id *env_name:
+  cd {{ api_dir }} && \
+  test -n "$INFISICAL_TOKEN" && \
+  ENV_ARG='{{ if env_name != "" { "--env=" + env_name } else { "" } }}' && \
+  pnpm exec infisical run --projectId="{{ project_id }}" $ENV_ARG --token="$INFISICAL_TOKEN" -- pnpm ts-node -r tsconfig-paths/register ./scripts/backfill-review-image-variants.ts
+
 storage-fresh-infisical project_id *env_name:
   just storage-clear-infisical {{project_id}} {{env_name}}
   just storage-seed-infisical {{project_id}} {{env_name}}
