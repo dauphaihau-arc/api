@@ -1,4 +1,5 @@
 import type { ProductShippingCharge } from '../domain/enums/product-shipping-charge.enum';
+import type { ProductReviewStatus } from '../domain/enums/product-review-status.enum';
 import type { ProductState } from '../domain/enums/product-state.enum';
 import type { ProductVariantType } from '../domain/enums/product-variant-type.enum';
 import type { ProductWhoMade } from '../domain/enums/product-who-made.enum';
@@ -60,6 +61,18 @@ export interface ProductImageVariantSummary {
   width?: number;
   height?: number;
   format?: string;
+}
+
+export interface ReviewImageSummary {
+  id: string;
+  storageKey: string;
+  url?: string;
+  sizeBytes?: number;
+  rank: number;
+  variantStatus?: string;
+  variantError?: string;
+  variantsGeneratedAt?: Date;
+  variants?: ProductImageVariantSummary[];
 }
 
 export interface ReplaceProductImagesRepositoryInput {
@@ -293,10 +306,163 @@ export interface PublicProductDetail {
   variantGroupName?: string;
   variantSubGroupName?: string;
   stockNoticeThreshold: number;
+  reviewSummary: {
+    average: number;
+    count: number;
+  };
   images: ProductImageSummary[];
   variants: ProductVariantSummary[];
   inventory: PublicProductInventorySummary[];
   shipping?: PublicProductShippingSummary;
+}
+
+export type PublicProductReviewSortOrder = 'newest' | 'highest_rating' | 'lowest_rating';
+
+export interface PublicProductReviewSummary {
+  average: number;
+  count: number;
+  breakdown: {
+    1: number;
+    2: number;
+    3: number;
+    4: number;
+    5: number;
+  };
+  filters: {
+    hasImages: number;
+    hasComment: number;
+  };
+}
+
+export interface PublicProductReviewItem {
+  id: string;
+  rating: number;
+  title?: string;
+  body?: string;
+  images: ReviewImageSummary[];
+  createdAt: Date;
+  updatedAt: Date;
+  verifiedPurchase: boolean;
+  author: {
+    displayName: string;
+  };
+}
+
+export interface PublicProductReviewGalleryItem {
+  id: string;
+  storageKey: string;
+  url?: string;
+  sizeBytes?: number;
+  rank: number;
+  variantStatus?: string;
+  variantError?: string;
+  variantsGeneratedAt?: Date;
+  variants?: ProductImageVariantSummary[];
+  reviewId: string;
+  reviewTitle?: string;
+  createdAt: Date;
+  author: {
+    displayName: string;
+  };
+}
+
+export interface ListPublicProductReviewsInput {
+  shopSlug: string;
+  productSlug: string;
+  page: number;
+  limit: number;
+  sort: PublicProductReviewSortOrder;
+  rating?: 1 | 2 | 3 | 4 | 5;
+  hasImages?: boolean;
+  hasComment?: boolean;
+}
+
+export interface PublicProductReviewListResult extends PaginatedResult<PublicProductReviewItem> {
+  summary: PublicProductReviewSummary;
+}
+
+export interface ListPublicProductReviewImagesInput {
+  shopSlug: string;
+  productSlug: string;
+  limit: number;
+  cursor?: string;
+}
+
+export interface PublicProductReviewImageListResult {
+  items: PublicProductReviewGalleryItem[];
+  meta: {
+    nextCursor?: string;
+    hasMore: boolean;
+  };
+}
+
+export interface MyProductReview {
+  id: string;
+  orderId: string;
+  orderItemId: string;
+  product: {
+    id: string;
+    slug: string;
+    title: string;
+    shopSlug: string;
+  };
+  rating: number;
+  title?: string;
+  body?: string;
+  images: ReviewImageSummary[];
+  status: ProductReviewStatus;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export const SHOP_PRODUCT_REVIEW_LIST_DEFAULT_PAGE = 1;
+export const SHOP_PRODUCT_REVIEW_LIST_DEFAULT_LIMIT = 20;
+export const SHOP_PRODUCT_REVIEW_LIST_MAX_LIMIT = 50;
+
+export type ShopProductReviewSortOrder =
+  | 'newest'
+  | 'oldest'
+  | 'highest_rating'
+  | 'lowest_rating';
+
+export interface ShopProductReviewItem {
+  id: string;
+  orderId: string;
+  orderItemId: string;
+  rating: number;
+  title?: string;
+  body?: string;
+  status: ProductReviewStatus;
+  images: ReviewImageSummary[];
+  createdAt: Date;
+  updatedAt: Date;
+  author: {
+    id: string;
+    displayName: string;
+    email: string;
+  };
+  product: {
+    id: string;
+    title: string;
+    slug: string;
+  };
+}
+
+export interface ListShopProductReviewsInput {
+  shopId: string;
+  page: number;
+  limit: number;
+  status?: ProductReviewStatus;
+  productId?: string;
+  sort: ShopProductReviewSortOrder;
+}
+
+export interface ShopProductReviewListResult extends PaginatedResult<ShopProductReviewItem> {
+  counts: {
+    all: number;
+    published: number;
+    hidden: number;
+  };
 }
 
 export interface ListPublicProductsInput {

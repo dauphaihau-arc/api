@@ -9,7 +9,9 @@ export const appJobName = {
   sendSellerOrderUpdateEmail: 'order.send-seller-order-update-email',
   sendWebPushNotification: 'notification.send-web-push',
   generateProductImageVariants: 'product.generate-image-variants',
+  generateReviewImageVariants: 'product-review.generate-image-variants',
   projectCatalogProduct: 'catalog.project-product',
+  cleanupPendingReviewImage: 'product.cleanup-pending-review-image',
 } as const;
 
 export interface AppJobPayloadMap {
@@ -56,8 +58,14 @@ export interface AppJobPayloadMap {
   [appJobName.generateProductImageVariants]: {
     productId: string;
   };
+  [appJobName.generateReviewImageVariants]: {
+    reviewImageId: string;
+  };
   [appJobName.projectCatalogProduct]: {
     productId: string;
+  };
+  [appJobName.cleanupPendingReviewImage]: {
+    storageKey: string;
   };
 }
 
@@ -65,6 +73,7 @@ export type AppJobName = keyof AppJobPayloadMap;
 
 export interface DispatchJobOptions {
   deduplicationKey?: string;
+  delayMs?: number;
 }
 
 export function buildJobDeduplicationKey(
@@ -114,10 +123,22 @@ export const appJobDeduplicationKey = {
       productId
     );
   },
+  generateReviewImageVariants(reviewImageId: string): string {
+    return buildJobDeduplicationKey(
+      appJobName.generateReviewImageVariants,
+      reviewImageId,
+    );
+  },
   projectCatalogProduct(productId: string): string {
     return buildJobDeduplicationKey(
       appJobName.projectCatalogProduct,
       productId
+    );
+  },
+  cleanupPendingReviewImage(storageKey: string): string {
+    return buildJobDeduplicationKey(
+      appJobName.cleanupPendingReviewImage,
+      storageKey,
     );
   },
 } as const;

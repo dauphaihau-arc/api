@@ -21,6 +21,18 @@ export class InlineJobDispatcher implements JobDispatcher {
       `Running inline job ${name}${options?.deduplicationKey ? ` (${options.deduplicationKey})` : ''}`
     );
 
+    if (options?.delayMs && options.delayMs > 0) {
+      const timer = setTimeout(() => {
+        void this.appJobRunner.run(name, payload).catch((error) => {
+          this.logger.error(
+            `Inline delayed job ${name} failed: ${error instanceof Error ? error.message : String(error)}`,
+          );
+        });
+      }, options.delayMs);
+      timer.unref();
+      return;
+    }
+
     await this.appJobRunner.run(name, payload);
   }
 }

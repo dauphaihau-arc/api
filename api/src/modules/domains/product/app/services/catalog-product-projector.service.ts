@@ -45,6 +45,7 @@ export class CatalogProductProjectorService {
       (storageKey) => this.storageService.getPublicUrl(storageKey)
     );
     const slugDocument = toCatalogProductSlugDocument(product);
+
     await Promise.all([
       this.catalogProductDocumentRepository.upsert(document),
       this.catalogProductSlugRepository.upsert(slugDocument),

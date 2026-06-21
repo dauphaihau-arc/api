@@ -62,3 +62,27 @@ export class ProductDraftIncompleteError extends ProductAppError {
     super(message);
   }
 }
+
+export class ProductReviewOrderItemNotFoundError extends ProductAppError {
+  constructor(orderItemId: string) {
+    super(`Order item "${orderItemId}" was not found`);
+  }
+}
+
+export class ProductReviewNotEligibleError extends ProductAppError {
+  constructor(message: string) {
+    super(message);
+  }
+}
+
+export class ProductReviewEditLimitExceededError extends ProductAppError {
+  constructor(limit: number) {
+    super(`A product review can be edited at most ${limit} times per day`);
+  }
+}
+
+export class InvalidProductReviewImageError extends ProductAppError {
+  constructor(message: string) {
+    super(message);
+  }
+}

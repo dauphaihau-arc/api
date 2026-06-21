@@ -23,6 +23,8 @@ export interface CatalogProductDocument {
   variantType?: ProductEntity['variantType'];
   variantGroupName?: string;
   variantSubGroupName?: string;
+  ratingAverage: number;
+  reviewCount: number;
   images: Array<{
     id: string;
     storageKey: string;
@@ -221,6 +223,8 @@ export function toCatalogProductDocument(
     variantType: product.variantType,
     variantGroupName: product.variantGroupName,
     variantSubGroupName: product.variantSubGroupName,
+    ratingAverage: product.ratingAverage,
+    reviewCount: product.reviewCount,
     images: imageDocuments,
     primaryImage: primaryImageDocument,
     variants: sortedVariants.map((variant) => ({

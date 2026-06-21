@@ -21,6 +21,10 @@ export const toPublicProductDetailResponse = (
   variant_group_name: product.variantGroupName,
   variant_sub_group_name: product.variantSubGroupName,
   stock_notice_threshold: product.stockNoticeThreshold,
+  review_summary: {
+    average: product.reviewSummary.average,
+    count: product.reviewSummary.count,
+  },
   images: product.images.map((image) => ({
     id: image.id,
     storage_key: image.storageKey,

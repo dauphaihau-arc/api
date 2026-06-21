@@ -18,6 +18,10 @@ export type PublicProductDetailResponse = {
   variant_group_name?: string;
   variant_sub_group_name?: string;
   stock_notice_threshold: number;
+  review_summary: {
+    average: number;
+    count: number;
+  };
   images: Array<{
     id: string;
     storage_key: string;

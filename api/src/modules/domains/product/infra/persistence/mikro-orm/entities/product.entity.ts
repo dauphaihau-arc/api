@@ -100,6 +100,9 @@ export class ProductEntity extends AbstractBaseEntity {
   })
   ratingAverage = 0;
 
+  @Property({ fieldName: 'review_count' })
+  reviewCount = 0;
+
   @Property({ fieldName: 'published_at', nullable: true })
   publishedAt?: Date;
 

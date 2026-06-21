@@ -634,6 +634,10 @@ function toPublicProductDetail(
     variantGroupName: document.variantGroupName,
     variantSubGroupName: document.variantSubGroupName,
     stockNoticeThreshold: PRODUCT_STOCK_NOTICE_THRESHOLD,
+    reviewSummary: {
+      average: document.ratingAverage,
+      count: document.reviewCount,
+    },
     images: document.images.map((image) => ({
       id: image.id,
       storageKey: image.storageKey,

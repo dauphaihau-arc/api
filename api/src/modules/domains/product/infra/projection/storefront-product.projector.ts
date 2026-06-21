@@ -55,6 +55,10 @@ export async function toPublicProductDetail(
     variantGroupName: product.variantGroupName,
     variantSubGroupName: product.variantSubGroupName,
     stockNoticeThreshold: PRODUCT_STOCK_NOTICE_THRESHOLD,
+    reviewSummary: {
+      average: product.ratingAverage,
+      count: product.reviewCount,
+    },
     images: product.images
       .getItems()
       .sort((left, right) => left.rank - right.rank)

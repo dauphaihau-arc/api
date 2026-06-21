@@ -18,6 +18,10 @@ describe('GetPublicProductBySlugsUseCase', () => {
     isDigital: false,
     variantType: 'none' as PublicProductDetail['variantType'],
     stockNoticeThreshold: 10,
+    reviewSummary: {
+      average: 0,
+      count: 0,
+    },
     images: [],
     variants: [],
     inventory: [],

@@ -15,6 +15,8 @@ import { AuthModule } from '../auth/auth.module';
 import { CategoryModule } from '../category/category.module';
 import { ShopModule } from '../shop/shop.module';
 import { ProductImageService } from './app/services/product-image.service';
+import { ReviewImageService } from './app/services/review-image.service';
+import { PendingReviewImageUploadService } from './app/pending-review-image-upload.service';
 import { ResolvedStorefrontPriceService } from './app/services/resolved-storefront-price.service';
 import { StorefrontMarketContextService } from './app/services/storefront-market-context.service';
 import { CatalogStatusService } from './app/services/catalog-status.service';
@@ -27,13 +29,18 @@ import { GetProductByIdUseCase } from './app/use-cases/get-product-by-id/get-pro
 import { GetPublicProductBySlugsUseCase } from './app/use-cases/get-public-product-by-slugs/get-public-product-by-slugs.use-case';
 import { GetPublicProductRecommendationSectionsUseCase } from './app/use-cases/get-public-product-recommendation-sections/get-public-product-recommendation-sections.use-case';
 import { IssueProductImageUploadUrlUseCase } from './app/use-cases/issue-product-image-upload-url/issue-product-image-upload-url.use-case';
+import { IssueReviewImageUploadUrlUseCase } from './app/use-cases/issue-review-image-upload-url/issue-review-image-upload-url.use-case';
+import { ListPublicProductReviewImagesUseCase } from './app/use-cases/list-public-product-review-images/list-public-product-review-images.use-case';
+import { ListPublicProductReviewsUseCase } from './app/use-cases/list-public-product-reviews/list-public-product-reviews.use-case';
 import { ListPublicProductsUseCase } from './app/use-cases/list-public-products/list-public-products.use-case';
+import { ListShopProductReviewsUseCase } from './app/use-cases/list-shop-product-reviews/list-shop-product-reviews.use-case';
 import { ListShopProductsUseCase } from './app/use-cases/list-shop-products/list-shop-products.use-case';
 import { RecommendPublicProductsUseCase } from './app/use-cases/recommend-public-products/recommend-public-products.use-case';
 import { SuggestPublicProductsUseCase } from './app/use-cases/suggest-public-products/suggest-public-products.use-case';
 import { GenerateProductDescriptionUseCase } from './app/use-cases/generate-product-description/generate-product-description.use-case';
 import { PublicProductViewHistoryService } from './app/services/public-product-view-history.service';
 import { BulkMutateShopProductsUseCase } from './app/use-cases/bulk-mutate-shop-products/bulk-mutate-shop-products.use-case';
+import { ConsumeReviewImageUploadTicketUseCase } from './app/use-cases/consume-review-image-upload-ticket/consume-review-image-upload-ticket.use-case';
 import { PublishProductUseCase } from './app/use-cases/publish-product/publish-product.use-case';
 import { SetProductImagesByKeysUseCase } from './app/use-cases/set-product-images-by-keys/set-product-images-by-keys.use-case';
 import { SetProductImagesUseCase } from './app/use-cases/set-product-images/set-product-images.use-case';
@@ -42,15 +49,20 @@ import { SetProductInventoryUseCase } from './app/use-cases/set-product-inventor
 import { SetProductPricingUseCase } from './app/use-cases/set-product-pricing/set-product-pricing.use-case';
 import { SetProductShippingUseCase } from './app/use-cases/set-product-shipping/set-product-shipping.use-case';
 import { SetProductVariantsUseCase } from './app/use-cases/set-product-variants/set-product-variants.use-case';
+import { UpsertMyProductReviewUseCase } from './app/use-cases/upsert-my-product-review/upsert-my-product-review.use-case';
 import { UpdateProductDetailsUseCase } from './app/use-cases/update-product-details/update-product-details.use-case';
 import { ProductCommandRepository } from './app/ports/product-command.repository';
 import { ProductPricingRepository } from './app/ports/product-pricing.repository';
 import { ProductImageVariantGenerationRepository } from './app/ports/product-image-variant-generation.repository';
+import { ReviewImageVariantGenerationRepository } from './app/ports/review-image-variant-generation.repository';
+import { PublicProductReviewQueryRepository } from './app/ports/public-product-review-query.repository';
+import { SellerProductReviewQueryRepository } from './app/ports/seller-product-review-query.repository';
 import { CatalogProductDocumentRepository } from './app/ports/catalog-product-document.repository';
 import { CatalogProductProjectorSourceRepository } from './app/ports/catalog-product-projector-source.repository';
 import { CatalogSearchDocumentRepository } from './app/ports/catalog-search-document.repository';
 import { CatalogProductSlugRepository } from './app/ports/catalog-product-slug.repository';
 import { ProductRecommendationQueryRepository } from './app/ports/product-recommendation-query.repository';
+import { ProductReviewAggregateRepository } from './app/ports/product-review-aggregate.repository';
 import { PublicProductOrderHistoryRepository } from './app/ports/public-product-order-history.repository';
 import { PublicProductViewHistoryRepository } from './app/ports/public-product-view-history.repository';
 import { SellerProductQueryRepository } from './app/ports/seller-product-query.repository';
@@ -61,16 +73,23 @@ import { ProductController } from './api/rest/storefront/product.controller';
 import { ProductRecommendationController } from './api/rest/recommendations/product-recommendation.controller';
 import { ProductActivitySessionService } from './api/rest/activity/product-activity-session.service';
 import { ProductInventoryEventsController } from './api/rest/inventory-events/product-inventory-events.controller';
+import { MeProductReviewController } from './api/rest/me/me-product-review.controller';
+import { ReviewImageUploadController } from './api/rest/me/review-image-upload.controller';
 import { ProductUploadController } from './api/rest/uploads/product-upload.controller';
 import { ForwardProductInventoryUpdatedToSseListener } from './listeners/forward-product-inventory-updated-to-sse.listener';
 import { ShopProductsController } from '../shop/api/rest/shop-products.controller';
+import { ShopProductReviewsController } from '../shop/api/rest/shop-product-reviews.controller';
 import { AtlasProductRecommendationQueryRepository } from './infra/search/atlas/repositories/atlas-product-recommendation-query.repository';
 import { MikroOrmProductCommandRepository } from './infra/persistence/mikro-orm/repositories/mikro-orm-product-command.repository';
 import { MikroOrmCatalogProductProjectorSourceRepository } from './infra/persistence/mikro-orm/repositories/mikro-orm-catalog-product-projector-source.repository';
 import { MikroOrmProductImageVariantGenerationRepository } from './infra/persistence/mikro-orm/repositories/mikro-orm-product-image-variant-generation.repository';
+import { MikroOrmReviewImageVariantGenerationRepository } from './infra/persistence/mikro-orm/repositories/mikro-orm-review-image-variant-generation.repository';
 import { MikroOrmPublicProductOrderHistoryRepository } from './infra/persistence/mikro-orm/repositories/mikro-orm-public-product-order-history.repository';
+import { MikroOrmPublicProductReviewQueryRepository } from './infra/persistence/mikro-orm/repositories/mikro-orm-public-product-review-query.repository';
+import { MikroOrmSellerProductReviewQueryRepository } from './infra/persistence/mikro-orm/repositories/mikro-orm-seller-product-review-query.repository';
 import { MikroOrmPublicProductViewHistoryRepository } from './infra/persistence/mikro-orm/repositories/mikro-orm-public-product-view-history.repository';
 import { MikroOrmProductRecommendationQueryRepository } from './infra/persistence/mikro-orm/repositories/mikro-orm-product-recommendation-query.repository';
+import { MikroOrmProductReviewAggregateRepository } from './infra/persistence/mikro-orm/repositories/mikro-orm-product-review-aggregate.repository';
 import { MikroOrmSellerProductQueryRepository } from './infra/persistence/mikro-orm/repositories/mikro-orm-seller-product-query.repository';
 import { MikroOrmStorefrontProductQueryRepository } from './infra/persistence/mikro-orm/repositories/mikro-orm-storefront-product-query.repository';
 import { MongoCatalogProductDocumentRepository } from './infra/catalog/mongo/repositories/mongo-catalog-product-document.repository';
@@ -83,6 +102,9 @@ import { ProductImageEntity } from '~/modules/domains/product/infra/persistence/
 import { ProductImageVariantEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-image-variant.entity';
 import { ProductInventoryReservationEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-inventory-reservation.entity';
 import { ProductInventoryEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-inventory.entity';
+import { ProductReviewEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-review.entity';
+import { ProductReviewImageEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-review-image.entity';
+import { ProductReviewImageVariantEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-review-image-variant.entity';
 import { ProductShippingDestinationEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-shipping-destination.entity';
 import { ProductShippingProfileEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-shipping-profile.entity';
 import { ProductVariantEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-variant.entity';
@@ -114,6 +136,9 @@ import { CATALOG_CONFIG, buildCatalogConfig } from '~/config/catalog.config';
       ProductVariantEntity,
       ProductViewHistoryEntity,
       ProductInventoryEntity,
+      ProductReviewEntity,
+      ProductReviewImageEntity,
+      ProductReviewImageVariantEntity,
       VariantPriceEntity,
       ProductInventoryReservationEntity,
       ProductShippingProfileEntity,
@@ -126,8 +151,11 @@ import { CATALOG_CONFIG, buildCatalogConfig } from '~/config/catalog.config';
     ProductController,
     ProductRecommendationController,
     ProductInventoryEventsController,
+    MeProductReviewController,
+    ReviewImageUploadController,
     ProductUploadController,
     ShopProductsController,
+    ShopProductReviewsController,
   ],
   providers: [
     {
@@ -181,6 +209,14 @@ import { CATALOG_CONFIG, buildCatalogConfig } from '~/config/catalog.config';
       useExisting: MikroOrmPublicProductViewHistoryRepository,
     },
     {
+      provide: SellerProductReviewQueryRepository,
+      useExisting: MikroOrmSellerProductReviewQueryRepository,
+    },
+    {
+      provide: PublicProductReviewQueryRepository,
+      useExisting: MikroOrmPublicProductReviewQueryRepository,
+    },
+    {
       provide: CatalogProductDocumentRepository,
       useExisting: MongoCatalogProductDocumentRepository,
     },
@@ -208,8 +244,17 @@ import { CATALOG_CONFIG, buildCatalogConfig } from '~/config/catalog.config';
       provide: ProductImageVariantGenerationRepository,
       useExisting: MikroOrmProductImageVariantGenerationRepository,
     },
+    {
+      provide: ReviewImageVariantGenerationRepository,
+      useExisting: MikroOrmReviewImageVariantGenerationRepository,
+    },
+    {
+      provide: ProductReviewAggregateRepository,
+      useExisting: MikroOrmProductReviewAggregateRepository,
+    },
     AtlasProductRecommendationQueryRepository,
     ProductImageService,
+    ReviewImageService,
     CatalogMongoAccess,
     AtlasSearchStorefrontProductQueryRepository,
     MongoCatalogProductDocumentRepository,
@@ -218,9 +263,13 @@ import { CATALOG_CONFIG, buildCatalogConfig } from '~/config/catalog.config';
     MikroOrmCatalogProductProjectorSourceRepository,
     MikroOrmProductCommandRepository,
     MikroOrmProductImageVariantGenerationRepository,
+    MikroOrmReviewImageVariantGenerationRepository,
     MikroOrmPublicProductOrderHistoryRepository,
+    MikroOrmPublicProductReviewQueryRepository,
     MikroOrmPublicProductViewHistoryRepository,
     MikroOrmProductRecommendationQueryRepository,
+    MikroOrmProductReviewAggregateRepository,
+    MikroOrmSellerProductReviewQueryRepository,
     MikroOrmSellerProductQueryRepository,
     MikroOrmStorefrontProductQueryRepository,
     CatalogStatusService,
@@ -230,7 +279,9 @@ import { CATALOG_CONFIG, buildCatalogConfig } from '~/config/catalog.config';
     PublicProductOrderHistoryService,
     PublicProductViewHistoryService,
     ProductActivitySessionService,
+    PendingReviewImageUploadService,
     ConsumeProductImageUploadTicketUseCase,
+    ConsumeReviewImageUploadTicketUseCase,
     CreateProductDraftFacadeUseCase,
     CreateProductDraftUseCase,
     GetProductByIdUseCase,
@@ -238,7 +289,11 @@ import { CATALOG_CONFIG, buildCatalogConfig } from '~/config/catalog.config';
     GetPublicProductRecommendationSectionsUseCase,
     GenerateProductDescriptionUseCase,
     IssueProductImageUploadUrlUseCase,
+    IssueReviewImageUploadUrlUseCase,
+    ListPublicProductReviewImagesUseCase,
+    ListPublicProductReviewsUseCase,
     ListPublicProductsUseCase,
+    ListShopProductReviewsUseCase,
     ListShopProductsUseCase,
     RecommendPublicProductsUseCase,
     SuggestPublicProductsUseCase,
@@ -251,6 +306,7 @@ import { CATALOG_CONFIG, buildCatalogConfig } from '~/config/catalog.config';
     SetProductPricingUseCase,
     SetProductShippingUseCase,
     SetProductVariantsUseCase,
+    UpsertMyProductReviewUseCase,
     UpdateProductDetailsUseCase,
     ForwardProductInventoryUpdatedToSseListener,
   ],
@@ -265,18 +321,25 @@ import { CATALOG_CONFIG, buildCatalogConfig } from '~/config/catalog.config';
     ProductCommandRepository,
     ProductPricingRepository,
     ProductImageService,
+    ReviewImageService,
     CatalogProductProjectorService,
     StorefrontMarketContextService,
     ResolvedStorefrontPriceService,
     PublicProductOrderHistoryService,
+    PendingReviewImageUploadService,
     ConsumeProductImageUploadTicketUseCase,
+    ConsumeReviewImageUploadTicketUseCase,
     CreateProductDraftFacadeUseCase,
     CreateProductDraftUseCase,
     GetProductByIdUseCase,
     GetPublicProductBySlugsUseCase,
     GetPublicProductRecommendationSectionsUseCase,
     IssueProductImageUploadUrlUseCase,
+    IssueReviewImageUploadUrlUseCase,
+    ListPublicProductReviewImagesUseCase,
+    ListPublicProductReviewsUseCase,
     ListPublicProductsUseCase,
+    ListShopProductReviewsUseCase,
     ListShopProductsUseCase,
     RecommendPublicProductsUseCase,
     SuggestPublicProductsUseCase,
@@ -289,6 +352,7 @@ import { CATALOG_CONFIG, buildCatalogConfig } from '~/config/catalog.config';
     SetProductPricingUseCase,
     SetProductShippingUseCase,
     SetProductVariantsUseCase,
+    UpsertMyProductReviewUseCase,
     UpdateProductDetailsUseCase,
   ],
 })

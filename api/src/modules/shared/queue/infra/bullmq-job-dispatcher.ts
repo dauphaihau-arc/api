@@ -45,6 +45,7 @@ implements JobDispatcher, OnApplicationShutdown {
   ): Promise<void> {
     const job = await this.queue.add(name, payload, {
       jobId: options?.deduplicationKey,
+      delay: options?.delayMs,
     });
 
     this.logger.log(

@@ -6,20 +6,33 @@ import {
   NotFoundException,
   UnprocessableEntityException
 } from '@nestjs/common';
-import type { ProductAppError } from '../../../product/app/errors/product-app.error';
 import {
   ActorCannotCreateProductDraftError,
   CategoryNotFoundError,
   InvalidProductAttributeSelectionError,
+  InvalidProductReviewImageError,
   InvalidProductVariantConfigurationError,
   ProductDraftIncompleteError,
   ProductNotFoundError,
   ProductNotReadyToPublishError,
+  ProductReviewNotEligibleError,
+  ProductReviewOrderItemNotFoundError,
   ProductSlugAlreadyExistsError
 } from '../../../product/app/errors/product-app.error';
 
 export function mapProductAppErrorToHttpException(
-  error: ProductAppError
+  error:
+    | ActorCannotCreateProductDraftError
+    | CategoryNotFoundError
+    | ProductNotFoundError
+    | ProductSlugAlreadyExistsError
+    | ProductReviewOrderItemNotFoundError
+    | InvalidProductVariantConfigurationError
+    | InvalidProductAttributeSelectionError
+    | ProductNotReadyToPublishError
+    | ProductReviewNotEligibleError
+    | InvalidProductReviewImageError
+    | ProductDraftIncompleteError
 ): HttpException {
   if (error instanceof ActorCannotCreateProductDraftError) {
     return new ForbiddenException(error.message);
@@ -37,6 +50,12 @@ export function mapProductAppErrorToHttpException(
     return new ConflictException(error.message);
   }
 
+  if (
+    error instanceof ProductReviewOrderItemNotFoundError
+  ) {
+    return new NotFoundException(error.message);
+  }
+
   if (error instanceof InvalidProductVariantConfigurationError) {
     return new BadRequestException(error.message);
   }
@@ -46,6 +65,13 @@ export function mapProductAppErrorToHttpException(
   }
 
   if (error instanceof ProductNotReadyToPublishError) {
+    return new BadRequestException(error.message);
+  }
+
+  if (
+    error instanceof ProductReviewNotEligibleError
+    || error instanceof InvalidProductReviewImageError
+  ) {
     return new BadRequestException(error.message);
   }
 
@@ -59,5 +85,5 @@ export function mapProductAppErrorToHttpException(
     });
   }
 
-  return new BadRequestException(error.message);
+  return new BadRequestException('Bad product request');
 }

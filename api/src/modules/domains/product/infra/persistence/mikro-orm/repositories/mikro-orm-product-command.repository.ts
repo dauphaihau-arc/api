@@ -364,6 +364,7 @@ implements ProductCommandRepository, ProductPricingRepository {
       publicSortPrices: {},
       views: 0,
       ratingAverage: 0,
+      reviewCount: 0,
     });
     await entityManager.persistAndFlush(product);
     return toProductDraftSummary(product, this.storageService);

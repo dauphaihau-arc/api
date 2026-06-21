@@ -3,6 +3,8 @@ import { METHOD_METADATA, PATH_METADATA } from '@nestjs/common/constants';
 import { GUARDS_METADATA } from '@nestjs/common/constants';
 import { OptionalJwtAuthGuard } from '~/modules/domains/auth/api/guard/optional-jwt-auth.guard';
 import type { GetPublicProductBySlugsUseCase } from '../../../app/use-cases/get-public-product-by-slugs/get-public-product-by-slugs.use-case';
+import type { ListPublicProductReviewImagesUseCase } from '../../../app/use-cases/list-public-product-review-images/list-public-product-review-images.use-case';
+import type { ListPublicProductReviewsUseCase } from '../../../app/use-cases/list-public-product-reviews/list-public-product-reviews.use-case';
 import type { ListPublicProductsUseCase } from '../../../app/use-cases/list-public-products/list-public-products.use-case';
 import type { SuggestPublicProductsUseCase } from '../../../app/use-cases/suggest-public-products/suggest-public-products.use-case';
 import { ProductVariantType } from '../../../domain/enums/product-variant-type.enum';
@@ -20,11 +22,19 @@ describe('ProductController', () => {
   const suggestPublicProductsUseCase: Pick<jest.Mocked<SuggestPublicProductsUseCase>, 'execute'> = {
     execute: jest.fn(),
   };
+  const listPublicProductReviewsUseCase: Pick<jest.Mocked<ListPublicProductReviewsUseCase>, 'execute'> = {
+    execute: jest.fn(),
+  };
+  const listPublicProductReviewImagesUseCase: Pick<jest.Mocked<ListPublicProductReviewImagesUseCase>, 'execute'> = {
+    execute: jest.fn(),
+  };
 
   const controller = new ProductController(
     listPublicProductsUseCase as never,
     getPublicProductBySlugsUseCase as never,
-    suggestPublicProductsUseCase as never
+    suggestPublicProductsUseCase as never,
+    listPublicProductReviewsUseCase as never,
+    listPublicProductReviewImagesUseCase as never,
   );
 
   beforeEach(() => {
@@ -203,6 +213,10 @@ describe('ProductController', () => {
       variantGroupName: 'Color',
       variantSubGroupName: 'Size',
       stockNoticeThreshold: 10,
+      reviewSummary: {
+        average: 4.5,
+        count: 12,
+      },
       images: [],
       variants: [],
       inventory: [],
@@ -226,6 +240,10 @@ describe('ProductController', () => {
       variant_group_name: 'Color',
       variant_sub_group_name: 'Size',
       stock_notice_threshold: 10,
+      review_summary: {
+        average: 4.5,
+        count: 12,
+      },
       images: [],
       variants: [],
       inventory: [],
@@ -243,5 +261,182 @@ describe('ProductController', () => {
     await expect(controller.productBySlugs('missing-shop', 'missing-product')).rejects.toBeInstanceOf(
       NotFoundException
     );
+  });
+
+  it('returns public product reviews', async () => {
+    listPublicProductReviewsUseCase.execute.mockResolvedValue({
+      summary: {
+        average: 5,
+        count: 1,
+        breakdown: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 1 },
+        filters: {
+          hasImages: 1,
+          hasComment: 1,
+        },
+      },
+      items: [
+        {
+          id: 'review-1',
+          rating: 5,
+          title: 'Great',
+          body: 'Loved it',
+          images: [
+            {
+              id: 'image-1',
+              storageKey: 'dev/public/users/u1/product-reviews/item-1/images/img/original.jpg',
+              url: 'https://cdn.example.test/review.jpg',
+              rank: 1,
+            },
+          ],
+          createdAt: new Date('2026-06-18T00:00:00.000Z'),
+          updatedAt: new Date('2026-06-18T00:00:00.000Z'),
+          verifiedPurchase: true,
+          author: {
+            displayName: 'buyer',
+          },
+        },
+      ],
+      meta: {
+        page: 1,
+        limit: 12,
+        total: 1,
+        totalPages: 1,
+        hasNextPage: false,
+        hasPreviousPage: false,
+      },
+    });
+
+    await expect(controller.listProductReviews('arc-store', 'handmade-bag', {})).resolves.toEqual({
+      summary: {
+        average: 5,
+        count: 1,
+        breakdown: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 1 },
+        filters: {
+          has_images: 1,
+          has_comment: 1,
+        },
+      },
+      items: [
+        {
+          id: 'review-1',
+          rating: 5,
+          title: 'Great',
+          body: 'Loved it',
+          image: {
+            id: 'image-1',
+            storage_key: 'dev/public/users/u1/product-reviews/item-1/images/img/original.jpg',
+            url: 'https://cdn.example.test/review.jpg',
+            rank: 1,
+          },
+          created_at: new Date('2026-06-18T00:00:00.000Z'),
+          updated_at: new Date('2026-06-18T00:00:00.000Z'),
+          verified_purchase: true,
+          author: {
+            display_name: 'buyer',
+          },
+        },
+      ],
+      meta: {
+        page: 1,
+        limit: 12,
+        total: 1,
+        total_pages: 1,
+        has_next_page: false,
+        has_previous_page: false,
+      },
+    });
+  });
+
+  it('passes review filters through to the use case', async () => {
+    listPublicProductReviewsUseCase.execute.mockResolvedValue({
+      summary: {
+        average: 0,
+        count: 0,
+        breakdown: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+        filters: {
+          hasImages: 0,
+          hasComment: 0,
+        },
+      },
+      items: [],
+      meta: {
+        page: 1,
+        limit: 12,
+        total: 0,
+        totalPages: 0,
+        hasNextPage: false,
+        hasPreviousPage: false,
+      },
+    });
+
+    await controller.listProductReviews('arc-store', 'handmade-bag', {
+      page: 2,
+      limit: 4,
+      sort: 'highest_rating',
+      rating: 5,
+      hasImages: true,
+      hasComment: true,
+    });
+
+    expect(listPublicProductReviewsUseCase.execute).toHaveBeenCalledWith({
+      shopSlug: 'arc-store',
+      productSlug: 'handmade-bag',
+      page: 2,
+      limit: 4,
+      sort: 'highest_rating',
+      rating: 5,
+      hasImages: true,
+      hasComment: true,
+    });
+  });
+
+  it('returns public product review images', async () => {
+    listPublicProductReviewImagesUseCase.execute.mockResolvedValue({
+      items: [
+        {
+          id: 'image-1',
+          storageKey: 'dev/public/users/u1/product-reviews/item-1/images/img/original.jpg',
+          url: 'https://cdn.example.test/review.jpg',
+          rank: 1,
+          reviewId: 'review-1',
+          reviewTitle: 'Great',
+          createdAt: new Date('2026-06-18T00:00:00.000Z'),
+          author: {
+            displayName: 'buyer',
+          },
+        },
+      ],
+      meta: {
+        nextCursor: 'cursor-2',
+        hasMore: true,
+      },
+    });
+
+    await expect(controller.listProductReviewImages('arc-store', 'handmade-bag', {})).resolves.toEqual({
+      items: [
+        {
+          id: 'image-1',
+          storage_key: 'dev/public/users/u1/product-reviews/item-1/images/img/original.jpg',
+          url: 'https://cdn.example.test/review.jpg',
+          rank: 1,
+          review_id: 'review-1',
+          review_title: 'Great',
+          created_at: new Date('2026-06-18T00:00:00.000Z'),
+          author: {
+            display_name: 'buyer',
+          },
+        },
+      ],
+      meta: {
+        next_cursor: 'cursor-2',
+        has_more: true,
+      },
+    });
+    expect(listPublicProductReviewImagesUseCase.execute).toHaveBeenCalledWith({
+      shopSlug: 'arc-store',
+      productSlug: 'handmade-bag',
+      limit: undefined,
+      cursor: undefined,
+    });
   });
 });

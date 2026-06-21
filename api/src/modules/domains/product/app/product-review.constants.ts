@@ -1,0 +1,2 @@
+export const PRODUCT_REVIEW_MAX_IMAGES = 5;
+export const PRODUCT_REVIEW_MAX_IMAGE_BYTES = 8 * 1024 * 1024;

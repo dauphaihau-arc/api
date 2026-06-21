@@ -9,7 +9,9 @@ import {
 } from '~/common/jobs/job.types';
 import { RefreshExchangeRatesJob } from '~/common/jobs/refresh-exchange-rates.job';
 import { GenerateProductImageVariantsJob } from '~/common/jobs/generate-product-image-variants.job';
+import { GenerateReviewImageVariantsJob } from '~/common/jobs/generate-review-image-variants.job';
 import { ProjectCatalogProductJob } from '~/common/jobs/project-catalog-product.job';
+import { CleanupPendingReviewImageJob } from '~/common/jobs/cleanup-pending-review-image.job';
 import { ProcessOrderRefundJob } from '~/common/jobs/process-order-refund.job';
 import { SendGuestOrderConfirmationEmailJob } from '~/common/jobs/send-guest-order-confirmation-email.job';
 import { SendPasswordResetEmailJob } from '~/common/jobs/send-password-reset-email.job';
@@ -36,7 +38,9 @@ export class AppJobRunner {
     private readonly sendSellerOrderUpdateEmailJob: SendSellerOrderUpdateEmailJob,
     private readonly sendWebPushNotificationJob: SendWebPushNotificationJob,
     private readonly generateProductImageVariantsJob: GenerateProductImageVariantsJob,
-    private readonly projectCatalogProductJob: ProjectCatalogProductJob
+    private readonly generateReviewImageVariantsJob: GenerateReviewImageVariantsJob,
+    private readonly projectCatalogProductJob: ProjectCatalogProductJob,
+    private readonly cleanupPendingReviewImageJob: CleanupPendingReviewImageJob,
   ) {}
 
   async run<TName extends AppJobName>(
@@ -105,9 +109,19 @@ export class AppJobRunner {
               payload as AppJobPayloadMap[typeof appJobName.generateProductImageVariants]
             );
             return;
+          case appJobName.generateReviewImageVariants:
+            await this.generateReviewImageVariantsJob.run(
+              payload as AppJobPayloadMap[typeof appJobName.generateReviewImageVariants]
+            );
+            return;
           case appJobName.projectCatalogProduct:
             await this.projectCatalogProductJob.run(
               payload as AppJobPayloadMap[typeof appJobName.projectCatalogProduct]
+            );
+            return;
+          case appJobName.cleanupPendingReviewImage:
+            await this.cleanupPendingReviewImageJob.run(
+              payload as AppJobPayloadMap[typeof appJobName.cleanupPendingReviewImage]
             );
             return;
         }
