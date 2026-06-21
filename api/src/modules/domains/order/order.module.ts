@@ -4,7 +4,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ProcessOrderRefundJob } from '~/common/jobs/process-order-refund.job';
 import {
   CHECKOUT_CONFIG,
-  buildCheckoutConfig
+  buildCheckoutConfig,
 } from '~/config/checkout.config';
 import { AuthModule } from '../auth/auth.module';
 import { CurrentUserEntity } from '../auth/infra/persistence/entities/current-user.entity';
@@ -63,6 +63,7 @@ import { PaymentModule } from '../../shared/payment/payment.module';
 import { NotificationModule } from '../../shared/notification/notification.module';
 import { QueueModule } from '../../shared/queue/queue.module';
 import { SseModule } from '../../shared/sse/sse.module';
+import { StorageModule } from '../../shared/storage/storage.module';
 import { UserModule } from '../user/user.module';
 import { ShopModule } from '../shop/shop.module';
 import { ForwardOrderUpdatedToSseListener } from './listeners/forward-order-updated-to-sse.listener';
@@ -81,6 +82,7 @@ import { UpdateShopOrderRefundUseCase } from './app/use-cases/update-shop-order-
     NotificationModule,
     forwardRef(() => QueueModule),
     SseModule,
+    StorageModule,
     UserModule,
     ShopModule,
     MikroOrmModule.forFeature([

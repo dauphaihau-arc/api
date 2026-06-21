@@ -115,6 +115,34 @@ export interface OrderListProduct {
   productId: string;
   shopSlug: string;
   percentCouponPercent: number | null;
+  myReview?: {
+    id: string;
+    rating: number;
+    title?: string;
+    body?: string;
+    status: 'published' | 'hidden';
+    createdAt: Date;
+    updatedAt: Date;
+    images: Array<{
+      id: string;
+      storageKey: string;
+      url?: string;
+      sizeBytes?: number;
+      rank: number;
+      variantStatus?: string;
+      variantError?: string;
+      variantsGeneratedAt?: Date;
+      variants?: Array<{
+        id: string;
+        variant: string;
+        storageKey: string;
+        url?: string;
+        width?: number;
+        height?: number;
+        format?: string;
+      }>;
+    }>;
+  };
 }
 
 export interface OrderListShop {
@@ -354,7 +382,7 @@ export function isCouponActive(coupon: CouponEntity, now = new Date()): boolean 
 
 export function couponAppliesToProduct(
   coupon: CouponEntity,
-  productId: string
+  productId: string,
 ): boolean {
   return coupon.appliesTo === CouponAppliesTo.ALL
     || coupon.appliesProductIds.includes(productId);
@@ -363,7 +391,7 @@ export function couponAppliesToProduct(
 export function couponMeetsMinimum(
   coupon: CouponEntity,
   subtotal: number,
-  quantity: number
+  quantity: number,
 ): boolean {
   if (coupon.minOrderType === CouponMinOrderType.ORDER_TOTAL) {
     return subtotal >= coupon.minOrderValue;
@@ -378,7 +406,7 @@ export function couponMeetsMinimum(
 
 export function computeCouponDiscount(
   coupon: CouponEntity,
-  subtotal: number
+  subtotal: number,
 ): number {
   if (coupon.type === CouponType.PERCENTAGE) {
     return subtotal * (coupon.percentOff / 100);

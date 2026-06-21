@@ -1,6 +1,8 @@
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
 import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
+import { StorageService } from '~/modules/shared/storage/app/ports/storage.service';
+import { ProductReviewEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-review.entity';
 import { OrderEntity } from '../../../infra/persistence/entities/order.entity';
 import { OrderItemEntity } from '../../../infra/persistence/entities/order-item.entity';
 import { OrderNotFoundError } from '../../errors/order-app.error';
@@ -16,19 +18,22 @@ import {
   getOrderSubtotalMajor,
   getOrderSubtotalMinor,
   getOrderTotalMinor,
-  getOrderTotalMajor
+  getOrderTotalMajor,
 } from '../../order-money';
 import type { MyOrderDetail } from '../../order.types';
 
 @Injectable()
 export class GetMyOrderByIdUseCase {
-  constructor(private readonly entityManager: EntityManager) {}
+  constructor(
+    private readonly entityManager: EntityManager,
+    private readonly storageService: StorageService,
+  ) {}
 
   async execute(actor: AuthenticatedUser, orderId: string): Promise<MyOrderDetail> {
     const entityManager = this.entityManager.fork();
     const order = await entityManager.getRepository(OrderEntity).findOne(
       buildScopedOrderIdentifierWhere(orderId, { user: actor.userId }),
-      { populate: ['shop'] }
+      { populate: ['shop'] },
     );
 
     if (!order) {
@@ -37,7 +42,13 @@ export class GetMyOrderByIdUseCase {
 
     const items = await entityManager.getRepository(OrderItemEntity).find(
       { order: order.id },
-      { populate: ['product', 'product.shop', 'inventory'] }
+      { populate: ['product', 'product.shop', 'inventory'] },
+    );
+    const reviewMap = await loadProductReviewMap(
+      entityManager,
+      actor.userId,
+      Array.from(new Set(items.map((item) => item.product.id))),
+      this.storageService,
     );
 
     return {
@@ -65,6 +76,7 @@ export class GetMyOrderByIdUseCase {
         variantGroupName: item.variantGroupName,
         variantSubGroupName: item.variantSubGroupName,
         percentCouponPercent: item.percentCouponPercent ?? null,
+        myReview: reviewMap.get(item.product.id),
       })),
       promoCodes: order.promoCodes,
       shippingStatus: order.shippingStatus,
@@ -109,4 +121,51 @@ export class GetMyOrderByIdUseCase {
       },
     };
   }
+}
+
+async function loadProductReviewMap(
+  entityManager: EntityManager,
+  userId: string,
+  productIds: string[],
+  storageService: StorageService,
+) {
+  if (productIds.length === 0) {
+    return new Map<string, NonNullable<MyOrderDetail['products'][number]['myReview']>>();
+  }
+
+  const reviews = await entityManager.getRepository(ProductReviewEntity).find(
+    {
+      user: userId,
+      product: { $in: productIds },
+    },
+    {
+      populate: ['images'],
+      orderBy: {
+        updatedAt: 'desc',
+      },
+    },
+  );
+
+  return new Map(reviews.map((review) => [
+    review.product.id,
+    {
+      id: review.id,
+      rating: review.rating,
+      title: review.title,
+      body: review.body,
+      status: review.status,
+      createdAt: review.createdAt,
+      updatedAt: review.updatedAt,
+      images: review.images.getItems()
+        .slice()
+        .sort((left, right) => left.rank - right.rank)
+        .map((image) => ({
+          id: image.id,
+          storageKey: image.storageKey,
+          url: storageService.getPublicUrl(image.storageKey),
+          sizeBytes: image.sizeBytes,
+          rank: image.rank,
+        })),
+    },
+  ]));
 }

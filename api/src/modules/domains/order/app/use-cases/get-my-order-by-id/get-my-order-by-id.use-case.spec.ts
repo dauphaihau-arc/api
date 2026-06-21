@@ -3,6 +3,7 @@ import { GetMyOrderByIdUseCase } from './get-my-order-by-id.use-case';
 import { OrderShippingStatus } from '../../../domain/enums/order-shipping-status.enum';
 import { OrderStatus } from '../../../domain/enums/order-status.enum';
 import { UserStatus } from '../../../../auth/domain/enums/user-status.enum';
+import { ProductReviewEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-review.entity';
 
 describe('GetMyOrderByIdUseCase', () => {
   it('returns a buyer-owned order with shipping details', async () => {
@@ -85,6 +86,10 @@ describe('GetMyOrderByIdUseCase', () => {
             return {
               find: jest.fn().mockResolvedValue(items),
             };
+          case ProductReviewEntity.name:
+            return {
+              find: jest.fn().mockResolvedValue([]),
+            };
           default:
             return {};
         }
@@ -95,7 +100,9 @@ describe('GetMyOrderByIdUseCase', () => {
       fork: jest.fn(() => fakeEntityManager),
     } as unknown as EntityManager;
 
-    const useCase = new GetMyOrderByIdUseCase(entityManager);
+    const useCase = new GetMyOrderByIdUseCase(entityManager, {
+      getPublicUrl: jest.fn(),
+    } as never);
 
     const result = await useCase.execute(
       {
@@ -106,7 +113,7 @@ describe('GetMyOrderByIdUseCase', () => {
         roles: [],
         permissions: [],
       },
-      'order-1'
+      'order-1',
     );
 
     expect(result.id).toBe('order-1');

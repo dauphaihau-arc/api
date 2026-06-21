@@ -3,6 +3,7 @@ import { OrderShippingStatus } from '../../../domain/enums/order-shipping-status
 import { OrderStatus } from '../../../domain/enums/order-status.enum';
 import { OrderEntity } from '../../../infra/persistence/entities/order.entity';
 import { OrderItemEntity } from '../../../infra/persistence/entities/order-item.entity';
+import { ProductReviewEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-review.entity';
 import { ListOrdersUseCase } from './list-orders.use-case';
 
 function buildOrder(input: {
@@ -159,12 +160,20 @@ describe('ListOrdersUseCase', () => {
           };
         }
 
+        if (entity === ProductReviewEntity) {
+          return {
+            find: jest.fn().mockResolvedValue([]),
+          };
+        }
+
         throw new Error(`Unexpected repository ${entity.name}`);
       }),
     } as unknown as EntityManager;
     const useCase = new ListOrdersUseCase({
       fork: jest.fn(() => fakeEntityManager),
-    } as unknown as EntityManager);
+    } as unknown as EntityManager, {
+      getPublicUrl: jest.fn(),
+    } as never);
 
     const notShipped = await useCase.execute(
       { userId: 'user-1' } as never,
@@ -172,7 +181,7 @@ describe('ListOrdersUseCase', () => {
         page: 1,
         limit: 20,
         shippingStatus: OrderShippingStatus.PRE_TRANSIT,
-      }
+      },
     );
     const canceled = await useCase.execute(
       { userId: 'user-1' } as never,
@@ -180,7 +189,7 @@ describe('ListOrdersUseCase', () => {
         page: 1,
         limit: 20,
         status: OrderStatus.CANCELED,
-      }
+      },
     );
     const searchedByProduct = await useCase.execute(
       { userId: 'user-1' } as never,
@@ -188,7 +197,7 @@ describe('ListOrdersUseCase', () => {
         page: 1,
         limit: 20,
         search: 'hoodie',
-      }
+      },
     );
     const searchedByShop = await useCase.execute(
       { userId: 'user-1' } as never,
@@ -196,7 +205,7 @@ describe('ListOrdersUseCase', () => {
         page: 1,
         limit: 20,
         search: 'red mart',
-      }
+      },
     );
     const awaitingPayment = await useCase.execute(
       { userId: 'user-1' } as never,
@@ -204,7 +213,7 @@ describe('ListOrdersUseCase', () => {
         page: 1,
         limit: 20,
         state: 'awaiting_payment',
-      }
+      },
     );
     const processing = await useCase.execute(
       { userId: 'user-1' } as never,
@@ -212,7 +221,7 @@ describe('ListOrdersUseCase', () => {
         page: 1,
         limit: 20,
         state: 'processing',
-      }
+      },
     );
     const shipped = await useCase.execute(
       { userId: 'user-1' } as never,
@@ -220,7 +229,7 @@ describe('ListOrdersUseCase', () => {
         page: 1,
         limit: 20,
         state: 'shipped',
-      }
+      },
     );
     const delivered = await useCase.execute(
       { userId: 'user-1' } as never,
@@ -228,7 +237,7 @@ describe('ListOrdersUseCase', () => {
         page: 1,
         limit: 20,
         state: 'delivered',
-      }
+      },
     );
     const refunded = await useCase.execute(
       { userId: 'user-1' } as never,
@@ -236,7 +245,7 @@ describe('ListOrdersUseCase', () => {
         page: 1,
         limit: 20,
         state: 'refunded',
-      }
+      },
     );
 
     expect(notShipped.orderShops.map((order) => order.id)).toEqual([

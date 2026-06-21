@@ -7,11 +7,94 @@ import type {
   OrderListResult,
   ShopOrderDetail,
   ShopOrderListResult,
-  ShopOrderSummary
+  ShopOrderSummary,
 } from '../../app/order.types';
 import { toMinorUnits } from '~/common/utils/money';
 import type { CheckoutConfig } from '~/config/checkout.config';
 import { getMaxOrderTotalMinor } from '~/config/checkout.config';
+
+function toMyReviewResponse(review?: {
+  id: string;
+  rating: number;
+  title?: string;
+  body?: string;
+  status: 'published' | 'hidden';
+  createdAt: Date;
+  updatedAt: Date;
+  images: Array<{
+    id: string;
+    storageKey: string;
+    url?: string;
+    sizeBytes?: number;
+    rank: number;
+    variantStatus?: string;
+    variantError?: string;
+    variantsGeneratedAt?: Date;
+    variants?: Array<{
+      variant: string;
+      storageKey: string;
+      url?: string;
+      width?: number;
+      height?: number;
+      format?: string;
+    }>;
+  }>;
+}) {
+  if (!review) {
+    return undefined;
+  }
+
+  return {
+    id: review.id,
+    rating: review.rating,
+    title: review.title,
+    body: review.body,
+    status: review.status,
+    created_at: review.createdAt,
+    updated_at: review.updatedAt,
+    images: review.images.map((image) => ({
+      id: image.id,
+      storage_key: image.storageKey,
+      url: image.url,
+      size_bytes: image.sizeBytes,
+      rank: image.rank,
+      ...(image.variantStatus ? { variant_status: image.variantStatus } : {}),
+      ...(image.variantError ? { variant_error: image.variantError } : {}),
+      ...(image.variantsGeneratedAt ? { variants_generated_at: image.variantsGeneratedAt } : {}),
+      ...(toVariantRecord(image.variants) ? { variants: toVariantRecord(image.variants) } : {}),
+    })),
+  };
+}
+
+function toVariantRecord(variants?: Array<{
+  variant: string;
+  storageKey: string;
+  url?: string;
+  width?: number;
+  height?: number;
+  format?: string;
+}>) {
+  if (!variants || variants.length === 0) {
+    return undefined;
+  }
+
+  return variants.reduce<Record<string, {
+    storage_key: string;
+    url?: string;
+    width?: number;
+    height?: number;
+    format?: string;
+  }>>((accumulator, variant) => {
+    accumulator[variant.variant] = {
+      storage_key: variant.storageKey,
+      url: variant.url,
+      width: variant.width,
+      height: variant.height,
+      format: variant.format,
+    };
+    return accumulator;
+  }, {});
+}
 
 function toPaymentResponse(order: {
   paymentType: string;
@@ -71,7 +154,7 @@ export function toCreateOrderResponse(result: CreateOrderResult) {
 
 export function toCheckoutQuoteResponse(
   result: CheckoutQuoteResult,
-  checkoutConfig?: CheckoutConfig
+  checkoutConfig?: CheckoutConfig,
 ) {
   return {
     quote_id: result.quoteId,
@@ -82,7 +165,7 @@ export function toCheckoutQuoteResponse(
         checkout_policy: {
           max_order_total_minor: getMaxOrderTotalMinor(
             checkoutConfig,
-            result.checkoutCurrency
+            result.checkoutCurrency,
           ),
         },
       }
@@ -164,6 +247,7 @@ export function toOrderListResponse(result: OrderListResult) {
         amount_minor: product.amountMinor,
         original_amount_minor: product.originalAmountMinor,
         currency: product.currency,
+        ...(product.myReview ? { my_review: toMyReviewResponse(product.myReview) } : {}),
       })),
       promo_coupons: orderShop.promoCodes.map((code) => ({
         id: code,
@@ -216,6 +300,7 @@ function toShopOrderProductResponse(orderShop: ShopOrderSummary) {
     percent_coupon: product.percentCouponPercent
       ? { percent_off: product.percentCouponPercent }
       : null,
+    ...(product.myReview ? { my_review: toMyReviewResponse(product.myReview) } : {}),
   }));
 }
 
@@ -362,6 +447,7 @@ export function toMyOrderDetailResponse(order: MyOrderDetail) {
         amount_minor: product.amountMinor,
         original_amount_minor: product.originalAmountMinor,
         currency: product.currency,
+        ...(product.myReview ? { my_review: toMyReviewResponse(product.myReview) } : {}),
       })),
       promo_coupons: order.promoCodes.map((code) => ({
         id: code,

@@ -1,6 +1,8 @@
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
 import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
+import { StorageService } from '~/modules/shared/storage/app/ports/storage.service';
+import { ProductReviewEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-review.entity';
 import type { ListMyOrdersQueryDto } from '../../../api/rest/dto/list-my-orders.query.dto';
 import { OrderEntity } from '../../../infra/persistence/entities/order.entity';
 import { OrderItemEntity } from '../../../infra/persistence/entities/order-item.entity';
@@ -16,18 +18,21 @@ import {
   getOrderSubtotalMajor,
   getOrderSubtotalMinor,
   getOrderTotalMinor,
-  getOrderTotalMajor
+  getOrderTotalMajor,
 } from '../../order-money';
 import { getRequiredOrderNumber } from '../../order-number';
 import type { OrderListResult } from '../../order.types';
 
 @Injectable()
 export class ListOrdersUseCase {
-  constructor(private readonly entityManager: EntityManager) {}
+  constructor(
+    private readonly entityManager: EntityManager,
+    private readonly storageService: StorageService,
+  ) {}
 
   async execute(
     actor: AuthenticatedUser,
-    query: ListMyOrdersQueryDto
+    query: ListMyOrdersQueryDto,
   ): Promise<OrderListResult> {
     const entityManager = this.entityManager.fork();
 
@@ -36,15 +41,21 @@ export class ListOrdersUseCase {
       {
         populate: ['shop'],
         orderBy: { createdAt: 'desc' },
-      }
+      },
     );
 
     const orderItems = orders.length > 0
       ? await entityManager.getRepository(OrderItemEntity).find(
         { order: { $in: orders.map((order) => order.id) } },
-        { populate: ['product', 'product.shop', 'inventory'] }
+        { populate: ['product', 'product.shop', 'inventory'] },
       )
       : [];
+    const reviewMap = await loadProductReviewMap(
+      entityManager,
+      actor.userId,
+      Array.from(new Set(orderItems.map((item) => item.product.id))),
+      this.storageService,
+    );
 
     const itemsByOrderId = new Map<string, OrderItemEntity[]>();
 
@@ -91,7 +102,7 @@ export class ListOrdersUseCase {
       }
 
       return (itemsByOrderId.get(order.id) ?? []).some((item) =>
-        item.title.toLowerCase().includes(normalizedSearch)
+        item.title.toLowerCase().includes(normalizedSearch),
       );
     });
 
@@ -120,6 +131,7 @@ export class ListOrdersUseCase {
           variantGroupName: item.variantGroupName,
           variantSubGroupName: item.variantSubGroupName,
           percentCouponPercent: item.percentCouponPercent ?? null,
+          myReview: reviewMap.get(item.product.id),
         })),
         promoCodes: order.promoCodes,
         shippingStatus: order.shippingStatus,
@@ -153,9 +165,56 @@ export class ListOrdersUseCase {
   }
 }
 
+async function loadProductReviewMap(
+  entityManager: EntityManager,
+  userId: string,
+  productIds: string[],
+  storageService: StorageService,
+) {
+  if (productIds.length === 0) {
+    return new Map<string, NonNullable<OrderListResult['orderShops'][number]['products'][number]['myReview']>>();
+  }
+
+  const reviews = await entityManager.getRepository(ProductReviewEntity).find(
+    {
+      user: userId,
+      product: { $in: productIds },
+    },
+    {
+      populate: ['images'],
+      orderBy: {
+        updatedAt: 'desc',
+      },
+    },
+  );
+
+  return new Map(reviews.map((review) => [
+    review.product.id,
+    {
+      id: review.id,
+      rating: review.rating,
+      title: review.title,
+      body: review.body,
+      status: review.status,
+      createdAt: review.createdAt,
+      updatedAt: review.updatedAt,
+      images: review.images.getItems()
+        .slice()
+        .sort((left, right) => left.rank - right.rank)
+        .map((image) => ({
+          id: image.id,
+          storageKey: image.storageKey,
+          url: storageService.getPublicUrl(image.storageKey),
+          sizeBytes: image.sizeBytes,
+          rank: image.rank,
+        })),
+    },
+  ]));
+}
+
 function matchesCustomerState(
   order: Pick<OrderEntity, 'status' | 'shippingStatus'>,
-  state: NonNullable<ListMyOrdersQueryDto['state']>
+  state: NonNullable<ListMyOrdersQueryDto['state']>,
 ): boolean {
   switch (state) {
     case 'awaiting_payment':
