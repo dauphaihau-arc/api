@@ -15,6 +15,7 @@ export default defineConfig([
       },
     },
     rules: {
+      "@stylistic/comma-dangle": ["error", "always-multiline"],
       "@typescript-eslint/explicit-function-return-type": "off",
       "@typescript-eslint/naming-convention": "off",
       "@typescript-eslint/no-explicit-any": "off",

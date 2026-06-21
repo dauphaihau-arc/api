@@ -25,7 +25,8 @@ async function main() {
     await client.query('DROP SCHEMA IF EXISTS public CASCADE;');
     await client.query('CREATE SCHEMA public;');
     console.log('Database schema cleared');
-  } finally {
+  }
+  finally {
     await client.end();
   }
 }

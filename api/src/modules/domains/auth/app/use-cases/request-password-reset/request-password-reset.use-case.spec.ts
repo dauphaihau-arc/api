@@ -44,7 +44,7 @@ describe('RequestPasswordResetUseCase', () => {
     const jobDispatcher: jest.Mocked<JobDispatcher> = {
       dispatch: jest.fn().mockResolvedValue(undefined),
     };
-    const configService: Pick<jest.Mocked<ConfigService>, 'get'> = {
+    const configService = {
       get: jest.fn((key: string) => {
         if (key === 'APP_BASE_URL') {
           return 'http://localhost:4000';
@@ -62,20 +62,20 @@ describe('RequestPasswordResetUseCase', () => {
       passwordResetTokenRepository,
       tokenHasher,
       jobDispatcher,
-      configService as unknown as ConfigService
+      configService as unknown as ConfigService,
     );
 
     await useCase.execute('member@example.com', 'storefront');
 
     expect(passwordResetTokenRepository.invalidateActiveTokensForUser).toHaveBeenCalledWith(
-      'user-1'
+      'user-1',
     );
     expect(passwordResetTokenRepository.create).toHaveBeenCalledWith(
       expect.objectContaining({
         userId: 'user-1',
         tokenHash: 'hashed-token',
         expiresAt: expect.any(Date),
-      })
+      }),
     );
     expect(jobDispatcher.dispatch).toHaveBeenCalledWith(
       'user.send-password-reset-email',
@@ -84,9 +84,9 @@ describe('RequestPasswordResetUseCase', () => {
         email: 'member@example.com',
         displayName: 'Member User',
         resetUrl: expect.stringMatching(
-          /^http:\/\/localhost:4000\/reset\?t=/
+          /^http:\/\/localhost:4000\/reset\?t=/,
         ),
-      })
+      }),
     );
   });
 
@@ -125,7 +125,7 @@ describe('RequestPasswordResetUseCase', () => {
     const jobDispatcher: jest.Mocked<JobDispatcher> = {
       dispatch: jest.fn().mockResolvedValue(undefined),
     };
-    const configService: Pick<jest.Mocked<ConfigService>, 'get'> = {
+    const configService = {
       get: jest.fn((key: string) => {
         if (key === 'APP_BASE_URL') {
           return 'http://localhost:4000';
@@ -143,7 +143,7 @@ describe('RequestPasswordResetUseCase', () => {
       passwordResetTokenRepository,
       tokenHasher,
       jobDispatcher,
-      configService as unknown as ConfigService
+      configService as unknown as ConfigService,
     );
 
     await useCase.execute('seller@example.com', 'seller');
@@ -152,9 +152,9 @@ describe('RequestPasswordResetUseCase', () => {
       'user.send-password-reset-email',
       expect.objectContaining({
         resetUrl: expect.stringMatching(
-          /^http:\/\/localhost:4001\/reset\?t=/
+          /^http:\/\/localhost:4001\/reset\?t=/,
         ),
-      })
+      }),
     );
   });
 
@@ -188,7 +188,7 @@ describe('RequestPasswordResetUseCase', () => {
       passwordResetTokenRepository,
       tokenHasher,
       jobDispatcher,
-      configService as unknown as ConfigService
+      configService as unknown as ConfigService,
     );
 
     await useCase.execute('missing@example.com', 'seller');
