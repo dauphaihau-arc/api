@@ -60,7 +60,7 @@ export class RedisRateLimitStorage implements ThrottlerStorage {
     ttl: number,
     limit: number,
     blockDuration: number,
-    throttlerName: string
+    throttlerName: string,
   ) {
     const result = (await this.client.eval(incrementRateLimitScript, {
       keys: [
@@ -95,7 +95,7 @@ export class RedisRateLimitStorage implements ThrottlerStorage {
   private buildStorageKey(
     throttlerName: string,
     key: string,
-    suffix: 'blocked' | 'hits'
+    suffix: 'blocked' | 'hits',
   ) {
     return `rate-limit:${throttlerName}:${key}:${suffix}`;
   }

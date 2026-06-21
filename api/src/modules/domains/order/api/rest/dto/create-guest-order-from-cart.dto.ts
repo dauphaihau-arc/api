@@ -3,7 +3,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import {
   IsEnum,
   IsUUID,
-  ValidateNested
+  ValidateNested,
 } from 'class-validator';
 import { PaymentType } from '../../../domain/enums/payment-type.enum';
 import { GuestCheckoutIdentityDto } from './guest-checkout-identity.dto';

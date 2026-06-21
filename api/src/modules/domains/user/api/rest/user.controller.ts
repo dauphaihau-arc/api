@@ -10,7 +10,7 @@ import {
   Post,
   Query,
   UploadedFile,
-  UseGuards
+  UseGuards,
 } from '@nestjs/common';
 import {
   ApiConsumes,
@@ -19,7 +19,7 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiParam,
-  ApiTags
+  ApiTags,
 } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { UseInterceptors } from '@nestjs/common';
@@ -34,12 +34,12 @@ import { ListUsersUseCase } from '~/modules/domains/user/app/use-cases/list-user
 import { PermissionsGuard } from '~/modules/domains/auth/api/guard/permissions.guard';
 import {
   type UploadedAvatarFile,
-  UpdateUserUseCase
+  UpdateUserUseCase,
 } from '~/modules/domains/user/app/use-cases/update-user/update-user.use-case';
 import {
   buildListUsersQuery,
   DEFAULT_USER_LIST_SORT,
-  USER_LIST_SORT_FIELDS
+  USER_LIST_SORT_FIELDS,
 } from '../../app/user.types';
 import { CreateUserDto } from './dto/create-user.dto';
 import { ListUsersQueryDto } from './dto/list-users.query.dto';
@@ -50,7 +50,7 @@ import {
   toUserListResponse,
   toUserResponse,
   type UserListResponse,
-  type UserResponse
+  type UserResponse,
 } from './user.response';
 
 @Controller('users')
@@ -63,7 +63,7 @@ export class UserController {
     private readonly createUserUseCase: CreateUserUseCase,
     private readonly listUsersUseCase: ListUsersUseCase,
     private readonly getUserByIdUseCase: GetUserByIdUseCase,
-    private readonly updateUserUseCase: UpdateUserUseCase
+    private readonly updateUserUseCase: UpdateUserUseCase,
   ) {}
 
   @Get()
@@ -78,9 +78,9 @@ export class UserController {
     @Query() query: ListUsersQueryDto,
     @Query(
       'sort',
-      new ParseSortPipe(USER_LIST_SORT_FIELDS, DEFAULT_USER_LIST_SORT)
+      new ParseSortPipe(USER_LIST_SORT_FIELDS, DEFAULT_USER_LIST_SORT),
     )
-    sort = DEFAULT_USER_LIST_SORT
+    sort = DEFAULT_USER_LIST_SORT,
   ): Promise<UserListResponse> {
     return this.listUsersUseCase.execute(buildListUsersQuery({
       page: query.page,
@@ -118,7 +118,7 @@ export class UserController {
   })
   createUser(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Body() body: CreateUserDto
+    @Body() body: CreateUserDto,
   ): Promise<UserResponse> {
     return this.createUserUseCase
       .execute(currentUser, body)
@@ -141,7 +141,7 @@ export class UserController {
     @Param('id') id: string,
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() body: UpdateUserDto,
-    @UploadedFile() avatarFile?: UploadedAvatarFile
+    @UploadedFile() avatarFile?: UploadedAvatarFile,
   ): Promise<UserResponse> {
     this.validateAvatarFile(avatarFile);
 

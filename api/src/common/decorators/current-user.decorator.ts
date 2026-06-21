@@ -17,5 +17,5 @@ export const CurrentUser = createParamDecorator(
       .switchToHttp()
       .getRequest<{ user: AuthenticatedUser }>();
     return request.user;
-  }
+  },
 );

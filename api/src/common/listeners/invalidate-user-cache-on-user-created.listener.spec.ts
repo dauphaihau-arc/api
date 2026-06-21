@@ -9,16 +9,16 @@ describe('InvalidateUserCacheOnUserCreatedListener', () => {
       del: jest.fn().mockResolvedValue(undefined),
     };
     const listener = new InvalidateUserCacheOnUserCreatedListener(
-      cacheManager as unknown as Cache
+      cacheManager as unknown as Cache,
     );
 
     await listener.handle(
-      new UserCreatedEvent('user-1', 'member@example.com', 'Member User')
+      new UserCreatedEvent('user-1', 'member@example.com', 'Member User'),
     );
 
     expect(cacheManager.del).toHaveBeenCalledTimes(1);
     expect(cacheManager.del).toHaveBeenCalledWith(
-      buildUserByIdCacheKey('user-1')
+      buildUserByIdCacheKey('user-1'),
     );
   });
 });

@@ -11,7 +11,7 @@ export interface OpenAiConfig {
 export const OPENAI_CONFIG = Symbol('OPENAI_CONFIG');
 
 export function buildOpenAiConfig(
-  configService: Pick<ConfigService, 'get'>
+  configService: Pick<ConfigService, 'get'>,
 ): OpenAiConfig {
   return {
     apiKey: configService.get<string>('OPENAI_API_KEY'),
@@ -19,11 +19,11 @@ export function buildOpenAiConfig(
       configService.get<string>('AI_PRODUCT_DESCRIPTION_ENABLED', 'true') === 'true',
     baseUrl: configService.get<string>(
       'OPENAI_BASE_URL',
-      'https://api.openai.com/v1'
+      'https://api.openai.com/v1',
     ),
     productDescriptionModel: configService.get<string>(
       'OPENAI_PRODUCT_DESCRIPTION_MODEL',
-      'gpt-5.4-nano'
+      'gpt-5.4-nano',
     ),
     timeoutMs: Number(configService.get<string>('OPENAI_TIMEOUT_MS', '10000')),
   };

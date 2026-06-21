@@ -158,7 +158,7 @@ function resolveCartCurrency(cart: CartSnapshot | null): string {
 
 function toSummaryResponse(
   summary: CartSummaryInput,
-  currency: string
+  currency: string,
 ): CartResponse['summary'] {
   return {
     currency,
@@ -166,7 +166,7 @@ function toSummaryResponse(
     discount_minor: toMinorUnits(summary.totalDiscount, currency),
     subtotal_after_discount_minor: toMinorUnits(
       summary.subtotalAfterDiscount,
-      currency
+      currency,
     ),
     shipping_minor: toMinorUnits(summary.totalShippingFee, currency),
     total_minor: toMinorUnits(summary.totalPrice, currency),
@@ -198,14 +198,14 @@ function minorUnitDivisor(currency: string): number {
 function formatVariantName(
   variantName?: string,
   variantGroupName?: string,
-  variantSubGroupName?: string
+  variantSubGroupName?: string,
 ): string | undefined {
   if (!variantName) {
     return undefined;
   }
 
   const labels = [variantGroupName, variantSubGroupName].filter(
-    (label): label is string => Boolean(label?.trim())
+    (label): label is string => Boolean(label?.trim()),
   );
 
   if (labels.length === 0) {
@@ -231,7 +231,7 @@ export function buildCartResponse(
     ownerType?: CartOwnerType;
     requiresSignInForCheckout?: boolean;
     maxOrderTotalMinor?: number;
-  }
+  },
 ): CartResponse {
   const currency = resolveCartCurrency(cart);
   const emptySummary = {
@@ -323,7 +323,7 @@ export function buildCartResponse(
         variant_name: formatVariantName(
           item.inventory.variantName,
           item.inventory.variantGroupName,
-          item.inventory.variantSubGroupName
+          item.inventory.variantSubGroupName,
         ),
       },
     });
@@ -356,7 +356,7 @@ export function buildCartResponse(
           variant_name: formatVariantName(
             item.inventory.variantName,
             item.inventory.variantGroupName,
-            item.inventory.variantSubGroupName
+            item.inventory.variantSubGroupName,
           ),
         },
         quantity: item.quantity,

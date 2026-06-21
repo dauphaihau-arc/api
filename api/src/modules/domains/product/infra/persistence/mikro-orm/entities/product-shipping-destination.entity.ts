@@ -1,5 +1,5 @@
 import {
-  Entity, Enum, Index, ManyToOne, Property 
+  Entity, Enum, Index, ManyToOne, Property, 
 } from '@mikro-orm/core';
 import { AbstractBaseEntity } from '~/common/database/abstract-base.entity';
 import { ProductShippingCharge } from '~/modules/domains/product/domain/enums/product-shipping-charge.enum';

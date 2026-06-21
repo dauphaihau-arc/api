@@ -13,7 +13,7 @@ import type {
   PublicProductListItem,
   PublicProductListResult,
   PublicProductSuggestion,
-  SuggestPublicProductsInput
+  SuggestPublicProductsInput,
 } from '../../../../app/product.types';
 import { PUBLIC_PRODUCT_FACET_PRIORITY } from '../../../../app/product-facet.constants';
 import type { CatalogProductDocument } from '../../../catalog/mongo/documents/catalog-product-document.mapper';
@@ -45,16 +45,16 @@ implements StorefrontProductQueryRepository {
     @Inject(CATALOG_CONFIG)
     private readonly catalogConfig: CatalogConfig,
     private readonly catalogProductSlugRepository: CatalogProductSlugRepository,
-    private readonly catalogMongoAccess: CatalogMongoAccess
+    private readonly catalogMongoAccess: CatalogMongoAccess,
   ) {}
 
   async findPublicByShopSlugAndProductSlug(
     shopSlug: string,
-    productSlug: string
+    productSlug: string,
   ): Promise<PublicProductDetail | null> {
     const productId = await this.catalogProductSlugRepository.findProductIdByShopAndSlug(
       shopSlug,
-      productSlug
+      productSlug,
     );
 
     if (!productId) {
@@ -93,7 +93,7 @@ implements StorefrontProductQueryRepository {
   }
 
   async listPublic(
-    input: ListPublicProductsInput
+    input: ListPublicProductsInput,
   ): Promise<PublicProductListResult> {
     this.assertAtlasSearchEnabled();
 
@@ -156,7 +156,7 @@ implements StorefrontProductQueryRepository {
   }
 
   async listPublicFacets(
-    input: ListPublicProductsInput
+    input: ListPublicProductsInput,
   ): Promise<PublicProductFacet[]> {
     this.assertAtlasSearchEnabled();
 
@@ -220,7 +220,7 @@ implements StorefrontProductQueryRepository {
   }
 
   async suggestPublic(
-    input: SuggestPublicProductsInput
+    input: SuggestPublicProductsInput,
   ): Promise<PublicProductSuggestion[]> {
     this.assertAtlasSearchEnabled();
 
@@ -289,7 +289,7 @@ implements StorefrontProductQueryRepository {
   }
 
   private buildListSearchStage(
-    input: ListPublicProductsInput
+    input: ListPublicProductsInput,
   ): Record<string, unknown> {
     const filter: Array<Record<string, unknown>> = [
       { equals: { path: 'state', value: ProductState.ACTIVE } },
@@ -392,10 +392,10 @@ implements StorefrontProductQueryRepository {
           const inferredTerms = (
             attributeFilter.selectedOptionKeys?.length
               ? attributeFilter.selectedOptionKeys.flatMap((optionKey) =>
-                getInferredFacetTerms(attributeFilter.attributeId as never, optionKey)
+                getInferredFacetTerms(attributeFilter.attributeId as never, optionKey),
               )
               : attributeFilter.selectedOptionValues.flatMap((optionValue) =>
-                getInferredFacetTerms(attributeFilter.attributeId as never, toFacetKey(optionValue))
+                getInferredFacetTerms(attributeFilter.attributeId as never, toFacetKey(optionValue)),
               )
           ).filter(Boolean);
 
@@ -492,13 +492,13 @@ implements StorefrontProductQueryRepository {
 
   private async getProductsCollection(): Promise<MongoCollectionLike<CatalogProductDocument>> {
     return this.catalogMongoAccess.getCollection<MongoCollectionLike<CatalogProductDocument>>(
-      this.catalogConfig.mongodbProductsCollection
+      this.catalogConfig.mongodbProductsCollection,
     );
   }
 
   private async getSearchCollection(): Promise<MongoCollectionLike<CatalogSearchDocument>> {
     return this.catalogMongoAccess.getCollection<MongoCollectionLike<CatalogSearchDocument>>(
-      this.catalogConfig.mongodbSearchCollection
+      this.catalogConfig.mongodbSearchCollection,
     );
   }
 
@@ -516,7 +516,7 @@ implements StorefrontProductQueryRepository {
 
 function compareFacetNames(
   left: Pick<PublicProductFacet, 'attributeName'>,
-  right: Pick<PublicProductFacet, 'attributeName'>
+  right: Pick<PublicProductFacet, 'attributeName'>,
 ): number {
   const leftIndex = PUBLIC_PRODUCT_FACET_PRIORITY.indexOf(left.attributeName as never);
   const rightIndex = PUBLIC_PRODUCT_FACET_PRIORITY.indexOf(right.attributeName as never);
@@ -539,7 +539,7 @@ function toFacetKey(value: string): string {
 }
 
 function toPublicProductListItemFromSearchDocument(
-  document: CatalogSearchDocument
+  document: CatalogSearchDocument,
 ): PublicProductListItem {
   return {
     id: document.productId,
@@ -577,7 +577,7 @@ function toPublicProductListItemFromSearchDocument(
 }
 
 function toPublicProductListItemFromCatalogDocument(
-  document: CatalogProductDocument
+  document: CatalogProductDocument,
 ): PublicProductListItem {
   const totalStock = document.inventory.reduce((sum, inventory) => sum + inventory.stock, 0);
 
@@ -610,10 +610,10 @@ function toPublicProductListItemFromCatalogDocument(
 }
 
 function toPublicProductDetail(
-  document: CatalogProductDocument
+  document: CatalogProductDocument,
 ): PublicProductDetail {
   const variantsById = new Map(
-    document.variants.map((variant) => [variant.id, variant] as const)
+    document.variants.map((variant) => [variant.id, variant] as const),
   );
 
   return {

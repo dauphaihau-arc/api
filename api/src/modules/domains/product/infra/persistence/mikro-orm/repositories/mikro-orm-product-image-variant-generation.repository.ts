@@ -19,7 +19,7 @@ implements ProductImageVariantGenerationRepository {
       { id: productId },
       {
         populate: ['shop', 'images', 'images.variants'],
-      }
+      },
     );
   }
 

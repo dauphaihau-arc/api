@@ -15,7 +15,7 @@ export class GetAdminOrderByIdUseCase {
     const entityManager = this.entityManager.fork();
     const order = await entityManager.getRepository(OrderEntity).findOne(
       buildOrderIdentifierWhere(orderId),
-      { populate: ['shop'] }
+      { populate: ['shop'] },
     );
 
     if (!order) {
@@ -24,7 +24,7 @@ export class GetAdminOrderByIdUseCase {
 
     const items = await entityManager.getRepository(OrderItemEntity).find(
       { order: order.id },
-      { populate: ['product', 'product.shop', 'inventory'] }
+      { populate: ['product', 'product.shop', 'inventory'] },
     );
 
     return toAdminOrderDetail(order, items);

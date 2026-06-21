@@ -1,6 +1,6 @@
 import type {
   RegisterWebPushSubscriptionInput,
-  WebPushSubscriptionSummary
+  WebPushSubscriptionSummary,
 } from '../notification.types';
 
 export abstract class WebPushSubscriptionRepository {

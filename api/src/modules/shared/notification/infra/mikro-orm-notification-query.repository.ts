@@ -12,7 +12,7 @@ export class MikroOrmNotificationQueryRepository implements NotificationQueryRep
   async findAllOwnedByUserId(
     userId: string,
     page: number,
-    limit: number
+    limit: number,
   ): Promise<NotificationListRepositoryResult> {
     const repository = this.entityManager.fork().getRepository(NotificationEntity);
     const [notifications, total] = await repository.findAndCount(
@@ -21,7 +21,7 @@ export class MikroOrmNotificationQueryRepository implements NotificationQueryRep
         offset: (page - 1) * limit,
         limit,
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-      }
+      },
     );
 
     return {

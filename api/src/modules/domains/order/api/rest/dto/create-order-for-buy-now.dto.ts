@@ -2,7 +2,7 @@ import { Expose, Transform } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 import {
   IsEnum,
-  IsUUID
+  IsUUID,
 } from 'class-validator';
 import { PaymentType } from '../../../domain/enums/payment-type.enum';
 

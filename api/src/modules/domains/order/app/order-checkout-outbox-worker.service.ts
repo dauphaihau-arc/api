@@ -3,7 +3,7 @@ import {
   Injectable,
   Logger,
   OnApplicationShutdown,
-  OnModuleInit
+  OnModuleInit,
 } from '@nestjs/common';
 import { QUEUE_CONFIG, type QueueConfig } from '~/config/queue.config';
 import { OrderCheckoutOutboxService } from './order-checkout-outbox.service';
@@ -16,7 +16,7 @@ implements OnModuleInit, OnApplicationShutdown {
 
   constructor(
     @Inject(QUEUE_CONFIG) private readonly queueConfig: QueueConfig,
-    private readonly orderCheckoutOutboxService: OrderCheckoutOutboxService
+    private readonly orderCheckoutOutboxService: OrderCheckoutOutboxService,
   ) {}
 
   onModuleInit(): void {

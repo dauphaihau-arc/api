@@ -6,12 +6,12 @@ import { UserCreatedEvent } from '~/common/events/user-created.event';
 import { normalizeUserPreferences } from '~/config/marketplace.config';
 import {
   AuthResponse,
-  RegisterUserInput
+  RegisterUserInput,
 } from '../../auth.types';
 import {
   EmailAlreadyRegisteredError,
   InactiveUserError,
-  UserNotFoundError
+  UserNotFoundError,
 } from '../../errors/auth-app.error';
 import { UserStatus } from '../../../domain/enums/user-status.enum';
 import { Email } from '../../../domain/value-objects/email';
@@ -36,7 +36,7 @@ export class RegisterUseCase {
     private readonly userPreferenceRepository: UserPreferenceRepository,
     private readonly passwordHasher: PasswordHasher,
     private readonly issueSessionUseCase: IssueSessionUseCase,
-    private readonly eventEmitter: EventEmitter2
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async execute(input: RegisterUserInput): Promise<
@@ -53,10 +53,10 @@ export class RegisterUseCase {
     }
 
     const passwordHash = PasswordHash.fromPersisted(
-      await this.passwordHasher.hash(input.password)
+      await this.passwordHasher.hash(input.password),
     );
     const userPreferences = normalizeUserPreferences(
-      input.preferences
+      input.preferences,
     );
     const user = await this.entityManager.transactional(async (entityManager) => {
       await this.authUserRepository.ensureRole(defaultRole, entityManager);
@@ -69,7 +69,7 @@ export class RegisterUseCase {
           passwordHash,
           passwordUpdatedAt: new Date(),
         },
-        entityManager
+        entityManager,
       );
 
       await this.userPreferenceRepository.create(
@@ -77,13 +77,13 @@ export class RegisterUseCase {
           userId: createdUser.id,
           ...userPreferences,
         },
-        entityManager
+        entityManager,
       );
 
       await this.authUserRepository.assignRole(
         createdUser.id,
         defaultRole.key,
-        entityManager
+        entityManager,
       );
 
       return createdUser;
@@ -93,7 +93,7 @@ export class RegisterUseCase {
 
     this.eventEmitter.emit(
       'user.created',
-      new UserCreatedEvent(user.id, user.email.toString(), user.displayName)
+      new UserCreatedEvent(user.id, user.email.toString(), user.displayName),
     );
 
     return authResponse;

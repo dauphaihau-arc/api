@@ -4,7 +4,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import {
   AUTH_PASSWORD_MAX_LENGTH,
   AUTH_PASSWORD_MIN_LENGTH,
-  AUTH_PASSWORD_PATTERN
+  AUTH_PASSWORD_PATTERN,
 } from '../validation/password-validation';
 
 class AuthPasswordRequirementsResponseDto {
@@ -86,7 +86,7 @@ export class AuthClientConfigResponseDto {
 
   static create(
     authConfig: AuthConfig,
-    openAiConfig: Pick<OpenAiConfig, 'productDescriptionEnabled'>
+    openAiConfig: Pick<OpenAiConfig, 'productDescriptionEnabled'>,
   ): AuthClientConfigResponseDto {
     return {
       version: '2026-05-20',

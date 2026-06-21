@@ -3,14 +3,14 @@ import { EntityManager } from '@mikro-orm/postgresql';
 import {
   BadRequestException,
   Injectable,
-  NotFoundException
+  NotFoundException,
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { fromMinorUnits, toMinorUnits } from '~/common/utils/money';
 import { MARKETPLACE_CURRENCIES } from '~/config/marketplace.config';
 import {
   buildProductInventoryUpdatedSseEvent,
-  PRODUCT_INVENTORY_UPDATED_SSE_EVENT
+  PRODUCT_INVENTORY_UPDATED_SSE_EVENT,
 } from '~/modules/domains/product/app/events/product-inventory-sse.event';
 import { NotifyUserUseCase } from '~/modules/shared/notification/app/use-cases/notify-user/notify-user.use-case';
 import type { CartSnapshot } from '../../cart/app/cart.types';
@@ -32,14 +32,14 @@ import { OrderCheckoutOutboxService } from './order-checkout-outbox.service';
 import { OrderEventsService } from './order-events.service';
 import {
   buildSellerOrderCreatedNotification,
-  getSellerOrderNotificationRecipientId
+  getSellerOrderNotificationRecipientId,
 } from './seller-order-notification';
 import { getRequiredOrderNumber } from './order-number';
 import type {
   CheckoutActor,
   CreateOrderResult,
   ShippingAddressInput,
-  ShopAdjustmentInput
+  ShopAdjustmentInput,
 } from './order.types';
 import { OrderTotalPolicyService } from './order-total-policy.service';
 
@@ -52,7 +52,7 @@ export class OrderCheckoutService {
     private readonly orderEventsService: OrderEventsService,
     private readonly notifyUserUseCase: NotifyUserUseCase,
     private readonly eventEmitter: EventEmitter2,
-    private readonly orderTotalPolicyService: OrderTotalPolicyService
+    private readonly orderTotalPolicyService: OrderTotalPolicyService,
   ) {}
 
   async createOrders(
@@ -66,7 +66,7 @@ export class OrderCheckoutService {
       shopAdjustments?: ShopAdjustmentInput[];
       quote?: LoadedCheckoutQuote;
       isTempCart: boolean;
-    }
+    },
   ): Promise<CreateOrderResult> {
     const quote = input.quote;
     const currency = quote
@@ -112,7 +112,7 @@ export class OrderCheckoutService {
           : shop as NonNullable<typeof pricedCart>['shops'][number];
         const shopEntity = await entityManager.getRepository(ShopEntity).findOne(
           { id: shop.shopId },
-          { populate: ['ownerUser'] }
+          { populate: ['ownerUser'] },
         );
         if (!shopEntity) {
           throw new NotFoundException('Shop not found');
@@ -197,7 +197,7 @@ export class OrderCheckoutService {
             : item as NonNullable<typeof pricedCart>['shops'][number]['items'][number];
           const inventory = await inventoryRepository.findOne(
             { id: item.inventoryId },
-            { lockMode: LockMode.PESSIMISTIC_WRITE, populate: ['productVariant'] }
+            { lockMode: LockMode.PESSIMISTIC_WRITE, populate: ['productVariant'] },
           );
 
           if (!inventory) {
@@ -228,7 +228,7 @@ export class OrderCheckoutService {
             price: quoteItem
               ? fromMinorUnits(
                 quoteItem.originalAmountMinor ?? quoteItem.unitPriceCheckoutMinor,
-                currency
+                currency,
               )
               : pricedItem!.price,
             unitPriceMinor: quoteItem
@@ -286,7 +286,7 @@ export class OrderCheckoutService {
           entityManager,
           cartId,
           input.isTempCart,
-          quote?.items.map((item) => item.inventoryId)
+          quote?.items.map((item) => item.inventoryId),
         );
       }
 
@@ -316,7 +316,7 @@ export class OrderCheckoutService {
                     : toMinorUnits(pricedItem!.effectiveUnitPrice, currency),
                   quantity: item.quantity,
                 };
-              })
+              }),
             ),
             shippingAmountMinor: quote
               ? quote.shippingMinor
@@ -325,7 +325,7 @@ export class OrderCheckoutService {
               ? quote.discountMinor
               : toMinorUnits(pricedCart?.totalDiscount ?? 0, currency),
             shippingAddress: input.shippingAddress,
-          }
+          },
         );
 
         checkoutOutboxEventId = outboxEvent.id;
@@ -366,8 +366,8 @@ export class OrderCheckoutService {
           orderShop.ownerUserId,
           orderShop.id,
           orderShop.orderNumber,
-          orderShop.shopId
-        )
+          orderShop.shopId,
+        ),
       );
     }
 
@@ -383,12 +383,12 @@ export class OrderCheckoutService {
     entityManager: EntityManager,
     cartId: string,
     isTempCart: boolean,
-    inventoryIds?: string[]
+    inventoryIds?: string[],
   ): Promise<void> {
     if (isTempCart) {
       await entityManager.getConnection().execute(
         'delete from carts where id = ?',
-        [cartId]
+        [cartId],
       );
       return;
     }
@@ -397,19 +397,19 @@ export class OrderCheckoutService {
       const placeholders = inventoryIds.map(() => '?').join(', ');
       await entityManager.getConnection().execute(
         `delete from cart_items where cart_id = ? and product_inventory_id in (${placeholders})`,
-        [cartId, ...inventoryIds]
+        [cartId, ...inventoryIds],
       );
     }
     else {
       await entityManager.getConnection().execute(
         'delete from cart_items where cart_id = ? and is_select_order = true',
-        [cartId]
+        [cartId],
       );
     }
 
     await entityManager.getConnection().execute(
       'delete from carts where id = ? and not exists (select 1 from cart_items where cart_items.cart_id = carts.id)',
-      [cartId]
+      [cartId],
     );
   }
 }

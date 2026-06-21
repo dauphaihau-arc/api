@@ -8,7 +8,7 @@ import { UserCreatedEvent } from '../events/user-created.event';
 @Injectable()
 export class InvalidateUserCacheOnUserCreatedListener {
   constructor(
-    @Inject(CACHE_MANAGER) private readonly cacheManager: Cache
+    @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
   ) {}
 
   @OnEvent('user.created', { async: true, suppressErrors: true })

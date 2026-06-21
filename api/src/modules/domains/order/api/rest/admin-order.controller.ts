@@ -6,14 +6,14 @@ import {
   Param,
   Patch,
   Query,
-  UseGuards
+  UseGuards,
 } from '@nestjs/common';
 import {
   ApiCookieAuth, ApiExcludeController,
   ApiOkResponse,
   ApiOperation,
   ApiParam,
-  ApiTags
+  ApiTags,
 } from '@nestjs/swagger';
 import { RequirePermissions } from '~/common/decorators/require-permissions.decorator';
 import { JwtAuthGuard } from '~/modules/domains/auth/api/guard/jwt-auth.guard';
@@ -29,7 +29,7 @@ import { UpdateAdminOrderStatusDto } from './dto/update-admin-order-status.dto';
 import { UpdateAdminOrderSupportNoteDto } from './dto/update-admin-order-support-note.dto';
 import {
   isOrderAppError,
-  mapOrderAppErrorToHttpException
+  mapOrderAppErrorToHttpException,
 } from './order-http-error-mapper';
 import { toAdminOrderDetailResponse, toAdminOrderListResponse } from './order.response';
 
@@ -45,7 +45,7 @@ export class AdminOrderController {
     private readonly getAdminOrderByIdUseCase: GetAdminOrderByIdUseCase,
     private readonly updateAdminOrderStatusUseCase: UpdateAdminOrderStatusUseCase,
     private readonly updateAdminOrderRefundUseCase: UpdateAdminOrderRefundUseCase,
-    private readonly updateAdminOrderSupportNoteUseCase: UpdateAdminOrderSupportNoteUseCase
+    private readonly updateAdminOrderSupportNoteUseCase: UpdateAdminOrderSupportNoteUseCase,
   ) {}
 
   @Get()
@@ -71,7 +71,7 @@ export class AdminOrderController {
   async detail(@Param('order_id') orderId: string) {
     try {
       return toAdminOrderDetailResponse(
-        await this.getAdminOrderByIdUseCase.execute(orderId)
+        await this.getAdminOrderByIdUseCase.execute(orderId),
       );
     }
     catch (error) {
@@ -89,11 +89,11 @@ export class AdminOrderController {
   })
   async updateStatus(
     @Param('order_id') orderId: string,
-    @Body() body: UpdateAdminOrderStatusDto
+    @Body() body: UpdateAdminOrderStatusDto,
   ) {
     try {
       return toAdminOrderDetailResponse(
-        await this.updateAdminOrderStatusUseCase.execute(orderId, body)
+        await this.updateAdminOrderStatusUseCase.execute(orderId, body),
       );
     }
     catch (error) {
@@ -111,11 +111,11 @@ export class AdminOrderController {
   })
   async updateRefund(
     @Param('order_id') orderId: string,
-    @Body() body: UpdateAdminOrderRefundDto
+    @Body() body: UpdateAdminOrderRefundDto,
   ) {
     try {
       return toAdminOrderDetailResponse(
-        await this.updateAdminOrderRefundUseCase.execute(orderId, body)
+        await this.updateAdminOrderRefundUseCase.execute(orderId, body),
       );
     }
     catch (error) {
@@ -133,11 +133,11 @@ export class AdminOrderController {
   })
   async updateSupportNote(
     @Param('order_id') orderId: string,
-    @Body() body: UpdateAdminOrderSupportNoteDto
+    @Body() body: UpdateAdminOrderSupportNoteDto,
   ) {
     try {
       return toAdminOrderDetailResponse(
-        await this.updateAdminOrderSupportNoteUseCase.execute(orderId, body)
+        await this.updateAdminOrderSupportNoteUseCase.execute(orderId, body),
       );
     }
     catch (error) {

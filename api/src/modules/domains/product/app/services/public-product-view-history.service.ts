@@ -9,7 +9,7 @@ export class PublicProductViewHistoryService {
   constructor(
     private readonly publicProductViewHistoryRepository: PublicProductViewHistoryRepository,
     private readonly getPublicProductBySlugsUseCase: GetPublicProductBySlugsUseCase,
-    private readonly storefrontProductQueryRepository: StorefrontProductQueryRepository
+    private readonly storefrontProductQueryRepository: StorefrontProductQueryRepository,
   ) {}
 
   async recordView(input: {
@@ -20,7 +20,7 @@ export class PublicProductViewHistoryService {
   }): Promise<void> {
     const product = await this.getPublicProductBySlugsUseCase.execute(
       input.shopSlug,
-      input.productSlug
+      input.productSlug,
     );
 
     if (!product?.id) {
@@ -40,7 +40,7 @@ export class PublicProductViewHistoryService {
     limit: number;
   }): Promise<PublicProductListItem[]> {
     return this.listProducts(
-      await this.publicProductViewHistoryRepository.listRecentViewProductIds(input)
+      await this.publicProductViewHistoryRepository.listRecentViewProductIds(input),
     );
   }
 
@@ -50,7 +50,7 @@ export class PublicProductViewHistoryService {
   }): Promise<PublicProductListItem[]> {
     return this.listVisibleProducts(
       await this.publicProductViewHistoryRepository.listTrendingProductIds(input),
-      input.limit
+      input.limit,
     );
   }
 
@@ -62,7 +62,7 @@ export class PublicProductViewHistoryService {
   }): Promise<PublicProductListItem[]> {
     const product = await this.getPublicProductBySlugsUseCase.execute(
       input.shopSlug,
-      input.productSlug
+      input.productSlug,
     );
 
     if (!product?.id) {
@@ -75,7 +75,7 @@ export class PublicProductViewHistoryService {
         limit: input.limit,
         windowDays: input.windowDays,
       }),
-      input.limit
+      input.limit,
     );
   }
 
@@ -89,7 +89,7 @@ export class PublicProductViewHistoryService {
 
   private async listVisibleProducts(
     productIds: string[],
-    limit: number
+    limit: number,
   ): Promise<PublicProductListItem[]> {
     const products = await this.listProducts(productIds);
 

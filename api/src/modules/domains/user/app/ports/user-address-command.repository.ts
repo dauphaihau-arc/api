@@ -1,7 +1,7 @@
 import type {
   CreateMyAddressInput,
   UpdateMyAddressInput,
-  UserAddressSummary
+  UserAddressSummary,
 } from '../user-address.types';
 
 export abstract class UserAddressCommandRepository {

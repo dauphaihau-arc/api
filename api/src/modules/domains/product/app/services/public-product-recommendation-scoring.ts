@@ -15,7 +15,7 @@ export interface RecommendationScorableProduct {
 
 export function scoreRecommendation(
   anchor: RecommendationScorableProduct,
-  candidate: RecommendationScorableProduct
+  candidate: RecommendationScorableProduct,
 ): number {
   let score = 0;
 
@@ -37,19 +37,19 @@ export function scoreRecommendation(
 
   const attributeMatches = countSharedTerms(
     anchor.attributeOptionKeys,
-    candidate.attributeOptionKeys
+    candidate.attributeOptionKeys,
   );
   score += Math.min(attributeMatches, 4) * 12;
 
   const inferredFacetMatches = countSharedTerms(
     anchor.inferredFacetKeys,
-    candidate.inferredFacetKeys
+    candidate.inferredFacetKeys,
   );
   score += Math.min(inferredFacetMatches, 3) * 8;
 
   const priceSimilarity = getPriceSimilarityScore(
     anchor.minPriceAmountMinor,
-    candidate.minPriceAmountMinor
+    candidate.minPriceAmountMinor,
   );
   score += priceSimilarity;
 
@@ -69,7 +69,7 @@ export function scoreRecommendation(
 export function compareRecommendationCandidates(
   anchor: RecommendationScorableProduct,
   left: RecommendationScorableProduct,
-  right: RecommendationScorableProduct
+  right: RecommendationScorableProduct,
 ): number {
   const leftScore = scoreRecommendation(anchor, left);
   const rightScore = scoreRecommendation(anchor, right);
@@ -101,7 +101,7 @@ function countSharedTerms(left: string[], right: string[]): number {
 
 function getPriceSimilarityScore(
   anchorAmount?: number,
-  candidateAmount?: number
+  candidateAmount?: number,
 ): number {
   if (anchorAmount == null || candidateAmount == null || anchorAmount <= 0 || candidateAmount <= 0) {
     return 0;

@@ -4,7 +4,7 @@ import { AuthenticatedUser } from '../../auth.types';
 import {
   InactiveUserError,
   SessionNotActiveError,
-  UserNotFoundError
+  UserNotFoundError,
 } from '../../errors/auth-app.error';
 import { UserStatus } from '../../../domain/enums/user-status.enum';
 import { AuthSessionRepository } from '../../ports/auth-session.repository';
@@ -14,12 +14,12 @@ import { AuthUserRepository } from '../../ports/auth-user.repository';
 export class LoadAuthenticatedUserUseCase {
   constructor(
     private readonly authSessionRepository: AuthSessionRepository,
-    private readonly authUserRepository: AuthUserRepository
+    private readonly authUserRepository: AuthUserRepository,
   ) {}
 
   async execute(
     userId: string,
-    sessionId: string
+    sessionId: string,
   ): Promise<
     Result<
       AuthenticatedUser,

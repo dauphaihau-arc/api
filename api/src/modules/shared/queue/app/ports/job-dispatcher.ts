@@ -1,7 +1,7 @@
 import type {
   AppJobName,
   AppJobPayloadMap,
-  DispatchJobOptions
+  DispatchJobOptions,
 } from '~/common/jobs/job.types';
 
 export abstract class JobDispatcher {

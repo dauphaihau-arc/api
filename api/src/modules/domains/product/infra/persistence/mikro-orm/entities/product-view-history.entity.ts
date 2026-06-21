@@ -3,7 +3,7 @@ import {
   Index,
   ManyToOne,
   Property,
-  Unique
+  Unique,
 } from '@mikro-orm/core';
 import { AbstractBaseEntity } from '~/common/database/abstract-base.entity';
 import { CurrentUserEntity } from '~/modules/domains/auth/infra/persistence/entities/current-user.entity';

@@ -2,17 +2,17 @@ import type { ShopProductListResult } from '~/modules/domains/product/app/produc
 import type { ShopProductListResponse } from './shop-product-list.response';
 
 function resolveShopListImageStorageKey(
-  image: ShopProductListResult['items'][number]['images'][number]
+  image: ShopProductListResult['items'][number]['images'][number],
 ): string {
   const thumbnailVariant = image.variants?.find(
-    (variant) => variant.variant === 'thumb_1x1'
+    (variant) => variant.variant === 'thumb_1x1',
   );
 
   return thumbnailVariant?.storageKey ?? image.storageKey;
 }
 
 export const toShopProductListResponse = (
-  result: ShopProductListResult
+  result: ShopProductListResult,
 ): ShopProductListResponse => ({
   items: result.items.map((product) => ({
     id: product.id,

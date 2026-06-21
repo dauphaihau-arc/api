@@ -9,6 +9,8 @@ import { OrderShippingStatus } from '~/modules/domains/order/domain/enums/order-
 import { OrderStatus } from '~/modules/domains/order/domain/enums/order-status.enum';
 import { UserStatus } from '~/modules/domains/auth/domain/enums/user-status.enum';
 
+// The scenarios here are intentionally exhaustive; splitting them further hurts test readability.
+// eslint-disable-next-line max-lines-per-function
 describe('UpsertMyProductReviewUseCase', () => {
   const jobDispatcher = {
     dispatch: jest.fn().mockResolvedValue(undefined),
@@ -61,12 +63,6 @@ describe('UpsertMyProductReviewUseCase', () => {
         },
         ...input,
       })),
-    };
-
-    const productReference = {
-      id: 'product-1',
-      ratingAverage: 0,
-      reviewCount: 0,
     };
 
     const fakeEntityManager = {

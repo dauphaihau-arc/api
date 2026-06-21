@@ -14,7 +14,7 @@ import type {
   ReplaceProductInventoryRepositoryInput,
   ReplaceProductShippingRepositoryInput,
   ReplaceProductVariantsRepositoryInput,
-  UpdateProductDetailsRepositoryInput
+  UpdateProductDetailsRepositoryInput,
 } from '../../../../app/product.types';
 import { ProductImageVariantStatus } from '../../../../domain/enums/product-image-variant-status.enum';
 import { ProductState } from '../../../../domain/enums/product-state.enum';
@@ -55,17 +55,17 @@ implements ProductCommandRepository, ProductPricingRepository {
   constructor(
     private readonly entityManager: EntityManager,
     private readonly storageService: StorageService,
-    private readonly resolvedStorefrontPriceService: ResolvedStorefrontPriceService
+    private readonly resolvedStorefrontPriceService: ResolvedStorefrontPriceService,
   ) {}
 
   async replaceImages(
-    input: ReplaceProductImagesRepositoryInput
+    input: ReplaceProductImagesRepositoryInput,
   ): Promise<ReplaceProductImagesRepositoryResult | null> {
     const entityManager = this.entityManager.fork();
     const repository = entityManager.getRepository(ProductEntity);
     const product = await repository.findOne(
       { id: input.productId },
-      { populate: [...MikroOrmProductCommandRepository.summaryPopulate] }
+      { populate: [...MikroOrmProductCommandRepository.summaryPopulate] },
     );
     if (!product) return null;
 
@@ -93,13 +93,13 @@ implements ProductCommandRepository, ProductPricingRepository {
   }
 
   async replaceAttributeValues(
-    input: ReplaceProductAttributeValuesRepositoryInput
+    input: ReplaceProductAttributeValuesRepositoryInput,
   ): Promise<ProductDraftSummary | null> {
     const entityManager = this.entityManager.fork();
     const repository = entityManager.getRepository(ProductEntity);
     const product = await repository.findOne(
       { id: input.productId },
-      { populate: [...MikroOrmProductCommandRepository.summaryPopulate] }
+      { populate: [...MikroOrmProductCommandRepository.summaryPopulate] },
     );
     if (!product) return null;
 
@@ -129,7 +129,7 @@ implements ProductCommandRepository, ProductPricingRepository {
     const repository = entityManager.getRepository(ProductEntity);
     const product = await repository.findOne(
       { id: input.productId },
-      { populate: [...MikroOrmProductCommandRepository.summaryPopulate] }
+      { populate: [...MikroOrmProductCommandRepository.summaryPopulate] },
     );
     if (!product) return null;
 
@@ -158,7 +158,7 @@ implements ProductCommandRepository, ProductPricingRepository {
     const repository = entityManager.getRepository(ProductEntity);
     const product = await repository.findOne(
       { id: input.productId },
-      { populate: [...MikroOrmProductCommandRepository.summaryPopulate] }
+      { populate: [...MikroOrmProductCommandRepository.summaryPopulate] },
     );
     if (!product) return null;
 
@@ -219,7 +219,7 @@ implements ProductCommandRepository, ProductPricingRepository {
     const repository = entityManager.getRepository(ProductEntity);
     const product = await repository.findOne(
       { id: input.productId },
-      { populate: [...MikroOrmProductCommandRepository.summaryPopulate] }
+      { populate: [...MikroOrmProductCommandRepository.summaryPopulate] },
     );
     if (!product) return null;
 
@@ -261,7 +261,7 @@ implements ProductCommandRepository, ProductPricingRepository {
     const repository = entityManager.getRepository(ProductEntity);
     const product = await repository.findOne(
       { id: input.productId },
-      { populate: [...MikroOrmProductCommandRepository.summaryPopulate] }
+      { populate: [...MikroOrmProductCommandRepository.summaryPopulate] },
     );
     if (!product) return null;
 
@@ -303,7 +303,7 @@ implements ProductCommandRepository, ProductPricingRepository {
     const repository = entityManager.getRepository(ProductEntity);
     const product = await repository.findOne(
       { id: input.productId },
-      { populate: [...MikroOrmProductCommandRepository.summaryPopulate] }
+      { populate: [...MikroOrmProductCommandRepository.summaryPopulate] },
     );
     if (!product) return null;
     product.title = input.title;
@@ -323,7 +323,7 @@ implements ProductCommandRepository, ProductPricingRepository {
     const repository = entityManager.getRepository(ProductEntity);
     const product = await repository.findOne(
       { id: productId },
-      { populate: [...MikroOrmProductCommandRepository.summaryPopulate] }
+      { populate: [...MikroOrmProductCommandRepository.summaryPopulate] },
     );
     if (!product) return null;
     product.state = state;
@@ -336,7 +336,7 @@ implements ProductCommandRepository, ProductPricingRepository {
     const repository = entityManager.getRepository(ProductEntity);
     const product = await repository.findOne(
       { id: productId },
-      { populate: [...MikroOrmProductCommandRepository.summaryPopulate] }
+      { populate: [...MikroOrmProductCommandRepository.summaryPopulate] },
     );
     if (!product) return null;
     product.state = ProductState.ACTIVE;
@@ -383,7 +383,7 @@ implements ProductCommandRepository, ProductPricingRepository {
           currency: market.defaultCurrency,
         });
         return pricing ? [`${market.code}:${market.defaultCurrency}`, pricing.amountMinor] as const : null;
-      })
+      }),
     );
     product.publicSortPrices = publicSortPrices.reduce<Record<string, number>>((accumulator, entry) => {
       if (!entry) return accumulator;

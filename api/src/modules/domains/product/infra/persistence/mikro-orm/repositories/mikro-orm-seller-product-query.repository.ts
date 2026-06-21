@@ -6,7 +6,7 @@ import { SellerProductQueryRepository } from '../../../../app/ports/seller-produ
 import type {
   ListShopProductsInput,
   ProductDraftSummary,
-  ShopProductListResult
+  ShopProductListResult,
 } from '../../../../app/product.types';
 import { ProductState } from '../../../../domain/enums/product-state.enum';
 import { ProductEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product.entity';
@@ -33,7 +33,7 @@ implements SellerProductQueryRepository {
 
   constructor(
     private readonly entityManager: EntityManager,
-    private readonly storageService: StorageService
+    private readonly storageService: StorageService,
   ) {}
 
   async findById(id: string): Promise<ProductDraftSummary | null> {
@@ -42,14 +42,14 @@ implements SellerProductQueryRepository {
       { id },
       {
         populate: [...MikroOrmSellerProductQueryRepository.summaryPopulate],
-      }
+      },
     );
 
     return product ? toProductDraftSummary(product, this.storageService) : null;
   }
 
   async listByShop(
-    input: ListShopProductsInput
+    input: ListShopProductsInput,
   ): Promise<ShopProductListResult> {
     const repository = this.entityManager.fork().getRepository(ProductEntity);
     const products = await repository.find(
@@ -60,7 +60,7 @@ implements SellerProductQueryRepository {
       },
       {
         populate: [...MikroOrmSellerProductQueryRepository.summaryPopulate],
-      }
+      },
     );
 
     const normalizedSearch = input.search?.trim().toLowerCase();
@@ -80,7 +80,7 @@ implements SellerProductQueryRepository {
     });
 
     const sortedProducts = filteredProducts.sort(
-      (left, right) => right.updatedAt.getTime() - left.updatedAt.getTime()
+      (left, right) => right.updatedAt.getTime() - left.updatedAt.getTime(),
     );
     const total = sortedProducts.length;
     const start = (input.page - 1) * input.limit;
@@ -100,14 +100,14 @@ implements SellerProductQueryRepository {
 
   async findByShopIdAndSlug(
     shopId: string,
-    slug: string
+    slug: string,
   ): Promise<ProductDraftSummary | null> {
     const repository = this.entityManager.fork().getRepository(ProductEntity);
     const product = await repository.findOne(
       { shop: shopId, slug },
       {
         populate: [...MikroOrmSellerProductQueryRepository.summaryPopulate],
-      }
+      },
     );
 
     return product ? toProductDraftSummary(product, this.storageService) : null;
@@ -115,7 +115,7 @@ implements SellerProductQueryRepository {
 
   private shouldIncludeInShopList(
     productState: ProductState,
-    requestedState?: ProductState
+    requestedState?: ProductState,
   ): boolean {
     if (requestedState) {
       return productState === requestedState;

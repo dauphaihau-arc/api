@@ -16,7 +16,7 @@ export class CreateCategoryUseCase {
   constructor(private readonly categoryRepository: CategoryRepository) {}
 
   async execute(
-    input: CreateCategoryInput
+    input: CreateCategoryInput,
   ): Promise<Result<CategorySummary, CategoryNotFoundError>> {
     if (input.parentId) {
       const parent = await this.categoryRepository.findById(input.parentId);

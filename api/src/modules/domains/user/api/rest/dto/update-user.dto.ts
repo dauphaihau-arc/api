@@ -1,7 +1,7 @@
 import { Expose, Transform, Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import {
-  IsEnum, IsInt, IsOptional, IsString, Min 
+  IsEnum, IsInt, IsOptional, IsString, Min, 
 } from 'class-validator';
 import { UserStatus } from '~/modules/domains/auth/domain/enums/user-status.enum';
 

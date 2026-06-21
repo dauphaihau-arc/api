@@ -45,12 +45,12 @@ type ShoeSizeGroup = typeof SHOE_SIZE_GROUPS[number];
 
 const SHOE_SIZE_ALIAS_TO_GROUP = new Map<string, ShoeSizeGroup>(
   SHOE_SIZE_GROUPS.flatMap((group) =>
-    group.aliases.map((alias) => [alias, group] as const)
-  )
+    group.aliases.map((alias) => [alias, group] as const),
+  ),
 );
 
 const SHOE_SIZE_CANONICAL_KEY_TO_GROUP = new Map<string, ShoeSizeGroup>(
-  SHOE_SIZE_GROUPS.map((group) => [group.canonicalKey, group] as const)
+  SHOE_SIZE_GROUPS.map((group) => [group.canonicalKey, group] as const),
 );
 
 export function expandShoeSizeOptionKeys(optionKeys: string[]): string[] {
@@ -76,7 +76,7 @@ export function expandShoeSizeOptionValues(optionValues: string[]): string[] {
 
 export function toCanonicalFacetOption(
   facetKey: string,
-  optionValue: string
+  optionValue: string,
 ): CanonicalFacetOption {
   if (facetKey !== 'shoe_size') {
     return {

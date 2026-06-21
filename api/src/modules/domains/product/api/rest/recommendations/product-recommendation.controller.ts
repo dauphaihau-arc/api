@@ -1,8 +1,8 @@
 import {
-  Controller, Get, Header, Param, Query, Req, UseGuards 
+  Controller, Get, Header, Param, Query, Req, UseGuards, 
 } from '@nestjs/common';
 import {
-  ApiOkResponse, ApiOperation, ApiParam, ApiTags 
+  ApiOkResponse, ApiOperation, ApiParam, ApiTags, 
 } from '@nestjs/swagger';
 import { OptionalJwtAuthGuard } from '~/modules/domains/auth/api/guard/optional-jwt-auth.guard';
 import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
@@ -30,7 +30,7 @@ export class ProductRecommendationController {
     private readonly getPublicProductRecommendationSectionsUseCase: GetPublicProductRecommendationSectionsUseCase,
     private readonly publicProductOrderHistoryService: PublicProductOrderHistoryService,
     private readonly publicProductViewHistoryService: PublicProductViewHistoryService,
-    private readonly productActivitySessionService: ProductActivitySessionService
+    private readonly productActivitySessionService: ProductActivitySessionService,
   ) {}
 
   @Get('recently-viewed')
@@ -42,7 +42,7 @@ export class ProductRecommendationController {
   })
   async listRecentlyViewedProducts(
     @Req() request: ProductRequest,
-    @Query() query: RecentPublicProductsQueryDto
+    @Query() query: RecentPublicProductsQueryDto,
   ): Promise<PublicProductRecommendationsResponse> {
     const result = await this.publicProductViewHistoryService.listRecentViews({
       userId: request.user?.userId,
@@ -61,7 +61,7 @@ export class ProductRecommendationController {
     schema: { type: 'object' },
   })
   async listTrendingProducts(
-    @Query() query: RecentPublicProductsQueryDto
+    @Query() query: RecentPublicProductsQueryDto,
   ): Promise<PublicProductRecommendationsResponse> {
     const result = await this.publicProductViewHistoryService.listTrendingProducts({
       limit: query.limit,
@@ -78,7 +78,7 @@ export class ProductRecommendationController {
     schema: { type: 'object' },
   })
   async listBestSellingProducts(
-    @Query() query: RecentPublicProductsQueryDto
+    @Query() query: RecentPublicProductsQueryDto,
   ): Promise<PublicProductRecommendationsResponse> {
     const result = await this.publicProductOrderHistoryService.listBestSellingProducts({
       limit: query.limit,
@@ -99,12 +99,12 @@ export class ProductRecommendationController {
   async recommendProducts(
     @Param('shop_slug') shopSlug: string,
     @Param('product_slug') productSlug: string,
-    @Query() query: RecommendPublicProductsQueryDto
+    @Query() query: RecommendPublicProductsQueryDto,
   ): Promise<PublicProductRecommendationsResponse> {
     const result = await this.recommendPublicProductsUseCase.execute(
       shopSlug,
       productSlug,
-      query.limit
+      query.limit,
     );
 
     return toPublicProductRecommendationsResponse(result);
@@ -122,12 +122,12 @@ export class ProductRecommendationController {
   async getRecommendationSections(
     @Param('shop_slug') shopSlug: string,
     @Param('product_slug') productSlug: string,
-    @Query() query: RecommendPublicProductsQueryDto
+    @Query() query: RecommendPublicProductsQueryDto,
   ): Promise<PublicProductRecommendationSectionsResponse> {
     const result = await this.getPublicProductRecommendationSectionsUseCase.execute(
       shopSlug,
       productSlug,
-      query.limit
+      query.limit,
     );
 
     return toPublicProductRecommendationSectionsResponse(result);

@@ -3,16 +3,16 @@ import {
   Inject,
   Injectable,
   InternalServerErrorException,
-  ServiceUnavailableException
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import OpenAI, {
   APIConnectionError,
   APIConnectionTimeoutError,
-  APIError
+  APIError,
 } from 'openai';
 import {
   OPENAI_CONFIG,
-  type OpenAiConfig
+  type OpenAiConfig,
 } from '~/config/openai.config';
 import type { GenerateTextInput } from '../../app/ai.types';
 import { TextGenerationService } from '../../app/ports/text-generation.service';
@@ -22,7 +22,7 @@ export class OpenAiTextGenerationService implements TextGenerationService {
   private readonly client?: OpenAI;
 
   constructor(
-    @Inject(OPENAI_CONFIG) private readonly openAiConfig: OpenAiConfig
+    @Inject(OPENAI_CONFIG) private readonly openAiConfig: OpenAiConfig,
   ) {
     if (openAiConfig.productDescriptionEnabled && openAiConfig.apiKey) {
       this.client = new OpenAI({
@@ -36,13 +36,13 @@ export class OpenAiTextGenerationService implements TextGenerationService {
   async generateText(input: GenerateTextInput): Promise<string> {
     if (!this.openAiConfig.productDescriptionEnabled) {
       throw new ServiceUnavailableException(
-        'AI description generation is temporarily unavailable.'
+        'AI description generation is temporarily unavailable.',
       );
     }
 
     if (!this.client) {
       throw new ServiceUnavailableException(
-        'AI description generation is temporarily unavailable.'
+        'AI description generation is temporarily unavailable.',
       );
     }
 
@@ -76,7 +76,7 @@ export class OpenAiTextGenerationService implements TextGenerationService {
           'AI description generation is temporarily unavailable.',
           {
             cause: error,
-          }
+          },
         );
       }
 
@@ -85,7 +85,7 @@ export class OpenAiTextGenerationService implements TextGenerationService {
           'AI description generation is temporarily unavailable.',
           {
             cause: error,
-          }
+          },
         );
       }
 
@@ -95,7 +95,7 @@ export class OpenAiTextGenerationService implements TextGenerationService {
             'AI description generation is temporarily unavailable.',
             {
               cause: error,
-            }
+            },
           );
         }
 
@@ -103,7 +103,7 @@ export class OpenAiTextGenerationService implements TextGenerationService {
           'AI description generation is temporarily unavailable.',
           {
             cause: error,
-          }
+          },
         );
       }
 
@@ -111,7 +111,7 @@ export class OpenAiTextGenerationService implements TextGenerationService {
         'AI description generation is temporarily unavailable.',
         {
           cause: error instanceof Error ? error : undefined,
-        }
+        },
       );
     }
   }

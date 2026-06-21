@@ -4,7 +4,7 @@ import { StorageService } from '~/modules/shared/storage/app/ports/storage.servi
 import { CategoryQueryRepository } from '../app/ports/category-query.repository';
 import type {
   CategorySuggestion,
-  CategorySummary
+  CategorySummary,
 } from '../app/category.types';
 import { CategoryEntity } from './persistence/entities/category.entity';
 import { toCategorySummary } from './category-summary.projector';
@@ -13,7 +13,7 @@ import { toCategorySummary } from './category-summary.projector';
 export class MikroOrmCategoryQueryRepository implements CategoryQueryRepository {
   constructor(
     private readonly entityManager: EntityManager,
-    private readonly storageService: StorageService
+    private readonly storageService: StorageService,
   ) {}
 
   async findAllByParentId(parentId?: string): Promise<CategorySummary[]> {
@@ -23,7 +23,7 @@ export class MikroOrmCategoryQueryRepository implements CategoryQueryRepository 
       {
         populate: ['parent', 'attributes', 'attributes.options'],
         orderBy: { rank: 'asc' },
-      }
+      },
     );
 
     return categories.map((category) => toCategorySummary(category, this.storageService));
@@ -33,7 +33,7 @@ export class MikroOrmCategoryQueryRepository implements CategoryQueryRepository 
     const repository = this.entityManager.fork().getRepository(CategoryEntity);
     const category = await repository.findOne(
       { id },
-      { populate: ['parent', 'attributes', 'attributes.options'] }
+      { populate: ['parent', 'attributes', 'attributes.options'] },
     );
 
     return category ? toCategorySummary(category, this.storageService) : null;
@@ -41,7 +41,7 @@ export class MikroOrmCategoryQueryRepository implements CategoryQueryRepository 
 
   async searchSuggestions(
     name: string,
-    limit: number
+    limit: number,
   ): Promise<CategorySuggestion[]> {
     const repository = this.entityManager.fork().getRepository(CategoryEntity);
     const categories = await repository.findAll({
@@ -89,7 +89,7 @@ export class MikroOrmCategoryQueryRepository implements CategoryQueryRepository 
         match,
         pathToMatch,
         childrenByParentId,
-        remaining
+        remaining,
       );
 
       if (descendants.length > 0) {
@@ -127,7 +127,7 @@ export class MikroOrmCategoryQueryRepository implements CategoryQueryRepository 
 
 function buildPathToCategory(
   category: CategoryEntity,
-  byId: Map<string, CategoryEntity>
+  byId: Map<string, CategoryEntity>,
 ): string[] {
   const path: string[] = [];
   let currentCategory: CategoryEntity | undefined = category;
@@ -146,7 +146,7 @@ function collectLeafSuggestions(
   category: CategoryEntity,
   pathToCategory: string[],
   childrenByParentId: Map<string, CategoryEntity[]>,
-  limit: number
+  limit: number,
 ): CategorySuggestion[] {
   const directChildren = childrenByParentId.get(category.id) ?? [];
 

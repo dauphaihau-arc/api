@@ -23,7 +23,7 @@ export function initializeSentry(runtime: 'api' | 'worker'): void {
     release: process.env.SENTRY_RELEASE?.trim() || undefined,
     tracesSampleRate: Number(
       process.env.SENTRY_TRACES_SAMPLE_RATE ??
-      (process.env.NODE_ENV === 'production' ? '0' : '0')
+      (process.env.NODE_ENV === 'production' ? '0' : '0'),
     ),
     sendDefaultPii: false,
     initialScope: {
@@ -39,7 +39,7 @@ export function initializeSentry(runtime: 'api' | 'worker'): void {
 
 export function captureException(
   exception: unknown,
-  configureScope?: (scope: Sentry.Scope) => void
+  configureScope?: (scope: Sentry.Scope) => void,
 ): string {
   if (!configureScope) {
     return Sentry.captureException(exception);

@@ -5,7 +5,7 @@ import {
   HttpException,
   HttpStatus,
   Post,
-  UnauthorizedException
+  UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ApiExcludeController } from '@nestjs/swagger';
@@ -13,7 +13,7 @@ import { SkipThrottle } from '@nestjs/throttler';
 import { timingSafeEqual } from 'node:crypto';
 import {
   ExchangeRateSyncService,
-  type ExchangeRateSyncResult
+  type ExchangeRateSyncResult,
 } from './exchange-rate-sync.service';
 
 const FX_SYNC_SECRET_HEADER = 'x-cron-secret';
@@ -33,22 +33,22 @@ export interface InternalFxSyncResponse {
 export class InternalJobsController {
   constructor(
     private readonly exchangeRateSyncService: ExchangeRateSyncService,
-    private readonly configService: ConfigService
+    private readonly configService: ConfigService,
   ) {}
 
   @Post('fx-sync')
   @HttpCode(200)
   async syncFxRates(
-    @Headers(FX_SYNC_SECRET_HEADER) providedSecret?: string
+    @Headers(FX_SYNC_SECRET_HEADER) providedSecret?: string,
   ): Promise<InternalFxSyncResponse> {
     const configuredSecret = this.configService.get<string>(
-      'FX_SYNC_TRIGGER_SECRET'
+      'FX_SYNC_TRIGGER_SECRET',
     );
 
     if (!configuredSecret) {
       throw new HttpException(
         'FX sync trigger is not configured',
-        HttpStatus.SERVICE_UNAVAILABLE
+        HttpStatus.SERVICE_UNAVAILABLE,
       );
     }
 

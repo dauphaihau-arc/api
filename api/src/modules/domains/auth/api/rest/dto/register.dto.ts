@@ -4,14 +4,14 @@ import {
   IsOptional,
   IsString,
   MinLength,
-  ValidateNested
+  ValidateNested,
 } from 'class-validator';
 import { Expose, Transform, Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import {
   MARKETPLACE_CURRENCIES,
   MARKETPLACE_LANGUAGES,
-  MARKETPLACE_REGIONS
+  MARKETPLACE_REGIONS,
 } from '~/config/marketplace.config';
 import { IsAuthPassword } from '../validation/password-validation';
 

@@ -2,7 +2,7 @@ import { LockMode } from '@mikro-orm/core';
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
 import {
-  buildProductInventoryUpdatedSseEvent
+  buildProductInventoryUpdatedSseEvent,
 } from '~/modules/domains/product/app/events/product-inventory-sse.event';
 import { CouponUsageEntity } from '../../coupon/infra/persistence/entities/coupon-usage.entity';
 import { ProductInventoryEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-inventory.entity';
@@ -22,7 +22,7 @@ export class OrderCancellationService {
       canceledAt: Date;
       cancelReason?: string;
       source: 'buyer' | 'seller';
-    }
+    },
   ): Promise<{
     refundRequested: boolean;
     inventoryEvents: Array<ReturnType<typeof buildProductInventoryUpdatedSseEvent>>;
@@ -51,7 +51,7 @@ export class OrderCancellationService {
     const refundRequested = this.orderRefundService.prepareRefundOnCancellation(
       order,
       previousStatus,
-      input.canceledAt
+      input.canceledAt,
     );
 
     return { refundRequested, inventoryEvents };
@@ -59,15 +59,15 @@ export class OrderCancellationService {
 
   private async restoreAllocations(
     entityManager: EntityManager,
-    orderId: string
+    orderId: string,
   ): Promise<Array<ReturnType<typeof buildProductInventoryUpdatedSseEvent>>> {
     const orderItems = await entityManager.getRepository(OrderItemEntity).find(
       { order: orderId },
-      { populate: ['inventory', 'product'] }
+      { populate: ['inventory', 'product'] },
     );
     const couponUsages = await entityManager.getRepository(CouponUsageEntity).find(
       { orderId },
-      { populate: ['coupon'] }
+      { populate: ['coupon'] },
     );
 
     const inventoryEvents: Array<ReturnType<typeof buildProductInventoryUpdatedSseEvent>> = [];
@@ -75,7 +75,7 @@ export class OrderCancellationService {
     for (const item of orderItems) {
       const inventory = await entityManager.getRepository(ProductInventoryEntity).findOne(
         { id: item.inventory.id },
-        { lockMode: LockMode.PESSIMISTIC_WRITE }
+        { lockMode: LockMode.PESSIMISTIC_WRITE },
       );
 
       if (inventory) {

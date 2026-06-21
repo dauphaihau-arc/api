@@ -2,13 +2,13 @@ import { Injectable } from '@nestjs/common';
 import { NotificationRepository } from '../../ports/notification.repository';
 import type {
   CreateNotificationInput,
-  NotificationSummary
+  NotificationSummary,
 } from '../../notification.types';
 
 @Injectable()
 export class CreateNotificationUseCase {
   constructor(
-    private readonly notificationRepository: NotificationRepository
+    private readonly notificationRepository: NotificationRepository,
   ) {}
 
   async execute(input: CreateNotificationInput): Promise<NotificationSummary> {

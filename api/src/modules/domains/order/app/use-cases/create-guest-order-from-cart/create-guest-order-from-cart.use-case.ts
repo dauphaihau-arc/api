@@ -1,11 +1,11 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
   PAYMENT_CONFIG,
-  type PaymentConfig
+  type PaymentConfig,
 } from '~/config/payment.config';
 import {
   appJobDeduplicationKey,
-  appJobName
+  appJobName,
 } from '~/common/jobs/job.types';
 import type { CreateGuestOrderFromCartDto } from '../../../api/rest/dto/create-guest-order-from-cart.dto';
 import { CartRepository } from '~/modules/domains/cart/app/ports/cart.repository';
@@ -15,7 +15,7 @@ import { buildGuestOrderTrackingUrl } from '../../guest-order-tracking-url.build
 import { GuestOrderTrackingTokenService } from '../../guest-order-tracking-token.service';
 import {
   CartNotFoundError,
-  CheckoutQuoteCartChangedError
+  CheckoutQuoteCartChangedError,
 } from '../../errors/order-app.error';
 import { LoadCheckoutQuoteService } from '../../load-checkout-quote.service';
 import { OrderCheckoutService } from '../../order-checkout.service';
@@ -28,7 +28,7 @@ export class CreateGuestOrderFromCartUseCase {
     private readonly orderCheckoutService: OrderCheckoutService,
     private readonly jobDispatcher: JobDispatcher,
     private readonly guestOrderTrackingTokenService: GuestOrderTrackingTokenService,
-    @Inject(PAYMENT_CONFIG) private readonly paymentConfig: PaymentConfig
+    @Inject(PAYMENT_CONFIG) private readonly paymentConfig: PaymentConfig,
   ) {}
 
   async execute(guestSessionId: string, body: CreateGuestOrderFromCartDto) {
@@ -63,11 +63,11 @@ export class CreateGuestOrderFromCartUseCase {
         : {
           email: body.guest.email,
           orderIds: result.orderShops.map((orderShop) => orderShop.id),
-        }
+        },
     );
     const trackingUrl = buildGuestOrderTrackingUrl(
       this.paymentConfig,
-      trackingToken
+      trackingToken,
     );
 
     if (trackingUrl) {
@@ -82,9 +82,9 @@ export class CreateGuestOrderFromCartUseCase {
         {
           deduplicationKey: appJobDeduplicationKey.sendGuestOrderConfirmationEmail(
             body.guest.email,
-            result.orderShops.map((orderShop) => orderShop.id)
+            result.orderShops.map((orderShop) => orderShop.id),
           ),
-        }
+        },
       );
     }
 

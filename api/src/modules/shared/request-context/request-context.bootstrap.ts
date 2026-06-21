@@ -36,39 +36,39 @@ type ClsStore = {
 export function extractRequestContext(request: RequestLike): RequestContext {
   return {
     requestId: normalizeValue(
-      request.get?.('x-request-id') ?? getHeaderValue(request.headers, 'x-request-id')
+      request.get?.('x-request-id') ?? getHeaderValue(request.headers, 'x-request-id'),
     ),
     ipAddress: normalizeValue(request.ip),
     userAgent: normalizeValue(
-      request.get?.('user-agent') ?? getHeaderValue(request.headers, 'user-agent')
+      request.get?.('user-agent') ?? getHeaderValue(request.headers, 'user-agent'),
     ),
     marketCode: normalizeValue(
       request.get?.('x-market-code') ??
       request.get?.('x-market') ??
       getHeaderValue(request.headers, 'x-market-code') ??
-      getHeaderValue(request.headers, 'x-market')
+      getHeaderValue(request.headers, 'x-market'),
     ),
     currency: normalizeValue(
-      request.get?.('x-currency') ?? getHeaderValue(request.headers, 'x-currency')
+      request.get?.('x-currency') ?? getHeaderValue(request.headers, 'x-currency'),
     ),
     locale: normalizeValue(
-      request.get?.('x-locale') ?? getHeaderValue(request.headers, 'x-locale')
+      request.get?.('x-locale') ?? getHeaderValue(request.headers, 'x-locale'),
     ),
     channel: normalizeValue(
-      request.get?.('x-channel') ?? getHeaderValue(request.headers, 'x-channel')
+      request.get?.('x-channel') ?? getHeaderValue(request.headers, 'x-channel'),
     ),
   };
 }
 
 export function initializeRequestContextStore(
   cls: ClsStore,
-  request: RequestLike
+  request: RequestLike,
 ): void {
   const requestContext = extractRequestContext(request);
 
   cls.set(
     REQUEST_CONTEXT_CLS_KEYS.requestId,
-    requestContext.requestId ?? cls.getId()
+    requestContext.requestId ?? cls.getId(),
   );
 
   if (requestContext.ipAddress) {
@@ -98,7 +98,7 @@ export function initializeRequestContextStore(
 
 function getHeaderValue(
   headers: RequestLike['headers'],
-  name: string
+  name: string,
 ): string | undefined {
   const headerValue = headers?.[name];
 

@@ -4,7 +4,7 @@ describe('buildGuestOrderTrackingUrl', () => {
   it('builds a token-based tracking url', () => {
     const result = buildGuestOrderTrackingUrl(
       { appBaseUrl: 'http://localhost:4000' },
-      'signed-tracking-token'
+      'signed-tracking-token',
     );
 
     expect(result).toBe('http://localhost:4000/guest-orders?token=signed-tracking-token');

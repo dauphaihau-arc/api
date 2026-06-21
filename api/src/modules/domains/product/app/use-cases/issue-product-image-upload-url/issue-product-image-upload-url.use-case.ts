@@ -6,13 +6,13 @@ import {
   ForbiddenException,
   Inject,
   Injectable,
-  NotFoundException
+  NotFoundException,
 } from '@nestjs/common';
 import type { Cache } from 'cache-manager';
 import { randomUUID } from 'node:crypto';
 import {
   STORAGE_CONFIG,
-  type StorageConfig
+  type StorageConfig,
 } from '~/config/storage.config';
 import { createPublicId } from '~/common/ids/public-id';
 import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
@@ -43,7 +43,7 @@ export class IssueProductImageUploadUrlUseCase {
     private readonly shopRepository: ShopRepository,
     private readonly productRepository: SellerProductQueryRepository,
     @Inject(STORAGE_CONFIG) private readonly storageConfig: StorageConfig,
-    private readonly storageService: StorageService
+    private readonly storageService: StorageService,
   ) {}
 
   async execute(
@@ -51,7 +51,7 @@ export class IssueProductImageUploadUrlUseCase {
     shopId: string,
     productId: string,
     contentType: string,
-    assetType: ProductImageAssetType
+    assetType: ProductImageAssetType,
   ): Promise<IssueProductImageUploadUrlResult> {
     const product = await this.productRepository.findById(productId);
 
@@ -104,7 +104,7 @@ export class IssueProductImageUploadUrlUseCase {
         }),
         {
           expiresIn: Math.floor(UPLOAD_TICKET_TTL_MS / 1000),
-        }
+        },
       );
 
       return {
@@ -122,7 +122,7 @@ export class IssueProductImageUploadUrlUseCase {
         productId,
         storageKey: key,
       },
-      UPLOAD_TICKET_TTL_MS
+      UPLOAD_TICKET_TTL_MS,
     );
 
     return {
@@ -133,7 +133,7 @@ export class IssueProductImageUploadUrlUseCase {
 
   private async assertActorCanManageShop(
     actor: AuthenticatedUser,
-    shopId: string
+    shopId: string,
   ): Promise<void> {
     if (actor.roles.includes('admin')) {
       const shop = await this.shopRepository.findById(shopId);
@@ -149,7 +149,7 @@ export class IssueProductImageUploadUrlUseCase {
 
     if (!shop) {
       throw new ForbiddenException(
-        'Actor is not allowed to upload files for this shop'
+        'Actor is not allowed to upload files for this shop',
       );
     }
   }

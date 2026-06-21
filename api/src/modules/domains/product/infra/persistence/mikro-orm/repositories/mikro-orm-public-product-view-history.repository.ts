@@ -65,7 +65,7 @@ implements PublicProductViewHistoryRepository {
       {
         orderBy: { viewedAt: 'desc' },
         limit: input.limit,
-      }
+      },
     );
 
     return history.map((entry) => entry.product.id);
@@ -97,7 +97,7 @@ implements PublicProductViewHistoryRepository {
         buildLookbackStart(input.windowDays ?? 14),
         ProductState.ACTIVE,
         Math.max(input.limit * 4, input.limit),
-      ]
+      ],
     );
 
     return rows.map((row) => row.product_id);
@@ -144,7 +144,7 @@ implements PublicProductViewHistoryRepository {
         lookbackStart,
         ProductState.ACTIVE,
         Math.max(input.limit * 4, input.limit),
-      ]
+      ],
     );
 
     return rows.map((row) => row.product_id);

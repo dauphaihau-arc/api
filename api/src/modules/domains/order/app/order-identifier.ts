@@ -19,7 +19,7 @@ export function buildOrderIdentifierWhere(identifier: string) {
 
 export function buildScopedOrderIdentifierWhere(
   identifier: string,
-  scope: Record<string, unknown>
+  scope: Record<string, unknown>,
 ) {
   return {
     $and: [

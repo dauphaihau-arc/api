@@ -13,14 +13,14 @@ export class SendRefundFailedEmailJob {
 
   constructor(
     private readonly entityManager: EntityManager,
-    private readonly mailSender: MailSender
+    private readonly mailSender: MailSender,
   ) {}
 
   async run(payload: SendRefundFailedEmailPayload): Promise<void> {
     const entityManager = this.entityManager.fork();
     const order = await entityManager.getRepository(OrderEntity).findOne(
       { id: payload.orderId },
-      { populate: ['shop'] }
+      { populate: ['shop'] },
     );
 
     if (!order) {

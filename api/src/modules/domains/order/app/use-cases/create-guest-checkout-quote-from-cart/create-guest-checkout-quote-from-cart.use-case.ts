@@ -8,7 +8,7 @@ import { CreateCheckoutQuoteService } from '../../create-checkout-quote.service'
 export class CreateGuestCheckoutQuoteFromCartUseCase {
   constructor(
     private readonly cartRepository: CartRepository,
-    private readonly createCheckoutQuoteService: CreateCheckoutQuoteService
+    private readonly createCheckoutQuoteService: CreateCheckoutQuoteService,
   ) {}
 
   async execute(guestSessionId: string, body: CreateGuestCheckoutQuoteFromCartDto) {

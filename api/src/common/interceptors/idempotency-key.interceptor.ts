@@ -5,7 +5,7 @@ import {
   ExecutionContext,
   Inject,
   Injectable,
-  NestInterceptor
+  NestInterceptor,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import type { Cache } from 'cache-manager';
@@ -15,7 +15,7 @@ import { from, lastValueFrom, Observable } from 'rxjs';
 import {
   IDEMPOTENCY_OPTIONS,
   IDEMPOTENCY_REDIS,
-  type IdempotencyOptions
+  type IdempotencyOptions,
 } from './idempotency.constants';
 
 const IDEMPOTENCY_KEY_HEADER = 'idempotency-key';
@@ -40,13 +40,13 @@ export class IdempotencyKeyInterceptor implements NestInterceptor {
     private readonly reflector: Reflector,
     @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
     @Inject(IDEMPOTENCY_REDIS)
-    private readonly redisClient: IdempotencyRedisClient | null
+    private readonly redisClient: IdempotencyRedisClient | null,
   ) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
     const options = this.reflector.get<IdempotencyOptions | undefined>(
       IDEMPOTENCY_OPTIONS,
-      context.getHandler()
+      context.getHandler(),
     );
 
     if (!options) {
@@ -68,7 +68,7 @@ export class IdempotencyKeyInterceptor implements NestInterceptor {
     }
 
     return from(
-      this.handleRequest(request, response, next, idempotencyKey, options)
+      this.handleRequest(request, response, next, idempotencyKey, options),
     );
   }
 
@@ -77,7 +77,7 @@ export class IdempotencyKeyInterceptor implements NestInterceptor {
     response: Response,
     next: CallHandler,
     idempotencyKey: string,
-    options: IdempotencyOptions
+    options: IdempotencyOptions,
   ): Promise<unknown> {
     const cacheKey = this.buildResponseCacheKey(options.scope, idempotencyKey);
     const lockKey = this.buildLockKey(options.scope, idempotencyKey);
@@ -94,12 +94,12 @@ export class IdempotencyKeyInterceptor implements NestInterceptor {
     const lockClaimed = await this.claimRequest(
       lockKey,
       fingerprint,
-      options.inFlightTtlMs ?? DEFAULT_LOCK_TTL_MS
+      options.inFlightTtlMs ?? DEFAULT_LOCK_TTL_MS,
     );
 
     if (!lockClaimed) {
       throw new ConflictException(
-        'A request with this idempotency key is already being processed.'
+        'A request with this idempotency key is already being processed.',
       );
     }
 
@@ -114,7 +114,7 @@ export class IdempotencyKeyInterceptor implements NestInterceptor {
       await this.cacheManager.set(
         cacheKey,
         cachedRecord,
-        options.responseTtlMs ?? DEFAULT_RESPONSE_TTL_MS
+        options.responseTtlMs ?? DEFAULT_RESPONSE_TTL_MS,
       );
       response.setHeader(IDEMPOTENCY_STATUS_HEADER, 'created');
 
@@ -128,7 +128,7 @@ export class IdempotencyKeyInterceptor implements NestInterceptor {
   private async claimRequest(
     lockKey: string,
     fingerprint: string,
-    lockTtlMs: number
+    lockTtlMs: number,
   ): Promise<boolean> {
     if (this.redisClient) {
       const claimed = await this.redisClient.set(lockKey, fingerprint, {
@@ -162,7 +162,7 @@ export class IdempotencyKeyInterceptor implements NestInterceptor {
 
   private buildReplayResponse(
     response: Response,
-    cachedResponse: CachedIdempotencyResponse
+    cachedResponse: CachedIdempotencyResponse,
   ): unknown {
     response.status(cachedResponse.statusCode);
     response.setHeader(IDEMPOTENCY_STATUS_HEADER, 'cached');
@@ -173,11 +173,11 @@ export class IdempotencyKeyInterceptor implements NestInterceptor {
 
   private assertMatchingFingerprint(
     actualFingerprint: string,
-    expectedFingerprint: string
+    expectedFingerprint: string,
   ): void {
     if (actualFingerprint !== expectedFingerprint) {
       throw new ConflictException(
-        'The idempotency key has already been used with a different request payload.'
+        'The idempotency key has already been used with a different request payload.',
       );
     }
   }
@@ -208,7 +208,7 @@ export class IdempotencyKeyInterceptor implements NestInterceptor {
         .sort(([leftKey], [rightKey]) => leftKey.localeCompare(rightKey))
         .map(
           ([key, nestedValue]) =>
-            `${JSON.stringify(key)}:${this.stableStringify(nestedValue)}`
+            `${JSON.stringify(key)}:${this.stableStringify(nestedValue)}`,
         )
         .join(',')}}`;
     }

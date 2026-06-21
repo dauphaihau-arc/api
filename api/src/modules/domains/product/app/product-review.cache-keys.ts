@@ -5,7 +5,7 @@ const REVIEW_IMAGE_UPLOAD_TICKET_PREFIX = 'review-upload:ticket';
 export function buildProductReviewEditLimitCacheKey(
   userId: string,
   productId: string,
-  now: Date
+  now: Date,
 ): string {
   return `${PRODUCT_REVIEW_CACHE_PREFIX}:edit-limit:${userId}:${productId}:${now.toISOString().slice(0, 10)}`;
 }
@@ -18,7 +18,7 @@ export function millisecondsUntilNextUtcDay(now: Date): number {
     0,
     0,
     0,
-    0
+    0,
   );
 
   return Math.max(1, nextUtcDay - now.getTime());

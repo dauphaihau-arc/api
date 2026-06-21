@@ -5,7 +5,7 @@ import { ProductRecommendationQueryRepository } from '../../../../app/ports/prod
 import type {
   ListPublicProductsByShopSlugInput,
   PublicProductListItem,
-  RecommendPublicProductsInput
+  RecommendPublicProductsInput,
 } from '../../../../app/product.types';
 import { compareRecommendationCandidates } from '../../../../app/services/public-product-recommendation-scoring';
 import { ResolvedStorefrontPriceService } from '../../../../app/services/resolved-storefront-price.service';
@@ -14,7 +14,7 @@ import { ProductInventoryEntity } from '~/modules/domains/product/infra/persiste
 import { ProductEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product.entity';
 import {
   getPrimaryInventory,
-  toPublicProductListItem
+  toPublicProductListItem,
 } from '../../../projection/storefront-product.projector';
 
 @Injectable()
@@ -23,11 +23,11 @@ implements ProductRecommendationQueryRepository {
   constructor(
     private readonly entityManager: EntityManager,
     private readonly storageService: StorageService,
-    private readonly resolvedStorefrontPriceService: ResolvedStorefrontPriceService
+    private readonly resolvedStorefrontPriceService: ResolvedStorefrontPriceService,
   ) {}
 
   async listPublicByShopSlug(
-    input: ListPublicProductsByShopSlugInput
+    input: ListPublicProductsByShopSlugInput,
   ): Promise<PublicProductListItem[]> {
     const repository = this.entityManager.fork().getRepository(ProductEntity);
     const products = await repository.find(
@@ -46,7 +46,7 @@ implements ProductRecommendationQueryRepository {
           createdAt: 'desc',
         },
         limit: Math.max(input.limit * 3, input.limit),
-      }
+      },
     );
 
     const visibleProducts = products
@@ -57,12 +57,12 @@ implements ProductRecommendationQueryRepository {
       visibleProducts.map((product) => toPublicProductListItem(product, {
         resolvePricing: (inventory) => this.getResolvedPublicPricing(inventory),
         storageService: this.storageService,
-      }))
+      })),
     );
   }
 
   async recommendSimilarPublic(
-    input: RecommendPublicProductsInput
+    input: RecommendPublicProductsInput,
   ): Promise<PublicProductListItem[]> {
     const repository = this.entityManager.fork().getRepository(ProductEntity);
     const anchor = await repository.findOne(
@@ -75,7 +75,7 @@ implements ProductRecommendationQueryRepository {
       },
       {
         populate: this.getRecommendationPopulate(),
-      }
+      },
     );
 
     if (!anchor || !this.shouldIncludeInPublicList(anchor)) {
@@ -90,14 +90,14 @@ implements ProductRecommendationQueryRepository {
         .map(async (product) => ({
           product,
           scorable: await this.toRecommendationScorableProduct(product),
-        }))
+        })),
     );
 
     const orderedProducts = scoredCandidates
       .sort((left, right) => compareRecommendationCandidates(
         anchorScorable,
         left.scorable,
-        right.scorable
+        right.scorable,
       ))
       .slice(0, input.limit)
       .map(({ product }) => product);
@@ -106,7 +106,7 @@ implements ProductRecommendationQueryRepository {
       orderedProducts.map((product) => toPublicProductListItem(product, {
         resolvePricing: (inventory) => this.getResolvedPublicPricing(inventory),
         storageService: this.storageService,
-      }))
+      })),
     );
   }
 
@@ -117,7 +117,7 @@ implements ProductRecommendationQueryRepository {
   private async findRecommendationCandidates(
     repository: EntityRepository<ProductEntity>,
     anchor: ProductEntity,
-    limit: number
+    limit: number,
   ): Promise<ProductEntity[]> {
     const candidates = new Map<string, ProductEntity>();
     const targetPoolSize = Math.max(limit * 4, 24);
@@ -136,7 +136,7 @@ implements ProductRecommendationQueryRepository {
             createdAt: 'desc',
           },
           populate: this.getRecommendationPopulate(),
-        }
+        },
       );
 
       sameCategory.forEach((product) => candidates.set(product.id, product));
@@ -157,7 +157,7 @@ implements ProductRecommendationQueryRepository {
             createdAt: 'desc',
           },
           populate: this.getRecommendationPopulate(),
-        }
+        },
       );
 
       relatedByShape.forEach((product) => candidates.set(product.id, product));
@@ -176,7 +176,7 @@ implements ProductRecommendationQueryRepository {
             createdAt: 'desc',
           },
           populate: this.getRecommendationPopulate(),
-        }
+        },
       );
 
       fallback.forEach((product) => candidates.set(product.id, product));
@@ -241,7 +241,7 @@ implements ProductRecommendationQueryRepository {
   }
 
   private async getResolvedPublicPricing(
-    inventory: ProductInventoryEntity
+    inventory: ProductInventoryEntity,
   ): Promise<{ amountMinor?: number; originalAmountMinor?: number; currency?: string }> {
     const pricing = await this.resolvedStorefrontPriceService.resolveForCurrentRequest(inventory);
 
@@ -269,6 +269,6 @@ function getInferredFacetTermsFromProduct(product: ProductEntity): string[] {
       ...product.attributeValues.getItems().map((attributeValue) => attributeValue.selectedOption?.value),
     ]
       .filter((value): value is string => Boolean(value))
-      .map((value) => toFacetKey(value))
+      .map((value) => toFacetKey(value)),
   ));
 }

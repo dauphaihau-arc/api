@@ -11,7 +11,7 @@ export interface WebPushConfig {
 export const WEB_PUSH_CONFIG = Symbol('WEB_PUSH_CONFIG');
 
 export function buildWebPushConfig(
-  configService: Pick<ConfigService, 'get'>
+  configService: Pick<ConfigService, 'get'>,
 ): WebPushConfig {
   const subject = configService.get<string>('WEB_PUSH_SUBJECT')?.trim();
   const publicKey = configService.get<string>('WEB_PUSH_PUBLIC_KEY')?.trim();

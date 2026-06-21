@@ -9,13 +9,13 @@ import { CreateCheckoutQuoteService } from '../../create-checkout-quote.service'
 export class CreateGuestCheckoutQuoteForBuyNowUseCase {
   constructor(
     private readonly cartRepository: CartRepository,
-    private readonly createCheckoutQuoteService: CreateCheckoutQuoteService
+    private readonly createCheckoutQuoteService: CreateCheckoutQuoteService,
   ) {}
 
   async execute(guestSessionId: string, body: CreateGuestCheckoutQuoteForBuyNowDto) {
     const cart = await this.cartRepository.findCartByIdForActor(
       { type: 'guest', guestSessionId },
-      body.cartId
+      body.cartId,
     );
 
     if (!cart || cart.kind !== CartKind.BUY_NOW) {

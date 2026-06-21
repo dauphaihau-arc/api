@@ -46,12 +46,12 @@ describe('UpdateMyAddressUseCase', () => {
 
     expect(repository.clearPrimaryForUser).toHaveBeenCalledWith(
       actor.userId,
-      'address-1'
+      'address-1',
     );
     expect(repository.updateOwnedById).toHaveBeenCalledWith(
       actor.userId,
       'address-1',
-      { isPrimary: true }
+      { isPrimary: true },
     );
   });
 });

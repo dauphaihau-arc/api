@@ -11,7 +11,7 @@ import {
   Res,
   UseInterceptors,
   UseFilters,
-  UseGuards
+  UseGuards,
 } from '@nestjs/common';
 import {
   ApiCookieAuth,
@@ -20,7 +20,7 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiQuery,
-  ApiTags
+  ApiTags,
 } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { Throttle } from '@nestjs/throttler';
@@ -96,7 +96,7 @@ export class AuthController {
     @Inject(AUTH_CONFIG)
     private readonly authConfig: AuthConfig,
     @Inject(OPENAI_CONFIG)
-    private readonly openAiConfig: OpenAiConfig
+    private readonly openAiConfig: OpenAiConfig,
   ) {}
 
   @Post('register')
@@ -116,11 +116,11 @@ export class AuthController {
   })
   async register(
     @Body() body: RegisterDto,
-    @Res({ passthrough: true }) response: Response
+    @Res({ passthrough: true }) response: Response,
   ): Promise<AuthUserResponseDto> {
     const authResponse = resolveOrThrow(
       await this.registerUseCase.execute(body),
-      mapAuthAppErrorToHttpException
+      mapAuthAppErrorToHttpException,
     );
 
     this.authCookieService.setAuthCookies(response, authResponse);
@@ -142,11 +142,11 @@ export class AuthController {
   })
   async login(
     @Body() body: LoginDto,
-    @Res({ passthrough: true }) response: Response
+    @Res({ passthrough: true }) response: Response,
   ): Promise<AuthUserResponseDto> {
     const authResponse = resolveOrThrow(
       await this.loginUseCase.execute(body),
-      mapAuthAppErrorToHttpException
+      mapAuthAppErrorToHttpException,
     );
 
     this.authCookieService.setAuthCookies(response, authResponse);
@@ -168,13 +168,13 @@ export class AuthController {
   })
   async refresh(
     @Req() request: Request,
-    @Res({ passthrough: true }) response: Response
+    @Res({ passthrough: true }) response: Response,
   ): Promise<void> {
     const authResponse = resolveOrThrow(
       await this.refreshSessionUseCase.execute(
-        this.authCookieService.extractRefreshToken(request)
+        this.authCookieService.extractRefreshToken(request),
       ),
-      mapAuthAppErrorToHttpException
+      mapAuthAppErrorToHttpException,
     );
 
     this.authCookieService.setAuthCookies(response, authResponse);
@@ -208,7 +208,7 @@ export class AuthController {
   getClientConfig(): AuthClientConfigResponseDto {
     return AuthClientConfigResponseDto.create(
       this.authConfig,
-      this.openAiConfig
+      this.openAiConfig,
     );
   }
 
@@ -234,7 +234,7 @@ export class AuthController {
   async verifyToken(@Query() query: VerifyTokenDto): Promise<void> {
     resolveOrThrow(
       await this.verifyResetPasswordTokenUseCase.execute(query.token),
-      mapAuthAppErrorToHttpException
+      mapAuthAppErrorToHttpException,
     );
   }
 
@@ -258,14 +258,14 @@ export class AuthController {
   async resetPassword(
     @Query() query: TokenQueryDto,
     @Body() body: ResetPasswordDto,
-    @Res({ passthrough: true }) response: Response
+    @Res({ passthrough: true }) response: Response,
   ): Promise<AuthUserResponseDto> {
     const authResponse = resolveOrThrow(
       await this.resetPasswordUseCase.execute({
         token: query.token,
         password: body.password,
       }),
-      mapAuthAppErrorToHttpException
+      mapAuthAppErrorToHttpException,
     );
 
     this.authCookieService.setAuthCookies(response, authResponse);
@@ -286,7 +286,7 @@ export class AuthController {
   })
   async logout(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Res({ passthrough: true }) response: Response
+    @Res({ passthrough: true }) response: Response,
   ): Promise<void> {
     await this.logoutUseCase.execute(currentUser);
     this.authCookieService.clearAuthCookies(response);
@@ -303,10 +303,10 @@ export class AuthController {
     type: CurrentUserResponseDto,
   })
   async me(
-    @CurrentUser() currentUser: AuthenticatedUser
+    @CurrentUser() currentUser: AuthenticatedUser,
   ): Promise<CurrentUserResponseDto> {
     return CurrentUserResponseDto.fromUserProfile(
-      await this.getCurrentUserUseCase.execute(currentUser)
+      await this.getCurrentUserUseCase.execute(currentUser),
     );
   }
 }

@@ -1,7 +1,7 @@
 import type {
   ListUsersQuery,
   ListUsersRepositoryResult,
-  UserSummary
+  UserSummary,
 } from '../user.types';
 
 export abstract class UserRepository {

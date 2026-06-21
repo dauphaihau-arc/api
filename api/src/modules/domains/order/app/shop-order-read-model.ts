@@ -7,7 +7,7 @@ import type {
   OrderShippingAddressSummary,
   ShopOrderDetail,
   ShopOrderSummary,
-  OrderTimelineEvent
+  OrderTimelineEvent,
 } from './order.types';
 import {
   getOrderDiscountMajor,
@@ -19,7 +19,7 @@ import {
   getOrderSubtotalMajor,
   getOrderSubtotalMinor,
   getOrderTotalMinor,
-  getOrderTotalMajor
+  getOrderTotalMajor,
 } from './order-money';
 
 function resolveOrderItemImageStorageKey(item: OrderItemEntity): string | undefined {
@@ -41,7 +41,7 @@ function resolveOrderItemImageStorageKey(item: OrderItemEntity): string | undefi
 function toOrderProducts(
   items: OrderItemEntity[],
   currency: string,
-  options?: { includeImageStorageKey?: boolean }
+  options?: { includeImageStorageKey?: boolean },
 ): OrderListProduct[] {
   return items.map((item) => ({
     id: item.id,
@@ -65,7 +65,7 @@ function toOrderProducts(
 }
 
 function toShippingAddress(
-  input: Record<string, unknown> | undefined
+  input: Record<string, unknown> | undefined,
 ): OrderShippingAddressSummary {
   return {
     fullName: String(input?.full_name ?? ''),
@@ -81,7 +81,7 @@ function toShippingAddress(
 
 export function toShopOrderSummary(
   order: OrderEntity,
-  items: OrderItemEntity[]
+  items: OrderItemEntity[],
 ): ShopOrderSummary {
   const shippingAddress = toShippingAddress(order.shippingAddress);
 
@@ -130,7 +130,7 @@ export function toShopOrderSummary(
 export function toShopOrderDetail(
   order: OrderEntity,
   items: OrderItemEntity[],
-  timeline: OrderTimelineEvent[]
+  timeline: OrderTimelineEvent[],
 ): ShopOrderDetail {
   return {
     ...toShopOrderSummary(order, []),

@@ -16,7 +16,7 @@ import { OrderItemEntity } from '../../../infra/persistence/entities/order-item.
 import {
   BuyerOrderCancelNotAllowedError,
   BuyerShippedOrderCancelNotAllowedError,
-  OrderNotFoundError
+  OrderNotFoundError,
 } from '../../errors/order-app.error';
 import { OrderCancellationService } from '../../order-cancellation.service';
 import { buildScopedOrderIdentifierWhere } from '../../order-identifier';
@@ -31,12 +31,12 @@ import {
   getOrderSubtotalMajor,
   getOrderSubtotalMinor,
   getOrderTotalMinor,
-  getOrderTotalMajor
+  getOrderTotalMajor,
 } from '../../order-money';
 import type { MyOrderDetail } from '../../order.types';
 import {
   buildSellerOrderCancelRequestedNotification,
-  getSellerOrderNotificationRecipientId
+  getSellerOrderNotificationRecipientId,
 } from '../../seller-order-notification';
 import { OrderEventsService } from '../../order-events.service';
 
@@ -50,20 +50,20 @@ export class RequestOrderCancelUseCase {
     private readonly jobDispatcher: JobDispatcher,
     private readonly notifyUserUseCase: NotifyUserUseCase,
     private readonly eventEmitter: EventEmitter2,
-    private readonly orderEventsService: OrderEventsService
+    private readonly orderEventsService: OrderEventsService,
   ) {}
 
   async execute(
     actor: AuthenticatedUser,
     orderId: string,
-    input: RequestOrderCancelDto
+    input: RequestOrderCancelDto,
   ): Promise<MyOrderDetail> {
     const entityManager = this.entityManager.fork();
 
     const result = await entityManager.transactional(async (transactionalEntityManager) => {
       const order = await transactionalEntityManager.getRepository(OrderEntity).findOne(
         buildScopedOrderIdentifierWhere(orderId, { user: actor.userId }),
-        { populate: ['shop.ownerUser'] }
+        { populate: ['shop.ownerUser'] },
       );
 
       if (!order) {
@@ -115,7 +115,7 @@ export class RequestOrderCancelUseCase {
 
       const items = await transactionalEntityManager.getRepository(OrderItemEntity).find(
         { order: order.id },
-        { populate: ['product', 'product.shop', 'inventory'] }
+        { populate: ['product', 'product.shop', 'inventory'] },
       );
 
       return {
@@ -210,7 +210,7 @@ export class RequestOrderCancelUseCase {
       catch (error) {
         this.logger.error(
           `Failed to schedule refund for canceled order ${result.id}`,
-          error instanceof Error ? error.stack : undefined
+          error instanceof Error ? error.stack : undefined,
         );
       }
     }
@@ -223,7 +223,7 @@ export class RequestOrderCancelUseCase {
     catch (error) {
       this.logger.error(
         `Failed to schedule seller cancellation notification for order ${result.id}`,
-        error instanceof Error ? error.stack : undefined
+        error instanceof Error ? error.stack : undefined,
       );
     }
 
@@ -233,8 +233,8 @@ export class RequestOrderCancelUseCase {
           result.sellerUserId,
           result.id,
           result.orderNumber,
-          result.shopId
-        )
+          result.shopId,
+        ),
       );
     }
 

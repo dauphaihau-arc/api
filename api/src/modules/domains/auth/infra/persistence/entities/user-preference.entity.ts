@@ -2,12 +2,12 @@ import {
   Entity,
   OneToOne,
   Property,
-  Unique
+  Unique,
 } from '@mikro-orm/core';
 import type {
   MarketplaceCurrency,
   MarketplaceLanguage,
-  MarketplaceRegion
+  MarketplaceRegion,
 } from '~/config/marketplace.config';
 import { AbstractAuthEntity } from './abstract-auth.entity';
 import { CurrentUserEntity } from './current-user.entity';

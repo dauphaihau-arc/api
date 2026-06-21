@@ -1,12 +1,12 @@
 import {
   Inject,
   Injectable,
-  Logger
+  Logger,
 } from '@nestjs/common';
 import { CATALOG_CONFIG, type CatalogConfig } from '~/config/catalog.config';
 import {
   type CatalogProductDocumentStats,
-  CatalogProductDocumentRepository
+  CatalogProductDocumentRepository,
 } from '../../../../app/ports/catalog-product-document.repository';
 import { ProductState } from '../../../../domain/enums/product-state.enum';
 import { CatalogMongoAccess } from '../access/catalog-mongo.access';
@@ -39,7 +39,7 @@ implements CatalogProductDocumentRepository {
   constructor(
     @Inject(CATALOG_CONFIG)
     private readonly catalogConfig: CatalogConfig,
-    private readonly catalogMongoAccess: CatalogMongoAccess
+    private readonly catalogMongoAccess: CatalogMongoAccess,
   ) {
   }
 
@@ -62,7 +62,7 @@ implements CatalogProductDocumentRepository {
           {
             projection: { updatedAt: 1 },
             sort: { updatedAt: -1 },
-          }
+          },
         ) as Promise<UpdatedAtDocument | null>,
       ]);
 
@@ -74,7 +74,7 @@ implements CatalogProductDocumentRepository {
     }
     catch (error) {
       this.logger.warn(
-        `Unable to load catalog document stats: ${error instanceof Error ? error.message : 'Unknown error'}`
+        `Unable to load catalog document stats: ${error instanceof Error ? error.message : 'Unknown error'}`,
       );
       return null;
     }
@@ -89,7 +89,7 @@ implements CatalogProductDocumentRepository {
     await collection.updateOne(
       { productId: document.productId },
       { $set: document },
-      { upsert: true }
+      { upsert: true },
     );
   }
 
@@ -104,7 +104,7 @@ implements CatalogProductDocumentRepository {
 
   private async getCollection() {
     const collection = await this.catalogMongoAccess.getCollection<MongoProductCollectionLike>(
-      this.catalogConfig.mongodbProductsCollection
+      this.catalogConfig.mongodbProductsCollection,
     );
 
     await collection.createIndexes([

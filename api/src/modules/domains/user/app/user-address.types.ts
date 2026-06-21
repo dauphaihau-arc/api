@@ -78,7 +78,7 @@ export interface UpdateMyAddressInput {
 }
 
 export function buildListMyAddressesQuery(
-  params: Partial<ListMyAddressesQuery>
+  params: Partial<ListMyAddressesQuery>,
 ): ListMyAddressesQuery {
   return {
     page: params.page ?? USER_ADDRESS_LIST_DEFAULT_PAGE,

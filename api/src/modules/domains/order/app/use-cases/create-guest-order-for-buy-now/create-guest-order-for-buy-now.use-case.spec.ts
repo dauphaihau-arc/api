@@ -125,7 +125,7 @@ describe('CreateGuestOrderForBuyNowUseCase', () => {
       orderCheckoutService,
       jobDispatcher,
       guestOrderTrackingTokenService,
-      paymentConfig
+      paymentConfig,
     );
 
     await useCase.execute('guest-1', {
@@ -149,7 +149,7 @@ describe('CreateGuestOrderForBuyNowUseCase', () => {
           id: 'quote-1',
         }),
         isTempCart: true,
-      })
+      }),
     );
   });
 });

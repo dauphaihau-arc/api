@@ -57,7 +57,7 @@ export class ProductDraftIncompleteError extends ProductAppError {
       | 'variants'
       | 'inventory'
       | 'shipping',
-    message: string
+    message: string,
   ) {
     super(message);
   }

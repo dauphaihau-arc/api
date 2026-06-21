@@ -112,7 +112,7 @@ describe('catalog-product-document.mapper', () => {
 
     const document = toCatalogProductDocument(
       product,
-      (storageKey) => `https://cdn.example.test/${storageKey}`
+      (storageKey) => `https://cdn.example.test/${storageKey}`,
     );
 
     expect(document).toMatchObject({
@@ -149,13 +149,13 @@ describe('catalog-product-document.mapper', () => {
     });
 
     expect(document.images[0]?.url).toBe(
-      'https://cdn.example.test/products/olive-atelier/linen-weekend-dress/main.png'
+      'https://cdn.example.test/products/olive-atelier/linen-weekend-dress/main.png',
     );
     expect(document.search.keywords).toEqual(
-      expect.arrayContaining(['linen weekend dress', 'olive atelier', 'small'])
+      expect.arrayContaining(['linen weekend dress', 'olive atelier', 'small']),
     );
     expect(document.search.suggest).toEqual(
-      expect.arrayContaining(['linen weekend dress', 'small'])
+      expect.arrayContaining(['linen weekend dress', 'small']),
     );
   });
 });

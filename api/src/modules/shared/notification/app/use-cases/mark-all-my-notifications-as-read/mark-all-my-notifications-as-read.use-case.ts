@@ -5,12 +5,12 @@ import { NotificationRepository } from '../../ports/notification.repository';
 @Injectable()
 export class MarkAllMyNotificationsAsReadUseCase {
   constructor(
-    private readonly notificationRepository: NotificationRepository
+    private readonly notificationRepository: NotificationRepository,
   ) {}
 
   async execute(actor: AuthenticatedUser): Promise<{ updatedCount: number }> {
     const updatedCount = await this.notificationRepository.markAllOwnedByUserIdAsRead(
-      actor.userId
+      actor.userId,
     );
 
     return { updatedCount };

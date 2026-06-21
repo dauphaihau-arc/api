@@ -3,21 +3,21 @@ import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
 import { UserAddressRepository } from '../../ports/user-address.repository';
 import type {
   CreateMyAddressInput,
-  UserAddressSummary
+  UserAddressSummary,
 } from '../../user-address.types';
 
 @Injectable()
 export class CreateMyAddressUseCase {
   constructor(
-    private readonly userAddressRepository: UserAddressRepository
+    private readonly userAddressRepository: UserAddressRepository,
   ) {}
 
   async execute(
     actor: AuthenticatedUser,
-    input: Omit<CreateMyAddressInput, 'userId'>
+    input: Omit<CreateMyAddressInput, 'userId'>,
   ): Promise<UserAddressSummary> {
     const ownedAddressCount = await this.userAddressRepository.countOwnedByUserId(
-      actor.userId
+      actor.userId,
     );
     const shouldBePrimary = input.isPrimary === true || ownedAddressCount === 0;
 

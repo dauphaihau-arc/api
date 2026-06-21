@@ -9,7 +9,7 @@ import { JobDispatcher } from '~/modules/shared/queue/app/ports/job-dispatcher';
 import {
   ActorCannotCreateProductDraftError,
   InvalidProductVariantConfigurationError,
-  ProductNotFoundError
+  ProductNotFoundError,
 } from '../../errors/product-app.error';
 import { ProductPricingRepository } from '../../ports/product-pricing.repository';
 import { SellerProductQueryRepository } from '../../ports/seller-product-query.repository';
@@ -37,13 +37,13 @@ export class SetProductPricingUseCase {
     private readonly shopRepository: ShopRepository,
     private readonly auditLogService: AuditLogService,
     private readonly eventEmitter: EventEmitter2,
-    private readonly jobDispatcher?: JobDispatcher
+    private readonly jobDispatcher?: JobDispatcher,
   ) {}
 
   async execute(
     actor: AuthenticatedUser,
     productId: string,
-    input: SetProductPricingInput
+    input: SetProductPricingInput,
   ): Promise<Result<ProductDraftSummary, SetProductPricingError>> {
     const existingProduct = await this.productRepository.findById(productId);
 
@@ -56,7 +56,7 @@ export class SetProductPricingUseCase {
     const shop = !canManageAnyShop
       ? await this.shopRepository.findOwnedById(
         existingProduct.shopId,
-        actor.userId
+        actor.userId,
       )
       : await this.shopRepository.findById(existingProduct.shopId);
 
@@ -103,9 +103,9 @@ export class SetProductPricingUseCase {
       { productId: product.id },
       {
         deduplicationKey: appJobDeduplicationKey.projectCatalogProduct(
-          product.id
+          product.id,
         ),
-      }
+      },
     );
 
     void this.eventEmitter;
@@ -116,17 +116,17 @@ export class SetProductPricingUseCase {
 
 function validatePricingPayload(
   inventory: ProductDraftSummary['inventory'],
-  pricing: SetProductPricingInput['pricing']
+  pricing: SetProductPricingInput['pricing'],
 ): InvalidProductVariantConfigurationError | null {
   if (pricing.length === 0) {
     return new InvalidProductVariantConfigurationError(
-      'At least one pricing row is required'
+      'At least one pricing row is required',
     );
   }
 
   if (pricing.length !== inventory.length) {
     return new InvalidProductVariantConfigurationError(
-      'Pricing rows must match the existing inventory row count'
+      'Pricing rows must match the existing inventory row count',
     );
   }
 
@@ -136,31 +136,31 @@ function validatePricingPayload(
   for (const row of pricing) {
     if (!inventoryIds.has(row.inventoryId)) {
       return new InvalidProductVariantConfigurationError(
-        `Unknown inventory row "${row.inventoryId}" in pricing`
+        `Unknown inventory row "${row.inventoryId}" in pricing`,
       );
     }
 
     if (seenInventoryIds.has(row.inventoryId)) {
       return new InvalidProductVariantConfigurationError(
-        `Duplicate pricing row for inventory "${row.inventoryId}" is not allowed`
+        `Duplicate pricing row for inventory "${row.inventoryId}" is not allowed`,
       );
     }
 
     if (row.amountMinor < 50) {
       return new InvalidProductVariantConfigurationError(
-        'Inventory amount_minor must be at least 50'
+        'Inventory amount_minor must be at least 50',
       );
     }
 
     if (row.originalAmountMinor !== undefined && row.originalAmountMinor < 0) {
       return new InvalidProductVariantConfigurationError(
-        'Inventory original_amount_minor cannot be negative'
+        'Inventory original_amount_minor cannot be negative',
       );
     }
 
     if (row.originalAmountMinor !== undefined && row.originalAmountMinor < row.amountMinor) {
       return new InvalidProductVariantConfigurationError(
-        'Inventory original_amount_minor cannot be lower than amount_minor'
+        'Inventory original_amount_minor cannot be lower than amount_minor',
       );
     }
 

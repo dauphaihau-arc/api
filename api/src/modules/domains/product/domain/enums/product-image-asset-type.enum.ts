@@ -1,3 +1,3 @@
 export enum ProductImageAssetType {
-  ORIGINAL = 'original'
+  ORIGINAL = 'original',
 }

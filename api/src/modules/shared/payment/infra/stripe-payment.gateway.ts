@@ -5,7 +5,7 @@ import type { PaymentConfig } from '~/config/payment.config';
 import { PaymentGateway } from '../app/ports/payment-gateway';
 import type {
   CreateStripeCheckoutSessionInput,
-  StripeCheckoutLineItemInput
+  StripeCheckoutLineItemInput,
 } from '../app/ports/payment-gateway';
 
 const ZERO_DECIMAL_CURRENCIES = ['JPY', 'KRW', 'VND'] as const;
@@ -22,14 +22,14 @@ export class StripePaymentGateway extends PaymentGateway {
   }
 
   async createStripeCheckoutSession(
-    input: CreateStripeCheckoutSessionInput
+    input: CreateStripeCheckoutSessionInput,
   ): Promise<{ id: string; url: string; expiresAt?: Date }> {
     const stripe = this.requireStripe();
     const appBaseUrl = this.paymentConfig.appBaseUrl;
 
     if (!appBaseUrl) {
       throw new InternalServerErrorException(
-        'APP_BASE_URL or CORS_ALLOWED_ORIGINS must be configured for Stripe checkout'
+        'APP_BASE_URL or CORS_ALLOWED_ORIGINS must be configured for Stripe checkout',
       );
     }
 
@@ -41,7 +41,7 @@ export class StripePaymentGateway extends PaymentGateway {
       customer_email: input.customerEmail,
       metadata: input.metadata,
       line_items: input.lineItems.map((item) =>
-        this.toCheckoutLineItem(item, input.currency)
+        this.toCheckoutLineItem(item, input.currency),
       ),
       shipping_options: [
         {
@@ -85,7 +85,7 @@ export class StripePaymentGateway extends PaymentGateway {
         currency: input.currency,
         amount_off: this.toStripeAmount(
           input.discountAmountMinor ?? 0,
-          input.currency
+          input.currency,
         ),
         metadata: input.metadata,
       });
@@ -151,7 +151,7 @@ export class StripePaymentGateway extends PaymentGateway {
 
   private toCheckoutLineItem(
     item: StripeCheckoutLineItemInput,
-    currency: string
+    currency: string,
   ): Stripe.Checkout.SessionCreateParams.LineItem {
     return {
       price_data: {

@@ -1,5 +1,5 @@
 import {
-  IsEnum, IsString, MaxLength, MinLength 
+  IsEnum, IsString, MaxLength, MinLength, 
 } from 'class-validator';
 import { MARKETPLACE_CURRENCIES, type MarketplaceCurrency } from '~/config/marketplace.config';
 

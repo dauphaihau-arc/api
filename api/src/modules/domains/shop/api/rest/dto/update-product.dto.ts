@@ -5,7 +5,7 @@ import {
   IsEnum,
   IsOptional,
   IsString,
-  MinLength
+  MinLength,
 } from 'class-validator';
 import { ProductWhoMade } from '~/modules/domains/product/domain/enums/product-who-made.enum';
 

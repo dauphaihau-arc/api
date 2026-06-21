@@ -32,7 +32,7 @@ function parseCookieHeader(cookieHeader?: string): Record<string, string> {
 
 export function extractCookieValue(
   request: Request,
-  cookieName: string
+  cookieName: string,
 ): string | null {
   return parseCookieHeader(request.headers.cookie)[cookieName] ?? null;
 }
@@ -45,12 +45,12 @@ export class AuthCookieService {
     response.cookie(
       this.authConfig.accessCookieName,
       authResponse.accessToken,
-      this.buildCookieOptions(this.authConfig.jwtAccessTtlSeconds)
+      this.buildCookieOptions(this.authConfig.jwtAccessTtlSeconds),
     );
     response.cookie(
       this.authConfig.refreshCookieName,
       authResponse.refreshToken,
-      this.buildCookieOptions(this.authConfig.jwtRefreshTtlSeconds)
+      this.buildCookieOptions(this.authConfig.jwtRefreshTtlSeconds),
     );
   }
 

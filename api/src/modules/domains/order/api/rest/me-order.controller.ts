@@ -9,7 +9,7 @@ import {
   Post,
   Put,
   Query,
-  UseGuards
+  UseGuards,
 } from '@nestjs/common';
 import {
   ApiCookieAuth,
@@ -17,7 +17,7 @@ import {
   ApiOperation,
   ApiParam,
   ApiQuery,
-  ApiTags
+  ApiTags,
 } from '@nestjs/swagger';
 import { CurrentUser } from '~/common/decorators/current-user.decorator';
 import { CHECKOUT_CONFIG, type CheckoutConfig } from '~/config/checkout.config';
@@ -26,7 +26,7 @@ import { PermissionsGuard } from '~/modules/domains/auth/api/guard/permissions.g
 import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
 import {
   isOrderAppError,
-  mapOrderAppErrorToHttpException
+  mapOrderAppErrorToHttpException,
 } from './order-http-error-mapper';
 import { CreateCheckoutQuoteForBuyNowUseCase } from '../../app/use-cases/create-checkout-quote-for-buy-now/create-checkout-quote-for-buy-now.use-case';
 import { CreateOrderForBuyNowUseCase } from '../../app/use-cases/create-order-for-buy-now/create-order-for-buy-now.use-case';
@@ -49,7 +49,7 @@ import {
   toCreateOrderResponse,
   toCheckoutSessionOrderResponse,
   toMyOrderDetailResponse,
-  toOrderListResponse
+  toOrderListResponse,
 } from './order.response';
 
 @Controller('me/orders')
@@ -68,7 +68,7 @@ export class MeOrderController {
     private readonly getMyOrderByIdUseCase: GetMyOrderByIdUseCase,
     private readonly requestOrderCancelUseCase: RequestOrderCancelUseCase,
     private readonly requestOrderSupportUseCase: RequestOrderSupportUseCase,
-    private readonly getOrdersByCheckoutSessionUseCase: GetOrdersByCheckoutSessionUseCase
+    private readonly getOrdersByCheckoutSessionUseCase: GetOrdersByCheckoutSessionUseCase,
   ) {}
 
   @Get()
@@ -79,7 +79,7 @@ export class MeOrderController {
   })
   async list(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Query() query: ListMyOrdersQueryDto
+    @Query() query: ListMyOrdersQueryDto,
   ) {
     return this.listOrdersUseCase.execute(currentUser, query)
       .then(toOrderListResponse);
@@ -94,11 +94,11 @@ export class MeOrderController {
   })
   async detail(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('order_id') orderId: string
+    @Param('order_id') orderId: string,
   ) {
     try {
       return toMyOrderDetailResponse(
-        await this.getMyOrderByIdUseCase.execute(currentUser, orderId)
+        await this.getMyOrderByIdUseCase.execute(currentUser, orderId),
       );
     }
     catch (error) {
@@ -116,11 +116,11 @@ export class MeOrderController {
   async requestCancel(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('order_id') orderId: string,
-    @Body() body: RequestOrderCancelDto
+    @Body() body: RequestOrderCancelDto,
   ) {
     try {
       return toMyOrderDetailResponse(
-        await this.requestOrderCancelUseCase.execute(currentUser, orderId, body)
+        await this.requestOrderCancelUseCase.execute(currentUser, orderId, body),
       );
     }
     catch (error) {
@@ -138,11 +138,11 @@ export class MeOrderController {
   async requestSupport(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('order_id') orderId: string,
-    @Body() body: RequestOrderSupportDto
+    @Body() body: RequestOrderSupportDto,
   ) {
     try {
       return toMyOrderDetailResponse(
-        await this.requestOrderSupportUseCase.execute(currentUser, orderId, body)
+        await this.requestOrderSupportUseCase.execute(currentUser, orderId, body),
       );
     }
     catch (error) {
@@ -158,12 +158,12 @@ export class MeOrderController {
   })
   async createQuoteFromCart(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Body() body: CreateCheckoutQuoteFromCartDto
+    @Body() body: CreateCheckoutQuoteFromCartDto,
   ) {
     try {
       return toCheckoutQuoteResponse(
         await this.createCheckoutQuoteFromCartUseCase.execute(currentUser, body),
-        this.checkoutConfig
+        this.checkoutConfig,
       );
     }
     catch (error) {
@@ -179,12 +179,12 @@ export class MeOrderController {
   })
   async createQuoteForBuyNow(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Body() body: CreateCheckoutQuoteForBuyNowDto
+    @Body() body: CreateCheckoutQuoteForBuyNowDto,
   ) {
     try {
       return toCheckoutQuoteResponse(
         await this.createCheckoutQuoteForBuyNowUseCase.execute(currentUser, body),
-        this.checkoutConfig
+        this.checkoutConfig,
       );
     }
     catch (error) {
@@ -200,11 +200,11 @@ export class MeOrderController {
   })
   async createFromCart(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Body() body: CreateOrderFromCartDto
+    @Body() body: CreateOrderFromCartDto,
   ) {
     try {
       return toCreateOrderResponse(
-        await this.createOrderFromCartUseCase.execute(currentUser, body)
+        await this.createOrderFromCartUseCase.execute(currentUser, body),
       );
     }
     catch (error) {
@@ -220,11 +220,11 @@ export class MeOrderController {
   })
   async createForBuyNow(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Body() body: CreateOrderForBuyNowDto
+    @Body() body: CreateOrderForBuyNowDto,
   ) {
     try {
       return toCreateOrderResponse(
-        await this.createOrderForBuyNowUseCase.execute(currentUser, body)
+        await this.createOrderForBuyNowUseCase.execute(currentUser, body),
       );
     }
     catch (error) {
@@ -242,7 +242,7 @@ export class MeOrderController {
   async getByCheckoutSession(@Query('session_id') sessionId?: string) {
     try {
       return toCheckoutSessionOrderResponse(
-        await this.getOrdersByCheckoutSessionUseCase.execute(sessionId ?? '')
+        await this.getOrdersByCheckoutSessionUseCase.execute(sessionId ?? ''),
       );
     }
     catch (error) {

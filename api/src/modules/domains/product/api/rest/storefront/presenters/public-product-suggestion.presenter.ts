@@ -2,7 +2,7 @@ import type { PublicProductSuggestion } from '../../../../app/product.types';
 import type { PublicProductSuggestionResponse } from '../responses/public-product-suggestion.response';
 
 export const toPublicProductSuggestionResponse = (
-  product: PublicProductSuggestion
+  product: PublicProductSuggestion,
 ): PublicProductSuggestionResponse => ({
   id: product.id,
   title: product.title,

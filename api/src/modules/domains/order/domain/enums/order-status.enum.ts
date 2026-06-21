@@ -7,5 +7,5 @@ export enum OrderStatus {
   PAID = 'paid',
   REFUNDED = 'refunded',
   COMPLETED = 'completed',
-  ARCHIVED = 'archived'
+  ARCHIVED = 'archived',
 }

@@ -10,7 +10,7 @@ import { PasswordHash } from '~/modules/domains/auth/domain/value-objects/passwo
 import { RoleKey } from '~/modules/domains/auth/domain/value-objects/role-key';
 import {
   ActorNotAllowedToCreateUsersError,
-  UserEmailAlreadyRegisteredError
+  UserEmailAlreadyRegisteredError,
 } from '../../errors/user-app.error';
 import { CreateUserUseCase } from './create-user.use-case';
 
@@ -32,7 +32,7 @@ describe('CreateUserUseCase', () => {
     displayName: 'Member User',
     status: UserStatus.ACTIVE,
     passwordHash: PasswordHash.fromPersisted(
-      '$2b$04$123456789012345678901u8QTs4lJx0pK7ydjXfQ6PS/UPTzQ0zQG'
+      '$2b$04$123456789012345678901u8QTs4lJx0pK7ydjXfQ6PS/UPTzQ0zQG',
     ),
     passwordUpdatedAt: new Date('2026-01-01T00:00:00.000Z'),
     roles: [RoleKey.create('customer')],
@@ -53,7 +53,7 @@ describe('CreateUserUseCase', () => {
       hash: jest
         .fn()
         .mockResolvedValue(
-          '$2b$04$123456789012345678901u8QTs4lJx0pK7ydjXfQ6PS/UPTzQ0zQG'
+          '$2b$04$123456789012345678901u8QTs4lJx0pK7ydjXfQ6PS/UPTzQ0zQG',
         ),
       matches: jest.fn(),
     };
@@ -73,7 +73,7 @@ describe('CreateUserUseCase', () => {
     const useCase = new CreateUserUseCase(
       authUserRepository,
       passwordHasher,
-      eventEmitter as unknown as EventEmitter2
+      eventEmitter as unknown as EventEmitter2,
     );
 
     const result = await useCase.execute(adminActor, {
@@ -86,7 +86,7 @@ describe('CreateUserUseCase', () => {
       'user-1',
       expect.objectContaining({
         toString: expect.any(Function),
-      })
+      }),
     );
     expect(eventEmitter.emit).toHaveBeenCalledWith(
       'user.created',
@@ -94,7 +94,7 @@ describe('CreateUserUseCase', () => {
         userId: 'user-1',
         email: 'member@example.com',
         displayName: 'Member User',
-      })
+      }),
     );
     expect(result).toEqual({
       isOk: true,
@@ -113,7 +113,7 @@ describe('CreateUserUseCase', () => {
     const useCase = new CreateUserUseCase(
       authUserRepository,
       passwordHasher,
-      eventEmitter as unknown as EventEmitter2
+      eventEmitter as unknown as EventEmitter2,
     );
 
     const result = await useCase.execute(
@@ -124,7 +124,7 @@ describe('CreateUserUseCase', () => {
       {
         email: 'member@example.com',
         password: 'password123',
-      }
+      },
     );
 
     expect(result.isOk).toBe(false);
@@ -141,7 +141,7 @@ describe('CreateUserUseCase', () => {
     const useCase = new CreateUserUseCase(
       authUserRepository,
       passwordHasher,
-      eventEmitter as unknown as EventEmitter2
+      eventEmitter as unknown as EventEmitter2,
     );
 
     const result = await useCase.execute(adminActor, {

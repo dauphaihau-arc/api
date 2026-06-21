@@ -6,7 +6,7 @@ import { getInventoryPricingSnapshot } from '../persistence/mikro-orm/reads/vari
 
 export function toProductDraftSummary(
   product: ProductEntity,
-  storageService: Pick<StorageService, 'getPublicUrl'>
+  storageService: Pick<StorageService, 'getPublicUrl'>,
 ): ProductDraftSummary {
   return {
     id: product.id,
@@ -50,7 +50,7 @@ export function toProductDraftSummary(
     attributes: product.attributeValues
       .getItems()
       .sort(
-        (left, right) => left.categoryAttribute.rank - right.categoryAttribute.rank
+        (left, right) => left.categoryAttribute.rank - right.categoryAttribute.rank,
       )
       .map((attributeValue) => ({
         id: attributeValue.id,
@@ -124,7 +124,7 @@ function sortInventoryRecords(inventoryRecords: ProductInventoryEntity[]): Produ
 }
 
 function getSummaryPricing(
-  inventory: ProductInventoryEntity
+  inventory: ProductInventoryEntity,
 ): { amountMinor?: number; originalAmountMinor?: number; currency?: string } {
   const pricing = getInventoryPricingSnapshot(inventory);
 

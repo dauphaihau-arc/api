@@ -6,7 +6,7 @@ import { ExchangeRateEntity } from './infra/persistence/entities/exchange-rate.e
 import {
   EXCHANGE_RATE_PROVIDER,
   type ExchangeRateProvider,
-  type ExchangeRateProviderQuote
+  type ExchangeRateProviderQuote,
 } from './exchange-rate-provider';
 
 export interface ExchangeRateSyncResult {
@@ -26,7 +26,7 @@ export class ExchangeRateSyncService {
     @Inject(FX_RATE_SYNC_CONFIG)
     private readonly fxRateSyncConfig: FxRateSyncConfig,
     @Inject(EXCHANGE_RATE_PROVIDER)
-    private readonly exchangeRateProvider: ExchangeRateProvider
+    private readonly exchangeRateProvider: ExchangeRateProvider,
   ) {}
 
   async syncLatestRates(): Promise<ExchangeRateSyncResult> {
@@ -51,7 +51,7 @@ export class ExchangeRateSyncService {
     }
 
     this.logger.log(
-      `Starting FX sync for ${requestedPairs.length} pairs from bases [${baseCurrencies.join(', ')}] to targets [${targetCurrencies.join(', ')}]`
+      `Starting FX sync for ${requestedPairs.length} pairs from bases [${baseCurrencies.join(', ')}] to targets [${targetCurrencies.join(', ')}]`,
     );
 
     const quote = await this.exchangeRateProvider.getLatestRates({
@@ -64,7 +64,7 @@ export class ExchangeRateSyncService {
 
         if (!rate) {
           this.logger.warn(
-            `Skipped FX pair ${pair.fromCurrency}/${pair.toCurrency} because provider data was incomplete`
+            `Skipped FX pair ${pair.fromCurrency}/${pair.toCurrency} because provider data was incomplete`,
           );
           return null;
         }
@@ -92,7 +92,7 @@ export class ExchangeRateSyncService {
           orderBy: {
             effectiveAt: 'desc',
           },
-        }
+        },
       );
       const activeRateByPair = new Map<string, ExchangeRateEntity>();
 
@@ -169,7 +169,7 @@ export class ExchangeRateSyncService {
 
 function buildCurrencyPairs(
   baseCurrencies: string[],
-  targetCurrencies: string[]
+  targetCurrencies: string[],
 ): Array<{ fromCurrency: string; toCurrency: string }> {
   const pairs: Array<{ fromCurrency: string; toCurrency: string }> = [];
 
@@ -189,7 +189,7 @@ function buildCurrencyPairs(
 function derivePairRate(
   quote: ExchangeRateProviderQuote,
   fromCurrency: string,
-  toCurrency: string
+  toCurrency: string,
 ): string | null {
   const sourceBaseRate = getUsdRelativeRate(quote, fromCurrency);
   const sourceTargetRate = getUsdRelativeRate(quote, toCurrency);
@@ -203,7 +203,7 @@ function derivePairRate(
 
 function getUsdRelativeRate(
   quote: ExchangeRateProviderQuote,
-  currency: string
+  currency: string,
 ): number | null {
   const normalizedCurrency = currency.trim().toUpperCase();
 

@@ -11,7 +11,7 @@ export class CreateCheckoutQuoteFromCartUseCase {
   constructor(
     private readonly cartRepository: CartRepository,
     private readonly getMyAddressUseCase: GetMyAddressUseCase,
-    private readonly createCheckoutQuoteService: CreateCheckoutQuoteService
+    private readonly createCheckoutQuoteService: CreateCheckoutQuoteService,
   ) {}
 
   async execute(actor: AuthenticatedUser, body: CreateCheckoutQuoteFromCartDto) {

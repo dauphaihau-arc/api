@@ -29,7 +29,7 @@ describe('WsPublisher', () => {
       {
         type: 'message',
         payload: { eventType: 'chat.message.created' },
-      }
+      },
     );
 
     expect(to).toHaveBeenCalledWith(['conversation:conversation-1', 'user:user-1']);

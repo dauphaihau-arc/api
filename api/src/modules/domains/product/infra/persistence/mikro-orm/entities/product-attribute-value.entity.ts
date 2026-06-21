@@ -1,5 +1,5 @@
 import {
-  Entity, Index, ManyToOne, Property, Unique 
+  Entity, Index, ManyToOne, Property, Unique, 
 } from '@mikro-orm/core';
 import { AbstractBaseEntity } from '~/common/database/abstract-base.entity';
 import { CategoryAttributeEntity } from '~/modules/domains/category/infra/persistence/entities/category-attribute.entity';

@@ -27,7 +27,7 @@ implements CatalogProductProjectorSourceRepository {
           'shippingProfiles',
           'shippingProfiles.destinations',
         ],
-      }
+      },
     );
   }
 }

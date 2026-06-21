@@ -3,7 +3,7 @@ import type {
   ListMyAddressesQuery,
   ListMyAddressesRepositoryResult,
   UpdateMyAddressInput,
-  UserAddressSummary
+  UserAddressSummary,
 } from '../user-address.types';
 
 export abstract class UserAddressRepository {

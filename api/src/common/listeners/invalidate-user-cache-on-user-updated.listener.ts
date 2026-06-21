@@ -8,7 +8,7 @@ import { UserUpdatedEvent } from '../events/user-updated.event';
 @Injectable()
 export class InvalidateUserCacheOnUserUpdatedListener {
   constructor(
-    @Inject(CACHE_MANAGER) private readonly cacheManager: Cache
+    @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
   ) {}
 
   @OnEvent('user.updated', { async: true, suppressErrors: true })

@@ -23,7 +23,7 @@ describe('ExchangeRateSyncService', () => {
         transactional: jest
           .fn()
           .mockImplementation(async (work: (em: typeof transactionalEntityManager) => Promise<unknown>) =>
-            work(transactionalEntityManager)
+            work(transactionalEntityManager),
           ),
       }),
     } as unknown as EntityManager;
@@ -50,7 +50,7 @@ describe('ExchangeRateSyncService', () => {
     const service = new ExchangeRateSyncService(
       entityManager,
       fxRateSyncConfig,
-      exchangeRateProvider
+      exchangeRateProvider,
     );
 
     const result = await service.syncLatestRates();
@@ -81,7 +81,7 @@ describe('ExchangeRateSyncService', () => {
           toCurrency: 'EUR',
           rate: '0.0000352000',
         }),
-      ])
+      ]),
     );
   });
 });

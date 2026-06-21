@@ -5,7 +5,7 @@ import { getAppTracer, setSpanError } from '../../observability/tracing';
 import {
   appJobName,
   AppJobName,
-  AppJobPayloadMap
+  AppJobPayloadMap,
 } from '~/common/jobs/job.types';
 import { RefreshExchangeRatesJob } from '~/common/jobs/refresh-exchange-rates.job';
 import { GenerateProductImageVariantsJob } from '~/common/jobs/generate-product-image-variants.job';
@@ -45,7 +45,7 @@ export class AppJobRunner {
 
   async run<TName extends AppJobName>(
     name: TName,
-    payload: AppJobPayloadMap[TName]
+    payload: AppJobPayloadMap[TName],
   ): Promise<void> {
     return this.tracer.startActiveSpan(`queue.job ${name}`, {
       attributes: {
@@ -66,62 +66,62 @@ export class AppJobRunner {
             return;
           case appJobName.sendWelcomeEmail:
             await this.sendWelcomeEmailJob.run(
-              payload as AppJobPayloadMap[typeof appJobName.sendWelcomeEmail]
+              payload as AppJobPayloadMap[typeof appJobName.sendWelcomeEmail],
             );
             return;
           case appJobName.sendPasswordResetEmail:
             await this.sendPasswordResetEmailJob.run(
-              payload as AppJobPayloadMap[typeof appJobName.sendPasswordResetEmail]
+              payload as AppJobPayloadMap[typeof appJobName.sendPasswordResetEmail],
             );
             return;
           case appJobName.sendGuestOrderConfirmationEmail:
             await this.sendGuestOrderConfirmationEmailJob.run(
-              payload as AppJobPayloadMap[typeof appJobName.sendGuestOrderConfirmationEmail]
+              payload as AppJobPayloadMap[typeof appJobName.sendGuestOrderConfirmationEmail],
             );
             return;
           case appJobName.processOrderRefund:
             await this.processOrderRefundJob.run(
-              payload as AppJobPayloadMap[typeof appJobName.processOrderRefund]
+              payload as AppJobPayloadMap[typeof appJobName.processOrderRefund],
             );
             return;
           case appJobName.sendRefundSucceededEmail:
             await this.sendRefundSucceededEmailJob.run(
-              payload as AppJobPayloadMap[typeof appJobName.sendRefundSucceededEmail]
+              payload as AppJobPayloadMap[typeof appJobName.sendRefundSucceededEmail],
             );
             return;
           case appJobName.sendRefundFailedEmail:
             await this.sendRefundFailedEmailJob.run(
-              payload as AppJobPayloadMap[typeof appJobName.sendRefundFailedEmail]
+              payload as AppJobPayloadMap[typeof appJobName.sendRefundFailedEmail],
             );
             return;
           case appJobName.sendSellerOrderUpdateEmail:
             await this.sendSellerOrderUpdateEmailJob.run(
-              payload as AppJobPayloadMap[typeof appJobName.sendSellerOrderUpdateEmail]
+              payload as AppJobPayloadMap[typeof appJobName.sendSellerOrderUpdateEmail],
             );
             return;
           case appJobName.sendWebPushNotification:
             await this.sendWebPushNotificationJob.run(
-              payload as AppJobPayloadMap[typeof appJobName.sendWebPushNotification]
+              payload as AppJobPayloadMap[typeof appJobName.sendWebPushNotification],
             );
             return;
           case appJobName.generateProductImageVariants:
             await this.generateProductImageVariantsJob.run(
-              payload as AppJobPayloadMap[typeof appJobName.generateProductImageVariants]
+              payload as AppJobPayloadMap[typeof appJobName.generateProductImageVariants],
             );
             return;
           case appJobName.generateReviewImageVariants:
             await this.generateReviewImageVariantsJob.run(
-              payload as AppJobPayloadMap[typeof appJobName.generateReviewImageVariants]
+              payload as AppJobPayloadMap[typeof appJobName.generateReviewImageVariants],
             );
             return;
           case appJobName.projectCatalogProduct:
             await this.projectCatalogProductJob.run(
-              payload as AppJobPayloadMap[typeof appJobName.projectCatalogProduct]
+              payload as AppJobPayloadMap[typeof appJobName.projectCatalogProduct],
             );
             return;
           case appJobName.cleanupPendingReviewImage:
             await this.cleanupPendingReviewImageJob.run(
-              payload as AppJobPayloadMap[typeof appJobName.cleanupPendingReviewImage]
+              payload as AppJobPayloadMap[typeof appJobName.cleanupPendingReviewImage],
             );
             return;
         }

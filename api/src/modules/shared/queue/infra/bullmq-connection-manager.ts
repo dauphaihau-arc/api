@@ -1,7 +1,7 @@
 import {
   Inject,
   Injectable,
-  OnApplicationShutdown
+  OnApplicationShutdown,
 } from '@nestjs/common';
 import type Redis from 'ioredis';
 import { BULLMQ_CONNECTION } from './queue.constants';
@@ -9,7 +9,7 @@ import { BULLMQ_CONNECTION } from './queue.constants';
 @Injectable()
 export class BullMqConnectionManager implements OnApplicationShutdown {
   constructor(
-    @Inject(BULLMQ_CONNECTION) private readonly connection: Redis | null
+    @Inject(BULLMQ_CONNECTION) private readonly connection: Redis | null,
   ) {}
 
   async onApplicationShutdown(): Promise<void> {

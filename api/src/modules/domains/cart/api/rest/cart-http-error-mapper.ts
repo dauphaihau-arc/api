@@ -2,7 +2,7 @@ import type { HttpException } from '@nestjs/common';
 import {
   BadRequestException,
   NotFoundException,
-  UnprocessableEntityException
+  UnprocessableEntityException,
 } from '@nestjs/common';
 import type { CartAppError } from '../../app/errors/cart-app.error';
 import {
@@ -10,11 +10,11 @@ import {
   CartNotFoundError,
   CartQuantityExceedsStockError,
   ProductInventoryNotFoundError,
-  ProductUnavailableForCartError
+  ProductUnavailableForCartError,
 } from '../../app/errors/cart-app.error';
 
 export function mapCartAppErrorToHttpException(
-  error: CartAppError
+  error: CartAppError,
 ): HttpException {
   if (
     error instanceof CartNotFoundError

@@ -1,6 +1,6 @@
 import {
   Inject,
-  Injectable
+  Injectable,
 } from '@nestjs/common';
 import { CATALOG_CONFIG, type CatalogConfig } from '~/config/catalog.config';
 import { CatalogSearchDocumentRepository } from '../../../../app/ports/catalog-search-document.repository';
@@ -23,7 +23,7 @@ implements CatalogSearchDocumentRepository {
   constructor(
     @Inject(CATALOG_CONFIG)
     private readonly catalogConfig: CatalogConfig,
-    private readonly catalogMongoAccess: CatalogMongoAccess
+    private readonly catalogMongoAccess: CatalogMongoAccess,
   ) {}
 
   async ping(): Promise<void> {
@@ -39,7 +39,7 @@ implements CatalogSearchDocumentRepository {
     await collection.updateOne(
       { productId: document.productId },
       { $set: document },
-      { upsert: true }
+      { upsert: true },
     );
   }
 
@@ -54,7 +54,7 @@ implements CatalogSearchDocumentRepository {
 
   private async getCollection() {
     const collection = await this.catalogMongoAccess.getCollection<MongoSearchCollectionLike>(
-      this.catalogConfig.mongodbSearchCollection
+      this.catalogConfig.mongodbSearchCollection,
     );
 
     await collection.createIndexes([

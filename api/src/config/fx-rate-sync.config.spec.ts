@@ -1,5 +1,5 @@
 import {
-  buildFxRateSyncConfig
+  buildFxRateSyncConfig,
 } from './fx-rate-sync.config';
 import { MARKETPLACE_CURRENCIES } from './marketplace.config';
 

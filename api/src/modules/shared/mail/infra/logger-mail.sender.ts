@@ -25,12 +25,12 @@ export class LoggerMailSender implements MailSender {
     };
 
     this.logger.log(
-      `Mail queued via logger transport: ${JSON.stringify(payload)}`
+      `Mail queued via logger transport: ${JSON.stringify(payload)}`,
     );
   }
 
   private formatAddresses(
-    value?: MailAddress | MailAddress[]
+    value?: MailAddress | MailAddress[],
   ): string[] | undefined {
     if (!value) {
       return undefined;

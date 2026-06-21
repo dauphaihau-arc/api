@@ -115,7 +115,7 @@ describe('CreateOrderFromCartUseCase', () => {
     const useCase = new CreateOrderFromCartUseCase(
       cartRepository,
       loadCheckoutQuoteService,
-      orderCheckoutService
+      orderCheckoutService,
     );
 
     await useCase.execute(actor, {
@@ -137,7 +137,7 @@ describe('CreateOrderFromCartUseCase', () => {
           checkoutCurrency: 'USD',
         }),
         shopAdjustments: [{ shopId: 'shop-1', promoCodes: ['SAVE10'] }],
-      })
+      }),
     );
   });
 });

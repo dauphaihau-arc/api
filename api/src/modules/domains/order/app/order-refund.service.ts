@@ -13,7 +13,7 @@ import { OrderEntity } from '../infra/persistence/entities/order.entity';
 import { OrderEventsService } from './order-events.service';
 import {
   buildSellerOrderRefundNotification,
-  getSellerOrderNotificationRecipientId
+  getSellerOrderNotificationRecipientId,
 } from './seller-order-notification';
 import { getRequiredOrderNumber } from './order-number';
 
@@ -27,13 +27,13 @@ export class OrderRefundService {
     private readonly entityManager: EntityManager,
     private readonly paymentGateway: PaymentGateway,
     private readonly moduleRef: ModuleRef,
-    private readonly orderEventsService: OrderEventsService
+    private readonly orderEventsService: OrderEventsService,
   ) {}
 
   prepareRefundOnCancellation(
     order: OrderEntity,
     previousStatus: OrderStatus,
-    now: Date
+    now: Date,
   ): boolean {
     const shouldRefund = (
       order.paymentType === PaymentType.CARD
@@ -93,7 +93,7 @@ export class OrderRefundService {
     catch (error) {
       await this.markRefundFailed(
         orderId,
-        error instanceof Error ? error.message : 'Unknown refund error'
+        error instanceof Error ? error.message : 'Unknown refund error',
       );
       await this.dispatchRefundNotification(orderId, 'failed');
     }
@@ -114,12 +114,12 @@ export class OrderRefundService {
       refundAmount?: number;
       refundedAt?: Date;
       refundFailedReason?: string;
-    }
+    },
   ): Promise<void> {
     await this.entityManager.transactional(async (transactionalEntityManager) => {
       const order = await transactionalEntityManager.getRepository(OrderEntity).findOne(
         { id: orderId },
-        { populate: ['shop.ownerUser'] }
+        { populate: ['shop.ownerUser'] },
       );
 
       if (!order) {
@@ -178,7 +178,7 @@ export class OrderRefundService {
 
   private async dispatchRefundNotification(
     orderId: string,
-    refundStatus: 'succeeded' | 'failed'
+    refundStatus: 'succeeded' | 'failed',
   ): Promise<void> {
     try {
       const jobDispatcher = this.moduleRef.get(JobDispatcher, {
@@ -214,15 +214,15 @@ export class OrderRefundService {
             orderId,
             getRequiredOrderNumber(order),
             order.shop.id,
-            refundStatus
-          )
+            refundStatus,
+          ),
         );
       }
     }
     catch (error) {
       this.logger.error(
         `Failed to schedule refund notification for order ${orderId}`,
-        error instanceof Error ? error.stack : undefined
+        error instanceof Error ? error.stack : undefined,
       );
     }
   }

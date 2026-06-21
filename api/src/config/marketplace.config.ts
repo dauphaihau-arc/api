@@ -100,7 +100,7 @@ export const DEFAULT_USER_PREFERENCES: UserPreferences = {
 };
 
 export function normalizeUserPreferences(
-  input?: UserPreferencesInput
+  input?: UserPreferencesInput,
 ): UserPreferences {
   return {
     region: input?.region ?? DEFAULT_USER_PREFERENCES.region,

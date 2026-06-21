@@ -44,7 +44,7 @@ describe('UpdateCurrentUserPreferencesUseCase', () => {
     } as unknown as jest.Mocked<GetCurrentUserUseCase>;
     const useCase = new UpdateCurrentUserPreferencesUseCase(
       userPreferenceRepository,
-      getCurrentUserUseCase
+      getCurrentUserUseCase,
     );
 
     const result = await useCase.execute(currentUser, {
@@ -88,7 +88,7 @@ describe('UpdateCurrentUserPreferencesUseCase', () => {
     } as unknown as jest.Mocked<GetCurrentUserUseCase>;
     const useCase = new UpdateCurrentUserPreferencesUseCase(
       userPreferenceRepository,
-      getCurrentUserUseCase
+      getCurrentUserUseCase,
     );
 
     await useCase.execute(currentUser, {

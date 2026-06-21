@@ -4,7 +4,7 @@ import type { CategoryEntity } from './persistence/entities/category.entity';
 
 export function toCategorySummary(
   category: CategoryEntity,
-  storageService: StorageService
+  storageService: StorageService,
 ): CategorySummary {
   return {
     id: category.id,

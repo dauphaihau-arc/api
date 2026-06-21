@@ -8,7 +8,7 @@ import { AuthenticatedUser, UserProfile } from '../../auth.types';
 export class GetCurrentUserUseCase {
   constructor(
     private readonly userPreferenceRepository: UserPreferenceRepository,
-    private readonly entityManager: EntityManager
+    private readonly entityManager: EntityManager,
   ) {}
 
   async execute(currentUser: AuthenticatedUser): Promise<UserProfile> {

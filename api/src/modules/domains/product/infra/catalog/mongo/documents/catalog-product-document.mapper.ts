@@ -119,7 +119,7 @@ export interface CatalogProductDocument {
 
 export function toCatalogProductDocument(
   product: ProductEntity,
-  getPublicUrl: (storageKey: string) => string | undefined
+  getPublicUrl: (storageKey: string) => string | undefined,
 ): CatalogProductDocument {
   const sortedImages = product.images
     .getItems()
@@ -174,7 +174,7 @@ export function toCatalogProductDocument(
             height: variant.height,
             format: variant.format,
           },
-        ])
+        ]),
       )
       : undefined,
   }));
@@ -260,7 +260,7 @@ export function toCatalogProductDocument(
       .getItems()
       .slice()
       .sort(
-        (left, right) => left.categoryAttribute.rank - right.categoryAttribute.rank
+        (left, right) => left.categoryAttribute.rank - right.categoryAttribute.rank,
       )
       .map((attributeValue) => ({
         categoryAttributeId: attributeValue.categoryAttribute.id,

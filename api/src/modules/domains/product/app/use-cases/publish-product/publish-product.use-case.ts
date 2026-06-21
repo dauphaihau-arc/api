@@ -8,7 +8,7 @@ import { JobDispatcher } from '~/modules/shared/queue/app/ports/job-dispatcher';
 import {
   ActorCannotCreateProductDraftError,
   ProductNotFoundError,
-  ProductNotReadyToPublishError
+  ProductNotReadyToPublishError,
 } from '../../errors/product-app.error';
 import { ProductCommandRepository } from '../../ports/product-command.repository';
 import { SellerProductQueryRepository } from '../../ports/seller-product-query.repository';
@@ -27,12 +27,12 @@ export class PublishProductUseCase {
     private readonly productCommandRepository: ProductCommandRepository,
     private readonly shopRepository: ShopRepository,
     private readonly auditLogService: AuditLogService,
-    private readonly jobDispatcher?: JobDispatcher
+    private readonly jobDispatcher?: JobDispatcher,
   ) {}
 
   async execute(
     actor: AuthenticatedUser,
-    productId: string
+    productId: string,
   ): Promise<Result<ProductDraftSummary, PublishProductError>> {
     const product = await this.sellerProductQueryRepository.findById(productId);
 
@@ -45,7 +45,7 @@ export class PublishProductUseCase {
     if (!canManageAnyShop) {
       const ownedShop = await this.shopRepository.findOwnedById(
         product.shopId,
-        actor.userId
+        actor.userId,
       );
 
       if (!ownedShop) {
@@ -85,9 +85,9 @@ export class PublishProductUseCase {
       { productId: publishedProduct.id },
       {
         deduplicationKey: appJobDeduplicationKey.projectCatalogProduct(
-          publishedProduct.id
+          publishedProduct.id,
         ),
-      }
+      },
     );
 
     return ok(publishedProduct);

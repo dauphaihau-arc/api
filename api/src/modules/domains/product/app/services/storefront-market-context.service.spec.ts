@@ -30,7 +30,7 @@ describe('StorefrontMarketContextService', () => {
     };
     const service = new StorefrontMarketContextService(
       requestContextService as never,
-      userPreferenceRepository as never
+      userPreferenceRepository as never,
     );
 
     await expect(service.resolveCurrentRequest()).resolves.toEqual({
@@ -69,7 +69,7 @@ describe('StorefrontMarketContextService', () => {
     };
     const service = new StorefrontMarketContextService(
       requestContextService as never,
-      userPreferenceRepository as never
+      userPreferenceRepository as never,
     );
 
     await expect(service.resolveCurrentRequest()).resolves.toEqual({
@@ -100,7 +100,7 @@ describe('StorefrontMarketContextService', () => {
     };
     const service = new StorefrontMarketContextService(
       requestContextService as never,
-      userPreferenceRepository as never
+      userPreferenceRepository as never,
     );
 
     await expect(service.getCurrentSortPriceKey()).resolves.toBe('VN:VND');

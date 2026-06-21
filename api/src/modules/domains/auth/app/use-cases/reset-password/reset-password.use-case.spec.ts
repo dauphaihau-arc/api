@@ -6,7 +6,7 @@ import type { TokenHasher } from '../../ports/token-hasher';
 import type { IssueSessionUseCase } from '../issue-session/issue-session.use-case';
 import {
   InvalidPasswordResetTokenError,
-  PasswordResetTokenExpiredError
+  PasswordResetTokenExpiredError,
 } from '../../errors/auth-app.error';
 import { UserStatus } from '../../../domain/enums/user-status.enum';
 import { Email } from '../../../domain/value-objects/email';
@@ -53,7 +53,7 @@ describe('ResetPasswordUseCase', () => {
       hash: jest
         .fn()
         .mockResolvedValue(
-          '$2b$04$123456789012345678901u8QTs4lJx0pK7ydjXfQ6PS/UPTzQ0zQG'
+          '$2b$04$123456789012345678901u8QTs4lJx0pK7ydjXfQ6PS/UPTzQ0zQG',
         ),
       matches: jest.fn(),
     };
@@ -84,7 +84,7 @@ describe('ResetPasswordUseCase', () => {
       passwordResetTokenRepository,
       passwordHasher,
       tokenHasher,
-      issueSessionUseCase
+      issueSessionUseCase,
     );
 
     const result = await useCase.execute({
@@ -100,14 +100,14 @@ describe('ResetPasswordUseCase', () => {
           toString: expect.any(Function),
         }),
         passwordUpdatedAt: expect.any(Date),
-      })
+      }),
     );
     expect(authSessionRepository.revokeAllForUser).toHaveBeenCalledWith('user-1');
     expect(passwordResetTokenRepository.save).toHaveBeenCalledWith(
       expect.objectContaining({
         id: 'token-1',
         usedAt: expect.any(Date),
-      })
+      }),
     );
   });
 
@@ -131,7 +131,7 @@ describe('ResetPasswordUseCase', () => {
       passwordResetTokenRepository,
       passwordHasher,
       tokenHasher,
-      issueSessionUseCase
+      issueSessionUseCase,
     );
 
     const result = await useCase.execute({
@@ -171,7 +171,7 @@ describe('ResetPasswordUseCase', () => {
       passwordResetTokenRepository,
       passwordHasher,
       tokenHasher,
-      issueSessionUseCase
+      issueSessionUseCase,
     );
 
     const result = await useCase.execute({

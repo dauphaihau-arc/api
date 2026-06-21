@@ -2,7 +2,7 @@ import type { PublicProductDetail } from '../../../../app/product.types';
 import type { PublicProductDetailResponse } from '../responses/public-product-detail.response';
 
 export const toPublicProductDetailResponse = (
-  product: PublicProductDetail
+  product: PublicProductDetail,
 ): PublicProductDetailResponse => ({
   id: product.id,
   shop: {
@@ -44,7 +44,7 @@ export const toPublicProductDetailResponse = (
             height: variant.height,
             format: variant.format,
           },
-        ])
+        ]),
       )
       : undefined,
   })),

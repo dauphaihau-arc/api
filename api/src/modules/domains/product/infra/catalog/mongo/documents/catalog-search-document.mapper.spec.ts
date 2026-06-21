@@ -89,7 +89,7 @@ describe('catalog-search-document.mapper', () => {
 
     const document = toCatalogSearchDocument(
       product,
-      (storageKey) => `https://cdn.example.test/${storageKey}`
+      (storageKey) => `https://cdn.example.test/${storageKey}`,
     );
 
     expect(document).toMatchObject({
@@ -127,10 +127,10 @@ describe('catalog-search-document.mapper', () => {
     });
 
     expect(document.suggest).toEqual(
-      expect.arrayContaining(['linen weekend dress', 'small'])
+      expect.arrayContaining(['linen weekend dress', 'small']),
     );
     expect(document.keywords).toEqual(
-      expect.arrayContaining(['linen weekend dress', 'relaxed linen dress', 'olive atelier'])
+      expect.arrayContaining(['linen weekend dress', 'relaxed linen dress', 'olive atelier']),
     );
   });
 });

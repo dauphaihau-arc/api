@@ -135,7 +135,7 @@ describe('RequestOrderCancelUseCase', () => {
         jobDispatcher as never,
         notifyUserUseCase,
         eventEmitter as unknown as EventEmitter2,
-        orderEventsService as never
+        orderEventsService as never,
       ),
     };
   }
@@ -184,7 +184,7 @@ describe('RequestOrderCancelUseCase', () => {
     });
 
     await expect(
-      useCase.execute(actor, 'order-1', {})
+      useCase.execute(actor, 'order-1', {}),
     ).rejects.toThrow(BuyerShippedOrderCancelNotAllowedError);
   });
 });

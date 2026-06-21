@@ -6,14 +6,14 @@ import type {
   CategorySuggestion,
   CategorySummary,
   CreateCategoryAttributeInput,
-  CreateCategoryInput
+  CreateCategoryInput,
 } from '../app/category.types';
 
 @Injectable()
 export class DelegatingCategoryRepository implements CategoryRepository {
   constructor(
     private readonly commandRepository: CategoryCommandRepository,
-    private readonly queryRepository: CategoryQueryRepository
+    private readonly queryRepository: CategoryQueryRepository,
   ) {}
 
   create(input: CreateCategoryInput): Promise<CategorySummary> {
@@ -21,7 +21,7 @@ export class DelegatingCategoryRepository implements CategoryRepository {
   }
 
   createAttribute(
-    input: CreateCategoryAttributeInput
+    input: CreateCategoryAttributeInput,
   ): Promise<CategorySummary | null> {
     return this.commandRepository.createAttribute(input);
   }

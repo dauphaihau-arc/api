@@ -12,7 +12,7 @@ export interface MailConfig {
 export const MAIL_CONFIG = Symbol('MAIL_CONFIG');
 
 export function buildMailConfig(
-  configService: Pick<ConfigService, 'get'>
+  configService: Pick<ConfigService, 'get'>,
 ): MailConfig {
   return {
     driver:
@@ -22,11 +22,11 @@ export function buildMailConfig(
     defaultFrom: {
       email: configService.get<string>(
         'MAIL_DEFAULT_FROM_EMAIL',
-        'noreply@example.com'
+        'noreply@example.com',
       ),
       name: configService.get<string>(
         'MAIL_DEFAULT_FROM_NAME',
-        'Nest Template'
+        'Nest Template',
       ),
     },
   };

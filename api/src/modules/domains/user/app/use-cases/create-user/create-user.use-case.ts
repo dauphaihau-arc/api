@@ -12,7 +12,7 @@ import { RoleKey } from '~/modules/domains/auth/domain/value-objects/role-key';
 import type { UserSummary } from '../../user.types';
 import {
   ActorNotAllowedToCreateUsersError,
-  UserEmailAlreadyRegisteredError
+  UserEmailAlreadyRegisteredError,
 } from '../../errors/user-app.error';
 
 const defaultRole = {
@@ -32,12 +32,12 @@ export class CreateUserUseCase {
   constructor(
     private readonly authUserRepository: AuthUserRepository,
     private readonly passwordHasher: PasswordHasher,
-    private readonly eventEmitter: EventEmitter2
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async execute(
     actor: AuthenticatedUser,
-    input: CreateUserInput
+    input: CreateUserInput,
   ): Promise<
     Result<
       UserSummary,
@@ -62,7 +62,7 @@ export class CreateUserUseCase {
       displayName: input.displayName?.trim() || undefined,
       status: UserStatus.ACTIVE,
       passwordHash: PasswordHash.fromPersisted(
-        await this.passwordHasher.hash(input.password)
+        await this.passwordHasher.hash(input.password),
       ),
       passwordUpdatedAt: new Date(),
     });
@@ -71,7 +71,7 @@ export class CreateUserUseCase {
 
     this.eventEmitter.emit(
       'user.created',
-      new UserCreatedEvent(user.id, user.email.toString(), user.displayName)
+      new UserCreatedEvent(user.id, user.email.toString(), user.displayName),
     );
 
     return ok({

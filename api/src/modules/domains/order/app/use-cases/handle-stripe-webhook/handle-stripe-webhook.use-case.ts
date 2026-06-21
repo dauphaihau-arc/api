@@ -21,7 +21,7 @@ export class HandleStripeWebhookUseCase {
         const session = event.data.object as Stripe.Checkout.Session;
         await this.orderPaymentService.markCheckoutSessionExpired(
           session.id,
-          session.expires_at ? new Date(session.expires_at * 1000) : undefined
+          session.expires_at ? new Date(session.expires_at * 1000) : undefined,
         );
         return;
       }

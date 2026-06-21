@@ -71,7 +71,7 @@ describe('Commerce flow (e2e)', () => {
         new LocalFileStorageService({
           driver: 'local',
           localRoot: storageRoot,
-        })
+        }),
       )
       .compile();
 
@@ -92,23 +92,23 @@ describe('Commerce flow (e2e)', () => {
         whitelist: true,
         transform: true,
         forbidNonWhitelisted: true,
-      })
+      }),
     );
     const exceptionLogger = await app.resolve(PinoLogger);
     const requestLogger = await app.resolve(PinoLogger);
     app.useGlobalFilters(
       new GlobalExceptionFilter(
         app.get(RequestContextService),
-        exceptionLogger
-      )
+        exceptionLogger,
+      ),
     );
     app.useGlobalInterceptors(
       new ClassSerializerInterceptor(app.get(Reflector)),
       new RequestLoggingInterceptor(
         app.get(RequestContextService),
         app.get(ObservabilityService),
-        requestLogger
-      )
+        requestLogger,
+      ),
     );
     app.setGlobalPrefix(API_PREFIX);
     await app.init();
@@ -523,7 +523,7 @@ describe('Commerce flow (e2e)', () => {
       slug: 'better-mug',
     });
     expect(listProductsResponse.body.items[0].id).not.toBe(
-      secondProductResponse.body.id
+      secondProductResponse.body.id,
     );
   });
 

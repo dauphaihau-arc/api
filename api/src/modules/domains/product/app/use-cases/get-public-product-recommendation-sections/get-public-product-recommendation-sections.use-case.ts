@@ -10,13 +10,13 @@ export class GetPublicProductRecommendationSectionsUseCase {
   constructor(
     private readonly productRepository: ProductRecommendationQueryRepository,
     private readonly publicProductViewHistoryService: PublicProductViewHistoryService,
-    private readonly publicProductOrderHistoryService: PublicProductOrderHistoryService
+    private readonly publicProductOrderHistoryService: PublicProductOrderHistoryService,
   ) {}
 
   async execute(
     shopSlug: string,
     productSlug: string,
-    limit: number = PUBLIC_PRODUCT_RECOMMENDATIONS_DEFAULT_LIMIT
+    limit: number = PUBLIC_PRODUCT_RECOMMENDATIONS_DEFAULT_LIMIT,
   ): Promise<PublicProductRecommendationSection[]> {
     const [
       similarProducts,

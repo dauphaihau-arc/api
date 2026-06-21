@@ -4,7 +4,7 @@ import { CurrentUserEntity } from '~/modules/domains/auth/infra/persistence/enti
 import { WebPushSubscriptionRepository } from '../app/ports/web-push-subscription.repository';
 import type {
   RegisterWebPushSubscriptionInput,
-  WebPushSubscriptionSummary
+  WebPushSubscriptionSummary,
 } from '../app/notification.types';
 import { WebPushSubscriptionEntity } from './persistence/entities/web-push-subscription.entity';
 
@@ -14,7 +14,7 @@ implements WebPushSubscriptionRepository {
   constructor(private readonly entityManager: EntityManager) {}
 
   async upsert(
-    input: RegisterWebPushSubscriptionInput
+    input: RegisterWebPushSubscriptionInput,
   ): Promise<WebPushSubscriptionSummary> {
     const entityManager = this.entityManager.fork();
     const repository = entityManager.getRepository(WebPushSubscriptionEntity);
@@ -46,19 +46,19 @@ implements WebPushSubscriptionRepository {
 
   async deactivateOwnedByEndpoint(
     userId: string,
-    endpoint: string
+    endpoint: string,
   ): Promise<boolean> {
     const updated = await this.entityManager.fork().nativeUpdate(
       WebPushSubscriptionEntity,
       { user: userId, endpoint, isActive: true },
-      { isActive: false, updatedAt: new Date() }
+      { isActive: false, updatedAt: new Date() },
     );
 
     return updated > 0;
   }
 
   async findActiveOwnedByUserId(
-    userId: string
+    userId: string,
   ): Promise<WebPushSubscriptionSummary[]> {
     const subscriptions = await this.entityManager
       .fork()
@@ -67,7 +67,7 @@ implements WebPushSubscriptionRepository {
         { user: userId, isActive: true },
         {
           orderBy: [{ lastUsedAt: 'desc' }, { createdAt: 'desc' }],
-        }
+        },
       );
 
     return subscriptions.map((subscription) => this.toSummary(subscription));
@@ -78,7 +78,7 @@ implements WebPushSubscriptionRepository {
     await this.entityManager.fork().nativeUpdate(
       WebPushSubscriptionEntity,
       { id },
-      { lastUsedAt: now, updatedAt: now }
+      { lastUsedAt: now, updatedAt: now },
     );
   }
 
@@ -86,12 +86,12 @@ implements WebPushSubscriptionRepository {
     await this.entityManager.fork().nativeUpdate(
       WebPushSubscriptionEntity,
       { id },
-      { isActive: false, updatedAt: new Date() }
+      { isActive: false, updatedAt: new Date() },
     );
   }
 
   private toSummary(
-    subscription: WebPushSubscriptionEntity
+    subscription: WebPushSubscriptionEntity,
   ): WebPushSubscriptionSummary {
     return {
       id: subscription.id,

@@ -110,7 +110,7 @@ describe('SetProductImagesUseCase', () => {
       productRepository,
       shopRepository,
       storageService,
-      jobDispatcher
+      jobDispatcher,
     );
 
     const result = await useCase.execute(actor, product.id, {
@@ -128,9 +128,9 @@ describe('SetProductImagesUseCase', () => {
     expect(storageService.putObject).toHaveBeenCalledWith(
       expect.objectContaining({
         key: expect.stringMatching(
-          /shops\/shoppub0001\/products\/productpub01\/images\/[^/]+\/original\.jpg$/
+          /shops\/shoppub0001\/products\/productpub01\/images\/[^/]+\/original\.jpg$/,
         ),
-      })
+      }),
     );
     expect(productRepository.replaceImages).toHaveBeenCalledTimes(1);
     expect(jobDispatcher.dispatch).toHaveBeenCalledWith(
@@ -138,10 +138,10 @@ describe('SetProductImagesUseCase', () => {
       { productId: product.id },
       {
         deduplicationKey: appJobDeduplicationKey.generateProductImageVariants(product.id),
-      }
+      },
     );
     expect(storageService.deleteObject).toHaveBeenCalledWith(
-      'products/product-1/images/old.jpg'
+      'products/product-1/images/old.jpg',
     );
   });
 });

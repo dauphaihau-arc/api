@@ -17,7 +17,7 @@ export function buildProductInventoryChannelKey(productId: string): string {
 }
 
 export function resolveProductInventorySseStatus(
-  stock: number
+  stock: number,
 ): ProductInventorySseStatus {
   if (stock <= 0) {
     return 'out_of_stock';
@@ -32,7 +32,7 @@ export function resolveProductInventorySseStatus(
 
 export function buildProductInventoryUpdatedSseEvent(
   input: Omit<ProductInventoryUpdatedSseEventPayload, 'status' | 'occurredAt'> &
-    Partial<Pick<ProductInventoryUpdatedSseEventPayload, 'status' | 'occurredAt'>>
+    Partial<Pick<ProductInventoryUpdatedSseEventPayload, 'status' | 'occurredAt'>>,
 ): ProductInventoryUpdatedSseEventPayload {
   return {
     productId: input.productId,

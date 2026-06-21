@@ -61,7 +61,7 @@ export class GuestOrderTrackingTokenService {
 
     try {
       payload = JSON.parse(
-        Buffer.from(encodedPayload, 'base64url').toString('utf8')
+        Buffer.from(encodedPayload, 'base64url').toString('utf8'),
       );
     }
     catch {
@@ -101,12 +101,12 @@ export class GuestOrderTrackingTokenService {
   private getTokenTtlInMilliseconds(): number {
     return parseDurationToMilliseconds(
       this.configService.get<string>('GUEST_ORDER_TRACKING_TTL'),
-      30 * 24 * 60 * 60 * 1000
+      30 * 24 * 60 * 60 * 1000,
     );
   }
 
   private isValidPayload(
-    value: unknown
+    value: unknown,
   ): value is GuestOrderTrackingTokenPayload {
     if (!value || typeof value !== 'object') {
       return false;
@@ -127,7 +127,7 @@ export class GuestOrderTrackingTokenService {
       && 'orderIds' in value
       && Array.isArray(value.orderIds)
       && value.orderIds.every(
-        (orderId) => typeof orderId === 'string' && orderId.trim().length > 0
+        (orderId) => typeof orderId === 'string' && orderId.trim().length > 0,
       )
       && value.orderIds.length > 0
     );

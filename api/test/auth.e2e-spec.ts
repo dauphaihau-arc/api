@@ -66,7 +66,7 @@ describe('Auth flow (e2e)', () => {
         new LocalFileStorageService({
           driver: 'local',
           localRoot: storageRoot,
-        })
+        }),
       )
       .compile();
 
@@ -87,23 +87,23 @@ describe('Auth flow (e2e)', () => {
         whitelist: true,
         transform: true,
         forbidNonWhitelisted: true,
-      })
+      }),
     );
     const exceptionLogger = await app.resolve(PinoLogger);
     const requestLogger = await app.resolve(PinoLogger);
     app.useGlobalFilters(
       new GlobalExceptionFilter(
         app.get(RequestContextService),
-        exceptionLogger
-      )
+        exceptionLogger,
+      ),
     );
     app.useGlobalInterceptors(
       new ClassSerializerInterceptor(app.get(Reflector)),
       new RequestLoggingInterceptor(
         app.get(RequestContextService),
         app.get(ObservabilityService),
-        requestLogger
-      )
+        requestLogger,
+      ),
     );
     app.setGlobalPrefix(API_PREFIX);
     await app.init();
@@ -161,7 +161,7 @@ describe('Auth flow (e2e)', () => {
     const userPreference = await entityManager.fork().findOne(
       UserPreferenceEntity,
       { user: registerBody.user.id },
-      { populate: ['user'] }
+      { populate: ['user'] },
     );
 
     expect(userPreference).toBeTruthy();
@@ -201,7 +201,7 @@ describe('Auth flow (e2e)', () => {
     expect(loginBody.user.email).toBe(email);
     expect(loginBody.user.sessionId).not.toBe(sessionId);
     expect(loginCookies.refreshToken.value).not.toBe(
-      registerCookies.refreshToken.value
+      registerCookies.refreshToken.value,
     );
 
     const refreshResponse = await agent
@@ -217,7 +217,7 @@ describe('Auth flow (e2e)', () => {
       .post(`${API_PREFIX}/auth/refresh`)
       .set(
         'Cookie',
-        `${loginCookies.refreshToken.name}=${loginCookies.refreshToken.value}`
+        `${loginCookies.refreshToken.name}=${loginCookies.refreshToken.value}`,
       )
       .expect(401);
 
@@ -228,10 +228,10 @@ describe('Auth flow (e2e)', () => {
 
     expect(logoutResponse.headers['cache-control']).toBe('no-store');
     expect(clearedCookies.accessToken.raw).toContain(
-      'Expires=Thu, 01 Jan 1970 00:00:00 GMT'
+      'Expires=Thu, 01 Jan 1970 00:00:00 GMT',
     );
     expect(clearedCookies.refreshToken.raw).toContain(
-      'Expires=Thu, 01 Jan 1970 00:00:00 GMT'
+      'Expires=Thu, 01 Jan 1970 00:00:00 GMT',
     );
 
     await agent
@@ -272,7 +272,7 @@ describe('Auth flow (e2e)', () => {
     const userPreference = await entityManager.fork().findOne(
       UserPreferenceEntity,
       { user: registerBody.user.id },
-      { populate: ['user'] }
+      { populate: ['user'] },
     );
 
     expect(userPreference).toBeTruthy();
@@ -299,7 +299,7 @@ describe('Auth flow (e2e)', () => {
     const cookies = registerResponse.headers['set-cookie'];
     const response = await readSseHandshake(
       app,
-      Array.isArray(cookies) ? cookies.map((cookie) => cookie.split(';')[0]).join('; ') : ''
+      Array.isArray(cookies) ? cookies.map((cookie) => cookie.split(';')[0]).join('; ') : '',
     );
 
     expect(response.status).toBe(200);
@@ -427,7 +427,7 @@ function expectAuthCookies(setCookieHeader?: string | string[]): {
 
 function parseCookieAssertion(
   setCookieHeader: string | string[] | undefined,
-  cookieName: string
+  cookieName: string,
 ): CookieAssertion {
   const cookieHeaders = Array.isArray(setCookieHeader)
     ? setCookieHeader
@@ -435,7 +435,7 @@ function parseCookieAssertion(
       ? [setCookieHeader]
       : undefined;
   const rawCookie = cookieHeaders?.find((cookie) =>
-    cookie.startsWith(`${cookieName}=`)
+    cookie.startsWith(`${cookieName}=`),
   );
 
   expect(rawCookie).toBeDefined();
@@ -455,7 +455,7 @@ function parseCookieAssertion(
 
 async function readSseHandshake(
   app: INestApplication<App>,
-  cookieHeader: string
+  cookieHeader: string,
 ): Promise<{
   status: number;
   headers: Record<string, string | string[]>;

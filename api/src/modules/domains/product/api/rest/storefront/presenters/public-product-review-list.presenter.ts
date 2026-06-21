@@ -21,14 +21,14 @@ export function toPublicProductReviewListResponse(
       body: item.body,
       image: item.images[0]
         ? {
-            id: item.images[0].id,
-            storage_key: item.images[0].storageKey,
-            url: item.images[0].url,
-            rank: item.images[0].rank,
-            ...(toVariantRecord(item.images[0].variants)
-              ? { variants: toVariantRecord(item.images[0].variants) }
-              : {}),
-          }
+          id: item.images[0].id,
+          storage_key: item.images[0].storageKey,
+          url: item.images[0].url,
+          rank: item.images[0].rank,
+          ...(toVariantRecord(item.images[0].variants)
+            ? { variants: toVariantRecord(item.images[0].variants) }
+            : {}),
+        }
         : undefined,
       created_at: item.createdAt,
       updated_at: item.updatedAt,

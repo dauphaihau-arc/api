@@ -7,7 +7,7 @@ import type { Queue } from 'bullmq';
 
 function requireBasicAuth(
   username: string,
-  password: string
+  password: string,
 ): (request: Request, response: Response, next: NextFunction) => void {
   const expectedToken = Buffer.from(`${username}:${password}`).toString('base64');
 
@@ -26,7 +26,7 @@ function requireBasicAuth(
 
 export function setupBullBoard(
   app: INestApplication,
-  queue: Queue | null
+  queue: Queue | null,
 ): void {
   const isEnabled = (process.env.BULL_BOARD_ENABLED ?? 'true') === 'true';
 

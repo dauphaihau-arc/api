@@ -14,12 +14,12 @@ export class UpdateAdminOrderSupportNoteUseCase {
 
   async execute(
     orderId: string,
-    input: UpdateAdminOrderSupportNoteDto
+    input: UpdateAdminOrderSupportNoteDto,
   ): Promise<AdminOrderDetail> {
     const entityManager = this.entityManager.fork();
     const order = await entityManager.getRepository(OrderEntity).findOne(
       buildOrderIdentifierWhere(orderId),
-      { populate: ['shop'] }
+      { populate: ['shop'] },
     );
 
     if (!order) {
@@ -31,7 +31,7 @@ export class UpdateAdminOrderSupportNoteUseCase {
 
     const items = await entityManager.getRepository(OrderItemEntity).find(
       { order: order.id },
-      { populate: ['product', 'product.shop', 'inventory'] }
+      { populate: ['product', 'product.shop', 'inventory'] },
     );
 
     return toAdminOrderDetail(order, items);

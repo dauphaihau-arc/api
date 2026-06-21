@@ -1,7 +1,7 @@
 import { SetMetadata } from '@nestjs/common';
 import {
   IDEMPOTENCY_OPTIONS,
-  type IdempotencyOptions
+  type IdempotencyOptions,
 } from '../interceptors/idempotency.constants';
 
 export function Idempotent(options: IdempotencyOptions): MethodDecorator {

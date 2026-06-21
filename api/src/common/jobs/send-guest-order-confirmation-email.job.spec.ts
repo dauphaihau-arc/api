@@ -22,7 +22,7 @@ describe('SendGuestOrderConfirmationEmailJob', () => {
         subject: 'Your guest order confirmation',
         tags: ['guest-order-confirmation'],
         text: expect.stringContaining('http://localhost:4000/guest-orders?token=signed-tracking-token'),
-      })
+      }),
     );
   });
 });

@@ -75,7 +75,7 @@ describe('ListShopOrdersUseCase', () => {
         orderBy: { createdAt: 'desc' },
         offset: 10,
         limit: 10,
-      }
+      },
     );
     expect(orderRepository.count).toHaveBeenCalledWith({
       shop: 'shop-1',
@@ -178,7 +178,7 @@ describe('ListShopOrdersUseCase', () => {
         orderBy: { createdAt: 'desc' },
         offset: 0,
         limit: 20,
-      }
+      },
     );
   });
 
@@ -285,7 +285,7 @@ describe('ListShopOrdersUseCase', () => {
       { order: { $in: ['order-1'] } },
       {
         populate: ['product', 'product.shop', 'inventory'],
-      }
+      },
     );
     expect(result.results).toHaveLength(1);
     expect(result.results[0]?.products[0]?.imageStorageKey).toBeUndefined();

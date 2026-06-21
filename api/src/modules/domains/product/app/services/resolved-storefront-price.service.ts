@@ -5,7 +5,7 @@ import { RoundingPolicyService } from '~/modules/shared/currency/rounding-policy
 import type { ProductInventoryEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-inventory.entity';
 import {
   getActiveBasePrice,
-  getActiveMarketPrice
+  getActiveMarketPrice,
 } from '../../infra/persistence/mikro-orm/reads/variant-price-read';
 import { StorefrontMarketContextService } from './storefront-market-context.service';
 
@@ -29,15 +29,15 @@ export class ResolvedStorefrontPriceService {
   constructor(
     private readonly storefrontMarketContextService: StorefrontMarketContextService,
     private readonly fxRateService: FxRateService,
-    private readonly roundingPolicyService: RoundingPolicyService
+    private readonly roundingPolicyService: RoundingPolicyService,
   ) {}
 
   async resolveForCurrentRequest(
-    inventory: ProductInventoryEntity
+    inventory: ProductInventoryEntity,
   ): Promise<ResolvedStorefrontPrice | undefined> {
     return this.resolve(
       inventory,
-      await this.storefrontMarketContextService.resolveCurrentRequest()
+      await this.storefrontMarketContextService.resolveCurrentRequest(),
     );
   }
 
@@ -47,7 +47,7 @@ export class ResolvedStorefrontPriceService {
       marketCode?: string;
       currency?: string;
       at?: Date;
-    }
+    },
   ): Promise<ResolvedStorefrontPrice | undefined> {
     const normalizedContext = normalizeContext(context);
 
@@ -55,7 +55,7 @@ export class ResolvedStorefrontPriceService {
       const exactMarketPrice = getActiveMarketPrice(
         inventory,
         normalizedContext.marketCode,
-        normalizedContext.currency
+        normalizedContext.currency,
       );
 
       if (exactMarketPrice) {
@@ -185,7 +185,7 @@ function convertBasePrice(input: {
       ? {
         originalAmountMinor: input.roundingPolicyService.toMinorUnits(
           compareAtMajor,
-          input.targetCurrency
+          input.targetCurrency,
         ),
       }
       : {}),

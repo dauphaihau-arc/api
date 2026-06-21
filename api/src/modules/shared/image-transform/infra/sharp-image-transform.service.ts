@@ -17,7 +17,7 @@ export class SharpImageTransformService implements ImageTransformService {
     let pipeline = sharp(
       spec.removeBackground
         ? await this.removeBackground(input)
-        : input
+        : input,
     ).resize({
       width: spec.width,
       height: spec.height,
@@ -71,7 +71,7 @@ export class SharpImageTransformService implements ImageTransformService {
       pixelBuffer,
       info.width,
       info.height,
-      info.channels
+      info.channels,
     );
 
     if (!backgroundColor) {
@@ -155,7 +155,7 @@ function resolveBackgroundColor(
   pixelBuffer: Buffer,
   width: number,
   height: number,
-  channels: number
+  channels: number,
 ): RgbaColor | null {
   const corners = [
     readPixel(pixelBuffer, 0, channels),
@@ -170,7 +170,7 @@ function resolveBackgroundColor(
 
   const reference = corners[0];
   const isUniform = corners.every((corner) =>
-    colorDistance(reference, corner) <= CORNER_VARIANCE_THRESHOLD
+    colorDistance(reference, corner) <= CORNER_VARIANCE_THRESHOLD,
   );
 
   if (!isUniform) {
@@ -183,7 +183,7 @@ function resolveBackgroundColor(
       green: accumulator.green + corner.green,
       blue: accumulator.blue + corner.blue,
     }),
-    { red: 0, green: 0, blue: 0 }
+    { red: 0, green: 0, blue: 0 },
   );
 
   return {
@@ -197,7 +197,7 @@ function isBackgroundPixel(
   pixelBuffer: Buffer,
   offset: number,
   channels: number,
-  background: RgbaColor
+  background: RgbaColor,
 ): boolean {
   const pixel = readPixel(pixelBuffer, offset, channels);
 
@@ -221,11 +221,11 @@ function readPixel(pixelBuffer: Buffer, offset: number, channels: number): {
 
 function colorDistance(
   left: RgbaColor,
-  right: RgbaColor
+  right: RgbaColor,
 ): number {
   return Math.sqrt(
     ((left.red - right.red) ** 2) +
       ((left.green - right.green) ** 2) +
-      ((left.blue - right.blue) ** 2)
+      ((left.blue - right.blue) ** 2),
   );
 }

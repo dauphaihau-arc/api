@@ -16,7 +16,7 @@ import {
   OrderNotFoundError,
   SellerRefundActionNotAllowedError,
   SellerRefundNotAllowedError,
-  SellerRefundRequiresCardPaymentError
+  SellerRefundRequiresCardPaymentError,
 } from '../../errors/order-app.error';
 import { OrderEventsService } from '../../order-events.service';
 import { buildScopedOrderIdentifierWhere } from '../../order-identifier';
@@ -33,20 +33,20 @@ export class UpdateShopOrderRefundUseCase {
     private readonly entityManager: EntityManager,
     private readonly jobDispatcher: JobDispatcher,
     private readonly eventEmitter: EventEmitter2,
-    private readonly orderEventsService: OrderEventsService
+    private readonly orderEventsService: OrderEventsService,
   ) {}
 
   async execute(
     shopId: string,
     orderId: string,
-    input: UpdateShopOrderRefundDto
+    input: UpdateShopOrderRefundDto,
   ): Promise<ShopOrderDetail> {
     const entityManager = this.entityManager.fork();
 
     const result = await entityManager.transactional(async (transactionalEntityManager) => {
       const order = await transactionalEntityManager.getRepository(OrderEntity).findOne(
         buildScopedOrderIdentifierWhere(orderId, { shop: shopId }),
-        { populate: ['shop', 'user'] }
+        { populate: ['shop', 'user'] },
       );
 
       if (!order) {
@@ -106,13 +106,13 @@ export class UpdateShopOrderRefundUseCase {
       await this.jobDispatcher.dispatch(
         'order.process-refund',
         { orderId: result.detail.id },
-        { deduplicationKey: appJobDeduplicationKey.processOrderRefund(result.detail.id) }
+        { deduplicationKey: appJobDeduplicationKey.processOrderRefund(result.detail.id) },
       );
     }
     catch (error) {
       this.logger.error(
         `Failed to schedule seller refund for shop order ${result.detail.id}`,
-        error instanceof Error ? error.stack : undefined
+        error instanceof Error ? error.stack : undefined,
       );
     }
 
@@ -138,7 +138,7 @@ export class UpdateShopOrderRefundUseCase {
     orderStatus: OrderStatus,
     shippingStatus: OrderShippingStatus,
     refundStatus: RefundStatus | undefined,
-    action: ShopOrderRefundAction
+    action: ShopOrderRefundAction,
   ): void {
     if ([OrderStatus.CHECKOUT_PENDING, OrderStatus.AWAITING_PAYMENT, OrderStatus.EXPIRED, OrderStatus.ARCHIVED].includes(orderStatus)) {
       throw new SellerRefundNotAllowedError();

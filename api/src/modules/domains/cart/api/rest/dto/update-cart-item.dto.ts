@@ -1,11 +1,11 @@
 import {
   Expose,
   Transform,
-  Type
+  Type,
 } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import {
-  IsArray, IsBoolean, IsOptional, IsString, IsUUID, Max, Min, ValidateNested 
+  IsArray, IsBoolean, IsOptional, IsString, IsUUID, Max, Min, ValidateNested, 
 } from 'class-validator';
 
 class AdditionInfoTempCartDto {

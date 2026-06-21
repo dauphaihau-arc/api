@@ -16,7 +16,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
     @Inject(AUTH_CONFIG) authConfig: AuthConfig,
     private readonly loadAuthenticatedUserUseCase: LoadAuthenticatedUserUseCase,
-    private readonly requestContextService: RequestContextService
+    private readonly requestContextService: RequestContextService,
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
@@ -34,9 +34,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     const authenticatedUser = resolveOrThrow(
       await this.loadAuthenticatedUserUseCase.execute(
         payload.sub,
-        payload.sessionId
+        payload.sessionId,
       ),
-      mapAuthAppErrorToHttpException
+      mapAuthAppErrorToHttpException,
     );
 
     this.requestContextService.setAuthenticatedUser(authenticatedUser);

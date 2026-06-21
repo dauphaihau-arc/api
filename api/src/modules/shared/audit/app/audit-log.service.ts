@@ -10,7 +10,7 @@ export class AuditLogService {
 
   constructor(
     private readonly entityManager: EntityManager,
-    private readonly requestContextService: RequestContextService
+    private readonly requestContextService: RequestContextService,
   ) {}
 
   async record(input: RecordAuditLogInput): Promise<void> {
@@ -36,7 +36,7 @@ export class AuditLogService {
     catch (error) {
       this.logger.error(
         `Failed to persist audit log for ${input.action} ${input.entityType}:${input.entityId}`,
-        error instanceof Error ? error.stack : undefined
+        error instanceof Error ? error.stack : undefined,
       );
     }
   }

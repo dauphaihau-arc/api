@@ -1,12 +1,12 @@
 import {
-  Entity, Enum, Index, ManyToOne, Property 
+  Entity, Enum, Index, ManyToOne, Property, 
 } from '@mikro-orm/core';
 import { AbstractBaseEntity } from '~/common/database/abstract-base.entity';
 import { CurrentUserEntity } from '~/modules/domains/auth/infra/persistence/entities/current-user.entity';
 
 export enum CheckoutQuoteActorType {
   USER = 'user',
-  GUEST = 'guest'
+  GUEST = 'guest',
 }
 
 @Entity({ tableName: 'checkout_quotes' })

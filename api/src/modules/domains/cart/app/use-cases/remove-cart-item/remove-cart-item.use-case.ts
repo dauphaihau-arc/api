@@ -3,7 +3,7 @@ import { err, ok, type Result } from '~/common/application/result';
 import {
   CartItemNotFoundError,
   CartNotFoundError,
-  type CartAppError
+  type CartAppError,
 } from '../../errors/cart-app.error';
 import { CartRepository } from '../../ports/cart.repository';
 import type { CartActor, CartSnapshot } from '../../cart.types';
@@ -15,7 +15,7 @@ export class RemoveCartItemUseCase {
   async execute(
     actor: CartActor,
     inventoryId: string,
-    cartId?: string
+    cartId?: string,
   ): Promise<Result<CartSnapshot | null, CartAppError>> {
     const existingCart = cartId
       ? await this.cartRepository.findCartByIdForActor(actor, cartId)
@@ -26,7 +26,7 @@ export class RemoveCartItemUseCase {
     }
 
     const existingItem = existingCart.items.find(
-      (item) => item.inventory.inventoryId === inventoryId
+      (item) => item.inventory.inventoryId === inventoryId,
     );
 
     if (!existingItem) {

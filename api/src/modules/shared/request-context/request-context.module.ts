@@ -4,7 +4,7 @@ import { ClsModule } from 'nestjs-cls';
 import {
   extractRequestContext,
   initializeRequestContextStore,
-  type RequestLike
+  type RequestLike,
 } from './request-context.bootstrap';
 import { RequestContextService } from './request-context.service';
 

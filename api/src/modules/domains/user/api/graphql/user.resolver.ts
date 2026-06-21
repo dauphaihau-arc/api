@@ -4,7 +4,7 @@ import {
   ID,
   Mutation,
   Query,
-  Resolver
+  Resolver,
 } from '@nestjs/graphql';
 import { resolveOrThrow } from '~/common/application/result';
 import { parseSortValue } from '~/common/application/sort';
@@ -19,7 +19,7 @@ import { ListUsersUseCase } from '../../app/use-cases/list-users/list-users.use-
 import {
   buildListUsersQuery,
   DEFAULT_USER_LIST_SORT,
-  USER_LIST_SORT_FIELDS
+  USER_LIST_SORT_FIELDS,
 } from '../../app/user.types';
 import { CreateUserInput } from './dto/create-user.input';
 import { ListUsersArgs } from './dto/list-users.args';
@@ -33,7 +33,7 @@ export class UserResolver {
   constructor(
     private readonly createUserUseCase: CreateUserUseCase,
     private readonly listUsersUseCase: ListUsersUseCase,
-    private readonly getUserByIdUseCase: GetUserByIdUseCase
+    private readonly getUserByIdUseCase: GetUserByIdUseCase,
   ) {}
 
   @Query(() => UserPageType, { name: 'users' })
@@ -42,7 +42,7 @@ export class UserResolver {
     const sort = parseSortValue(
       query.sort,
       USER_LIST_SORT_FIELDS,
-      DEFAULT_USER_LIST_SORT
+      DEFAULT_USER_LIST_SORT,
     );
 
     return this.listUsersUseCase.execute(buildListUsersQuery({
@@ -62,7 +62,7 @@ export class UserResolver {
   @RequirePermissions('users.manage')
   createUser(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Args('input') input: CreateUserInput
+    @Args('input') input: CreateUserInput,
   ) {
     return this.createUserUseCase
       .execute(currentUser, input)

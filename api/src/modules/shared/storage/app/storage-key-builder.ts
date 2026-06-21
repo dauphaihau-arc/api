@@ -1,7 +1,7 @@
 import type { BuildStorageObjectKeyInput } from './storage-key.types';
 
 export function buildStorageObjectKey(
-  input: BuildStorageObjectKeyInput
+  input: BuildStorageObjectKeyInput,
 ): string {
   const env = resolveStorageEnvironmentSegment(input.env);
   const extension = normalizeExtension(input.extension);
@@ -36,7 +36,7 @@ export function buildStorageObjectKey(
 }
 
 export function resolveStorageEnvironmentSegment(
-  nodeEnv?: string
+  nodeEnv?: string,
 ): 'dev' | 'prod' | 'test' {
   switch ((nodeEnv ?? 'development').trim().toLowerCase()) {
     case 'production':

@@ -5,13 +5,13 @@ import {
   IsString,
   IsUUID,
   Max,
-  Min
+  Min,
 } from 'class-validator';
 import { ProductState } from '~/modules/domains/product/domain/enums/product-state.enum';
 import {
   SHOP_PRODUCT_LIST_DEFAULT_LIMIT,
   SHOP_PRODUCT_LIST_DEFAULT_PAGE,
-  SHOP_PRODUCT_LIST_MAX_LIMIT
+  SHOP_PRODUCT_LIST_MAX_LIMIT,
 } from '../../../../product/app/product.types';
 
 export class ListShopProductsQueryDto {

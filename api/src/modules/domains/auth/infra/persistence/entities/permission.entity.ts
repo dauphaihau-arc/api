@@ -3,7 +3,7 @@ import {
   Entity,
   OneToMany,
   Property,
-  Unique
+  Unique,
 } from '@mikro-orm/core';
 import { AbstractAuthEntity } from './abstract-auth.entity';
 import { RolePermissionEntity } from './role-permission.entity';
@@ -22,7 +22,7 @@ export class PermissionEntity extends AbstractAuthEntity {
 
   @OneToMany(
     () => RolePermissionEntity,
-    (rolePermission) => rolePermission.permission
+    (rolePermission) => rolePermission.permission,
   )
   rolePermissions = new Collection<RolePermissionEntity>(this);
 }

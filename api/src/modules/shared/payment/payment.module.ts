@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import {
   PAYMENT_CONFIG,
-  buildPaymentConfig
+  buildPaymentConfig,
 } from '~/config/payment.config';
 import { PaymentGateway } from './app/ports/payment-gateway';
 import { StripePaymentGateway } from './infra/stripe-payment.gateway';

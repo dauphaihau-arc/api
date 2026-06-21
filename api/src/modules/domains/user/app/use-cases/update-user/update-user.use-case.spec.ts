@@ -4,7 +4,7 @@ import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
 import type { AuthUserRepository } from '~/modules/domains/auth/app/ports/auth-user.repository';
 import {
   UserAccountVersionConflictError,
-  type UpdateUserAccountInput
+  type UpdateUserAccountInput,
 } from '~/modules/domains/auth/app/ports/auth-user.repository';
 import { UserStatus } from '~/modules/domains/auth/domain/enums/user-status.enum';
 import type { UserAccount } from '~/modules/domains/auth/domain/models/user-account';
@@ -13,11 +13,11 @@ import { RoleKey } from '~/modules/domains/auth/domain/value-objects/role-key';
 import {
   ActorNotAllowedToUpdateUsersError,
   UserNotFoundError,
-  UserVersionConflictError
+  UserVersionConflictError,
 } from '../../errors/user-app.error';
 import {
   type UploadedAvatarFile,
-  UpdateUserUseCase
+  UpdateUserUseCase,
 } from './update-user.use-case';
 
 describe('UpdateUserUseCase', () => {
@@ -61,7 +61,7 @@ describe('UpdateUserUseCase', () => {
           displayName: input.displayName ?? existingUser.displayName,
           avatar: input.avatar ?? existingUser.avatar,
           status: input.status ?? existingUser.status,
-        })
+        }),
       ),
       updatePassword: jest.fn(),
       assignRole: jest.fn(),
@@ -96,7 +96,7 @@ describe('UpdateUserUseCase', () => {
     const useCase = new UpdateUserUseCase(
       authUserRepository,
       storageService,
-      eventEmitter as unknown as EventEmitter2
+      eventEmitter as unknown as EventEmitter2,
     );
 
     const result = await useCase.execute(adminActor, 'user-1', {
@@ -113,10 +113,10 @@ describe('UpdateUserUseCase', () => {
     expect(storageService.putObject).toHaveBeenCalledWith(
       expect.objectContaining({
         key: expect.stringMatching(
-          /^test\/public\/users\/user-1\/images\/original\/.+\.png$/
+          /^test\/public\/users\/user-1\/images\/original\/.+\.png$/,
         ),
         contentType: 'image/png',
-      })
+      }),
     );
     expect(authUserRepository.update).toHaveBeenCalledWith(
       'user-1',
@@ -125,16 +125,16 @@ describe('UpdateUserUseCase', () => {
         displayName: 'Updated Member',
         status: UserStatus.DISABLED,
         avatar: updatedUser.avatar,
-      })
+      }),
     );
     expect(storageService.deleteObject).toHaveBeenCalledWith(
-      'test/public/users/user-1/images/original/original.png'
+      'test/public/users/user-1/images/original/original.png',
     );
     expect(eventEmitter.emit).toHaveBeenCalledWith(
       'user.updated',
       expect.objectContaining({
         userId: 'user-1',
-      })
+      }),
     );
     expect(result).toEqual({
       isOk: true,
@@ -155,7 +155,7 @@ describe('UpdateUserUseCase', () => {
     const useCase = new UpdateUserUseCase(
       authUserRepository,
       storageService,
-      eventEmitter as unknown as EventEmitter2
+      eventEmitter as unknown as EventEmitter2,
     );
 
     const result = await useCase.execute(
@@ -164,7 +164,7 @@ describe('UpdateUserUseCase', () => {
         roles: ['customer'],
       },
       'user-1',
-      { version: 3 }
+      { version: 3 },
     );
 
     expect(result.isOk).toBe(false);
@@ -181,7 +181,7 @@ describe('UpdateUserUseCase', () => {
     const useCase = new UpdateUserUseCase(
       authUserRepository,
       storageService,
-      eventEmitter as unknown as EventEmitter2
+      eventEmitter as unknown as EventEmitter2,
     );
 
     const result = await useCase.execute(adminActor, 'missing-user', {
@@ -202,7 +202,7 @@ describe('UpdateUserUseCase', () => {
     const useCase = new UpdateUserUseCase(
       authUserRepository,
       storageService,
-      eventEmitter as unknown as EventEmitter2
+      eventEmitter as unknown as EventEmitter2,
     );
 
     const result = await useCase.execute(adminActor, 'user-1', {

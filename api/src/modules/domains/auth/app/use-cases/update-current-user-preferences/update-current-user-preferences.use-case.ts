@@ -12,12 +12,12 @@ export interface UpdateCurrentUserPreferencesInput {
 export class UpdateCurrentUserPreferencesUseCase {
   constructor(
     private readonly userPreferenceRepository: UserPreferenceRepository,
-    private readonly getCurrentUserUseCase: GetCurrentUserUseCase
+    private readonly getCurrentUserUseCase: GetCurrentUserUseCase,
   ) {}
 
   async execute(
     currentUser: AuthenticatedUser,
-    input: UpdateCurrentUserPreferencesInput
+    input: UpdateCurrentUserPreferencesInput,
   ): Promise<UserProfile> {
     const currentPreferences = await this.userPreferenceRepository.findByUserId(currentUser.userId);
     const preferences = normalizeUserPreferences({

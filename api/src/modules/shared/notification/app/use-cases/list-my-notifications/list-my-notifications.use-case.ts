@@ -3,23 +3,23 @@ import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
 import { NotificationRepository } from '../../ports/notification.repository';
 import type {
   ListMyNotificationsQuery,
-  NotificationListResult
+  NotificationListResult,
 } from '../../notification.types';
 
 @Injectable()
 export class ListMyNotificationsUseCase {
   constructor(
-    private readonly notificationRepository: NotificationRepository
+    private readonly notificationRepository: NotificationRepository,
   ) {}
 
   async execute(
     actor: AuthenticatedUser,
-    query: ListMyNotificationsQuery
+    query: ListMyNotificationsQuery,
   ): Promise<NotificationListResult> {
     const result = await this.notificationRepository.findAllOwnedByUserId(
       actor.userId,
       query.page,
-      query.limit
+      query.limit,
     );
 
     return {

@@ -14,7 +14,7 @@ export function normalizeStorageKey(key: string): string {
   for (const segment of segments) {
     if (segment.length === 0 || segment === '.' || segment === '..') {
       throw new Error(
-        `Storage key "${key}" contains an invalid path segment.`
+        `Storage key "${key}" contains an invalid path segment.`,
       );
     }
   }

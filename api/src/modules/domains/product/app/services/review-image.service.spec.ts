@@ -100,7 +100,9 @@ describe('ReviewImageService', () => {
   });
 
   it('cleans up generated objects and marks the review image failed when generation errors', async () => {
-    const { service, repository, storageService, imageTransformService } = buildDependencies();
+    const {
+      service, repository, storageService, imageTransformService, 
+    } = buildDependencies();
     const image = {
       id: 'review-image-1',
       storageKey: 'dev/public/users/user-1/products/item-1/images/product-reviews/image-1/original.jpg',

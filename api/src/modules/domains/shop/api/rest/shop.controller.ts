@@ -1,12 +1,12 @@
 import {
-  Body, Controller, Get, Header, NotFoundException, Post, UseGuards 
+  Body, Controller, Get, Header, NotFoundException, Post, UseGuards, 
 } from '@nestjs/common';
 import {
   ApiCookieAuth,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
-  ApiTags
+  ApiTags,
 } from '@nestjs/swagger';
 import { RequirePermissions } from '~/common/decorators/require-permissions.decorator';
 import { resolveOrThrow } from '~/common/application/result';
@@ -27,7 +27,7 @@ import { toShopResponse } from './shop.response';
 export class ShopController {
   constructor(
     private readonly createShopUseCase: CreateShopUseCase,
-    private readonly getMyShopUseCase: GetMyShopUseCase
+    private readonly getMyShopUseCase: GetMyShopUseCase,
   ) {}
 
   @Post()
@@ -40,7 +40,7 @@ export class ShopController {
   })
   createShop(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Body() body: CreateShopDto
+    @Body() body: CreateShopDto,
   ) {
     return this.createShopUseCase.execute(currentUser, {
       shopName: body.shop_name,
@@ -60,7 +60,7 @@ export class ShopController {
   })
   @ApiNotFoundResponse({ description: 'Shop was not found.' })
   async myShop(
-    @CurrentUser() currentUser: AuthenticatedUser
+    @CurrentUser() currentUser: AuthenticatedUser,
   ) {
     const shop = await this.getMyShopUseCase.execute(currentUser);
 

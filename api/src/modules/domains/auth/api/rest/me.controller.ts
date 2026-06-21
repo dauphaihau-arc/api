@@ -3,13 +3,13 @@ import {
   Controller,
   Header,
   Patch,
-  UseGuards
+  UseGuards,
 } from '@nestjs/common';
 import {
   ApiCookieAuth,
   ApiOkResponse,
   ApiOperation,
-  ApiTags
+  ApiTags,
 } from '@nestjs/swagger';
 import { CurrentUser } from '~/common/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../../app/auth.types';
@@ -24,7 +24,7 @@ import { UpdateMeDto } from './dto/update-me.dto';
 @ApiCookieAuth('accessCookie')
 export class MeController {
   constructor(
-    private readonly updateCurrentUserPreferencesUseCase: UpdateCurrentUserPreferencesUseCase
+    private readonly updateCurrentUserPreferencesUseCase: UpdateCurrentUserPreferencesUseCase,
   ) {}
 
   @Patch()
@@ -36,12 +36,12 @@ export class MeController {
   })
   async updateMe(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Body() body: UpdateMeDto
+    @Body() body: UpdateMeDto,
   ): Promise<MeResponseDto> {
     return MeResponseDto.fromUserProfile(
       await this.updateCurrentUserPreferencesUseCase.execute(currentUser, {
         preferences: body.preferences,
-      })
+      }),
     );
   }
 }

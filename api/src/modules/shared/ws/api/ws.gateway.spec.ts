@@ -57,7 +57,7 @@ describe('WsGateway', () => {
       (overrides?.entityManager ?? { fork: jest.fn() }) as never,
       (overrides?.authTokenService ?? { verifyAccessToken: jest.fn() }) as never,
       (overrides?.loadAuthenticatedUserUseCase ?? { execute: jest.fn() }) as never,
-      authConfig
+      authConfig,
     );
   }
 

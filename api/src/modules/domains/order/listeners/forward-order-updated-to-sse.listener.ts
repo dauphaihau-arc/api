@@ -5,7 +5,7 @@ import { buildUserEventsChannelKey } from '~/modules/shared/sse/app/user-events-
 import { SsePublisher } from '~/modules/shared/sse/infra/sse.publisher';
 import {
   ORDER_UPDATED_SSE_EVENT,
-  type OrderUpdatedSseEventPayload
+  type OrderUpdatedSseEventPayload,
 } from '../app/events/order-sse.event';
 
 @Injectable()

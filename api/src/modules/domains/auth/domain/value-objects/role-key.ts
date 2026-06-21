@@ -1,6 +1,6 @@
 import {
   InvalidRoleKeyError,
-  RoleKeyRequiredError
+  RoleKeyRequiredError,
 } from '../errors/auth-domain.error';
 
 export class RoleKey {

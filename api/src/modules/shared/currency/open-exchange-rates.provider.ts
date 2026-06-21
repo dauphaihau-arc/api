@@ -3,7 +3,7 @@ import { FX_RATE_SYNC_CONFIG } from '~/config/fx-rate-sync.config';
 import type { FxRateSyncConfig } from '~/config/fx-rate-sync.config';
 import type {
   ExchangeRateProvider,
-  ExchangeRateProviderQuote
+  ExchangeRateProviderQuote,
 } from './exchange-rate-provider';
 
 interface OpenExchangeRatesLatestResponse {
@@ -24,7 +24,7 @@ export class OpenExchangeRatesProvider implements ExchangeRateProvider {
 
   constructor(
     @Inject(FX_RATE_SYNC_CONFIG)
-    private readonly fxRateSyncConfig: FxRateSyncConfig
+    private readonly fxRateSyncConfig: FxRateSyncConfig,
   ) {}
 
   async getLatestRates(input: {
@@ -39,12 +39,12 @@ export class OpenExchangeRatesProvider implements ExchangeRateProvider {
       .join(',');
     const requestUrl = new URL(
       'latest.json',
-      ensureTrailingSlash(this.fxRateSyncConfig.openExchangeRatesBaseUrl)
+      ensureTrailingSlash(this.fxRateSyncConfig.openExchangeRatesBaseUrl),
     );
 
     requestUrl.searchParams.set(
       'app_id',
-      this.fxRateSyncConfig.openExchangeRatesAppId
+      this.fxRateSyncConfig.openExchangeRatesAppId,
     );
 
     if (symbols.length > 0) {
@@ -52,7 +52,7 @@ export class OpenExchangeRatesProvider implements ExchangeRateProvider {
     }
 
     this.logger.log(
-      `Fetching FX rates from Open Exchange Rates for ${symbols || 'all configured currencies'}`
+      `Fetching FX rates from Open Exchange Rates for ${symbols || 'all configured currencies'}`,
     );
 
     const response = await fetch(requestUrl, {
@@ -66,7 +66,7 @@ export class OpenExchangeRatesProvider implements ExchangeRateProvider {
       const responseBody = await response.text();
 
       throw new Error(
-        `Open Exchange Rates request failed with status ${response.status}: ${responseBody}`
+        `Open Exchange Rates request failed with status ${response.status}: ${responseBody}`,
       );
     }
 
@@ -75,7 +75,7 @@ export class OpenExchangeRatesProvider implements ExchangeRateProvider {
 
     if (payload.error) {
       throw new Error(
-        `Open Exchange Rates error: ${payload.message ?? payload.description ?? 'Unknown error'}`
+        `Open Exchange Rates error: ${payload.message ?? payload.description ?? 'Unknown error'}`,
       );
     }
 
@@ -84,7 +84,7 @@ export class OpenExchangeRatesProvider implements ExchangeRateProvider {
     }
 
     this.logger.log(
-      `Fetched FX rates from Open Exchange Rates with base ${payload.base.toUpperCase()} at ${new Date(payload.timestamp * 1_000).toISOString()}`
+      `Fetched FX rates from Open Exchange Rates with base ${payload.base.toUpperCase()} at ${new Date(payload.timestamp * 1_000).toISOString()}`,
     );
 
     return {
@@ -95,7 +95,7 @@ export class OpenExchangeRatesProvider implements ExchangeRateProvider {
         Object.entries(payload.rates).map(([currency, rate]) => [
           currency.toUpperCase(),
           String(rate),
-        ])
+        ]),
       ),
     };
   }

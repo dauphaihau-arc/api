@@ -76,7 +76,7 @@ describe('CreateCheckoutQuoteForBuyNowUseCase', () => {
     const useCase = new CreateCheckoutQuoteForBuyNowUseCase(
       cartRepository,
       getMyAddressUseCase,
-      createCheckoutQuoteService
+      createCheckoutQuoteService,
     );
 
     await useCase.execute(actor, {
@@ -92,7 +92,7 @@ describe('CreateCheckoutQuoteForBuyNowUseCase', () => {
         actor: { type: 'user', userId: actor.userId },
         presentmentCurrency: 'USD',
         shopAdjustments: [{ shopId: 'shop-1', promoCodes: ['SAVE10'], note: 'fast' }],
-      })
+      }),
     );
   });
 });

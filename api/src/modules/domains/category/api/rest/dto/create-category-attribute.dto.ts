@@ -6,7 +6,7 @@ import {
   IsBoolean,
   IsOptional,
   IsString,
-  MinLength
+  MinLength,
 } from 'class-validator';
 
 export class CreateCategoryAttributeDto {

@@ -2,11 +2,11 @@ import type { ChatConversationEntity } from '../infra/persistence/entities/chat-
 import type { ChatMessageEntity } from '../infra/persistence/entities/chat-message.entity';
 import type {
   ChatConversationSummary,
-  ChatMessageSummary
+  ChatMessageSummary,
 } from './chat.types';
 
 export function toChatConversationSummary(
-  conversation: ChatConversationEntity
+  conversation: ChatConversationEntity,
 ): ChatConversationSummary {
   return {
     id: conversation.id,

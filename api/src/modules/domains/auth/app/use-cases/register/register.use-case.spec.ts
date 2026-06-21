@@ -22,7 +22,7 @@ describe('RegisterUseCase', () => {
       displayName: 'Member User',
       status: UserStatus.ACTIVE,
       passwordHash: PasswordHash.fromPersisted(
-        '$2b$04$123456789012345678901u8QTs4lJx0pK7ydjXfQ6PS/UPTzQ0zQG'
+        '$2b$04$123456789012345678901u8QTs4lJx0pK7ydjXfQ6PS/UPTzQ0zQG',
       ),
       passwordUpdatedAt: new Date('2026-01-01T00:00:00.000Z'),
       roles: [RoleKey.create('customer')],
@@ -51,7 +51,7 @@ describe('RegisterUseCase', () => {
       hash: jest
         .fn()
         .mockResolvedValue(
-          '$2b$04$123456789012345678901u8QTs4lJx0pK7ydjXfQ6PS/UPTzQ0zQG'
+          '$2b$04$123456789012345678901u8QTs4lJx0pK7ydjXfQ6PS/UPTzQ0zQG',
         ),
       matches: jest.fn(),
     };
@@ -83,7 +83,7 @@ describe('RegisterUseCase', () => {
       userPreferenceRepository,
       passwordHasher,
       issueSessionUseCase,
-      eventEmitter as unknown as EventEmitter2
+      eventEmitter as unknown as EventEmitter2,
     );
 
     const result = await useCase.execute(
@@ -96,7 +96,7 @@ describe('RegisterUseCase', () => {
           language: 'fr',
           currency: 'EUR',
         },
-      }
+      },
     );
 
     expect(result.isOk).toBe(true);
@@ -107,7 +107,7 @@ describe('RegisterUseCase', () => {
         language: 'fr',
         currency: 'EUR',
       } satisfies UserPreferences & { userId: string },
-      expect.anything()
+      expect.anything(),
     );
 
     expect(eventEmitter.emit).toHaveBeenCalledWith(
@@ -116,7 +116,7 @@ describe('RegisterUseCase', () => {
         userId: 'user-1',
         email: 'member@example.com',
         displayName: 'Member User',
-      })
+      }),
     );
   });
 
@@ -135,7 +135,7 @@ describe('RegisterUseCase', () => {
         displayName: 'Member User',
         status: UserStatus.ACTIVE,
         passwordHash: PasswordHash.fromPersisted(
-          '$2b$04$123456789012345678901u8QTs4lJx0pK7ydjXfQ6PS/UPTzQ0zQG'
+          '$2b$04$123456789012345678901u8QTs4lJx0pK7ydjXfQ6PS/UPTzQ0zQG',
         ),
         passwordUpdatedAt: new Date('2026-01-01T00:00:00.000Z'),
         roles: [RoleKey.create('customer')],
@@ -155,7 +155,7 @@ describe('RegisterUseCase', () => {
       hash: jest
         .fn()
         .mockResolvedValue(
-          '$2b$04$123456789012345678901u8QTs4lJx0pK7ydjXfQ6PS/UPTzQ0zQG'
+          '$2b$04$123456789012345678901u8QTs4lJx0pK7ydjXfQ6PS/UPTzQ0zQG',
         ),
       matches: jest.fn(),
     };
@@ -187,7 +187,7 @@ describe('RegisterUseCase', () => {
       userPreferenceRepository,
       passwordHasher,
       issueSessionUseCase,
-      eventEmitter as unknown as EventEmitter2
+      eventEmitter as unknown as EventEmitter2,
     );
 
     const result = await useCase.execute({
@@ -204,7 +204,7 @@ describe('RegisterUseCase', () => {
         language: 'en',
         currency: 'USD',
       },
-      expect.anything()
+      expect.anything(),
     );
   });
 });

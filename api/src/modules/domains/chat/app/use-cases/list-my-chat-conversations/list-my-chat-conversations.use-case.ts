@@ -4,7 +4,7 @@ import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
 import { toChatConversationSummary } from '../../chat-read-model';
 import type {
   ChatConversationListQuery,
-  ChatConversationListResult
+  ChatConversationListResult,
 } from '../../chat.types';
 import { ChatConversationEntity } from '../../../infra/persistence/entities/chat-conversation.entity';
 
@@ -14,7 +14,7 @@ export class ListMyChatConversationsUseCase {
 
   async execute(
     actor: AuthenticatedUser,
-    query: ChatConversationListQuery
+    query: ChatConversationListQuery,
   ): Promise<ChatConversationListResult> {
     const repository = this.entityManager.fork().getRepository(ChatConversationEntity);
 
@@ -28,7 +28,7 @@ export class ListMyChatConversationsUseCase {
         },
         offset: (query.page - 1) * query.limit,
         limit: query.limit,
-      }
+      },
     );
 
     return {

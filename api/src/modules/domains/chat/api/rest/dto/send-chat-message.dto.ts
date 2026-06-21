@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import {
-  IsObject, IsOptional, IsString, MaxLength 
+  IsObject, IsOptional, IsString, MaxLength, 
 } from 'class-validator';
 
 export class SendChatMessageDto {

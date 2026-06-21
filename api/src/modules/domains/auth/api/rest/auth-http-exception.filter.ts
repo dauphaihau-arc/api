@@ -1,7 +1,7 @@
 import { ArgumentsHost, Catch, ExceptionFilter } from '@nestjs/common';
 import {
   isAuthAppError,
-  mapAuthAppErrorToHttpException
+  mapAuthAppErrorToHttpException,
 } from './auth-error-mapper';
 
 @Catch()

@@ -11,7 +11,7 @@ import { validatePublishReadiness } from '../publish-product/publish-product-rea
 export enum BulkMutateShopProductsAction {
   PUBLISH = 'publish',
   DEACTIVATE = 'deactivate',
-  REMOVE = 'remove'
+  REMOVE = 'remove',
 }
 
 export interface BulkMutateShopProductsInput {
@@ -37,19 +37,19 @@ export class BulkMutateShopProductsUseCase {
     private readonly sellerProductQueryRepository: SellerProductQueryRepository,
     private readonly productCommandRepository: ProductCommandRepository,
     private readonly shopRepository: ShopRepository,
-    private readonly auditLogService: AuditLogService
+    private readonly auditLogService: AuditLogService,
   ) {}
 
   async execute(
     actor: AuthenticatedUser,
-    input: BulkMutateShopProductsInput
+    input: BulkMutateShopProductsInput,
   ): Promise<BulkMutateShopProductsResult> {
     const canManageAnyShop = actor.roles.includes('admin');
 
     if (!canManageAnyShop) {
       const ownedShop = await this.shopRepository.findOwnedById(
         input.shopId,
-        actor.userId
+        actor.userId,
       );
 
       if (!ownedShop) {
@@ -102,7 +102,7 @@ export class BulkMutateShopProductsUseCase {
   private async mutateProduct(
     actor: AuthenticatedUser,
     product: ProductDraftSummary,
-    action: BulkMutateShopProductsAction
+    action: BulkMutateShopProductsAction,
   ): Promise<
     | { ok: true }
     | { ok: false; code: string; reason: string }
@@ -185,7 +185,7 @@ export class BulkMutateShopProductsUseCase {
       updatedProduct,
       nextState === ProductState.INACTIVE
         ? 'product.deactivated'
-        : 'product.removed'
+        : 'product.removed',
     );
 
     return { ok: true };
@@ -194,7 +194,7 @@ export class BulkMutateShopProductsUseCase {
   private async recordAudit(
     actor: AuthenticatedUser,
     product: ProductDraftSummary,
-    action: string
+    action: string,
   ): Promise<void> {
     await this.auditLogService.record({
       action,

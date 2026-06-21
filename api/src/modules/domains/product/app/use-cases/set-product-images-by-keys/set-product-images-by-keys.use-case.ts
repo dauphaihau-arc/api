@@ -6,7 +6,7 @@ import { ShopRepository } from '~/modules/domains/shop/app/ports/shop.repository
 import { JobDispatcher } from '~/modules/shared/queue/app/ports/job-dispatcher';
 import {
   ActorCannotCreateProductDraftError,
-  ProductNotFoundError
+  ProductNotFoundError,
 } from '../../errors/product-app.error';
 import { ProductCommandRepository } from '../../ports/product-command.repository';
 import { SellerProductQueryRepository } from '../../ports/seller-product-query.repository';
@@ -29,13 +29,13 @@ export class SetProductImagesByKeysUseCase {
     private readonly sellerProductQueryRepository: SellerProductQueryRepository,
     private readonly productCommandRepository: ProductCommandRepository,
     private readonly shopRepository: ShopRepository,
-    private readonly jobDispatcher: JobDispatcher
+    private readonly jobDispatcher: JobDispatcher,
   ) {}
 
   async execute(
     actor: AuthenticatedUser,
     productId: string,
-    input: SetProductImagesByKeysInput
+    input: SetProductImagesByKeysInput,
   ): Promise<Result<ProductDraftSummary, SetProductImagesByKeysError>> {
     const existingProduct = await this.sellerProductQueryRepository.findById(productId);
 
@@ -48,7 +48,7 @@ export class SetProductImagesByKeysUseCase {
     if (!canManageAnyShop) {
       const ownedShop = await this.shopRepository.findOwnedById(
         existingProduct.shopId,
-        actor.userId
+        actor.userId,
       );
 
       if (!ownedShop) {
@@ -73,16 +73,16 @@ export class SetProductImagesByKeysUseCase {
       { productId },
       {
         deduplicationKey: appJobDeduplicationKey.generateProductImageVariants(productId),
-      }
+      },
     );
     await this.jobDispatcher.dispatch(
       appJobName.projectCatalogProduct,
       { productId: replacedImages.product.id },
       {
         deduplicationKey: appJobDeduplicationKey.projectCatalogProduct(
-          replacedImages.product.id
+          replacedImages.product.id,
         ),
-      }
+      },
     );
 
     return ok(replacedImages.product);

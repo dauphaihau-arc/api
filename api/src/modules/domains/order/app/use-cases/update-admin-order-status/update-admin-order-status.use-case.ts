@@ -13,7 +13,7 @@ import { buildOrderIdentifierWhere } from '../../order-identifier';
 import {
   AdminOrderStatusOverrideNotAllowedError,
   AdminRefundNotAllowedError,
-  OrderNotFoundError
+  OrderNotFoundError,
 } from '../../errors/order-app.error';
 import { ORDER_UPDATED_SSE_EVENT } from '../../events/order-sse.event';
 import type { AdminOrderDetail } from '../../order.types';
@@ -29,17 +29,17 @@ export class UpdateAdminOrderStatusUseCase {
   constructor(
     private readonly entityManager: EntityManager,
     private readonly eventEmitter: EventEmitter2,
-    private readonly orderEventsService: OrderEventsService
+    private readonly orderEventsService: OrderEventsService,
   ) {}
 
   async execute(
     orderId: string,
-    input: UpdateAdminOrderStatusDto
+    input: UpdateAdminOrderStatusDto,
   ): Promise<AdminOrderDetail> {
     const entityManager = this.entityManager.fork();
     const order = await entityManager.getRepository(OrderEntity).findOne(
       buildOrderIdentifierWhere(orderId),
-      { populate: ['shop', 'user'] }
+      { populate: ['shop', 'user'] },
     );
 
     if (!order) {
@@ -99,7 +99,7 @@ export class UpdateAdminOrderStatusUseCase {
 
     const items = await entityManager.getRepository(OrderItemEntity).find(
       { order: order.id },
-      { populate: ['product', 'product.shop', 'inventory'] }
+      { populate: ['product', 'product.shop', 'inventory'] },
     );
 
     return toAdminOrderDetail(order, items);

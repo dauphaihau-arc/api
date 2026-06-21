@@ -7,26 +7,26 @@ import type {
   ListMyAddressesQuery,
   ListMyAddressesRepositoryResult,
   UpdateMyAddressInput,
-  UserAddressSummary
+  UserAddressSummary,
 } from '../app/user-address.types';
 
 @Injectable()
 export class DelegatingUserAddressRepository implements UserAddressRepository {
   constructor(
     private readonly commandRepository: UserAddressCommandRepository,
-    private readonly queryRepository: UserAddressQueryRepository
+    private readonly queryRepository: UserAddressQueryRepository,
   ) {}
 
   findAllOwnedByUserId(
     userId: string,
-    query: ListMyAddressesQuery
+    query: ListMyAddressesQuery,
   ): Promise<ListMyAddressesRepositoryResult> {
     return this.queryRepository.findAllOwnedByUserId(userId, query);
   }
 
   findOwnedById(
     userId: string,
-    addressId: string
+    addressId: string,
   ): Promise<UserAddressSummary | null> {
     return this.queryRepository.findOwnedById(userId, addressId);
   }
@@ -37,7 +37,7 @@ export class DelegatingUserAddressRepository implements UserAddressRepository {
 
   clearPrimaryForUser(
     userId: string,
-    excludeAddressId?: string
+    excludeAddressId?: string,
   ): Promise<void> {
     return this.commandRepository.clearPrimaryForUser(userId, excludeAddressId);
   }
@@ -49,7 +49,7 @@ export class DelegatingUserAddressRepository implements UserAddressRepository {
   updateOwnedById(
     userId: string,
     addressId: string,
-    input: UpdateMyAddressInput
+    input: UpdateMyAddressInput,
   ): Promise<UserAddressSummary | null> {
     return this.commandRepository.updateOwnedById(userId, addressId, input);
   }

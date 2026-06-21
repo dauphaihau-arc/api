@@ -37,7 +37,7 @@ export class HealthService {
     private readonly catalogSearchDocumentRepository: CatalogSearchDocumentRepository,
     @Inject(CATALOG_CONFIG) private readonly catalogConfig: CatalogConfig,
     @Inject(QUEUE_CONFIG) private readonly queueConfig: QueueConfig,
-    @Inject(BULLMQ_CONNECTION) private readonly queueConnection: Redis | null
+    @Inject(BULLMQ_CONNECTION) private readonly queueConnection: Redis | null,
   ) {}
 
   async check(): Promise<HealthCheckResult> {

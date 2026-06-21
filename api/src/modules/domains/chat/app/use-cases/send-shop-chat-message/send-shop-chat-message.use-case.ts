@@ -8,7 +8,7 @@ import type { ChatMessageSummary } from '../../chat.types';
 import { ChatConversationNotFoundError } from '../../errors/chat-app.error';
 import {
   CHAT_MESSAGE_CREATED_EVENT,
-  type ChatMessageCreatedEventPayload
+  type ChatMessageCreatedEventPayload,
 } from '../../events/chat-message-created.event';
 import { ChatConversationEntity } from '../../../infra/persistence/entities/chat-conversation.entity';
 import { ChatMessageEntity } from '../../../infra/persistence/entities/chat-message.entity';
@@ -17,7 +17,7 @@ import { ChatMessageEntity } from '../../../infra/persistence/entities/chat-mess
 export class SendShopChatMessageUseCase {
   constructor(
     private readonly entityManager: EntityManager,
-    private readonly eventEmitter: EventEmitter2
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async execute(
@@ -27,13 +27,13 @@ export class SendShopChatMessageUseCase {
     input: {
       body: string;
       metadata?: Record<string, unknown>;
-    }
+    },
   ): Promise<ChatMessageSummary> {
     const entityManager = this.entityManager.fork();
 
     const conversation = await entityManager.getRepository(ChatConversationEntity).findOne(
       { id: conversationId, shop: shopId },
-      { populate: ['buyerUser', 'shop.ownerUser', 'product'] }
+      { populate: ['buyerUser', 'shop.ownerUser', 'product'] },
     );
 
     if (!conversation) {
@@ -67,7 +67,7 @@ export class SendShopChatMessageUseCase {
         shop_id: conversation.shop.id,
         occurred_at: message.createdAt.toISOString(),
         metadata: input.metadata,
-      } satisfies ChatMessageCreatedEventPayload
+      } satisfies ChatMessageCreatedEventPayload,
     );
 
     return toChatMessageSummary(message);

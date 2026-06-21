@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import {
   STORAGE_CONFIG,
-  buildStorageConfig
+  buildStorageConfig,
 } from '~/config/storage.config';
 import { StorageService } from './app/ports/storage.service';
 import { StorageBootstrapService } from './storage-bootstrap.service';

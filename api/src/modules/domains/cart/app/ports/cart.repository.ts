@@ -1,7 +1,7 @@
 import type {
   CartActor,
   CartInventoryCandidate,
-  CartSnapshot
+  CartSnapshot,
 } from '../cart.types';
 
 export interface UpdateOwnedCartItemInput {

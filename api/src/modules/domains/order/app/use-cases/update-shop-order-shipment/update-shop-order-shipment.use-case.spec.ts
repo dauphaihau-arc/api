@@ -117,7 +117,7 @@ describe('UpdateShopOrderShipmentUseCase', () => {
         entityManager,
         notifyUserUseCase as never,
         eventEmitter as unknown as EventEmitter2,
-        orderEventsService as never
+        orderEventsService as never,
       ),
     };
   }
@@ -167,7 +167,7 @@ describe('UpdateShopOrderShipmentUseCase', () => {
     await expect(
       useCase.execute('shop-1', 'order-1', {
         shippingStatus: OrderShippingStatus.SHIPPED,
-      })
+      }),
     ).rejects.toThrow(ShipmentUpdateNotAllowedError);
   });
 });

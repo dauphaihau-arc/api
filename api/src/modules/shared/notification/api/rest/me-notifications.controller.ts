@@ -10,20 +10,20 @@ import {
   Post,
   Query,
   Req,
-  UseGuards
+  UseGuards,
 } from '@nestjs/common';
 import {
   ApiCookieAuth,
   ApiOkResponse,
   ApiOperation,
   ApiParam,
-  ApiTags
+  ApiTags,
 } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { CurrentUser } from '~/common/decorators/current-user.decorator';
 import {
   WEB_PUSH_CONFIG,
-  type WebPushConfig
+  type WebPushConfig,
 } from '~/config/web-push.config';
 import { JwtAuthGuard } from '~/modules/domains/auth/api/guard/jwt-auth.guard';
 import { PermissionsGuard } from '~/modules/domains/auth/api/guard/permissions.guard';
@@ -40,7 +40,7 @@ import { RegisterWebPushSubscriptionDto } from './dto/register-web-push-subscrip
 import { UnregisterWebPushSubscriptionDto } from './dto/unregister-web-push-subscription.dto';
 import {
   toNotificationListResponse,
-  toNotificationResponse
+  toNotificationResponse,
 } from './notification.response';
 
 @Controller('me/notifications')
@@ -56,7 +56,7 @@ export class MeNotificationsController {
     private readonly registerWebPushSubscriptionUseCase: RegisterWebPushSubscriptionUseCase,
     private readonly unregisterWebPushSubscriptionUseCase: UnregisterWebPushSubscriptionUseCase,
     @Inject(WEB_PUSH_CONFIG)
-    private readonly webPushConfig: WebPushConfig
+    private readonly webPushConfig: WebPushConfig,
   ) {}
 
   @Get()
@@ -68,7 +68,7 @@ export class MeNotificationsController {
   })
   async list(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Query() query: ListMyNotificationsQueryDto
+    @Query() query: ListMyNotificationsQueryDto,
   ) {
     return toNotificationListResponse(
       await this.listMyNotificationsUseCase.execute(
@@ -76,8 +76,8 @@ export class MeNotificationsController {
         buildListMyNotificationsQuery({
           page: query.page,
           limit: query.limit,
-        })
-      )
+        }),
+      ),
     );
   }
 
@@ -91,7 +91,7 @@ export class MeNotificationsController {
   async unreadCount(@CurrentUser() currentUser: AuthenticatedUser) {
     return {
       unread_count: await this.getMyNotificationUnreadCountUseCase.execute(
-        currentUser
+        currentUser,
       ),
     };
   }
@@ -106,11 +106,11 @@ export class MeNotificationsController {
   })
   async markAsRead(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('id') id: string
+    @Param('id') id: string,
   ) {
     return {
       notification: toNotificationResponse(
-        await this.markMyNotificationAsReadUseCase.execute(currentUser, id)
+        await this.markMyNotificationAsReadUseCase.execute(currentUser, id),
       ),
     };
   }
@@ -124,7 +124,7 @@ export class MeNotificationsController {
   })
   async markAllAsRead(@CurrentUser() currentUser: AuthenticatedUser) {
     const result = await this.markAllMyNotificationsAsReadUseCase.execute(
-      currentUser
+      currentUser,
     );
 
     return {
@@ -156,7 +156,7 @@ export class MeNotificationsController {
   async registerWebPushSubscription(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() body: RegisterWebPushSubscriptionDto,
-    @Req() request: Request
+    @Req() request: Request,
   ) {
     const subscription = await this.registerWebPushSubscriptionUseCase.execute(
       currentUser,
@@ -165,7 +165,7 @@ export class MeNotificationsController {
         p256dh: body.keys.p256dh,
         auth: body.keys.auth,
         userAgent: request.get('user-agent') ?? undefined,
-      }
+      },
     );
 
     return {
@@ -188,12 +188,12 @@ export class MeNotificationsController {
   })
   async unregisterWebPushSubscription(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Body() body: UnregisterWebPushSubscriptionDto
+    @Body() body: UnregisterWebPushSubscriptionDto,
   ) {
     return {
       removed: await this.unregisterWebPushSubscriptionUseCase.execute(
         currentUser,
-        body.endpoint
+        body.endpoint,
       ),
     };
   }

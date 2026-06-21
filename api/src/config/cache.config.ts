@@ -10,7 +10,7 @@ export interface CacheConfig {
 }
 
 export function buildCacheConfig(
-  configService: Pick<ConfigService, 'get'>
+  configService: Pick<ConfigService, 'get'>,
 ): CacheConfig {
   const explicitDriver = configService.get<'memory' | 'redis'>('CACHE_DRIVER');
 
@@ -21,13 +21,13 @@ export function buildCacheConfig(
     redisUrl: configService.get<string>('REDIS_URL', 'redis://127.0.0.1:6379'),
     ttlMilliseconds: parseDurationToMilliseconds(
       configService.get<string>('CACHE_TTL', '60s'),
-      60_000
+      60_000,
     ),
   };
 }
 
 export function buildCacheModuleOptions(
-  cacheConfig: CacheConfig
+  cacheConfig: CacheConfig,
 ): CacheModuleOptions {
   const baseOptions: CacheModuleOptions = {
     isGlobal: true,

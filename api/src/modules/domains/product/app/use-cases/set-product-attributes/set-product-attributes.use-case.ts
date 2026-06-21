@@ -7,7 +7,7 @@ import { ShopRepository } from '~/modules/domains/shop/app/ports/shop.repository
 import {
   ActorCannotCreateProductDraftError,
   InvalidProductAttributeSelectionError,
-  ProductNotFoundError
+  ProductNotFoundError,
 } from '../../errors/product-app.error';
 import { ProductCommandRepository } from '../../ports/product-command.repository';
 import { SellerProductQueryRepository } from '../../ports/seller-product-query.repository';
@@ -32,13 +32,13 @@ export class SetProductAttributesUseCase {
     private readonly sellerProductQueryRepository: SellerProductQueryRepository,
     private readonly productCommandRepository: ProductCommandRepository,
     private readonly shopRepository: ShopRepository,
-    private readonly categoryRepository: CategoryRepository
+    private readonly categoryRepository: CategoryRepository,
   ) {}
 
   async execute(
     actor: AuthenticatedUser,
     productId: string,
-    input: SetProductAttributesInput
+    input: SetProductAttributesInput,
   ): Promise<Result<ProductDraftSummary, SetProductAttributesError>> {
     const existingProduct = await this.sellerProductQueryRepository.findById(productId);
 
@@ -51,7 +51,7 @@ export class SetProductAttributesUseCase {
     if (!canManageAnyShop) {
       const ownedShop = await this.shopRepository.findOwnedById(
         existingProduct.shopId,
-        actor.userId
+        actor.userId,
       );
 
       if (!ownedShop) {
@@ -62,26 +62,26 @@ export class SetProductAttributesUseCase {
     if (!existingProduct.categoryId) {
       return err(
         new InvalidProductAttributeSelectionError(
-          'Product category is required before setting attribute values'
-        )
+          'Product category is required before setting attribute values',
+        ),
       );
     }
 
     const category = await this.categoryRepository.findById(
-      existingProduct.categoryId
+      existingProduct.categoryId,
     );
 
     if (!category) {
       return err(
         new InvalidProductAttributeSelectionError(
-          'Product category metadata is missing'
-        )
+          'Product category metadata is missing',
+        ),
       );
     }
 
     const validationError = validateAttributePayload(
       category.attributes,
-      input.attributes
+      input.attributes,
     );
 
     if (validationError) {
@@ -107,10 +107,10 @@ export class SetProductAttributesUseCase {
 
 function validateAttributePayload(
   categoryAttributes: CategoryAttributeSummary[],
-  selectedAttributes: SetProductAttributesInput['attributes']
+  selectedAttributes: SetProductAttributesInput['attributes'],
 ): InvalidProductAttributeSelectionError | null {
   const attributeById = new Map(
-    categoryAttributes.map((attribute) => [attribute.id, attribute])
+    categoryAttributes.map((attribute) => [attribute.id, attribute]),
   );
   const providedAttributeIds = new Set<string>();
 
@@ -119,13 +119,13 @@ function validateAttributePayload(
 
     if (!attribute) {
       return new InvalidProductAttributeSelectionError(
-        `Unknown category attribute "${selectedAttribute.categoryAttributeId}" for this product category`
+        `Unknown category attribute "${selectedAttribute.categoryAttributeId}" for this product category`,
       );
     }
 
     if (providedAttributeIds.has(selectedAttribute.categoryAttributeId)) {
       return new InvalidProductAttributeSelectionError(
-        `Duplicate category attribute "${selectedAttribute.categoryAttributeId}" is not allowed`
+        `Duplicate category attribute "${selectedAttribute.categoryAttributeId}" is not allowed`,
       );
     }
 
@@ -134,23 +134,23 @@ function validateAttributePayload(
     if (attribute.inputType === 'select') {
       if (!selectedAttribute.selectedOptionId) {
         return new InvalidProductAttributeSelectionError(
-          `Attribute "${attribute.name}" requires a selected option`
+          `Attribute "${attribute.name}" requires a selected option`,
         );
       }
 
       if (selectedAttribute.selectedText?.trim()) {
         return new InvalidProductAttributeSelectionError(
-          `Attribute "${attribute.name}" does not accept free-form text`
+          `Attribute "${attribute.name}" does not accept free-form text`,
         );
       }
 
       const matchingOption = attribute.options.find(
-        (option) => option.id === selectedAttribute.selectedOptionId
+        (option) => option.id === selectedAttribute.selectedOptionId,
       );
 
       if (!matchingOption) {
         return new InvalidProductAttributeSelectionError(
-          `Selected option "${selectedAttribute.selectedOptionId}" is not valid for attribute "${attribute.name}"`
+          `Selected option "${selectedAttribute.selectedOptionId}" is not valid for attribute "${attribute.name}"`,
         );
       }
 
@@ -160,13 +160,13 @@ function validateAttributePayload(
     if (attribute.inputType === 'text') {
       if (selectedAttribute.selectedOptionId) {
         return new InvalidProductAttributeSelectionError(
-          `Attribute "${attribute.name}" does not accept option selections`
+          `Attribute "${attribute.name}" does not accept option selections`,
         );
       }
 
       if (!selectedAttribute.selectedText?.trim()) {
         return new InvalidProductAttributeSelectionError(
-          `Attribute "${attribute.name}" requires text input`
+          `Attribute "${attribute.name}" requires text input`,
         );
       }
 
@@ -174,17 +174,17 @@ function validateAttributePayload(
     }
 
     return new InvalidProductAttributeSelectionError(
-      `Attribute "${attribute.name}" uses unsupported input type "${attribute.inputType}"`
+      `Attribute "${attribute.name}" uses unsupported input type "${attribute.inputType}"`,
     );
   }
 
   const missingRequiredAttribute = categoryAttributes.find(
-    (attribute) => attribute.isRequired && !providedAttributeIds.has(attribute.id)
+    (attribute) => attribute.isRequired && !providedAttributeIds.has(attribute.id),
   );
 
   if (missingRequiredAttribute) {
     return new InvalidProductAttributeSelectionError(
-      `Required attribute "${missingRequiredAttribute.name}" must be provided`
+      `Required attribute "${missingRequiredAttribute.name}" must be provided`,
     );
   }
 

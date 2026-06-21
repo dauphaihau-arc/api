@@ -9,7 +9,7 @@ import {
   IsUUID,
   MaxLength,
   MinLength,
-  ValidateNested
+  ValidateNested,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { ProductVariantType } from '~/modules/domains/product/domain/enums/product-variant-type.enum';

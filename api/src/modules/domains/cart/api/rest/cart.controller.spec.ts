@@ -47,7 +47,7 @@ describe('CartController', () => {
       mergeGuestCartUseCase,
       addCartItemUseCase,
       updateCartItemUseCase,
-      removeCartItemUseCase
+      removeCartItemUseCase,
     );
 
     return {
@@ -105,7 +105,7 @@ describe('CartController', () => {
       {
         inventoryId: 'inventory-1',
         quantity: 2,
-      } as never
+      } as never,
     );
 
     expect(addCartItemUseCase.execute).toHaveBeenCalledWith(
@@ -114,7 +114,7 @@ describe('CartController', () => {
         inventoryId: 'inventory-1',
         quantity: 2,
         isTemp: undefined,
-      }
+      },
     );
   });
 
@@ -137,7 +137,7 @@ describe('CartController', () => {
 
     const result = await controller.merge(
       { user: { userId: 'user-1' } } as never,
-      response
+      response,
     );
 
     expect(mergeGuestCartUseCase.execute).toHaveBeenCalledWith('guest-session-1', 'user-1');

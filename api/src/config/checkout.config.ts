@@ -2,7 +2,7 @@ import type { ConfigService } from '@nestjs/config';
 import { toMinorUnits } from '~/common/utils/money';
 import {
   MARKETPLACE_CURRENCIES,
-  type MarketplaceCurrency
+  type MarketplaceCurrency,
 } from './marketplace.config';
 
 const DEFAULT_MAX_ORDER_TOTALS_BY_CURRENCY_MAJOR: Record<MarketplaceCurrency, number> = {
@@ -46,10 +46,10 @@ export interface CheckoutConfig {
 export const CHECKOUT_CONFIG = Symbol('CHECKOUT_CONFIG');
 
 export function buildCheckoutConfig(
-  configService: Pick<ConfigService, 'get'>
+  configService: Pick<ConfigService, 'get'>,
 ): CheckoutConfig {
   const maxOrderTotalOverrides = parseCurrencyAmountMap(
-    configService.get<string>('CHECKOUT_MAX_ORDER_TOTALS_BY_CURRENCY')
+    configService.get<string>('CHECKOUT_MAX_ORDER_TOTALS_BY_CURRENCY'),
   );
 
   const maxOrderTotalByCurrencyMinor = Object.fromEntries(
@@ -58,9 +58,9 @@ export function buildCheckoutConfig(
       toMinorUnits(
         maxOrderTotalOverrides[currency] ??
           DEFAULT_MAX_ORDER_TOTALS_BY_CURRENCY_MAJOR[currency],
-        currency
+        currency,
       ),
-    ])
+    ]),
   ) as Record<MarketplaceCurrency, number>;
 
   return {
@@ -70,7 +70,7 @@ export function buildCheckoutConfig(
 
 export function getMaxOrderTotalMinor(
   checkoutConfig: CheckoutConfig,
-  currency: string
+  currency: string,
 ): number | undefined {
   return checkoutConfig.maxOrderTotalByCurrencyMinor[
     currency as MarketplaceCurrency
@@ -78,7 +78,7 @@ export function getMaxOrderTotalMinor(
 }
 
 function parseCurrencyAmountMap(
-  value: string | undefined
+  value: string | undefined,
 ): Partial<Record<MarketplaceCurrency, number>> {
   if (!value) {
     return {};
@@ -92,8 +92,8 @@ function parseCurrencyAmountMap(
         (entry): entry is [MarketplaceCurrency, number] =>
           MARKETPLACE_CURRENCIES.includes(entry[0] as MarketplaceCurrency)
           && typeof entry[1] === 'number'
-          && Number.isFinite(entry[1])
-      )
+          && Number.isFinite(entry[1]),
+      ),
     ) as Partial<Record<MarketplaceCurrency, number>>;
   }
   catch {

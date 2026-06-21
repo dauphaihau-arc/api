@@ -12,7 +12,7 @@ import { SellerProductQueryRepository } from '../../ports/seller-product-query.r
 import type { ProductDraftSummary } from '../../product.types';
 import {
   ActorCannotCreateProductDraftError,
-  ProductNotFoundError
+  ProductNotFoundError,
 } from '../../errors/product-app.error';
 
 export interface UploadedProductImageFile {
@@ -36,13 +36,13 @@ export class SetProductImagesUseCase {
     private readonly productCommandRepository: ProductCommandRepository,
     private readonly shopRepository: ShopRepository,
     private readonly storageService: StorageService,
-    private readonly jobDispatcher: JobDispatcher
+    private readonly jobDispatcher: JobDispatcher,
   ) {}
 
   async execute(
     actor: AuthenticatedUser,
     productId: string,
-    input: SetProductImagesInput
+    input: SetProductImagesInput,
   ): Promise<Result<ProductDraftSummary, SetProductImagesError>> {
     const existingProduct = await this.sellerProductQueryRepository.findById(productId);
 
@@ -55,7 +55,7 @@ export class SetProductImagesUseCase {
     if (!canManageAnyShop) {
       const ownedShop = await this.shopRepository.findOwnedById(
         existingProduct.shopId,
-        actor.userId
+        actor.userId,
       );
 
       if (!ownedShop) {
@@ -73,7 +73,7 @@ export class SetProductImagesUseCase {
             key: this.buildImageKey(
               existingProduct.shopPublicId ?? existingProduct.shopId,
               existingProduct.publicId ?? existingProduct.id,
-              file.mimetype
+              file.mimetype,
             ),
             body: file.buffer,
             contentType: file.mimetype,
@@ -84,7 +84,7 @@ export class SetProductImagesUseCase {
             storageKey: storedObject.key,
             rank: index + 1,
           };
-        })
+        }),
       );
 
       const replacedImages = await this.productCommandRepository.replaceImages({
@@ -104,16 +104,16 @@ export class SetProductImagesUseCase {
         { productId },
         {
           deduplicationKey: appJobDeduplicationKey.generateProductImageVariants(productId),
-        }
+        },
       );
       await this.jobDispatcher.dispatch(
         appJobName.projectCatalogProduct,
         { productId: replacedImages.product.id },
         {
           deduplicationKey: appJobDeduplicationKey.projectCatalogProduct(
-            replacedImages.product.id
+            replacedImages.product.id,
           ),
-        }
+        },
       );
       await this.deleteObjects(replacedImages.removedStorageKeys);
 
@@ -130,7 +130,7 @@ export class SetProductImagesUseCase {
   private buildImageKey(
     shopId: string,
     productId: string,
-    contentType: string
+    contentType: string,
   ): string {
     const imageId = createPublicId();
 

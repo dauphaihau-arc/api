@@ -10,7 +10,7 @@ import {
   Patch,
   Post,
   Query,
-  UseGuards
+  UseGuards,
 } from '@nestjs/common';
 import {
   ApiCookieAuth,
@@ -19,7 +19,7 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiParam,
-  ApiTags
+  ApiTags,
 } from '@nestjs/swagger';
 import { CurrentUser } from '~/common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '~/modules/domains/auth/api/guard/jwt-auth.guard';
@@ -27,7 +27,7 @@ import { PermissionsGuard } from '~/modules/domains/auth/api/guard/permissions.g
 import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
 import {
   buildListMyAddressesQuery,
-  DEFAULT_USER_ADDRESS_LIST_SORT
+  DEFAULT_USER_ADDRESS_LIST_SORT,
 } from '../../app/user-address.types';
 import { CreateMyAddressUseCase } from '../../app/use-cases/create-my-address/create-my-address.use-case';
 import { DeleteMyAddressUseCase } from '../../app/use-cases/delete-my-address/delete-my-address.use-case';
@@ -39,7 +39,7 @@ import { ListMyAddressesQueryDto } from './dto/list-my-addresses.query.dto';
 import { UpdateMyAddressDto } from './dto/update-my-address.dto';
 import {
   toMyAddressListResponse,
-  toMyAddressResponse
+  toMyAddressResponse,
 } from './me-address.response';
 
 @Controller('me/addresses')
@@ -52,7 +52,7 @@ export class MeAddressesController {
     private readonly createMyAddressUseCase: CreateMyAddressUseCase,
     private readonly getMyAddressUseCase: GetMyAddressUseCase,
     private readonly updateMyAddressUseCase: UpdateMyAddressUseCase,
-    private readonly deleteMyAddressUseCase: DeleteMyAddressUseCase
+    private readonly deleteMyAddressUseCase: DeleteMyAddressUseCase,
   ) {}
 
   @Get()
@@ -64,7 +64,7 @@ export class MeAddressesController {
   })
   async list(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Query() query: ListMyAddressesQueryDto
+    @Query() query: ListMyAddressesQueryDto,
   ) {
     const result = await this.listMyAddressesUseCase.execute(
       currentUser,
@@ -72,7 +72,7 @@ export class MeAddressesController {
         page: query.page,
         limit: query.limit,
         sort: DEFAULT_USER_ADDRESS_LIST_SORT,
-      })
+      }),
     );
 
     return toMyAddressListResponse(result);
@@ -87,7 +87,7 @@ export class MeAddressesController {
   })
   async create(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Body() body: CreateMyAddressDto
+    @Body() body: CreateMyAddressDto,
   ) {
     const address = await this.createMyAddressUseCase.execute(currentUser, {
       fullName: body.full_name,
@@ -115,7 +115,7 @@ export class MeAddressesController {
   @ApiNotFoundResponse({ description: 'Address not found.' })
   async detail(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('id') id: string
+    @Param('id') id: string,
   ) {
     const address = await this.getMyAddressUseCase.execute(currentUser, id);
 
@@ -137,7 +137,7 @@ export class MeAddressesController {
   async update(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('id') id: string,
-    @Body() body: UpdateMyAddressDto
+    @Body() body: UpdateMyAddressDto,
   ) {
     const address = await this.updateMyAddressUseCase.execute(currentUser, id, {
       fullName: body.full_name,
@@ -162,7 +162,7 @@ export class MeAddressesController {
   @ApiNoContentResponse({ description: 'Address deleted.' })
   async delete(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('id') id: string
+    @Param('id') id: string,
   ): Promise<void> {
     await this.deleteMyAddressUseCase.execute(currentUser, id);
   }

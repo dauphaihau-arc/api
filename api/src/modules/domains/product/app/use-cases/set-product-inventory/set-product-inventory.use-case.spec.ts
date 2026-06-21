@@ -101,7 +101,7 @@ describe('SetProductInventoryUseCase', () => {
       productRepository,
       shopRepository,
       auditLogService,
-      eventEmitter as unknown as EventEmitter2
+      eventEmitter as unknown as EventEmitter2,
     );
 
     const result = await useCase.execute(actor, variantProduct.id, {
@@ -130,7 +130,7 @@ describe('SetProductInventoryUseCase', () => {
       expect.objectContaining({
         action: 'product.inventory.updated',
         entityId: variantProduct.id,
-      })
+      }),
     );
     expect(eventEmitter.emit).toHaveBeenCalledWith(
       PRODUCT_INVENTORY_UPDATED_SSE_EVENT,
@@ -138,7 +138,7 @@ describe('SetProductInventoryUseCase', () => {
         productId: variantProduct.id,
         inventoryId: 'inventory-1',
         stock: 10,
-      })
+      }),
     );
   });
 
@@ -152,7 +152,7 @@ describe('SetProductInventoryUseCase', () => {
       productRepository,
       shopRepository,
       auditLogService,
-      eventEmitter as unknown as EventEmitter2
+      eventEmitter as unknown as EventEmitter2,
     );
 
     const result = await useCase.execute(actor, variantProduct.id, {

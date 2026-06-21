@@ -13,14 +13,14 @@ export class SendSellerOrderUpdateEmailJob {
 
   constructor(
     private readonly entityManager: EntityManager,
-    private readonly mailSender: MailSender
+    private readonly mailSender: MailSender,
   ) {}
 
   async run(payload: SendSellerOrderUpdateEmailPayload): Promise<void> {
     const entityManager = this.entityManager.fork();
     const order = await entityManager.getRepository(OrderEntity).findOne(
       { id: payload.orderId },
-      { populate: ['shop', 'shop.ownerUser'] }
+      { populate: ['shop', 'shop.ownerUser'] },
     );
 
     const sellerEmail = order?.shop.ownerUser?.email;
@@ -47,7 +47,7 @@ export class SendSellerOrderUpdateEmailJob {
     });
 
     this.logger.log(
-      `Processed seller ${payload.eventType} email for order ${order.id}`
+      `Processed seller ${payload.eventType} email for order ${order.id}`,
     );
   }
 }

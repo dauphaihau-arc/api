@@ -28,7 +28,7 @@ export class ListShopOrdersUseCase {
 
   async execute(
     shopId: string,
-    query: ListShopOrdersQueryDto
+    query: ListShopOrdersQueryDto,
   ): Promise<ShopOrderListResult> {
     const entityManager = this.entityManager.fork();
     const repository = entityManager.getRepository(OrderEntity);
@@ -45,18 +45,18 @@ export class ListShopOrdersUseCase {
           orderBy: { createdAt: 'desc' },
           offset: (query.page - 1) * query.limit,
           limit: query.limit,
-        }
+        },
       ),
       repository.count(baseWhere),
       ...SELLER_STATUS_COUNTS.map(status =>
-        repository.count(this.mergeWhere(baseWhere, { status }))
+        repository.count(this.mergeWhere(baseWhere, { status })),
       ),
     ]).then(([listResult, totalBaseCount, ...counts]) => [listResult[0], listResult[1], totalBaseCount, ...counts] as const);
 
     const orderItems = orders.length > 0
       ? await entityManager.getRepository(OrderItemEntity).find(
         { order: { $in: orders.map((order) => order.id) } },
-        { populate: ['product', 'product.shop', 'inventory'] }
+        { populate: ['product', 'product.shop', 'inventory'] },
       )
       : [];
     const itemsByOrderId = new Map<string, OrderItemEntity[]>();
@@ -84,7 +84,7 @@ export class ListShopOrdersUseCase {
 
     return {
       results: orders.map((order) =>
-        toShopOrderSummary(order, itemsByOrderId.get(order.id) ?? [])
+        toShopOrderSummary(order, itemsByOrderId.get(order.id) ?? []),
       ),
       page: query.page,
       limit: query.limit,
@@ -96,7 +96,7 @@ export class ListShopOrdersUseCase {
 
   private buildWhere(
     shopId: string,
-    query: ListShopOrdersQueryDto
+    query: ListShopOrdersQueryDto,
   ): FilterQuery<OrderEntity> {
     const where: FilterQuery<OrderEntity> = { shop: shopId };
     const andConditions: FilterQuery<OrderEntity>[] = [];
@@ -174,7 +174,7 @@ export class ListShopOrdersUseCase {
 
   private mergeWhere(
     where: FilterQuery<OrderEntity>,
-    extra: Record<string, unknown>
+    extra: Record<string, unknown>,
   ): FilterQuery<OrderEntity> {
     return {
       ...(where as Record<string, unknown>),

@@ -69,7 +69,7 @@ describe('ListShopCouponsUseCase', () => {
         activeTo: new Date('2026-06-30T23:59:59.999Z'),
         page: 2,
         limit: 10,
-      }
+      },
     );
 
     expect(couponRepository.findAndCount).toHaveBeenCalledWith(
@@ -84,7 +84,7 @@ describe('ListShopCouponsUseCase', () => {
         orderBy: { createdAt: 'desc' },
         offset: 10,
         limit: 10,
-      }
+      },
     );
     expect(couponRepository.count).toHaveBeenNthCalledWith(1, {
       shop: 'shop-1',
@@ -120,7 +120,7 @@ describe('ListShopCouponsUseCase', () => {
     await expect(useCase.execute(
       buildActor('user-1'),
       'shop-1',
-      { page: 1, limit: 20 }
+      { page: 1, limit: 20 },
     )).rejects.toBeInstanceOf(NotFoundException);
   });
 
@@ -130,7 +130,7 @@ describe('ListShopCouponsUseCase', () => {
     await expect(useCase.execute(
       buildActor('user-2'),
       'shop-1',
-      { page: 1, limit: 20 }
+      { page: 1, limit: 20 },
     )).rejects.toBeInstanceOf(ForbiddenException);
   });
 });

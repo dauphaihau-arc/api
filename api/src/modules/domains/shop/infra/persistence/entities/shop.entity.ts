@@ -5,7 +5,7 @@ import {
   ManyToOne,
   OneToMany,
   Property,
-  Unique
+  Unique,
 } from '@mikro-orm/core';
 import { AbstractBaseEntity } from '~/common/database/abstract-base.entity';
 import { createPublicId } from '~/common/ids/public-id';

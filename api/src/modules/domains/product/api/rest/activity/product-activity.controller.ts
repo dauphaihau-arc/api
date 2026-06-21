@@ -1,8 +1,8 @@
 import {
-  Controller, Header, Param, Post, Req, Res, UseGuards 
+  Controller, Header, Param, Post, Req, Res, UseGuards, 
 } from '@nestjs/common';
 import {
-  ApiOkResponse, ApiOperation, ApiParam, ApiTags 
+  ApiOkResponse, ApiOperation, ApiParam, ApiTags, 
 } from '@nestjs/swagger';
 import { OptionalJwtAuthGuard } from '~/modules/domains/auth/api/guard/optional-jwt-auth.guard';
 import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
@@ -18,7 +18,7 @@ type ProductRequest = Request & { user?: AuthenticatedUser | null };
 export class ProductActivityController {
   constructor(
     private readonly publicProductViewHistoryService: PublicProductViewHistoryService,
-    private readonly productActivitySessionService: ProductActivitySessionService
+    private readonly productActivitySessionService: ProductActivitySessionService,
   ) {}
 
   @Post('by-slug/:shop_slug/:product_slug/views')
@@ -34,7 +34,7 @@ export class ProductActivityController {
     @Req() request: ProductRequest,
     @Res({ passthrough: true }) response: Response,
     @Param('shop_slug') shopSlug: string,
-    @Param('product_slug') productSlug: string
+    @Param('product_slug') productSlug: string,
   ): Promise<{ ok: true }> {
     await this.publicProductViewHistoryService.recordView({
       shopSlug,

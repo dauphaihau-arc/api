@@ -41,7 +41,7 @@ describe('ShopProductsController', () => {
     setProductPricingUseCase as never,
     setProductShippingUseCase as never,
     updateProductDetailsUseCase as never,
-    bulkMutateShopProductsUseCase as never
+    bulkMutateShopProductsUseCase as never,
   );
 
   beforeEach(() => {
@@ -260,7 +260,7 @@ describe('ShopProductsController', () => {
         title: 'Handmade Bag',
         description: 'A detail page payload.',
         whoMade: 'i_did',
-      } as never
+      } as never,
     )).resolves.toMatchObject({
       id: 'product-1',
       public_id: 'public-product-1',
@@ -340,7 +340,7 @@ describe('ShopProductsController', () => {
         sessionId: 'session-1',
         roles: [],
         permissions: [],
-      } as never
+      } as never,
     )).resolves.toMatchObject({
       items: [
         {

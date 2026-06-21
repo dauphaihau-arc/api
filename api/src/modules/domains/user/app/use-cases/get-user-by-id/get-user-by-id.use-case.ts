@@ -9,7 +9,7 @@ import { buildUserByIdCacheKey } from '../../user-cache.keys';
 export class GetUserByIdUseCase {
   constructor(
     private readonly userRepository: UserRepository,
-    @Inject(CACHE_MANAGER) private readonly cacheManager: Cache
+    @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
   ) {}
 
   async execute(id: string): Promise<UserSummary | null> {

@@ -9,7 +9,7 @@ export class PublicProductOrderHistoryService {
   constructor(
     private readonly publicProductOrderHistoryRepository: PublicProductOrderHistoryRepository,
     private readonly getPublicProductBySlugsUseCase: GetPublicProductBySlugsUseCase,
-    private readonly storefrontProductQueryRepository: StorefrontProductQueryRepository
+    private readonly storefrontProductQueryRepository: StorefrontProductQueryRepository,
   ) {}
 
   async listBestSellingProducts(input: {
@@ -18,7 +18,7 @@ export class PublicProductOrderHistoryService {
   }): Promise<PublicProductListItem[]> {
     return this.listVisibleProducts(
       await this.publicProductOrderHistoryRepository.listBestSellingProductIds(input),
-      input.limit
+      input.limit,
     );
   }
 
@@ -30,7 +30,7 @@ export class PublicProductOrderHistoryService {
   }): Promise<PublicProductListItem[]> {
     const product = await this.getPublicProductBySlugsUseCase.execute(
       input.shopSlug,
-      input.productSlug
+      input.productSlug,
     );
 
     if (!product?.id) {
@@ -43,13 +43,13 @@ export class PublicProductOrderHistoryService {
         limit: input.limit,
         windowDays: input.windowDays,
       }),
-      input.limit
+      input.limit,
     );
   }
 
   private async listVisibleProducts(
     productIds: string[],
-    limit: number
+    limit: number,
   ): Promise<PublicProductListItem[]> {
     if (productIds.length === 0) {
       return [];

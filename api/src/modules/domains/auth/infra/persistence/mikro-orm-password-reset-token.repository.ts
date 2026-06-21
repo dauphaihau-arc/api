@@ -2,7 +2,7 @@ import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
 import {
   CreatePasswordResetTokenInput,
-  PasswordResetTokenRepository
+  PasswordResetTokenRepository,
 } from '../../app/ports/password-reset-token.repository';
 import type { PasswordResetToken } from '../../domain/models/password-reset-token';
 import { CurrentUserEntity } from './entities/current-user.entity';
@@ -14,7 +14,7 @@ implements PasswordResetTokenRepository {
   constructor(private readonly entityManager: EntityManager) {}
 
   async create(
-    input: CreatePasswordResetTokenInput
+    input: CreatePasswordResetTokenInput,
   ): Promise<PasswordResetToken> {
     const entityManager = this.entityManager.fork();
     const userRepository = entityManager.getRepository(CurrentUserEntity);
@@ -37,7 +37,7 @@ implements PasswordResetTokenRepository {
       .getRepository(PasswordResetTokenEntity);
     const token = await tokenRepository.findOne(
       { tokenHash },
-      { populate: ['user'] }
+      { populate: ['user'] },
     );
 
     return token ? this.toPasswordResetToken(token) : null;
@@ -76,7 +76,7 @@ implements PasswordResetTokenRepository {
   }
 
   private toPasswordResetToken(
-    token: PasswordResetTokenEntity
+    token: PasswordResetTokenEntity,
   ): PasswordResetToken {
     return {
       id: token.id,

@@ -1,12 +1,12 @@
 import {
-  Body, Controller, Get, Header, Param, Post, Query, UseGuards 
+  Body, Controller, Get, Header, Param, Post, Query, UseGuards, 
 } from '@nestjs/common';
 import {
   ApiCookieAuth,
   ApiOkResponse,
   ApiOperation,
   ApiParam,
-  ApiTags
+  ApiTags,
 } from '@nestjs/swagger';
 import { SkipThrottle } from '@nestjs/throttler';
 import { resolveOrThrow } from '~/common/application/result';
@@ -20,13 +20,13 @@ import { SuggestCategoriesUseCase } from '../../app/use-cases/suggest-categories
 import {
   toCategoryAttributeResponse,
   toCategoryResponse,
-  toCategorySuggestionResponse
+  toCategorySuggestionResponse,
 } from './category-response.mapper';
 import { CreateCategoryAttributeDto } from './dto/create-category-attribute.dto';
 import type {
   CategoryAttributeResponse,
   CategoryResponse,
-  CategorySuggestionResponse
+  CategorySuggestionResponse,
 } from './dto/category.response';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { ListCategoriesQueryDto } from './dto/list-categories.query.dto';
@@ -41,7 +41,7 @@ export class CategoryController {
     private readonly listCategoriesUseCase: ListCategoriesUseCase,
     private readonly createCategoryAttributeUseCase: CreateCategoryAttributeUseCase,
     private readonly getCategoryAttributesUseCase: GetCategoryAttributesUseCase,
-    private readonly suggestCategoriesUseCase: SuggestCategoriesUseCase
+    private readonly suggestCategoriesUseCase: SuggestCategoriesUseCase,
   ) {}
 
   @Get('suggestions')
@@ -52,11 +52,11 @@ export class CategoryController {
     schema: { type: 'object' },
   })
   async suggestCategories(
-    @Query() query: SuggestCategoriesQueryDto
+    @Query() query: SuggestCategoriesQueryDto,
   ): Promise<{ categories: CategorySuggestionResponse[] }> {
     const categories = await this.suggestCategoriesUseCase.execute(
       query.name,
-      query.limit
+      query.limit,
     );
     return { categories: categories.map(toCategorySuggestionResponse) };
   }
@@ -70,7 +70,7 @@ export class CategoryController {
     schema: { type: 'array', items: { type: 'object' } },
   })
   categories(
-    @Query() query: ListCategoriesQueryDto
+    @Query() query: ListCategoriesQueryDto,
   ): Promise<CategoryResponse[]> {
     return this.listCategoriesUseCase.execute(query.parentId)
       .then((categories) => categories.map(toCategoryResponse));
@@ -86,11 +86,11 @@ export class CategoryController {
     schema: { type: 'object' },
   })
   getCategoryAttributes(
-    @Param('id') id: string
+    @Param('id') id: string,
   ): Promise<{ attributes: CategoryAttributeResponse[] }> {
     return this.getCategoryAttributesUseCase.execute(id)
       .then((result) =>
-        resolveOrThrow(result, mapCategoryAppErrorToHttpException)
+        resolveOrThrow(result, mapCategoryAppErrorToHttpException),
       )
       .then((attributes) => ({
         attributes: attributes.map(toCategoryAttributeResponse),
@@ -109,7 +109,7 @@ export class CategoryController {
   createCategory(@Body() body: CreateCategoryDto): Promise<CategoryResponse> {
     return this.createCategoryUseCase.execute(body)
       .then((result) =>
-        resolveOrThrow(result, mapCategoryAppErrorToHttpException)
+        resolveOrThrow(result, mapCategoryAppErrorToHttpException),
       )
       .then(toCategoryResponse);
   }
@@ -126,13 +126,13 @@ export class CategoryController {
   })
   createCategoryAttribute(
     @Param('id') id: string,
-    @Body() body: CreateCategoryAttributeDto
+    @Body() body: CreateCategoryAttributeDto,
   ): Promise<CategoryResponse> {
     return this.createCategoryAttributeUseCase.execute({
       categoryId: id,
       ...body,
     }).then((result) =>
-      resolveOrThrow(result, mapCategoryAppErrorToHttpException)
+      resolveOrThrow(result, mapCategoryAppErrorToHttpException),
     ).then(toCategoryResponse);
   }
 }

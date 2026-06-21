@@ -4,7 +4,7 @@ import {
   Counter,
   Gauge,
   Histogram,
-  Registry
+  Registry,
 } from 'prom-client';
 import { Client } from 'pg';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
@@ -111,11 +111,11 @@ export class ObservabilityService {
   constructor(
     @InjectPinoLogger(ObservabilityService.name)
     private readonly logger: PinoLogger,
-    private readonly requestContextService: RequestContextService
+    private readonly requestContextService: RequestContextService,
   ) {
     this.logQueries = process.env.DB_LOG_QUERIES === 'true';
     this.slowQueryThresholdMs = Number(
-      process.env.DB_SLOW_QUERY_THRESHOLD_MS ?? DEFAULT_SLOW_QUERY_THRESHOLD_MS
+      process.env.DB_SLOW_QUERY_THRESHOLD_MS ?? DEFAULT_SLOW_QUERY_THRESHOLD_MS,
     );
     this.registry.setDefaultLabels({
       service: 'arc-api',
@@ -131,7 +131,7 @@ export class ObservabilityService {
     method: string,
     route: string | undefined,
     statusCode: number,
-    durationMs: number
+    durationMs: number,
   ): void {
     const labels = {
       method: method.toUpperCase(),
@@ -192,7 +192,7 @@ export class ObservabilityService {
       if (callbackIndex >= 0) {
         const originalCallback = args[callbackIndex] as (
           error: Error | null,
-          result: unknown
+          result: unknown,
         ) => void;
 
         args[callbackIndex] = (error: Error | null, result: unknown) => {
@@ -200,7 +200,7 @@ export class ObservabilityService {
             operation,
             statement,
             startedAt,
-            error ? 'error' : 'ok'
+            error ? 'error' : 'ok',
           );
 
           originalCallback(error, result);
@@ -236,7 +236,7 @@ export class ObservabilityService {
     operation: string,
     statement: string | undefined,
     startedAt: bigint,
-    status: 'ok' | 'error'
+    status: 'ok' | 'error',
   ): void {
     const durationSeconds = Number(process.hrtime.bigint() - startedAt) / 1_000_000_000;
     const durationMs = durationSeconds * 1_000;
@@ -254,7 +254,7 @@ export class ObservabilityService {
     operation: string,
     statement: string | undefined,
     status: 'ok' | 'error',
-    durationMs: number
+    durationMs: number,
   ): void {
     const isSlowQuery = durationMs >= this.slowQueryThresholdMs;
 
@@ -289,7 +289,7 @@ export class ObservabilityService {
         spanId: traceContext?.spanId,
         traceId: traceContext?.traceId,
       },
-      `${operation} query ${status} in ${Math.round(durationMs)}ms`
+      `${operation} query ${status} in ${Math.round(durationMs)}ms`,
     );
   }
 
@@ -306,7 +306,7 @@ export class ObservabilityService {
       'paused',
       'prioritized',
       'waiting',
-      'waiting-children'
+      'waiting-children',
     );
 
     for (const [state, count] of Object.entries(counts)) {
@@ -315,7 +315,7 @@ export class ObservabilityService {
           queue: this.bullMqQueue.name,
           state,
         },
-        count
+        count,
       );
     }
   }

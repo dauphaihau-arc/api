@@ -3,7 +3,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import {
   buildCacheConfig,
-  buildCacheModuleOptions
+  buildCacheModuleOptions,
 } from '~/config/cache.config';
 
 @Module({

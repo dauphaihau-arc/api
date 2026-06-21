@@ -5,7 +5,7 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiProduces,
-  ApiTags
+  ApiTags,
 } from '@nestjs/swagger';
 import type { Observable } from 'rxjs';
 import { CurrentUser } from '~/common/decorators/current-user.decorator';
@@ -30,10 +30,10 @@ export class MeEventsController {
     schema: { type: 'string' },
   })
   stream(
-    @CurrentUser() currentUser: AuthenticatedUser
+    @CurrentUser() currentUser: AuthenticatedUser,
   ): Observable<MessageEvent> {
     return this.ssePublisher.createChannelStream(
-      buildUserEventsChannelKey(currentUser.userId)
+      buildUserEventsChannelKey(currentUser.userId),
     );
   }
 }

@@ -1,5 +1,5 @@
 import {
-  Entity, Enum, Index, Property 
+  Entity, Enum, Index, Property, 
 } from '@mikro-orm/core';
 import { AbstractBaseEntity } from '~/common/database/abstract-base.entity';
 
@@ -7,7 +7,7 @@ export enum OutboxEventStatus {
   PENDING = 'pending',
   PROCESSING = 'processing',
   PROCESSED = 'processed',
-  FAILED = 'failed'
+  FAILED = 'failed',
 }
 
 @Entity({ tableName: 'outbox_events' })

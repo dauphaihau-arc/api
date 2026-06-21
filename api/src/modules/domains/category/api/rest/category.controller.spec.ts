@@ -16,7 +16,7 @@ describe('CategoryController', () => {
     listCategoriesUseCase as never,
     createCategoryAttributeUseCase as never,
     getCategoryAttributesUseCase as never,
-    suggestCategoriesUseCase as never
+    suggestCategoriesUseCase as never,
   );
 
   beforeEach(() => {
@@ -158,7 +158,7 @@ describe('CategoryController', () => {
 
   it('throws not found when the category does not exist', async () => {
     getCategoryAttributesUseCase.execute.mockResolvedValue(
-      err(new CategoryNotFoundError())
+      err(new CategoryNotFoundError()),
     );
 
     await expect(controller.getCategoryAttributes('missing-category'))

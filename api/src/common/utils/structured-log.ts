@@ -1,10 +1,10 @@
 import type {
   StructuredLogRecord,
-  StructuredLogValue
+  StructuredLogValue,
 } from '../logging/structured-log.types';
 
 export function buildStructuredLog(
-  payload: StructuredLogRecord
+  payload: StructuredLogRecord,
 ): StructuredLogRecord {
   return pruneUndefined(payload) as StructuredLogRecord;
 }

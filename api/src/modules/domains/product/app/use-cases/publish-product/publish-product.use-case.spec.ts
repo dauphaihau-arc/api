@@ -109,7 +109,7 @@ describe('PublishProductUseCase', () => {
       productRepository,
       productRepository,
       shopRepository,
-      auditLogService
+      auditLogService,
     );
 
     const result = await useCase.execute(actor, readyProduct.id);
@@ -121,7 +121,7 @@ describe('PublishProductUseCase', () => {
         action: 'product.published',
         entityType: 'product',
         entityId: readyProduct.id,
-      })
+      }),
     );
   });
 
@@ -134,7 +134,7 @@ describe('PublishProductUseCase', () => {
       productRepository,
       productRepository,
       shopRepository,
-      auditLogService
+      auditLogService,
     );
 
     const result = await useCase.execute(actor, readyProduct.id);
@@ -159,7 +159,7 @@ describe('PublishProductUseCase', () => {
       productRepository,
       productRepository,
       shopRepository,
-      auditLogService
+      auditLogService,
     );
 
     const result = await useCase.execute(actor, readyProduct.id);

@@ -1,6 +1,6 @@
 import type {
   UserAddressListResult,
-  UserAddressSummary
+  UserAddressSummary,
 } from '../../app/user-address.types';
 
 export function toMyAddressResponse(address: UserAddressSummary) {

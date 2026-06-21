@@ -8,13 +8,13 @@ import { AuditLogService } from '~/modules/shared/audit/app/audit-log.service';
 import { JobDispatcher } from '~/modules/shared/queue/app/ports/job-dispatcher';
 import {
   buildProductInventoryUpdatedSseEvent,
-  PRODUCT_INVENTORY_UPDATED_SSE_EVENT
+  PRODUCT_INVENTORY_UPDATED_SSE_EVENT,
 } from '../../events/product-inventory-sse.event';
 import { ProductVariantType } from '../../../domain/enums/product-variant-type.enum';
 import {
   ActorCannotCreateProductDraftError,
   InvalidProductVariantConfigurationError,
-  ProductNotFoundError
+  ProductNotFoundError,
 } from '../../errors/product-app.error';
 import { ProductCommandRepository } from '../../ports/product-command.repository';
 import { SellerProductQueryRepository } from '../../ports/seller-product-query.repository';
@@ -41,13 +41,13 @@ export class SetProductInventoryUseCase {
     private readonly shopRepository: ShopRepository,
     private readonly auditLogService: AuditLogService,
     private readonly eventEmitter: EventEmitter2,
-    private readonly jobDispatcher?: JobDispatcher
+    private readonly jobDispatcher?: JobDispatcher,
   ) {}
 
   async execute(
     actor: AuthenticatedUser,
     productId: string,
-    input: SetProductInventoryInput
+    input: SetProductInventoryInput,
   ): Promise<Result<ProductDraftSummary, SetProductInventoryError>> {
     const existingProduct = await this.sellerProductQueryRepository.findById(productId);
 
@@ -60,7 +60,7 @@ export class SetProductInventoryUseCase {
     if (!canManageAnyShop) {
       const ownedShop = await this.shopRepository.findOwnedById(
         existingProduct.shopId,
-        actor.userId
+        actor.userId,
       );
 
       if (!ownedShop) {
@@ -71,7 +71,7 @@ export class SetProductInventoryUseCase {
     const validationError = validateInventoryPayload(
       existingProduct.variantType ?? ProductVariantType.NONE,
       existingProduct.variants.map((variant) => variant.id),
-      input.inventory
+      input.inventory,
     );
 
     if (validationError) {
@@ -115,7 +115,7 @@ export class SetProductInventoryUseCase {
           productId: product.id,
           inventoryId: inventory.id,
           stock: inventory.stock,
-        })
+        }),
       );
     }
     await this.jobDispatcher?.dispatch(
@@ -123,9 +123,9 @@ export class SetProductInventoryUseCase {
       { productId: product.id },
       {
         deduplicationKey: appJobDeduplicationKey.projectCatalogProduct(
-          product.id
+          product.id,
         ),
-      }
+      },
     );
 
     return ok(product);
@@ -135,11 +135,11 @@ export class SetProductInventoryUseCase {
 function validateInventoryPayload(
   variantType: ProductVariantType,
   variantIds: string[],
-  inventory: SetProductInventoryInput['inventory']
+  inventory: SetProductInventoryInput['inventory'],
 ): InvalidProductVariantConfigurationError | null {
   if (inventory.length === 0) {
     return new InvalidProductVariantConfigurationError(
-      'At least one inventory row is required'
+      'At least one inventory row is required',
     );
   }
 
@@ -148,7 +148,7 @@ function validateInventoryPayload(
   for (const row of inventory) {
     if (row.stock < 0) {
       return new InvalidProductVariantConfigurationError(
-        'Inventory stock cannot be negative'
+        'Inventory stock cannot be negative',
       );
     }
 
@@ -156,7 +156,7 @@ function validateInventoryPayload(
     if (sku) {
       if (seenSkus.has(sku)) {
         return new InvalidProductVariantConfigurationError(
-          `Duplicate SKU "${sku}" is not allowed`
+          `Duplicate SKU "${sku}" is not allowed`,
         );
       }
       seenSkus.add(sku);
@@ -166,13 +166,13 @@ function validateInventoryPayload(
   if (variantType === ProductVariantType.NONE) {
     if (inventory.length !== 1) {
       return new InvalidProductVariantConfigurationError(
-        'Products without variants must define exactly one inventory row'
+        'Products without variants must define exactly one inventory row',
       );
     }
 
     if (inventory[0]?.productVariantId) {
       return new InvalidProductVariantConfigurationError(
-        'Products without variants cannot reference a product variant'
+        'Products without variants cannot reference a product variant',
       );
     }
 
@@ -181,7 +181,7 @@ function validateInventoryPayload(
 
   if (inventory.length !== variantIds.length) {
     return new InvalidProductVariantConfigurationError(
-      'Variant-backed products must define exactly one inventory row per variant'
+      'Variant-backed products must define exactly one inventory row per variant',
     );
   }
 
@@ -190,19 +190,19 @@ function validateInventoryPayload(
   for (const row of inventory) {
     if (!row.productVariantId) {
       return new InvalidProductVariantConfigurationError(
-        'Variant-backed inventory rows must reference a product variant'
+        'Variant-backed inventory rows must reference a product variant',
       );
     }
 
     if (!variantIds.includes(row.productVariantId)) {
       return new InvalidProductVariantConfigurationError(
-        `Unknown product variant "${row.productVariantId}" in inventory`
+        `Unknown product variant "${row.productVariantId}" in inventory`,
       );
     }
 
     if (providedVariantIds.has(row.productVariantId)) {
       return new InvalidProductVariantConfigurationError(
-        `Duplicate inventory row for variant "${row.productVariantId}" is not allowed`
+        `Duplicate inventory row for variant "${row.productVariantId}" is not allowed`,
       );
     }
 

@@ -1,7 +1,7 @@
 import {
   ClassSerializerInterceptor,
   RequestMethod,
-  ValidationPipe
+  ValidationPipe,
 } from '@nestjs/common';
 import { NestFactory, Reflector } from '@nestjs/core';
 import type { Queue } from 'bullmq';
@@ -55,21 +55,21 @@ async function bootstrap() {
       whitelist: true,
       transform: true,
       forbidNonWhitelisted: true,
-    })
+    }),
   );
   app.useGlobalFilters(
     new GlobalExceptionFilter(
       app.get(RequestContextService),
-      exceptionLogger
-    )
+      exceptionLogger,
+    ),
   );
   app.useGlobalInterceptors(
     new ClassSerializerInterceptor(app.get(Reflector)),
     new RequestLoggingInterceptor(
       app.get(RequestContextService),
       app.get(ObservabilityService),
-      requestLogger
-    )
+      requestLogger,
+    ),
   );
   app.setGlobalPrefix(API_PREFIX, {
     exclude: [
@@ -90,7 +90,7 @@ async function bootstrap() {
   setupApiDocs(app);
   setupBullBoard(
     app,
-    app.get<Queue | null>(BULLMQ_QUEUE, { strict: false })
+    app.get<Queue | null>(BULLMQ_QUEUE, { strict: false }),
   );
 
   bootstrapLogger.info({

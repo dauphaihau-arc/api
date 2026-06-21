@@ -14,7 +14,7 @@ export class GetShopOrderByIdUseCase {
     const entityManager = this.entityManager.fork();
     const order = await entityManager.getRepository(OrderEntity).findOne(
       buildScopedOrderIdentifierWhere(orderId, { shop: shopId }),
-      { populate: ['shop'] }
+      { populate: ['shop'] },
     );
 
     if (!order) {

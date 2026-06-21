@@ -18,7 +18,7 @@ export class GetShopChatUnreadCountUseCase {
             or "seller_last_read_at" < "last_message_at"
           )
       `,
-      [shopId, ownerUserId]
+      [shopId, ownerUserId],
     );
 
     return Number(rows[0]?.total ?? '0');

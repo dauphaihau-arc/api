@@ -2,7 +2,7 @@ import type { PublicProductListItem } from '../../../../app/product.types';
 import type { PublicProductListItemResponse } from '../responses/public-product-list-item.response';
 
 export const toPublicProductListItemResponse = (
-  product: PublicProductListItem
+  product: PublicProductListItem,
 ): PublicProductListItemResponse => ({
   id: product.id,
   shop: {
@@ -25,7 +25,7 @@ export const toPublicProductListItemResponse = (
             {
               storage_key: variant.storageKey,
             },
-          ])
+          ]),
         )
         : undefined,
     }

@@ -2,7 +2,7 @@ import { Transform } from 'class-transformer';
 import {
   ArrayNotEmpty,
   IsArray,
-  IsString
+  IsString,
 } from 'class-validator';
 
 export class BulkDeleteShopCouponsDto {

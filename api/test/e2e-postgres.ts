@@ -18,7 +18,7 @@ function normalizeDbPrefix(prefix: string): string {
 }
 
 export async function createTestDatabase(
-  suiteName = 'api'
+  suiteName = 'api',
 ): Promise<TestDatabaseContext> {
   const dbName = `arc_e2e_${normalizeDbPrefix(suiteName)}_${randomUUID().replace(/-/g, '_')}`;
   const rootConfig = {
@@ -52,8 +52,8 @@ export async function createTestDatabase(
         DB_PASSWORD: rootConfig.password,
         DB_NAME: dbName,
       },
-      { includeEntityGlobs: true }
-    )
+      { includeEntityGlobs: true },
+    ),
   );
 
   try {
@@ -70,7 +70,7 @@ export async function createTestDatabase(
 }
 
 export async function dropTestDatabase(
-  context: TestDatabaseContext
+  context: TestDatabaseContext,
 ): Promise<void> {
   const adminClient = new Client({
     ...context.rootConfig,
@@ -86,7 +86,7 @@ export async function dropTestDatabase(
         FROM pg_stat_activity
         WHERE datname = $1 AND pid <> pg_backend_pid()
       `,
-      [context.dbName]
+      [context.dbName],
     );
     await adminClient.query(`DROP DATABASE IF EXISTS "${context.dbName}"`);
   }

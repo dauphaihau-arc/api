@@ -2,7 +2,7 @@ import { HttpException, UnauthorizedException } from '@nestjs/common';
 import type { ConfigService } from '@nestjs/config';
 import type {
   ExchangeRateSyncResult,
-  ExchangeRateSyncService
+  ExchangeRateSyncService,
 } from './exchange-rate-sync.service';
 import { InternalJobsController } from './internal-jobs.controller';
 
@@ -21,14 +21,14 @@ describe('InternalJobsController', () => {
     } as unknown as jest.Mocked<ExchangeRateSyncService>;
     const configService = {
       get: jest.fn((key: string) =>
-        key === 'FX_SYNC_TRIGGER_SECRET' ? secret : undefined
+        key === 'FX_SYNC_TRIGGER_SECRET' ? secret : undefined,
       ),
     } as unknown as jest.Mocked<ConfigService>;
 
     return {
       controller: new InternalJobsController(
         exchangeRateSyncService,
-        configService
+        configService,
       ),
       exchangeRateSyncService,
     };
@@ -52,7 +52,7 @@ describe('InternalJobsController', () => {
     const { controller, exchangeRateSyncService } = buildController('secret');
 
     await expect(controller.syncFxRates('wrong')).rejects.toBeInstanceOf(
-      UnauthorizedException
+      UnauthorizedException,
     );
     expect(exchangeRateSyncService.syncLatestRates).not.toHaveBeenCalled();
   });
@@ -61,7 +61,7 @@ describe('InternalJobsController', () => {
     const { controller, exchangeRateSyncService } = buildController();
 
     await expect(controller.syncFxRates('anything')).rejects.toBeInstanceOf(
-      HttpException
+      HttpException,
     );
     await expect(controller.syncFxRates('anything')).rejects.toMatchObject({
       status: 503,

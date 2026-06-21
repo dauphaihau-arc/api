@@ -2,7 +2,7 @@ import { Logger } from '@nestjs/common';
 import type {
   AppJobName,
   AppJobPayloadMap,
-  DispatchJobOptions
+  DispatchJobOptions,
 } from '~/common/jobs/job.types';
 import type { JobDispatcher } from '../app/ports/job-dispatcher';
 import type { AppJobRunner } from './app-job-runner';
@@ -15,10 +15,10 @@ export class InlineJobDispatcher implements JobDispatcher {
   async dispatch<TName extends AppJobName>(
     name: TName,
     payload: AppJobPayloadMap[TName],
-    options?: DispatchJobOptions
+    options?: DispatchJobOptions,
   ): Promise<void> {
     this.logger.log(
-      `Running inline job ${name}${options?.deduplicationKey ? ` (${options.deduplicationKey})` : ''}`
+      `Running inline job ${name}${options?.deduplicationKey ? ` (${options.deduplicationKey})` : ''}`,
     );
 
     if (options?.delayMs && options.delayMs > 0) {

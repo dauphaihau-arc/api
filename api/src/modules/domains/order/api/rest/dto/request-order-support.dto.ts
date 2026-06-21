@@ -2,7 +2,7 @@ import { Expose, Transform } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 import {
   IsString,
-  MaxLength
+  MaxLength,
 } from 'class-validator';
 
 export class RequestOrderSupportDto {

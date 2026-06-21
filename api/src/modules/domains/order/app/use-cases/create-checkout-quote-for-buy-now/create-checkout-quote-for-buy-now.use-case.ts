@@ -6,7 +6,7 @@ import { GetMyAddressUseCase } from '~/modules/domains/user/app/use-cases/get-my
 import type { CreateCheckoutQuoteForBuyNowDto } from '../../../api/rest/dto/create-checkout-quote-for-buy-now.dto';
 import {
   AddressNotFoundError,
-  TemporaryCartNotFoundError
+  TemporaryCartNotFoundError,
 } from '../../errors/order-app.error';
 import { CreateCheckoutQuoteService } from '../../create-checkout-quote.service';
 
@@ -15,13 +15,13 @@ export class CreateCheckoutQuoteForBuyNowUseCase {
   constructor(
     private readonly cartRepository: CartRepository,
     private readonly getMyAddressUseCase: GetMyAddressUseCase,
-    private readonly createCheckoutQuoteService: CreateCheckoutQuoteService
+    private readonly createCheckoutQuoteService: CreateCheckoutQuoteService,
   ) {}
 
   async execute(actor: AuthenticatedUser, body: CreateCheckoutQuoteForBuyNowDto) {
     const cart = await this.cartRepository.findCartByIdForActor(
       { type: 'user', userId: actor.userId },
-      body.cartId
+      body.cartId,
     );
 
     if (!cart || cart.kind !== CartKind.BUY_NOW) {

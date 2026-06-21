@@ -5,7 +5,7 @@ import {
   ApiOperation,
   ApiParam,
   ApiProduces,
-  ApiTags
+  ApiTags,
 } from '@nestjs/swagger';
 import type { Observable } from 'rxjs';
 import { SsePublisher } from '~/modules/shared/sse/infra/sse.publisher';
@@ -25,11 +25,11 @@ export class ProductInventoryEventsController {
     schema: { type: 'string' },
   })
   stream(
-    @Param('product_id') productId: string
+    @Param('product_id') productId: string,
   ): Observable<MessageEvent> {
     return this.ssePublisher.createChannelStream(
       buildProductInventoryChannelKey(productId),
-      { productId }
+      { productId },
     );
   }
 }

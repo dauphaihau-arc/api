@@ -3,7 +3,7 @@ import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { SkipThrottle } from '@nestjs/throttler';
 import {
   MarketplaceService,
-  type MarketplaceConfigResult
+  type MarketplaceConfigResult,
 } from './marketplace.service';
 
 @Controller('marketplace')

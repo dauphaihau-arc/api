@@ -3,7 +3,7 @@ import { toPublicProductListItemResponse } from '../../storefront/presenters/pub
 import type { PublicProductRecommendationSectionsResponse } from '../response/public-product-recommendation-sections.response';
 
 export const toPublicProductRecommendationSectionsResponse = (
-  sections: PublicProductRecommendationSection[]
+  sections: PublicProductRecommendationSection[],
 ): PublicProductRecommendationSectionsResponse => ({
   sections: sections.map((section) => ({
     type: section.type,

@@ -10,7 +10,7 @@ export interface PaymentConfig {
 export const PAYMENT_CONFIG = Symbol('PAYMENT_CONFIG');
 
 export function buildPaymentConfig(
-  configService: Pick<ConfigService, 'get'>
+  configService: Pick<ConfigService, 'get'>,
 ): PaymentConfig {
   const appBaseUrl = configService.get<string>('APP_BASE_URL') ??
     parseCorsAllowedOrigins({
@@ -20,7 +20,7 @@ export function buildPaymentConfig(
   return {
     stripeSecretKey: configService.get<string>('STRIPE_SECRET_KEY'),
     stripeWebhookSecretKey: configService.get<string>(
-      'STRIPE_WEBHOOK_SECRET_KEY'
+      'STRIPE_WEBHOOK_SECRET_KEY',
     ),
     appBaseUrl,
   };

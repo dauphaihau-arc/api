@@ -4,7 +4,7 @@ import { CurrentUserEntity } from '~/modules/domains/auth/infra/persistence/enti
 import { NotificationCommandRepository } from '../app/ports/notification-command.repository';
 import type {
   CreateNotificationInput,
-  NotificationSummary
+  NotificationSummary,
 } from '../app/notification.types';
 import { NotificationEntity } from './persistence/entities/notification.entity';
 import { toNotificationSummary } from './notification-summary.mapper';
@@ -32,7 +32,7 @@ export class MikroOrmNotificationCommandRepository implements NotificationComman
 
   async markOwnedByIdAsRead(
     userId: string,
-    notificationId: string
+    notificationId: string,
   ): Promise<NotificationSummary | null> {
     const entityManager = this.entityManager.fork();
     const repository = entityManager.getRepository(NotificationEntity);
@@ -58,7 +58,7 @@ export class MikroOrmNotificationCommandRepository implements NotificationComman
     return this.entityManager.fork().nativeUpdate(
       NotificationEntity,
       { user: userId, readAt: null },
-      { readAt: now, updatedAt: now }
+      { readAt: now, updatedAt: now },
     );
   }
 }

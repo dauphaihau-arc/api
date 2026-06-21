@@ -3,12 +3,12 @@ import {
   IsOptional,
   IsString,
   Max,
-  Min
+  Min,
 } from 'class-validator';
 import {
   USER_LIST_DEFAULT_LIMIT,
   USER_LIST_DEFAULT_PAGE,
-  USER_LIST_MAX_LIMIT
+  USER_LIST_MAX_LIMIT,
 } from '../../../app/user.types';
 
 export class ListUsersQueryDto {

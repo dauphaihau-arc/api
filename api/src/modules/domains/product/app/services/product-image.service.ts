@@ -24,13 +24,13 @@ export class ProductImageService {
   constructor(
     private readonly productImageVariantGenerationRepository: ProductImageVariantGenerationRepository,
     private readonly storageService: StorageService,
-    private readonly imageTransformService: ImageTransformService
+    private readonly imageTransformService: ImageTransformService,
   ) {}
 
   async generateVariants(productId: string): Promise<void> {
     const startedAt = performance.now();
     const product = await this.productImageVariantGenerationRepository.findProductForVariantGeneration(
-      productId
+      productId,
     );
 
     if (!product) {
@@ -46,7 +46,7 @@ export class ProductImageService {
     const markProcessingStartedAt = performance.now();
     await this.productImageVariantGenerationRepository.flush();
     this.logger.debug(
-      `[perf] product ${product.slug} mark-processing flush ${formatDurationMs(performance.now() - markProcessingStartedAt)}`
+      `[perf] product ${product.slug} mark-processing flush ${formatDurationMs(performance.now() - markProcessingStartedAt)}`,
     );
 
     for (const image of product.images.getItems()) {
@@ -67,16 +67,16 @@ export class ProductImageService {
     const finalFlushStartedAt = performance.now();
     await this.productImageVariantGenerationRepository.flush();
     this.logger.debug(
-      `[perf] product ${product.slug} final variant flush ${formatDurationMs(performance.now() - finalFlushStartedAt)}`
+      `[perf] product ${product.slug} final variant flush ${formatDurationMs(performance.now() - finalFlushStartedAt)}`,
     );
     this.logger.debug(
-      `[perf] product ${product.slug} total generateVariants ${formatDurationMs(performance.now() - startedAt)}`
+      `[perf] product ${product.slug} total generateVariants ${formatDurationMs(performance.now() - startedAt)}`,
     );
   }
 
   private async generateVariantsForImage(
     product: ProductEntity,
-    image: ProductImageEntity
+    image: ProductImageEntity,
   ): Promise<void> {
     const imageStartedAt = performance.now();
     const fetchOriginalStartedAt = performance.now();
@@ -160,7 +160,7 @@ export class ProductImageService {
       }
 
       this.logger.debug(
-        `[perf] image ${resolveProductImageStorageId(image.storageKey)} variants=${touchedVariants.size} fetch=${formatDurationMs(fetchOriginalDurationMs)} transform=${formatDurationMs(transformDurationMs)} upload=${formatDurationMs(uploadDurationMs)} stale_delete=${formatDurationMs(staleDeleteDurationMs)} total=${formatDurationMs(performance.now() - imageStartedAt)}`
+        `[perf] image ${resolveProductImageStorageId(image.storageKey)} variants=${touchedVariants.size} fetch=${formatDurationMs(fetchOriginalDurationMs)} transform=${formatDurationMs(transformDurationMs)} upload=${formatDurationMs(uploadDurationMs)} stale_delete=${formatDurationMs(staleDeleteDurationMs)} total=${formatDurationMs(performance.now() - imageStartedAt)}`,
       );
     }
     catch (error) {
@@ -170,7 +170,7 @@ export class ProductImageService {
             await this.storageService.deleteObject(key);
           }
           catch {}
-        })
+        }),
       );
       throw error;
     }

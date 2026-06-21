@@ -2,11 +2,11 @@ import { GraphQLError } from 'graphql';
 import type { UserAppError } from '../../app/errors/user-app.error';
 import {
   ActorNotAllowedToCreateUsersError,
-  UserEmailAlreadyRegisteredError
+  UserEmailAlreadyRegisteredError,
 } from '../../app/errors/user-app.error';
 
 export function mapUserAppErrorToGraphQLError(
-  error: UserAppError
+  error: UserAppError,
 ): GraphQLError {
   if (error instanceof ActorNotAllowedToCreateUsersError) {
     return new GraphQLError(error.message, {

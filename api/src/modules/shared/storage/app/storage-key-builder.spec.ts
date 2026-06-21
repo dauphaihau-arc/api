@@ -1,7 +1,7 @@
 import {
   buildStorageObjectKey,
   resolveImageExtension,
-  resolveStorageEnvironmentSegment
+  resolveStorageEnvironmentSegment,
 } from './storage-key-builder';
 
 describe('storage key builder', () => {
@@ -20,7 +20,7 @@ describe('storage key builder', () => {
     });
 
     expect(key).toBe(
-      'prod/public/shops/shop-1/products/product-1/images/image-1/card_1x1.webp'
+      'prod/public/shops/shop-1/products/product-1/images/image-1/card_1x1.webp',
     );
   });
 

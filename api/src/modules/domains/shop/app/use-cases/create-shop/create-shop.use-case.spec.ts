@@ -60,7 +60,7 @@ describe('CreateShopUseCase', () => {
     const useCase = new CreateShopUseCase(
       entityManager,
       repository,
-      authUserRepository
+      authUserRepository,
     );
 
     const result = await useCase.execute(actor, {
@@ -76,12 +76,12 @@ describe('CreateShopUseCase', () => {
         slug: 'arc-shop',
         currency: 'USD',
       },
-      expect.anything()
+      expect.anything(),
     );
     expect(authUserRepository.assignRole).toHaveBeenCalledWith(
       actor.userId,
       RoleKey.create('seller'),
-      expect.anything()
+      expect.anything(),
     );
   });
 });

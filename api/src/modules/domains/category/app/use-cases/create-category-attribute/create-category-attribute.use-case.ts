@@ -20,7 +20,7 @@ export class CreateCategoryAttributeUseCase {
   constructor(private readonly categoryRepository: CategoryRepository) {}
 
   async execute(
-    input: CreateCategoryAttributeInput
+    input: CreateCategoryAttributeInput,
   ): Promise<Result<CategorySummary, CategoryNotFoundError>> {
     const category = await this.categoryRepository.createAttribute({
       categoryId: input.categoryId,

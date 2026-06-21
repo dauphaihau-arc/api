@@ -1,11 +1,11 @@
 import {
   Expose,
   Transform,
-  Type
+  Type,
 } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
-  IsBoolean, IsOptional, IsUUID, Max, Min 
+  IsBoolean, IsOptional, IsUUID, Max, Min, 
 } from 'class-validator';
 
 export class AddCartItemDto {

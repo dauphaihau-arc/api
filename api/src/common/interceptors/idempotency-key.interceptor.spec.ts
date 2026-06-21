@@ -2,7 +2,7 @@ import type { Cache } from 'cache-manager';
 import {
   ConflictException,
   type CallHandler,
-  type ExecutionContext
+  type ExecutionContext,
 } from '@nestjs/common';
 import type { Reflector } from '@nestjs/core';
 import type { Request, Response } from 'express';
@@ -27,7 +27,7 @@ describe('IdempotencyKeyInterceptor', () => {
   function createHttpContext(
     idempotencyKey?: string,
     body: unknown = payload,
-    statusCode = 201
+    statusCode = 201,
   ): {
     context: ExecutionContext;
     request: Pick<Request, 'body' | 'header'>;
@@ -76,7 +76,7 @@ describe('IdempotencyKeyInterceptor', () => {
     const interceptor = new IdempotencyKeyInterceptor(
       reflector as Reflector,
       cacheManager as unknown as Cache,
-      null
+      null,
     );
     const { context } = createHttpContext('register-1');
     const next: CallHandler = {
@@ -98,7 +98,7 @@ describe('IdempotencyKeyInterceptor', () => {
     const interceptor = new IdempotencyKeyInterceptor(
       createReflector() as Reflector,
       cacheManager as unknown as Cache,
-      null
+      null,
     );
     const { context } = createHttpContext();
     const next: CallHandler = {
@@ -125,7 +125,7 @@ describe('IdempotencyKeyInterceptor', () => {
     const interceptor = new IdempotencyKeyInterceptor(
       createReflector() as Reflector,
       cacheManager as unknown as Cache,
-      null
+      null,
     );
     const { context, response } = createHttpContext('register-1');
     const next: CallHandler = {
@@ -139,11 +139,11 @@ describe('IdempotencyKeyInterceptor', () => {
     expect(response.status).toHaveBeenCalledWith(201);
     expect(response.setHeader).toHaveBeenCalledWith(
       'Idempotency-Status',
-      'cached'
+      'cached',
     );
     expect(response.setHeader).toHaveBeenCalledWith(
       'Idempotency-Replayed',
-      'true'
+      'true',
     );
   });
 
@@ -159,7 +159,7 @@ describe('IdempotencyKeyInterceptor', () => {
     const interceptor = new IdempotencyKeyInterceptor(
       createReflector() as Reflector,
       cacheManager as unknown as Cache,
-      null
+      null,
     );
     const { context } = createHttpContext('register-1', {
       email: 'member@example.com',
@@ -171,8 +171,8 @@ describe('IdempotencyKeyInterceptor', () => {
       lastValueFrom(
         interceptor.intercept(context, {
           handle: jest.fn(() => of({ accessToken: 'fresh-token' })),
-        })
-      )
+        }),
+      ),
     ).rejects.toBeInstanceOf(ConflictException);
   });
 
@@ -188,7 +188,7 @@ describe('IdempotencyKeyInterceptor', () => {
     const interceptor = new IdempotencyKeyInterceptor(
       createReflector() as Reflector,
       cacheManager as unknown as Cache,
-      redisClient as never
+      redisClient as never,
     );
     const { context, response } = createHttpContext('register-1');
     const next: CallHandler = {
@@ -201,7 +201,7 @@ describe('IdempotencyKeyInterceptor', () => {
     expect(redisClient.set).toHaveBeenCalledWith(
       'auth:register:idempotency:lock:register-1',
       '{"displayName":"Member User","email":"member@example.com","password":"password123"}',
-      { PX: 30000, NX: true }
+      { PX: 30000, NX: true },
     );
     expect(cacheManager.set).toHaveBeenCalledWith(
       'auth:register:idempotency:response:register-1',
@@ -209,14 +209,14 @@ describe('IdempotencyKeyInterceptor', () => {
         responseBody: { accessToken: 'fresh-token' },
         statusCode: 201,
       }),
-      86400000
+      86400000,
     );
     expect(response.setHeader).toHaveBeenCalledWith(
       'Idempotency-Status',
-      'created'
+      'created',
     );
     expect(redisClient.del).toHaveBeenCalledWith(
-      'auth:register:idempotency:lock:register-1'
+      'auth:register:idempotency:lock:register-1',
     );
   });
 
@@ -232,7 +232,7 @@ describe('IdempotencyKeyInterceptor', () => {
     const interceptor = new IdempotencyKeyInterceptor(
       createReflector() as Reflector,
       cacheManager as unknown as Cache,
-      redisClient as never
+      redisClient as never,
     );
     const { context } = createHttpContext('register-1');
 
@@ -240,8 +240,8 @@ describe('IdempotencyKeyInterceptor', () => {
       lastValueFrom(
         interceptor.intercept(context, {
           handle: jest.fn(() => of({ accessToken: 'fresh-token' })),
-        })
-      )
+        }),
+      ),
     ).rejects.toBeInstanceOf(ConflictException);
   });
 });

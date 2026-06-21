@@ -20,7 +20,7 @@ describe('PublicProductOrderHistoryService', () => {
       service: new PublicProductOrderHistoryService(
         repository as never,
         getPublicProductBySlugsUseCase as never,
-        storefrontProductQueryRepository as never
+        storefrontProductQueryRepository as never,
       ),
       repository,
       getPublicProductBySlugsUseCase,

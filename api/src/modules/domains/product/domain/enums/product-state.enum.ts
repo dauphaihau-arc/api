@@ -3,5 +3,5 @@ export enum ProductState {
   DRAFT = 'draft',
   INACTIVE = 'inactive',
   REMOVED = 'removed',
-  UNAVAILABLE = 'unavailable'
+  UNAVAILABLE = 'unavailable',
 }

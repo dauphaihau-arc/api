@@ -5,12 +5,12 @@ import {
   Post,
   Res,
   UseFilters,
-  UseInterceptors
+  UseInterceptors,
 } from '@nestjs/common';
 import {
   ApiCreatedResponse,
   ApiOperation,
-  ApiTags
+  ApiTags,
 } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import type { Response } from 'express';
@@ -21,7 +21,7 @@ import { IdempotencyKeyInterceptor } from '~/common/interceptors/idempotency-key
 import { RegisterSellerUseCase } from '../../app/use-cases/register-seller/register-seller.use-case';
 import {
   isAuthAppError,
-  mapAuthAppErrorToHttpException
+  mapAuthAppErrorToHttpException,
 } from './auth-error-mapper';
 import { AuthHttpExceptionFilter } from './auth-http-exception.filter';
 import { AuthCookieService } from './auth-cookie.utils';
@@ -44,7 +44,7 @@ const sellerAuthRouteRateLimits = {
 export class SellerAuthController {
   constructor(
     private readonly registerSellerUseCase: RegisterSellerUseCase,
-    private readonly authCookieService: AuthCookieService
+    private readonly authCookieService: AuthCookieService,
   ) {}
 
   @Post('register')
@@ -62,11 +62,11 @@ export class SellerAuthController {
   })
   async register(
     @Body() body: SellerRegisterDto,
-    @Res({ passthrough: true }) response: Response
+    @Res({ passthrough: true }) response: Response,
   ): Promise<AuthUserResponseDto> {
     const authResponse = resolveOrThrow(
       await this.registerSellerUseCase.execute(body),
-      mapSellerRegisterErrorToHttpException
+      mapSellerRegisterErrorToHttpException,
     );
 
     this.authCookieService.setAuthCookies(response, authResponse);

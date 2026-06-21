@@ -1,13 +1,13 @@
 import {
   IsIn,
   IsOptional,
-  ValidateNested
+  ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import {
   MARKETPLACE_CURRENCIES,
   MARKETPLACE_LANGUAGES,
-  MARKETPLACE_REGIONS
+  MARKETPLACE_REGIONS,
 } from '~/config/marketplace.config';
 
 class UpdateMePreferencesDto {

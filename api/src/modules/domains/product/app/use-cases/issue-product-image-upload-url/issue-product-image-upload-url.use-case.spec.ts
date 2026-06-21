@@ -100,7 +100,7 @@ describe('IssueProductImageUploadUrlUseCase', () => {
       shopRepository,
       productRepository as never,
       storageConfig,
-      storageService
+      storageService,
     );
 
     const issued = await useCase.execute(
@@ -108,11 +108,11 @@ describe('IssueProductImageUploadUrlUseCase', () => {
       'shop-1',
       'product-1',
       'image/webp',
-      ProductImageAssetType.ORIGINAL
+      ProductImageAssetType.ORIGINAL,
     );
 
     expect(issued.key).toMatch(
-      /shops\/shoppub0001\/products\/productpub01\/images\/[^/]+\/original\.webp$/
+      /shops\/shoppub0001\/products\/productpub01\/images\/[^/]+\/original\.webp$/,
     );
     expect(issued.token).toBeDefined();
     expect(cacheManager.set).toHaveBeenCalledTimes(1);
@@ -140,7 +140,7 @@ describe('IssueProductImageUploadUrlUseCase', () => {
       shopRepository,
       productRepository as never,
       storageConfig,
-      storageService
+      storageService,
     );
 
     const issued = await useCase.execute(
@@ -148,7 +148,7 @@ describe('IssueProductImageUploadUrlUseCase', () => {
       'shop-1',
       'product-1',
       'image/webp',
-      ProductImageAssetType.ORIGINAL
+      ProductImageAssetType.ORIGINAL,
     );
 
     expect(issued.token).toBeUndefined();

@@ -3,12 +3,12 @@ import {
   BadRequestException,
   Inject,
   Injectable,
-  NotFoundException
+  NotFoundException,
 } from '@nestjs/common';
 import type { Cache } from 'cache-manager';
 import {
   STORAGE_CONFIG,
-  type StorageConfig
+  type StorageConfig,
 } from '~/config/storage.config';
 import { StorageService } from '~/modules/shared/storage/app/ports/storage.service';
 import type { ProductImageUploadTicketRecord } from '../issue-product-image-upload-url/issue-product-image-upload-url.use-case';
@@ -19,22 +19,22 @@ export class ConsumeProductImageUploadTicketUseCase {
   constructor(
     @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
     private readonly storageService: StorageService,
-    @Inject(STORAGE_CONFIG) private readonly storageConfig: StorageConfig
+    @Inject(STORAGE_CONFIG) private readonly storageConfig: StorageConfig,
   ) {}
 
   async execute(
     token: string,
     body: Buffer,
-    contentType?: string
+    contentType?: string,
   ): Promise<{ key: string }> {
     if (this.storageConfig.driver === 'minio') {
       throw new NotFoundException(
-        'Upload ticket ingestion is not used for object storage'
+        'Upload ticket ingestion is not used for object storage',
       );
     }
 
     const ticket = await this.cacheManager.get<ProductImageUploadTicketRecord>(
-      buildTicketCacheKey(token)
+      buildTicketCacheKey(token),
     );
 
     if (!ticket) {

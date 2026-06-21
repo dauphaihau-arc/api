@@ -3,7 +3,7 @@ import type { ProductEntity } from '~/modules/domains/product/infra/persistence/
 import type { CatalogProductSlugDocument } from '../../../../app/ports/catalog-product-slug.repository';
 
 export function toCatalogProductSlugDocument(
-  product: ProductEntity
+  product: ProductEntity,
 ): CatalogProductSlugDocument {
   return {
     _id: `${product.shop.slug}::${product.slug}`,

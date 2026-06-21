@@ -123,7 +123,7 @@ describe('CreateGuestOrderFromCartUseCase', () => {
       orderCheckoutService,
       jobDispatcher,
       guestOrderTrackingTokenService,
-      paymentConfig
+      paymentConfig,
     );
 
     await useCase.execute('guest-1', {
@@ -147,7 +147,7 @@ describe('CreateGuestOrderFromCartUseCase', () => {
           checkoutCurrency: 'USD',
         }),
         shopAdjustments: [{ shopId: 'shop-1', promoCodes: ['SAVE10'] }],
-      })
+      }),
     );
   });
 });

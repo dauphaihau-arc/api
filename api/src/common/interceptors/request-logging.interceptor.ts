@@ -4,7 +4,7 @@ import {
   HttpException,
   HttpStatus,
   Injectable,
-  NestInterceptor
+  NestInterceptor,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { PinoLogger } from 'nestjs-pino';
@@ -35,7 +35,7 @@ export class RequestLoggingInterceptor implements NestInterceptor {
   constructor(
     private readonly requestContextService: RequestContextService,
     private readonly observabilityService: ObservabilityService,
-    private readonly logger: PinoLogger
+    private readonly logger: PinoLogger,
   ) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
@@ -67,7 +67,7 @@ export class RequestLoggingInterceptor implements NestInterceptor {
             request.method,
             this.resolveRoute(request),
             response.statusCode,
-            durationMs
+            durationMs,
           );
           this.logger.info(
             this.buildHttpLogPayload(
@@ -75,14 +75,14 @@ export class RequestLoggingInterceptor implements NestInterceptor {
               request,
               response.statusCode,
               durationMs,
-              requestContext
+              requestContext,
             ),
             this.buildHttpSummary(
               request.method,
               this.resolveRoute(request),
               response.statusCode,
-              durationMs
-            )
+              durationMs,
+            ),
           );
         },
         error: (error: unknown) => {
@@ -94,7 +94,7 @@ export class RequestLoggingInterceptor implements NestInterceptor {
             request.method,
             this.resolveRoute(request),
             statusCode,
-            durationMs
+            durationMs,
           );
           this.logger[logMethod](
             this.buildHttpLogPayload(
@@ -102,17 +102,17 @@ export class RequestLoggingInterceptor implements NestInterceptor {
               request,
               statusCode,
               durationMs,
-              requestContext
+              requestContext,
             ),
             this.buildHttpSummary(
               request.method,
               this.resolveRoute(request),
               statusCode,
-              durationMs
-            )
+              durationMs,
+            ),
           );
         },
-      })
+      }),
     );
   }
 
@@ -136,7 +136,7 @@ export class RequestLoggingInterceptor implements NestInterceptor {
     method: string,
     route: string,
     statusCode: number,
-    durationMs: number
+    durationMs: number,
   ): string {
     return `${method.toUpperCase()} ${route} ${statusCode} ${durationMs}ms`;
   }
@@ -154,7 +154,7 @@ export class RequestLoggingInterceptor implements NestInterceptor {
     request: Request,
     statusCode: number,
     durationMs: number,
-    requestContext: ReturnType<RequestContextService['get']>
+    requestContext: ReturnType<RequestContextService['get']>,
   ): StructuredLogRecord {
     const traceContext = getActiveTraceContext();
 

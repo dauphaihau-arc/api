@@ -32,7 +32,7 @@ export class SendGuestOrderConfirmationEmailJob {
     });
 
     this.logger.log(
-      `Processed guest order confirmation email for ${payload.email} (${orderList})`
+      `Processed guest order confirmation email for ${payload.email} (${orderList})`,
     );
   }
 }

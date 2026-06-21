@@ -1,5 +1,5 @@
 import {
-  Entity, ManyToOne, Property, Unique 
+  Entity, ManyToOne, Property, Unique, 
 } from '@mikro-orm/core';
 import { AbstractAuthEntity } from './abstract-auth.entity';
 import { PermissionEntity } from './permission.entity';

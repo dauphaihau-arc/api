@@ -105,7 +105,7 @@ describe('UpdateAdminOrderStatusUseCase', () => {
       useCase: new UpdateAdminOrderStatusUseCase(
         entityManager,
         eventEmitter as unknown as EventEmitter2,
-        orderEventsService as never
+        orderEventsService as never,
       ),
     };
   }
@@ -129,7 +129,7 @@ describe('UpdateAdminOrderStatusUseCase', () => {
     await expect(
       useCase.execute('order-1', {
         status: OrderStatus.REFUNDED,
-      })
+      }),
     ).rejects.toThrow(AdminRefundNotAllowedError);
   });
 });

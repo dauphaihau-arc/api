@@ -12,7 +12,7 @@ import {
   IsUUID,
   Max,
   Min,
-  ValidateIf
+  ValidateIf,
 } from 'class-validator';
 import { CouponAppliesTo } from '~/modules/domains/coupon/domain/enums/coupon-applies-to.enum';
 import { CouponMinOrderType } from '~/modules/domains/coupon/domain/enums/coupon-min-order-type.enum';

@@ -1,11 +1,11 @@
 import {
   Inject,
-  Injectable
+  Injectable,
 } from '@nestjs/common';
 import { CATALOG_CONFIG, type CatalogConfig } from '~/config/catalog.config';
 import {
   type CatalogProductSlugDocument,
-  CatalogProductSlugRepository
+  CatalogProductSlugRepository,
 } from '../../../../app/ports/catalog-product-slug.repository';
 import { ProductState } from '../../../../domain/enums/product-state.enum';
 import { CatalogMongoAccess } from '../access/catalog-mongo.access';
@@ -32,7 +32,7 @@ implements CatalogProductSlugRepository {
   constructor(
     @Inject(CATALOG_CONFIG)
     private readonly catalogConfig: CatalogConfig,
-    private readonly catalogMongoAccess: CatalogMongoAccess
+    private readonly catalogMongoAccess: CatalogMongoAccess,
   ) {}
 
   async ping(): Promise<void> {
@@ -41,7 +41,7 @@ implements CatalogProductSlugRepository {
 
   async findProductIdByShopAndSlug(
     shopSlug: string,
-    productSlug: string
+    productSlug: string,
   ): Promise<string | null> {
     const collection = await this.getCollection();
     const document = await collection.findOne(
@@ -55,7 +55,7 @@ implements CatalogProductSlugRepository {
       },
       {
         projection: { productId: 1 },
-      }
+      },
     );
 
     return document?.productId ?? null;
@@ -70,7 +70,7 @@ implements CatalogProductSlugRepository {
 
     const existingDocument = await collection.findOne(
       { productId: document.productId },
-      { projection: { _id: 1 } }
+      { projection: { _id: 1 } },
     ) as ExistingSlugDocument | null;
 
     if (existingDocument && existingDocument._id !== document._id) {
@@ -80,7 +80,7 @@ implements CatalogProductSlugRepository {
     await collection.updateOne(
       { _id: document._id },
       { $set: document },
-      { upsert: true }
+      { upsert: true },
     );
   }
 
@@ -95,7 +95,7 @@ implements CatalogProductSlugRepository {
 
   private async getCollection() {
     const collection = await this.catalogMongoAccess.getCollection<MongoSlugCollectionLike<CatalogProductSlugDocument>>(
-      this.catalogConfig.mongodbSlugsCollection
+      this.catalogConfig.mongodbSlugsCollection,
     );
 
     await collection.createIndexes([

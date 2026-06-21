@@ -1,12 +1,12 @@
 import {
-  Controller, Get, Header, NotFoundException, Param, Query, UseGuards
+  Controller, Get, Header, NotFoundException, Param, Query, UseGuards,
 } from '@nestjs/common';
 import {
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
   ApiParam,
-  ApiTags
+  ApiTags,
 } from '@nestjs/swagger';
 import { SkipThrottle } from '@nestjs/throttler';
 import { OptionalJwtAuthGuard } from '~/modules/domains/auth/api/guard/optional-jwt-auth.guard';
@@ -55,11 +55,11 @@ export class ProductController {
     schema: { type: 'object' },
   })
   async suggestProducts(
-    @Query() query: SuggestPublicProductsQueryDto
+    @Query() query: SuggestPublicProductsQueryDto,
   ): Promise<{ items: PublicProductSuggestionResponse[] }> {
     const result = await this.suggestPublicProductsUseCase.execute(
       query.search,
-      query.limit
+      query.limit,
     );
 
     return { items: result.map(toPublicProductSuggestionResponse) };
@@ -73,7 +73,7 @@ export class ProductController {
     schema: { type: 'object' },
   })
   async listProducts(
-    @Query() rawQuery: Record<string, unknown>
+    @Query() rawQuery: Record<string, unknown>,
   ): Promise<PublicProductListResponse> {
     const query = await this.listPublicProductsQueryPipe.transform(rawQuery, {
       type: 'query',
@@ -93,7 +93,7 @@ export class ProductController {
     schema: { type: 'object' },
   })
   async listProductFacets(
-    @Query() rawQuery: Record<string, unknown>
+    @Query() rawQuery: Record<string, unknown>,
   ): Promise<PublicProductFacetResponse> {
     const query = await this.listPublicProductsQueryPipe.transform(rawQuery, {
       type: 'query',
@@ -118,11 +118,11 @@ export class ProductController {
   @ApiNotFoundResponse({ description: 'Product was not found.' })
   async productBySlugs(
     @Param('shop_slug') shopSlug: string,
-    @Param('product_slug') productSlug: string
+    @Param('product_slug') productSlug: string,
   ): Promise<PublicProductDetailResponse> {
     const product = await this.getPublicProductBySlugsUseCase.execute(
       shopSlug,
-      productSlug
+      productSlug,
     );
 
     if (!product) {

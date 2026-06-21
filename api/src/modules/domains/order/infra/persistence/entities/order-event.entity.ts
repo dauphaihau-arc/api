@@ -1,5 +1,5 @@
 import {
-  Entity, Enum, Index, ManyToOne, Property 
+  Entity, Enum, Index, ManyToOne, Property, 
 } from '@mikro-orm/core';
 import { AbstractBaseEntity } from '~/common/database/abstract-base.entity';
 import { OrderEventActorType } from '../../../domain/enums/order-event-actor-type.enum';

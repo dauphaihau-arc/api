@@ -6,14 +6,14 @@ import {
   Param,
   Post,
   Query,
-  UseGuards
+  UseGuards,
 } from '@nestjs/common';
 import {
   ApiCookieAuth,
   ApiOkResponse,
   ApiOperation,
   ApiParam,
-  ApiTags
+  ApiTags,
 } from '@nestjs/swagger';
 import { RequirePermissions } from '~/common/decorators/require-permissions.decorator';
 import { CurrentUser } from '~/common/decorators/current-user.decorator';
@@ -29,7 +29,7 @@ import { CreateShopCouponDto } from './dto/create-shop-coupon.dto';
 import { ListShopCouponsQueryDto } from './dto/list-shop-coupons.query.dto';
 import {
   toShopCouponListResponse,
-  toShopCouponResponse
+  toShopCouponResponse,
 } from './shop-coupon.response';
 
 @Controller('shops/:shop_id/coupons')
@@ -42,7 +42,7 @@ export class ShopCouponsController {
     private readonly createShopCouponUseCase: CreateShopCouponUseCase,
     private readonly listShopCouponsUseCase: ListShopCouponsUseCase,
     private readonly deleteShopCouponUseCase: DeleteShopCouponUseCase,
-    private readonly bulkDeleteShopCouponsUseCase: BulkDeleteShopCouponsUseCase
+    private readonly bulkDeleteShopCouponsUseCase: BulkDeleteShopCouponsUseCase,
   ) {}
 
   @Post()
@@ -55,12 +55,12 @@ export class ShopCouponsController {
   async create(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('shop_id') shopId: string,
-    @Body() body: CreateShopCouponDto
+    @Body() body: CreateShopCouponDto,
   ) {
     const coupon = await this.createShopCouponUseCase.execute(
       currentUser,
       shopId,
-      body
+      body,
     );
 
     return { coupon: toShopCouponResponse(coupon) };
@@ -76,7 +76,7 @@ export class ShopCouponsController {
   async list(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('shop_id') shopId: string,
-    @Query() query: ListShopCouponsQueryDto
+    @Query() query: ListShopCouponsQueryDto,
   ) {
     return this.listShopCouponsUseCase.execute(currentUser, shopId, query)
       .then(toShopCouponListResponse);
@@ -92,12 +92,12 @@ export class ShopCouponsController {
   async bulkDelete(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('shop_id') shopId: string,
-    @Body() body: BulkDeleteShopCouponsDto
+    @Body() body: BulkDeleteShopCouponsDto,
   ) {
     const result = await this.bulkDeleteShopCouponsUseCase.execute(
       currentUser,
       shopId,
-      body.ids
+      body.ids,
     );
 
     return {
@@ -117,7 +117,7 @@ export class ShopCouponsController {
   async remove(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('shop_id') shopId: string,
-    @Param('coupon_id') couponId: string
+    @Param('coupon_id') couponId: string,
   ) {
     await this.deleteShopCouponUseCase.execute(currentUser, shopId, couponId);
     return { message: 'deleted successfully' };

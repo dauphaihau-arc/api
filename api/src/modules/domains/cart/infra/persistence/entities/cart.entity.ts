@@ -1,5 +1,5 @@
 import {
-  Collection, Entity, Index, ManyToOne, OneToMany, Property
+  Collection, Entity, Index, ManyToOne, OneToMany, Property,
 } from '@mikro-orm/core';
 import { AbstractBaseEntity } from '~/common/database/abstract-base.entity';
 import { CurrentUserEntity } from '~/modules/domains/auth/infra/persistence/entities/current-user.entity';

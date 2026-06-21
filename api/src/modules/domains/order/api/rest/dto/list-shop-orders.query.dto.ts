@@ -7,7 +7,7 @@ import {
   IsOptional,
   IsString,
   Max,
-  Min
+  Min,
 } from 'class-validator';
 import { PaymentType } from '../../../domain/enums/payment-type.enum';
 import { OrderShippingStatus } from '../../../domain/enums/order-shipping-status.enum';

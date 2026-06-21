@@ -5,7 +5,7 @@ import { ProductVariantType } from '../../../domain/enums/product-variant-type.e
 import type { ProductAppError } from '../../errors/product-app.error';
 import {
   InvalidProductVariantConfigurationError,
-  ProductDraftIncompleteError
+  ProductDraftIncompleteError,
 } from '../../errors/product-app.error';
 import type { ProductDraftSummary } from '../../product.types';
 import { CreateProductDraftFacadeUseCase } from './create-product-draft-facade.use-case';
@@ -179,7 +179,7 @@ describe('CreateProductDraftFacadeUseCase', () => {
       setProductVariantsUseCase as never,
       setProductInventoryUseCase as never,
       setProductPricingUseCase as never,
-      setProductShippingUseCase as never
+      setProductShippingUseCase as never,
     );
 
     return {
@@ -278,7 +278,7 @@ describe('CreateProductDraftFacadeUseCase', () => {
             stock: 5,
           },
         ],
-      }
+      },
     );
     expect(setProductPricingUseCase.execute).toHaveBeenCalledWith(
       actor,
@@ -292,7 +292,7 @@ describe('CreateProductDraftFacadeUseCase', () => {
             currency: 'USD',
           },
         ],
-      }
+      },
     );
   });
 

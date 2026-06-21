@@ -9,14 +9,14 @@ import {
   Param,
   Post,
   Query,
-  UseGuards
+  UseGuards,
 } from '@nestjs/common';
 import {
   ApiCookieAuth,
   ApiOkResponse,
   ApiOperation,
   ApiParam,
-  ApiTags
+  ApiTags,
 } from '@nestjs/swagger';
 import { CurrentUser } from '~/common/decorators/current-user.decorator';
 import { RequirePermissions } from '~/common/decorators/require-permissions.decorator';
@@ -26,7 +26,7 @@ import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
 import { ShopRepository } from '~/modules/domains/shop/app/ports/shop.repository';
 import {
   buildChatConversationListQuery,
-  buildChatMessageListQuery
+  buildChatMessageListQuery,
 } from '../../app/chat.types';
 import { GetShopChatUnreadCountUseCase } from '../../app/use-cases/get-shop-chat-unread-count/get-shop-chat-unread-count.use-case';
 import { GetShopChatMessagesUseCase } from '../../app/use-cases/get-shop-chat-messages/get-shop-chat-messages.use-case';
@@ -40,11 +40,11 @@ import {
   toChatConversationListResponse,
   toChatConversationResponse,
   toChatMessageListResponse,
-  toChatMessageResponse
+  toChatMessageResponse,
 } from './chat.response';
 import {
   isChatAppError,
-  mapChatAppErrorToHttpException
+  mapChatAppErrorToHttpException,
 } from './chat-http-error-mapper';
 
 @Controller('shops/:shop_id/chat')
@@ -59,7 +59,7 @@ export class ShopChatController {
     private readonly getShopChatUnreadCountUseCase: GetShopChatUnreadCountUseCase,
     private readonly getShopChatMessagesUseCase: GetShopChatMessagesUseCase,
     private readonly markShopChatConversationReadUseCase: MarkShopChatConversationReadUseCase,
-    private readonly sendShopChatMessageUseCase: SendShopChatMessageUseCase
+    private readonly sendShopChatMessageUseCase: SendShopChatMessageUseCase,
   ) {}
 
   @Get('conversations')
@@ -70,15 +70,15 @@ export class ShopChatController {
   async listConversations(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('shop_id') shopId: string,
-    @Query() query: ListChatConversationsQueryDto
+    @Query() query: ListChatConversationsQueryDto,
   ) {
     await this.assertActorCanManageShop(currentUser, shopId);
 
     return toChatConversationListResponse(
       await this.listShopChatConversationsUseCase.execute(
         shopId,
-        buildChatConversationListQuery(query)
-      )
+        buildChatConversationListQuery(query),
+      ),
     );
   }
 
@@ -89,7 +89,7 @@ export class ShopChatController {
   @ApiOkResponse({ description: 'Unread chat count.', schema: { type: 'object' } })
   async unreadCount(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('shop_id') shopId: string
+    @Param('shop_id') shopId: string,
   ) {
     await this.assertActorCanManageShop(currentUser, shopId);
 
@@ -108,7 +108,7 @@ export class ShopChatController {
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('shop_id') shopId: string,
     @Param('conversation_id') conversationId: string,
-    @Query() query: ListChatMessagesQueryDto
+    @Query() query: ListChatMessagesQueryDto,
   ) {
     await this.assertActorCanManageShop(currentUser, shopId);
 
@@ -117,8 +117,8 @@ export class ShopChatController {
         await this.getShopChatMessagesUseCase.execute(
           shopId,
           conversationId,
-          buildChatMessageListQuery(query)
-        )
+          buildChatMessageListQuery(query),
+        ),
       );
     }
     catch (error) {
@@ -135,14 +135,14 @@ export class ShopChatController {
   async markConversationRead(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('shop_id') shopId: string,
-    @Param('conversation_id') conversationId: string
+    @Param('conversation_id') conversationId: string,
   ) {
     await this.assertActorCanManageShop(currentUser, shopId);
 
     try {
       return {
         conversation: toChatConversationResponse(
-          await this.markShopChatConversationReadUseCase.execute(shopId, conversationId)
+          await this.markShopChatConversationReadUseCase.execute(shopId, conversationId),
         ),
       };
     }
@@ -161,7 +161,7 @@ export class ShopChatController {
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('shop_id') shopId: string,
     @Param('conversation_id') conversationId: string,
-    @Body() body: SendChatMessageDto
+    @Body() body: SendChatMessageDto,
   ) {
     await this.assertActorCanManageShop(currentUser, shopId);
 
@@ -172,8 +172,8 @@ export class ShopChatController {
             currentUser,
             shopId,
             conversationId,
-            body
-          )
+            body,
+          ),
         ),
       };
     }
@@ -184,7 +184,7 @@ export class ShopChatController {
 
   private async assertActorCanManageShop(
     currentUser: AuthenticatedUser,
-    shopId: string
+    shopId: string,
   ): Promise<void> {
     if (currentUser.roles.includes('admin')) {
       const shop = await this.shopRepository.findById(shopId);

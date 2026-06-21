@@ -1,5 +1,5 @@
 import {
-  Collection, Entity, Enum, Index, ManyToOne, OneToMany, Property, Unique
+  Collection, Entity, Enum, Index, ManyToOne, OneToMany, Property, Unique,
 } from '@mikro-orm/core';
 import { AbstractBaseEntity } from '~/common/database/abstract-base.entity';
 import { ProductImageVariantStatus } from '~/modules/domains/product/domain/enums/product-image-variant-status.enum';

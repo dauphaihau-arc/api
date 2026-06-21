@@ -6,7 +6,7 @@ import {
   ManyToOne,
   OneToMany,
   Property,
-  Unique
+  Unique,
 } from '@mikro-orm/core';
 import { AbstractBaseEntity } from '~/common/database/abstract-base.entity';
 import { createPublicId } from '~/common/ids/public-id';
@@ -114,7 +114,7 @@ export class ProductEntity extends AbstractBaseEntity {
 
   @OneToMany(
     () => ProductAttributeValueEntity,
-    (attributeValue) => attributeValue.product
+    (attributeValue) => attributeValue.product,
   )
   attributeValues = new Collection<ProductAttributeValueEntity>(this);
 
@@ -126,7 +126,7 @@ export class ProductEntity extends AbstractBaseEntity {
 
   @OneToMany(
     () => ProductShippingProfileEntity,
-    (shippingProfile) => shippingProfile.product
+    (shippingProfile) => shippingProfile.product,
   )
   shippingProfiles = new Collection<ProductShippingProfileEntity>(this);
 }

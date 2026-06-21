@@ -4,19 +4,19 @@ import { ShopController } from './shop.controller';
 describe('ShopController authorization metadata', () => {
   it('requires explicit permissions for shop endpoints', () => {
     expect(
-      Reflect.getMetadata(AUTH_REQUIRED_PERMISSIONS_KEY, ShopController)
+      Reflect.getMetadata(AUTH_REQUIRED_PERMISSIONS_KEY, ShopController),
     ).toBeUndefined();
     expect(
       Reflect.getMetadata(
         AUTH_REQUIRED_PERMISSIONS_KEY,
-        ShopController.prototype.createShop
-      )
+        ShopController.prototype.createShop,
+      ),
     ).toEqual(['shops.create']);
     expect(
       Reflect.getMetadata(
         AUTH_REQUIRED_PERMISSIONS_KEY,
-        ShopController.prototype.myShop
-      )
+        ShopController.prototype.myShop,
+      ),
     ).toEqual(['shops.manage']);
   });
 });

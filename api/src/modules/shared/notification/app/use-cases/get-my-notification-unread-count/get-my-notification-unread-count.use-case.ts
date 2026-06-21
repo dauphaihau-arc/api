@@ -5,7 +5,7 @@ import { NotificationRepository } from '../../ports/notification.repository';
 @Injectable()
 export class GetMyNotificationUnreadCountUseCase {
   constructor(
-    private readonly notificationRepository: NotificationRepository
+    private readonly notificationRepository: NotificationRepository,
   ) {}
 
   async execute(actor: AuthenticatedUser): Promise<number> {

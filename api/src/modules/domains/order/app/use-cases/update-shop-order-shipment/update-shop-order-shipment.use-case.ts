@@ -12,7 +12,7 @@ import {
   InvalidShippingStatusTransitionError,
   OrderNotFoundError,
   ShipmentUpdateNotAllowedError,
-  ShipmentUpdatePayloadRequiredError
+  ShipmentUpdatePayloadRequiredError,
 } from '../../errors/order-app.error';
 import { ORDER_UPDATED_SSE_EVENT } from '../../events/order-sse.event';
 import { buildScopedOrderIdentifierWhere } from '../../order-identifier';
@@ -49,18 +49,18 @@ export class UpdateShopOrderShipmentUseCase {
     private readonly entityManager: EntityManager,
     private readonly notifyUserUseCase: NotifyUserUseCase,
     private readonly eventEmitter: EventEmitter2,
-    private readonly orderEventsService: OrderEventsService
+    private readonly orderEventsService: OrderEventsService,
   ) {}
 
   async execute(
     shopId: string,
     orderId: string,
-    input: UpdateShopOrderShipmentDto
+    input: UpdateShopOrderShipmentDto,
   ): Promise<ShopOrderDetail> {
     const entityManager = this.entityManager.fork();
     const order = await entityManager.getRepository(OrderEntity).findOne(
       buildScopedOrderIdentifierWhere(orderId, { shop: shopId }),
-      { populate: ['shop', 'user'] }
+      { populate: ['shop', 'user'] },
     );
 
     if (!order) {
@@ -234,7 +234,7 @@ export class UpdateShopOrderShipmentUseCase {
 
   private buildShippingBody(
     orderNumber: string,
-    shippingStatus: OrderShippingStatus
+    shippingStatus: OrderShippingStatus,
   ): string {
     switch (shippingStatus) {
       case OrderShippingStatus.IN_TRANSIT:

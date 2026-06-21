@@ -6,7 +6,7 @@ import type { QueueConfig } from '~/config/queue.config';
 import type {
   AppJobName,
   AppJobPayloadMap,
-  DispatchJobOptions
+  DispatchJobOptions,
 } from '~/common/jobs/job.types';
 import type { JobDispatcher } from '../app/ports/job-dispatcher';
 
@@ -17,7 +17,7 @@ implements JobDispatcher, OnApplicationShutdown {
 
   constructor(
     private readonly queueConfig: QueueConfig,
-    connection: Redis
+    connection: Redis,
   ) {
     this.queue = new Queue(queueConfig.queueName, {
       connection,
@@ -41,7 +41,7 @@ implements JobDispatcher, OnApplicationShutdown {
   async dispatch<TName extends AppJobName>(
     name: TName,
     payload: AppJobPayloadMap[TName],
-    options?: DispatchJobOptions
+    options?: DispatchJobOptions,
   ): Promise<void> {
     const job = await this.queue.add(name, payload, {
       jobId: options?.deduplicationKey,
@@ -49,7 +49,7 @@ implements JobDispatcher, OnApplicationShutdown {
     });
 
     this.logger.log(
-      `Enqueued job ${name} with id ${job.id ?? 'unknown'}`
+      `Enqueued job ${name} with id ${job.id ?? 'unknown'}`,
     );
   }
 

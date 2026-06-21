@@ -6,7 +6,7 @@ import type { WebPushSubscriptionSummary } from '../../notification.types';
 @Injectable()
 export class RegisterWebPushSubscriptionUseCase {
   constructor(
-    private readonly webPushSubscriptionRepository: WebPushSubscriptionRepository
+    private readonly webPushSubscriptionRepository: WebPushSubscriptionRepository,
   ) {}
 
   async execute(
@@ -16,7 +16,7 @@ export class RegisterWebPushSubscriptionUseCase {
       p256dh: string;
       auth: string;
       userAgent?: string;
-    }
+    },
   ): Promise<WebPushSubscriptionSummary> {
     return this.webPushSubscriptionRepository.upsert({
       userId: actor.userId,

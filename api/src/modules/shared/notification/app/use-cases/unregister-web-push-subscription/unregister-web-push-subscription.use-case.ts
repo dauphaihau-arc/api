@@ -5,16 +5,16 @@ import { WebPushSubscriptionRepository } from '../../ports/web-push-subscription
 @Injectable()
 export class UnregisterWebPushSubscriptionUseCase {
   constructor(
-    private readonly webPushSubscriptionRepository: WebPushSubscriptionRepository
+    private readonly webPushSubscriptionRepository: WebPushSubscriptionRepository,
   ) {}
 
   async execute(
     actor: AuthenticatedUser,
-    endpoint: string
+    endpoint: string,
   ): Promise<boolean> {
     return this.webPushSubscriptionRepository.deactivateOwnedByEndpoint(
       actor.userId,
-      endpoint
+      endpoint,
     );
   }
 }

@@ -11,7 +11,7 @@ describe('SendWelcomeEmailOnUserCreatedListener', () => {
     const listener = new SendWelcomeEmailOnUserCreatedListener(jobDispatcher);
 
     await listener.handle(
-      new UserCreatedEvent('user-1', 'member@example.com', 'Member User')
+      new UserCreatedEvent('user-1', 'member@example.com', 'Member User'),
     );
 
     expect(jobDispatcher.dispatch).toHaveBeenCalledTimes(1);
@@ -24,7 +24,7 @@ describe('SendWelcomeEmailOnUserCreatedListener', () => {
       },
       {
         deduplicationKey: appJobDeduplicationKey.sendWelcomeEmail('user-1'),
-      }
+      },
     );
   });
 });

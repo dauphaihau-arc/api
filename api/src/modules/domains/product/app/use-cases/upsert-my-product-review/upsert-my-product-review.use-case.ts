@@ -9,7 +9,7 @@ import {
   InvalidProductReviewImageError,
   ProductReviewEditLimitExceededError,
   ProductReviewNotEligibleError,
-  ProductReviewOrderItemNotFoundError
+  ProductReviewOrderItemNotFoundError,
 } from '../../errors/product-app.error';
 import type { MyProductReview } from '../../product.types';
 import { CatalogProductProjectorService } from '../../services/catalog-product-projector.service';
@@ -17,7 +17,7 @@ import { ProductImageVariantStatus } from '../../../domain/enums/product-image-v
 import { ProductReviewStatus } from '../../../domain/enums/product-review-status.enum';
 import {
   isEligibleForProductReview,
-  trimOptionalReviewText
+  trimOptionalReviewText,
 } from '../../product-review.helpers';
 import { PRODUCT_REVIEW_MAX_IMAGES } from '../../product-review.constants';
 import { ProductReviewEntity } from '../../../infra/persistence/mikro-orm/entities/product-review.entity';
@@ -27,7 +27,7 @@ import { StorageService } from '~/modules/shared/storage/app/ports/storage.servi
 import { PendingReviewImageUploadService } from '../../pending-review-image-upload.service';
 import {
   buildProductReviewEditLimitCacheKey,
-  millisecondsUntilNextUtcDay
+  millisecondsUntilNextUtcDay,
 } from '../../product-review.cache-keys';
 import { ProductReviewAggregateRepository } from '../../ports/product-review-aggregate.repository';
 
@@ -49,13 +49,13 @@ export class UpsertMyProductReviewUseCase {
     private readonly pendingReviewImageUploadService: PendingReviewImageUploadService,
     private readonly jobDispatcher: JobDispatcher,
     private readonly productReviewAggregateRepository: ProductReviewAggregateRepository,
-    @Inject(CACHE_MANAGER) private readonly cacheManager: Cache
+    @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
   ) {}
 
   async execute(
     actor: AuthenticatedUser,
     orderItemId: string,
-    input: UpsertMyProductReviewInput
+    input: UpsertMyProductReviewInput,
   ): Promise<MyProductReview> {
     const entityManager = this.entityManager.fork();
     const orderItem = await entityManager.getRepository(OrderItemEntity).findOne(
@@ -67,7 +67,7 @@ export class UpsertMyProductReviewUseCase {
       },
       {
         populate: ['order', 'product', 'product.shop'],
-      }
+      },
     );
 
     if (!orderItem) {
@@ -76,7 +76,7 @@ export class UpsertMyProductReviewUseCase {
 
     if (!isEligibleForProductReview(orderItem.order)) {
       throw new ProductReviewNotEligibleError(
-        'This order item is not eligible for review yet'
+        'This order item is not eligible for review yet',
       );
     }
 
@@ -97,7 +97,7 @@ export class UpsertMyProductReviewUseCase {
       input.imageKeys ?? [],
       actor.userId,
       orderItem.id,
-      previousImageKeys
+      previousImageKeys,
     );
     const review = existingReview ?? reviewRepository.create({
       product: orderItem.product,
@@ -203,7 +203,7 @@ export class UpsertMyProductReviewUseCase {
 
   private async assertEditLimitNotExceeded(
     userId: string,
-    productId: string
+    productId: string,
   ): Promise<void> {
     const now = new Date();
     const cacheKey = buildProductReviewEditLimitCacheKey(userId, productId, now);
@@ -216,7 +216,7 @@ export class UpsertMyProductReviewUseCase {
     await this.cacheManager.set(
       cacheKey,
       currentCount + 1,
-      millisecondsUntilNextUtcDay(now)
+      millisecondsUntilNextUtcDay(now),
     );
   }
 }
@@ -225,7 +225,7 @@ function normalizeReviewImageKeys(
   keys: string[],
   userId: string,
   orderItemId: string,
-  allowedExistingKeys: string[]
+  allowedExistingKeys: string[],
 ): string[] {
   const normalized = keys
     .map((key) => key.trim())
@@ -233,7 +233,7 @@ function normalizeReviewImageKeys(
 
   if (normalized.length > PRODUCT_REVIEW_MAX_IMAGES) {
     throw new InvalidProductReviewImageError(
-      `A review can include at most ${PRODUCT_REVIEW_MAX_IMAGES} images`
+      `A review can include at most ${PRODUCT_REVIEW_MAX_IMAGES} images`,
     );
   }
 
@@ -243,7 +243,7 @@ function normalizeReviewImageKeys(
   normalized.forEach((key) => {
     if (!key.includes(expectedSegment) && !allowedExistingKeySet.has(key)) {
       throw new InvalidProductReviewImageError(
-        'Review image key is not valid for this order item'
+        'Review image key is not valid for this order item',
       );
     }
   });
@@ -254,7 +254,7 @@ function normalizeReviewImageKeys(
 async function deleteRemovedImages(
   storageService: StorageService,
   previousImageKeys: string[],
-  nextImageKeys: string[]
+  nextImageKeys: string[],
 ): Promise<void> {
   const nextKeys = new Set(nextImageKeys);
   const removedKeys = previousImageKeys.filter((key) => !nextKeys.has(key));
@@ -264,7 +264,7 @@ async function deleteRemovedImages(
 
 async function clearPendingImages(
   pendingReviewImageUploadService: PendingReviewImageUploadService,
-  imageKeys: string[]
+  imageKeys: string[],
 ): Promise<void> {
   const uniqueKeys = Array.from(new Set(imageKeys));
   await Promise.all(uniqueKeys.map((key) => pendingReviewImageUploadService.clearPending(key)));

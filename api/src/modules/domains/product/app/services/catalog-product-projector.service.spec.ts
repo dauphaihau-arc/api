@@ -37,7 +37,7 @@ describe('CatalogProductProjectorService', () => {
         } as never,
         productDocumentRepository as never,
         productSlugRepository as never,
-        searchDocumentRepository as never
+        searchDocumentRepository as never,
       ),
       sourceRepository,
       productDocumentRepository,

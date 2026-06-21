@@ -3,7 +3,7 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
-  NotFoundException
+  NotFoundException,
 } from '@nestjs/common';
 import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
 import { CouponAppliesTo } from '~/modules/domains/coupon/domain/enums/coupon-applies-to.enum';
@@ -22,7 +22,7 @@ export class CreateShopCouponUseCase {
     const entityManager = this.entityManager.fork();
     const shop = await entityManager.getRepository(ShopEntity).findOne(
       { id: shopId },
-      { populate: ['ownerUser'] }
+      { populate: ['ownerUser'] },
     );
 
     if (!shop) {

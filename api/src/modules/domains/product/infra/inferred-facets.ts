@@ -63,7 +63,7 @@ export function isInferredFacetSupported(facetKey: string): facetKey is Inferred
 
 export function getInferredFacetTerms(
   facetKey: string,
-  optionKey: string
+  optionKey: string,
 ): string[] {
   if (!isInferredFacetSupported(facetKey)) {
     return [];

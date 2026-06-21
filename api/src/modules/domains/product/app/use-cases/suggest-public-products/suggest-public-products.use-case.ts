@@ -11,7 +11,7 @@ export class SuggestPublicProductsUseCase {
 
   async execute(
     search: string,
-    limit: number = PUBLIC_PRODUCT_SUGGESTIONS_DEFAULT_LIMIT
+    limit: number = PUBLIC_PRODUCT_SUGGESTIONS_DEFAULT_LIMIT,
   ): Promise<PublicProductSuggestion[]> {
     const trimmedSearch = search.trim();
 

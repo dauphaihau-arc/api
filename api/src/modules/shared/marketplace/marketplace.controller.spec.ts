@@ -9,7 +9,7 @@ describe('MarketplaceController', () => {
   };
 
   const controller = new MarketplaceController(
-    marketplaceService as unknown as MarketplaceService
+    marketplaceService as unknown as MarketplaceService,
   );
 
   beforeEach(() => {

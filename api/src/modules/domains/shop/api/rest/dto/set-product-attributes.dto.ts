@@ -5,7 +5,7 @@ import {
   IsString,
   IsUUID,
   MaxLength,
-  ValidateNested
+  ValidateNested,
 } from 'class-validator';
 import { Expose, Transform, Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';

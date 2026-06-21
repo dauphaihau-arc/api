@@ -2,11 +2,11 @@ import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import {
   ThrottlerModule,
-  type ThrottlerStorage
+  type ThrottlerStorage,
 } from '@nestjs/throttler';
 import {
   RATE_LIMIT_CONFIG,
-  type RateLimitConfig
+  type RateLimitConfig,
 } from '~/config/rate-limit.config';
 import { RateLimitInfraModule } from './rate-limit-infra.module';
 import { RATE_LIMIT_STORAGE } from './rate-limit.constants';
@@ -20,7 +20,7 @@ import { GraphqlThrottlerGuard } from './graphql-throttler.guard';
       inject: [RATE_LIMIT_CONFIG, RATE_LIMIT_STORAGE],
       useFactory: (
         rateLimitConfig: RateLimitConfig,
-        storage: ThrottlerStorage
+        storage: ThrottlerStorage,
       ) => ({
         storage,
         errorMessage: 'Too many requests.',

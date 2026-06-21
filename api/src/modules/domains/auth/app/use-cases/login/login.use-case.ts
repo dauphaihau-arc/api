@@ -4,7 +4,7 @@ import { AuthResponse, LoginUserInput } from '../../auth.types';
 import {
   InactiveUserError,
   InvalidCredentialsError,
-  UserNotFoundError
+  UserNotFoundError,
 } from '../../errors/auth-app.error';
 import { UserStatus } from '../../../domain/enums/user-status.enum';
 import { Email } from '../../../domain/value-objects/email';
@@ -17,7 +17,7 @@ export class LoginUseCase {
   constructor(
     private readonly authUserRepository: AuthUserRepository,
     private readonly passwordHasher: PasswordHasher,
-    private readonly issueSessionUseCase: IssueSessionUseCase
+    private readonly issueSessionUseCase: IssueSessionUseCase,
   ) {}
 
   async execute(input: LoginUserInput): Promise<
@@ -39,7 +39,7 @@ export class LoginUseCase {
 
     const passwordMatches = await this.passwordHasher.matches(
       input.password,
-      user.passwordHash.toString()
+      user.passwordHash.toString(),
     );
 
     if (!passwordMatches) {

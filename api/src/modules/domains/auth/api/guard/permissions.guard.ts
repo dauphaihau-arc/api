@@ -2,7 +2,7 @@ import {
   CanActivate,
   ExecutionContext,
   ForbiddenException,
-  Injectable
+  Injectable,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { GqlExecutionContext } from '@nestjs/graphql';
@@ -17,7 +17,7 @@ export class PermissionsGuard implements CanActivate {
     const requiredPermissions =
       this.reflector.getAllAndOverride<string[]>(
         AUTH_REQUIRED_PERMISSIONS_KEY,
-        [context.getHandler(), context.getClass()]
+        [context.getHandler(), context.getClass()],
       ) ?? [];
 
     if (requiredPermissions.length === 0) {
@@ -32,7 +32,7 @@ export class PermissionsGuard implements CanActivate {
     }
 
     const hasAllPermissions = requiredPermissions.every((permission) =>
-      currentUser.permissions.includes(permission)
+      currentUser.permissions.includes(permission),
     );
 
     if (!hasAllPermissions) {

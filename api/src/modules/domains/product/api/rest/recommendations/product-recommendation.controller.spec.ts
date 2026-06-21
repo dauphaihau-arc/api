@@ -32,7 +32,7 @@ describe('ProductRecommendationController', () => {
     getPublicProductRecommendationSectionsUseCase as never,
     publicProductOrderHistoryService as never,
     publicProductViewHistoryService as never,
-    productActivitySessionService as never
+    productActivitySessionService as never,
   );
 
   beforeEach(() => {
@@ -104,7 +104,7 @@ describe('ProductRecommendationController', () => {
     await expect(controller.recommendProducts(
       'arc-store',
       'handmade-bag',
-      { limit: 6 }
+      { limit: 6 },
     )).resolves.toEqual({
       items: [
         {
@@ -162,7 +162,7 @@ describe('ProductRecommendationController', () => {
     await expect(controller.getRecommendationSections(
       'arc-store',
       'handmade-bag',
-      { limit: 6 }
+      { limit: 6 },
     )).resolves.toEqual({
       sections: [
         {
@@ -223,7 +223,7 @@ describe('ProductRecommendationController', () => {
 
     await expect(controller.listRecentlyViewedProducts(
       {} as never,
-      { limit: 5 }
+      { limit: 5 },
     )).resolves.toEqual({
       items: [
         {

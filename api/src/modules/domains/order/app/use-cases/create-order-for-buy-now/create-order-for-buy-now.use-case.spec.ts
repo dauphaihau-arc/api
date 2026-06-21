@@ -117,7 +117,7 @@ describe('CreateOrderForBuyNowUseCase', () => {
     const useCase = new CreateOrderForBuyNowUseCase(
       cartRepository,
       loadCheckoutQuoteService,
-      orderCheckoutService
+      orderCheckoutService,
     );
 
     await useCase.execute(actor, {
@@ -138,7 +138,7 @@ describe('CreateOrderForBuyNowUseCase', () => {
           id: 'quote-1',
         }),
         isTempCart: true,
-      })
+      }),
     );
   });
 });

@@ -1,6 +1,6 @@
 import {
   Expose,
-  Transform
+  Transform,
 } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 import {
@@ -8,7 +8,7 @@ import {
   IsEnum,
   IsString,
   MaxLength,
-  MinLength
+  MinLength,
 } from 'class-validator';
 import { MARKETPLACE_CURRENCIES, type MarketplaceCurrency } from '~/config/marketplace.config';
 import { IsAuthPassword } from '../validation/password-validation';

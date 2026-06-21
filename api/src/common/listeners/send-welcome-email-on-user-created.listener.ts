@@ -7,7 +7,7 @@ import { JobDispatcher } from '../../modules/shared/queue/app/ports/job-dispatch
 @Injectable()
 export class SendWelcomeEmailOnUserCreatedListener {
   private readonly logger = new Logger(
-    SendWelcomeEmailOnUserCreatedListener.name
+    SendWelcomeEmailOnUserCreatedListener.name,
   );
 
   constructor(private readonly jobDispatcher: JobDispatcher) {}
@@ -23,7 +23,7 @@ export class SendWelcomeEmailOnUserCreatedListener {
       },
       {
         deduplicationKey: appJobDeduplicationKey.sendWelcomeEmail(event.userId),
-      }
+      },
     );
 
     this.logger.log(`Queued welcome email for ${event.email}`);

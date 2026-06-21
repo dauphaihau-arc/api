@@ -6,7 +6,7 @@ import {
   IsString,
   IsUUID,
   MaxLength,
-  ValidateNested
+  ValidateNested,
 } from 'class-validator';
 
 class ShopAdjustmentDto {

@@ -111,7 +111,7 @@ describe('SetProductAttributesUseCase', () => {
       productRepository,
       productRepository,
       shopRepository,
-      categoryRepository
+      categoryRepository,
     );
 
     const result = await useCase.execute(actor, product.id, {
@@ -142,7 +142,7 @@ describe('SetProductAttributesUseCase', () => {
       productRepository,
       productRepository,
       shopRepository,
-      categoryRepository
+      categoryRepository,
     );
 
     const result = await useCase.execute(actor, product.id, {

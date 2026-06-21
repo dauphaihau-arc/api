@@ -7,7 +7,7 @@ import {
   OnGatewayConnection,
   OnGatewayDisconnect,
   SubscribeMessage,
-  WebSocketGateway
+  WebSocketGateway,
 } from '@nestjs/websockets';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { Namespace, Socket } from 'socket.io';
@@ -52,7 +52,7 @@ export class WsGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayD
     private readonly entityManager: EntityManager,
     private readonly authTokenService: AuthTokenService,
     private readonly loadAuthenticatedUserUseCase: LoadAuthenticatedUserUseCase,
-    @Inject(AUTH_CONFIG) private readonly authConfig: AuthConfig
+    @Inject(AUTH_CONFIG) private readonly authConfig: AuthConfig,
   ) {}
 
   async afterInit(namespace: Namespace): Promise<void> {
@@ -88,7 +88,7 @@ export class WsGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayD
   @SubscribeMessage('conversation.subscribe')
   async subscribeConversation(
     @ConnectedSocket() client: AuthenticatedSocket,
-    @MessageBody() body: ConversationSubscriptionPayload
+    @MessageBody() body: ConversationSubscriptionPayload,
   ) {
     if (!client.data.authenticatedUser) {
       client.disconnect(true);
@@ -98,7 +98,7 @@ export class WsGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayD
     const authenticatedUser = client.data.authenticatedUser as AuthenticatedUser;
     const canAccessConversation = await this.canAccessConversation(
       authenticatedUser,
-      body.conversation_id
+      body.conversation_id,
     );
 
     if (!canAccessConversation) {
@@ -116,7 +116,7 @@ export class WsGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayD
   @SubscribeMessage('conversation.unsubscribe')
   unsubscribeConversation(
     @ConnectedSocket() client: AuthenticatedSocket,
-    @MessageBody() body: ConversationSubscriptionPayload
+    @MessageBody() body: ConversationSubscriptionPayload,
   ) {
     if (!client.data.authenticatedUser) {
       client.disconnect(true);
@@ -138,7 +138,7 @@ export class WsGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayD
           cookie: client.handshake.headers.cookie,
         },
       } as Request,
-      this.authConfig.accessCookieName
+      this.authConfig.accessCookieName,
     );
 
     if (!accessToken) {
@@ -155,7 +155,7 @@ export class WsGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayD
 
     const authenticatedUser = await this.loadAuthenticatedUserUseCase.execute(
       payload.sub,
-      payload.sessionId
+      payload.sessionId,
     );
 
     if (!authenticatedUser.isOk) {
@@ -168,11 +168,11 @@ export class WsGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayD
 
   private async canAccessConversation(
     actor: AuthenticatedUser,
-    conversationId: string
+    conversationId: string,
   ): Promise<boolean> {
     const conversation = await this.entityManager.fork().getRepository(ChatConversationEntity).findOne(
       { id: conversationId },
-      { populate: ['buyerUser', 'shop.ownerUser'] }
+      { populate: ['buyerUser', 'shop.ownerUser'] },
     );
 
     if (!conversation) {

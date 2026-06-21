@@ -4,7 +4,7 @@ import type { AuthResponse } from '../../auth.types';
 import {
   InvalidPasswordResetTokenError,
   PasswordResetTokenExpiredError,
-  UserNotFoundError
+  UserNotFoundError,
 } from '../../errors/auth-app.error';
 import { PasswordHash } from '../../../domain/value-objects/password-hash';
 import { AuthSessionRepository } from '../../ports/auth-session.repository';
@@ -22,7 +22,7 @@ export class ResetPasswordUseCase {
     private readonly passwordResetTokenRepository: PasswordResetTokenRepository,
     private readonly passwordHasher: PasswordHasher,
     private readonly tokenHasher: TokenHasher,
-    private readonly issueSessionUseCase: IssueSessionUseCase
+    private readonly issueSessionUseCase: IssueSessionUseCase,
   ) {}
 
   async execute(input: {
@@ -37,7 +37,7 @@ export class ResetPasswordUseCase {
     >
   > {
     const passwordResetToken = await this.passwordResetTokenRepository.findByTokenHash(
-      this.tokenHasher.hash(input.token)
+      this.tokenHasher.hash(input.token),
     );
 
     if (!passwordResetToken || passwordResetToken.usedAt) {
@@ -59,7 +59,7 @@ export class ResetPasswordUseCase {
     await this.authUserRepository.updatePassword({
       userId: user.id,
       passwordHash: PasswordHash.fromPersisted(
-        await this.passwordHasher.hash(input.password)
+        await this.passwordHasher.hash(input.password),
       ),
       passwordUpdatedAt,
     });

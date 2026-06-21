@@ -6,13 +6,13 @@ import type {
   PricedCartItem,
   PricedCartSummary,
   ShippingAddressInput,
-  ShopAdjustmentInput
+  ShopAdjustmentInput,
 } from '../../order/app/order.types';
 import {
   computeCouponDiscount,
   couponAppliesToProduct,
   couponMeetsMinimum,
-  isCouponActive
+  isCouponActive,
 } from '../../order/app/order.types';
 import { CouponType } from '../domain/enums/coupon-type.enum';
 import { CouponUsageEntity } from '../infra/persistence/entities/coupon-usage.entity';
@@ -30,7 +30,7 @@ export class CouponPricingService {
     shippingAddress?: ShippingAddressInput;
   }): Promise<PricedCartSummary> {
     const shopAdjustments = new Map(
-      (input.shopAdjustments ?? []).map((entry) => [entry.shopId, entry])
+      (input.shopAdjustments ?? []).map((entry) => [entry.shopId, entry]),
     );
     const selectedItems = input.cart.items.filter((item) => item.isSelectOrder);
     const shopIds = [...new Set(selectedItems.map((item) => item.inventory.shopId))];
@@ -50,7 +50,7 @@ export class CouponPricingService {
       for (const usage of usages) {
         couponUsageCounts.set(
           usage.coupon.id,
-          (couponUsageCounts.get(usage.coupon.id) ?? 0) + 1
+          (couponUsageCounts.get(usage.coupon.id) ?? 0) + 1,
         );
       }
     }
@@ -58,11 +58,11 @@ export class CouponPricingService {
     const shippingProfiles = productIds.length > 0
       ? await shippingRepository.find(
         { product: { $in: productIds } },
-        { populate: ['destinations'] }
+        { populate: ['destinations'] },
       )
       : [];
     const shippingByProductId = new Map(
-      shippingProfiles.map((profile) => [profile.product.id, profile])
+      shippingProfiles.map((profile) => [profile.product.id, profile]),
     );
 
     const pricedItemsByShop = new Map<string, PricedCartItem[]>();
@@ -87,7 +87,7 @@ export class CouponPricingService {
       const activeAutoCoupons = (autoCouponsByShop.get(item.inventory.shopId) ?? [])
         .filter((coupon) =>
           isCouponActive(coupon)
-          && couponAppliesToProduct(coupon, item.inventory.productId)
+          && couponAppliesToProduct(coupon, item.inventory.productId),
         );
 
       let autoSaleCoupon: CouponEntity | undefined;
@@ -152,7 +152,7 @@ export class CouponPricingService {
     for (const [shopId, items] of pricedItemsByShop.entries()) {
       const subtotal = items.reduce(
         (sum, item) => sum + (item.effectiveUnitPrice * item.quantity),
-        0
+        0,
       );
       const adjustment = shopAdjustments.get(shopId);
       const promoCodes = adjustment?.promoCodes ?? [];
@@ -192,7 +192,7 @@ export class CouponPricingService {
 
         shopDiscount += Math.min(
           eligibleSubtotal,
-          computeCouponDiscount(coupon, eligibleSubtotal)
+          computeCouponDiscount(coupon, eligibleSubtotal),
         );
       }
 
@@ -200,7 +200,7 @@ export class CouponPricingService {
         ...new Set(
           items
             .map((item) => shippingByProductId.get(item.productId)?.originCountry)
-            .filter((value): value is string => Boolean(value))
+            .filter((value): value is string => Boolean(value)),
         ),
       ];
 

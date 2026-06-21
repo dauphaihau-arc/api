@@ -47,7 +47,7 @@ describe('ListMyNotificationsUseCase', () => {
     expect(repository.findAllOwnedByUserId).toHaveBeenCalledWith(
       actor.userId,
       1,
-      20
+      20,
     );
     expect(result).toEqual({
       results: expect.any(Array),

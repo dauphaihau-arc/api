@@ -37,7 +37,7 @@ export class ResendMailSender implements MailSender {
     const responseBody = await response.text();
 
     throw new Error(
-      `Resend mail request failed with status ${response.status}: ${responseBody}`
+      `Resend mail request failed with status ${response.status}: ${responseBody}`,
     );
   }
 
@@ -59,7 +59,7 @@ export class ResendMailSender implements MailSender {
   }
 
   private formatAddresses(
-    value?: MailAddress | MailAddress[]
+    value?: MailAddress | MailAddress[],
   ): string[] | undefined {
     if (!value) {
       return undefined;

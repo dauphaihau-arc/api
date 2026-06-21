@@ -49,7 +49,7 @@ describe('BulkDeleteShopCouponsUseCase', () => {
     const fork = {
       getRepository: jest.fn().mockReturnValue({
         find: jest.fn().mockImplementation(async ({ id }) =>
-          id.$in.map((couponId: string) => coupons.get(couponId)).filter(Boolean)
+          id.$in.map((couponId: string) => coupons.get(couponId)).filter(Boolean),
         ),
       }),
       remove: jest.fn().mockImplementation((coupon: { id: string }) => {

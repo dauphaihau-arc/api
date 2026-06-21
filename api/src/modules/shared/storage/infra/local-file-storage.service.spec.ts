@@ -35,10 +35,10 @@ describe('LocalFileStorageService', () => {
 
     await expect(service.exists('avatars/user-1.txt')).resolves.toBe(true);
     await expect(service.getObject('avatars/user-1.txt')).resolves.toEqual(
-      Buffer.from('hello storage')
+      Buffer.from('hello storage'),
     );
     await expect(
-      readFile(path.join(tempRoot, 'avatars', 'user-1.txt'), 'utf8')
+      readFile(path.join(tempRoot, 'avatars', 'user-1.txt'), 'utf8'),
     ).resolves.toBe('hello storage');
   });
 
@@ -62,11 +62,11 @@ describe('LocalFileStorageService', () => {
       service.putObject({
         key: '../secrets.txt',
         body: 'nope',
-      })
+      }),
     ).rejects.toThrow('invalid path segment');
 
     expect(() => service.getPublicUrl('/absolute.txt')).toThrow(
-      'Storage key must be relative.'
+      'Storage key must be relative.',
     );
   });
 });

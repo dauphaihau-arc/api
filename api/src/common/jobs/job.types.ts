@@ -91,7 +91,7 @@ export const appJobDeduplicationKey = {
   refreshExchangeRates(bucket: string): string {
     return buildJobDeduplicationKey(
       appJobName.refreshExchangeRates,
-      bucket
+      bucket,
     );
   },
   sendWelcomeEmail(userId: string): string {
@@ -101,26 +101,26 @@ export const appJobDeduplicationKey = {
     return buildJobDeduplicationKey(
       appJobName.sendGuestOrderConfirmationEmail,
       email,
-      orderIds.join('-')
+      orderIds.join('-'),
     );
   },
   processOrderRefund(orderId: string): string {
     return buildJobDeduplicationKey(
       appJobName.processOrderRefund,
-      orderId
+      orderId,
     );
   },
   sendWebPushNotification(userId: string, notificationId: string): string {
     return buildJobDeduplicationKey(
       appJobName.sendWebPushNotification,
       userId,
-      notificationId
+      notificationId,
     );
   },
   generateProductImageVariants(productId: string): string {
     return buildJobDeduplicationKey(
       appJobName.generateProductImageVariants,
-      productId
+      productId,
     );
   },
   generateReviewImageVariants(reviewImageId: string): string {
@@ -132,7 +132,7 @@ export const appJobDeduplicationKey = {
   projectCatalogProduct(productId: string): string {
     return buildJobDeduplicationKey(
       appJobName.projectCatalogProduct,
-      productId
+      productId,
     );
   },
   cleanupPendingReviewImage(storageKey: string): string {

@@ -12,12 +12,12 @@ import {
   getOrderSubtotalMajor,
   getOrderSubtotalMinor,
   getOrderTotalMinor,
-  getOrderTotalMajor
+  getOrderTotalMajor,
 } from './order-money';
 
 export function toAdminOrderDetail(
   order: OrderEntity,
-  items: OrderItemEntity[]
+  items: OrderItemEntity[],
 ): AdminOrderDetail {
   return {
     id: order.id,

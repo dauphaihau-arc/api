@@ -88,7 +88,7 @@ describe('CreateCheckoutQuoteService', () => {
       entityManager,
       couponPricingService,
       storefrontMarketContextService,
-      orderTotalPolicyService
+      orderTotalPolicyService,
     );
 
     await expect(
@@ -114,7 +114,7 @@ describe('CreateCheckoutQuoteService', () => {
           zip: '700000',
           phone: '0123',
         },
-      })
+      }),
     ).rejects.toThrow(OrderTotalLimitExceededError);
 
     expect(orderTotalPolicyService.assertWithinLimit).toHaveBeenCalledWith({

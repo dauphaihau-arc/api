@@ -8,7 +8,7 @@ import { ProductVariantType } from '../../../domain/enums/product-variant-type.e
 import {
   ActorCannotCreateProductDraftError,
   InvalidProductVariantConfigurationError,
-  ProductNotFoundError
+  ProductNotFoundError,
 } from '../../errors/product-app.error';
 import { ProductCommandRepository } from '../../ports/product-command.repository';
 import { SellerProductQueryRepository } from '../../ports/seller-product-query.repository';
@@ -32,13 +32,13 @@ export class SetProductVariantsUseCase {
     private readonly sellerProductQueryRepository: SellerProductQueryRepository,
     private readonly productCommandRepository: ProductCommandRepository,
     private readonly shopRepository: ShopRepository,
-    private readonly jobDispatcher?: JobDispatcher
+    private readonly jobDispatcher?: JobDispatcher,
   ) {}
 
   async execute(
     actor: AuthenticatedUser,
     productId: string,
-    input: SetProductVariantsInput
+    input: SetProductVariantsInput,
   ): Promise<Result<ProductDraftSummary, SetProductVariantsError>> {
     const existingProduct = await this.sellerProductQueryRepository.findById(productId);
 
@@ -51,7 +51,7 @@ export class SetProductVariantsUseCase {
     if (!canManageAnyShop) {
       const ownedShop = await this.shopRepository.findOwnedById(
         existingProduct.shopId,
-        actor.userId
+        actor.userId,
       );
 
       if (!ownedShop) {
@@ -61,7 +61,7 @@ export class SetProductVariantsUseCase {
 
     const validationError = validateVariantPayload(
       existingProduct.variantType ?? ProductVariantType.NONE,
-      input.variants
+      input.variants,
     );
 
     if (validationError) {
@@ -87,9 +87,9 @@ export class SetProductVariantsUseCase {
       { productId: product.id },
       {
         deduplicationKey: appJobDeduplicationKey.projectCatalogProduct(
-          product.id
+          product.id,
         ),
-      }
+      },
     );
 
     return ok(product);
@@ -98,17 +98,17 @@ export class SetProductVariantsUseCase {
 
 function validateVariantPayload(
   variantType: ProductVariantType,
-  variants: SetProductVariantsInput['variants']
+  variants: SetProductVariantsInput['variants'],
 ): InvalidProductVariantConfigurationError | null {
   if (variantType === ProductVariantType.NONE) {
     return new InvalidProductVariantConfigurationError(
-      'Products without variants cannot define variant rows'
+      'Products without variants cannot define variant rows',
     );
   }
 
   if (variants.length === 0) {
     return new InvalidProductVariantConfigurationError(
-      'At least one variant is required'
+      'At least one variant is required',
     );
   }
 
@@ -120,7 +120,7 @@ function validateVariantPayload(
 
     if (!optionValue1) {
       return new InvalidProductVariantConfigurationError(
-        'Each variant requires option value 1'
+        'Each variant requires option value 1',
       );
     }
 
@@ -129,7 +129,7 @@ function validateVariantPayload(
       && optionValue2
     ) {
       return new InvalidProductVariantConfigurationError(
-        'Single-variant products cannot define option value 2'
+        'Single-variant products cannot define option value 2',
       );
     }
 
@@ -138,7 +138,7 @@ function validateVariantPayload(
       && !optionValue2
     ) {
       return new InvalidProductVariantConfigurationError(
-        'Combined-variant products require option value 2'
+        'Combined-variant products require option value 2',
       );
     }
 
@@ -146,7 +146,7 @@ function validateVariantPayload(
 
     if (seenNames.has(name)) {
       return new InvalidProductVariantConfigurationError(
-        `Duplicate variant "${name}" is not allowed`
+        `Duplicate variant "${name}" is not allowed`,
       );
     }
 

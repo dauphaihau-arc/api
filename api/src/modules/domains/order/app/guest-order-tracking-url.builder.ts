@@ -2,7 +2,7 @@ import type { PaymentConfig } from '~/config/payment.config';
 
 export function buildGuestOrderTrackingUrl(
   paymentConfig: PaymentConfig,
-  token: string
+  token: string,
 ): string | undefined {
   if (!paymentConfig.appBaseUrl) {
     return undefined;

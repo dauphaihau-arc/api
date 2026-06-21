@@ -24,7 +24,7 @@ function buildSellerOrderNotificationData(
   orderId: string,
   orderNumber: string,
   shopId: string,
-  overrides?: Omit<SellerOrderNotificationData, 'target' | 'orderId' | 'orderNumber' | 'shopId'>
+  overrides?: Omit<SellerOrderNotificationData, 'target' | 'orderId' | 'orderNumber' | 'shopId'>,
 ): SellerOrderNotificationData {
   return {
     target: 'seller_order_detail',
@@ -39,7 +39,7 @@ export function buildSellerOrderCreatedNotification(
   userId: string,
   orderId: string,
   orderNumber: string,
-  shopId: string
+  shopId: string,
 ): NotifyUserInput {
   return {
     userId,
@@ -57,7 +57,7 @@ export function buildSellerOrderCancelRequestedNotification(
   userId: string,
   orderId: string,
   orderNumber: string,
-  shopId: string
+  shopId: string,
 ): NotifyUserInput {
   return {
     userId,
@@ -76,7 +76,7 @@ export function buildSellerOrderSupportRequestedNotification(
   userId: string,
   orderId: string,
   orderNumber: string,
-  shopId: string
+  shopId: string,
 ): NotifyUserInput {
   return {
     userId,
@@ -95,7 +95,7 @@ export function buildSellerOrderRefundNotification(
   orderId: string,
   orderNumber: string,
   shopId: string,
-  refundStatus: 'succeeded' | 'failed'
+  refundStatus: 'succeeded' | 'failed',
 ): NotifyUserInput {
   return {
     userId,

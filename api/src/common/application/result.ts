@@ -26,7 +26,7 @@ export function err<TError>(error: TError): Err<TError> {
 
 export function resolveOrThrow<TValue, TError extends Error>(
   result: Result<TValue, TError>,
-  mapError: (error: TError) => Error
+  mapError: (error: TError) => Error,
 ): TValue {
   if (result.isOk) {
     return result.value;

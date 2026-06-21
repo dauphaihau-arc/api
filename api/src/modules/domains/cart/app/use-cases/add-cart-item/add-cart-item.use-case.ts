@@ -4,7 +4,7 @@ import {
   CartQuantityExceedsStockError,
   ProductInventoryNotFoundError,
   ProductUnavailableForCartError,
-  type CartAppError
+  type CartAppError,
 } from '../../errors/cart-app.error';
 import { CartRepository } from '../../ports/cart.repository';
 import type { CartActor, CartSnapshot } from '../../cart.types';
@@ -21,10 +21,10 @@ export class AddCartItemUseCase {
 
   async execute(
     actor: CartActor,
-    input: AddCartItemInput
+    input: AddCartItemInput,
   ): Promise<Result<CartSnapshot, CartAppError>> {
     const inventory = await this.cartRepository.findInventoryCandidateById(
-      input.inventoryId
+      input.inventoryId,
     );
 
     if (!inventory) {
@@ -43,12 +43,12 @@ export class AddCartItemUseCase {
       ? await this.cartRepository.createBuyNowCart(
         actor,
         input.inventoryId,
-        input.quantity
+        input.quantity,
       )
       : await this.cartRepository.addItemToActiveCart(
         actor,
         input.inventoryId,
-        input.quantity
+        input.quantity,
       );
 
     return ok(cart);

@@ -8,7 +8,7 @@ import { ProductShippingCharge } from '../../../domain/enums/product-shipping-ch
 import {
   ActorCannotCreateProductDraftError,
   InvalidProductVariantConfigurationError,
-  ProductNotFoundError
+  ProductNotFoundError,
 } from '../../errors/product-app.error';
 import { ProductCommandRepository } from '../../ports/product-command.repository';
 import { SellerProductQueryRepository } from '../../ports/seller-product-query.repository';
@@ -37,13 +37,13 @@ export class SetProductShippingUseCase {
     private readonly sellerProductQueryRepository: SellerProductQueryRepository,
     private readonly productCommandRepository: ProductCommandRepository,
     private readonly shopRepository: ShopRepository,
-    private readonly jobDispatcher?: JobDispatcher
+    private readonly jobDispatcher?: JobDispatcher,
   ) {}
 
   async execute(
     actor: AuthenticatedUser,
     productId: string,
-    input: SetProductShippingInput
+    input: SetProductShippingInput,
   ): Promise<Result<ProductDraftSummary, SetProductShippingError>> {
     const existingProduct = await this.sellerProductQueryRepository.findById(productId);
 
@@ -56,7 +56,7 @@ export class SetProductShippingUseCase {
     if (!canManageAnyShop) {
       const ownedShop = await this.shopRepository.findOwnedById(
         existingProduct.shopId,
-        actor.userId
+        actor.userId,
       );
 
       if (!ownedShop) {
@@ -96,9 +96,9 @@ export class SetProductShippingUseCase {
       { productId: product.id },
       {
         deduplicationKey: appJobDeduplicationKey.projectCatalogProduct(
-          product.id
+          product.id,
         ),
-      }
+      },
     );
 
     return ok(product);
@@ -106,29 +106,29 @@ export class SetProductShippingUseCase {
 }
 
 function validateShippingPayload(
-  input: SetProductShippingInput
+  input: SetProductShippingInput,
 ): InvalidProductVariantConfigurationError | null {
   if (input.originCountry.trim().length !== 2) {
     return new InvalidProductVariantConfigurationError(
-      'Origin country must be a 2-letter country code'
+      'Origin country must be a 2-letter country code',
     );
   }
 
   if (input.originZip.trim().length === 0) {
     return new InvalidProductVariantConfigurationError(
-      'Origin zip is required'
+      'Origin zip is required',
     );
   }
 
   if (input.processTimeLabel.trim().length === 0) {
     return new InvalidProductVariantConfigurationError(
-      'Process time label is required'
+      'Process time label is required',
     );
   }
 
   if (input.destinations.length === 0) {
     return new InvalidProductVariantConfigurationError(
-      'At least one shipping destination is required'
+      'At least one shipping destination is required',
     );
   }
 
@@ -139,25 +139,25 @@ function validateShippingPayload(
 
     if (countryCode.length !== 2) {
       return new InvalidProductVariantConfigurationError(
-        'Each shipping destination must use a 2-letter country code'
+        'Each shipping destination must use a 2-letter country code',
       );
     }
 
     if (destination.deliveryTimeLabel.trim().length === 0) {
       return new InvalidProductVariantConfigurationError(
-        'Each shipping destination requires a delivery time label'
+        'Each shipping destination requires a delivery time label',
       );
     }
 
     if (destination.service.trim().length === 0) {
       return new InvalidProductVariantConfigurationError(
-        'Each shipping destination requires a service name'
+        'Each shipping destination requires a service name',
       );
     }
 
     if (seenDestinations.has(countryCode)) {
       return new InvalidProductVariantConfigurationError(
-        `Duplicate shipping destination "${countryCode}" is not allowed`
+        `Duplicate shipping destination "${countryCode}" is not allowed`,
       );
     }
 

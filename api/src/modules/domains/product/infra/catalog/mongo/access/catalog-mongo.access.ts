@@ -1,7 +1,7 @@
 import {
   Inject,
   Injectable,
-  OnApplicationShutdown
+  OnApplicationShutdown,
 } from '@nestjs/common';
 import { CATALOG_CONFIG, type CatalogConfig } from '~/config/catalog.config';
 
@@ -22,7 +22,7 @@ export class CatalogMongoAccess implements OnApplicationShutdown {
 
   constructor(
     @Inject(CATALOG_CONFIG)
-    private readonly catalogConfig: CatalogConfig
+    private readonly catalogConfig: CatalogConfig,
   ) {}
 
   isEnabled(): boolean {
@@ -65,7 +65,7 @@ export class CatalogMongoAccess implements OnApplicationShutdown {
 
   private async createMongoClient(): Promise<MongoClientLike> {
     const loadMongoDb = new Function(
-      'return import("mongodb")'
+      'return import("mongodb")',
     ) as () => Promise<{ MongoClient: new (uri: string) => MongoClientLike }>;
     const mongodb = await loadMongoDb();
     return new mongodb.MongoClient(this.catalogConfig.mongodbUri) as MongoClientLike;

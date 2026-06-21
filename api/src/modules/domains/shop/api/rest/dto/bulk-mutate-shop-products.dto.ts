@@ -3,7 +3,7 @@ import {
   ArrayNotEmpty,
   IsArray,
   IsEnum,
-  IsString
+  IsString,
 } from 'class-validator';
 import { BulkMutateShopProductsAction } from '../../../../product/app/use-cases/bulk-mutate-shop-products/bulk-mutate-shop-products.use-case';
 

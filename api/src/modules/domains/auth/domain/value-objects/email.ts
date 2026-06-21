@@ -1,6 +1,6 @@
 import {
   EmailRequiredError,
-  InvalidEmailError
+  InvalidEmailError,
 } from '../errors/auth-domain.error';
 
 export class Email {

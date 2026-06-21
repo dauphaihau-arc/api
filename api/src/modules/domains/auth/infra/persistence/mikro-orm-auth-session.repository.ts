@@ -2,7 +2,7 @@ import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
 import {
   AuthSessionRepository,
-  CreateUserSessionInput
+  CreateUserSessionInput,
 } from '../../app/ports/auth-session.repository';
 import type { UserSession } from '../../domain/models/user-session';
 import { CurrentUserEntity } from './entities/current-user.entity';
@@ -18,7 +18,7 @@ export class MikroOrmAuthSessionRepository implements AuthSessionRepository {
       .getRepository(UserSessionEntity);
     const session = await sessionRepository.findOne(
       { id },
-      { populate: ['user'] }
+      { populate: ['user'] },
     );
 
     return session ? this.toUserSession(session) : null;

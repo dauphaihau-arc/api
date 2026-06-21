@@ -3,12 +3,12 @@ import {
   IsInt,
   IsOptional,
   Max,
-  Min
+  Min,
 } from 'class-validator';
 import {
   NOTIFICATION_LIST_DEFAULT_LIMIT,
   NOTIFICATION_LIST_DEFAULT_PAGE,
-  NOTIFICATION_LIST_MAX_LIMIT
+  NOTIFICATION_LIST_MAX_LIMIT,
 } from '../../../app/notification.types';
 
 export class ListMyNotificationsQueryDto {

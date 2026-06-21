@@ -318,10 +318,10 @@ describe('buildCartResponse', () => {
     const response = buildCartResponse(cart);
 
     expect(response.cart?.shop_groups[0]?.items[0]?.inventory.variant_name).toBe(
-      'Color: Blue / Size: Large'
+      'Color: Blue / Size: Large',
     );
     expect(response.cart?.recent_items[0]?.inventory.variant_name).toBe(
-      'Color: Blue / Size: Large'
+      'Color: Blue / Size: Large',
     );
   });
 });

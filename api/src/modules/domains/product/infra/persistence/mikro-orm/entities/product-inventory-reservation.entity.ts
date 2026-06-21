@@ -1,5 +1,5 @@
 import {
-  Entity, Index, ManyToOne, Property 
+  Entity, Index, ManyToOne, Property, 
 } from '@mikro-orm/core';
 import { AbstractBaseEntity } from '~/common/database/abstract-base.entity';
 import { ProductInventoryEntity } from './product-inventory.entity';

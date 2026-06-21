@@ -2,7 +2,7 @@ import type { HttpException } from '@nestjs/common';
 import {
   ConflictException,
   ForbiddenException,
-  UnauthorizedException
+  UnauthorizedException,
 } from '@nestjs/common';
 import {
   AuthAppError,
@@ -16,7 +16,7 @@ import {
   RefreshSessionNotFoundError,
   RefreshTokenMismatchError,
   SessionNotActiveError,
-  UserNotFoundError
+  UserNotFoundError,
 } from '../../app/errors/auth-app.error';
 
 export function isAuthAppError(error: unknown): error is AuthAppError {
@@ -24,7 +24,7 @@ export function isAuthAppError(error: unknown): error is AuthAppError {
 }
 
 export function mapAuthAppErrorToHttpException(
-  error: AuthAppError
+  error: AuthAppError,
 ): HttpException {
   if (
     error instanceof InvalidCredentialsError

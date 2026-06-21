@@ -2,17 +2,17 @@ import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
 import {
   CheckoutQuoteActorType,
-  CheckoutQuoteEntity
+  CheckoutQuoteEntity,
 } from '../infra/persistence/entities/checkout-quote.entity';
 import {
   CheckoutQuoteExpiredError,
-  CheckoutQuoteNotFoundError
+  CheckoutQuoteNotFoundError,
 } from './errors/order-app.error';
 import type {
   CheckoutQuoteItemSummary,
   CheckoutQuoteShopSummary,
   ShippingAddressInput,
-  ShopAdjustmentInput
+  ShopAdjustmentInput,
 } from './order.types';
 
 export interface LoadedCheckoutQuote {
@@ -47,7 +47,7 @@ export class LoadCheckoutQuoteService {
 
   async loadForGuest(
     guestSessionId: string,
-    quoteId: string
+    quoteId: string,
   ): Promise<LoadedCheckoutQuote> {
     const quote = await this.entityManager.fork().getRepository(CheckoutQuoteEntity).findOne({
       id: quoteId,
@@ -116,7 +116,7 @@ export class LoadCheckoutQuoteService {
 }
 
 function parsePricedShops(
-  pricedShops: Record<string, unknown>[]
+  pricedShops: Record<string, unknown>[],
 ): CheckoutQuoteShopSummary[] {
   return (pricedShops as Array<{
     shop_id: string;

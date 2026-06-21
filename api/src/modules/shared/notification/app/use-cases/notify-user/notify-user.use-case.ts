@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import {
   appJobDeduplicationKey,
-  appJobName
+  appJobName,
 } from '~/common/jobs/job.types';
 import { JobDispatcher } from '~/modules/shared/queue/app/ports/job-dispatcher';
 import { NotificationRepository } from '../../ports/notification.repository';
@@ -13,7 +13,7 @@ export class NotifyUserUseCase {
 
   constructor(
     private readonly notificationRepository: NotificationRepository,
-    private readonly jobDispatcher: JobDispatcher
+    private readonly jobDispatcher: JobDispatcher,
   ) {}
 
   async execute(input: NotifyUserInput): Promise<void> {
@@ -47,15 +47,15 @@ export class NotifyUserUseCase {
         {
           deduplicationKey: appJobDeduplicationKey.sendWebPushNotification(
             input.userId,
-            storedNotification.id
+            storedNotification.id,
           ),
-        }
+        },
       );
     }
     catch (error) {
       this.logger.error(
         `Failed to queue Web Push notification ${storedNotification.id} for user ${input.userId}`,
-        error instanceof Error ? error.stack : undefined
+        error instanceof Error ? error.stack : undefined,
       );
     }
   }

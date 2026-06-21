@@ -3,7 +3,7 @@ import {
   Catch,
   ExceptionFilter,
   HttpException,
-  HttpStatus
+  HttpStatus,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { PinoLogger } from 'nestjs-pino';
@@ -16,7 +16,7 @@ import { buildStructuredLog } from '../utils/structured-log';
 export class GlobalExceptionFilter implements ExceptionFilter {
   constructor(
     private readonly requestContextService: RequestContextService,
-    private readonly logger: PinoLogger
+    private readonly logger: PinoLogger,
   ) {}
 
   catch(exception: unknown, host: ArgumentsHost) {
@@ -100,7 +100,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
           }),
           err: exception instanceof Error ? exception : undefined,
         },
-        errorMessage
+        errorMessage,
       );
     }
 
@@ -119,7 +119,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 function buildRequestSummary(
   method: string,
   path: string,
-  statusCode: number
+  statusCode: number,
 ): string {
   return `${method.toUpperCase()} ${path} ${statusCode}`;
 }
@@ -127,7 +127,7 @@ function buildRequestSummary(
 function buildErrorResponse(
   exception: unknown,
   statusCode: number,
-  path: string
+  path: string,
 ) {
   const baseResponse = {
     statusCode,

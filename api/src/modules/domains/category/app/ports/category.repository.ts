@@ -2,7 +2,7 @@ import type {
   CategorySuggestion,
   CategorySummary,
   CreateCategoryAttributeInput,
-  CreateCategoryInput
+  CreateCategoryInput,
 } from '../category.types';
 
 export abstract class CategoryRepository {

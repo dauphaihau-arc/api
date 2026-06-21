@@ -1,6 +1,6 @@
 import { Type } from 'class-transformer';
 import {
-  IsOptional, IsString, Max, Min 
+  IsOptional, IsString, Max, Min, 
 } from 'class-validator';
 import { CATEGORY_SUGGESTIONS_DEFAULT_LIMIT } from '../../../app/use-cases/suggest-categories/suggest-categories.use-case';
 

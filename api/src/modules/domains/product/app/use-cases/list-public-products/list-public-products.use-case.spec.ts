@@ -31,7 +31,7 @@ const createUseCaseHarness = () => {
     categoryRepository,
     useCase: new ListPublicProductsUseCase(
       productRepository as never,
-      categoryRepository as never
+      categoryRepository as never,
     ),
   };
 };

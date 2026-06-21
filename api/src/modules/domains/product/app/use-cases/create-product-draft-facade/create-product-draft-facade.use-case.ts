@@ -10,12 +10,12 @@ import {
   InvalidProductVariantConfigurationError,
   ProductDraftIncompleteError,
   ProductNotFoundError,
-  ProductSlugAlreadyExistsError
+  ProductSlugAlreadyExistsError,
 } from '../../errors/product-app.error';
 import type { ProductDraftSummary } from '../../product.types';
 import {
   CreateProductDraftUseCase,
-  type CreateProductDraftInput
+  type CreateProductDraftInput,
 } from '../create-product-draft/create-product-draft.use-case';
 import { SetProductAttributesUseCase } from '../set-product-attributes/set-product-attributes.use-case';
 import { SetProductImagesByKeysUseCase } from '../set-product-images-by-keys/set-product-images-by-keys.use-case';
@@ -83,12 +83,12 @@ export class CreateProductDraftFacadeUseCase {
     private readonly setProductVariantsUseCase: SetProductVariantsUseCase,
     private readonly setProductInventoryUseCase: SetProductInventoryUseCase,
     private readonly setProductPricingUseCase: SetProductPricingUseCase,
-    private readonly setProductShippingUseCase: SetProductShippingUseCase
+    private readonly setProductShippingUseCase: SetProductShippingUseCase,
   ) {}
 
   async execute(
     actor: AuthenticatedUser,
-    input: CreateProductDraftFacadeInput
+    input: CreateProductDraftFacadeInput,
   ): Promise<Result<ProductDraftSummary, CreateProductDraftFacadeError>> {
     const createdDraft = await this.createProductDraftUseCase.execute(actor, {
       shopId: input.shopId,
@@ -115,7 +115,7 @@ export class CreateProductDraftFacadeUseCase {
         currentProduct.id,
         {
           images: input.images,
-        }
+        },
       );
 
       if (!imagesResult.isOk) {
@@ -131,14 +131,14 @@ export class CreateProductDraftFacadeUseCase {
         currentProduct.id,
         {
           attributes: input.attributes,
-        }
+        },
       );
 
       if (!attributesResult.isOk) {
         return this.incomplete(
           currentProduct.id,
           'attributes',
-          attributesResult.error
+          attributesResult.error,
         );
       }
 
@@ -156,7 +156,7 @@ export class CreateProductDraftFacadeUseCase {
             optionValue1: variant.optionValue1,
             optionValue2: variant.optionValue2,
           })),
-        }
+        },
       );
 
       if (!variantsResult.isOk) {
@@ -166,7 +166,7 @@ export class CreateProductDraftFacadeUseCase {
       currentProduct = variantsResult.value;
       variantIdByClientKey = buildVariantIdByClientKey(
         input.variants,
-        currentProduct
+        currentProduct,
       );
     }
 
@@ -174,7 +174,7 @@ export class CreateProductDraftFacadeUseCase {
       const missingVariantClientKey = findMissingVariantClientKey(
         input.variantType ?? ProductVariantType.NONE,
         input.inventory,
-        variantIdByClientKey
+        variantIdByClientKey,
       );
 
       if (missingVariantClientKey) {
@@ -182,8 +182,8 @@ export class CreateProductDraftFacadeUseCase {
           new ProductDraftIncompleteError(
             currentProduct.id,
             'inventory',
-            `Inventory row references unknown variant client key "${missingVariantClientKey}"`
-          )
+            `Inventory row references unknown variant client key "${missingVariantClientKey}"`,
+          ),
         );
       }
 
@@ -198,14 +198,14 @@ export class CreateProductDraftFacadeUseCase {
             sku: row.sku,
             stock: row.stock,
           })),
-        }
+        },
       );
 
       if (!inventoryResult.isOk) {
         return this.incomplete(
           currentProduct.id,
           'inventory',
-          inventoryResult.error
+          inventoryResult.error,
         );
       }
 
@@ -216,12 +216,12 @@ export class CreateProductDraftFacadeUseCase {
       const inventoryIdByVariantClientKey = buildInventoryIdByClientKey(
         input.variantType ?? ProductVariantType.NONE,
         input.variants,
-        currentProduct
+        currentProduct,
       );
       const missingVariantClientKey = findMissingPricingVariantClientKey(
         input.variantType ?? ProductVariantType.NONE,
         input.pricing,
-        inventoryIdByVariantClientKey
+        inventoryIdByVariantClientKey,
       );
 
       if (missingVariantClientKey) {
@@ -229,8 +229,8 @@ export class CreateProductDraftFacadeUseCase {
           new ProductDraftIncompleteError(
             currentProduct.id,
             'inventory',
-            `Pricing row references unknown variant client key "${missingVariantClientKey}"`
-          )
+            `Pricing row references unknown variant client key "${missingVariantClientKey}"`,
+          ),
         );
       }
 
@@ -246,14 +246,14 @@ export class CreateProductDraftFacadeUseCase {
             originalAmountMinor: row.originalAmountMinor,
             currency: row.currency,
           })),
-        }
+        },
       );
 
       if (!pricingResult.isOk) {
         return this.incomplete(
           currentProduct.id,
           'inventory',
-          pricingResult.error
+          pricingResult.error,
         );
       }
 
@@ -264,7 +264,7 @@ export class CreateProductDraftFacadeUseCase {
       const shippingResult = await this.setProductShippingUseCase.execute(
         actor,
         currentProduct.id,
-        input.shipping
+        input.shipping,
       );
 
       if (!shippingResult.isOk) {
@@ -280,7 +280,7 @@ export class CreateProductDraftFacadeUseCase {
   private incomplete(
     productId: string,
     failedStep: ProductDraftIncompleteError['failedStep'],
-    error: Exclude<CreateProductDraftFacadeError, ProductDraftIncompleteError>
+    error: Exclude<CreateProductDraftFacadeError, ProductDraftIncompleteError>,
   ): Result<ProductDraftSummary, ProductDraftIncompleteError> {
     return err(new ProductDraftIncompleteError(productId, failedStep, error.message));
   }
@@ -288,29 +288,29 @@ export class CreateProductDraftFacadeUseCase {
 
 function buildVariantIdByClientKey(
   requestedVariants: NonNullable<CreateProductDraftFacadeInput['variants']>,
-  product: ProductDraftSummary
+  product: ProductDraftSummary,
 ): Map<string, string> {
   const productVariantIdByName = new Map(
     product.variants.map((variant) => [
       buildVariantName(variant.optionValue1, variant.optionValue2),
       variant.id,
-    ])
+    ]),
   );
 
   return new Map(
     requestedVariants.map((variant) => [
       variant.clientKey,
       productVariantIdByName.get(
-        buildVariantName(variant.optionValue1, variant.optionValue2)
+        buildVariantName(variant.optionValue1, variant.optionValue2),
       ) ?? '',
-    ])
+    ]),
   );
 }
 
 function findMissingVariantClientKey(
   variantType: ProductVariantType,
   inventory: NonNullable<CreateProductDraftFacadeInput['inventory']>,
-  variantIdByClientKey: Map<string, string>
+  variantIdByClientKey: Map<string, string>,
 ): string | null {
   if (variantType === ProductVariantType.NONE) {
     return null;
@@ -332,7 +332,7 @@ function findMissingVariantClientKey(
 function buildInventoryIdByClientKey(
   variantType: ProductVariantType,
   requestedVariants: CreateProductDraftFacadeInput['variants'],
-  product: ProductDraftSummary
+  product: ProductDraftSummary,
 ): Map<string, string> {
   if (variantType === ProductVariantType.NONE) {
     return new Map([
@@ -343,7 +343,7 @@ function buildInventoryIdByClientKey(
   const inventoryIdByVariantId = new Map(
     product.inventory
       .filter((inventory) => inventory.productVariantId)
-      .map((inventory) => [inventory.productVariantId as string, inventory.id])
+      .map((inventory) => [inventory.productVariantId as string, inventory.id]),
   );
   const variantIdByClientKey = requestedVariants
     ? buildVariantIdByClientKey(requestedVariants, product)
@@ -353,14 +353,14 @@ function buildInventoryIdByClientKey(
     Array.from(variantIdByClientKey.entries()).map(([clientKey, variantId]) => [
       clientKey,
       inventoryIdByVariantId.get(variantId) ?? '',
-    ])
+    ]),
   );
 }
 
 function findMissingPricingVariantClientKey(
   variantType: ProductVariantType,
   pricing: NonNullable<CreateProductDraftFacadeInput['pricing']>,
-  inventoryIdByVariantClientKey: Map<string, string>
+  inventoryIdByVariantClientKey: Map<string, string>,
 ): string | null {
   if (variantType === ProductVariantType.NONE) {
     return inventoryIdByVariantClientKey.get('__no_variant__') ? null : '(missing)';

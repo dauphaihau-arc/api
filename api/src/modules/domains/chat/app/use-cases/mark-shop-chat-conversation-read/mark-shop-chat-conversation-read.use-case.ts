@@ -11,12 +11,12 @@ export class MarkShopChatConversationReadUseCase {
 
   async execute(
     shopId: string,
-    conversationId: string
+    conversationId: string,
   ): Promise<ChatConversationSummary> {
     const entityManager = this.entityManager.fork();
     const conversation = await entityManager.getRepository(ChatConversationEntity).findOne(
       { id: conversationId, shop: shopId },
-      { populate: ['buyerUser', 'shop.ownerUser', 'product', 'lastMessageSenderUser'] }
+      { populate: ['buyerUser', 'shop.ownerUser', 'product', 'lastMessageSenderUser'] },
     );
 
     if (!conversation) {

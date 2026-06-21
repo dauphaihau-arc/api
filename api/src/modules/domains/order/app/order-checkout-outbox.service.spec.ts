@@ -92,7 +92,7 @@ describe('OrderCheckoutOutboxService', () => {
     const service = new OrderCheckoutOutboxService(
       entityManager,
       paymentGateway,
-      orderEventsService as never
+      orderEventsService as never,
     );
 
     return {
@@ -115,7 +115,7 @@ describe('OrderCheckoutOutboxService', () => {
         customerEmail: 'member@example.com',
         currency: 'USD',
         discountAmountMinor: 200,
-      })
+      }),
     );
     expect(result).toEqual({
       id: 'cs_test_1',
@@ -126,7 +126,7 @@ describe('OrderCheckoutOutboxService', () => {
       expect.objectContaining({
         checkout_session_id: 'cs_test_1',
         checkout_session_url: 'https://stripe.test/session-1',
-      })
+      }),
     );
     expect(outboxEvent.status).toBe(OutboxEventStatus.PROCESSED);
     expect(outboxEvent.processedAt).toBeInstanceOf(Date);
@@ -150,7 +150,7 @@ describe('OrderCheckoutOutboxService', () => {
     expect(outboxEvent.availableAt.getTime()).toBeGreaterThan(Date.now());
     expect(loggerErrorSpy).toHaveBeenCalledWith(
       'Failed processing outbox event outbox-1: Stripe down',
-      expect.any(String)
+      expect.any(String),
     );
   });
 });

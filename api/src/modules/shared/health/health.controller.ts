@@ -4,13 +4,13 @@ import {
   Header,
   HttpCode,
   HttpStatus,
-  ServiceUnavailableException
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import {
   ApiOkResponse,
   ApiOperation,
   ApiServiceUnavailableResponse,
-  ApiTags
+  ApiTags,
 } from '@nestjs/swagger';
 import { SkipThrottle } from '@nestjs/throttler';
 import { HealthCheckResponseDto } from './health-check.response.dto';

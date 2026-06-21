@@ -3,7 +3,7 @@ import { PaymentGateway } from '~/modules/shared/payment/app/ports/payment-gatew
 import {
   CheckoutSessionExpiredError,
   CheckoutSessionIdRequiredError,
-  CheckoutSessionNotFoundError
+  CheckoutSessionNotFoundError,
 } from '../../errors/order-app.error';
 import { OrderPaymentService } from '../../order-payment.service';
 
@@ -11,7 +11,7 @@ import { OrderPaymentService } from '../../order-payment.service';
 export class GetOrdersByCheckoutSessionUseCase {
   constructor(
     private readonly orderPaymentService: OrderPaymentService,
-    private readonly paymentGateway: PaymentGateway
+    private readonly paymentGateway: PaymentGateway,
   ) {}
 
   async execute(sessionId: string) {
@@ -39,7 +39,7 @@ export class GetOrdersByCheckoutSessionUseCase {
     if (session.status === 'expired') {
       await this.orderPaymentService.markCheckoutSessionExpired(
         sessionId,
-        session.expires_at ? new Date(session.expires_at * 1000) : undefined
+        session.expires_at ? new Date(session.expires_at * 1000) : undefined,
       );
       throw new CheckoutSessionExpiredError();
     }

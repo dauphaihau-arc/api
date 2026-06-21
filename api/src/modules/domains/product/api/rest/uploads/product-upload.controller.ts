@@ -7,7 +7,7 @@ import {
   Post,
   Put,
   Req,
-  UseGuards
+  UseGuards,
 } from '@nestjs/common';
 import {
   ApiConsumes,
@@ -15,7 +15,7 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiParam,
-  ApiTags
+  ApiTags,
 } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { CurrentUser } from '~/common/decorators/current-user.decorator';
@@ -37,7 +37,7 @@ interface UploadUrlResponse {
 export class ProductUploadController {
   constructor(
     private readonly issueProductImageUploadUrlUseCase: IssueProductImageUploadUrlUseCase,
-    private readonly consumeProductImageUploadTicketUseCase: ConsumeProductImageUploadTicketUseCase
+    private readonly consumeProductImageUploadTicketUseCase: ConsumeProductImageUploadTicketUseCase,
   ) {}
 
   @Post()
@@ -56,7 +56,7 @@ export class ProductUploadController {
     @Param('product_id') productId: string,
     @CurrentUser() currentUser: AuthenticatedUser,
     @Req() request: Request,
-    @Body() body: IssueProductImageUploadDto
+    @Body() body: IssueProductImageUploadDto,
   ): Promise<UploadUrlResponse> {
     const { token, key, presignedUrl } =
       await this.issueProductImageUploadUrlUseCase.execute(
@@ -64,7 +64,7 @@ export class ProductUploadController {
         shopId,
         productId,
         body.contentType,
-        body.assetType
+        body.assetType,
       );
 
     return {
@@ -87,7 +87,7 @@ export class ProductUploadController {
   async uploadByTicket(
     @Param('token') token: string,
     @Req() request: Request,
-    @Body() _unusedBody: unknown
+    @Body() _unusedBody: unknown,
   ): Promise<{ key: string }> {
     const body = await readRawBody(request);
     const contentTypeHeader = request.header('content-type')?.split(';')[0]?.trim();
@@ -95,7 +95,7 @@ export class ProductUploadController {
     return this.consumeProductImageUploadTicketUseCase.execute(
       token,
       body,
-      contentTypeHeader
+      contentTypeHeader,
     );
   }
 

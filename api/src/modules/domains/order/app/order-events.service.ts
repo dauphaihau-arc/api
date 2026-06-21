@@ -20,7 +20,7 @@ type RecordOrderEventInput = {
 export class OrderEventsService {
   async record(
     entityManager: EntityManager,
-    input: RecordOrderEventInput
+    input: RecordOrderEventInput,
   ): Promise<void> {
     const event = entityManager.create(OrderEventEntity, {
       order: input.order,
@@ -37,12 +37,12 @@ export class OrderEventsService {
 
   async listForOrder(
     entityManager: EntityManager,
-    orderId: string
+    orderId: string,
   ): Promise<OrderTimelineEvent[]> {
     const events = await entityManager.find(
       OrderEventEntity,
       { order: orderId },
-      { orderBy: { occurredAt: 'asc', id: 'asc' } }
+      { orderBy: { occurredAt: 'asc', id: 'asc' } },
     );
 
     return events.map((event) => ({

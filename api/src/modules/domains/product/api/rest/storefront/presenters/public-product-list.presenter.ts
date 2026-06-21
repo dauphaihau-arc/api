@@ -3,7 +3,7 @@ import type { PublicProductListResponse } from '../responses/public-product-list
 import { toPublicProductListItemResponse } from './public-product-list-item.presenter';
 
 export const toPublicProductListResponse = (
-  result: PublicProductListResult
+  result: PublicProductListResult,
 ): PublicProductListResponse => ({
   items: result.items.map(toPublicProductListItemResponse),
   meta: {

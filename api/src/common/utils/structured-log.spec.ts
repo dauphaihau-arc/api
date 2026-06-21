@@ -13,7 +13,7 @@ describe('buildStructuredLog', () => {
           path: '/v1/orders',
           userAgent: undefined,
         },
-      })
+      }),
     ).toEqual({
       event: 'http.request.completed',
       requestId: 'req-123',

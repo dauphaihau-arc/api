@@ -2,7 +2,7 @@ import {
   HttpException,
   HttpStatus,
   type CallHandler,
-  type ExecutionContext
+  type ExecutionContext,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { lastValueFrom, throwError } from 'rxjs';
@@ -36,7 +36,7 @@ describe('RequestLoggingInterceptor', () => {
       {
         recordHttpRequest,
       } as never,
-      logger as never
+      logger as never,
     );
     const request = createRequest();
     const response = createResponse();
@@ -46,16 +46,16 @@ describe('RequestLoggingInterceptor', () => {
       lastValueFrom(
         interceptor.intercept(
           createExecutionContext(request, response),
-          createCallHandler(exception)
-        )
-      )
+          createCallHandler(exception),
+        ),
+      ),
     ).rejects.toThrow('boom');
 
     expect(recordHttpRequest).toHaveBeenCalledWith(
       'GET',
       '/v1/orders/:id',
       500,
-      expect.any(Number)
+      expect.any(Number),
     );
     expect(logger.error).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -65,7 +65,7 @@ describe('RequestLoggingInterceptor', () => {
           route: '/v1/orders/:id',
         }),
       }),
-      expect.stringContaining('500')
+      expect.stringContaining('500'),
     );
     expect(logger.warn).not.toHaveBeenCalled();
   });
@@ -84,7 +84,7 @@ describe('RequestLoggingInterceptor', () => {
       {
         recordHttpRequest,
       } as never,
-      logger as never
+      logger as never,
     );
     const request = createRequest();
     const response = createResponse();
@@ -94,16 +94,16 @@ describe('RequestLoggingInterceptor', () => {
       lastValueFrom(
         interceptor.intercept(
           createExecutionContext(request, response),
-          createCallHandler(exception)
-        )
-      )
+          createCallHandler(exception),
+        ),
+      ),
     ).rejects.toThrow('bad request');
 
     expect(recordHttpRequest).toHaveBeenCalledWith(
       'GET',
       '/v1/orders/:id',
       400,
-      expect.any(Number)
+      expect.any(Number),
     );
     expect(logger.warn).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -112,7 +112,7 @@ describe('RequestLoggingInterceptor', () => {
           statusCode: 400,
         }),
       }),
-      expect.stringContaining('400')
+      expect.stringContaining('400'),
     );
     expect(logger.error).not.toHaveBeenCalled();
   });
@@ -120,7 +120,7 @@ describe('RequestLoggingInterceptor', () => {
 
 function createExecutionContext(
   request: Request,
-  response: Response
+  response: Response,
 ): ExecutionContext {
   return {
     switchToHttp: () => ({

@@ -10,7 +10,7 @@ export class SuggestCategoriesUseCase {
 
   async execute(
     name: string,
-    limit: number = CATEGORY_SUGGESTIONS_DEFAULT_LIMIT
+    limit: number = CATEGORY_SUGGESTIONS_DEFAULT_LIMIT,
   ): Promise<CategorySuggestion[]> {
     const trimmedName = name.trim();
 

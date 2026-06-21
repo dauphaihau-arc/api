@@ -5,7 +5,7 @@ import {
   IsOptional,
   IsString,
   MaxLength,
-  ValidateNested
+  ValidateNested,
 } from 'class-validator';
 import { ShippingAddressDto } from './shipping-address.dto';
 

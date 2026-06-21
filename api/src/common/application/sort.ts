@@ -10,7 +10,7 @@ export interface SortOption<TField extends string> {
 export function parseSortValue<TField extends string>(
   value: unknown,
   allowedFields: readonly TField[],
-  defaultSort: SortOption<TField>
+  defaultSort: SortOption<TField>,
 ): SortOption<TField> {
   if (value === undefined || value === null || value === '') {
     return defaultSort;
@@ -28,7 +28,7 @@ export function parseSortValue<TField extends string>(
 
   if (!allowedFields.includes(rawField as TField)) {
     throw new BadRequestException(
-      `sort field must be one of: ${allowedFields.join(', ')}`
+      `sort field must be one of: ${allowedFields.join(', ')}`,
     );
   }
 

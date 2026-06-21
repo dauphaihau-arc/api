@@ -4,7 +4,7 @@ import { IsOptional, Max, Min } from 'class-validator';
 import {
   CHAT_LIST_DEFAULT_LIMIT,
   CHAT_LIST_DEFAULT_PAGE,
-  CHAT_LIST_MAX_LIMIT
+  CHAT_LIST_MAX_LIMIT,
 } from '../../../app/chat.types';
 
 export class ListChatConversationsQueryDto {

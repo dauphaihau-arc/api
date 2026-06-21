@@ -1,6 +1,6 @@
 import {
   PasswordHashRequiredError,
-  UnsupportedPasswordHashFormatError
+  UnsupportedPasswordHashFormatError,
 } from '../errors/auth-domain.error';
 
 export class PasswordHash {

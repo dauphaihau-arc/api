@@ -2,7 +2,7 @@ import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
 import {
   toChatConversationSummary,
-  toChatMessageSummary
+  toChatMessageSummary,
 } from '../../chat-read-model';
 import type { ChatMessageListQuery, ChatMessageListResult } from '../../chat.types';
 import { ChatConversationNotFoundError } from '../../errors/chat-app.error';
@@ -16,12 +16,12 @@ export class GetShopChatMessagesUseCase {
   async execute(
     shopId: string,
     conversationId: string,
-    query: ChatMessageListQuery
+    query: ChatMessageListQuery,
   ): Promise<ChatMessageListResult> {
     const entityManager = this.entityManager.fork();
     const conversation = await entityManager.getRepository(ChatConversationEntity).findOne(
       { id: conversationId, shop: shopId },
-      { populate: ['buyerUser', 'shop.ownerUser', 'product'] }
+      { populate: ['buyerUser', 'shop.ownerUser', 'product'] },
     );
 
     if (!conversation) {
@@ -36,7 +36,7 @@ export class GetShopChatMessagesUseCase {
         orderBy: { createdAt: 'asc' },
         offset: (query.page - 1) * query.limit,
         limit: query.limit,
-      }
+      },
     );
 
     return {

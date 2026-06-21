@@ -20,7 +20,7 @@ describe('MongoCatalogProductSlugRepository', () => {
       {
         isEnabled: () => true,
         getCollection,
-      } as never
+      } as never,
     );
 
     await repository.upsert({
@@ -35,7 +35,7 @@ describe('MongoCatalogProductSlugRepository', () => {
 
     expect(findOne).toHaveBeenCalledWith(
       { productId: 'product-1' },
-      { projection: { _id: 1 } }
+      { projection: { _id: 1 } },
     );
     expect(deleteOne).toHaveBeenCalledWith({ _id: 'olive-atelier::old-slug' });
     expect(updateOne).toHaveBeenCalledWith(
@@ -46,7 +46,7 @@ describe('MongoCatalogProductSlugRepository', () => {
           productSlug: 'new-slug',
         }),
       }),
-      { upsert: true }
+      { upsert: true },
     );
   });
 
@@ -67,7 +67,7 @@ describe('MongoCatalogProductSlugRepository', () => {
           findOne,
           createIndexes,
         }),
-      } as never
+      } as never,
     );
 
     await repository.upsert({
@@ -84,7 +84,7 @@ describe('MongoCatalogProductSlugRepository', () => {
     expect(updateOne).toHaveBeenCalledWith(
       { _id: 'olive-atelier::same-slug' },
       expect.any(Object),
-      { upsert: true }
+      { upsert: true },
     );
   });
 });

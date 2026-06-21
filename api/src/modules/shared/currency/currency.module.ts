@@ -3,7 +3,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import {
   buildFxRateSyncConfig,
-  FX_RATE_SYNC_CONFIG
+  FX_RATE_SYNC_CONFIG,
 } from '~/config/fx-rate-sync.config';
 import { EXCHANGE_RATE_PROVIDER } from './exchange-rate-provider';
 import { ExchangeRateEntity } from './infra/persistence/entities/exchange-rate.entity';
@@ -28,7 +28,7 @@ import { RoundingPolicyService } from './rounding-policy.service';
       inject: [FX_RATE_SYNC_CONFIG, OpenExchangeRatesProvider],
       useFactory: (
         fxRateSyncConfig: ReturnType<typeof buildFxRateSyncConfig>,
-        openExchangeRatesProvider: OpenExchangeRatesProvider
+        openExchangeRatesProvider: OpenExchangeRatesProvider,
       ) => {
         if (fxRateSyncConfig.provider === 'disabled') {
           return {

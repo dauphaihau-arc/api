@@ -126,7 +126,7 @@ describe('UpdateAdminOrderRefundUseCase', () => {
         entityManager,
         jobDispatcher,
         eventEmitter as unknown as EventEmitter2,
-        orderEventsService as never
+        orderEventsService as never,
       ),
     };
   }
@@ -143,7 +143,7 @@ describe('UpdateAdminOrderRefundUseCase', () => {
     expect(jobDispatcher.dispatch).toHaveBeenCalledWith(
       'order.process-refund',
       { orderId: 'order-1' },
-      { deduplicationKey: 'order-process-refund--order-1' }
+      { deduplicationKey: 'order-process-refund--order-1' },
     );
     expect(result.paymentDetails?.refund_status).toBe('pending');
   });
@@ -200,7 +200,7 @@ describe('UpdateAdminOrderRefundUseCase', () => {
     await expect(
       useCase.execute('order-1', {
         action: AdminOrderRefundAction.RETRY,
-      })
+      }),
     ).rejects.toThrow(AdminRefundActionNotAllowedError);
   });
 });

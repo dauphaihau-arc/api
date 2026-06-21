@@ -11,7 +11,7 @@ import {
   ActorCannotCreateProductDraftError,
   InvalidProductVariantConfigurationError,
   ProductNotFoundError,
-  ProductSlugAlreadyExistsError
+  ProductSlugAlreadyExistsError,
 } from '../../errors/product-app.error';
 import { ProductCommandRepository } from '../../ports/product-command.repository';
 import { SellerProductQueryRepository } from '../../ports/seller-product-query.repository';
@@ -40,13 +40,13 @@ export class UpdateProductDetailsUseCase {
     private readonly productCommandRepository: ProductCommandRepository,
     private readonly shopRepository: ShopRepository,
     private readonly auditLogService: AuditLogService,
-    private readonly jobDispatcher?: JobDispatcher
+    private readonly jobDispatcher?: JobDispatcher,
   ) {}
 
   async execute(
     actor: AuthenticatedUser,
     productId: string,
-    input: UpdateProductDetailsInput
+    input: UpdateProductDetailsInput,
   ): Promise<Result<ProductDraftSummary, UpdateProductDetailsError>> {
     const existingProduct = await this.sellerProductQueryRepository.findById(productId);
 
@@ -59,7 +59,7 @@ export class UpdateProductDetailsUseCase {
     if (!canManageAnyShop) {
       const ownedShop = await this.shopRepository.findOwnedById(
         existingProduct.shopId,
-        actor.userId
+        actor.userId,
       );
 
       if (!ownedShop) {
@@ -81,7 +81,7 @@ export class UpdateProductDetailsUseCase {
     const variantValidationError = validateVariantLabels(
       existingProduct.variantType ?? ProductVariantType.NONE,
       nextProduct.variantGroupName,
-      nextProduct.variantSubGroupName
+      nextProduct.variantSubGroupName,
     );
 
     if (variantValidationError) {
@@ -91,7 +91,7 @@ export class UpdateProductDetailsUseCase {
     const slug = toSlug(nextProduct.title);
     const slugConflict = await this.sellerProductQueryRepository.findByShopIdAndSlug(
       existingProduct.shopId,
-      slug
+      slug,
     );
 
     if (slugConflict && slugConflict.id !== existingProduct.id) {
@@ -136,9 +136,9 @@ export class UpdateProductDetailsUseCase {
       { productId: product.id },
       {
         deduplicationKey: appJobDeduplicationKey.projectCatalogProduct(
-          product.id
+          product.id,
         ),
-      }
+      },
     );
 
     return ok(product);
@@ -148,7 +148,7 @@ export class UpdateProductDetailsUseCase {
 function validateVariantLabels(
   variantType: ProductVariantType,
   variantGroupName?: string,
-  variantSubGroupName?: string
+  variantSubGroupName?: string,
 ): InvalidProductVariantConfigurationError | null {
   const hasGroupName = Boolean(variantGroupName?.trim());
   const hasSubGroupName = Boolean(variantSubGroupName?.trim());
@@ -156,7 +156,7 @@ function validateVariantLabels(
   if (variantType === ProductVariantType.NONE) {
     if (hasGroupName || hasSubGroupName) {
       return new InvalidProductVariantConfigurationError(
-        'Products without variants cannot define variant group names'
+        'Products without variants cannot define variant group names',
       );
     }
 
@@ -165,19 +165,19 @@ function validateVariantLabels(
 
   if (!hasGroupName) {
     return new InvalidProductVariantConfigurationError(
-      'Variant group name is required when variants are enabled'
+      'Variant group name is required when variants are enabled',
     );
   }
 
   if (variantType === ProductVariantType.SINGLE && hasSubGroupName) {
     return new InvalidProductVariantConfigurationError(
-      'Single-variant products cannot define a variant sub-group name'
+      'Single-variant products cannot define a variant sub-group name',
     );
   }
 
   if (variantType === ProductVariantType.COMBINE && !hasSubGroupName) {
     return new InvalidProductVariantConfigurationError(
-      'Combined variants require a variant sub-group name'
+      'Combined variants require a variant sub-group name',
     );
   }
 

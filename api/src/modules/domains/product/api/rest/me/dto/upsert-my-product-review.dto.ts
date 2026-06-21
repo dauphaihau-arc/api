@@ -1,6 +1,8 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Expose, Transform } from 'class-transformer';
-import { IsArray, IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
+import {
+  IsArray, IsInt, IsOptional, IsString, Max, MaxLength, Min, 
+} from 'class-validator';
 
 export class UpsertMyProductReviewDto {
   @ApiProperty({ minimum: 1, maximum: 5 })

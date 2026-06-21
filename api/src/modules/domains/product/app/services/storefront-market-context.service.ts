@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import {
   MARKETPLACE_MARKETS,
   type MarketplaceLocale,
-  type MarketplaceMarket
+  type MarketplaceMarket,
 } from '~/config/marketplace.config';
 import { UserPreferenceRepository } from '~/modules/domains/auth/app/ports/user-preference.repository';
 import { RequestContextService } from '~/modules/shared/request-context/request-context.service';
@@ -19,7 +19,7 @@ export interface StorefrontMarketContext {
 export class StorefrontMarketContextService {
   constructor(
     private readonly requestContextService: RequestContextService,
-    private readonly userPreferenceRepository: UserPreferenceRepository
+    private readonly userPreferenceRepository: UserPreferenceRepository,
   ) {}
 
   async resolveCurrentRequest(): Promise<StorefrontMarketContext | undefined> {
@@ -77,7 +77,7 @@ export class StorefrontMarketContextService {
 function resolveFromUserPreferences(
   region?: string,
   currency?: string,
-  language?: string
+  language?: string,
 ): StorefrontMarketContext | undefined {
   const market = MARKETPLACE_MARKETS.find((entry) => entry.name === region && entry.enabled);
 
@@ -136,6 +136,6 @@ function resolveLocale(market: MarketplaceMarket, language?: string): string {
   }
 
   return market.supportedLocales.find((locale) =>
-    locale.split('-')[0]?.toLowerCase() === normalizedLanguage
+    locale.split('-')[0]?.toLowerCase() === normalizedLanguage,
   ) ?? market.defaultLocale;
 }

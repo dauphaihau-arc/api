@@ -80,7 +80,7 @@ describe('SetProductVariantsUseCase', () => {
     const useCase = new SetProductVariantsUseCase(
       productRepository,
       productRepository,
-      shopRepository
+      shopRepository,
     );
 
     const result = await useCase.execute(actor, product.id, {
@@ -106,7 +106,7 @@ describe('SetProductVariantsUseCase', () => {
     const useCase = new SetProductVariantsUseCase(
       productRepository,
       productRepository,
-      shopRepository
+      shopRepository,
     );
 
     const result = await useCase.execute(actor, product.id, {

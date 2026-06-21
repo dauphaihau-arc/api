@@ -2,12 +2,12 @@ import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
 import {
   normalizeUserPreferences,
-  type UserPreferences
+  type UserPreferences,
 } from '~/config/marketplace.config';
 import {
   CreateUserPreferenceInput,
   SaveUserPreferenceInput,
-  UserPreferenceRepository
+  UserPreferenceRepository,
 } from '../../app/ports/user-preference.repository';
 import { CurrentUserEntity } from './entities/current-user.entity';
 import { UserPreferenceEntity } from './entities/user-preference.entity';
@@ -18,7 +18,7 @@ export class MikroOrmUserPreferenceRepository implements UserPreferenceRepositor
 
   async create(
     input: CreateUserPreferenceInput,
-    entityManager?: EntityManager
+    entityManager?: EntityManager,
   ): Promise<void> {
     const em = entityManager ?? this.entityManager.fork();
     const userRepository = em.getRepository(CurrentUserEntity);
@@ -36,7 +36,7 @@ export class MikroOrmUserPreferenceRepository implements UserPreferenceRepositor
 
   async save(
     input: SaveUserPreferenceInput,
-    entityManager?: EntityManager
+    entityManager?: EntityManager,
   ): Promise<void> {
     const em = entityManager ?? this.entityManager.fork();
     const userRepository = em.getRepository(CurrentUserEntity);

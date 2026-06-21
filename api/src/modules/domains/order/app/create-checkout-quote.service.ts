@@ -9,7 +9,7 @@ import { StorefrontMarketContextService } from '~/modules/domains/product/app/se
 import { ProductInventoryEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-inventory.entity';
 import {
   CheckoutQuoteActorType,
-  CheckoutQuoteEntity
+  CheckoutQuoteEntity,
 } from '../infra/persistence/entities/checkout-quote.entity';
 import { CheckoutQuoteItemEntity } from '../infra/persistence/entities/checkout-quote-item.entity';
 import { CheckoutQuoteNoItemsError } from './errors/order-app.error';
@@ -18,7 +18,7 @@ import type {
   CheckoutQuoteShopSummary,
   PricedCartItem,
   ShippingAddressInput,
-  ShopAdjustmentInput
+  ShopAdjustmentInput,
 } from './order.types';
 import { OrderTotalPolicyService } from './order-total-policy.service';
 
@@ -30,7 +30,7 @@ export class CreateCheckoutQuoteService {
     private readonly entityManager: EntityManager,
     private readonly couponPricingService: CouponPricingService,
     private readonly storefrontMarketContextService: StorefrontMarketContextService,
-    private readonly orderTotalPolicyService: OrderTotalPolicyService
+    private readonly orderTotalPolicyService: OrderTotalPolicyService,
   ) {}
 
   async createFromCart(input: {
@@ -45,7 +45,7 @@ export class CreateCheckoutQuoteService {
     const storefrontMarketContext =
       await this.storefrontMarketContextService.resolveCurrentRequest();
     const presentmentCurrency = normalizePresentmentCurrency(
-      input.presentmentCurrency ?? storefrontMarketContext?.currency
+      input.presentmentCurrency ?? storefrontMarketContext?.currency,
     );
     const pricedCart = await this.couponPricingService.priceCart({
       userId: input.actor.type === 'user' ? input.actor.userId : undefined,
@@ -274,7 +274,7 @@ function normalizePresentmentCurrency(currency?: string): string | undefined {
 }
 
 function resolveCheckoutCurrency(
-  items: PricedCartItem[]
+  items: PricedCartItem[],
 ): string {
   const currencies = [...new Set(items.map(item => item.currency).filter(Boolean))];
 

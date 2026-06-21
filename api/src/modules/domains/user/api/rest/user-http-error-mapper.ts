@@ -2,7 +2,7 @@ import type { HttpException } from '@nestjs/common';
 import {
   ConflictException,
   ForbiddenException,
-  NotFoundException
+  NotFoundException,
 } from '@nestjs/common';
 import {
   ActorNotAllowedToCreateUsersError,
@@ -10,7 +10,7 @@ import {
   UserAppError,
   UserEmailAlreadyRegisteredError,
   UserNotFoundError,
-  UserVersionConflictError
+  UserVersionConflictError,
 } from '../../app/errors/user-app.error';
 
 export function isUserAppError(error: unknown): error is UserAppError {
@@ -18,7 +18,7 @@ export function isUserAppError(error: unknown): error is UserAppError {
 }
 
 export function mapUserAppErrorToHttpException(
-  error: UserAppError
+  error: UserAppError,
 ): HttpException {
   if (error instanceof ActorNotAllowedToCreateUsersError) {
     return new ForbiddenException(error.message);

@@ -13,7 +13,7 @@ describe('OrderTotalPolicyService', () => {
       service.assertWithinLimit({
         totalMinor: 1000,
         currency: 'USD',
-      })
+      }),
     ).not.toThrow();
   });
 
@@ -28,7 +28,7 @@ describe('OrderTotalPolicyService', () => {
       service.assertWithinLimit({
         totalMinor: 1001,
         currency: 'USD',
-      })
+      }),
     ).toThrow(OrderTotalLimitExceededError);
   });
 });

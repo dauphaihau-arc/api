@@ -4,12 +4,12 @@ import { OnEvent } from '@nestjs/event-emitter';
 import {
   buildConversationWsChannelKey,
   buildShopWsChannelKey,
-  buildUserWsChannelKey
+  buildUserWsChannelKey,
 } from '~/modules/shared/ws/app/channel-keys';
 import { WsPublisher } from '~/modules/shared/ws/infra/ws.publisher';
 import {
   CHAT_MESSAGE_CREATED_EVENT,
-  type ChatMessageCreatedEventPayload
+  type ChatMessageCreatedEventPayload,
 } from '../app/events/chat-message-created.event';
 
 @Injectable()

@@ -1,7 +1,7 @@
 import type { ArgumentsHost } from '@nestjs/common';
 import {
   HttpException,
-  HttpStatus
+  HttpStatus,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { GlobalExceptionFilter } from './global-exception.filter';
@@ -30,7 +30,7 @@ describe('GlobalExceptionFilter', () => {
           channel: undefined,
         }),
       } as never,
-      logger as never
+      logger as never,
     );
     const request = {
       method: 'GET',
@@ -47,7 +47,7 @@ describe('GlobalExceptionFilter', () => {
         errorMessage: 'Order item is missing unitPriceMinor',
         requestSummary: 'GET /v1/orders/123 500',
       }),
-      'Order item is missing unitPriceMinor'
+      'Order item is missing unitPriceMinor',
     );
   });
 
@@ -61,7 +61,7 @@ describe('GlobalExceptionFilter', () => {
           requestId: 'req-123',
         }),
       } as never,
-      logger as never
+      logger as never,
     );
     const request = {
       method: 'GET',
@@ -79,14 +79,14 @@ describe('GlobalExceptionFilter', () => {
         statusCode: 400,
         error: 'HttpException',
         message: 'bad request',
-      })
+      }),
     );
   });
 });
 
 function createArgumentsHost(
   request: Request,
-  response: Response
+  response: Response,
 ): ArgumentsHost {
   return {
     switchToHttp: () => ({

@@ -39,7 +39,7 @@ implements PublicProductOrderHistoryRepository {
         buildLookbackStart(input.windowDays ?? 180),
         ProductState.ACTIVE,
         Math.max(input.limit * 4, input.limit),
-      ]
+      ],
     );
 
     return rows.map((row) => row.product_id);
@@ -81,7 +81,7 @@ implements PublicProductOrderHistoryRepository {
         buildLookbackStart(input.windowDays ?? 180),
         ProductState.ACTIVE,
         Math.max(input.limit * 4, input.limit),
-      ]
+      ],
     );
 
     return rows.map((row) => row.product_id);

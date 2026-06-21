@@ -4,7 +4,7 @@ import {
   ConflictException,
   ForbiddenException,
   NotFoundException,
-  UnprocessableEntityException
+  UnprocessableEntityException,
 } from '@nestjs/common';
 import {
   ActorCannotCreateProductDraftError,
@@ -17,7 +17,7 @@ import {
   ProductNotReadyToPublishError,
   ProductReviewNotEligibleError,
   ProductReviewOrderItemNotFoundError,
-  ProductSlugAlreadyExistsError
+  ProductSlugAlreadyExistsError,
 } from '../../../product/app/errors/product-app.error';
 
 export function mapProductAppErrorToHttpException(
@@ -32,7 +32,7 @@ export function mapProductAppErrorToHttpException(
     | ProductNotReadyToPublishError
     | ProductReviewNotEligibleError
     | InvalidProductReviewImageError
-    | ProductDraftIncompleteError
+    | ProductDraftIncompleteError,
 ): HttpException {
   if (error instanceof ActorCannotCreateProductDraftError) {
     return new ForbiddenException(error.message);

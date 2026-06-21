@@ -23,7 +23,7 @@ const appEnvBaseSchema = z.object({
       (value) =>
         value.length === 0
         || value.split(',').every((segment) => segment.trim().length > 0),
-      'Expected a comma-separated list without empty entries.'
+      'Expected a comma-separated list without empty entries.',
     )
     .optional(),
   DATABASE_URL: z.url().optional(),
@@ -164,7 +164,7 @@ const appEnvSchema = appEnvBaseSchema.superRefine((env, context) => {
   const hasAnyWebPushSetting = Boolean(
     env.WEB_PUSH_SUBJECT
     || env.WEB_PUSH_PUBLIC_KEY
-    || env.WEB_PUSH_PRIVATE_KEY
+    || env.WEB_PUSH_PRIVATE_KEY,
   );
 
   if (

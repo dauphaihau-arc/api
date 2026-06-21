@@ -5,14 +5,14 @@ import { CategoryRepository } from '~/modules/domains/category/app/ports/categor
 import {
   expandShoeSizeOptionKeys,
   expandShoeSizeOptionValues,
-  toCanonicalFacetOption
+  toCanonicalFacetOption,
 } from '../../shoe-size-groups';
 import { StorefrontProductQueryRepository } from '../../ports/storefront-product-query.repository';
 import type {
   ListPublicProductsInput,
   PublicProductFacet,
   PublicProductFacetOption,
-  PublicProductListResult
+  PublicProductListResult,
 } from '../../product.types';
 
 export interface ListPublicProductsQuery {
@@ -39,7 +39,7 @@ export interface ListPublicProductsQuery {
 export class ListPublicProductsUseCase {
   constructor(
     private readonly productRepository: StorefrontProductQueryRepository,
-    private readonly categoryRepository: CategoryRepository
+    private readonly categoryRepository: CategoryRepository,
   ) {}
 
   async execute(query: ListPublicProductsQuery): Promise<PublicProductListResult> {
@@ -107,7 +107,7 @@ export class ListPublicProductsUseCase {
   }
 
   private normalizeAttributeFilters(
-    filters?: ListPublicProductsQuery['attributeFilters']
+    filters?: ListPublicProductsQuery['attributeFilters'],
   ): ListPublicProductsInput['attributeFilters'] {
     if (!Array.isArray(filters)) {
       return undefined;
@@ -193,7 +193,7 @@ export class ListPublicProductsUseCase {
       })
       .filter((filter) =>
         (filter.attributeId?.length ?? 0) > 0
-        || filter.attributeName.length > 0
+        || filter.attributeName.length > 0,
       );
   }
 
@@ -286,7 +286,7 @@ export class ListPublicProductsUseCase {
   }
 
   private async resolveFeaturedFacetCategory(
-    category: CategorySummary
+    category: CategorySummary,
   ): Promise<CategorySummary | null> {
     let currentCategory: CategorySummary | null = category;
 
@@ -473,7 +473,7 @@ export class ListPublicProductsUseCase {
 
 function mergeFacetOptions(
   currentOptions: PublicProductFacetOption[],
-  taxonomyOptions: PublicProductFacetOption[]
+  taxonomyOptions: PublicProductFacetOption[],
 ): PublicProductFacetOption[] {
   const options = new Map<string, PublicProductFacetOption>();
 
@@ -487,7 +487,7 @@ function mergeFacetOptions(
 
 function compareFacetNames(
   left: Pick<PublicProductFacet, 'attributeName'>,
-  right: Pick<PublicProductFacet, 'attributeName'>
+  right: Pick<PublicProductFacet, 'attributeName'>,
 ): number {
   return left.attributeName.localeCompare(right.attributeName);
 }

@@ -1,7 +1,7 @@
 export class WebPushDeliveryError extends Error {
   constructor(
     message: string,
-    readonly statusCode?: number
+    readonly statusCode?: number,
   ) {
     super(message);
     this.name = 'WebPushDeliveryError';

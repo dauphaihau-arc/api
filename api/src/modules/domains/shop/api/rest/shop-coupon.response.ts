@@ -1,6 +1,6 @@
 import type {
   ShopCouponListResult,
-  ShopCouponSummary
+  ShopCouponSummary,
 } from '../../app/shop.types';
 
 export function toShopCouponResponse(coupon: ShopCouponSummary) {

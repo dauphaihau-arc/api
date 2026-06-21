@@ -3,7 +3,7 @@ import { Injectable } from '@nestjs/common';
 import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
 import {
   toChatConversationSummary,
-  toChatMessageSummary
+  toChatMessageSummary,
 } from '../../chat-read-model';
 import type { ChatMessageListQuery, ChatMessageListResult } from '../../chat.types';
 import { ChatConversationAccessDeniedError, ChatConversationNotFoundError } from '../../errors/chat-app.error';
@@ -17,13 +17,13 @@ export class GetMyChatMessagesUseCase {
   async execute(
     actor: AuthenticatedUser,
     conversationId: string,
-    query: ChatMessageListQuery
+    query: ChatMessageListQuery,
   ): Promise<ChatMessageListResult> {
     const entityManager = this.entityManager.fork();
 
     const conversation = await entityManager.getRepository(ChatConversationEntity).findOne(
       { id: conversationId },
-      { populate: ['buyerUser', 'shop.ownerUser', 'product'] }
+      { populate: ['buyerUser', 'shop.ownerUser', 'product'] },
     );
 
     if (!conversation) {
@@ -43,7 +43,7 @@ export class GetMyChatMessagesUseCase {
         orderBy: { createdAt: 'asc' },
         offset: (query.page - 1) * query.limit,
         limit: query.limit,
-      }
+      },
     );
 
     return {

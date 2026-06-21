@@ -4,7 +4,7 @@ import { ProductState } from '../../../domain/enums/product-state.enum';
 import { SellerProductQueryRepository } from '../../ports/seller-product-query.repository';
 import type {
   ListShopProductsInput,
-  ShopProductListResult
+  ShopProductListResult,
 } from '../../product.types';
 
 export interface ListShopProductsQuery {

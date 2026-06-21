@@ -174,7 +174,7 @@ import { CATALOG_CONFIG, buildCatalogConfig } from '~/config/catalog.config';
       useFactory: (
         catalogConfig: ReturnType<typeof buildCatalogConfig>,
         atlasSearchStorefrontProductQueryRepository: AtlasSearchStorefrontProductQueryRepository,
-        mikroOrmStorefrontProductQueryRepository: MikroOrmStorefrontProductQueryRepository
+        mikroOrmStorefrontProductQueryRepository: MikroOrmStorefrontProductQueryRepository,
       ) =>
         catalogConfig.driver === 'mongodb'
           ? atlasSearchStorefrontProductQueryRepository
@@ -190,7 +190,7 @@ import { CATALOG_CONFIG, buildCatalogConfig } from '~/config/catalog.config';
       useFactory: (
         catalogConfig: ReturnType<typeof buildCatalogConfig>,
         atlasProductRecommendationQueryRepository: AtlasProductRecommendationQueryRepository,
-        mikroOrmProductRecommendationQueryRepository: MikroOrmProductRecommendationQueryRepository
+        mikroOrmProductRecommendationQueryRepository: MikroOrmProductRecommendationQueryRepository,
       ) =>
         catalogConfig.driver === 'mongodb'
           ? atlasProductRecommendationQueryRepository

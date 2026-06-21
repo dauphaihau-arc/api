@@ -10,7 +10,7 @@ describe('RedisRateLimitStorage', () => {
     });
 
     await expect(
-      storage.increment('request-key', 60_000, 20, 60_000, 'default')
+      storage.increment('request-key', 60_000, 20, 60_000, 'default'),
     ).resolves.toEqual({
       totalHits: 3,
       timeToExpire: 5,

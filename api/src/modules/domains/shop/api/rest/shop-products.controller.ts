@@ -15,7 +15,7 @@ import {
   Query,
   UploadedFiles,
   UseGuards,
-  UseInterceptors
+  UseInterceptors,
 } from '@nestjs/common';
 import {
   ApiConsumes,
@@ -25,7 +25,7 @@ import {
   ApiOperation,
   ApiParam,
   ApiResponse,
-  ApiTags
+  ApiTags,
 } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { RequirePermissions } from '~/common/decorators/require-permissions.decorator';
@@ -40,7 +40,7 @@ import { PermissionsGuard } from '~/modules/domains/auth/api/guard/permissions.g
 import { CreateProductDraftFacadeUseCase } from '~/modules/domains/product/app/use-cases/create-product-draft-facade/create-product-draft-facade.use-case';
 import {
   CreateProductDraftUseCase,
-  type CreateProductDraftInput
+  type CreateProductDraftInput,
 } from '~/modules/domains/product/app/use-cases/create-product-draft/create-product-draft.use-case';
 import { GetProductByIdUseCase } from '~/modules/domains/product/app/use-cases/get-product-by-id/get-product-by-id.use-case';
 import { GenerateProductDescriptionUseCase } from '~/modules/domains/product/app/use-cases/generate-product-description/generate-product-description.use-case';
@@ -48,7 +48,7 @@ import { ListShopProductsUseCase } from '~/modules/domains/product/app/use-cases
 import { PublishProductUseCase } from '~/modules/domains/product/app/use-cases/publish-product/publish-product.use-case';
 import {
   SetProductImagesUseCase,
-  type UploadedProductImageFile
+  type UploadedProductImageFile,
 } from '~/modules/domains/product/app/use-cases/set-product-images/set-product-images.use-case';
 import { SetProductAttributesUseCase } from '~/modules/domains/product/app/use-cases/set-product-attributes/set-product-attributes.use-case';
 import { SetProductImagesByKeysUseCase } from '~/modules/domains/product/app/use-cases/set-product-images-by-keys/set-product-images-by-keys.use-case';
@@ -59,14 +59,14 @@ import { SetProductVariantsUseCase } from '~/modules/domains/product/app/use-cas
 import { UpdateProductDetailsUseCase } from '~/modules/domains/product/app/use-cases/update-product-details/update-product-details.use-case';
 import { BulkMutateShopProductsUseCase } from '~/modules/domains/product/app/use-cases/bulk-mutate-shop-products/bulk-mutate-shop-products.use-case';
 import type {
-  ProductDraftSummary
+  ProductDraftSummary,
 } from '~/modules/domains/product/app/product.types';
 import { BulkMutateShopProductsDto } from '~/modules/domains/shop/api/rest/dto/bulk-mutate-shop-products.dto';
 import { CreateProductDraftFacadeDto } from '~/modules/domains/shop/api/rest/dto/create-product-draft-facade.dto';
 import { CreateProductDto } from '~/modules/domains/shop/api/rest/dto/create-product.dto';
 import {
   GenerateProductDescriptionDto,
-  GenerateProductDescriptionResponseDto
+  GenerateProductDescriptionResponseDto,
 } from '~/modules/domains/shop/api/rest/dto/generate-product-description.dto';
 import { ListShopProductsQueryDto } from '~/modules/domains/shop/api/rest/dto/list-shop-products.query.dto';
 import { SetProductAttributesDto } from '~/modules/domains/shop/api/rest/dto/set-product-attributes.dto';
@@ -113,7 +113,7 @@ export class ShopProductsController {
     private readonly setProductPricingUseCase: SetProductPricingUseCase,
     private readonly setProductShippingUseCase: SetProductShippingUseCase,
     private readonly updateProductDetailsUseCase: UpdateProductDetailsUseCase,
-    private readonly bulkMutateShopProductsUseCase: BulkMutateShopProductsUseCase
+    private readonly bulkMutateShopProductsUseCase: BulkMutateShopProductsUseCase,
   ) {}
 
   @Get()
@@ -127,7 +127,7 @@ export class ShopProductsController {
   async products(
     @Param('shop_id') shopId: string,
     @Query() query: ListShopProductsQueryDto,
-    @CurrentUser() currentUser: AuthenticatedUser
+    @CurrentUser() currentUser: AuthenticatedUser,
   ): Promise<ShopProductListResponse> {
     await this.assertActorCanManageShop(currentUser, shopId);
 
@@ -155,7 +155,7 @@ export class ShopProductsController {
   async product(
     @Param('shop_id') shopId: string,
     @Param('id') id: string,
-    @CurrentUser() currentUser: AuthenticatedUser
+    @CurrentUser() currentUser: AuthenticatedUser,
   ): Promise<ShopProductDetailResponse> {
     await this.assertActorCanManageShop(currentUser, shopId);
 
@@ -175,7 +175,7 @@ export class ShopProductsController {
   createProductDraft(
     @Param('shop_id') shopId: string,
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Body() body: CreateProductDto
+    @Body() body: CreateProductDto,
   ): Promise<ShopProductDetailResponse> {
     const input: CreateProductDraftInput = {
       ...body,
@@ -184,7 +184,7 @@ export class ShopProductsController {
 
     return this.createProductDraftUseCase.execute(currentUser, input)
       .then((result) =>
-        resolveOrThrow(result, mapProductAppErrorToHttpException)
+        resolveOrThrow(result, mapProductAppErrorToHttpException),
       )
       .then(toShopProductDetailResponse);
   }
@@ -204,13 +204,13 @@ export class ShopProductsController {
   createProductDraftFacade(
     @Param('shop_id') shopId: string,
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Body() body: CreateProductDraftFacadeDto
+    @Body() body: CreateProductDraftFacadeDto,
   ): Promise<ShopProductDetailResponse> {
     return this.createProductDraftFacadeUseCase.execute(currentUser, {
       shopId,
       ...body,
     }).then((result) =>
-      resolveOrThrow(result, mapProductAppErrorToHttpException)
+      resolveOrThrow(result, mapProductAppErrorToHttpException),
     ).then(toShopProductDetailResponse);
   }
 
@@ -228,7 +228,7 @@ export class ShopProductsController {
   async generateProductDescription(
     @Param('shop_id') shopId: string,
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Body() body: GenerateProductDescriptionDto
+    @Body() body: GenerateProductDescriptionDto,
   ): Promise<GenerateProductDescriptionResponseDto> {
     await this.assertActorCanManageShop(currentUser, shopId);
 
@@ -248,7 +248,7 @@ export class ShopProductsController {
   async bulkMutateProducts(
     @Param('shop_id') shopId: string,
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Body() body: BulkMutateShopProductsDto
+    @Body() body: BulkMutateShopProductsDto,
   ): Promise<{
     succeeded_ids: string[];
     failed: Array<{ id: string; code: string; reason: string }>;
@@ -278,7 +278,7 @@ export class ShopProductsController {
     @Param('shop_id') shopId: string,
     @Param('id') id: string,
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Body() body: UpdateProductDto
+    @Body() body: UpdateProductDto,
   ): Promise<void> {
     await this.assertActorCanManageProductShop(currentUser, shopId, id);
 
@@ -298,13 +298,13 @@ export class ShopProductsController {
   async publishProduct(
     @Param('shop_id') shopId: string,
     @Param('id') id: string,
-    @CurrentUser() currentUser: AuthenticatedUser
+    @CurrentUser() currentUser: AuthenticatedUser,
   ): Promise<ShopProductDetailResponse> {
     await this.assertActorCanManageProductShop(currentUser, shopId, id);
 
     return this.publishProductUseCase.execute(currentUser, id)
       .then((result) =>
-        resolveOrThrow(result, mapProductAppErrorToHttpException)
+        resolveOrThrow(result, mapProductAppErrorToHttpException),
       )
       .then(toShopProductDetailResponse);
   }
@@ -323,7 +323,7 @@ export class ShopProductsController {
     @Param('id') id: string,
     @CurrentUser() currentUser: AuthenticatedUser,
     @UploadedFiles() imageFiles: UploadedProductImageFile[] = [],
-    @Body() _body: unknown
+    @Body() _body: unknown,
   ): Promise<void> {
     await this.assertActorCanManageProductShop(currentUser, shopId, id);
     this.validateImageFiles(imageFiles);
@@ -345,7 +345,7 @@ export class ShopProductsController {
     @Param('shop_id') shopId: string,
     @Param('id') id: string,
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Body() body: SetProductImagesByKeysDto
+    @Body() body: SetProductImagesByKeysDto,
   ): Promise<void> {
     await this.assertActorCanManageProductShop(currentUser, shopId, id);
 
@@ -364,7 +364,7 @@ export class ShopProductsController {
     @Param('shop_id') shopId: string,
     @Param('id') id: string,
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Body() body: SetProductAttributesDto
+    @Body() body: SetProductAttributesDto,
   ): Promise<void> {
     await this.assertActorCanManageProductShop(currentUser, shopId, id);
 
@@ -383,7 +383,7 @@ export class ShopProductsController {
     @Param('shop_id') shopId: string,
     @Param('id') id: string,
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Body() body: SetProductVariantsDto
+    @Body() body: SetProductVariantsDto,
   ): Promise<void> {
     await this.assertActorCanManageProductShop(currentUser, shopId, id);
 
@@ -402,7 +402,7 @@ export class ShopProductsController {
     @Param('shop_id') shopId: string,
     @Param('id') id: string,
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Body() body: SetProductInventoryDto
+    @Body() body: SetProductInventoryDto,
   ): Promise<void> {
     await this.assertActorCanManageProductShop(currentUser, shopId, id);
 
@@ -421,7 +421,7 @@ export class ShopProductsController {
     @Param('shop_id') shopId: string,
     @Param('id') id: string,
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Body() body: SetProductPricingDto
+    @Body() body: SetProductPricingDto,
   ): Promise<void> {
     await this.assertActorCanManageProductShop(currentUser, shopId, id);
 
@@ -440,7 +440,7 @@ export class ShopProductsController {
     @Param('shop_id') shopId: string,
     @Param('id') id: string,
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Body() body: SetProductShippingDto
+    @Body() body: SetProductShippingDto,
   ): Promise<void> {
     await this.assertActorCanManageProductShop(currentUser, shopId, id);
 
@@ -451,7 +451,7 @@ export class ShopProductsController {
   private async assertActorCanManageProductShop(
     currentUser: AuthenticatedUser,
     shopId: string,
-    productId: string
+    productId: string,
   ): Promise<void> {
     await this.assertActorCanManageShop(currentUser, shopId);
     await this.getProductOrThrow(shopId, productId);
@@ -459,7 +459,7 @@ export class ShopProductsController {
 
   private async assertActorCanManageShop(
     currentUser: AuthenticatedUser,
-    shopId: string
+    shopId: string,
   ): Promise<void> {
     if (currentUser.roles.includes('admin')) {
       const shop = await this.shopRepository.findById(shopId);
@@ -488,7 +488,7 @@ export class ShopProductsController {
 
   private async getProductOrThrow(
     shopId: string,
-    productId: string
+    productId: string,
   ): Promise<ProductDraftSummary> {
     const product = await this.getProductByIdUseCase.execute(productId);
 

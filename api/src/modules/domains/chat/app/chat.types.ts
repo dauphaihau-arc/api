@@ -64,7 +64,7 @@ export interface ChatMessageListResult {
 }
 
 export function buildChatConversationListQuery(
-  input?: Partial<ChatConversationListQuery>
+  input?: Partial<ChatConversationListQuery>,
 ): ChatConversationListQuery {
   return {
     page: input?.page ?? CHAT_LIST_DEFAULT_PAGE,
@@ -73,7 +73,7 @@ export function buildChatConversationListQuery(
 }
 
 export function buildChatMessageListQuery(
-  input?: Partial<ChatMessageListQuery>
+  input?: Partial<ChatMessageListQuery>,
 ): ChatMessageListQuery {
   return {
     page: input?.page ?? CHAT_MESSAGE_LIST_DEFAULT_PAGE,

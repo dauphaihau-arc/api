@@ -6,7 +6,7 @@ import {
   PasswordHashRequiredError,
   PermissionKeyRequiredError,
   RoleKeyRequiredError,
-  UnsupportedPasswordHashFormatError
+  UnsupportedPasswordHashFormatError,
 } from '../errors/auth-domain.error';
 import { Email } from './email';
 import { PasswordHash } from './password-hash';
@@ -21,17 +21,17 @@ describe('auth domain value objects', () => {
 
   it('throws typed domain errors for invalid password hashes', () => {
     expect(() => PasswordHash.fromPersisted('')).toThrow(
-      PasswordHashRequiredError
+      PasswordHashRequiredError,
     );
     expect(() => PasswordHash.fromPersisted('plain-text')).toThrow(
-      UnsupportedPasswordHashFormatError
+      UnsupportedPasswordHashFormatError,
     );
   });
 
   it('throws typed domain errors for invalid permission keys', () => {
     expect(() => PermissionKey.create('')).toThrow(PermissionKeyRequiredError);
     expect(() => PermissionKey.create('123invalid')).toThrow(
-      InvalidPermissionKeyError
+      InvalidPermissionKeyError,
     );
   });
 

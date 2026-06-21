@@ -5,7 +5,7 @@ import {
   AuthUserRepository,
   CreateUserAccountInput,
   UpdateUserAccountInput,
-  UserAccountVersionConflictError
+  UserAccountVersionConflictError,
 } from '../../app/ports/auth-user.repository';
 import type { RoleDefinition } from '../../domain/models/role-definition';
 import type { UserAccount } from '../../domain/models/user-account';
@@ -26,7 +26,7 @@ export class MikroOrmAuthUserRepository implements AuthUserRepository {
     const userRepository = this.entityManager.fork().getRepository(CurrentUserEntity);
     const user = await userRepository.findOne(
       { email: email.toString() },
-      { populate: ['credential', 'userRoles.role.rolePermissions.permission'] }
+      { populate: ['credential', 'userRoles.role.rolePermissions.permission'] },
     );
 
     return user ? this.toUserAccount(user) : null;
@@ -36,7 +36,7 @@ export class MikroOrmAuthUserRepository implements AuthUserRepository {
     const userRepository = this.entityManager.fork().getRepository(CurrentUserEntity);
     const user = await userRepository.findOne(
       { id },
-      { populate: ['credential', 'userRoles.role.rolePermissions.permission'] }
+      { populate: ['credential', 'userRoles.role.rolePermissions.permission'] },
     );
 
     return user ? this.toUserAccount(user) : null;
@@ -44,12 +44,12 @@ export class MikroOrmAuthUserRepository implements AuthUserRepository {
 
   async create(
     input: CreateUserAccountInput,
-    entityManager?: EntityManager
+    entityManager?: EntityManager,
   ): Promise<UserAccount> {
     const em = entityManager ?? this.entityManager.fork();
     const userRepository = em.getRepository(CurrentUserEntity);
     const credentialRepository = em.getRepository(
-      CurrentUserCredentialEntity
+      CurrentUserCredentialEntity,
     );
     const user = userRepository.create({
       email: input.email.toString(),
@@ -117,7 +117,7 @@ export class MikroOrmAuthUserRepository implements AuthUserRepository {
   }): Promise<void> {
     const entityManager = this.entityManager.fork();
     const credentialRepository = entityManager.getRepository(
-      CurrentUserCredentialEntity
+      CurrentUserCredentialEntity,
     );
     const credential = await credentialRepository.findOneOrFail({
       user: input.userId,
@@ -132,7 +132,7 @@ export class MikroOrmAuthUserRepository implements AuthUserRepository {
   async assignRole(
     userId: string,
     roleKey: RoleKey,
-    entityManager?: EntityManager
+    entityManager?: EntityManager,
   ): Promise<void> {
     const em = entityManager ?? this.entityManager.fork();
     const userRepository = em.getRepository(CurrentUserEntity);
@@ -162,7 +162,7 @@ export class MikroOrmAuthUserRepository implements AuthUserRepository {
 
   async ensureRole(
     roleDefinition: RoleDefinition,
-    entityManager?: EntityManager
+    entityManager?: EntityManager,
   ): Promise<void> {
     const em = entityManager ?? this.entityManager.fork();
     const roleRepository = em.getRepository(RoleEntity);
@@ -193,9 +193,9 @@ export class MikroOrmAuthUserRepository implements AuthUserRepository {
           userRole.role.rolePermissions.getItems().map((rolePermission) => {
             const key = PermissionKey.create(rolePermission.permission.key);
             return [key.toString(), key] as const;
-          })
-        )
-      ).values()
+          }),
+        ),
+      ).values(),
     ).sort((left, right) => left.toString().localeCompare(right.toString()));
 
     return {

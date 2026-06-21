@@ -2,7 +2,7 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import * as webPush from 'web-push';
 import {
   WEB_PUSH_CONFIG,
-  type WebPushConfig
+  type WebPushConfig,
 } from '~/config/web-push.config';
 import { WebPushSender } from '../app/ports/web-push-sender';
 import type { WebPushSubscriptionSummary } from '../app/notification.types';
@@ -14,13 +14,13 @@ export class VapidWebPushSender implements WebPushSender {
   private readonly webPush = webPush;
 
   constructor(
-    @Inject(WEB_PUSH_CONFIG) private readonly webPushConfig: WebPushConfig
+    @Inject(WEB_PUSH_CONFIG) private readonly webPushConfig: WebPushConfig,
   ) {
     if (this.webPushConfig.enabled) {
       this.webPush.setVapidDetails(
         this.webPushConfig.subject!,
         this.webPushConfig.publicKey!,
-        this.webPushConfig.privateKey!
+        this.webPushConfig.privateKey!,
       );
     }
   }
@@ -36,7 +36,7 @@ export class VapidWebPushSender implements WebPushSender {
   }): Promise<void> {
     if (!this.webPushConfig.enabled) {
       this.logger.warn(
-        'Skipping Web Push delivery because VAPID config is not enabled'
+        'Skipping Web Push delivery because VAPID config is not enabled',
       );
       return;
     }
@@ -60,7 +60,7 @@ export class VapidWebPushSender implements WebPushSender {
         }),
         {
           TTL: this.webPushConfig.ttlSeconds,
-        }
+        },
       );
     }
     catch (error) {
@@ -75,7 +75,7 @@ export class VapidWebPushSender implements WebPushSender {
 
       throw new WebPushDeliveryError(
         error instanceof Error ? error.message : 'Unknown Web Push error',
-        statusCode
+        statusCode,
       );
     }
   }

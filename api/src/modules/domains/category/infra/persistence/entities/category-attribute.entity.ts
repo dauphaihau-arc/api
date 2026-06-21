@@ -5,7 +5,7 @@ import {
   ManyToOne,
   OneToMany,
   Property,
-  Unique
+  Unique,
 } from '@mikro-orm/core';
 import { AbstractBaseEntity } from '~/common/database/abstract-base.entity';
 import { ProductAttributeValueEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-attribute-value.entity';
@@ -39,13 +39,13 @@ export class CategoryAttributeEntity extends AbstractBaseEntity {
 
   @OneToMany(
     () => CategoryAttributeOptionEntity,
-    (option) => option.categoryAttribute
+    (option) => option.categoryAttribute,
   )
   options = new Collection<CategoryAttributeOptionEntity>(this);
 
   @OneToMany(
     () => ProductAttributeValueEntity,
-    (attributeValue) => attributeValue.categoryAttribute
+    (attributeValue) => attributeValue.categoryAttribute,
   )
   productAttributeValues = new Collection<ProductAttributeValueEntity>(this);
 }

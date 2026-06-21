@@ -2,7 +2,7 @@ import type { PasswordResetTokenRepository } from '../../ports/password-reset-to
 import type { TokenHasher } from '../../ports/token-hasher';
 import {
   InvalidPasswordResetTokenError,
-  PasswordResetTokenExpiredError
+  PasswordResetTokenExpiredError,
 } from '../../errors/auth-app.error';
 import { VerifyResetPasswordTokenUseCase } from './verify-reset-password-token.use-case';
 

@@ -16,7 +16,7 @@ describe('ProductActivityController', () => {
 
   const controller = new ProductActivityController(
     publicProductViewHistoryService as never,
-    productActivitySessionService as never
+    productActivitySessionService as never,
   );
 
   beforeEach(() => {
@@ -42,7 +42,7 @@ describe('ProductActivityController', () => {
       {} as never,
       {} as never,
       'arc-store',
-      'viewed-product'
+      'viewed-product',
     )).resolves.toEqual({ ok: true });
     expect(publicProductViewHistoryService.recordView).toHaveBeenCalledWith({
       shopSlug: 'arc-store',

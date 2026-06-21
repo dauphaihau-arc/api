@@ -2,7 +2,7 @@ import {
   ArgumentMetadata,
   Injectable,
   type PipeTransform,
-  ValidationPipe
+  ValidationPipe,
 } from '@nestjs/common';
 import { ListPublicProductsQueryDto } from './dto/list-public-products.query.dto';
 
@@ -25,7 +25,7 @@ implements PipeTransform<Record<string, unknown>, Promise<ListPublicProductsQuer
 
   async transform(
     value: Record<string, unknown>,
-    metadata: ArgumentMetadata
+    metadata: ArgumentMetadata,
   ): Promise<ListPublicProductsQueryDto> {
     const normalizedValue = {
       ...value,
@@ -49,7 +49,7 @@ implements PipeTransform<Record<string, unknown>, Promise<ListPublicProductsQuer
   }
 
   private parseAttributeFilters(
-    source: Record<string, unknown>
+    source: Record<string, unknown>,
   ): NormalizedAttributeFilter[] | undefined {
     const filters = new Map<string, NormalizedAttributeFilter>();
 

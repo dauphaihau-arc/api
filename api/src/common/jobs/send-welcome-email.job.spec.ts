@@ -23,7 +23,7 @@ describe('SendWelcomeEmailJob', () => {
         },
         subject: 'Welcome',
         tags: ['user-created'],
-      })
+      }),
     );
   });
 });

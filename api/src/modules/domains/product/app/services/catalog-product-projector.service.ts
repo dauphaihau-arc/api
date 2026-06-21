@@ -21,7 +21,7 @@ export class CatalogProductProjectorService {
     private readonly catalogConfig: CatalogConfig,
     private readonly catalogProductDocumentRepository: CatalogProductDocumentRepository,
     private readonly catalogProductSlugRepository: CatalogProductSlugRepository,
-    private readonly catalogSearchDocumentRepository: CatalogSearchDocumentRepository
+    private readonly catalogSearchDocumentRepository: CatalogSearchDocumentRepository,
   ) {}
 
   async projectProduct(productId: string): Promise<void> {
@@ -38,11 +38,11 @@ export class CatalogProductProjectorService {
 
     const document = toCatalogProductDocument(
       product,
-      (storageKey) => this.storageService.getPublicUrl(storageKey)
+      (storageKey) => this.storageService.getPublicUrl(storageKey),
     );
     const searchDocument = toCatalogSearchDocument(
       product,
-      (storageKey) => this.storageService.getPublicUrl(storageKey)
+      (storageKey) => this.storageService.getPublicUrl(storageKey),
     );
     const slugDocument = toCatalogProductSlugDocument(product);
 

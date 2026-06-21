@@ -1,7 +1,7 @@
 import type {
   AccessTokenPayload,
   AuthenticatedUser,
-  RefreshTokenPayload
+  RefreshTokenPayload,
 } from '../auth.types';
 
 export abstract class AuthTokenService {

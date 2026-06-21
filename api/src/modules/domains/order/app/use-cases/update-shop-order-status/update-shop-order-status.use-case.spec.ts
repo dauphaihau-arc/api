@@ -132,7 +132,7 @@ describe('UpdateShopOrderStatusUseCase', () => {
         jobDispatcher as never,
         notifyUserUseCase as never,
         eventEmitter as unknown as EventEmitter2,
-        orderEventsService as never
+        orderEventsService as never,
       ),
     };
   }
@@ -168,7 +168,7 @@ describe('UpdateShopOrderStatusUseCase', () => {
     await expect(
       useCase.execute('shop-1', 'order-1', {
         status: OrderStatus.CANCELED,
-      })
+      }),
     ).rejects.toThrow(SellerShippedOrderCancelNotAllowedError);
   });
 });

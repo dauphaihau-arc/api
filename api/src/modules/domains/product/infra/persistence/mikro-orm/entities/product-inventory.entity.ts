@@ -5,7 +5,7 @@ import {
   ManyToOne,
   OneToMany,
   Property,
-  Unique
+  Unique,
 } from '@mikro-orm/core';
 import { AbstractBaseEntity } from '~/common/database/abstract-base.entity';
 import { ShopEntity } from '~/modules/domains/shop/infra/persistence/entities/shop.entity';
@@ -46,7 +46,7 @@ export class ProductInventoryEntity extends AbstractBaseEntity {
 
   @OneToMany(
     () => ProductInventoryReservationEntity,
-    (reservation) => reservation.productInventory
+    (reservation) => reservation.productInventory,
   )
   reservations = new Collection<ProductInventoryReservationEntity>(this);
 

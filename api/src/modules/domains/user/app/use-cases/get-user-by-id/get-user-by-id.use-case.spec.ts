@@ -37,7 +37,7 @@ describe('GetUserByIdUseCase', () => {
     cacheManager.get.mockResolvedValue(user);
     const useCase = new GetUserByIdUseCase(
       userRepository,
-      cacheManager as unknown as Cache
+      cacheManager as unknown as Cache,
     );
 
     const result = await useCase.execute(user.id);
@@ -52,7 +52,7 @@ describe('GetUserByIdUseCase', () => {
     const { userRepository, cacheManager } = buildDeps();
     const useCase = new GetUserByIdUseCase(
       userRepository,
-      cacheManager as unknown as Cache
+      cacheManager as unknown as Cache,
     );
 
     const result = await useCase.execute(user.id);
@@ -60,7 +60,7 @@ describe('GetUserByIdUseCase', () => {
     expect(userRepository.findById).toHaveBeenCalledWith(user.id);
     expect(cacheManager.set).toHaveBeenCalledWith(
       buildUserByIdCacheKey(user.id),
-      user
+      user,
     );
     expect(result).toEqual(user);
   });
@@ -70,7 +70,7 @@ describe('GetUserByIdUseCase', () => {
     userRepository.findById.mockResolvedValue(null);
     const useCase = new GetUserByIdUseCase(
       userRepository,
-      cacheManager as unknown as Cache
+      cacheManager as unknown as Cache,
     );
 
     const result = await useCase.execute('missing-user');

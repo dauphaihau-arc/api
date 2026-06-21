@@ -68,7 +68,7 @@ export interface CatalogSearchDocument {
 
 export function toCatalogSearchDocument(
   product: ProductEntity,
-  getPublicUrl: (storageKey: string) => string | undefined
+  getPublicUrl: (storageKey: string) => string | undefined,
 ): CatalogSearchDocument {
   const sortedImages = product.images
     .getItems()
@@ -119,7 +119,7 @@ export function toCatalogSearchDocument(
       .getItems()
       .slice()
       .sort(
-        (left, right) => left.categoryAttribute.rank - right.categoryAttribute.rank
+        (left, right) => left.categoryAttribute.rank - right.categoryAttribute.rank,
       )
       .map((attributeValue) => ({
         categoryAttributeId: attributeValue.categoryAttribute.id,

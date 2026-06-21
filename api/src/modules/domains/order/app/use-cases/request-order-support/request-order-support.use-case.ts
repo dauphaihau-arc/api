@@ -18,30 +18,30 @@ import {
   getOrderSubtotalMajor,
   getOrderSubtotalMinor,
   getOrderTotalMinor,
-  getOrderTotalMajor
+  getOrderTotalMajor,
 } from '../../order-money';
 import type { MyOrderDetail } from '../../order.types';
 import {
   buildSellerOrderSupportRequestedNotification,
-  getSellerOrderNotificationRecipientId
+  getSellerOrderNotificationRecipientId,
 } from '../../seller-order-notification';
 
 @Injectable()
 export class RequestOrderSupportUseCase {
   constructor(
     private readonly entityManager: EntityManager,
-    private readonly notifyUserUseCase: NotifyUserUseCase
+    private readonly notifyUserUseCase: NotifyUserUseCase,
   ) {}
 
   async execute(
     actor: AuthenticatedUser,
     orderId: string,
-    input: RequestOrderSupportDto
+    input: RequestOrderSupportDto,
   ): Promise<MyOrderDetail> {
     const entityManager = this.entityManager.fork();
     const order = await entityManager.getRepository(OrderEntity).findOne(
       buildScopedOrderIdentifierWhere(orderId, { user: actor.userId }),
-      { populate: ['shop.ownerUser'] }
+      { populate: ['shop.ownerUser'] },
     );
 
     if (!order) {
@@ -58,14 +58,14 @@ export class RequestOrderSupportUseCase {
           sellerUserId,
           order.id,
           getRequiredOrderNumber(order),
-          order.shop.id
-        )
+          order.shop.id,
+        ),
       );
     }
 
     const items = await entityManager.getRepository(OrderItemEntity).find(
       { order: order.id },
-      { populate: ['product', 'product.shop', 'inventory'] }
+      { populate: ['product', 'product.shop', 'inventory'] },
     );
 
     return {

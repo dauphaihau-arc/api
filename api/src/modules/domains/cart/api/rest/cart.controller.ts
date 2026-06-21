@@ -10,20 +10,20 @@ import {
   Query,
   Req,
   Res,
-  UseGuards
+  UseGuards,
 } from '@nestjs/common';
 import {
   ApiCookieAuth,
   ApiOkResponse,
   ApiOperation,
-  ApiTags
+  ApiTags,
 } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { resolveOrThrow } from '~/common/application/result';
 import {
   CHECKOUT_CONFIG,
   getMaxOrderTotalMinor,
-  type CheckoutConfig
+  type CheckoutConfig,
 } from '~/config/checkout.config';
 import { OptionalJwtAuthGuard } from '~/modules/domains/auth/api/guard/optional-jwt-auth.guard';
 import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
@@ -36,7 +36,7 @@ import { UpdateCartItemUseCase } from '../../app/use-cases/update-cart-item/upda
 import {
   buildCartResponse,
   type CartActor,
-  type CartResponse
+  type CartResponse,
 } from '../../app/cart.types';
 import { mapCartAppErrorToHttpException } from './cart-http-error-mapper';
 import { AddCartItemDto } from './dto/add-cart-item.dto';
@@ -61,7 +61,7 @@ export class CartController {
     private readonly mergeGuestCartUseCase: MergeGuestCartUseCase,
     private readonly addCartItemUseCase: AddCartItemUseCase,
     private readonly updateCartItemUseCase: UpdateCartItemUseCase,
-    private readonly removeCartItemUseCase: RemoveCartItemUseCase
+    private readonly removeCartItemUseCase: RemoveCartItemUseCase,
   ) {}
 
   @Get()
@@ -73,7 +73,7 @@ export class CartController {
   })
   async cart(
     @Req() request: CartRequest,
-    @Query() query: GetCartQueryDto
+    @Query() query: GetCartQueryDto,
   ): Promise<CartResponse> {
     const actor = this.resolveReadActor(request);
 
@@ -95,7 +95,7 @@ export class CartController {
   async addItem(
     @Req() request: CartRequest,
     @Res({ passthrough: true }) response: Response,
-    @Body() body: AddCartItemDto
+    @Body() body: AddCartItemDto,
   ): Promise<CartResponse> {
     const actor = this.resolveWriteActor(request, response);
     const cart = resolveOrThrow(
@@ -104,7 +104,7 @@ export class CartController {
         quantity: body.quantity,
         isTemp: body.isTemp,
       }),
-      mapCartAppErrorToHttpException
+      mapCartAppErrorToHttpException,
     );
 
     return this.buildResponse(cart);
@@ -119,7 +119,7 @@ export class CartController {
   })
   async merge(
     @Req() request: CartRequest,
-    @Res({ passthrough: true }) response: Response
+    @Res({ passthrough: true }) response: Response,
   ): Promise<CartResponse> {
     if (!request.user?.userId) {
       return this.buildResponse(null, undefined, { ownerType: 'guest' });
@@ -141,7 +141,7 @@ export class CartController {
 
     const cart = await this.mergeGuestCartUseCase.execute(
       guestSessionId,
-      request.user.userId
+      request.user.userId,
     );
 
     this.guestCartSessionService.clearSession(response);
@@ -162,7 +162,7 @@ export class CartController {
   async updateItem(
     @Req() request: CartRequest,
     @Res({ passthrough: true }) response: Response,
-    @Body() body: UpdateCartItemDto
+    @Body() body: UpdateCartItemDto,
   ): Promise<CartResponse> {
     const actor = this.resolveWriteActor(request, response);
 
@@ -189,7 +189,7 @@ export class CartController {
             totalSelectedQuantity: priced.totalSelectedQuantity,
             totalQuantity: priced.totalQuantity,
           }
-          : undefined
+          : undefined,
       );
     }
 
@@ -200,7 +200,7 @@ export class CartController {
         quantity: body.quantity,
         isSelectOrder: body.isSelected,
       }),
-      mapCartAppErrorToHttpException
+      mapCartAppErrorToHttpException,
     );
 
     if (!cart) {
@@ -238,12 +238,12 @@ export class CartController {
   async deleteItem(
     @Req() request: CartRequest,
     @Res({ passthrough: true }) response: Response,
-    @Query() query: DeleteCartItemQueryDto
+    @Query() query: DeleteCartItemQueryDto,
   ): Promise<CartResponse> {
     const actor = this.resolveWriteActor(request, response);
     const cart = resolveOrThrow(
       await this.removeCartItemUseCase.execute(actor, query.inventoryId, query.cartId),
-      mapCartAppErrorToHttpException
+      mapCartAppErrorToHttpException,
     );
 
     return this.buildResponse(cart, undefined, {
@@ -255,7 +255,7 @@ export class CartController {
   private buildResponse(
     cart: Parameters<typeof buildCartResponse>[0],
     summaryOverride?: Parameters<typeof buildCartResponse>[1],
-    options?: Parameters<typeof buildCartResponse>[2]
+    options?: Parameters<typeof buildCartResponse>[2],
   ): CartResponse {
     const currency = summaryOverride?.currency ??
       cart?.items[0]?.inventory.pricing.currency ??

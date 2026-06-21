@@ -2,7 +2,7 @@ import { EntityManager } from '@mikro-orm/postgresql';
 import {
   ForbiddenException,
   Injectable,
-  NotFoundException
+  NotFoundException,
 } from '@nestjs/common';
 import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
 import { CouponEntity } from '~/modules/domains/coupon/infra/persistence/entities/coupon.entity';
@@ -16,7 +16,7 @@ export class DeleteShopCouponUseCase {
     const repository = entityManager.getRepository(CouponEntity);
     const coupon = await repository.findOne(
       { id: couponId },
-      { populate: ['shop', 'shop.ownerUser'] }
+      { populate: ['shop', 'shop.ownerUser'] },
     );
 
     if (!coupon || coupon.shop.id !== shopId) {

@@ -3,7 +3,7 @@ import { ApiExcludeController } from '@nestjs/swagger';
 import { SkipThrottle } from '@nestjs/throttler';
 import {
   CatalogStatus,
-  CatalogStatusService
+  CatalogStatusService,
 } from '../../../app/services/catalog-status.service';
 
 @Controller('internal/catalog')
@@ -11,7 +11,7 @@ import {
 @ApiExcludeController()
 export class InternalCatalogController {
   constructor(
-    private readonly catalogStatusService: CatalogStatusService
+    private readonly catalogStatusService: CatalogStatusService,
   ) {}
 
   @Get('status')

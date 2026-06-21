@@ -3,11 +3,11 @@ import { err, ok, Result } from '~/common/application/result';
 import { RequestContextService } from '~/modules/shared/request-context/request-context.service';
 import {
   AuthResponse,
-  AuthenticatedUser
+  AuthenticatedUser,
 } from '../../auth.types';
 import {
   InactiveUserError,
-  UserNotFoundError
+  UserNotFoundError,
 } from '../../errors/auth-app.error';
 import { UserStatus } from '../../../domain/enums/user-status.enum';
 import type { UserSession } from '../../../domain/models/user-session';
@@ -23,12 +23,12 @@ export class IssueSessionUseCase {
     private readonly authSessionRepository: AuthSessionRepository,
     private readonly authTokenService: AuthTokenService,
     private readonly tokenHasher: TokenHasher,
-    private readonly requestContextService: RequestContextService
+    private readonly requestContextService: RequestContextService,
   ) {}
 
   async execute(
     userId: string,
-    existingSession?: UserSession
+    existingSession?: UserSession,
   ): Promise<Result<AuthResponse, InactiveUserError | UserNotFoundError>> {
     const user = await this.authUserRepository.findById(userId);
 

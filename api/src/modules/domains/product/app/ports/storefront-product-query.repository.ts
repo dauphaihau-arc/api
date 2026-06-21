@@ -5,7 +5,7 @@ import type {
   PublicProductListItem,
   PublicProductListResult,
   PublicProductSuggestion,
-  SuggestPublicProductsInput
+  SuggestPublicProductsInput,
 } from '../product.types';
 
 export abstract class StorefrontProductQueryRepository {

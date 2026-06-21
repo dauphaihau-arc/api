@@ -86,7 +86,7 @@ describe('UpdateProductDetailsUseCase', () => {
       productRepository,
       productRepository,
       shopRepository,
-      auditLogService
+      auditLogService,
     );
 
     const result = await useCase.execute(actor, product.id, {
@@ -100,7 +100,7 @@ describe('UpdateProductDetailsUseCase', () => {
     expect(result.isOk).toBe(true);
     expect(productRepository.findByShopIdAndSlug).toHaveBeenCalledWith(
       product.shopId,
-      'better-mug'
+      'better-mug',
     );
     expect(productRepository.updateDetails).toHaveBeenCalledWith({
       productId: product.id,
@@ -117,7 +117,7 @@ describe('UpdateProductDetailsUseCase', () => {
       expect.objectContaining({
         action: 'product.details.updated',
         entityId: product.id,
-      })
+      }),
     );
   });
 
@@ -131,7 +131,7 @@ describe('UpdateProductDetailsUseCase', () => {
       productRepository,
       productRepository,
       shopRepository,
-      auditLogService
+      auditLogService,
     );
 
     const result = await useCase.execute(actor, product.id, {

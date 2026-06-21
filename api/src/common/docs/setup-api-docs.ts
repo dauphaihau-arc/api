@@ -85,7 +85,7 @@ export function setupApiDocs(app: INestApplication): void {
     {
       deepScanRoutes: true,
       operationIdFactory: (_controllerKey: string, methodKey: string) => methodKey,
-    }
+    },
   );
 
   sortDocumentTags(document);

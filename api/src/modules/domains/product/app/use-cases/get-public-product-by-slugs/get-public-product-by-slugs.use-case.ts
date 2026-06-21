@@ -8,11 +8,11 @@ export class GetPublicProductBySlugsUseCase {
 
   async execute(
     shopSlug: string,
-    productSlug: string
+    productSlug: string,
   ): Promise<PublicProductDetail | null> {
     return this.productRepository.findPublicByShopSlugAndProductSlug(
       shopSlug,
-      productSlug
+      productSlug,
     );
   }
 }

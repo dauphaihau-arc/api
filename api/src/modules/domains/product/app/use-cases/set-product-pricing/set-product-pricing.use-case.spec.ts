@@ -100,7 +100,7 @@ describe('SetProductPricingUseCase', () => {
       productPricingRepository,
       shopRepository,
       auditLogService,
-      eventEmitter as unknown as EventEmitter2
+      eventEmitter as unknown as EventEmitter2,
     );
 
     const result = await useCase.execute(actor, product.id, {
@@ -130,7 +130,7 @@ describe('SetProductPricingUseCase', () => {
       expect.objectContaining({
         action: 'product.pricing.updated',
         entityId: product.id,
-      })
+      }),
     );
   });
 
@@ -143,7 +143,7 @@ describe('SetProductPricingUseCase', () => {
       productPricingRepository,
       shopRepository,
       auditLogService,
-      eventEmitter as unknown as EventEmitter2
+      eventEmitter as unknown as EventEmitter2,
     );
 
     const result = await useCase.execute(actor, product.id, {

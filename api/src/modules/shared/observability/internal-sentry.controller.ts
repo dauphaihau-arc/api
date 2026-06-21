@@ -5,7 +5,7 @@ import {
   HttpException,
   HttpStatus,
   Post,
-  UnauthorizedException
+  UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ApiExcludeController } from '@nestjs/swagger';
@@ -23,16 +23,16 @@ export class InternalSentryController {
   @Post('sentry-test')
   @HttpCode(200)
   triggerTestError(
-    @Headers(SENTRY_TEST_SECRET_HEADER) providedSecret?: string
+    @Headers(SENTRY_TEST_SECRET_HEADER) providedSecret?: string,
   ): never {
     const configuredSecret = this.configService.get<string>(
-      'SENTRY_TEST_TRIGGER_SECRET'
+      'SENTRY_TEST_TRIGGER_SECRET',
     );
 
     if (!configuredSecret) {
       throw new HttpException(
         'Sentry test trigger is not configured',
-        HttpStatus.SERVICE_UNAVAILABLE
+        HttpStatus.SERVICE_UNAVAILABLE,
       );
     }
 

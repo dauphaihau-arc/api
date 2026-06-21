@@ -2,7 +2,7 @@ import type {
   ChatConversationListResult,
   ChatConversationSummary,
   ChatMessageListResult,
-  ChatMessageSummary
+  ChatMessageSummary,
 } from '../../app/chat.types';
 
 export function toChatConversationResponse(conversation: ChatConversationSummary) {

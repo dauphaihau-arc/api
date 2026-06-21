@@ -7,7 +7,7 @@ import { OrderShippingStatus } from '../../../domain/enums/order-shipping-status
 import { OrderStatus } from '../../../domain/enums/order-status.enum';
 import {
   SellerRefundActionNotAllowedError,
-  SellerRefundNotAllowedError
+  SellerRefundNotAllowedError,
 } from '../../errors/order-app.error';
 import { UpdateShopOrderRefundUseCase } from './update-shop-order-refund.use-case';
 
@@ -139,7 +139,7 @@ describe('UpdateShopOrderRefundUseCase', () => {
         entityManager,
         jobDispatcher,
         eventEmitter as unknown as EventEmitter2,
-        orderEventsService as never
+        orderEventsService as never,
       ),
     };
   }
@@ -156,7 +156,7 @@ describe('UpdateShopOrderRefundUseCase', () => {
     expect(jobDispatcher.dispatch).toHaveBeenCalledWith(
       'order.process-refund',
       { orderId: 'order-1' },
-      { deduplicationKey: 'order-process-refund--order-1' }
+      { deduplicationKey: 'order-process-refund--order-1' },
     );
     expect(result.paymentDetails?.refund_status).toBe('pending');
   });
@@ -186,7 +186,7 @@ describe('UpdateShopOrderRefundUseCase', () => {
     await expect(
       useCase.execute('shop-1', 'order-1', {
         action: ShopOrderRefundAction.REQUEST,
-      })
+      }),
     ).rejects.toThrow(SellerRefundNotAllowedError);
   });
 
@@ -198,7 +198,7 @@ describe('UpdateShopOrderRefundUseCase', () => {
     await expect(
       useCase.execute('shop-1', 'order-1', {
         action: ShopOrderRefundAction.RETRY,
-      })
+      }),
     ).rejects.toThrow(SellerRefundActionNotAllowedError);
   });
 });

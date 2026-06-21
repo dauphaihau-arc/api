@@ -10,14 +10,14 @@ export class ProjectCatalogProductJob {
   private readonly logger = new Logger(ProjectCatalogProductJob.name);
 
   constructor(
-    private readonly catalogProductProjectorService: CatalogProductProjectorService
+    private readonly catalogProductProjectorService: CatalogProductProjectorService,
   ) {}
 
   async run(payload: ProjectCatalogProductPayload): Promise<void> {
     await this.catalogProductProjectorService.projectProduct(payload.productId);
 
     this.logger.log(
-      `Processed catalog projection job for product ${payload.productId}`
+      `Processed catalog projection job for product ${payload.productId}`,
     );
   }
 }

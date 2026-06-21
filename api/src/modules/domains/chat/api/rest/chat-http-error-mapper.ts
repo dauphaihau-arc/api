@@ -1,7 +1,7 @@
 import {
   BadRequestException,
   ForbiddenException,
-  NotFoundException
+  NotFoundException,
 } from '@nestjs/common';
 import {
   ChatAppError,
@@ -9,7 +9,7 @@ import {
   ChatConversationNotFoundError,
   ChatProductNotFoundError,
   ChatProductShopMismatchError,
-  ChatShopNotFoundError
+  ChatShopNotFoundError,
 } from '../../app/errors/chat-app.error';
 
 export function isChatAppError(error: unknown): error is ChatAppError {

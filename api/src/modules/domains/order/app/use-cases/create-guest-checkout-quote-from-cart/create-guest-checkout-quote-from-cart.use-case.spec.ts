@@ -28,7 +28,7 @@ describe('CreateGuestCheckoutQuoteFromCartUseCase', () => {
 
     const useCase = new CreateGuestCheckoutQuoteFromCartUseCase(
       cartRepository,
-      createCheckoutQuoteService
+      createCheckoutQuoteService,
     );
 
     await useCase.execute('guest-1', {
@@ -53,7 +53,7 @@ describe('CreateGuestCheckoutQuoteFromCartUseCase', () => {
           guestSessionId: 'guest-1',
         },
         presentmentCurrency: 'USD',
-      })
+      }),
     );
   });
 });

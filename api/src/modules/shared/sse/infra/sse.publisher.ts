@@ -14,7 +14,7 @@ export class SsePublisher {
 
   createChannelStream(
     channelKey: string,
-    connectedData?: Record<string, unknown>
+    connectedData?: Record<string, unknown>,
   ): Observable<MessageEvent> {
     return new Observable<MessageEvent>((subscriber) => {
       const stream = new Subject<MessageEvent>();
@@ -92,7 +92,7 @@ export class SsePublisher {
 
   private publishToStreams(
     streams: Set<SseStream> | undefined,
-    message: SseMessage
+    message: SseMessage,
   ): void {
 
     if (!streams || streams.size === 0) {

@@ -3,7 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { toChatConversationSummary } from '../../chat-read-model';
 import type {
   ChatConversationListQuery,
-  ChatConversationListResult
+  ChatConversationListResult,
 } from '../../chat.types';
 import { ChatConversationEntity } from '../../../infra/persistence/entities/chat-conversation.entity';
 
@@ -13,7 +13,7 @@ export class ListShopChatConversationsUseCase {
 
   async execute(
     shopId: string,
-    query: ChatConversationListQuery
+    query: ChatConversationListQuery,
   ): Promise<ChatConversationListResult> {
     const repository = this.entityManager.fork().getRepository(ChatConversationEntity);
     const [conversations, total] = await repository.findAndCount(
@@ -26,7 +26,7 @@ export class ListShopChatConversationsUseCase {
         },
         offset: (query.page - 1) * query.limit,
         limit: query.limit,
-      }
+      },
     );
 
     return {

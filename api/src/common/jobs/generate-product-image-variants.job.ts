@@ -12,7 +12,7 @@ export class GenerateProductImageVariantsJob {
 
   constructor(
     private readonly productImageService: ProductImageService,
-    private readonly catalogProductProjectorService: CatalogProductProjectorService
+    private readonly catalogProductProjectorService: CatalogProductProjectorService,
   ) {}
 
   async run(payload: GenerateProductImageVariantsPayload): Promise<void> {
@@ -20,7 +20,7 @@ export class GenerateProductImageVariantsJob {
     await this.catalogProductProjectorService.projectProduct(payload.productId);
 
     this.logger.log(
-      `Processed product image variants job for product ${payload.productId}`
+      `Processed product image variants job for product ${payload.productId}`,
     );
   }
 }

@@ -42,7 +42,7 @@ describe('ForwardChatMessageToWsListener', () => {
             metadata: { product_id: 'product-1' },
           },
         },
-      }
+      },
     );
   });
 });

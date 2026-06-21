@@ -10,14 +10,14 @@ import {
   IsString,
   IsUUID,
   Max,
-  Min
+  Min,
 } from 'class-validator';
 import { ProductWhoMade } from '~/modules/domains/product/domain/enums/product-who-made.enum';
 import {
   PRODUCT_PUBLIC_LIST_DEFAULT_LIMIT,
   PRODUCT_PUBLIC_LIST_DEFAULT_PAGE,
   PRODUCT_PUBLIC_LIST_MAX_LIMIT,
-  type PublicProductSortOrder
+  type PublicProductSortOrder,
 } from '../../../../app/product.types';
 
 const PUBLIC_PRODUCT_SORT_ORDERS: PublicProductSortOrder[] = [
@@ -86,7 +86,7 @@ export class ListPublicProductsQueryDto {
   @ApiPropertyOptional({ name: 'is_digital' })
   @Expose({ name: 'is_digital' })
   @Transform(({ value, obj: source }) =>
-    toOptionalBoolean(value ?? source.is_digital)
+    toOptionalBoolean(value ?? source.is_digital),
   )
   @IsBoolean()
   isDigital?: boolean;

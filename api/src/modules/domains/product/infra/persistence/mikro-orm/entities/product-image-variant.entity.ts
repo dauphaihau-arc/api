@@ -4,7 +4,7 @@ import {
   Index,
   ManyToOne,
   Property,
-  Unique
+  Unique,
 } from '@mikro-orm/core';
 import { AbstractBaseEntity } from '~/common/database/abstract-base.entity';
 import { ProductImageVariant } from '~/modules/domains/product/domain/enums/product-image-variant.enum';

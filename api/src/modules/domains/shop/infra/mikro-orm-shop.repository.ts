@@ -11,7 +11,7 @@ export class MikroOrmShopRepository implements ShopRepository {
 
   async create(
     input: CreateShopInput,
-    entityManager?: EntityManager
+    entityManager?: EntityManager,
   ): Promise<ShopSummary> {
     const em = entityManager ?? this.entityManager.fork();
     const repository = em.getRepository(ShopEntity);
@@ -40,7 +40,7 @@ export class MikroOrmShopRepository implements ShopRepository {
     const repository = this.entityManager.fork().getRepository(ShopEntity);
     const shop = await repository.findOne(
       { ownerUser: ownerUserId },
-      { populate: ['ownerUser'] }
+      { populate: ['ownerUser'] },
     );
 
     return shop ? this.toSummary(shop) : null;
@@ -50,7 +50,7 @@ export class MikroOrmShopRepository implements ShopRepository {
     const repository = this.entityManager.fork().getRepository(ShopEntity);
     const shop = await repository.findOne(
       { shopName },
-      { populate: ['ownerUser'] }
+      { populate: ['ownerUser'] },
     );
 
     return shop ? this.toSummary(shop) : null;
@@ -60,7 +60,7 @@ export class MikroOrmShopRepository implements ShopRepository {
     const repository = this.entityManager.fork().getRepository(ShopEntity);
     const shop = await repository.findOne(
       { slug },
-      { populate: ['ownerUser'] }
+      { populate: ['ownerUser'] },
     );
 
     return shop ? this.toSummary(shop) : null;
@@ -68,7 +68,7 @@ export class MikroOrmShopRepository implements ShopRepository {
 
   async findOwnedById(
     id: string,
-    ownerUserId: string
+    ownerUserId: string,
   ): Promise<ShopSummary | null> {
     const repository = this.entityManager.fork().getRepository(ShopEntity);
     const shop = await repository.findOne(
@@ -76,7 +76,7 @@ export class MikroOrmShopRepository implements ShopRepository {
         id,
         ownerUser: ownerUserId,
       },
-      { populate: ['ownerUser'] }
+      { populate: ['ownerUser'] },
     );
 
     return shop ? this.toSummary(shop) : null;

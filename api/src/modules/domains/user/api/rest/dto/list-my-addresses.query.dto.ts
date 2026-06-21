@@ -3,12 +3,12 @@ import {
   IsInt,
   IsOptional,
   Max,
-  Min
+  Min,
 } from 'class-validator';
 import {
   USER_ADDRESS_LIST_DEFAULT_LIMIT,
   USER_ADDRESS_LIST_DEFAULT_PAGE,
-  USER_ADDRESS_LIST_MAX_LIMIT
+  USER_ADDRESS_LIST_MAX_LIMIT,
 } from '../../../app/user-address.types';
 
 export class ListMyAddressesQueryDto {

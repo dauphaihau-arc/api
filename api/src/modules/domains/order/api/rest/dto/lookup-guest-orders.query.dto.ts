@@ -2,7 +2,7 @@ import { BadRequestException } from '@nestjs/common';
 import { Expose, Transform } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import {
-  IsEmail, IsOptional, IsString, ValidateIf 
+  IsEmail, IsOptional, IsString, ValidateIf, 
 } from 'class-validator';
 
 export class LookupGuestOrdersQueryDto {
@@ -57,7 +57,7 @@ export class LookupGuestOrdersQueryDto {
 
     if (hasToken && (hasSessionId || hasEmail || hasOrderId || hasOrderIds || hasZip)) {
       throw new BadRequestException(
-        'token cannot be combined with other guest order lookup filters'
+        'token cannot be combined with other guest order lookup filters',
       );
     }
 
@@ -67,26 +67,26 @@ export class LookupGuestOrdersQueryDto {
 
     if (hasSessionId && (hasEmail || hasOrderId || hasOrderIds || hasZip)) {
       throw new BadRequestException(
-        'session_id cannot be combined with email, order id, or zip filters'
+        'session_id cannot be combined with email, order id, or zip filters',
       );
     }
 
     if (!hasSessionId) {
       if (!hasEmail) {
         throw new BadRequestException(
-          'email is required when session_id is not provided'
+          'email is required when session_id is not provided',
         );
       }
 
       if (!hasOrderId && !hasOrderIds) {
         throw new BadRequestException(
-          'order_id or order_ids is required when session_id is not provided'
+          'order_id or order_ids is required when session_id is not provided',
         );
       }
 
       if (!hasZip) {
         throw new BadRequestException(
-          'zip is required when session_id is not provided'
+          'zip is required when session_id is not provided',
         );
       }
     }

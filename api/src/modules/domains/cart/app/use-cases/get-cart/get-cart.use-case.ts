@@ -8,7 +8,7 @@ export class GetCartUseCase {
 
   async execute(
     actor: CartActor,
-    cartId?: string
+    cartId?: string,
   ): Promise<CartSnapshot | null> {
     if (cartId) {
       return this.cartRepository.findCartByIdForActor(actor, cartId);

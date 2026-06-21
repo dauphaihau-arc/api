@@ -1,7 +1,7 @@
 import type { StorageService } from '~/modules/shared/storage/app/ports/storage.service';
 import type {
   PublicProductDetail,
-  PublicProductListItem
+  PublicProductListItem,
 } from '../../app/product.types';
 import { ProductImageVariant } from '../../domain/enums/product-image-variant.enum';
 import type { ProductInventoryEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-inventory.entity';
@@ -23,7 +23,7 @@ type StorefrontProjectionDeps = {
 
 export async function toPublicProductDetail(
   product: ProductEntity,
-  deps: StorefrontProjectionDeps
+  deps: StorefrontProjectionDeps,
 ): Promise<PublicProductDetail> {
   const inventory = await Promise.all(
     sortInventoryRecords(product.inventoryRecords.getItems()).map(async (inventoryRecord) => ({
@@ -34,7 +34,7 @@ export async function toPublicProductDetail(
       sku: inventoryRecord.sku,
       stock: inventoryRecord.stock,
       ...(await deps.resolvePricing(inventoryRecord)),
-    }))
+    })),
   );
 
   return {
@@ -116,7 +116,7 @@ export async function toPublicProductDetail(
 
 export async function toPublicProductListItem(
   product: ProductEntity,
-  deps: StorefrontProjectionDeps
+  deps: StorefrontProjectionDeps,
 ): Promise<PublicProductListItem> {
   const primaryImage = product.images
     .getItems()
@@ -124,7 +124,7 @@ export async function toPublicProductListItem(
     .sort((left, right) => left.rank - right.rank)[0];
   const sortedInventoryRecords = sortInventoryRecords(product.inventoryRecords.getItems());
   const resolvedPricing = await Promise.all(
-    sortedInventoryRecords.map((inventory) => deps.resolvePricing(inventory))
+    sortedInventoryRecords.map((inventory) => deps.resolvePricing(inventory)),
   );
   const priceSummary = summarizeResolvedPricing(resolvedPricing);
   const totalStock = sortedInventoryRecords.reduce((sum, inventory) => sum + inventory.stock, 0);
@@ -157,7 +157,7 @@ export async function toPublicProductListItem(
 }
 
 export function getPrimaryInventory(
-  product: ProductEntity
+  product: ProductEntity,
 ): ProductInventoryEntity | undefined {
   return sortInventoryRecords(product.inventoryRecords.getItems())[0];
 }

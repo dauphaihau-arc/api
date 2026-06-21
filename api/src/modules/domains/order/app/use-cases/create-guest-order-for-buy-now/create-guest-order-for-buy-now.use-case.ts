@@ -3,11 +3,11 @@ import { CartRepository } from '~/modules/domains/cart/app/ports/cart.repository
 import { CartKind } from '~/modules/domains/cart/domain/enums/cart-kind.enum';
 import {
   PAYMENT_CONFIG,
-  type PaymentConfig
+  type PaymentConfig,
 } from '~/config/payment.config';
 import {
   appJobDeduplicationKey,
-  appJobName
+  appJobName,
 } from '~/common/jobs/job.types';
 import { JobDispatcher } from '~/modules/shared/queue/app/ports/job-dispatcher';
 import type { CreateGuestOrderForBuyNowDto } from '../../../api/rest/dto/create-guest-order-for-buy-now.dto';
@@ -15,7 +15,7 @@ import { doesCartMatchCheckoutQuote } from '../../checkout-quote-cart-matcher';
 import { buildGuestOrderTrackingUrl } from '../../guest-order-tracking-url.builder';
 import {
   CheckoutQuoteCartChangedError,
-  TemporaryCartNotFoundError
+  TemporaryCartNotFoundError,
 } from '../../errors/order-app.error';
 import { GuestOrderTrackingTokenService } from '../../guest-order-tracking-token.service';
 import { LoadCheckoutQuoteService } from '../../load-checkout-quote.service';
@@ -29,14 +29,14 @@ export class CreateGuestOrderForBuyNowUseCase {
     private readonly orderCheckoutService: OrderCheckoutService,
     private readonly jobDispatcher: JobDispatcher,
     private readonly guestOrderTrackingTokenService: GuestOrderTrackingTokenService,
-    @Inject(PAYMENT_CONFIG) private readonly paymentConfig: PaymentConfig
+    @Inject(PAYMENT_CONFIG) private readonly paymentConfig: PaymentConfig,
   ) {}
 
   async execute(guestSessionId: string, body: CreateGuestOrderForBuyNowDto) {
     const quote = await this.loadCheckoutQuoteService.loadForGuest(guestSessionId, body.quoteId);
     const cart = await this.cartRepository.findCartByIdForActor(
       { type: 'guest', guestSessionId },
-      quote.cartId
+      quote.cartId,
     );
 
     if (!cart || cart.kind !== CartKind.BUY_NOW) {
@@ -64,11 +64,11 @@ export class CreateGuestOrderForBuyNowUseCase {
         : {
           email: body.guest.email,
           orderIds: result.orderShops.map((orderShop) => orderShop.id),
-        }
+        },
     );
     const trackingUrl = buildGuestOrderTrackingUrl(
       this.paymentConfig,
-      trackingToken
+      trackingToken,
     );
 
     if (trackingUrl) {
@@ -83,9 +83,9 @@ export class CreateGuestOrderForBuyNowUseCase {
         {
           deduplicationKey: appJobDeduplicationKey.sendGuestOrderConfirmationEmail(
             body.guest.email,
-            result.orderShops.map((orderShop) => orderShop.id)
+            result.orderShops.map((orderShop) => orderShop.id),
           ),
-        }
+        },
       );
     }
 

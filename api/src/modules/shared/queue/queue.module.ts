@@ -4,7 +4,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import {
   QueueConfig,
   QUEUE_CONFIG,
-  buildQueueConfig
+  buildQueueConfig,
 } from '~/config/queue.config';
 import { ObservabilityModule } from '../observability/observability.module';
 import { ObservabilityService } from '../observability/observability.service';
@@ -62,17 +62,17 @@ const queueModuleLogger = new Logger('QueueModule');
       inject: [QUEUE_CONFIG, ObservabilityService],
       useFactory: async (
         queueConfig: QueueConfig,
-        observabilityService: ObservabilityService
+        observabilityService: ObservabilityService,
       ) => {
         if (queueConfig.driver !== 'redis') {
           queueModuleLogger.log(
-            `Skipping BullMQ Redis bootstrap because queue driver is ${queueConfig.driver}`
+            `Skipping BullMQ Redis bootstrap because queue driver is ${queueConfig.driver}`,
           );
           return null;
         }
 
         queueModuleLogger.log(
-          `Connecting BullMQ Redis at ${queueConfig.redisUrl}`
+          `Connecting BullMQ Redis at ${queueConfig.redisUrl}`,
         );
 
         const connection = new Redis(queueConfig.redisUrl, {
@@ -91,7 +91,7 @@ const queueModuleLogger = new Logger('QueueModule');
         catch (error) {
           queueModuleLogger.error(
             `Failed to connect BullMQ Redis at ${queueConfig.redisUrl}`,
-            error instanceof Error ? error.stack : undefined
+            error instanceof Error ? error.stack : undefined,
           );
 
           connection.disconnect();
@@ -111,7 +111,7 @@ const queueModuleLogger = new Logger('QueueModule');
       useFactory: (
         queueConfig: QueueConfig,
         connection: Redis | null,
-        observabilityService: ObservabilityService
+        observabilityService: ObservabilityService,
       ) => {
         if (queueConfig.driver !== 'redis' || !connection) {
           observabilityService.attachBullMqQueue(null);
@@ -149,12 +149,12 @@ const queueModuleLogger = new Logger('QueueModule');
       useFactory: (
         queueConfig: QueueConfig,
         connection: Redis | null,
-        appJobRunner: AppJobRunner
+        appJobRunner: AppJobRunner,
       ) => {
         if (queueConfig.driver === 'redis') {
           if (!connection) {
             throw new Error(
-              'Missing BullMQ Redis connection for redis queue driver'
+              'Missing BullMQ Redis connection for redis queue driver',
             );
           }
 

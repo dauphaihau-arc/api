@@ -102,7 +102,7 @@ describe('GetPublicProductRecommendationSectionsUseCase', () => {
     const useCase = new GetPublicProductRecommendationSectionsUseCase(
       repository as never,
       viewHistoryService as never,
-      orderHistoryService as never
+      orderHistoryService as never,
     );
 
     const result = await useCase.execute('arc-store', 'handmade-bag', 6);
@@ -161,7 +161,7 @@ describe('GetPublicProductRecommendationSectionsUseCase', () => {
     const useCase = new GetPublicProductRecommendationSectionsUseCase(
       repository as never,
       viewHistoryService as never,
-      orderHistoryService as never
+      orderHistoryService as never,
     );
 
     const result = await useCase.execute('arc-store', 'handmade-bag', 6);

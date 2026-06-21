@@ -1,7 +1,7 @@
 import { Expose, Transform } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import {
-  IsEmail, IsOptional, IsString, MinLength 
+  IsEmail, IsOptional, IsString, MinLength, 
 } from 'class-validator';
 
 export class CreateUserDto {

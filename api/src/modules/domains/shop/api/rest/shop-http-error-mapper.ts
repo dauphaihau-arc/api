@@ -5,11 +5,11 @@ import {
   ShopNameAlreadyTakenError,
   ShopSlugAlreadyTakenError,
   ShopSlugReservedError,
-  UserAlreadyOwnsShopError
+  UserAlreadyOwnsShopError,
 } from '../../app/errors/shop-app.error';
 
 export function mapShopAppErrorToHttpException(
-  error: ShopAppError
+  error: ShopAppError,
 ): HttpException {
   if (error instanceof ShopNameAlreadyTakenError) {
     return new ConflictException(error.message);

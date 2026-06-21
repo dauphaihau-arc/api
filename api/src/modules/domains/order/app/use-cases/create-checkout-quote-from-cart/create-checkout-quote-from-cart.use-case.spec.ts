@@ -53,7 +53,7 @@ describe('CreateCheckoutQuoteFromCartUseCase', () => {
     const useCase = new CreateCheckoutQuoteFromCartUseCase(
       cartRepository,
       getMyAddressUseCase,
-      createCheckoutQuoteService
+      createCheckoutQuoteService,
     );
 
     await useCase.execute(actor, {
@@ -70,7 +70,7 @@ describe('CreateCheckoutQuoteFromCartUseCase', () => {
         },
         presentmentCurrency: 'USD',
         shopAdjustments: [{ shopId: 'shop-1', promoCodes: ['SAVE10'] }],
-      })
+      }),
     );
   });
 });

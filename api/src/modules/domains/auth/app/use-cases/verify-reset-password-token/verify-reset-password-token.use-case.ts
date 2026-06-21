@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { err, ok, Result } from '~/common/application/result';
 import {
   InvalidPasswordResetTokenError,
-  PasswordResetTokenExpiredError
+  PasswordResetTokenExpiredError,
 } from '../../errors/auth-app.error';
 import { PasswordResetTokenRepository } from '../../ports/password-reset-token.repository';
 import { TokenHasher } from '../../ports/token-hasher';
@@ -11,11 +11,11 @@ import { TokenHasher } from '../../ports/token-hasher';
 export class VerifyResetPasswordTokenUseCase {
   constructor(
     private readonly passwordResetTokenRepository: PasswordResetTokenRepository,
-    private readonly tokenHasher: TokenHasher
+    private readonly tokenHasher: TokenHasher,
   ) {}
 
   async execute(
-    token: string
+    token: string,
   ): Promise<
     Result<
       void,
@@ -23,7 +23,7 @@ export class VerifyResetPasswordTokenUseCase {
     >
   > {
     const passwordResetToken = await this.passwordResetTokenRepository.findByTokenHash(
-      this.tokenHasher.hash(token)
+      this.tokenHasher.hash(token),
     );
 
     if (!passwordResetToken || passwordResetToken.usedAt) {

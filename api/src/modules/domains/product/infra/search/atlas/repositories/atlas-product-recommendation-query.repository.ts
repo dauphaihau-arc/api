@@ -4,7 +4,7 @@ import { ProductRecommendationQueryRepository } from '../../../../app/ports/prod
 import type {
   ListPublicProductsByShopSlugInput,
   PublicProductListItem,
-  RecommendPublicProductsInput
+  RecommendPublicProductsInput,
 } from '../../../../app/product.types';
 import { compareRecommendationCandidates } from '../../../../app/services/public-product-recommendation-scoring';
 import { ProductState } from '../../../../domain/enums/product-state.enum';
@@ -30,11 +30,11 @@ implements ProductRecommendationQueryRepository {
   constructor(
     @Inject(CATALOG_CONFIG)
     private readonly catalogConfig: CatalogConfig,
-    private readonly catalogMongoAccess: CatalogMongoAccess
+    private readonly catalogMongoAccess: CatalogMongoAccess,
   ) {}
 
   async listPublicByShopSlug(
-    input: ListPublicProductsByShopSlugInput
+    input: ListPublicProductsByShopSlugInput,
   ): Promise<PublicProductListItem[]> {
     const collection = await this.getProductsCollection();
     const documents = await collection.aggregate<CatalogProductDocument>([
@@ -64,7 +64,7 @@ implements ProductRecommendationQueryRepository {
   }
 
   async recommendSimilarPublic(
-    input: RecommendPublicProductsInput
+    input: RecommendPublicProductsInput,
   ): Promise<PublicProductListItem[]> {
     this.assertAtlasSearchEnabled();
 
@@ -86,7 +86,7 @@ implements ProductRecommendationQueryRepository {
       .sort((left, right) => compareRecommendationCandidates(
         toRecommendationScorableSearchProduct(anchor),
         toRecommendationScorableSearchProduct(left),
-        toRecommendationScorableSearchProduct(right)
+        toRecommendationScorableSearchProduct(right),
       ))
       .slice(0, input.limit)
       .map(toPublicProductListItemFromSearchDocument);
@@ -94,13 +94,13 @@ implements ProductRecommendationQueryRepository {
 
   private async getProductsCollection(): Promise<MongoCollectionLike<CatalogProductDocument>> {
     return this.catalogMongoAccess.getCollection<MongoCollectionLike<CatalogProductDocument>>(
-      this.catalogConfig.mongodbProductsCollection
+      this.catalogConfig.mongodbProductsCollection,
     );
   }
 
   private async getSearchCollection(): Promise<MongoCollectionLike<CatalogSearchDocument>> {
     return this.catalogMongoAccess.getCollection<MongoCollectionLike<CatalogSearchDocument>>(
-      this.catalogConfig.mongodbSearchCollection
+      this.catalogConfig.mongodbSearchCollection,
     );
   }
 
@@ -117,7 +117,7 @@ implements ProductRecommendationQueryRepository {
   private async findRecommendationCandidates(
     collection: MongoCollectionLike<CatalogSearchDocument>,
     anchor: CatalogSearchDocument,
-    limit: number
+    limit: number,
   ): Promise<CatalogSearchDocument[]> {
     const candidates = new Map<string, CatalogSearchDocument>();
     const targetPoolSize = Math.max(limit * 4, 24);
@@ -207,7 +207,7 @@ function toFacetKey(value: string): string {
 }
 
 function toPublicProductListItemFromSearchDocument(
-  document: CatalogSearchDocument
+  document: CatalogSearchDocument,
 ): PublicProductListItem {
   return {
     id: document.productId,
@@ -245,7 +245,7 @@ function toPublicProductListItemFromSearchDocument(
 }
 
 function toPublicProductListItemFromCatalogDocument(
-  document: CatalogProductDocument
+  document: CatalogProductDocument,
 ): PublicProductListItem {
   const totalStock = document.inventory.reduce((sum, inventory) => sum + inventory.stock, 0);
 

@@ -1,17 +1,17 @@
 import type {
   CategoryAttributeSummary,
   CategorySuggestion,
-  CategorySummary
+  CategorySummary,
 } from '../../app/category.types';
 import type {
   CategoryAttributeOptionResponse,
   CategoryAttributeResponse,
   CategoryResponse,
-  CategorySuggestionResponse
+  CategorySuggestionResponse,
 } from './dto/category.response';
 
 const toCategoryAttributeOptionResponse = (
-  option: CategoryAttributeSummary['options'][number]
+  option: CategoryAttributeSummary['options'][number],
 ): CategoryAttributeOptionResponse => ({
   id: option.id,
   value: option.value,
@@ -19,7 +19,7 @@ const toCategoryAttributeOptionResponse = (
 });
 
 export const toCategoryAttributeResponse = (
-  attribute: CategoryAttributeSummary
+  attribute: CategoryAttributeSummary,
 ): CategoryAttributeResponse => ({
   id: attribute.id,
   key: attribute.key,
@@ -31,7 +31,7 @@ export const toCategoryAttributeResponse = (
 });
 
 export const toCategoryResponse = (
-  category: CategorySummary
+  category: CategorySummary,
 ): CategoryResponse => ({
   id: category.id,
   parent_id: category.parentId,
@@ -44,7 +44,7 @@ export const toCategoryResponse = (
 });
 
 export const toCategorySuggestionResponse = (
-  category: CategorySuggestion
+  category: CategorySuggestion,
 ): CategorySuggestionResponse => ({
   id: category.id,
   last_name_category: category.lastNameCategory,

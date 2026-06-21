@@ -5,7 +5,7 @@ import { CategoryCommandRepository } from '../app/ports/category-command.reposit
 import type {
   CategorySummary,
   CreateCategoryAttributeInput,
-  CreateCategoryInput
+  CreateCategoryInput,
 } from '../app/category.types';
 import { CategoryAttributeOptionEntity } from './persistence/entities/category-attribute-option.entity';
 import { CategoryAttributeEntity } from './persistence/entities/category-attribute.entity';
@@ -17,7 +17,7 @@ import { StorageService } from '~/modules/shared/storage/app/ports/storage.servi
 export class MikroOrmCategoryCommandRepository implements CategoryCommandRepository {
   constructor(
     private readonly entityManager: EntityManager,
-    private readonly storageService: StorageService
+    private readonly storageService: StorageService,
   ) {}
 
   async create(input: CreateCategoryInput): Promise<CategorySummary> {
@@ -40,13 +40,13 @@ export class MikroOrmCategoryCommandRepository implements CategoryCommandReposit
   }
 
   async createAttribute(
-    input: CreateCategoryAttributeInput
+    input: CreateCategoryAttributeInput,
   ): Promise<CategorySummary | null> {
     const entityManager = this.entityManager.fork();
     const categoryRepository = entityManager.getRepository(CategoryEntity);
     const category = await categoryRepository.findOne(
       { id: input.categoryId },
-      { populate: ['parent', 'attributes', 'attributes.options'] }
+      { populate: ['parent', 'attributes', 'attributes.options'] },
     );
 
     if (!category) {

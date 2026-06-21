@@ -2,7 +2,7 @@ import type { PublicProductFacet } from '../../../../app/product.types';
 import type { PublicProductFacetResponse } from '../responses/public-product-facet.response';
 
 export function toPublicProductFacetResponse(
-  facets: PublicProductFacet[]
+  facets: PublicProductFacet[],
 ): PublicProductFacetResponse {
   return {
     facets: facets.map((facet) => ({

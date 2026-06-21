@@ -1,6 +1,8 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Expose, Transform } from 'class-transformer';
-import { IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import {
+  IsInt, IsOptional, IsString, Max, Min, 
+} from 'class-validator';
 
 export class ListPublicProductReviewImagesQueryDto {
   @ApiPropertyOptional({ default: 12 })

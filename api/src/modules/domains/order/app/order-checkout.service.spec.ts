@@ -12,6 +12,8 @@ import { OrderStatus } from '../domain/enums/order-status.enum';
 import type { OrderTotalPolicyService } from './order-total-policy.service';
 import { OrderTotalLimitExceededError } from './errors/order-app.error';
 
+// This spec keeps the checkout matrix in one place because the setup is shared across scenarios.
+// eslint-disable-next-line max-lines-per-function
 describe('OrderCheckoutService', () => {
   const cart: CartSnapshot = {
     id: 'cart-1',
@@ -182,7 +184,7 @@ describe('OrderCheckoutService', () => {
       orderEventsService as never,
       notifyUserUseCase,
       eventEmitter as unknown as EventEmitter2,
-      orderTotalPolicyService as unknown as OrderTotalPolicyService
+      orderTotalPolicyService as unknown as OrderTotalPolicyService,
     );
 
     return {
@@ -225,7 +227,7 @@ describe('OrderCheckoutService', () => {
         paymentType: PaymentType.CARD,
         shippingAddress,
         isTempCart: false,
-      }
+      },
     );
 
     expect(orderRepository.create).toHaveBeenCalledWith(
@@ -236,7 +238,7 @@ describe('OrderCheckoutService', () => {
         shippingMinor: 0,
         discountMinor: 200,
         totalMinor: 1800,
-      })
+      }),
     );
     expect(orderTotalPolicyService.assertWithinLimit).toHaveBeenCalledWith({
       totalMinor: 1800,
@@ -247,10 +249,10 @@ describe('OrderCheckoutService', () => {
         unitPriceMinor: 900,
         originalAmountMinor: 1000,
         lineTotalMinor: 1800,
-      })
+      }),
     );
     expect(
-      orderCheckoutOutboxService.createCheckoutSessionRequestedEvent
+      orderCheckoutOutboxService.createCheckoutSessionRequestedEvent,
     ).toHaveBeenCalled();
     expect(orderCheckoutOutboxService.processEventById).toHaveBeenCalledWith('outbox-1');
     expect(eventEmitter.emit).toHaveBeenCalled();
@@ -285,7 +287,7 @@ describe('OrderCheckoutService', () => {
         paymentType: PaymentType.CARD,
         shippingAddress,
         isTempCart: false,
-      }
+      },
     );
 
     expect(orderTotalPolicyService.assertWithinLimit).toHaveBeenCalledWith({
@@ -315,16 +317,16 @@ describe('OrderCheckoutService', () => {
         paymentType: PaymentType.CASH,
         shippingAddress,
         isTempCart: false,
-      }
+      },
     );
 
     expect(orderRepository.create).toHaveBeenCalledWith(
       expect.objectContaining({
         status: OrderStatus.PENDING,
-      })
+      }),
     );
     expect(
-      orderCheckoutOutboxService.createCheckoutSessionRequestedEvent
+      orderCheckoutOutboxService.createCheckoutSessionRequestedEvent,
     ).not.toHaveBeenCalled();
     expect(orderCheckoutOutboxService.processEventById).not.toHaveBeenCalled();
     expect(result.checkoutPending).toBe(false);
@@ -359,13 +361,13 @@ describe('OrderCheckoutService', () => {
           phone: '123456789',
         },
         isTempCart: false,
-      }
+      },
     );
 
     expect(orderRepository.create).toHaveBeenCalledWith(
       expect.objectContaining({
         customerEmail: 'guest@example.com',
-      })
+      }),
     );
   });
 
@@ -486,7 +488,7 @@ describe('OrderCheckoutService', () => {
           ],
         },
         isTempCart: false,
-      }
+      },
     );
 
     expect(orderRepository.create).toHaveBeenCalledWith(
@@ -496,7 +498,7 @@ describe('OrderCheckoutService', () => {
         shippingMinor: 0,
         discountMinor: 0,
         totalMinor: 1800,
-      })
+      }),
     );
     expect(orderTotalPolicyService.assertWithinLimit).toHaveBeenCalledWith({
       totalMinor: 1800,
@@ -513,7 +515,7 @@ describe('OrderCheckoutService', () => {
         marketCode: 'US',
         fxRate: '1.10',
         fxSource: 'seed',
-      })
+      }),
     );
   });
 
@@ -540,8 +542,8 @@ describe('OrderCheckoutService', () => {
           paymentType: PaymentType.CARD,
           shippingAddress,
           isTempCart: false,
-        }
-      )
+        },
+      ),
     ).rejects.toThrow(OrderTotalLimitExceededError);
 
     expect(orderRepository.create).not.toHaveBeenCalled();

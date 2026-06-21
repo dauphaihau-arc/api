@@ -13,13 +13,13 @@ export class SendWebPushNotificationJob {
 
   constructor(
     private readonly webPushSubscriptionRepository: WebPushSubscriptionRepository,
-    private readonly webPushSender: WebPushSender
+    private readonly webPushSender: WebPushSender,
   ) {}
 
   async run(payload: SendWebPushNotificationPayload): Promise<void> {
     const subscriptions =
       await this.webPushSubscriptionRepository.findActiveOwnedByUserId(
-        payload.userId
+        payload.userId,
       );
 
     for (const subscription of subscriptions) {
@@ -38,10 +38,10 @@ export class SendWebPushNotificationJob {
       catch (error) {
         if (isWebPushSubscriptionGoneError(error)) {
           await this.webPushSubscriptionRepository.deactivateById(
-            subscription.id
+            subscription.id,
           );
           this.logger.warn(
-            `Deactivated expired Web Push subscription ${subscription.id}`
+            `Deactivated expired Web Push subscription ${subscription.id}`,
           );
           continue;
         }

@@ -51,7 +51,7 @@ describe('NotifyUserUseCase', () => {
       }),
       expect.objectContaining({
         deduplicationKey: expect.stringContaining('notification-send-web-push'),
-      })
+      }),
     );
   });
 });

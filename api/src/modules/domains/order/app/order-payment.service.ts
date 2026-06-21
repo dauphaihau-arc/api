@@ -4,7 +4,7 @@ import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import {
   buildProductInventoryUpdatedSseEvent,
-  PRODUCT_INVENTORY_UPDATED_SSE_EVENT
+  PRODUCT_INVENTORY_UPDATED_SSE_EVENT,
 } from '~/modules/domains/product/app/events/product-inventory-sse.event';
 import { CouponUsageEntity } from '../../coupon/infra/persistence/entities/coupon-usage.entity';
 import { ProductInventoryEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-inventory.entity';
@@ -22,7 +22,7 @@ export class OrderPaymentService {
   constructor(
     private readonly entityManager: EntityManager,
     private readonly eventEmitter: EventEmitter2,
-    private readonly orderEventsService: OrderEventsService
+    private readonly orderEventsService: OrderEventsService,
   ) {}
 
   async getOrdersByCheckoutSession(sessionId: string): Promise<CreateOrderResult> {
@@ -46,7 +46,7 @@ export class OrderPaymentService {
       paymentIntentId?: string | null;
       paymentStatus?: string | null;
       completedAt?: Date;
-    }
+    },
   ): Promise<void> {
     await this.entityManager.transactional(async (entityManager) => {
       const orders = await this.findOrdersByCheckoutSession(entityManager, sessionId);
@@ -98,7 +98,7 @@ export class OrderPaymentService {
 
   async markCheckoutSessionExpired(
     sessionId: string,
-    expiredAt?: Date
+    expiredAt?: Date,
   ): Promise<void> {
     const inventoryEvents = await this.entityManager.transactional(async (entityManager) => {
       const orders = await this.findOrdersByCheckoutSession(entityManager, sessionId);
@@ -111,11 +111,11 @@ export class OrderPaymentService {
       const orderIds = actionableOrders.map((order) => order.id);
       const orderItems = await entityManager.getRepository(OrderItemEntity).find(
         { order: { $in: orderIds } },
-        { populate: ['inventory', 'product'] }
+        { populate: ['inventory', 'product'] },
       );
       const couponUsages = await entityManager.getRepository(CouponUsageEntity).find(
         { orderId: { $in: orderIds } },
-        { populate: ['coupon'] }
+        { populate: ['coupon'] },
       );
 
       const restockedInventoryEvents: ReturnType<typeof buildProductInventoryUpdatedSseEvent>[] = [];
@@ -123,7 +123,7 @@ export class OrderPaymentService {
       for (const item of orderItems) {
         const inventory = await entityManager.getRepository(ProductInventoryEntity).findOne(
           { id: item.inventory.id },
-          { lockMode: LockMode.PESSIMISTIC_WRITE }
+          { lockMode: LockMode.PESSIMISTIC_WRITE },
         );
 
         if (inventory) {
@@ -175,13 +175,13 @@ export class OrderPaymentService {
 
   private async findOrdersByCheckoutSession(
     entityManager: EntityManager,
-    sessionId: string
+    sessionId: string,
   ): Promise<OrderEntity[]> {
     const rows = await entityManager.getConnection().execute<{ id: string }[]>(
       `select id
        from orders
        where payment_details ->> 'checkout_session_id' = ?`,
-      [sessionId]
+      [sessionId],
     );
     const orderIds = rows.map((row) => row.id);
 
@@ -191,7 +191,7 @@ export class OrderPaymentService {
 
     return entityManager.getRepository(OrderEntity).find(
       { id: { $in: orderIds } },
-      { populate: ['shop'], orderBy: { createdAt: 'asc' } }
+      { populate: ['shop'], orderBy: { createdAt: 'asc' } },
     );
   }
 
@@ -199,12 +199,12 @@ export class OrderPaymentService {
     entityManager: EntityManager,
     cartId: string,
     isTempCart: boolean,
-    inventoryIds?: string[]
+    inventoryIds?: string[],
   ): Promise<void> {
     if (isTempCart) {
       await entityManager.getConnection().execute(
         'delete from carts where id = ?',
-        [cartId]
+        [cartId],
       );
       return;
     }
@@ -213,19 +213,19 @@ export class OrderPaymentService {
       const placeholders = inventoryIds.map(() => '?').join(', ');
       await entityManager.getConnection().execute(
         `delete from cart_items where cart_id = ? and product_inventory_id in (${placeholders})`,
-        [cartId, ...inventoryIds]
+        [cartId, ...inventoryIds],
       );
     }
     else {
       await entityManager.getConnection().execute(
         'delete from cart_items where cart_id = ? and is_select_order = true',
-        [cartId]
+        [cartId],
       );
     }
 
     await entityManager.getConnection().execute(
       'delete from carts where id = ? and not exists (select 1 from cart_items where cart_items.cart_id = carts.id)',
-      [cartId]
+      [cartId],
     );
   }
 }

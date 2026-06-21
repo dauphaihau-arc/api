@@ -3,22 +3,22 @@ import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
 import { UserAddressRepository } from '../../ports/user-address.repository';
 import type {
   ListMyAddressesQuery,
-  UserAddressListResult
+  UserAddressListResult,
 } from '../../user-address.types';
 
 @Injectable()
 export class ListMyAddressesUseCase {
   constructor(
-    private readonly userAddressRepository: UserAddressRepository
+    private readonly userAddressRepository: UserAddressRepository,
   ) {}
 
   async execute(
     actor: AuthenticatedUser,
-    query: ListMyAddressesQuery
+    query: ListMyAddressesQuery,
   ): Promise<UserAddressListResult> {
     const result = await this.userAddressRepository.findAllOwnedByUserId(
       actor.userId,
-      query
+      query,
     );
 
     return {

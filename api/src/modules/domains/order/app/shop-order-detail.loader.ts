@@ -7,16 +7,16 @@ import type { ShopOrderDetail } from './order.types';
 
 export async function buildShopOrderDetail(
   entityManager: EntityManager,
-  order: OrderEntity
+  order: OrderEntity,
 ): Promise<ShopOrderDetail> {
   const [items, timelineEvents] = await Promise.all([
     entityManager.getRepository(OrderItemEntity).find(
       { order: order.id },
-      { populate: ['product', 'product.shop', 'product.images', 'product.images.variants', 'inventory'] }
+      { populate: ['product', 'product.shop', 'product.images', 'product.images.variants', 'inventory'] },
     ),
     entityManager.getRepository(OrderEventEntity).find(
       { order: order.id },
-      { orderBy: { occurredAt: 'asc', id: 'asc' } }
+      { orderBy: { occurredAt: 'asc', id: 'asc' } },
     ),
   ]);
 

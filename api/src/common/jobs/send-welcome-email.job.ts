@@ -21,7 +21,7 @@ export class SendWelcomeEmailJob {
     });
 
     this.logger.log(
-      `Processed welcome email job for user ${payload.userId} (${payload.email})`
+      `Processed welcome email job for user ${payload.userId} (${payload.email})`,
     );
   }
 }

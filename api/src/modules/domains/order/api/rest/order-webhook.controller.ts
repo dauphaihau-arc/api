@@ -2,13 +2,13 @@ import {
   Controller,
   Headers,
   Post,
-  Req
+  Req,
 } from '@nestjs/common';
 import {
   ApiHeader,
   ApiOkResponse,
   ApiOperation,
-  ApiTags
+  ApiTags,
 } from '@nestjs/swagger';
 import { SkipThrottle } from '@nestjs/throttler';
 import type { Request } from 'express';
@@ -20,7 +20,7 @@ import { HandleStripeWebhookUseCase } from '../../app/use-cases/handle-stripe-we
 export class OrderWebhookController {
   constructor(
     private readonly paymentGateway: PaymentGateway,
-    private readonly handleStripeWebhookUseCase: HandleStripeWebhookUseCase
+    private readonly handleStripeWebhookUseCase: HandleStripeWebhookUseCase,
   ) {}
 
   @Post()
@@ -37,11 +37,11 @@ export class OrderWebhookController {
   })
   async handle(
     @Req() request: Request & { rawBody?: Buffer },
-    @Headers('stripe-signature') signature?: string
+    @Headers('stripe-signature') signature?: string,
   ) {
     const event = this.paymentGateway.constructStripeWebhookEvent(
       request.rawBody ?? Buffer.from(JSON.stringify(request.body ?? {})),
-      signature
+      signature,
     );
 
     await this.handleStripeWebhookUseCase.execute(event);

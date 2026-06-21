@@ -2,7 +2,7 @@ import {
   Entity,
   Index,
   Property,
-  Unique
+  Unique,
 } from '@mikro-orm/core';
 import { AbstractBaseEntity } from '~/common/database/abstract-base.entity';
 

@@ -22,7 +22,7 @@ describe('RegisterSellerUseCase', () => {
       displayName: 'Seller User',
       status: UserStatus.ACTIVE,
       passwordHash: PasswordHash.fromPersisted(
-        '$2b$04$123456789012345678901u8QTs4lJx0pK7ydjXfQ6PS/UPTzQ0zQG'
+        '$2b$04$123456789012345678901u8QTs4lJx0pK7ydjXfQ6PS/UPTzQ0zQG',
       ),
       passwordUpdatedAt: new Date('2026-01-01T00:00:00.000Z'),
       roles: [RoleKey.create('customer'), RoleKey.create('seller')],
@@ -66,7 +66,7 @@ describe('RegisterSellerUseCase', () => {
       hash: jest
         .fn()
         .mockResolvedValue(
-          '$2b$04$123456789012345678901u8QTs4lJx0pK7ydjXfQ6PS/UPTzQ0zQG'
+          '$2b$04$123456789012345678901u8QTs4lJx0pK7ydjXfQ6PS/UPTzQ0zQG',
         ),
       matches: jest.fn(),
     };
@@ -99,7 +99,7 @@ describe('RegisterSellerUseCase', () => {
       shopRepository,
       passwordHasher,
       issueSessionUseCase,
-      eventEmitter as unknown as EventEmitter2
+      eventEmitter as unknown as EventEmitter2,
     );
 
     const result = await useCase.execute({
@@ -118,7 +118,7 @@ describe('RegisterSellerUseCase', () => {
         language: 'en',
         currency: 'EUR',
       },
-      expect.anything()
+      expect.anything(),
     );
     expect(shopRepository.create).toHaveBeenCalledWith(
       {
@@ -127,19 +127,19 @@ describe('RegisterSellerUseCase', () => {
         slug: 'seller-shop',
         currency: 'EUR',
       },
-      expect.anything()
+      expect.anything(),
     );
     expect(authUserRepository.assignRole).toHaveBeenNthCalledWith(
       1,
       'user-1',
       RoleKey.create('customer'),
-      expect.anything()
+      expect.anything(),
     );
     expect(authUserRepository.assignRole).toHaveBeenNthCalledWith(
       2,
       'user-1',
       RoleKey.create('seller'),
-      expect.anything()
+      expect.anything(),
     );
     expect(eventEmitter.emit).toHaveBeenCalledWith(
       'user.created',
@@ -147,7 +147,7 @@ describe('RegisterSellerUseCase', () => {
         userId: 'user-1',
         email: 'seller@example.com',
         displayName: 'Seller User',
-      })
+      }),
     );
   });
 });

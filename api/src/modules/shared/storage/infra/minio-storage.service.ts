@@ -10,7 +10,7 @@ import {
   PutBucketPolicyCommand,
   PutObjectCommand,
   S3Client,
-  S3ServiceException
+  S3ServiceException,
 } from '@aws-sdk/client-s3';
 import { Readable } from 'node:stream';
 import type { MinioStorageConfig } from '~/config/storage.config';
@@ -28,7 +28,7 @@ export class MinioStorageService implements StorageService {
 
   constructor(
     private readonly storageConfig: MinioStorageConfig,
-    client?: S3ClientLike
+    client?: S3ClientLike,
   ) {
     this.client = client ?? new S3Client({
       region: this.storageConfig.region,
@@ -308,7 +308,7 @@ export class MinioStorageService implements StorageService {
 
       for await (const chunk of body) {
         chunks.push(
-          typeof chunk === 'string' ? Buffer.from(chunk) : Buffer.from(chunk)
+          typeof chunk === 'string' ? Buffer.from(chunk) : Buffer.from(chunk),
         );
       }
 

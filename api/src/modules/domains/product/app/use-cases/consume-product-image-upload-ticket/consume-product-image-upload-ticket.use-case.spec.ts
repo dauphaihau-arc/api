@@ -48,13 +48,13 @@ describe('ConsumeProductImageUploadTicketUseCase', () => {
     const useCase = new ConsumeProductImageUploadTicketUseCase(
       cacheManager as Cache,
       storageService,
-      storageConfig
+      storageConfig,
     );
 
     const uploaded = await useCase.execute(
       'ticket-1',
       Buffer.from('img'),
-      'image/jpeg'
+      'image/jpeg',
     );
 
     expect(uploaded.key).toBe('products/tmp/shop-1/uploaded-key');
@@ -71,11 +71,11 @@ describe('ConsumeProductImageUploadTicketUseCase', () => {
     const useCase = new ConsumeProductImageUploadTicketUseCase(
       cacheManager as Cache,
       storageService,
-      storageConfig
+      storageConfig,
     );
 
     await expect(
-      useCase.execute('ticket-1', Buffer.from('img'), 'application/pdf')
+      useCase.execute('ticket-1', Buffer.from('img'), 'application/pdf'),
     ).rejects.toThrow('Upload content type must be an image');
   });
 });

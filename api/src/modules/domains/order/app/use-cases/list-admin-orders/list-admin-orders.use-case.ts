@@ -42,7 +42,7 @@ export class ListAdminOrdersUseCase {
         orderBy: { createdAt: 'desc' },
         offset: (query.page - 1) * query.limit,
         limit: query.limit,
-      }
+      },
     );
 
     return {

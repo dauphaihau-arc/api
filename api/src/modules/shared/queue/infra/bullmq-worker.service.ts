@@ -4,7 +4,7 @@ import {
   Injectable,
   Logger,
   OnApplicationShutdown,
-  OnModuleInit
+  OnModuleInit,
 } from '@nestjs/common';
 import { Worker } from 'bullmq';
 import type { Job } from 'bullmq';
@@ -13,7 +13,7 @@ import { QUEUE_CONFIG } from '~/config/queue.config';
 import type { QueueConfig } from '~/config/queue.config';
 import type {
   AppJobName,
-  AppJobPayloadMap
+  AppJobPayloadMap,
 } from '~/common/jobs/job.types';
 import { AppJobRunner } from './app-job-runner';
 import { BULLMQ_CONNECTION } from './queue.constants';
@@ -29,13 +29,13 @@ export class BullMqWorkerService
   constructor(
     @Inject(QUEUE_CONFIG) private readonly queueConfig: QueueConfig,
     @Inject(BULLMQ_CONNECTION) private readonly connection: Redis | null,
-    private readonly appJobRunner: AppJobRunner
+    private readonly appJobRunner: AppJobRunner,
   ) {}
 
   onModuleInit(): void {
     if (this.queueConfig.driver !== 'redis') {
       this.logger.log(
-        `Queue driver ${this.queueConfig.driver} does not require a worker process`
+        `Queue driver ${this.queueConfig.driver} does not require a worker process`,
       );
       return;
     }
@@ -51,7 +51,7 @@ export class BullMqWorkerService
         connection: this.connection,
         prefix: this.queueConfig.prefix,
         concurrency: this.queueConfig.workerConcurrency,
-      }
+      },
     );
 
     this.worker.on('active', (job) => {
@@ -65,12 +65,12 @@ export class BullMqWorkerService
     this.worker.on('failed', (job, error) => {
       this.logger.error(
         `Job ${job?.name ?? 'unknown'} (${job?.id ?? 'unknown'}) failed: ${error.message}`,
-        error.stack
+        error.stack,
       );
     });
 
     this.logger.log(
-      `Started BullMQ worker for queue ${this.queueConfig.queueName}`
+      `Started BullMQ worker for queue ${this.queueConfig.queueName}`,
     );
   }
 

@@ -1,7 +1,7 @@
 import { Expose, Transform } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import {
-  IsInt, IsOptional, IsString, IsUUID, Min, MinLength 
+  IsInt, IsOptional, IsString, IsUUID, Min, MinLength, 
 } from 'class-validator';
 
 export class CreateCategoryDto {

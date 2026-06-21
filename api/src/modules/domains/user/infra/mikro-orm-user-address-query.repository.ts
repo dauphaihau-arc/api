@@ -4,7 +4,7 @@ import { UserAddressQueryRepository } from '../app/ports/user-address-query.repo
 import type {
   ListMyAddressesQuery,
   ListMyAddressesRepositoryResult,
-  UserAddressSummary
+  UserAddressSummary,
 } from '../app/user-address.types';
 import { UserAddressEntity } from './persistence/entities/user-address.entity';
 import { toUserAddressSummary } from './user-address-summary.mapper';
@@ -21,7 +21,7 @@ export class MikroOrmUserAddressQueryRepository implements UserAddressQueryRepos
 
   async findAllOwnedByUserId(
     userId: string,
-    query: ListMyAddressesQuery
+    query: ListMyAddressesQuery,
   ): Promise<ListMyAddressesRepositoryResult> {
     const repository = this.entityManager.fork().getRepository(UserAddressEntity);
     const [addresses, total] = await repository.findAndCount(
@@ -36,7 +36,7 @@ export class MikroOrmUserAddressQueryRepository implements UserAddressQueryRepos
           { updatedAt: 'desc' },
           { createdAt: 'desc' },
         ],
-      }
+      },
     );
 
     return {
@@ -47,7 +47,7 @@ export class MikroOrmUserAddressQueryRepository implements UserAddressQueryRepos
 
   async findOwnedById(
     userId: string,
-    addressId: string
+    addressId: string,
   ): Promise<UserAddressSummary | null> {
     const repository = this.entityManager.fork().getRepository(UserAddressEntity);
     const address = await repository.findOne({ id: addressId, user: userId });

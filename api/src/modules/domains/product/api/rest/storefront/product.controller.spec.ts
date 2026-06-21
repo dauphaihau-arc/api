@@ -251,7 +251,7 @@ describe('ProductController', () => {
     });
     expect(getPublicProductBySlugsUseCase.execute).toHaveBeenCalledWith(
       'arc-store',
-      'handmade-bag'
+      'handmade-bag',
     );
   });
 
@@ -259,7 +259,7 @@ describe('ProductController', () => {
     getPublicProductBySlugsUseCase.execute.mockResolvedValue(null);
 
     await expect(controller.productBySlugs('missing-shop', 'missing-product')).rejects.toBeInstanceOf(
-      NotFoundException
+      NotFoundException,
     );
   });
 
@@ -268,7 +268,9 @@ describe('ProductController', () => {
       summary: {
         average: 5,
         count: 1,
-        breakdown: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 1 },
+        breakdown: {
+          1: 0, 2: 0, 3: 0, 4: 0, 5: 1, 
+        },
         filters: {
           hasImages: 1,
           hasComment: 1,
@@ -310,7 +312,9 @@ describe('ProductController', () => {
       summary: {
         average: 5,
         count: 1,
-        breakdown: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 1 },
+        breakdown: {
+          1: 0, 2: 0, 3: 0, 4: 0, 5: 1, 
+        },
         filters: {
           has_images: 1,
           has_comment: 1,
@@ -352,7 +356,9 @@ describe('ProductController', () => {
       summary: {
         average: 0,
         count: 0,
-        breakdown: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+        breakdown: {
+          1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 
+        },
         filters: {
           hasImages: 0,
           hasComment: 0,

@@ -2,7 +2,7 @@ import {
   IsBoolean,
   IsOptional,
   IsString,
-  MaxLength
+  MaxLength,
 } from 'class-validator';
 
 export class UpdateMyAddressDto {

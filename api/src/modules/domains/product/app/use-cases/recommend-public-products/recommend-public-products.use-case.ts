@@ -11,7 +11,7 @@ export class RecommendPublicProductsUseCase {
   async execute(
     shopSlug: string,
     productSlug: string,
-    limit: number = PUBLIC_PRODUCT_RECOMMENDATIONS_DEFAULT_LIMIT
+    limit: number = PUBLIC_PRODUCT_RECOMMENDATIONS_DEFAULT_LIMIT,
   ): Promise<PublicProductListItem[]> {
     return this.productRepository.recommendSimilarPublic({
       shopSlug,

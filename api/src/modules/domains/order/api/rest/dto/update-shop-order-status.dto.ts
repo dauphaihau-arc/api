@@ -4,7 +4,7 @@ import {
   IsEnum,
   IsOptional,
   IsString,
-  MaxLength
+  MaxLength,
 } from 'class-validator';
 import { OrderStatus } from '../../../domain/enums/order-status.enum';
 

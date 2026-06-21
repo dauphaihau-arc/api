@@ -84,7 +84,7 @@ function serializeRequest(request: IncomingMessage & {
 function serializeResponse(
   response: ServerResponse & {
     statusCode?: number;
-  }
+  },
 ): Record<string, number | undefined> {
   return {
     statusCode: response.statusCode,

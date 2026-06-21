@@ -7,7 +7,7 @@ import type {
   ReplaceProductInventoryRepositoryInput,
   ReplaceProductShippingRepositoryInput,
   ReplaceProductVariantsRepositoryInput,
-  UpdateProductDetailsRepositoryInput
+  UpdateProductDetailsRepositoryInput,
 } from '../product.types';
 
 export abstract class ProductCommandRepository {

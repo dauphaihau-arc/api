@@ -4,7 +4,7 @@ import type { UserRepository } from '../../ports/user.repository';
 import {
   DEFAULT_USER_LIST_SORT,
   type ListUsersQuery,
-  type UserSummary
+  type UserSummary,
 } from '../../user.types';
 import { ListUsersUseCase } from './list-users.use-case';
 

@@ -8,14 +8,14 @@ import {
   Param,
   Patch,
   Query,
-  UseGuards
+  UseGuards,
 } from '@nestjs/common';
 import {
   ApiCookieAuth,
   ApiOkResponse,
   ApiOperation,
   ApiParam,
-  ApiTags
+  ApiTags,
 } from '@nestjs/swagger';
 import { RequirePermissions } from '~/common/decorators/require-permissions.decorator';
 import { CurrentUser } from '~/common/decorators/current-user.decorator';
@@ -34,11 +34,11 @@ import { UpdateShopOrderShipmentDto } from './dto/update-shop-order-shipment.dto
 import { UpdateShopOrderStatusDto } from './dto/update-shop-order-status.dto';
 import {
   toShopOrderDetailResponse,
-  toShopOrderListResponse
+  toShopOrderListResponse,
 } from './order.response';
 import {
   isOrderAppError,
-  mapOrderAppErrorToHttpException
+  mapOrderAppErrorToHttpException,
 } from './order-http-error-mapper';
 
 @Controller('shops/:shop_id/orders')
@@ -53,7 +53,7 @@ export class ShopOrderController {
     private readonly getShopOrderByIdUseCase: GetShopOrderByIdUseCase,
     private readonly updateShopOrderStatusUseCase: UpdateShopOrderStatusUseCase,
     private readonly updateShopOrderShipmentUseCase: UpdateShopOrderShipmentUseCase,
-    private readonly updateShopOrderRefundUseCase: UpdateShopOrderRefundUseCase
+    private readonly updateShopOrderRefundUseCase: UpdateShopOrderRefundUseCase,
   ) {}
 
   @Get()
@@ -67,7 +67,7 @@ export class ShopOrderController {
   async list(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('shop_id') shopId: string,
-    @Query() query: ListShopOrdersQueryDto
+    @Query() query: ListShopOrdersQueryDto,
   ) {
     await this.assertActorCanManageShop(currentUser, shopId);
 
@@ -87,13 +87,13 @@ export class ShopOrderController {
   async detail(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('shop_id') shopId: string,
-    @Param('order_id') orderId: string
+    @Param('order_id') orderId: string,
   ) {
     await this.assertActorCanManageShop(currentUser, shopId);
 
     try {
       return toShopOrderDetailResponse(
-        await this.getShopOrderByIdUseCase.execute(shopId, orderId)
+        await this.getShopOrderByIdUseCase.execute(shopId, orderId),
       );
     }
     catch (error) {
@@ -114,13 +114,13 @@ export class ShopOrderController {
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('shop_id') shopId: string,
     @Param('order_id') orderId: string,
-    @Body() body: UpdateShopOrderStatusDto
+    @Body() body: UpdateShopOrderStatusDto,
   ) {
     await this.assertActorCanManageShop(currentUser, shopId);
 
     try {
       return toShopOrderDetailResponse(
-        await this.updateShopOrderStatusUseCase.execute(shopId, orderId, body)
+        await this.updateShopOrderStatusUseCase.execute(shopId, orderId, body),
       );
     }
     catch (error) {
@@ -141,13 +141,13 @@ export class ShopOrderController {
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('shop_id') shopId: string,
     @Param('order_id') orderId: string,
-    @Body() body: UpdateShopOrderShipmentDto
+    @Body() body: UpdateShopOrderShipmentDto,
   ) {
     await this.assertActorCanManageShop(currentUser, shopId);
 
     try {
       return toShopOrderDetailResponse(
-        await this.updateShopOrderShipmentUseCase.execute(shopId, orderId, body)
+        await this.updateShopOrderShipmentUseCase.execute(shopId, orderId, body),
       );
     }
     catch (error) {
@@ -168,13 +168,13 @@ export class ShopOrderController {
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('shop_id') shopId: string,
     @Param('order_id') orderId: string,
-    @Body() body: UpdateShopOrderRefundDto
+    @Body() body: UpdateShopOrderRefundDto,
   ) {
     await this.assertActorCanManageShop(currentUser, shopId);
 
     try {
       return toShopOrderDetailResponse(
-        await this.updateShopOrderRefundUseCase.execute(shopId, orderId, body)
+        await this.updateShopOrderRefundUseCase.execute(shopId, orderId, body),
       );
     }
     catch (error) {
@@ -184,7 +184,7 @@ export class ShopOrderController {
 
   private async assertActorCanManageShop(
     currentUser: AuthenticatedUser,
-    shopId: string
+    shopId: string,
   ): Promise<void> {
     if (currentUser.roles.includes('admin')) {
       const shop = await this.shopRepository.findById(shopId);

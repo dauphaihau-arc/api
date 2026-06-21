@@ -1,11 +1,11 @@
 import {
-  Controller, Get, Header, Res 
+  Controller, Get, Header, Res, 
 } from '@nestjs/common';
 import {
   ApiOkResponse,
   ApiOperation,
   ApiProduces,
-  ApiTags
+  ApiTags,
 } from '@nestjs/swagger';
 import { SkipThrottle } from '@nestjs/throttler';
 import type { Response } from 'express';
@@ -16,7 +16,7 @@ import { ObservabilityService } from './observability.service';
 @ApiTags('Observability')
 export class MetricsController {
   constructor(
-    private readonly observabilityService: ObservabilityService
+    private readonly observabilityService: ObservabilityService,
   ) {}
 
   @Get()

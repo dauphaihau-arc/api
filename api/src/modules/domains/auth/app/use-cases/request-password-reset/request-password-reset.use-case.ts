@@ -22,7 +22,7 @@ export class RequestPasswordResetUseCase {
     private readonly passwordResetTokenRepository: PasswordResetTokenRepository,
     private readonly tokenHasher: TokenHasher,
     private readonly jobDispatcher: JobDispatcher,
-    private readonly configService: ConfigService
+    private readonly configService: ConfigService,
   ) {}
 
   async execute(emailRaw: string, app: PasswordResetApp): Promise<void> {
@@ -31,7 +31,7 @@ export class RequestPasswordResetUseCase {
 
     if (!user) {
       this.logger.log(
-        `Password reset requested for unknown email ${email.toString()}`
+        `Password reset requested for unknown email ${email.toString()}`,
       );
       return;
     }
@@ -53,11 +53,11 @@ export class RequestPasswordResetUseCase {
         email: user.email.toString(),
         displayName: user.displayName,
         resetUrl: this.buildResetUrl(rawToken, app),
-      }
+      },
     );
 
     this.logger.log(
-      `Queued password reset email for user ${user.id} (${user.email.toString()})`
+      `Queued password reset email for user ${user.id} (${user.email.toString()})`,
     );
   }
 

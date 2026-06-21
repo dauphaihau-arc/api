@@ -7,14 +7,14 @@ import {
   Param,
   Post,
   Query,
-  Req
+  Req,
 } from '@nestjs/common';
 import {
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
   ApiParam,
-  ApiTags
+  ApiTags,
 } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import type { Request } from 'express';
@@ -29,13 +29,13 @@ import { GetOrdersByCheckoutSessionUseCase } from '../../app/use-cases/get-order
 import { LookupGuestOrdersUseCase } from '../../app/use-cases/lookup-guest-orders/lookup-guest-orders.use-case';
 import {
   isOrderAppError,
-  mapOrderAppErrorToHttpException
+  mapOrderAppErrorToHttpException,
 } from './order-http-error-mapper';
 import {
   toCheckoutQuoteResponse,
   toCheckoutSessionOrderResponse,
   toCreateOrderResponse,
-  toOrderListResponse
+  toOrderListResponse,
 } from './order.response';
 import { CreateGuestCheckoutQuoteForBuyNowDto } from './dto/create-guest-checkout-quote-for-buy-now.dto';
 import { CreateGuestCheckoutQuoteFromCartDto } from './dto/create-guest-checkout-quote-from-cart.dto';
@@ -64,7 +64,7 @@ export class CheckoutController {
     private readonly createGuestOrderForBuyNowUseCase: CreateGuestOrderForBuyNowUseCase,
     private readonly getOrdersByCheckoutSessionUseCase: GetOrdersByCheckoutSessionUseCase,
     private readonly guestOrderTrackingTokenService: GuestOrderTrackingTokenService,
-    private readonly lookupGuestOrdersUseCase: LookupGuestOrdersUseCase
+    private readonly lookupGuestOrdersUseCase: LookupGuestOrdersUseCase,
   ) {}
 
   @Get('session/:session_id')
@@ -77,7 +77,7 @@ export class CheckoutController {
   async getBySession(@Param('session_id') sessionId: string) {
     try {
       return toCheckoutSessionOrderResponse(
-        await this.getOrdersByCheckoutSessionUseCase.execute(sessionId)
+        await this.getOrdersByCheckoutSessionUseCase.execute(sessionId),
       );
     }
     catch (error) {
@@ -131,7 +131,7 @@ export class CheckoutController {
   @ApiNotFoundResponse({ description: 'Guest cart session not found.' })
   async createQuoteFromCart(
     @Req() request: Request,
-    @Body() body: CreateGuestCheckoutQuoteFromCartDto
+    @Body() body: CreateGuestCheckoutQuoteFromCartDto,
   ) {
     const guestSessionId = this.guestCartSessionService.extractSessionId(request);
 
@@ -142,7 +142,7 @@ export class CheckoutController {
     try {
       return toCheckoutQuoteResponse(
         await this.createGuestCheckoutQuoteFromCartUseCase.execute(guestSessionId, body),
-        this.checkoutConfig
+        this.checkoutConfig,
       );
     }
     catch (error) {
@@ -159,7 +159,7 @@ export class CheckoutController {
   @ApiNotFoundResponse({ description: 'Guest cart session not found.' })
   async createFromCart(
     @Req() request: Request,
-    @Body() body: CreateGuestOrderFromCartDto
+    @Body() body: CreateGuestOrderFromCartDto,
   ) {
     const guestSessionId = this.guestCartSessionService.extractSessionId(request);
 
@@ -169,7 +169,7 @@ export class CheckoutController {
 
     try {
       return toCreateOrderResponse(
-        await this.createGuestOrderFromCartUseCase.execute(guestSessionId, body)
+        await this.createGuestOrderFromCartUseCase.execute(guestSessionId, body),
       );
     }
     catch (error) {
@@ -186,7 +186,7 @@ export class CheckoutController {
   @ApiNotFoundResponse({ description: 'Guest cart session not found.' })
   async createQuoteForBuyNow(
     @Req() request: Request,
-    @Body() body: CreateGuestCheckoutQuoteForBuyNowDto
+    @Body() body: CreateGuestCheckoutQuoteForBuyNowDto,
   ) {
     const guestSessionId = this.guestCartSessionService.extractSessionId(request);
 
@@ -197,7 +197,7 @@ export class CheckoutController {
     try {
       return toCheckoutQuoteResponse(
         await this.createGuestCheckoutQuoteForBuyNowUseCase.execute(guestSessionId, body),
-        this.checkoutConfig
+        this.checkoutConfig,
       );
     }
     catch (error) {
@@ -214,7 +214,7 @@ export class CheckoutController {
   @ApiNotFoundResponse({ description: 'Guest cart session not found.' })
   async createForBuyNow(
     @Req() request: Request,
-    @Body() body: CreateGuestOrderForBuyNowDto
+    @Body() body: CreateGuestOrderForBuyNowDto,
   ) {
     const guestSessionId = this.guestCartSessionService.extractSessionId(request);
 
@@ -224,7 +224,7 @@ export class CheckoutController {
 
     try {
       return toCreateOrderResponse(
-        await this.createGuestOrderForBuyNowUseCase.execute(guestSessionId, body)
+        await this.createGuestOrderForBuyNowUseCase.execute(guestSessionId, body),
       );
     }
     catch (error) {

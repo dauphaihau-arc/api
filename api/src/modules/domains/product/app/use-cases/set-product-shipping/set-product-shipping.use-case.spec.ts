@@ -87,7 +87,7 @@ describe('SetProductShippingUseCase', () => {
     const useCase = new SetProductShippingUseCase(
       productRepository,
       productRepository,
-      shopRepository
+      shopRepository,
     );
 
     const result = await useCase.execute(actor, product.id, {
@@ -130,7 +130,7 @@ describe('SetProductShippingUseCase', () => {
     const useCase = new SetProductShippingUseCase(
       productRepository,
       productRepository,
-      shopRepository
+      shopRepository,
     );
 
     const result = await useCase.execute(actor, product.id, {

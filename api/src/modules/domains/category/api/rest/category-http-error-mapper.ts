@@ -4,7 +4,7 @@ import type { CategoryAppError } from '../../app/errors/category-app.error';
 import { CategoryNotFoundError } from '../../app/errors/category-app.error';
 
 export function mapCategoryAppErrorToHttpException(
-  error: CategoryAppError
+  error: CategoryAppError,
 ): HttpException {
   if (error instanceof CategoryNotFoundError) {
     return new NotFoundException(error.message);

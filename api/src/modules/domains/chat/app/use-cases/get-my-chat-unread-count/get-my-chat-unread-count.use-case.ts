@@ -19,7 +19,7 @@ export class GetMyChatUnreadCountUseCase {
             or "buyer_last_read_at" < "last_message_at"
           )
       `,
-      [actor.userId, actor.userId]
+      [actor.userId, actor.userId],
     );
 
     return Number(rows[0]?.total ?? '0');

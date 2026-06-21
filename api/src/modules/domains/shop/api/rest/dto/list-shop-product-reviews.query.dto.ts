@@ -1,5 +1,7 @@
 import { Expose, Transform, Type } from 'class-transformer';
-import { IsEnum, IsIn, IsOptional, IsUUID, Max, Min } from 'class-validator';
+import {
+  IsEnum, IsIn, IsOptional, IsUUID, Max, Min, 
+} from 'class-validator';
 import {
   SHOP_PRODUCT_REVIEW_LIST_DEFAULT_LIMIT,
   SHOP_PRODUCT_REVIEW_LIST_DEFAULT_PAGE,

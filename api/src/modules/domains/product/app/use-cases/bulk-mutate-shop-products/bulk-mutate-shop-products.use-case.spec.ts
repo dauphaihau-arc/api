@@ -9,7 +9,7 @@ import type { SellerProductQueryRepository } from '../../ports/seller-product-qu
 import type { ProductDraftSummary } from '../../product.types';
 import {
   BulkMutateShopProductsAction,
-  BulkMutateShopProductsUseCase
+  BulkMutateShopProductsUseCase,
 } from './bulk-mutate-shop-products.use-case';
 
 describe('BulkMutateShopProductsUseCase', () => {
@@ -141,7 +141,7 @@ describe('BulkMutateShopProductsUseCase', () => {
       productRepository,
       productRepository,
       shopRepository,
-      auditLogService
+      auditLogService,
     );
 
     const result = await useCase.execute(actor, {
@@ -170,7 +170,7 @@ describe('BulkMutateShopProductsUseCase', () => {
       productRepository,
       productRepository,
       shopRepository,
-      auditLogService
+      auditLogService,
     );
 
     const result = await useCase.execute(actor, {
@@ -211,7 +211,7 @@ describe('BulkMutateShopProductsUseCase', () => {
       productRepository,
       productRepository,
       shopRepository,
-      auditLogService
+      auditLogService,
     );
 
     const result = await useCase.execute(actor, {
@@ -226,11 +226,11 @@ describe('BulkMutateShopProductsUseCase', () => {
     });
     expect(productRepository.updateState).toHaveBeenCalledWith(
       'product-1',
-      ProductState.INACTIVE
+      ProductState.INACTIVE,
     );
     expect(productRepository.updateState).toHaveBeenCalledWith(
       'product-2',
-      ProductState.INACTIVE
+      ProductState.INACTIVE,
     );
   });
 
@@ -240,7 +240,7 @@ describe('BulkMutateShopProductsUseCase', () => {
       productRepository,
       productRepository,
       shopRepository,
-      auditLogService
+      auditLogService,
     );
 
     const result = await useCase.execute(actor, {

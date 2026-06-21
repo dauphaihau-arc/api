@@ -1,6 +1,6 @@
 import { Type } from 'class-transformer';
 import {
-  IsOptional, IsString, Max, Min 
+  IsOptional, IsString, Max, Min, 
 } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { PUBLIC_PRODUCT_SUGGESTIONS_DEFAULT_LIMIT } from '../../../../app/use-cases/suggest-public-products/suggest-public-products.use-case';

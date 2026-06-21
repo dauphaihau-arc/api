@@ -48,7 +48,7 @@ describe('ProductImageService', () => {
       service: new ProductImageService(
         repository as never,
         storageService,
-        imageTransformService as never
+        imageTransformService as never,
       ),
       repository,
       storageService,

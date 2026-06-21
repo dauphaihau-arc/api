@@ -9,7 +9,7 @@ import type { ChatConversationSummary } from '../../chat.types';
 import {
   ChatProductNotFoundError,
   ChatProductShopMismatchError,
-  ChatShopNotFoundError
+  ChatShopNotFoundError,
 } from '../../errors/chat-app.error';
 import { ChatConversationEntity } from '../../../infra/persistence/entities/chat-conversation.entity';
 
@@ -22,13 +22,13 @@ export class CreateOrGetMyChatConversationUseCase {
     input: {
       shopId: string;
       productId?: string;
-    }
+    },
   ): Promise<ChatConversationSummary> {
     const entityManager = this.entityManager.fork();
 
     const shop = await entityManager.getRepository(ShopEntity).findOne(
       { id: input.shopId },
-      { populate: ['ownerUser'] }
+      { populate: ['ownerUser'] },
     );
 
     if (!shop) {
@@ -57,7 +57,7 @@ export class CreateOrGetMyChatConversationUseCase {
         shop: shop.id,
         product: product?.id ?? null,
       },
-      { populate: ['buyerUser', 'shop.ownerUser', 'product'] }
+      { populate: ['buyerUser', 'shop.ownerUser', 'product'] },
     );
 
     if (conversation) {

@@ -3,7 +3,7 @@ import {
   getOrderItemAmountMinor,
   getOrderShippingMinor,
   getOrderSubtotalMinor,
-  getOrderTotalMinor
+  getOrderTotalMinor,
 } from './order-money';
 import type { OrderEntity } from '../infra/persistence/entities/order.entity';
 import type { OrderItemEntity } from '../infra/persistence/entities/order-item.entity';

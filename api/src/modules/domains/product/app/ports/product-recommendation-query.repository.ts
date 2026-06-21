@@ -1,7 +1,7 @@
 import type {
   ListPublicProductsByShopSlugInput,
   PublicProductListItem,
-  RecommendPublicProductsInput
+  RecommendPublicProductsInput,
 } from '../product.types';
 
 export abstract class ProductRecommendationQueryRepository {

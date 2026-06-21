@@ -44,7 +44,7 @@ describe('OrderCancellationService', () => {
       {} as EntityManager,
       {} as PaymentGateway,
       {} as ModuleRef,
-      { record: jest.fn().mockResolvedValue(undefined) } as never
+      { record: jest.fn().mockResolvedValue(undefined) } as never,
     );
     const service = new OrderCancellationService(refundService);
     const canceledAt = new Date('2026-05-24T00:00:00.000Z');

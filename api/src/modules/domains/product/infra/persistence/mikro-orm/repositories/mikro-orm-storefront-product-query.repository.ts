@@ -12,7 +12,7 @@ import type {
   PublicProductListItem,
   PublicProductListResult,
   PublicProductSuggestion,
-  SuggestPublicProductsInput
+  SuggestPublicProductsInput,
 } from '../../../../app/product.types';
 import { PUBLIC_PRODUCT_FACET_PRIORITY } from '../../../../app/product-facet.constants';
 import { toCanonicalFacetOption } from '../../../../app/shoe-size-groups';
@@ -23,7 +23,7 @@ import { ProductEntity } from '~/modules/domains/product/infra/persistence/mikro
 import {
   getPrimaryInventory,
   toPublicProductDetail,
-  toPublicProductListItem
+  toPublicProductListItem,
 } from '../../../projection/storefront-product.projector';
 
 @Injectable()
@@ -33,12 +33,12 @@ implements StorefrontProductQueryRepository {
     private readonly entityManager: EntityManager,
     private readonly storageService: StorageService,
     private readonly resolvedStorefrontPriceService: ResolvedStorefrontPriceService,
-    private readonly storefrontMarketContextService: StorefrontMarketContextService
+    private readonly storefrontMarketContextService: StorefrontMarketContextService,
   ) {}
 
   async findPublicByShopSlugAndProductSlug(
     shopSlug: string,
-    productSlug: string
+    productSlug: string,
   ): Promise<PublicProductDetail | null> {
     const repository = this.entityManager.fork().getRepository(ProductEntity);
     const product = await repository.findOne(
@@ -62,7 +62,7 @@ implements StorefrontProductQueryRepository {
           'shippingProfiles',
           'shippingProfiles.destinations',
         ],
-      }
+      },
     );
 
     return product
@@ -97,7 +97,7 @@ implements StorefrontProductQueryRepository {
           'shippingProfiles',
           'shippingProfiles.destinations',
         ],
-      }
+      },
     );
     const productsById = new Map(products.map((product) => [product.id, product] as const));
     type LoadedRecentProduct = (typeof products)[number];
@@ -110,12 +110,12 @@ implements StorefrontProductQueryRepository {
       orderedProducts.map((product) => toPublicProductListItem(product, {
         resolvePricing: (inventory) => this.getResolvedPublicPricing(inventory),
         storageService: this.storageService,
-      }))
+      })),
     );
   }
 
   async listPublic(
-    input: ListPublicProductsInput
+    input: ListPublicProductsInput,
   ): Promise<PublicProductListResult> {
     const entityManager = this.entityManager.fork();
     const repository = entityManager.getRepository(ProductEntity);
@@ -164,7 +164,7 @@ implements StorefrontProductQueryRepository {
           'shippingProfiles',
           'shippingProfiles.destinations',
         ],
-      }
+      },
     );
 
     type PublicListLoadedProduct = (typeof products)[number];
@@ -184,21 +184,21 @@ implements StorefrontProductQueryRepository {
         pagedProducts.map((product) => toPublicProductListItem(product, {
           resolvePricing: (inventory) => this.getResolvedPublicPricing(inventory),
           storageService: this.storageService,
-        }))
+        })),
       ),
       meta: buildPaginationMeta(input.page, input.limit, total),
     };
   }
 
   async listPublicFacets(
-    input: ListPublicProductsInput
+    input: ListPublicProductsInput,
   ): Promise<PublicProductFacet[]> {
     const entityManager = this.entityManager.fork();
     const matchingProductIds = await this.findPublicProductIds(
       entityManager,
       input,
       undefined,
-      await this.getRequestSortPriceKey()
+      await this.getRequestSortPriceKey(),
     );
 
     if (matchingProductIds.length === 0) {
@@ -222,7 +222,7 @@ implements StorefrontProductQueryRepository {
         group by ca.key, ca.name, cao.value
         order by ca.name asc, cao.value asc
       `,
-      matchingProductIds
+      matchingProductIds,
     );
 
     const facets = new Map<string, PublicProductFacet>();
@@ -246,7 +246,7 @@ implements StorefrontProductQueryRepository {
   }
 
   async suggestPublic(
-    input: SuggestPublicProductsInput
+    input: SuggestPublicProductsInput,
   ): Promise<PublicProductSuggestion[]> {
     const normalizedSearch = input.search.trim().toLowerCase();
 
@@ -303,7 +303,7 @@ implements StorefrontProductQueryRepository {
         containsPattern,
         containsPattern,
         input.limit,
-      ]
+      ],
     );
 
     return rows.map((row) => ({
@@ -322,7 +322,7 @@ implements StorefrontProductQueryRepository {
   private async countPublicProductIds(
     entityManager: EntityManager,
     input: ListPublicProductsInput,
-    sortPriceKey?: string
+    sortPriceKey?: string,
   ): Promise<number> {
     const { whereClause, params } = this.buildPublicListWhereClause(input, sortPriceKey);
     const rows = await entityManager.getConnection().execute<{ total: string }[]>(
@@ -332,7 +332,7 @@ implements StorefrontProductQueryRepository {
         inner join product_images pi on pi.product_id = p.id
         ${whereClause}
       `,
-      params
+      params,
     );
 
     return Number(rows[0]?.total ?? '0');
@@ -345,7 +345,7 @@ implements StorefrontProductQueryRepository {
       limit: number;
       offset: number;
     },
-    sortPriceKey?: string
+    sortPriceKey?: string,
   ): Promise<string[]> {
     const { whereClause, params } = this.buildPublicListWhereClause(input, sortPriceKey);
     const { orderByClause, params: orderingParams } = this.buildPublicListOrdering(input, sortPriceKey);
@@ -362,7 +362,7 @@ implements StorefrontProductQueryRepository {
         ${orderByClause}
         ${paginationClause}
       `,
-      [...params, ...orderingParams]
+      [...params, ...orderingParams],
     );
 
     return rows.map((row) => row.id);
@@ -370,7 +370,7 @@ implements StorefrontProductQueryRepository {
 
   private buildPublicListWhereClause(
     input: ListPublicProductsInput,
-    sortPriceKey?: string
+    sortPriceKey?: string,
   ): { whereClause: string; params: unknown[] } {
     const clauses = ['where p.state = ?'];
     const params: unknown[] = [ProductState.ACTIVE];
@@ -453,7 +453,7 @@ implements StorefrontProductQueryRepository {
           `);
           params.push(
             attributeFilter.attributeId,
-            ...attributeFilter.selectedOptionIds
+            ...attributeFilter.selectedOptionIds,
           );
           return;
         }
@@ -462,13 +462,13 @@ implements StorefrontProductQueryRepository {
           const inferredTerms = (
             attributeFilter.selectedOptionKeys?.length
               ? attributeFilter.selectedOptionKeys.flatMap((optionKey) =>
-                getInferredFacetTerms(attributeFilter.attributeId as never, optionKey)
+                getInferredFacetTerms(attributeFilter.attributeId as never, optionKey),
               )
               : attributeFilter.selectedOptionValues.flatMap((optionValue) =>
                 getInferredFacetTerms(
                   attributeFilter.attributeId as never,
-                  toFacetKey(optionValue)
-                )
+                  toFacetKey(optionValue),
+                ),
               )
           ).filter(Boolean);
 
@@ -495,7 +495,7 @@ implements StorefrontProductQueryRepository {
             ...(attributeFilter.selectedOptionKeys?.length
               ? attributeFilter.selectedOptionKeys
               : attributeFilter.selectedOptionValues),
-            ...inferredTerms.flatMap((term) => [`%${this.escapeSearchPattern(term.toLowerCase())}%`, `%${this.escapeSearchPattern(term.toLowerCase())}%`])
+            ...inferredTerms.flatMap((term) => [`%${this.escapeSearchPattern(term.toLowerCase())}%`, `%${this.escapeSearchPattern(term.toLowerCase())}%`]),
           );
           return;
         }
@@ -517,7 +517,7 @@ implements StorefrontProductQueryRepository {
           attributeFilter.attributeId ?? attributeFilter.attributeName,
           ...(attributeFilter.selectedOptionKeys?.length
             ? attributeFilter.selectedOptionKeys
-            : attributeFilter.selectedOptionValues)
+            : attributeFilter.selectedOptionValues),
         );
       });
     }
@@ -561,7 +561,7 @@ implements StorefrontProductQueryRepository {
 
   private buildPublicListOrdering(
     input: ListPublicProductsInput,
-    sortPriceKey?: string
+    sortPriceKey?: string,
   ): { orderByClause: string; params: unknown[] } {
     const normalizedSearch = input.search?.trim().toLowerCase();
     const denormalizedPriceSort = this.getDenormalizedPriceSortOrdering(input.order, sortPriceKey);
@@ -603,7 +603,7 @@ implements StorefrontProductQueryRepository {
 
   private getDenormalizedPriceSortOrdering(
     order?: ListPublicProductsInput['order'],
-    sortPriceKey?: string
+    sortPriceKey?: string,
   ): { orderByClause: string; params: unknown[] } | null {
     if (order !== 'price_asc' && order !== 'price_desc') {
       return null;
@@ -628,7 +628,7 @@ implements StorefrontProductQueryRepository {
 
   private canUseDenormalizedPriceSort(
     order?: ListPublicProductsInput['order'],
-    sortPriceKey?: string
+    sortPriceKey?: string,
   ): boolean {
     return (order === 'price_asc' || order === 'price_desc')
       && sortPriceKey !== undefined;
@@ -642,13 +642,13 @@ implements StorefrontProductQueryRepository {
     products: ProductEntity[],
     order: 'price_asc' | 'price_desc',
     page: number,
-    limit: number
+    limit: number,
   ): Promise<ProductEntity[]> {
     const productsWithComparablePrice = await Promise.all(
       products.map(async product => ({
         product,
         comparablePrice: await this.getComparablePrice(product),
-      }))
+      })),
     );
 
     const sortedProducts = productsWithComparablePrice.sort((left, right) => {
@@ -682,7 +682,7 @@ implements StorefrontProductQueryRepository {
   }
 
   private async getResolvedPublicPricing(
-    inventory: ProductInventoryEntity
+    inventory: ProductInventoryEntity,
   ): Promise<{ amountMinor?: number; originalAmountMinor?: number; currency?: string }> {
     const pricing = await this.resolvedStorefrontPriceService.resolveForCurrentRequest(inventory);
 
@@ -696,7 +696,7 @@ implements StorefrontProductQueryRepository {
 
 function compareFacetNames(
   left: Pick<PublicProductFacet, 'attributeName'>,
-  right: Pick<PublicProductFacet, 'attributeName'>
+  right: Pick<PublicProductFacet, 'attributeName'>,
 ): number {
   const leftIndex = PUBLIC_PRODUCT_FACET_PRIORITY.indexOf(left.attributeName as never);
   const rightIndex = PUBLIC_PRODUCT_FACET_PRIORITY.indexOf(right.attributeName as never);

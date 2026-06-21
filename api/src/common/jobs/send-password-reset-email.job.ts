@@ -25,7 +25,7 @@ export class SendPasswordResetEmailJob {
     });
 
     this.logger.log(
-      `Processed password reset email job for user ${payload.userId} (${payload.email})`
+      `Processed password reset email job for user ${payload.userId} (${payload.email})`,
     );
   }
 }

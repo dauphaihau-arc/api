@@ -16,7 +16,7 @@ export class GuestCartSessionService {
 
   constructor(
     @Inject(AUTH_CONFIG) authConfig: AuthConfig,
-    @Inject(CART_CONFIG) cartConfig: CartConfig
+    @Inject(CART_CONFIG) cartConfig: CartConfig,
   ) {
     this.cookieOptions = {
       httpOnly: true,

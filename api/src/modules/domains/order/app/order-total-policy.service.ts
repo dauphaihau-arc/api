@@ -2,7 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import {
   CHECKOUT_CONFIG,
   getMaxOrderTotalMinor,
-  type CheckoutConfig
+  type CheckoutConfig,
 } from '~/config/checkout.config';
 import { OrderTotalLimitExceededError } from './errors/order-app.error';
 
@@ -10,7 +10,7 @@ import { OrderTotalLimitExceededError } from './errors/order-app.error';
 export class OrderTotalPolicyService {
   constructor(
     @Inject(CHECKOUT_CONFIG)
-    private readonly checkoutConfig: CheckoutConfig
+    private readonly checkoutConfig: CheckoutConfig,
   ) {}
 
   assertWithinLimit(input: {
@@ -19,7 +19,7 @@ export class OrderTotalPolicyService {
   }): void {
     const maxTotalMinor = getMaxOrderTotalMinor(
       this.checkoutConfig,
-      input.currency
+      input.currency,
     );
 
     if (maxTotalMinor == null) {

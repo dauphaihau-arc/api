@@ -1,5 +1,5 @@
 import {
-  ArrayType, Entity, Enum, Index, ManyToOne, Opt, Property, Unique
+  ArrayType, Entity, Enum, Index, ManyToOne, Opt, Property, Unique,
 } from '@mikro-orm/core';
 import { AbstractBaseEntity } from '~/common/database/abstract-base.entity';
 import { CurrentUserEntity } from '~/modules/domains/auth/infra/persistence/entities/current-user.entity';

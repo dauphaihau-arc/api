@@ -4,7 +4,7 @@ import type { AuthenticatedUser } from '../../domains/auth/app/auth.types';
 import type { StorefrontMarketContext } from '../../domains/product/app/services/storefront-market-context.service';
 import {
   REQUEST_CONTEXT_CLS_KEYS,
-  type RequestContext
+  type RequestContext,
 } from './request-context.bootstrap';
 
 export type RequestContextSnapshot = RequestContext & {

@@ -12,7 +12,7 @@ import {
   getOrderSubtotalMajor,
   getOrderSubtotalMinor,
   getOrderTotalMinor,
-  getOrderTotalMajor
+  getOrderTotalMajor,
 } from '../../order-money';
 import { getRequiredOrderNumber } from '../../order-number';
 import type { OrderListResult } from '../../order.types';
@@ -43,7 +43,7 @@ export class LookupGuestOrdersUseCase {
         `select id
          from orders
          where payment_details ->> 'checkout_session_id' = ?`,
-        [input.sessionId]
+        [input.sessionId],
       );
 
       const orderIds = rows.map((row) => row.id);
@@ -53,7 +53,7 @@ export class LookupGuestOrdersUseCase {
           {
             populate: ['shop'],
             orderBy: { createdAt: 'desc' },
-          }
+          },
         )
         : [];
     }
@@ -71,7 +71,7 @@ export class LookupGuestOrdersUseCase {
         {
           populate: ['shop'],
           orderBy: { createdAt: 'desc' },
-        }
+        },
       );
 
       orders = normalizedZip
@@ -85,7 +85,7 @@ export class LookupGuestOrdersUseCase {
     const orderItems = orders.length > 0
       ? await entityManager.getRepository(OrderItemEntity).find(
         { order: { $in: orders.map((order) => order.id) } },
-        { populate: ['product', 'product.shop', 'inventory'] }
+        { populate: ['product', 'product.shop', 'inventory'] },
       )
       : [];
     const itemsByOrderId = new Map<string, OrderItemEntity[]>();

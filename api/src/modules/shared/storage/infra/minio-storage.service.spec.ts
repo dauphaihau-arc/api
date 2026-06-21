@@ -6,7 +6,7 @@ import {
   HeadObjectCommand,
   PutBucketPolicyCommand,
   PutObjectCommand,
-  S3ServiceException
+  S3ServiceException,
 } from '@aws-sdk/client-s3';
 import { Readable } from 'node:stream';
 import { MinioStorageService } from './minio-storage.service';
@@ -62,7 +62,7 @@ describe('MinioStorageService', () => {
       });
 
     await expect(service.getObject('docs/report.txt')).resolves.toEqual(
-      Buffer.from('hello minio')
+      Buffer.from('hello minio'),
     );
     expect(send).toHaveBeenCalledWith(expect.any(GetObjectCommand));
   });
@@ -184,11 +184,11 @@ describe('MinioStorageService', () => {
       service.putObject({
         key: '../secrets.txt',
         body: 'nope',
-      })
+      }),
     ).rejects.toThrow('invalid path segment');
 
     expect(() => service.getPublicUrl('/absolute.txt')).toThrow(
-      'Storage key must be relative.'
+      'Storage key must be relative.',
     );
   });
 });

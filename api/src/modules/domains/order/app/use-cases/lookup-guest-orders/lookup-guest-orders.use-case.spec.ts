@@ -88,7 +88,7 @@ describe('LookupGuestOrdersUseCase', () => {
 
     expect(find).toHaveBeenCalledWith(
       { id: { $in: ['order-1'] }, customerEmail: 'guest@example.com' },
-      expect.any(Object)
+      expect.any(Object),
     );
     expect(result.orderShops).toHaveLength(1);
     expect(result.orderShops[0]?.products[0]?.title).toBe('Product 1');
@@ -168,11 +168,11 @@ describe('LookupGuestOrdersUseCase', () => {
 
     expect(execute).toHaveBeenCalledWith(
       expect.stringContaining('where payment_details ->> \'checkout_session_id\' = ?'),
-      ['cs_test_123']
+      ['cs_test_123'],
     );
     expect(find).toHaveBeenCalledWith(
       { id: { $in: ['order-1'] } },
-      expect.any(Object)
+      expect.any(Object),
     );
     expect(result.orderShops).toHaveLength(1);
   });

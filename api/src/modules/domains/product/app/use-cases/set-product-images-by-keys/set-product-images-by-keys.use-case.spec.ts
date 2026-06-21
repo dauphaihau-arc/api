@@ -89,7 +89,7 @@ describe('SetProductImagesByKeysUseCase', () => {
       productRepository,
       productRepository,
       shopRepository,
-      jobDispatcher
+      jobDispatcher,
     );
 
     const result = await useCase.execute(actor, product.id, {
@@ -116,7 +116,7 @@ describe('SetProductImagesByKeysUseCase', () => {
       { productId: product.id },
       {
         deduplicationKey: appJobDeduplicationKey.generateProductImageVariants(product.id),
-      }
+      },
     );
   });
 });

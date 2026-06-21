@@ -10,7 +10,7 @@ import {
   ShopNameAlreadyTakenError,
   ShopSlugAlreadyTakenError,
   ShopSlugReservedError,
-  UserAlreadyOwnsShopError
+  UserAlreadyOwnsShopError,
 } from '../../errors/shop-app.error';
 import { ShopRepository } from '../../ports/shop.repository';
 import type { ShopSummary } from '../../shop.types';
@@ -25,12 +25,12 @@ export class CreateShopUseCase {
   constructor(
     private readonly entityManager: EntityManager,
     private readonly shopRepository: ShopRepository,
-    private readonly authUserRepository: AuthUserRepository
+    private readonly authUserRepository: AuthUserRepository,
   ) {}
 
   async execute(
     actor: AuthenticatedUser,
-    input: CreateShopInput
+    input: CreateShopInput,
   ): Promise<Result<
     ShopSummary,
     ShopNameAlreadyTakenError | ShopSlugAlreadyTakenError | ShopSlugReservedError | UserAlreadyOwnsShopError
@@ -39,7 +39,7 @@ export class CreateShopUseCase {
     const slug = toSlug(trimmedShopName);
 
     const existingOwnedShop = await this.shopRepository.findByOwnerUserId(
-      actor.userId
+      actor.userId,
     );
 
     if (existingOwnedShop) {
@@ -47,7 +47,7 @@ export class CreateShopUseCase {
     }
 
     const existingName = await this.shopRepository.findByShopName(
-      trimmedShopName
+      trimmedShopName,
     );
 
     if (existingName) {
@@ -72,13 +72,13 @@ export class CreateShopUseCase {
           slug,
           currency: input.currency,
         },
-        entityManager
+        entityManager,
       );
 
       await this.authUserRepository.assignRole(
         actor.userId,
         RoleKey.create('seller'),
-        entityManager
+        entityManager,
       );
 
       return createdShop;

@@ -7,20 +7,20 @@ import { StorageService } from '~/modules/shared/storage/app/ports/storage.servi
 import {
   buildStorageObjectKey,
   resolveImageExtension,
-  resolveStorageEnvironmentSegment
+  resolveStorageEnvironmentSegment,
 } from '~/modules/shared/storage/app/storage-key-builder';
 import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
 import type { UserAccount } from '~/modules/domains/auth/domain/models/user-account';
 import {
   AuthUserRepository,
-  UserAccountVersionConflictError
+  UserAccountVersionConflictError,
 } from '~/modules/domains/auth/app/ports/auth-user.repository';
 import { UserStatus } from '~/modules/domains/auth/domain/enums/user-status.enum';
 import type { UserSummary } from '../../user.types';
 import {
   ActorNotAllowedToUpdateUsersError,
   UserNotFoundError,
-  UserVersionConflictError
+  UserVersionConflictError,
 } from '../../errors/user-app.error';
 
 export interface UploadedAvatarFile {
@@ -41,13 +41,13 @@ export class UpdateUserUseCase {
   constructor(
     private readonly authUserRepository: AuthUserRepository,
     private readonly storageService: StorageService,
-    private readonly eventEmitter: EventEmitter2
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async execute(
     actor: AuthenticatedUser,
     userId: string,
-    input: UpdateUserInput
+    input: UpdateUserInput,
   ): Promise<
     Result<
       UserSummary,
@@ -114,7 +114,7 @@ export class UpdateUserUseCase {
 
     this.eventEmitter.emit(
       'user.updated',
-      new UserUpdatedEvent(updatedUser.id)
+      new UserUpdatedEvent(updatedUser.id),
     );
 
     return ok(this.toUserSummary(updatedUser));

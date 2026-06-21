@@ -24,7 +24,7 @@ export class GenerateProductDescriptionUseCase {
   constructor(
     private readonly textGenerationService: TextGenerationService,
     @Inject(CategoryQueryRepository)
-    private readonly categoryQueryRepository: CategoryQueryRepository
+    private readonly categoryQueryRepository: CategoryQueryRepository,
   ) {}
 
   async execute(input: GenerateProductDescriptionInput): Promise<string> {
@@ -62,7 +62,7 @@ function sanitizeTags(tags?: string[]): string[] {
 
 function resolveAttributeFacts(
   category: Awaited<ReturnType<CategoryQueryRepository['findById']>>,
-  attributes?: GenerateProductDescriptionInput['attributes']
+  attributes?: GenerateProductDescriptionInput['attributes'],
 ): ProductDescriptionAttributeFact[] {
   if (!category || !attributes?.length) {
     return [];
@@ -70,7 +70,7 @@ function resolveAttributeFacts(
 
   return attributes.flatMap((attribute) => {
     const categoryAttribute = category.attributes.find(
-      (candidate) => candidate.id === attribute.categoryAttributeId
+      (candidate) => candidate.id === attribute.categoryAttributeId,
     );
 
     if (!categoryAttribute) {
@@ -79,7 +79,7 @@ function resolveAttributeFacts(
 
     const selectedValue = attribute.selectedText?.trim()
       || categoryAttribute.options.find(
-        (option) => option.id === attribute.selectedOptionId
+        (option) => option.id === attribute.selectedOptionId,
       )?.value;
 
     if (!selectedValue) {

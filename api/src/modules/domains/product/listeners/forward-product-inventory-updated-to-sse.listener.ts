@@ -5,7 +5,7 @@ import { SsePublisher } from '~/modules/shared/sse/infra/sse.publisher';
 import {
   buildProductInventoryChannelKey,
   PRODUCT_INVENTORY_UPDATED_SSE_EVENT,
-  type ProductInventoryUpdatedSseEventPayload
+  type ProductInventoryUpdatedSseEventPayload,
 } from '../app/events/product-inventory-sse.event';
 
 @Injectable()

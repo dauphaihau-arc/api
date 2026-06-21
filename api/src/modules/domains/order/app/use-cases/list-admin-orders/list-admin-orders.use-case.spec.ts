@@ -49,7 +49,7 @@ describe('ListAdminOrdersUseCase', () => {
         customerEmail: 'buyer@example.com',
         status: OrderStatus.PAID,
         shippingStatus: OrderShippingStatus.PRE_TRANSIT,
-      })
+      }),
     );
   });
 });

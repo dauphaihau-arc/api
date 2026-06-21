@@ -38,7 +38,7 @@ describe('GenerateProductDescriptionUseCase', () => {
 
     const useCase = new GenerateProductDescriptionUseCase(
       textGenerationService,
-      categoryQueryRepository
+      categoryQueryRepository,
     );
 
     await expect(useCase.execute({

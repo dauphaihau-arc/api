@@ -1,5 +1,5 @@
 import type {
-  NotificationListRepositoryResult
+  NotificationListRepositoryResult,
 } from '../notification.types';
 
 export abstract class NotificationQueryRepository {

@@ -6,16 +6,16 @@ import type { NotificationSummary } from '../../notification.types';
 @Injectable()
 export class MarkMyNotificationAsReadUseCase {
   constructor(
-    private readonly notificationRepository: NotificationRepository
+    private readonly notificationRepository: NotificationRepository,
   ) {}
 
   async execute(
     actor: AuthenticatedUser,
-    notificationId: string
+    notificationId: string,
   ): Promise<NotificationSummary> {
     const notification = await this.notificationRepository.markOwnedByIdAsRead(
       actor.userId,
-      notificationId
+      notificationId,
     );
 
     if (!notification) {

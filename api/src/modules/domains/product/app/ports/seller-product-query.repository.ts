@@ -1,7 +1,7 @@
 import type {
   ListShopProductsInput,
   ProductDraftSummary,
-  ShopProductListResult
+  ShopProductListResult,
 } from '../product.types';
 
 export abstract class SellerProductQueryRepository {

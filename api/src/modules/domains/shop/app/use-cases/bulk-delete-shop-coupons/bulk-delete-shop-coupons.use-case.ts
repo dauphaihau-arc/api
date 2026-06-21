@@ -19,13 +19,13 @@ export class BulkDeleteShopCouponsUseCase {
   async execute(
     actor: AuthenticatedUser,
     shopId: string,
-    couponIds: string[]
+    couponIds: string[],
   ): Promise<BulkDeleteShopCouponsResult> {
     const entityManager = this.entityManager.fork();
     const repository = entityManager.getRepository(CouponEntity);
     const coupons = await repository.find(
       { id: { $in: couponIds } },
-      { populate: ['shop', 'shop.ownerUser'] }
+      { populate: ['shop', 'shop.ownerUser'] },
     );
     const couponsById = new Map(coupons.map(coupon => [coupon.id, coupon]));
 

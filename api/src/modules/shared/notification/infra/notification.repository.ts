@@ -5,14 +5,14 @@ import { NotificationRepository } from '../app/ports/notification.repository';
 import type {
   CreateNotificationInput,
   NotificationListRepositoryResult,
-  NotificationSummary
+  NotificationSummary,
 } from '../app/notification.types';
 
 @Injectable()
 export class DelegatingNotificationRepository implements NotificationRepository {
   constructor(
     private readonly commandRepository: NotificationCommandRepository,
-    private readonly queryRepository: NotificationQueryRepository
+    private readonly queryRepository: NotificationQueryRepository,
   ) {}
 
   create(input: CreateNotificationInput): Promise<NotificationSummary> {
@@ -22,7 +22,7 @@ export class DelegatingNotificationRepository implements NotificationRepository 
   findAllOwnedByUserId(
     userId: string,
     page: number,
-    limit: number
+    limit: number,
   ): Promise<NotificationListRepositoryResult> {
     return this.queryRepository.findAllOwnedByUserId(userId, page, limit);
   }
@@ -33,7 +33,7 @@ export class DelegatingNotificationRepository implements NotificationRepository 
 
   markOwnedByIdAsRead(
     userId: string,
-    notificationId: string
+    notificationId: string,
   ): Promise<NotificationSummary | null> {
     return this.commandRepository.markOwnedByIdAsRead(userId, notificationId);
   }

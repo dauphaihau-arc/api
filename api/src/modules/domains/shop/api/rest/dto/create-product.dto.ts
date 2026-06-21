@@ -1,6 +1,6 @@
 import {
   Expose,
-  Transform
+  Transform,
 } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
@@ -9,7 +9,7 @@ import {
   IsOptional,
   IsString,
   IsUUID,
-  MinLength
+  MinLength,
 } from 'class-validator';
 import { ProductVariantType } from '~/modules/domains/product/domain/enums/product-variant-type.enum';
 import { ProductWhoMade } from '~/modules/domains/product/domain/enums/product-who-made.enum';

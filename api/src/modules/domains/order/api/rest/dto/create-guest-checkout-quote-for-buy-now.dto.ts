@@ -6,7 +6,7 @@ import {
   IsString,
   IsUUID,
   MaxLength,
-  ValidateNested
+  ValidateNested,
 } from 'class-validator';
 import { ShippingAddressDto } from './shipping-address.dto';
 

@@ -3,7 +3,7 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsOptional,
   IsString,
-  MaxLength
+  MaxLength,
 } from 'class-validator';
 
 export class UpdateAdminOrderSupportNoteDto {

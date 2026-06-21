@@ -9,7 +9,7 @@ export class GetCategoryAttributesUseCase {
   constructor(private readonly categoryRepository: CategoryRepository) {}
 
   async execute(
-    categoryId: string
+    categoryId: string,
   ): Promise<Result<CategoryAttributeSummary[], CategoryNotFoundError>> {
     const category = await this.categoryRepository.findById(categoryId);
 

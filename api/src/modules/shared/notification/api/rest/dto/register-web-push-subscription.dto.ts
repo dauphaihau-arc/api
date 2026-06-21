@@ -3,7 +3,7 @@ import {
   Allow,
   IsNotEmpty,
   IsString,
-  ValidateNested
+  ValidateNested,
 } from 'class-validator';
 
 class WebPushSubscriptionKeysDto {

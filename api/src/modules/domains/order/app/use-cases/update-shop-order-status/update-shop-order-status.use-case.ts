@@ -14,7 +14,7 @@ import {
   OrderNotFoundError,
   SellerOrderCancelNotAllowedError,
   SellerOrderStatusUpdateNotAllowedError,
-  SellerShippedOrderCancelNotAllowedError
+  SellerShippedOrderCancelNotAllowedError,
 } from '../../errors/order-app.error';
 import { ORDER_UPDATED_SSE_EVENT } from '../../events/order-sse.event';
 import { buildScopedOrderIdentifierWhere } from '../../order-identifier';
@@ -33,20 +33,20 @@ export class UpdateShopOrderStatusUseCase {
     private readonly jobDispatcher: JobDispatcher,
     private readonly notifyUserUseCase: NotifyUserUseCase,
     private readonly eventEmitter: EventEmitter2,
-    private readonly orderEventsService: OrderEventsService
+    private readonly orderEventsService: OrderEventsService,
   ) {}
 
   async execute(
     shopId: string,
     orderId: string,
-    input: UpdateShopOrderStatusDto
+    input: UpdateShopOrderStatusDto,
   ): Promise<ShopOrderDetail> {
     const entityManager = this.entityManager.fork();
 
     const result = await entityManager.transactional(async (transactionalEntityManager) => {
       const order = await transactionalEntityManager.getRepository(OrderEntity).findOne(
         buildScopedOrderIdentifierWhere(orderId, { shop: shopId }),
-        { populate: ['shop', 'user'] }
+        { populate: ['shop', 'user'] },
       );
 
       if (!order) {
@@ -113,7 +113,7 @@ export class UpdateShopOrderStatusUseCase {
       catch (error) {
         this.logger.error(
           `Failed to schedule refund for canceled shop order ${result.detail.id}`,
-          error instanceof Error ? error.stack : undefined
+          error instanceof Error ? error.stack : undefined,
         );
       }
     }
@@ -146,7 +146,7 @@ export class UpdateShopOrderStatusUseCase {
 
   private async buildDetail(
     entityManager: EntityManager,
-    order: OrderEntity
+    order: OrderEntity,
   ): Promise<ShopOrderDetail> {
     return buildShopOrderDetail(entityManager, order);
   }

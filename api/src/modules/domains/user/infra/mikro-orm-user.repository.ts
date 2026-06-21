@@ -6,7 +6,7 @@ import { UserRepository } from '../app/ports/user.repository';
 import type {
   ListUsersQuery,
   ListUsersRepositoryResult,
-  UserSummary
+  UserSummary,
 } from '../app/user.types';
 
 const USER_SORT_FIELD_MAP = {
@@ -20,7 +20,7 @@ const USER_SORT_FIELD_MAP = {
 export class MikroOrmUserRepository implements UserRepository {
   constructor(
     private readonly entityManager: EntityManager,
-    private readonly storageService: StorageService
+    private readonly storageService: StorageService,
   ) {}
 
   async findAll(query: ListUsersQuery): Promise<ListUsersRepositoryResult> {

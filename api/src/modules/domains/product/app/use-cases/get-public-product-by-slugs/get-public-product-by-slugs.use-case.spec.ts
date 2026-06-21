@@ -41,7 +41,7 @@ describe('GetPublicProductBySlugsUseCase', () => {
 
     expect(repository.findPublicByShopSlugAndProductSlug).toHaveBeenCalledWith(
       product.shop.slug,
-      product.slug
+      product.slug,
     );
     expect(result).toEqual(product);
   });

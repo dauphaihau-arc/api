@@ -8,7 +8,7 @@ import { OrderStatus } from '../domain/enums/order-status.enum';
 import { OrderEntity } from '../infra/persistence/entities/order.entity';
 import {
   OutboxEventEntity,
-  OutboxEventStatus
+  OutboxEventStatus,
 } from '../infra/persistence/entities/outbox-event.entity';
 import { OrderEventsService } from './order-events.service';
 
@@ -54,12 +54,12 @@ export class OrderCheckoutOutboxService {
   constructor(
     private readonly entityManager: EntityManager,
     private readonly paymentGateway: PaymentGateway,
-    private readonly orderEventsService: OrderEventsService
+    private readonly orderEventsService: OrderEventsService,
   ) {}
 
   async createCheckoutSessionRequestedEvent(
     entityManager: EntityManager,
-    payload: CheckoutSessionRequestedPayload
+    payload: CheckoutSessionRequestedPayload,
   ): Promise<OutboxEventEntity> {
     const outboxEvent = entityManager.create(OutboxEventEntity, {
       eventName: CHECKOUT_OUTBOX_EVENT_NAME,
@@ -78,7 +78,7 @@ export class OrderCheckoutOutboxService {
   }
 
   async processEventById(
-    eventId: string
+    eventId: string,
   ): Promise<{ id: string; url: string } | undefined> {
     const claimed = await this.claimEvent(eventId);
 
@@ -104,11 +104,11 @@ export class OrderCheckoutOutboxService {
         const event = await entityManager.findOneOrFail(
           OutboxEventEntity,
           { id: claimed.eventId },
-          { lockMode: LockMode.PESSIMISTIC_WRITE }
+          { lockMode: LockMode.PESSIMISTIC_WRITE },
         );
         const orders = await entityManager.find(
           OrderEntity,
-          { id: { $in: claimed.payload.orderIds } }
+          { id: { $in: claimed.payload.orderIds } },
         );
 
         for (const order of orders) {
@@ -152,7 +152,7 @@ export class OrderCheckoutOutboxService {
       await this.markProcessingFailure(
         claimed.eventId,
         claimed.attemptCount,
-        error
+        error,
       );
 
       return undefined;
@@ -171,7 +171,7 @@ export class OrderCheckoutOutboxService {
       {
         orderBy: { createdAt: 'asc' },
         limit,
-      }
+      },
     );
 
     let processedCount = 0;
@@ -195,7 +195,7 @@ export class OrderCheckoutOutboxService {
       const event = await entityManager.findOne(
         OutboxEventEntity,
         { id: eventId },
-        { lockMode: LockMode.PESSIMISTIC_WRITE }
+        { lockMode: LockMode.PESSIMISTIC_WRITE },
       );
 
       if (!event) {
@@ -230,7 +230,7 @@ export class OrderCheckoutOutboxService {
   private async markProcessingFailure(
     eventId: string,
     attemptCount: number,
-    error: unknown
+    error: unknown,
   ): Promise<void> {
     const message = error instanceof Error
       ? error.message
@@ -239,14 +239,14 @@ export class OrderCheckoutOutboxService {
 
     this.logger.error(
       `Failed processing outbox event ${eventId}: ${message}`,
-      stack
+      stack,
     );
 
     await this.entityManager.fork().transactional(async (entityManager) => {
       const event = await entityManager.findOneOrFail(
         OutboxEventEntity,
         { id: eventId },
-        { lockMode: LockMode.PESSIMISTIC_WRITE }
+        { lockMode: LockMode.PESSIMISTIC_WRITE },
       );
 
       event.lastError = message;
@@ -262,7 +262,7 @@ export class OrderCheckoutOutboxService {
         Date.now() +
           RETRY_DELAYS_MS[
             Math.min(attemptCount - 1, RETRY_DELAYS_MS.length - 1)
-          ]
+          ],
       );
 
       await entityManager.flush();

@@ -2,7 +2,7 @@ import ms, { type StringValue } from 'ms';
 
 export function parseDurationToMilliseconds(
   value: string | undefined,
-  fallbackInMilliseconds: number
+  fallbackInMilliseconds: number,
 ): number {
   if (!value) {
     return fallbackInMilliseconds;
@@ -23,9 +23,9 @@ export function parseDurationToMilliseconds(
 
 export function parseDurationToSeconds(
   value: string | undefined,
-  fallbackInSeconds: number
+  fallbackInSeconds: number,
 ): number {
   return Math.floor(
-    parseDurationToMilliseconds(value, fallbackInSeconds * 1000) / 1000
+    parseDurationToMilliseconds(value, fallbackInSeconds * 1000) / 1000,
   );
 }

@@ -1,7 +1,7 @@
 import type { HttpException } from '@nestjs/common';
 import {
   BadRequestException,
-  NotFoundException
+  NotFoundException,
 } from '@nestjs/common';
 import {
   AddressNotFoundError,
@@ -31,7 +31,7 @@ import {
   SellerShippedOrderCancelNotAllowedError,
   ShipmentUpdateNotAllowedError,
   ShipmentUpdatePayloadRequiredError,
-  TemporaryCartNotFoundError
+  TemporaryCartNotFoundError,
 } from '../../app/errors/order-app.error';
 
 export function isOrderAppError(error: unknown): error is OrderAppError {
@@ -39,7 +39,7 @@ export function isOrderAppError(error: unknown): error is OrderAppError {
 }
 
 export function mapOrderAppErrorToHttpException(
-  error: OrderAppError
+  error: OrderAppError,
 ): HttpException {
   if (
     error instanceof CartNotFoundError

@@ -5,7 +5,7 @@ import { UserAddressCommandRepository } from '../app/ports/user-address-command.
 import type {
   CreateMyAddressInput,
   UpdateMyAddressInput,
-  UserAddressSummary
+  UserAddressSummary,
 } from '../app/user-address.types';
 import { UserAddressEntity } from './persistence/entities/user-address.entity';
 import { toUserAddressSummary } from './user-address-summary.mapper';
@@ -16,7 +16,7 @@ export class MikroOrmUserAddressCommandRepository implements UserAddressCommandR
 
   async clearPrimaryForUser(
     userId: string,
-    excludeAddressId?: string
+    excludeAddressId?: string,
   ): Promise<void> {
     const where: FilterQuery<UserAddressEntity> = {
       user: userId,
@@ -30,7 +30,7 @@ export class MikroOrmUserAddressCommandRepository implements UserAddressCommandR
     await this.entityManager.fork().nativeUpdate(
       UserAddressEntity,
       where,
-      { isPrimary: false }
+      { isPrimary: false },
     );
   }
 
@@ -58,7 +58,7 @@ export class MikroOrmUserAddressCommandRepository implements UserAddressCommandR
   async updateOwnedById(
     userId: string,
     addressId: string,
-    input: UpdateMyAddressInput
+    input: UpdateMyAddressInput,
   ): Promise<UserAddressSummary | null> {
     const entityManager = this.entityManager.fork();
     const repository = entityManager.getRepository(UserAddressEntity);
@@ -88,7 +88,7 @@ export class MikroOrmUserAddressCommandRepository implements UserAddressCommandR
 
   async deleteOwnedById(
     userId: string,
-    addressId: string
+    addressId: string,
   ): Promise<boolean> {
     const entityManager = this.entityManager.fork();
     const repository = entityManager.getRepository(UserAddressEntity);

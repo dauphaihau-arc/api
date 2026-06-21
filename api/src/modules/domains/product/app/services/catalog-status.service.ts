@@ -5,7 +5,7 @@ import { ProductState } from '../../domain/enums/product-state.enum';
 import { ProductEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product.entity';
 import {
   CatalogProductDocumentRepository,
-  type CatalogProductDocumentStats
+  type CatalogProductDocumentStats,
 } from '../ports/catalog-product-document.repository';
 
 export interface CatalogStatus {
@@ -36,7 +36,7 @@ export class CatalogStatusService {
     private readonly entityManager: EntityManager,
     @Inject(CATALOG_CONFIG)
     private readonly catalogConfig: CatalogConfig,
-    private readonly catalogProductDocumentRepository: CatalogProductDocumentRepository
+    private readonly catalogProductDocumentRepository: CatalogProductDocumentRepository,
   ) {}
 
   async getStatus(): Promise<CatalogStatus> {
@@ -78,7 +78,7 @@ export class CatalogStatusService {
 
 function mapProjection(
   activeProducts: number,
-  stats: CatalogProductDocumentStats | null
+  stats: CatalogProductDocumentStats | null,
 ): CatalogStatus['projection'] {
   if (!stats) {
     return {};

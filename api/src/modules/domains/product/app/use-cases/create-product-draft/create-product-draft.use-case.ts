@@ -10,7 +10,7 @@ import {
   ActorCannotCreateProductDraftError,
   CategoryNotFoundError,
   InvalidProductVariantConfigurationError,
-  ProductSlugAlreadyExistsError
+  ProductSlugAlreadyExistsError,
 } from '../../errors/product-app.error';
 import { ProductCommandRepository } from '../../ports/product-command.repository';
 import { SellerProductQueryRepository } from '../../ports/seller-product-query.repository';
@@ -41,12 +41,12 @@ export class CreateProductDraftUseCase {
     private readonly shopRepository: ShopRepository,
     private readonly categoryRepository: CategoryRepository,
     private readonly sellerProductQueryRepository: SellerProductQueryRepository,
-    private readonly productCommandRepository: ProductCommandRepository
+    private readonly productCommandRepository: ProductCommandRepository,
   ) {}
 
   async execute(
     actor: AuthenticatedUser,
-    input: CreateProductDraftInput
+    input: CreateProductDraftInput,
   ): Promise<Result<ProductDraftSummary, CreateProductDraftError>> {
     const canManageAnyShop = actor.roles.includes('admin');
     const shop = canManageAnyShop
@@ -74,7 +74,7 @@ export class CreateProductDraftUseCase {
     const slug = toSlug(input.title);
     const existingProduct = await this.sellerProductQueryRepository.findByShopIdAndSlug(
       input.shopId,
-      slug
+      slug,
     );
 
     if (existingProduct) {
@@ -99,7 +99,7 @@ export class CreateProductDraftUseCase {
   }
 
   private validateVariantConfiguration(
-    input: CreateProductDraftInput
+    input: CreateProductDraftInput,
   ): InvalidProductVariantConfigurationError | null {
     const variantType = input.variantType ?? ProductVariantType.NONE;
     const hasGroupName = Boolean(input.variantGroupName?.trim());
@@ -108,7 +108,7 @@ export class CreateProductDraftUseCase {
     if (variantType === ProductVariantType.NONE) {
       if (hasGroupName || hasSubGroupName) {
         return new InvalidProductVariantConfigurationError(
-          'Products without variants cannot define variant group names'
+          'Products without variants cannot define variant group names',
         );
       }
 
@@ -117,19 +117,19 @@ export class CreateProductDraftUseCase {
 
     if (!hasGroupName) {
       return new InvalidProductVariantConfigurationError(
-        'Variant group name is required when variants are enabled'
+        'Variant group name is required when variants are enabled',
       );
     }
 
     if (variantType === ProductVariantType.SINGLE && hasSubGroupName) {
       return new InvalidProductVariantConfigurationError(
-        'Single-variant products cannot define a variant sub-group name'
+        'Single-variant products cannot define a variant sub-group name',
       );
     }
 
     if (variantType === ProductVariantType.COMBINE && !hasSubGroupName) {
       return new InvalidProductVariantConfigurationError(
-        'Combined variants require a variant sub-group name'
+        'Combined variants require a variant sub-group name',
       );
     }
 

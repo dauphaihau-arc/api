@@ -13,36 +13,36 @@ export interface CatalogConfig {
 export const CATALOG_CONFIG = Symbol('CATALOG_CONFIG');
 
 export function buildCatalogConfig(
-  configService: Pick<ConfigService, 'get'>
+  configService: Pick<ConfigService, 'get'>,
 ): CatalogConfig {
   return {
     driver: configService.get<'postgres' | 'mongodb'>(
       'CATALOG_STORE_DRIVER',
-      'postgres'
+      'postgres',
     ),
     searchDriver: configService.get<'atlas'>(
       'CATALOG_SEARCH_DRIVER',
-      'atlas'
+      'atlas',
     ),
     mongodbUri: configService.get<string>(
       'CATALOG_MONGODB_URI',
-      'mongodb://127.0.0.1:27017'
+      'mongodb://127.0.0.1:27017',
     ),
     mongodbDbName: configService.get<string>(
       'CATALOG_MONGODB_DB_NAME',
-      'arc_catalog'
+      'arc_catalog',
     ),
     mongodbProductsCollection: configService.get<string>(
       'CATALOG_MONGODB_PRODUCTS_COLLECTION',
-      'catalog_products'
+      'catalog_products',
     ),
     mongodbSlugsCollection: configService.get<string>(
       'CATALOG_MONGODB_SLUGS_COLLECTION',
-      'catalog_product_slugs'
+      'catalog_product_slugs',
     ),
     mongodbSearchCollection: configService.get<string>(
       'CATALOG_MONGODB_SEARCH_COLLECTION',
-      'catalog_product_search'
+      'catalog_product_search',
     ),
   };
 }

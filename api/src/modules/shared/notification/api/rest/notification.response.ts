@@ -1,6 +1,6 @@
 import type {
   NotificationListResult,
-  NotificationSummary
+  NotificationSummary,
 } from '../../app/notification.types';
 
 function toSnakeCaseKey(value: string): string {
@@ -24,7 +24,7 @@ function toSnakeCaseValue(value: unknown): unknown {
     Object.entries(value).map(([key, nestedValue]) => [
       toSnakeCaseKey(key),
       toSnakeCaseValue(nestedValue),
-    ])
+    ]),
   );
 }
 

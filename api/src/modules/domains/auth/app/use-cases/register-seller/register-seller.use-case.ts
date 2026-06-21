@@ -4,15 +4,15 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { UserCreatedEvent } from '~/common/events/user-created.event';
 import {
   err,
-  Result
+  Result,
 } from '~/common/application/result';
 import type {
-  AuthResponse
+  AuthResponse,
 } from '../../auth.types';
 import {
   EmailAlreadyRegisteredError,
   InactiveUserError,
-  UserNotFoundError
+  UserNotFoundError,
 } from '../../errors/auth-app.error';
 import { AuthUserRepository } from '../../ports/auth-user.repository';
 import { PasswordHasher } from '../../ports/password-hasher';
@@ -24,7 +24,7 @@ import { ShopRepository } from '~/modules/domains/shop/app/ports/shop.repository
 import {
   ShopNameAlreadyTakenError,
   ShopSlugAlreadyTakenError,
-  ShopSlugReservedError
+  ShopSlugReservedError,
 } from '~/modules/domains/shop/app/errors/shop-app.error';
 import { UserStatus } from '../../../domain/enums/user-status.enum';
 import { Email } from '../../../domain/value-objects/email';
@@ -61,7 +61,7 @@ export class RegisterSellerUseCase {
     private readonly shopRepository: ShopRepository,
     private readonly passwordHasher: PasswordHasher,
     private readonly issueSessionUseCase: IssueSessionUseCase,
-    private readonly eventEmitter: EventEmitter2
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async execute(input: RegisterSellerInput): Promise<
@@ -85,7 +85,7 @@ export class RegisterSellerUseCase {
     }
 
     const existingName = await this.shopRepository.findByShopName(
-      trimmedShopName
+      trimmedShopName,
     );
 
     if (existingName) {
@@ -103,7 +103,7 @@ export class RegisterSellerUseCase {
     }
 
     const passwordHash = PasswordHash.fromPersisted(
-      await this.passwordHasher.hash(input.password)
+      await this.passwordHasher.hash(input.password),
     );
     const userPreferences = normalizeUserPreferences({
       currency: input.currency,
@@ -120,7 +120,7 @@ export class RegisterSellerUseCase {
           passwordHash,
           passwordUpdatedAt: new Date(),
         },
-        entityManager
+        entityManager,
       );
 
       await this.userPreferenceRepository.create(
@@ -128,7 +128,7 @@ export class RegisterSellerUseCase {
           userId: createdUser.id,
           ...userPreferences,
         },
-        entityManager
+        entityManager,
       );
 
       await this.shopRepository.create(
@@ -138,18 +138,18 @@ export class RegisterSellerUseCase {
           slug,
           currency: input.currency,
         },
-        entityManager
+        entityManager,
       );
 
       await this.authUserRepository.assignRole(
         createdUser.id,
         customerRole.key,
-        entityManager
+        entityManager,
       );
       await this.authUserRepository.assignRole(
         createdUser.id,
         sellerRole.key,
-        entityManager
+        entityManager,
       );
 
       return createdUser;
@@ -159,7 +159,7 @@ export class RegisterSellerUseCase {
 
     this.eventEmitter.emit(
       'user.created',
-      new UserCreatedEvent(user.id, user.email.toString(), user.displayName)
+      new UserCreatedEvent(user.id, user.email.toString(), user.displayName),
     );
 
     return authResponse;

@@ -2,7 +2,7 @@ import type { ProductDraftSummary } from '~/modules/domains/product/app/product.
 import type { ShopProductDetailResponse } from './shop-product-detail.response';
 
 export const toShopProductDetailResponse = (
-  product: ProductDraftSummary
+  product: ProductDraftSummary,
 ): ShopProductDetailResponse => ({
   id: product.id,
   public_id: product.publicId,
