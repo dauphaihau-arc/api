@@ -1,6 +1,7 @@
 import type { ProductState } from '../../../../domain/enums/product-state.enum';
 import type { ProductVariantType } from '../../../../domain/enums/product-variant-type.enum';
 import type { ProductEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product.entity';
+import type { StorefrontIndexedPricingSummaryMatrix } from '../../../../app/storefront-indexed-pricing';
 import { inferFacetSignalsFromText } from '../../../inferred-facets';
 import { getInventoryPricingSnapshot } from '../../../persistence/mikro-orm/reads/variant-price-read';
 
@@ -47,6 +48,7 @@ export interface CatalogSearchDocument {
     originalMinAmountMinor?: number;
     originalMaxAmountMinor?: number;
   };
+  pricingByMarket?: StorefrontIndexedPricingSummaryMatrix;
   inventory: {
     inStock: boolean;
     totalStock: number;
@@ -69,6 +71,7 @@ export interface CatalogSearchDocument {
 export function toCatalogSearchDocument(
   product: ProductEntity,
   getPublicUrl: (storageKey: string) => string | undefined,
+  pricingByMarket?: StorefrontIndexedPricingSummaryMatrix,
 ): CatalogSearchDocument {
   const sortedImages = product.images
     .getItems()
@@ -174,6 +177,7 @@ export function toCatalogSearchDocument(
         : {}),
       currency: pricingSnapshots[0]?.currency,
     },
+    pricingByMarket,
     inventory: {
       inStock: sortedInventory.some((row) => row.stock > 0),
       totalStock,

@@ -1,10 +1,12 @@
 import { ProductState } from '../../domain/enums/product-state.enum';
 import type { CatalogProductProjectorSourceRepository } from '../ports/catalog-product-projector-source.repository';
 import type { CatalogProductDocumentRepository } from '../ports/catalog-product-document.repository';
+import type { CatalogProductPriceDocumentRepository } from '../ports/catalog-product-price-document.repository';
 import type { CatalogProductSlugRepository } from '../ports/catalog-product-slug.repository';
 import type { CatalogSearchDocumentRepository } from '../ports/catalog-search-document.repository';
 import type { StorageService } from '~/modules/shared/storage/app/ports/storage.service';
 import { CatalogProductProjectorService } from './catalog-product-projector.service';
+import type { StorefrontIndexedPriceProjectionService } from './storefront-indexed-price-projection.service';
 
 describe('CatalogProductProjectorService', () => {
   function buildService(driver: 'mongodb' | 'postgresql' = 'mongodb') {
@@ -18,6 +20,10 @@ describe('CatalogProductProjectorService', () => {
       upsert: jest.fn(),
       deleteByProductId: jest.fn(),
     };
+    const productPriceDocumentRepository: Pick<jest.Mocked<CatalogProductPriceDocumentRepository>, 'upsert' | 'deleteByProductId'> = {
+      upsert: jest.fn(),
+      deleteByProductId: jest.fn(),
+    };
     const productSlugRepository: Pick<jest.Mocked<CatalogProductSlugRepository>, 'upsert' | 'deleteByProductId'> = {
       upsert: jest.fn(),
       deleteByProductId: jest.fn(),
@@ -25,6 +31,12 @@ describe('CatalogProductProjectorService', () => {
     const searchDocumentRepository: Pick<jest.Mocked<CatalogSearchDocumentRepository>, 'upsert' | 'deleteByProductId'> = {
       upsert: jest.fn(),
       deleteByProductId: jest.fn(),
+    };
+    const storefrontIndexedPriceProjectionService: Pick<jest.Mocked<StorefrontIndexedPriceProjectionService>, 'projectProduct'> = {
+      projectProduct: jest.fn().mockResolvedValue({
+        summaryByMarket: undefined,
+        inventoryPricingById: new Map(),
+      }),
     };
 
     return {
@@ -36,13 +48,17 @@ describe('CatalogProductProjectorService', () => {
           searchDriver: 'atlas',
         } as never,
         productDocumentRepository as never,
+        productPriceDocumentRepository as never,
         productSlugRepository as never,
         searchDocumentRepository as never,
+        storefrontIndexedPriceProjectionService as never,
       ),
       sourceRepository,
       productDocumentRepository,
+      productPriceDocumentRepository,
       productSlugRepository,
       searchDocumentRepository,
+      storefrontIndexedPriceProjectionService,
     };
   }
 
@@ -56,20 +72,21 @@ describe('CatalogProductProjectorService', () => {
 
   it('removes projected documents when the product is missing or inactive', async () => {
     const {
-      service, sourceRepository, productDocumentRepository, productSlugRepository, searchDocumentRepository, 
+      service, sourceRepository, productDocumentRepository, productPriceDocumentRepository, productSlugRepository, searchDocumentRepository, 
     } = buildService();
     sourceRepository.findById.mockResolvedValue({ state: ProductState.INACTIVE } as never);
 
     await service.projectProduct('product-1');
 
     expect(productDocumentRepository.deleteByProductId).toHaveBeenCalledWith('product-1');
+    expect(productPriceDocumentRepository.deleteByProductId).toHaveBeenCalledWith('product-1');
     expect(productSlugRepository.deleteByProductId).toHaveBeenCalledWith('product-1');
     expect(searchDocumentRepository.deleteByProductId).toHaveBeenCalledWith('product-1');
   });
 
   it('projects an active product into all catalog stores', async () => {
     const {
-      service, sourceRepository, productDocumentRepository, productSlugRepository, searchDocumentRepository, 
+      service, sourceRepository, productDocumentRepository, productPriceDocumentRepository, productSlugRepository, searchDocumentRepository, 
     } = buildService();
     sourceRepository.findById.mockResolvedValue({
       id: 'product-1',
@@ -126,6 +143,7 @@ describe('CatalogProductProjectorService', () => {
     await service.projectProduct('product-1');
 
     expect(productDocumentRepository.upsert).toHaveBeenCalledTimes(1);
+    expect(productPriceDocumentRepository.upsert).toHaveBeenCalledTimes(1);
     expect(productSlugRepository.upsert).toHaveBeenCalledTimes(1);
     expect(searchDocumentRepository.upsert).toHaveBeenCalledTimes(1);
   });

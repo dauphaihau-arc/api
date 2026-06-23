@@ -3,6 +3,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { CATALOG_CONFIG, type CatalogConfig } from '~/config/catalog.config';
 import type Redis from 'ioredis';
 import { CatalogProductDocumentRepository } from '~/modules/domains/product/app/ports/catalog-product-document.repository';
+import { CatalogProductPriceDocumentRepository } from '~/modules/domains/product/app/ports/catalog-product-price-document.repository';
 import { CatalogSearchDocumentRepository } from '~/modules/domains/product/app/ports/catalog-search-document.repository';
 import { CatalogProductSlugRepository } from '~/modules/domains/product/app/ports/catalog-product-slug.repository';
 import { QUEUE_CONFIG } from '~/config/queue.config';
@@ -33,6 +34,7 @@ export class HealthService {
     private readonly entityManager: EntityManager,
     private readonly storageService: StorageService,
     private readonly catalogProductDocumentRepository: CatalogProductDocumentRepository,
+    private readonly catalogProductPriceDocumentRepository: CatalogProductPriceDocumentRepository,
     private readonly catalogProductSlugRepository: CatalogProductSlugRepository,
     private readonly catalogSearchDocumentRepository: CatalogSearchDocumentRepository,
     @Inject(CATALOG_CONFIG) private readonly catalogConfig: CatalogConfig,
@@ -129,6 +131,7 @@ export class HealthService {
     try {
       await Promise.all([
         this.catalogProductDocumentRepository.ping(),
+        this.catalogProductPriceDocumentRepository.ping(),
         this.catalogProductSlugRepository.ping(),
         this.catalogSearchDocumentRepository.ping(),
       ]);

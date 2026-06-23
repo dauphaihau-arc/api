@@ -4,11 +4,14 @@ import { StorageService } from '~/modules/shared/storage/app/ports/storage.servi
 import { ProductState } from '../../domain/enums/product-state.enum';
 import { CatalogProductProjectorSourceRepository } from '../ports/catalog-product-projector-source.repository';
 import { CatalogProductDocumentRepository } from '../ports/catalog-product-document.repository';
+import { CatalogProductPriceDocumentRepository } from '../ports/catalog-product-price-document.repository';
 import { CatalogSearchDocumentRepository } from '../ports/catalog-search-document.repository';
 import { CatalogProductSlugRepository } from '../ports/catalog-product-slug.repository';
 import { toCatalogProductDocument } from '../../infra/catalog/mongo/documents/catalog-product-document.mapper';
+import { toCatalogProductPriceDocument } from '../../infra/catalog/mongo/documents/catalog-product-price-document.mapper';
 import { toCatalogSearchDocument } from '../../infra/catalog/mongo/documents/catalog-search-document.mapper';
 import { toCatalogProductSlugDocument } from '../../infra/catalog/mongo/documents/catalog-product-slug.mapper';
+import { StorefrontIndexedPriceProjectionService } from './storefront-indexed-price-projection.service';
 
 @Injectable()
 export class CatalogProductProjectorService {
@@ -20,8 +23,10 @@ export class CatalogProductProjectorService {
     @Inject(CATALOG_CONFIG)
     private readonly catalogConfig: CatalogConfig,
     private readonly catalogProductDocumentRepository: CatalogProductDocumentRepository,
+    private readonly catalogProductPriceDocumentRepository: CatalogProductPriceDocumentRepository,
     private readonly catalogProductSlugRepository: CatalogProductSlugRepository,
     private readonly catalogSearchDocumentRepository: CatalogSearchDocumentRepository,
+    private readonly storefrontIndexedPriceProjectionService: StorefrontIndexedPriceProjectionService,
   ) {}
 
   async projectProduct(productId: string): Promise<void> {
@@ -36,18 +41,22 @@ export class CatalogProductProjectorService {
       return;
     }
 
+    const indexedPricingProjection = await this.storefrontIndexedPriceProjectionService.projectProduct(product);
     const document = toCatalogProductDocument(
       product,
       (storageKey) => this.storageService.getPublicUrl(storageKey),
     );
+    const priceDocument = toCatalogProductPriceDocument(product, indexedPricingProjection);
     const searchDocument = toCatalogSearchDocument(
       product,
       (storageKey) => this.storageService.getPublicUrl(storageKey),
+      indexedPricingProjection.summaryByMarket,
     );
     const slugDocument = toCatalogProductSlugDocument(product);
 
     await Promise.all([
       this.catalogProductDocumentRepository.upsert(document),
+      this.catalogProductPriceDocumentRepository.upsert(priceDocument),
       this.catalogProductSlugRepository.upsert(slugDocument),
       this.catalogSearchDocumentRepository.upsert(searchDocument),
     ]);
@@ -62,6 +71,7 @@ export class CatalogProductProjectorService {
 
     await Promise.all([
       this.catalogProductDocumentRepository.deleteByProductId(productId),
+      this.catalogProductPriceDocumentRepository.deleteByProductId(productId),
       this.catalogProductSlugRepository.deleteByProductId(productId),
       this.catalogSearchDocumentRepository.deleteByProductId(productId),
     ]);

@@ -126,14 +126,9 @@ describe('catalog-product-document.mapper', () => {
       },
       primaryInventory: {
         id: 'inventory-1',
-        amountMinor: 7900,
-        originalAmountMinor: 9900,
-        currency: 'USD',
         stock: 12,
       },
       sort: {
-        minPriceAmountMinor: 7900,
-        maxPriceAmountMinor: 7900,
         inStock: true,
         popularityScore: 18,
       },

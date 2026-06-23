@@ -111,7 +111,6 @@ implements CatalogProductDocumentRepository {
       { key: { productId: 1 }, unique: true },
       { key: { state: 1, shopSlug: 1, slug: 1 } },
       { key: { state: 1, categoryId: 1, 'sort.createdAt': -1 } },
-      { key: { state: 1, categoryId: 1, 'sort.minPriceAmountMinor': 1 } },
       { key: { state: 1, updatedAt: -1 } },
     ]);
 

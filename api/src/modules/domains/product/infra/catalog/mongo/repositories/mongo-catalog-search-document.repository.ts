@@ -17,6 +17,44 @@ type MongoSearchCollectionLike = {
   createIndexes(indexes: Array<Record<string, unknown>>): Promise<void>;
 };
 
+export const CATALOG_SEARCH_COLLECTION_INDEXES = [
+  { key: { productId: 1 }, unique: true },
+  {
+    key: {
+      shopSlug: 1, slug: 1, state: 1, 'flags.hasImages': 1, 
+    }, 
+  },
+  {
+    key: {
+      state: 1,
+      'flags.hasImages': 1,
+      categoryId: 1,
+      'ranking.popularityScore': -1,
+      'ranking.createdAt': -1,
+    },
+  },
+  {
+    key: {
+      state: 1,
+      'flags.hasImages': 1,
+      whoMade: 1,
+      isDigital: 1,
+      'ranking.popularityScore': -1,
+      'ranking.createdAt': -1,
+    },
+  },
+  {
+    key: {
+      state: 1,
+      'flags.hasImages': 1,
+      'ranking.popularityScore': -1,
+      'ranking.createdAt': -1,
+    },
+  },
+  { key: { state: 1, 'price.minAmountMinor': 1 } },
+  { key: { state: 1, updatedAt: -1 } },
+] as const;
+
 @Injectable()
 export class MongoCatalogSearchDocumentRepository
 implements CatalogSearchDocumentRepository {
@@ -57,13 +95,7 @@ implements CatalogSearchDocumentRepository {
       this.catalogConfig.mongodbSearchCollection,
     );
 
-    await collection.createIndexes([
-      { key: { productId: 1 }, unique: true },
-      { key: { state: 1, categoryId: 1, 'ranking.createdAt': -1 } },
-      { key: { state: 1, isDigital: 1, whoMade: 1 } },
-      { key: { state: 1, 'price.minAmountMinor': 1 } },
-      { key: { state: 1, updatedAt: -1 } },
-    ]);
+    await collection.createIndexes([...CATALOG_SEARCH_COLLECTION_INDEXES]);
 
     return collection;
   }

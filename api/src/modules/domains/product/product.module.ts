@@ -21,6 +21,7 @@ import { ResolvedStorefrontPriceService } from './app/services/resolved-storefro
 import { StorefrontMarketContextService } from './app/services/storefront-market-context.service';
 import { CatalogStatusService } from './app/services/catalog-status.service';
 import { CatalogProductProjectorService } from './app/services/catalog-product-projector.service';
+import { StorefrontIndexedPriceProjectionService } from './app/services/storefront-indexed-price-projection.service';
 import { PublicProductOrderHistoryService } from './app/services/public-product-order-history.service';
 import { CreateProductDraftFacadeUseCase } from './app/use-cases/create-product-draft-facade/create-product-draft-facade.use-case';
 import { ConsumeProductImageUploadTicketUseCase } from './app/use-cases/consume-product-image-upload-ticket/consume-product-image-upload-ticket.use-case';
@@ -58,6 +59,7 @@ import { ReviewImageVariantGenerationRepository } from './app/ports/review-image
 import { PublicProductReviewQueryRepository } from './app/ports/public-product-review-query.repository';
 import { SellerProductReviewQueryRepository } from './app/ports/seller-product-review-query.repository';
 import { CatalogProductDocumentRepository } from './app/ports/catalog-product-document.repository';
+import { CatalogProductPriceDocumentRepository } from './app/ports/catalog-product-price-document.repository';
 import { CatalogProductProjectorSourceRepository } from './app/ports/catalog-product-projector-source.repository';
 import { CatalogSearchDocumentRepository } from './app/ports/catalog-search-document.repository';
 import { CatalogProductSlugRepository } from './app/ports/catalog-product-slug.repository';
@@ -93,6 +95,7 @@ import { MikroOrmProductReviewAggregateRepository } from './infra/persistence/mi
 import { MikroOrmSellerProductQueryRepository } from './infra/persistence/mikro-orm/repositories/mikro-orm-seller-product-query.repository';
 import { MikroOrmStorefrontProductQueryRepository } from './infra/persistence/mikro-orm/repositories/mikro-orm-storefront-product-query.repository';
 import { MongoCatalogProductDocumentRepository } from './infra/catalog/mongo/repositories/mongo-catalog-product-document.repository';
+import { MongoCatalogProductPriceDocumentRepository } from './infra/catalog/mongo/repositories/mongo-catalog-product-price-document.repository';
 import { MongoCatalogSearchDocumentRepository } from './infra/catalog/mongo/repositories/mongo-catalog-search-document.repository';
 import { MongoCatalogProductSlugRepository } from './infra/catalog/mongo/repositories/mongo-catalog-product-slug.repository';
 import { AtlasSearchStorefrontProductQueryRepository } from './infra/search/atlas/repositories/atlas-search-storefront-product-query.repository';
@@ -112,6 +115,7 @@ import { ProductViewHistoryEntity } from '~/modules/domains/product/infra/persis
 import { ProductEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product.entity';
 import { VariantPriceEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/variant-price.entity';
 import { CATALOG_CONFIG, buildCatalogConfig } from '~/config/catalog.config';
+import { STOREFRONT_PRICING_CONFIG, buildStorefrontPricingConfig } from '~/config/storefront-pricing.config';
 
 @Module({
   imports: [
@@ -163,6 +167,12 @@ import { CATALOG_CONFIG, buildCatalogConfig } from '~/config/catalog.config';
       inject: [ConfigService],
       useFactory: (configService: ConfigService) =>
         buildCatalogConfig(configService),
+    },
+    {
+      provide: STOREFRONT_PRICING_CONFIG,
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) =>
+        buildStorefrontPricingConfig(configService),
     },
     {
       provide: StorefrontProductQueryRepository,
@@ -221,6 +231,10 @@ import { CATALOG_CONFIG, buildCatalogConfig } from '~/config/catalog.config';
       useExisting: MongoCatalogProductDocumentRepository,
     },
     {
+      provide: CatalogProductPriceDocumentRepository,
+      useExisting: MongoCatalogProductPriceDocumentRepository,
+    },
+    {
       provide: CatalogProductProjectorSourceRepository,
       useExisting: MikroOrmCatalogProductProjectorSourceRepository,
     },
@@ -258,6 +272,7 @@ import { CATALOG_CONFIG, buildCatalogConfig } from '~/config/catalog.config';
     CatalogMongoAccess,
     AtlasSearchStorefrontProductQueryRepository,
     MongoCatalogProductDocumentRepository,
+    MongoCatalogProductPriceDocumentRepository,
     MongoCatalogSearchDocumentRepository,
     MongoCatalogProductSlugRepository,
     MikroOrmCatalogProductProjectorSourceRepository,
@@ -275,6 +290,7 @@ import { CATALOG_CONFIG, buildCatalogConfig } from '~/config/catalog.config';
     CatalogStatusService,
     CatalogProductProjectorService,
     StorefrontMarketContextService,
+    StorefrontIndexedPriceProjectionService,
     ResolvedStorefrontPriceService,
     PublicProductOrderHistoryService,
     PublicProductViewHistoryService,
@@ -316,6 +332,7 @@ import { CATALOG_CONFIG, buildCatalogConfig } from '~/config/catalog.config';
     StorefrontProductQueryRepository,
     SellerProductQueryRepository,
     CatalogProductDocumentRepository,
+    CatalogProductPriceDocumentRepository,
     CatalogSearchDocumentRepository,
     CatalogProductSlugRepository,
     ProductCommandRepository,

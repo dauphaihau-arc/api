@@ -25,6 +25,7 @@ export interface CatalogStatus {
   store?: {
     dbName: string;
     productsCollection: string;
+    pricesCollection: string;
     slugsCollection: string;
     searchCollection: string;
   };
@@ -69,6 +70,7 @@ export class CatalogStatusService {
       store: {
         dbName: this.catalogConfig.mongodbDbName,
         productsCollection: this.catalogConfig.mongodbProductsCollection,
+        pricesCollection: this.catalogConfig.mongodbPricesCollection,
         slugsCollection: this.catalogConfig.mongodbSlugsCollection,
         searchCollection: this.catalogConfig.mongodbSearchCollection,
       },

@@ -6,6 +6,7 @@ export interface CatalogConfig {
   mongodbUri: string;
   mongodbDbName: string;
   mongodbProductsCollection: string;
+  mongodbPricesCollection: string;
   mongodbSlugsCollection: string;
   mongodbSearchCollection: string;
 }
@@ -35,6 +36,10 @@ export function buildCatalogConfig(
     mongodbProductsCollection: configService.get<string>(
       'CATALOG_MONGODB_PRODUCTS_COLLECTION',
       'catalog_products',
+    ),
+    mongodbPricesCollection: configService.get<string>(
+      'CATALOG_MONGODB_PRICES_COLLECTION',
+      'catalog_product_prices',
     ),
     mongodbSlugsCollection: configService.get<string>(
       'CATALOG_MONGODB_SLUGS_COLLECTION',

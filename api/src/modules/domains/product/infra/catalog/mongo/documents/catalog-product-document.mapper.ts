@@ -2,7 +2,6 @@ import { ProductImageVariant } from '../../../../domain/enums/product-image-vari
 import type { ProductState } from '../../../../domain/enums/product-state.enum';
 import type { ProductEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product.entity';
 import { inferFacetSignalsFromText } from '../../../inferred-facets';
-import { getInventoryPricingSnapshot } from '../../../persistence/mikro-orm/reads/variant-price-read';
 
 export interface CatalogProductDocument {
   _id: string;
@@ -62,18 +61,12 @@ export interface CatalogProductDocument {
     productVariantId?: string;
     sku?: string;
     stock: number;
-    amountMinor?: number;
-    originalAmountMinor?: number;
-    currency?: string;
   }>;
   primaryInventory?: {
     id: string;
     productVariantId?: string;
     sku?: string;
     stock: number;
-    amountMinor?: number;
-    originalAmountMinor?: number;
-    currency?: string;
   };
   shipping?: {
     originCountry: string;
@@ -107,8 +100,6 @@ export interface CatalogProductDocument {
   };
   sort: {
     createdAt: Date;
-    minPriceAmountMinor?: number;
-    maxPriceAmountMinor?: number;
     inStock: boolean;
     popularityScore: number;
   };
@@ -140,18 +131,11 @@ export function toCatalogProductDocument(
     });
 
   const inventory = sortedInventory.map((row) => {
-    const pricing = getInventoryPricingSnapshot(row);
-
     return {
       id: row.id,
       productVariantId: row.productVariant?.id,
       sku: row.sku,
       stock: row.stock,
-      ...(pricing?.amountMinor != null ? { amountMinor: pricing.amountMinor } : {}),
-      ...(pricing?.originalAmountMinor != null
-        ? { originalAmountMinor: pricing.originalAmountMinor }
-        : {}),
-      ...(pricing?.currency ? { currency: pricing.currency } : {}),
     };
   });
 
@@ -199,10 +183,6 @@ export function toCatalogProductDocument(
         variant: 'original',
       }
       : undefined;
-
-  const priceValues = inventory
-    .map((row) => row.amountMinor)
-    .filter((value): value is number => value != null);
 
   return {
     _id: product.id,
@@ -294,12 +274,6 @@ export function toCatalogProductDocument(
     },
     sort: {
       createdAt: product.createdAt,
-      ...(priceValues.length > 0
-        ? { minPriceAmountMinor: Math.min(...priceValues) }
-        : {}),
-      ...(priceValues.length > 0
-        ? { maxPriceAmountMinor: Math.max(...priceValues) }
-        : {}),
       inStock: inventory.some((row) => row.stock > 0),
       popularityScore: product.views,
     },

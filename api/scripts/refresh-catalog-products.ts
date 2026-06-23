@@ -3,9 +3,11 @@ import { MikroORM } from '@mikro-orm/postgresql';
 import { buildDatabaseConfig } from '../src/config/database.config';
 import { buildStorageConfig } from '../src/config/storage.config';
 import { buildCatalogConfig } from '../src/config/catalog.config';
+import { buildStorefrontPricingConfig } from '../src/config/storefront-pricing.config';
 import { CatalogProductProjectorService } from '../src/modules/domains/product/app/services/catalog-product-projector.service';
 import { CatalogMongoAccess } from '~/modules/domains/product/infra/catalog/mongo/access/catalog-mongo.access';
 import { MongoCatalogProductDocumentRepository } from '~/modules/domains/product/infra/catalog/mongo/repositories/mongo-catalog-product-document.repository';
+import { MongoCatalogProductPriceDocumentRepository } from '~/modules/domains/product/infra/catalog/mongo/repositories/mongo-catalog-product-price-document.repository';
 import { MongoCatalogSearchDocumentRepository } from '~/modules/domains/product/infra/catalog/mongo/repositories/mongo-catalog-search-document.repository';
 import { MongoCatalogProductSlugRepository } from '~/modules/domains/product/infra/catalog/mongo/repositories/mongo-catalog-product-slug.repository';
 import { MikroOrmCatalogProductProjectorSourceRepository } from '~/modules/domains/product/infra/persistence/mikro-orm/repositories/mikro-orm-catalog-product-projector-source.repository';
@@ -14,6 +16,9 @@ import { LocalFileStorageService } from '../src/modules/shared/storage/infra/loc
 import { MinioStorageService } from '../src/modules/shared/storage/infra/minio-storage.service';
 import { ProductState } from '../src/modules/domains/product/domain/enums/product-state.enum';
 import type { StorageService } from '../src/modules/shared/storage/app/ports/storage.service';
+import { FxRateService } from '../src/modules/shared/currency/fx-rate.service';
+import { RoundingPolicyService } from '../src/modules/shared/currency/rounding-policy.service';
+import { StorefrontIndexedPriceProjectionService } from '../src/modules/domains/product/app/services/storefront-indexed-price-projection.service';
 
 type MongoDeleteManyCollectionLike = {
   deleteMany(filter: Record<string, never>): Promise<{ deletedCount?: number }>;
@@ -22,7 +27,7 @@ type MongoDeleteManyCollectionLike = {
 async function runWithTimeout(
   label: string,
   operation: Promise<void>,
-  timeoutMs = 5_000
+  timeoutMs = 5_000,
 ): Promise<void> {
   let timeoutHandle: NodeJS.Timeout | undefined;
 
@@ -58,15 +63,16 @@ async function main() {
   };
 
   const catalogConfig = buildCatalogConfig(configService);
+  const storefrontPricingConfig = buildStorefrontPricingConfig(configService);
 
   if (catalogConfig.driver !== 'mongodb') {
     throw new Error(
-      'CATALOG_STORE_DRIVER must be mongodb to run catalog backfill'
+      'CATALOG_STORE_DRIVER must be mongodb to run catalog backfill',
     );
   }
 
   console.log(
-    `Catalog target -> driver=${catalogConfig.driver} uri=${catalogConfig.mongodbUri} db=${catalogConfig.mongodbDbName} products=${catalogConfig.mongodbProductsCollection} slugs=${catalogConfig.mongodbSlugsCollection}`
+    `Catalog target -> driver=${catalogConfig.driver} uri=${catalogConfig.mongodbUri} db=${catalogConfig.mongodbDbName} products=${catalogConfig.mongodbProductsCollection} prices=${catalogConfig.mongodbPricesCollection} slugs=${catalogConfig.mongodbSlugsCollection}`,
   );
 
   const storageConfig = buildStorageConfig(configService);
@@ -76,32 +82,44 @@ async function main() {
   const catalogMongoAccess = new CatalogMongoAccess(catalogConfig);
   const catalogRepository = new MongoCatalogProductDocumentRepository(
     catalogConfig,
-    catalogMongoAccess
+    catalogMongoAccess,
+  );
+  const catalogPriceRepository = new MongoCatalogProductPriceDocumentRepository(
+    catalogConfig,
+    catalogMongoAccess,
   );
   const catalogSearchRepository = new MongoCatalogSearchDocumentRepository(
     catalogConfig,
-    catalogMongoAccess
+    catalogMongoAccess,
   );
   const catalogSlugRepository = new MongoCatalogProductSlugRepository(
     catalogConfig,
-    catalogMongoAccess
+    catalogMongoAccess,
   );
   const catalogProjectorSourceRepository = new MikroOrmCatalogProductProjectorSourceRepository(
-    orm.em
+    orm.em,
+  );
+  const storefrontIndexedPriceProjectionService = new StorefrontIndexedPriceProjectionService(
+    storefrontPricingConfig,
+    new FxRateService(orm.em),
+    new RoundingPolicyService(),
   );
   const projector = new CatalogProductProjectorService(
     catalogProjectorSourceRepository,
     storageService,
     catalogConfig,
     catalogRepository,
+    catalogPriceRepository,
     catalogSlugRepository,
-    catalogSearchRepository
+    catalogSearchRepository,
+    storefrontIndexedPriceProjectionService,
   );
 
   try {
     console.log('Checking MongoDB connectivity');
     await Promise.all([
       catalogRepository.ping(),
+      catalogPriceRepository.ping(),
       catalogSlugRepository.ping(),
       catalogSearchRepository.ping(),
     ]);
@@ -110,24 +128,29 @@ async function main() {
     console.log('Clearing existing catalog projection collections');
     const [
       productsDeleteResult,
+      pricesDeleteResult,
       slugsDeleteResult,
       searchDeleteResult,
     ] = await Promise.all([
       catalogMongoAccess.getCollection<MongoDeleteManyCollectionLike>(
-        catalogConfig.mongodbProductsCollection
+        catalogConfig.mongodbProductsCollection,
       ).then((collection) => collection.deleteMany({})),
       catalogMongoAccess.getCollection<MongoDeleteManyCollectionLike>(
-        catalogConfig.mongodbSlugsCollection
+        catalogConfig.mongodbPricesCollection,
       ).then((collection) => collection.deleteMany({})),
       catalogMongoAccess.getCollection<MongoDeleteManyCollectionLike>(
-        catalogConfig.mongodbSearchCollection
+        catalogConfig.mongodbSlugsCollection,
+      ).then((collection) => collection.deleteMany({})),
+      catalogMongoAccess.getCollection<MongoDeleteManyCollectionLike>(
+        catalogConfig.mongodbSearchCollection,
       ).then((collection) => collection.deleteMany({})),
     ]);
     console.log(
       'Cleared catalog collections:' +
       ` products=${productsDeleteResult.deletedCount ?? 0}` +
+      ` prices=${pricesDeleteResult.deletedCount ?? 0}` +
       ` slugs=${slugsDeleteResult.deletedCount ?? 0}` +
-      ` search=${searchDeleteResult.deletedCount ?? 0}`
+      ` search=${searchDeleteResult.deletedCount ?? 0}`,
     );
 
     const productIds = await orm.em.fork().find(
@@ -136,7 +159,7 @@ async function main() {
       {
         fields: ['id'],
         orderBy: { createdAt: 'asc' },
-      }
+      },
     );
 
     console.log(`Found ${productIds.length} active products in PostgreSQL`);
@@ -156,7 +179,7 @@ async function main() {
     }
 
     console.log(
-      `Catalog backfill completed: projected ${processed}/${productIds.length} active products`
+      `Catalog backfill completed: projected ${processed}/${productIds.length} active products`,
     );
   }
   finally {
@@ -164,13 +187,13 @@ async function main() {
     try {
       await runWithTimeout(
         'Catalog MongoDB shutdown',
-        catalogMongoAccess.onApplicationShutdown()
+        catalogMongoAccess.onApplicationShutdown(),
       );
       console.log('Catalog MongoDB connection closed');
     }
     catch (error) {
       console.warn(
-        `Catalog MongoDB shutdown did not finish cleanly: ${error instanceof Error ? error.message : 'Unknown error'}`
+        `Catalog MongoDB shutdown did not finish cleanly: ${error instanceof Error ? error.message : 'Unknown error'}`,
       );
     }
 
@@ -181,7 +204,7 @@ async function main() {
     }
     catch (error) {
       console.warn(
-        `PostgreSQL shutdown did not finish cleanly: ${error instanceof Error ? error.message : 'Unknown error'}`
+        `PostgreSQL shutdown did not finish cleanly: ${error instanceof Error ? error.message : 'Unknown error'}`,
       );
     }
   }
