@@ -1,10 +1,24 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { buildPaginationMeta } from '~/common/application/pagination';
 import { CATALOG_CONFIG, type CatalogConfig } from '~/config/catalog.config';
+import {
+  STOREFRONT_PRICING_CONFIG,
+  type StorefrontPricingConfig,
+} from '~/config/storefront-pricing.config';
 import { ProductState } from '../../../../domain/enums/product-state.enum';
 import { toCanonicalFacetOption } from '../../../../app/shoe-size-groups';
 import { CatalogProductSlugRepository } from '../../../../app/ports/catalog-product-slug.repository';
+import { CatalogProductPriceDocumentRepository } from '../../../../app/ports/catalog-product-price-document.repository';
 import { StorefrontProductQueryRepository } from '../../../../app/ports/storefront-product-query.repository';
+import {
+  getIndexedInventoryPrice,
+  getIndexedPriceSummary,
+  getIndexedPricingFieldPath,
+  isIndexedPricingSelection,
+  resolveIndexedPricingSelection,
+  type StorefrontIndexedPricingSelection,
+} from '../../../../app/storefront-indexed-pricing';
+import { StorefrontMarketContextService } from '../../../../app/services/storefront-market-context.service';
 import { CatalogMongoAccess } from '../../../catalog/mongo/access/catalog-mongo.access';
 import type {
   ListPublicProductsInput,
@@ -17,9 +31,11 @@ import type {
 } from '../../../../app/product.types';
 import { PUBLIC_PRODUCT_FACET_PRIORITY } from '../../../../app/product-facet.constants';
 import type { CatalogProductDocument } from '../../../catalog/mongo/documents/catalog-product-document.mapper';
+import type { CatalogProductPriceDocument } from '../../../catalog/mongo/documents/catalog-product-price-document.mapper';
 import type { CatalogSearchDocument } from '../../../catalog/mongo/documents/catalog-search-document.mapper';
 import { getInferredFacetTerms, isInferredFacetSupported } from '../../../inferred-facets';
 import { PRODUCT_STOCK_NOTICE_THRESHOLD } from '../../../../app/product-stock.constants';
+import { MikroOrmStorefrontProductQueryRepository } from '../../../persistence/mikro-orm/repositories/mikro-orm-storefront-product-query.repository';
 
 type MongoAggregateCursorLike<TDocument> = {
   toArray(): Promise<TDocument[]>;
@@ -44,8 +60,13 @@ implements StorefrontProductQueryRepository {
   constructor(
     @Inject(CATALOG_CONFIG)
     private readonly catalogConfig: CatalogConfig,
+    @Inject(STOREFRONT_PRICING_CONFIG)
+    private readonly storefrontPricingConfig: StorefrontPricingConfig,
     private readonly catalogProductSlugRepository: CatalogProductSlugRepository,
+    private readonly catalogProductPriceDocumentRepository: CatalogProductPriceDocumentRepository,
     private readonly catalogMongoAccess: CatalogMongoAccess,
+    private readonly storefrontMarketContextService: StorefrontMarketContextService,
+    private readonly mikroOrmStorefrontProductQueryRepository: MikroOrmStorefrontProductQueryRepository,
   ) {}
 
   async findPublicByShopSlugAndProductSlug(
@@ -66,30 +87,23 @@ implements StorefrontProductQueryRepository {
       productId,
       state: ProductState.ACTIVE,
     });
+    const priceDocument = await this.catalogProductPriceDocumentRepository.findByProductId(productId);
+    const pricingSelection = resolveIndexedPricingSelection(
+      await this.storefrontMarketContextService.resolveCurrentRequest(),
+    );
+    if (!isIndexedPricingSelection(this.storefrontPricingConfig, pricingSelection)) {
+      return this.mikroOrmStorefrontProductQueryRepository.findPublicByShopSlugAndProductSlug(
+        shopSlug,
+        productSlug,
+      );
+    }
 
-    return document ? toPublicProductDetail(document) : null;
+    return document ? toPublicProductDetail(document, priceDocument, pricingSelection) : null;
   }
 
   async findPublicByIds(productIds: string[]): Promise<PublicProductListItem[]> {
-    if (productIds.length === 0) {
-      return [];
-    }
-
-    const collection = await this.getProductsCollection();
-    const documents = await collection.aggregate<CatalogProductDocument>([
-      {
-        $match: {
-          productId: { $in: productIds },
-          state: ProductState.ACTIVE,
-        },
-      },
-    ]).toArray();
-    const documentsById = new Map(documents.map((document) => [document.productId, document] as const));
-
-    return productIds
-      .map((productId) => documentsById.get(productId))
-      .filter((document): document is CatalogProductDocument => Boolean(document?.images.length))
-      .map((document) => toPublicProductListItemFromCatalogDocument(document));
+    // Recommendation-style endpoints need request-aware pricing resolution.
+    return this.mikroOrmStorefrontProductQueryRepository.findPublicByIds(productIds);
   }
 
   async listPublic(
@@ -98,7 +112,13 @@ implements StorefrontProductQueryRepository {
     this.assertAtlasSearchEnabled();
 
     const searchCollection = await this.getSearchCollection();
-    const searchStage = this.buildListSearchStage(input);
+    const pricingSelection = resolveIndexedPricingSelection(
+      await this.storefrontMarketContextService.resolveCurrentRequest(),
+    );
+    if (!isIndexedPricingSelection(this.storefrontPricingConfig, pricingSelection)) {
+      return this.mikroOrmStorefrontProductQueryRepository.listPublic(input);
+    }
+    const searchStage = this.buildListSearchStage(input, pricingSelection);
     const totalResults = await searchCollection.aggregate<AtlasSearchMetaResult>([
       {
         $searchMeta: {
@@ -143,6 +163,7 @@ implements StorefrontProductQueryRepository {
           variantType: 1,
           image: 1,
           price: 1,
+          pricingByMarket: 1,
           inventory: 1,
           ranking: 1,
         },
@@ -150,7 +171,7 @@ implements StorefrontProductQueryRepository {
     ]).toArray();
 
     return {
-      items: documents.map((document) => toPublicProductListItemFromSearchDocument(document)),
+      items: documents.map((document) => toPublicProductListItemFromSearchDocument(document, pricingSelection)),
       meta: buildPaginationMeta(input.page, input.limit, total),
     };
   }
@@ -159,6 +180,12 @@ implements StorefrontProductQueryRepository {
     input: ListPublicProductsInput,
   ): Promise<PublicProductFacet[]> {
     this.assertAtlasSearchEnabled();
+    const pricingSelection = resolveIndexedPricingSelection(
+      await this.storefrontMarketContextService.resolveCurrentRequest(),
+    );
+    if (!isIndexedPricingSelection(this.storefrontPricingConfig, pricingSelection)) {
+      return this.mikroOrmStorefrontProductQueryRepository.listPublicFacets(input);
+    }
 
     const searchCollection = await this.getSearchCollection();
     const documents = await searchCollection.aggregate<{
@@ -169,7 +196,7 @@ implements StorefrontProductQueryRepository {
       };
     }>([
       {
-        $search: this.buildListSearchStage(input),
+        $search: this.buildListSearchStage(input, pricingSelection),
       },
       {
         $unwind: '$attributes',
@@ -290,7 +317,11 @@ implements StorefrontProductQueryRepository {
 
   private buildListSearchStage(
     input: ListPublicProductsInput,
+    pricingSelection: StorefrontIndexedPricingSelection | undefined,
   ): Record<string, unknown> {
+    const priceFieldPath = pricingSelection
+      ? getIndexedPricingFieldPath(pricingSelection, 'minAmountMinor')
+      : 'price.minAmountMinor';
     const filter: Array<Record<string, unknown>> = [
       { equals: { path: 'state', value: ProductState.ACTIVE } },
       { equals: { path: 'flags.hasImages', value: true } },
@@ -326,7 +357,7 @@ implements StorefrontProductQueryRepository {
     if (input.minPriceMinor !== undefined) {
       filter.push({
         range: {
-          path: 'price.minAmountMinor',
+          path: priceFieldPath,
           gte: input.minPriceMinor,
         },
       });
@@ -335,7 +366,7 @@ implements StorefrontProductQueryRepository {
     if (input.maxPriceMinor !== undefined) {
       filter.push({
         range: {
-          path: 'price.minAmountMinor',
+          path: priceFieldPath,
           lte: input.maxPriceMinor,
         },
       });
@@ -475,14 +506,14 @@ implements StorefrontProductQueryRepository {
         : input.order === 'price_asc'
           ? {
             sort: {
-              'price.minAmountMinor': 1,
+              [priceFieldPath]: 1,
               'ranking.createdAt': -1,
             },
           }
           : input.order === 'price_desc'
             ? {
               sort: {
-                'price.minAmountMinor': -1,
+                [priceFieldPath]: -1,
                 'ranking.createdAt': -1,
               },
             }
@@ -540,7 +571,10 @@ function toFacetKey(value: string): string {
 
 function toPublicProductListItemFromSearchDocument(
   document: CatalogSearchDocument,
+  pricingSelection?: StorefrontIndexedPricingSelection,
 ): PublicProductListItem {
+  const indexedPricing = getIndexedPriceSummary(document.pricingByMarket, pricingSelection);
+
   return {
     id: document.productId,
     shop: {
@@ -559,11 +593,11 @@ function toPublicProductListItemFromSearchDocument(
       : undefined,
     variantType: document.variantType,
     pricing: {
-      minAmountMinor: document.price.minAmountMinor,
-      maxAmountMinor: document.price.maxAmountMinor,
-      originalMinAmountMinor: document.price.originalMinAmountMinor,
-      originalMaxAmountMinor: document.price.originalMaxAmountMinor,
-      currency: document.price.currency,
+      minAmountMinor: indexedPricing?.minAmountMinor ?? document.price.minAmountMinor,
+      maxAmountMinor: indexedPricing?.maxAmountMinor ?? document.price.maxAmountMinor,
+      originalMinAmountMinor: indexedPricing?.originalMinAmountMinor ?? document.price.originalMinAmountMinor,
+      originalMaxAmountMinor: indexedPricing?.originalMaxAmountMinor ?? document.price.originalMaxAmountMinor,
+      currency: indexedPricing?.currency ?? document.price.currency,
     },
     availability: {
       inStock: document.inventory.inStock,
@@ -576,41 +610,10 @@ function toPublicProductListItemFromSearchDocument(
   };
 }
 
-function toPublicProductListItemFromCatalogDocument(
-  document: CatalogProductDocument,
-): PublicProductListItem {
-  const totalStock = document.inventory.reduce((sum, inventory) => sum + inventory.stock, 0);
-
-  return {
-    id: document.productId,
-    shop: {
-      id: document.shopId,
-      publicId: document.shopPublicId,
-      shopName: document.shopName,
-      slug: document.shopSlug,
-    },
-    categoryId: document.categoryId,
-    title: document.title,
-    slug: document.slug,
-    image: document.primaryImage,
-    variantType: document.variantType,
-    pricing: {
-      minAmountMinor: document.sort.minPriceAmountMinor,
-      maxAmountMinor: document.sort.maxPriceAmountMinor,
-      currency: document.primaryInventory?.currency,
-    },
-    availability: {
-      inStock: totalStock > 0,
-      lowStock: totalStock > 0 && totalStock < PRODUCT_STOCK_NOTICE_THRESHOLD,
-      stockTotal: totalStock,
-    },
-    variantCount: document.variantCount,
-    createdAt: document.sort.createdAt,
-  };
-}
-
 function toPublicProductDetail(
   document: CatalogProductDocument,
+  priceDocument?: CatalogProductPriceDocument | null,
+  pricingSelection?: StorefrontIndexedPricingSelection,
 ): PublicProductDetail {
   const variantsById = new Map(
     document.variants.map((variant) => [variant.id, variant] as const),
@@ -666,21 +669,28 @@ function toPublicProductDetail(
       imageStorageKey: variant.imageStorageKey,
       rank: variant.rank,
     })),
-    inventory: document.inventory.map((inventory) => ({
-      id: inventory.id,
-      productVariantId: inventory.productVariantId,
-      optionValue1: inventory.productVariantId
-        ? variantsById.get(inventory.productVariantId)?.optionValue1
-        : undefined,
-      optionValue2: inventory.productVariantId
-        ? variantsById.get(inventory.productVariantId)?.optionValue2
-        : undefined,
-      sku: inventory.sku,
-      stock: inventory.stock,
-      amountMinor: inventory.amountMinor,
-      originalAmountMinor: inventory.originalAmountMinor,
-      currency: inventory.currency,
-    })),
+    inventory: document.inventory.map((inventory) => {
+      const resolvedPricing = getIndexedInventoryPrice(
+        priceDocument?.inventoryPricingById[inventory.id]?.resolvedByMarket,
+        pricingSelection,
+      ) ?? priceDocument?.inventoryPricingById[inventory.id]?.basePrice;
+
+      return {
+        id: inventory.id,
+        productVariantId: inventory.productVariantId,
+        optionValue1: inventory.productVariantId
+          ? variantsById.get(inventory.productVariantId)?.optionValue1
+          : undefined,
+        optionValue2: inventory.productVariantId
+          ? variantsById.get(inventory.productVariantId)?.optionValue2
+          : undefined,
+        sku: inventory.sku,
+        stock: inventory.stock,
+        amountMinor: resolvedPricing?.amountMinor,
+        originalAmountMinor: resolvedPricing?.originalAmountMinor,
+        currency: resolvedPricing?.currency,
+      };
+    }),
     shipping: document.shipping
       ? {
         originCountry: document.shipping.originCountry,

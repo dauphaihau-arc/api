@@ -1,4 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Inject, Injectable } from '@nestjs/common';
+import type { Cache } from 'cache-manager';
+import {
+  STOREFRONT_PRICING_CONFIG,
+  type StorefrontPricingConfig,
+} from '~/config/storefront-pricing.config';
 import { MARKETPLACE_MARKETS } from '~/config/marketplace.config';
 import { FxRateService, type ExchangeRateSnapshot } from '~/modules/shared/currency/fx-rate.service';
 import { RoundingPolicyService } from '~/modules/shared/currency/rounding-policy.service';
@@ -7,6 +13,7 @@ import {
   getActiveBasePrice,
   getActiveMarketPrice,
 } from '../../infra/persistence/mikro-orm/reads/variant-price-read';
+import { isIndexedPricingSelection } from '../storefront-indexed-pricing';
 import { StorefrontMarketContextService } from './storefront-market-context.service';
 
 export interface ResolvedStorefrontPrice {
@@ -27,6 +34,10 @@ export interface ResolvedStorefrontPrice {
 @Injectable()
 export class ResolvedStorefrontPriceService {
   constructor(
+    @Inject(STOREFRONT_PRICING_CONFIG)
+    private readonly storefrontPricingConfig: StorefrontPricingConfig,
+    @Inject(CACHE_MANAGER)
+    private readonly cacheManager: Cache,
     private readonly storefrontMarketContextService: StorefrontMarketContextService,
     private readonly fxRateService: FxRateService,
     private readonly roundingPolicyService: RoundingPolicyService,
@@ -50,6 +61,21 @@ export class ResolvedStorefrontPriceService {
     },
   ): Promise<ResolvedStorefrontPrice | undefined> {
     const normalizedContext = normalizeContext(context);
+    const shouldCache = normalizedContext
+      && !isIndexedPricingSelection(this.storefrontPricingConfig, normalizedContext);
+    const cacheKey = shouldCache
+      ? buildResolvedPriceCacheKey(inventory.id, inventory.updatedAt, normalizedContext)
+      : undefined;
+
+    if (cacheKey) {
+      const cached = await this.cacheManager.get<ResolvedStorefrontPrice>(cacheKey);
+
+      if (cached) {
+        return cached;
+      }
+    }
+
+    let resolvedPrice: ResolvedStorefrontPrice | undefined;
 
     if (normalizedContext?.marketCode && normalizedContext.currency) {
       const exactMarketPrice = getActiveMarketPrice(
@@ -59,7 +85,7 @@ export class ResolvedStorefrontPriceService {
       );
 
       if (exactMarketPrice) {
-        return {
+        resolvedPrice = {
           amountMinor: exactMarketPrice.amountMinor,
           originalAmountMinor: exactMarketPrice.originalAmountMinor,
           currency: exactMarketPrice.currency,
@@ -72,11 +98,11 @@ export class ResolvedStorefrontPriceService {
       }
     }
 
-    if (normalizedContext?.marketCode && !normalizedContext.requestedCurrency) {
+    if (!resolvedPrice && normalizedContext?.marketCode && !normalizedContext.requestedCurrency) {
       const marketPrice = getActiveMarketPrice(inventory, normalizedContext.marketCode);
 
       if (marketPrice) {
-        return {
+        resolvedPrice = {
           amountMinor: marketPrice.amountMinor,
           originalAmountMinor: marketPrice.originalAmountMinor,
           currency: marketPrice.currency,
@@ -89,52 +115,81 @@ export class ResolvedStorefrontPriceService {
       }
     }
 
-    const basePrice = getActiveBasePrice(inventory);
+    if (!resolvedPrice) {
+      const basePrice = getActiveBasePrice(inventory);
 
-    if (!basePrice) {
-      return undefined;
+      if (!basePrice) {
+        resolvedPrice = undefined;
+      }
+
+      if (basePrice && (!normalizedContext?.currency || normalizedContext.currency === basePrice.currency)) {
+        resolvedPrice = {
+          amountMinor: basePrice.amountMinor,
+          originalAmountMinor: basePrice.originalAmountMinor,
+          currency: basePrice.currency,
+          sourceCurrency: basePrice.currency,
+          sourceUnitAmountMinor: basePrice.amountMinor,
+          sourceType: 'base_native',
+          sourcePriceId: basePrice.id,
+        };
+      }
+
+      if (basePrice && !resolvedPrice) {
+        const rate = await this.fxRateService.getLatestRate({
+          fromCurrency: basePrice.currency,
+          toCurrency: normalizedContext!.currency,
+          at: normalizedContext?.at,
+        });
+
+        resolvedPrice = !rate
+          ? {
+            amountMinor: basePrice.amountMinor,
+            originalAmountMinor: basePrice.originalAmountMinor,
+            currency: basePrice.currency,
+            sourceCurrency: basePrice.currency,
+            sourceUnitAmountMinor: basePrice.amountMinor,
+            sourceType: 'base_native',
+            sourcePriceId: basePrice.id,
+          }
+          : convertBasePrice({
+            amountMinor: basePrice.amountMinor,
+            originalAmountMinor: basePrice.originalAmountMinor,
+            sourcePriceId: basePrice.id,
+            baseCurrency: basePrice.currency,
+            targetCurrency: normalizedContext!.currency,
+            roundingPolicyService: this.roundingPolicyService,
+            rate,
+          });
+      }
     }
 
-    if (!normalizedContext?.currency || normalizedContext.currency === basePrice.currency) {
-      return {
-        amountMinor: basePrice.amountMinor,
-        originalAmountMinor: basePrice.originalAmountMinor,
-        currency: basePrice.currency,
-        sourceCurrency: basePrice.currency,
-        sourceUnitAmountMinor: basePrice.amountMinor,
-        sourceType: 'base_native',
-        sourcePriceId: basePrice.id,
-      };
+    if (cacheKey && resolvedPrice) {
+      await this.cacheManager.set(
+        cacheKey,
+        resolvedPrice,
+        this.storefrontPricingConfig.rarePriceCacheTtlMs,
+      );
     }
 
-    const rate = await this.fxRateService.getLatestRate({
-      fromCurrency: basePrice.currency,
-      toCurrency: normalizedContext.currency,
-      at: normalizedContext.at,
-    });
-
-    if (!rate) {
-      return {
-        amountMinor: basePrice.amountMinor,
-        originalAmountMinor: basePrice.originalAmountMinor,
-        currency: basePrice.currency,
-        sourceCurrency: basePrice.currency,
-        sourceUnitAmountMinor: basePrice.amountMinor,
-        sourceType: 'base_native',
-        sourcePriceId: basePrice.id,
-      };
-    }
-
-    return convertBasePrice({
-      amountMinor: basePrice.amountMinor,
-      originalAmountMinor: basePrice.originalAmountMinor,
-      sourcePriceId: basePrice.id,
-      baseCurrency: basePrice.currency,
-      targetCurrency: normalizedContext.currency,
-      roundingPolicyService: this.roundingPolicyService,
-      rate,
-    });
+    return resolvedPrice;
   }
+}
+
+function buildResolvedPriceCacheKey(
+  inventoryId: string,
+  inventoryUpdatedAt: Date,
+  context: {
+    marketCode: string;
+    currency: string;
+  },
+): string {
+  return [
+    'storefront-price',
+    inventoryId,
+    inventoryUpdatedAt.toISOString(),
+    context.marketCode,
+    context.currency,
+  ].join(':');
 }
 
 function normalizeContext(context?: {
