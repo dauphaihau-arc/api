@@ -28,6 +28,11 @@ describe('ProductController', () => {
   const listPublicProductReviewImagesUseCase: Pick<jest.Mocked<ListPublicProductReviewImagesUseCase>, 'execute'> = {
     execute: jest.fn(),
   };
+  const guestRequest = {} as any;
+  const authenticatedRequest = { user: { userId: 'user-1' } } as any;
+  const response = {
+    setHeader: jest.fn(),
+  } as any;
 
   const controller = new ProductController(
     listPublicProductsUseCase as never,
@@ -77,14 +82,18 @@ describe('ProductController', () => {
       },
     ]);
 
-    await expect(controller.listProductFacets({
-      page: '1',
-      limit: '12',
-      category_id: '19e56f7f-2dbd-4e4b-95fc-99f82f6d5b0e',
-      min_price: '20000',
-      max_price: '50000',
-      attr_material: 'cotton,linen',
-    })).resolves.toEqual({
+    await expect(controller.listProductFacets(
+      guestRequest,
+      response,
+      {
+        page: '1',
+        limit: '12',
+        category_id: '19e56f7f-2dbd-4e4b-95fc-99f82f6d5b0e',
+        min_price: '20000',
+        max_price: '50000',
+        attr_material: 'cotton,linen',
+      },
+    )).resolves.toEqual({
       facets: [
         {
           facet_key: 'material',
@@ -110,6 +119,7 @@ describe('ProductController', () => {
         },
       ],
     });
+    expect(response.setHeader).toHaveBeenCalledWith('Cache-Control', 'public, max-age=60');
   });
 
   it('normalizes list product queries before executing the use case', async () => {
@@ -125,15 +135,19 @@ describe('ProductController', () => {
       },
     });
 
-    await controller.listProducts({
-      page: '1',
-      limit: '16',
-      category_id: '19e56f7f-2dbd-4e4b-95fc-99f82f6d5b0e',
-      min_price: '20000',
-      max_price: '50000',
-      attr_bag_size: 'large',
-      attr_color: 'blue,green',
-    });
+    await controller.listProducts(
+      guestRequest,
+      response,
+      {
+        page: '1',
+        limit: '16',
+        category_id: '19e56f7f-2dbd-4e4b-95fc-99f82f6d5b0e',
+        min_price: '20000',
+        max_price: '50000',
+        attr_bag_size: 'large',
+        attr_color: 'blue,green',
+      },
+    );
 
     expect(listPublicProductsUseCase.execute).toHaveBeenCalledWith({
       page: 1,
@@ -156,6 +170,7 @@ describe('ProductController', () => {
         },
       ],
     });
+    expect(response.setHeader).toHaveBeenCalledWith('Cache-Control', 'public, max-age=60');
   });
 
   it('returns suggested products for typeahead', async () => {
@@ -222,7 +237,12 @@ describe('ProductController', () => {
       inventory: [],
     });
 
-    await expect(controller.productBySlugs('arc-store', 'handmade-bag')).resolves.toEqual({
+    await expect(controller.productBySlugs(
+      guestRequest,
+      response,
+      'arc-store',
+      'handmade-bag',
+    )).resolves.toEqual({
       id: 'product-1',
       shop: {
         id: 'shop-1',
@@ -253,14 +273,38 @@ describe('ProductController', () => {
       'arc-store',
       'handmade-bag',
     );
+    expect(response.setHeader).toHaveBeenCalledWith('Cache-Control', 'public, max-age=60');
   });
 
   it('throws when the product does not exist', async () => {
     getPublicProductBySlugsUseCase.execute.mockResolvedValue(null);
 
-    await expect(controller.productBySlugs('missing-shop', 'missing-product')).rejects.toBeInstanceOf(
+    await expect(controller.productBySlugs(
+      guestRequest,
+      response,
+      'missing-shop',
+      'missing-product',
+    )).rejects.toBeInstanceOf(
       NotFoundException,
     );
+  });
+
+  it('marks auth-backed product responses as private', async () => {
+    listPublicProductsUseCase.execute.mockResolvedValue({
+      items: [],
+      meta: {
+        page: 1,
+        limit: 16,
+        total: 0,
+        totalPages: 0,
+        hasNextPage: false,
+        hasPreviousPage: false,
+      },
+    });
+
+    await controller.listProducts(authenticatedRequest, response, {});
+
+    expect(response.setHeader).toHaveBeenCalledWith('Cache-Control', 'private, no-store');
   });
 
   it('returns public product reviews', async () => {

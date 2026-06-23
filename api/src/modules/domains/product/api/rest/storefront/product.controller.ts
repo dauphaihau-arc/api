@@ -1,5 +1,5 @@
 import {
-  Controller, Get, Header, NotFoundException, Param, Query, UseGuards,
+  Controller, Get, Header, NotFoundException, Param, Query, Req, Res, UseGuards,
 } from '@nestjs/common';
 import {
   ApiNotFoundResponse,
@@ -10,6 +10,8 @@ import {
 } from '@nestjs/swagger';
 import { SkipThrottle } from '@nestjs/throttler';
 import { OptionalJwtAuthGuard } from '~/modules/domains/auth/api/guard/optional-jwt-auth.guard';
+import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
+import type { Request, Response } from 'express';
 import { GetPublicProductBySlugsUseCase } from '../../../app/use-cases/get-public-product-by-slugs/get-public-product-by-slugs.use-case';
 import { ListPublicProductReviewImagesUseCase } from '../../../app/use-cases/list-public-product-review-images/list-public-product-review-images.use-case';
 import { ListPublicProductsUseCase } from '../../../app/use-cases/list-public-products/list-public-products.use-case';
@@ -33,6 +35,18 @@ import type { PublicProductReviewListResponse } from './responses/public-product
 import { toPublicProductSuggestionResponse } from './presenters/public-product-suggestion.presenter';
 import type { PublicProductSuggestionResponse } from './responses/public-product-suggestion.response';
 
+const STOREFRONT_CACHE_VARY_HEADER = 'x-market-code, x-currency, x-locale, x-channel';
+const PUBLIC_STOREFRONT_CACHE_CONTROL = 'public, max-age=60';
+const PRIVATE_STOREFRONT_CACHE_CONTROL = 'private, no-store';
+type ProductRequest = Request & { user?: AuthenticatedUser | null };
+
+function setStorefrontProductCacheControl(response: Response, request: ProductRequest) {
+  response.setHeader(
+    'Cache-Control',
+    request.user ? PRIVATE_STOREFRONT_CACHE_CONTROL : PUBLIC_STOREFRONT_CACHE_CONTROL,
+  );
+}
+
 @Controller('products')
 @ApiTags('Products')
 @UseGuards(OptionalJwtAuthGuard)
@@ -49,6 +63,7 @@ export class ProductController {
 
   @Get('suggestions')
   @Header('Cache-Control', 'public, max-age=30')
+  @Header('Vary', STOREFRONT_CACHE_VARY_HEADER)
   @ApiOperation({ summary: 'Suggest public products for typeahead' })
   @ApiOkResponse({
     description: 'Matching public product suggestions.',
@@ -66,15 +81,18 @@ export class ProductController {
   }
 
   @Get()
-  @Header('Cache-Control', 'public, max-age=60')
+  @Header('Vary', STOREFRONT_CACHE_VARY_HEADER)
   @ApiOperation({ summary: 'List public products' })
   @ApiOkResponse({
     description: 'Public product list.',
     schema: { type: 'object' },
   })
   async listProducts(
+    @Req() request: ProductRequest,
+    @Res({ passthrough: true }) response: Response,
     @Query() rawQuery: Record<string, unknown>,
   ): Promise<PublicProductListResponse> {
+    setStorefrontProductCacheControl(response, request);
     const query = await this.listPublicProductsQueryPipe.transform(rawQuery, {
       type: 'query',
       metatype: ListPublicProductsQueryDto,
@@ -86,15 +104,18 @@ export class ProductController {
   }
 
   @Get('facets')
-  @Header('Cache-Control', 'public, max-age=60')
+  @Header('Vary', STOREFRONT_CACHE_VARY_HEADER)
   @ApiOperation({ summary: 'List public product facets' })
   @ApiOkResponse({
     description: 'Public product facets.',
     schema: { type: 'object' },
   })
   async listProductFacets(
+    @Req() request: ProductRequest,
+    @Res({ passthrough: true }) response: Response,
     @Query() rawQuery: Record<string, unknown>,
   ): Promise<PublicProductFacetResponse> {
+    setStorefrontProductCacheControl(response, request);
     const query = await this.listPublicProductsQueryPipe.transform(rawQuery, {
       type: 'query',
       metatype: ListPublicProductsQueryDto,
@@ -107,7 +128,7 @@ export class ProductController {
 
   @Get('by-slug/:shop_slug/:product_slug')
   @SkipThrottle()
-  @Header('Cache-Control', 'public, max-age=60')
+  @Header('Vary', STOREFRONT_CACHE_VARY_HEADER)
   @ApiOperation({ summary: 'Get a public product by shop slug and product slug' })
   @ApiParam({ name: 'shop_slug', type: String })
   @ApiParam({ name: 'product_slug', type: String })
@@ -117,9 +138,12 @@ export class ProductController {
   })
   @ApiNotFoundResponse({ description: 'Product was not found.' })
   async productBySlugs(
+    @Req() request: ProductRequest,
+    @Res({ passthrough: true }) response: Response,
     @Param('shop_slug') shopSlug: string,
     @Param('product_slug') productSlug: string,
   ): Promise<PublicProductDetailResponse> {
+    setStorefrontProductCacheControl(response, request);
     const product = await this.getPublicProductBySlugsUseCase.execute(
       shopSlug,
       productSlug,
@@ -134,6 +158,7 @@ export class ProductController {
 
   @Get('by-slug/:shop_slug/:product_slug/reviews')
   @Header('Cache-Control', 'public, max-age=60')
+  @Header('Vary', STOREFRONT_CACHE_VARY_HEADER)
   @ApiOperation({ summary: 'List public product reviews' })
   @ApiParam({ name: 'shop_slug', type: String })
   @ApiParam({ name: 'product_slug', type: String })
@@ -167,6 +192,7 @@ export class ProductController {
 
   @Get('by-slug/:shop_slug/:product_slug/review-images')
   @Header('Cache-Control', 'public, max-age=60')
+  @Header('Vary', STOREFRONT_CACHE_VARY_HEADER)
   @ApiOperation({ summary: 'List public product review images' })
   @ApiParam({ name: 'shop_slug', type: String })
   @ApiParam({ name: 'product_slug', type: String })

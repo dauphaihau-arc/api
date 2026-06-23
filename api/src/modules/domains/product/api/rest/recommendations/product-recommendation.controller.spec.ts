@@ -26,6 +26,11 @@ describe('ProductRecommendationController', () => {
   const productActivitySessionService: Pick<jest.Mocked<ProductActivitySessionService>, 'extractSessionId'> = {
     extractSessionId: jest.fn(),
   };
+  const guestRequest = {} as any;
+  const authenticatedRequest = { user: { userId: 'user-1' } } as any;
+  const response = {
+    setHeader: jest.fn(),
+  } as any;
 
   const controller = new ProductRecommendationController(
     recommendPublicProductsUseCase as never,
@@ -102,6 +107,8 @@ describe('ProductRecommendationController', () => {
     ]);
 
     await expect(controller.recommendProducts(
+      guestRequest,
+      response,
       'arc-store',
       'handmade-bag',
       { limit: 6 },
@@ -129,6 +136,7 @@ describe('ProductRecommendationController', () => {
       ],
     });
     expect(recommendPublicProductsUseCase.execute).toHaveBeenCalledWith('arc-store', 'handmade-bag', 6);
+    expect(response.setHeader).toHaveBeenCalledWith('Cache-Control', 'public, max-age=60');
   });
 
   it('returns recommendation sections for a PDP', async () => {
@@ -160,6 +168,8 @@ describe('ProductRecommendationController', () => {
     ]);
 
     await expect(controller.getRecommendationSections(
+      guestRequest,
+      response,
       'arc-store',
       'handmade-bag',
       { limit: 6 },
@@ -196,6 +206,7 @@ describe('ProductRecommendationController', () => {
       ],
     });
     expect(getPublicProductRecommendationSectionsUseCase.execute).toHaveBeenCalledWith('arc-store', 'handmade-bag', 6);
+    expect(response.setHeader).toHaveBeenCalledWith('Cache-Control', 'public, max-age=60');
   });
 
   it('returns recently viewed products for the current actor', async () => {
@@ -275,7 +286,11 @@ describe('ProductRecommendationController', () => {
       },
     ]);
 
-    await expect(controller.listTrendingProducts({ limit: 6 })).resolves.toEqual({
+    await expect(controller.listTrendingProducts(
+      guestRequest,
+      response,
+      { limit: 6 },
+    )).resolves.toEqual({
       items: [
         {
           id: 'product-4',
@@ -300,6 +315,7 @@ describe('ProductRecommendationController', () => {
     expect(publicProductViewHistoryService.listTrendingProducts).toHaveBeenCalledWith({
       limit: 6,
     });
+    expect(response.setHeader).toHaveBeenCalledWith('Cache-Control', 'public, max-age=60');
   });
 
   it('returns best-selling products', async () => {
@@ -324,7 +340,11 @@ describe('ProductRecommendationController', () => {
       },
     ]);
 
-    await expect(controller.listBestSellingProducts({ limit: 8 })).resolves.toEqual({
+    await expect(controller.listBestSellingProducts(
+      guestRequest,
+      response,
+      { limit: 8 },
+    )).resolves.toEqual({
       items: [
         {
           id: 'product-5',
@@ -349,5 +369,14 @@ describe('ProductRecommendationController', () => {
     expect(publicProductOrderHistoryService.listBestSellingProducts).toHaveBeenCalledWith({
       limit: 8,
     });
+    expect(response.setHeader).toHaveBeenCalledWith('Cache-Control', 'public, max-age=60');
+  });
+
+  it('marks authenticated recommendation responses as private', async () => {
+    publicProductViewHistoryService.listTrendingProducts.mockResolvedValue([]);
+
+    await controller.listTrendingProducts(authenticatedRequest, response, { limit: 0 });
+
+    expect(response.setHeader).toHaveBeenCalledWith('Cache-Control', 'private, no-store');
   });
 });
