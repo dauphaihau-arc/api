@@ -8,6 +8,7 @@ It focuses on the implemented steady-state model:
 
 - how prices are owned
 - how currencies are separated by concern
+- how storefront pricing is projected for read-side performance
 - what data must be persisted
 - what invariants the system must enforce
 
@@ -60,7 +61,7 @@ Rules:
 - it is used for storefront presentation and quote display context
 - it may differ from the final checkout currency
 - it must never redefine catalog price ownership
-- if conversion is needed for browsing, that conversion is informational, not authoritative
+- if conversion is needed for browsing, that conversion is backend-derived from catalog pricing
 
 ### Checkout currency
 
@@ -89,20 +90,21 @@ The system separates pricing into four layers:
 
 1. catalog/base price
 2. optional market override price when such rows exist
-3. display projection
+3. storefront indexed display projection
 4. checkout quote
 
 Interpretation:
 
 - catalog/base price is canonical
 - market override is canonical for a specific market when present
-- display projection is derived for browsing
+- storefront indexed display projection is a derived read model for browsing
 - checkout quote is the persisted transactional truth for purchase
 
 Current implementation note:
 
 - seller-facing pricing writes currently create base price rows only
 - market override rows are supported by persistence and read-time resolution but are not exposed through the normal seller pricing write API
+- storefront pricing for selected market/currency pairs is precomputed into Mongo read models during catalog projection
 
 ## Price Resolution
 
@@ -112,14 +114,14 @@ Resolution rules:
 
 1. resolve the active catalog price for the inventory item
 2. prefer an active market-specific override when one exists for the target market
-3. otherwise use the active base price
-4. derive display amounts as needed for browsing
+3. for configured indexed market/currency pairs, project resolved storefront prices ahead of time into catalog read models
+4. otherwise use the active base price and derive browsing amounts on demand with FX conversion when needed
 5. resolve one allowed checkout currency by backend policy
 6. persist the final transactional amounts in the quote
 
 Important boundary:
 
-- display conversion may happen before purchase
+- display conversion may happen either during catalog projection or on demand before purchase
 - transactional pricing becomes authoritative only after quote creation
 
 For end-to-end lifecycle examples, see [multi-currency-pricing-flows.md](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/docs/multi-currency/multi-currency-pricing-flows.md).
@@ -161,6 +163,51 @@ Current implementation note:
 
 - the seller pricing write path currently closes the active base row and inserts a new base row in the shop currency
 - it does not currently expose `market_code` input for sellers to create or update market override rows
+
+### Storefront indexed pricing
+
+Storefront browsing now uses a dedicated derived price read model in addition to canonical `variant_prices`.
+
+Current shape:
+
+```ts
+catalog_product_prices
+- product_id
+- summary_by_market
+- inventory_pricing_by_id
+- updated_at
+- source_version
+```
+
+Semantics:
+
+- `summary_by_market` stores product-level min/max storefront pricing by market and currency
+- `inventory_pricing_by_id` stores per-inventory base pricing plus resolved storefront pricing snapshots
+- `resolvedByMarket` contains backend-resolved browsing prices for configured indexed pairs
+- `marketOverrides` preserves active canonical market override rows when present
+- this document is derived from `variant_prices`; it does not replace canonical price ownership
+
+Current implementation note:
+
+- catalog projection writes product content, slugs, search, and price documents together
+- indexed storefront prices are only generated for configured market/currency pairs
+- non-indexed pairs continue to resolve from canonical prices at request time
+
+### Storefront pricing selection
+
+Storefront read paths do not resolve every market/currency request the same way.
+
+Rules:
+
+- request context resolves a market and a supported currency
+- if the pair is in the configured indexed set, storefront list/detail/search reads use indexed Mongo or Atlas projections
+- if the pair is not indexed, the storefront falls back to live canonical price resolution
+- fallback live resolutions may be cached for a short TTL to reduce repeated FX work
+
+Operational note:
+
+- indexed pair configuration is currently controlled by `STOREFRONT_INDEXED_PRICE_PAIRS`
+- fallback cache TTL is currently controlled by `STOREFRONT_RARE_PRICE_CACHE_TTL_MS`
 
 ### Checkout quote
 

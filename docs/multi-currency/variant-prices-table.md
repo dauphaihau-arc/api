@@ -7,6 +7,7 @@ It is important to distinguish schema capability from the current seller-facing 
 - the table supports both base rows and market override rows
 - the current seller pricing write API creates and rotates base rows only
 - market override rows are available to the read side when present, but are not created through the normal seller pricing endpoint today
+- storefront read models may project additional resolved browsing prices from this table for selected market/currency pairs
 
 `market_code` and `price_type` together identify the role of a row:
 
@@ -86,3 +87,14 @@ The current seller pricing update flow:
 - does not create or rotate market override rows
 
 So this table is more expressive than the current seller-facing pricing API.
+
+## Relationship to storefront read models
+
+`variant_prices` remains the canonical merchandise pricing store, but storefront reads may now use derived Mongo price documents for performance.
+
+- base rows and market override rows in `variant_prices` remain the source of truth
+- projected storefront price documents may store precomputed min/max and per-inventory resolved prices for configured indexed market/currency pairs
+- those projected documents are derived from active `variant_prices` rows plus FX conversion and rounding policy
+- if a requested market/currency pair is not indexed, the storefront falls back to resolving from `variant_prices` at request time
+
+That means `variant_prices` still owns pricing truth even when storefront browsing is served from a derived indexed document.

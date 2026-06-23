@@ -9,9 +9,9 @@ For the target model, invariants, and data design, see [multi-currency-pricing-d
 ```text
 seller creates product pricing
 -> base price
--> price resolution
+-> catalog projection
+-> indexed storefront pricing projection for configured pairs
 -> FX service when needed
--> localized pricing service
 -> rounding rules
 -> storefront display price
 ```
@@ -20,6 +20,7 @@ Summary:
 
 - seller authors canonical base pricing
 - the current seller pricing write API does not expose market override creation
+- catalog projection precomputes storefront pricing for configured indexed market/currency pairs
 - backend decides whether to use an existing market override or base-price conversion
 - storefront receives backend-resolved display pricing
 
@@ -41,8 +42,10 @@ Summary:
 
 ```text
 buyer browses storefront
--> storefront requests display pricing
--> backend resolves display price
+-> storefront sends market/currency context
+-> backend selects indexed or fallback price path
+-> indexed pair: read projected storefront price
+-> non-indexed pair: resolve display price from canonical price with FX when needed
 -> buyer starts checkout
 -> backend selects checkout currency
 -> backend creates persisted quote
@@ -53,6 +56,8 @@ buyer browses storefront
 Summary:
 
 - storefront display currency may differ from checkout currency
+- configured indexed market/currency pairs are served from projected Mongo/Atlas pricing documents
+- non-indexed pairs fall back to live backend resolution from canonical prices, with short-lived caching
 - transactional pricing becomes authoritative at quote creation
 - payment uses persisted quote amounts and does not reprice
 - orders currently keep quote linkage in `payment_details.quote_id`
