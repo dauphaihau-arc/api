@@ -1,0 +1,27 @@
+set shell := ["bash", "-eu", "-o", "pipefail", "-c"]
+
+vars_file := "hurl.variables"
+stdout_file := "/tmp/hurl.out"
+stderr_file := "/tmp/hurl-verbose.out"
+
+default:
+  @just --list
+
+suite:
+  hurl --test --glob "**/*.hurl" --variables-file {{vars_file}}
+
+run file:
+  file_path="{{file}}"; \
+  if [[ "$file_path" == api-tests/* ]]; then \
+    file_path="${file_path#api-tests/}"; \
+  fi; \
+  set +e; \
+  hurl --include --verbose --variables-file {{vars_file}} "$file_path" > {{stdout_file}} 2> {{stderr_file}}; \
+  status=$?; \
+  set -e; \
+  nu scripts/format-response.nu {{stdout_file}} {{stderr_file}}; \
+  if [[ $status -ne 0 ]]; then \
+    printf '\nHurl failure details\n'; \
+    sed -n '/^error:/,$p' {{stderr_file}}; \
+  fi; \
+  exit $status

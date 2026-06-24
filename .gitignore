@@ -46,5 +46,6 @@ seed-data/images/*-local/
 # Keep the main app migration snapshot tracked; ignore transient snapshots.
 api/database/migrations/.snapshot-*.json
 !api/database/migrations/.snapshot-app.json
+api/api-tests/hurl.variables
 
 implements/

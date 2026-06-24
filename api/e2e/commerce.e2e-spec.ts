@@ -21,7 +21,7 @@ import { StorageService } from '../src/modules/shared/storage/app/ports/storage.
 import { LocalFileStorageService } from '../src/modules/shared/storage/infra/local-file-storage.service';
 import { ObservabilityService } from '../src/modules/shared/observability/observability.service';
 import { RequestContextService } from '../src/modules/shared/request-context/request-context.service';
-import { createTestDatabase, dropTestDatabase } from './e2e-postgres';
+import { createTestDatabase, dropTestDatabase } from '../test/e2e-postgres';
 
 jest.setTimeout(30_000);
 
