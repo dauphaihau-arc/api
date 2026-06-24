@@ -1,4 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
+import type { StructuredLogRecord } from '~/common/logging/structured-log.types';
+import { buildStructuredLog } from '~/common/utils/structured-log';
 import { buildPaginationMeta } from '~/common/application/pagination';
 import { CATALOG_CONFIG, type CatalogConfig } from '~/config/catalog.config';
 import {
@@ -19,6 +22,8 @@ import {
   type StorefrontIndexedPricingSelection,
 } from '../../../../app/storefront-indexed-pricing';
 import { StorefrontMarketContextService } from '../../../../app/services/storefront-market-context.service';
+import { RequestContextService } from '~/modules/shared/request-context/request-context.service';
+import { getActiveTraceContext } from '~/modules/shared/observability/tracing';
 import { CatalogMongoAccess } from '../../../catalog/mongo/access/catalog-mongo.access';
 import type {
   ListPublicProductsInput,
@@ -41,8 +46,20 @@ type MongoAggregateCursorLike<TDocument> = {
   toArray(): Promise<TDocument[]>;
 };
 
+type MongoFindCursorLike<TDocument> = {
+  sort(sort: Record<string, 1 | -1>): MongoFindCursorLike<TDocument>;
+  skip(value: number): MongoFindCursorLike<TDocument>;
+  limit(value: number): MongoFindCursorLike<TDocument>;
+  toArray(): Promise<TDocument[]>;
+};
+
 type MongoCollectionLike<TDocument> = {
   findOne(filter: Record<string, unknown>): Promise<TDocument | null>;
+  countDocuments(filter: Record<string, unknown>): Promise<number>;
+  find(
+    filter: Record<string, unknown>,
+    options?: Record<string, unknown>,
+  ): MongoFindCursorLike<TDocument>;
   aggregate<TResult = TDocument>(
     pipeline: Array<Record<string, unknown>>
   ): MongoAggregateCursorLike<TResult>;
@@ -62,10 +79,13 @@ implements StorefrontProductQueryRepository {
     private readonly catalogConfig: CatalogConfig,
     @Inject(STOREFRONT_PRICING_CONFIG)
     private readonly storefrontPricingConfig: StorefrontPricingConfig,
+    @InjectPinoLogger(AtlasSearchStorefrontProductQueryRepository.name)
+    private readonly logger: PinoLogger,
     private readonly catalogProductSlugRepository: CatalogProductSlugRepository,
     private readonly catalogProductPriceDocumentRepository: CatalogProductPriceDocumentRepository,
     private readonly catalogMongoAccess: CatalogMongoAccess,
     private readonly storefrontMarketContextService: StorefrontMarketContextService,
+    private readonly requestContextService: RequestContextService,
     private readonly mikroOrmStorefrontProductQueryRepository: MikroOrmStorefrontProductQueryRepository,
   ) {}
 
@@ -102,8 +122,61 @@ implements StorefrontProductQueryRepository {
   }
 
   async findPublicByIds(productIds: string[]): Promise<PublicProductListItem[]> {
-    // Recommendation-style endpoints need request-aware pricing resolution.
-    return this.mikroOrmStorefrontProductQueryRepository.findPublicByIds(productIds);
+    if (productIds.length === 0) {
+      return [];
+    }
+
+    const pricingSelection = resolveIndexedPricingSelection(
+      await this.storefrontMarketContextService.resolveCurrentRequest(),
+    );
+
+    if (!isIndexedPricingSelection(this.storefrontPricingConfig, pricingSelection)) {
+      return this.mikroOrmStorefrontProductQueryRepository.findPublicByIds(productIds);
+    }
+
+    this.assertAtlasSearchEnabled();
+
+    const searchCollection = await this.getSearchCollection();
+    const documents = await searchCollection.aggregate<CatalogSearchDocument>([
+      {
+        $match: {
+          productId: { $in: productIds },
+          state: ProductState.ACTIVE,
+          'flags.hasImages': true,
+        },
+      },
+      {
+        $project: {
+          _id: 1,
+          productId: 1,
+          shopId: 1,
+          shopPublicId: 1,
+          shopSlug: 1,
+          shopName: 1,
+          slug: 1,
+          title: 1,
+          categoryId: 1,
+          variantType: 1,
+          image: 1,
+          price: 1,
+          pricingByMarket: 1,
+          inventory: 1,
+          ranking: 1,
+        },
+      },
+    ]).toArray();
+    const documentsById = new Map(
+      documents.map((document) => [document.productId, document] as const),
+    );
+
+    return productIds
+      .map((productId) => documentsById.get(productId))
+      .filter((document): document is CatalogSearchDocument => document != null)
+      .map((document) => toPublicProductListItemFromSearchDocument(document, pricingSelection));
+  }
+
+  async findPublicCardsByIds(productIds: string[]): Promise<PublicProductListItem[]> {
+    return this.findPublicByIds(productIds);
   }
 
   async listPublic(
@@ -118,7 +191,19 @@ implements StorefrontProductQueryRepository {
     if (!isIndexedPricingSelection(this.storefrontPricingConfig, pricingSelection)) {
       return this.mikroOrmStorefrontProductQueryRepository.listPublic(input);
     }
-    const searchStage = this.buildListSearchStage(input, pricingSelection);
+    const indexedPricingSelection: StorefrontIndexedPricingSelection = pricingSelection!;
+    const requestSummary = this.summarizeListPublicInput(input, indexedPricingSelection);
+
+    if (this.canUseDirectBrowseQuery(input)) {
+      return this.listPublicFromBrowseCollection(
+        searchCollection,
+        input,
+        indexedPricingSelection,
+        requestSummary,
+      );
+    }
+
+    const searchStage = this.buildListSearchStage(input, indexedPricingSelection);
     const totalResults = await searchCollection.aggregate<AtlasSearchMetaResult>([
       {
         $searchMeta: {
@@ -171,7 +256,7 @@ implements StorefrontProductQueryRepository {
     ]).toArray();
 
     return {
-      items: documents.map((document) => toPublicProductListItemFromSearchDocument(document, pricingSelection)),
+      items: documents.map((document) => toPublicProductListItemFromSearchDocument(document, indexedPricingSelection)),
       meta: buildPaginationMeta(input.page, input.limit, total),
     };
   }
@@ -313,6 +398,243 @@ implements StorefrontProductQueryRepository {
         slug: document.shopSlug,
       },
     }));
+  }
+
+  private canUseDirectBrowseQuery(
+    input: ListPublicProductsInput,
+  ): boolean {
+    if (input.search?.trim() || input.title?.trim()) {
+      return false;
+    }
+
+    if (input.minPriceMinor !== undefined || input.maxPriceMinor !== undefined) {
+      return false;
+    }
+
+    if (input.order === 'price_asc' || input.order === 'price_desc') {
+      return false;
+    }
+
+    return !input.attributeFilters?.some((attributeFilter) =>
+      attributeFilter.attributeId
+      && isInferredFacetSupported(attributeFilter.attributeId)
+      && !attributeFilter.selectedOptionKeys?.length,
+    );
+  }
+
+  private async listPublicFromBrowseCollection(
+    searchCollection: MongoCollectionLike<CatalogSearchDocument>,
+    input: ListPublicProductsInput,
+    pricingSelection: StorefrontIndexedPricingSelection,
+    requestSummary: ReturnType<typeof this.summarizeListPublicInput>,
+  ): Promise<PublicProductListResult> {
+    const filter = this.buildDirectBrowseFilter(input);
+    const countStartedAt = process.hrtime.bigint();
+    const total = await searchCollection.countDocuments(filter);
+    const countDurationMs = this.durationMsSince(countStartedAt);
+    this.logger.info(
+      this.buildListPublicLogPayload(
+        'catalog.storefront.list_public.direct_browse_count',
+        {
+          branch: 'direct_browse',
+          countDurationMs,
+          total,
+          ...requestSummary,
+        },
+      ),
+      `Direct browse count finished in ${Math.round(countDurationMs)}ms`,
+    );
+
+    if (total === 0) {
+      return {
+        items: [],
+        meta: buildPaginationMeta(input.page, input.limit, 0),
+      };
+    }
+
+    const documents = await searchCollection
+      .find(filter, {
+        projection: {
+          _id: 1,
+          productId: 1,
+          shopId: 1,
+          shopPublicId: 1,
+          shopSlug: 1,
+          shopName: 1,
+          slug: 1,
+          title: 1,
+          categoryId: 1,
+          variantType: 1,
+          image: 1,
+          price: 1,
+          pricingByMarket: 1,
+          inventory: 1,
+          ranking: 1,
+          variantCount: 1,
+        },
+      })
+      .sort({ 'ranking.createdAt': -1 })
+      .skip((input.page - 1) * input.limit)
+      .limit(input.limit)
+      .toArray();
+    return {
+      items: documents.map((document) => toPublicProductListItemFromSearchDocument(document, pricingSelection)),
+      meta: buildPaginationMeta(input.page, input.limit, total),
+    };
+  }
+
+  private buildDirectBrowseFilter(
+    input: ListPublicProductsInput,
+  ): Record<string, unknown> {
+    const filters: Record<string, unknown>[] = [
+      { state: ProductState.ACTIVE },
+      { 'flags.hasImages': true },
+    ];
+
+    if (input.categoryIds?.length) {
+      filters.push({
+        categoryId: { $in: input.categoryIds },
+      });
+    }
+
+    if (input.isDigital !== undefined) {
+      filters.push({
+        isDigital: input.isDigital,
+      });
+    }
+
+    if (input.whoMade) {
+      filters.push({
+        whoMade: input.whoMade,
+      });
+    }
+
+    input.attributeFilters?.forEach((attributeFilter) => {
+      const baseAttributeMatch = attributeFilter.attributeId
+        ? { categoryAttributeKey: attributeFilter.attributeId }
+        : { categoryAttributeName: attributeFilter.attributeName };
+
+      if (attributeFilter.selectedOptionIds?.length) {
+        filters.push({
+          attributes: {
+            $elemMatch: {
+              ...baseAttributeMatch,
+              selectedOptionId: { $in: attributeFilter.selectedOptionIds },
+            },
+          },
+        });
+        return;
+      }
+
+      if (attributeFilter.selectedOptionKeys?.length) {
+        const structuredFilter = {
+          attributes: {
+            $elemMatch: {
+              ...baseAttributeMatch,
+              selectedOptionKey: { $in: attributeFilter.selectedOptionKeys },
+            },
+          },
+        };
+
+        if (attributeFilter.attributeId && isInferredFacetSupported(attributeFilter.attributeId)) {
+          filters.push({
+            $or: [
+              structuredFilter,
+              {
+                inferredFacets: {
+                  $elemMatch: {
+                    facetKey: attributeFilter.attributeId,
+                    optionKey: { $in: attributeFilter.selectedOptionKeys },
+                  },
+                },
+              },
+            ],
+          });
+          return;
+        }
+
+        filters.push(structuredFilter);
+        return;
+      }
+
+      filters.push({
+        attributes: {
+          $elemMatch: {
+            ...baseAttributeMatch,
+            selectedOptionValue: { $in: attributeFilter.selectedOptionValues },
+          },
+        },
+      });
+    });
+
+    return filters.length === 1
+      ? filters[0]
+      : { $and: filters };
+  }
+
+  private summarizeListPublicInput(
+    input: ListPublicProductsInput,
+    pricingSelection: StorefrontIndexedPricingSelection,
+  ): {
+    page: number;
+    limit: number;
+    order: string;
+    hasSearch: boolean;
+    hasTitle: boolean;
+    categoryCount: number;
+    attributeFilterCount: number;
+    minPriceMinor?: number;
+    maxPriceMinor?: number;
+    marketCode: string;
+    currency: string;
+  } {
+    return {
+      page: input.page,
+      limit: input.limit,
+      order: input.order ?? 'default',
+      hasSearch: Boolean(input.search?.trim()),
+      hasTitle: Boolean(input.title?.trim()),
+      categoryCount: input.categoryIds?.length ?? 0,
+      attributeFilterCount: input.attributeFilters?.length ?? 0,
+      ...(input.minPriceMinor !== undefined ? { minPriceMinor: input.minPriceMinor } : {}),
+      ...(input.maxPriceMinor !== undefined ? { maxPriceMinor: input.maxPriceMinor } : {}),
+      marketCode: pricingSelection.marketCode,
+      currency: pricingSelection.currency,
+    };
+  }
+
+  private durationMsSince(startedAt: bigint): number {
+    return Number(process.hrtime.bigint() - startedAt) / 1_000_000;
+  }
+
+  private buildListPublicLogPayload(
+    event: string,
+    atlas: StructuredLogRecord,
+  ): StructuredLogRecord {
+    const requestContext = this.requestContextService.get();
+    const traceContext = getActiveTraceContext();
+
+    return buildStructuredLog({
+      context: AtlasSearchStorefrontProductQueryRepository.name,
+      event,
+      requestId: requestContext.requestId,
+      actorId: requestContext.actorId,
+      actorEmail: requestContext.actorEmail,
+      sessionId: requestContext.sessionId,
+      traceId: traceContext?.traceId,
+      spanId: traceContext?.spanId,
+      market: {
+        marketCode: requestContext.marketCode,
+        currency: requestContext.currency,
+        locale: requestContext.locale,
+        channel: requestContext.channel,
+      },
+      http: {
+        route: '/v1/products',
+        path: '/v1/products',
+      },
+      atlas,
+    });
   }
 
   private buildListSearchStage(

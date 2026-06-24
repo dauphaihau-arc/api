@@ -1,6 +1,7 @@
 import { RequestMethod } from '@nestjs/common';
 import { METHOD_METADATA, PATH_METADATA } from '@nestjs/common/constants';
 import { GUARDS_METADATA } from '@nestjs/common/constants';
+import type { Cache } from 'cache-manager';
 import { OptionalJwtAuthGuard } from '~/modules/domains/auth/api/guard/optional-jwt-auth.guard';
 import type { PublicProductOrderHistoryService } from '../../../app/services/public-product-order-history.service';
 import type { PublicProductViewHistoryService } from '../../../app/services/public-product-view-history.service';
@@ -26,7 +27,13 @@ describe('ProductRecommendationController', () => {
   const productActivitySessionService: Pick<jest.Mocked<ProductActivitySessionService>, 'extractSessionId'> = {
     extractSessionId: jest.fn(),
   };
-  const guestRequest = {} as any;
+  const cacheManager: Pick<jest.Mocked<Cache>, 'get' | 'set'> = {
+    get: jest.fn(),
+    set: jest.fn(),
+  };
+  const guestRequest = {
+    get: jest.fn(),
+  } as any;
   const authenticatedRequest = { user: { userId: 'user-1' } } as any;
   const response = {
     setHeader: jest.fn(),
@@ -38,10 +45,13 @@ describe('ProductRecommendationController', () => {
     publicProductOrderHistoryService as never,
     publicProductViewHistoryService as never,
     productActivitySessionService as never,
+    cacheManager as never,
   );
 
   beforeEach(() => {
     jest.clearAllMocks();
+    guestRequest.get.mockReturnValue(undefined);
+    cacheManager.get.mockResolvedValue(undefined);
   });
 
   it('registers GET by-slug/:shop_slug/:product_slug/recommendations on the controller method', () => {
@@ -370,6 +380,58 @@ describe('ProductRecommendationController', () => {
       limit: 8,
     });
     expect(response.setHeader).toHaveBeenCalledWith('Cache-Control', 'public, max-age=60');
+    expect(cacheManager.set).toHaveBeenCalledTimes(1);
+  });
+
+  it('serves cached best-sellers responses for anonymous requests', async () => {
+    cacheManager.get.mockResolvedValue([
+      {
+        id: 'cached-product',
+        shop: {
+          id: 'shop-1',
+          publicId: 'public-shop-1',
+          shopName: 'Arc Store',
+          slug: 'arc-store',
+        },
+        title: 'Cached Product',
+        slug: 'cached-product',
+        availability: {
+          inStock: true,
+          lowStock: false,
+          stockTotal: 3,
+        },
+        variantCount: 1,
+        createdAt: new Date('2026-01-05T00:00:00.000Z'),
+      },
+    ]);
+
+    await expect(controller.listBestSellingProducts(
+      guestRequest,
+      response,
+      { limit: 8 },
+    )).resolves.toEqual({
+      items: [
+        {
+          id: 'cached-product',
+          shop: {
+            id: 'shop-1',
+            public_id: 'public-shop-1',
+            shop_name: 'Arc Store',
+            slug: 'arc-store',
+          },
+          title: 'Cached Product',
+          slug: 'cached-product',
+          availability: {
+            in_stock: true,
+            low_stock: false,
+            stock_total: 3,
+          },
+          variant_count: 1,
+          created_at: new Date('2026-01-05T00:00:00.000Z'),
+        },
+      ],
+    });
+    expect(publicProductOrderHistoryService.listBestSellingProducts).not.toHaveBeenCalled();
   });
 
   it('marks authenticated recommendation responses as private', async () => {

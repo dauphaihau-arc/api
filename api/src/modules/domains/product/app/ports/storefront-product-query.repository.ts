@@ -18,6 +18,10 @@ export abstract class StorefrontProductQueryRepository {
     productIds: string[]
   ): Promise<PublicProductListItem[]>;
 
+  abstract findPublicCardsByIds(
+    productIds: string[]
+  ): Promise<PublicProductListItem[]>;
+
   abstract listPublic(
     input: ListPublicProductsInput
   ): Promise<PublicProductListResult>;

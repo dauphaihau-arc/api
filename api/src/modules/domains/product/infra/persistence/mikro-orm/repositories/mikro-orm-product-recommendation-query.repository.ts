@@ -52,10 +52,14 @@ implements ProductRecommendationQueryRepository {
     const visibleProducts = products
       .filter((product) => this.shouldIncludeInPublicList(product))
       .slice(0, input.limit);
+    const pricingByInventoryId = await this.resolvedStorefrontPriceService.resolveManyForCurrentRequest(
+      visibleProducts.flatMap((product) => product.inventoryRecords.getItems()),
+    );
 
     return Promise.all(
       visibleProducts.map((product) => toPublicProductListItem(product, {
-        resolvePricing: (inventory) => this.getResolvedPublicPricing(inventory),
+        resolvePricing: (inventory) =>
+          Promise.resolve(pricingByInventoryId.get(inventory.id) ?? {}),
         storageService: this.storageService,
       })),
     );
@@ -101,10 +105,14 @@ implements ProductRecommendationQueryRepository {
       ))
       .slice(0, input.limit)
       .map(({ product }) => product);
+    const pricingByInventoryId = await this.resolvedStorefrontPriceService.resolveManyForCurrentRequest(
+      orderedProducts.flatMap((product) => product.inventoryRecords.getItems()),
+    );
 
     return Promise.all(
       orderedProducts.map((product) => toPublicProductListItem(product, {
-        resolvePricing: (inventory) => this.getResolvedPublicPricing(inventory),
+        resolvePricing: (inventory) =>
+          Promise.resolve(pricingByInventoryId.get(inventory.id) ?? {}),
         storageService: this.storageService,
       })),
     );

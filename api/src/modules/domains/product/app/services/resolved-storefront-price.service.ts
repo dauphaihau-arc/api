@@ -14,7 +14,10 @@ import {
   getActiveMarketPrice,
 } from '../../infra/persistence/mikro-orm/reads/variant-price-read';
 import { isIndexedPricingSelection } from '../storefront-indexed-pricing';
-import { StorefrontMarketContextService } from './storefront-market-context.service';
+import {
+  StorefrontMarketContextService,
+  type StorefrontMarketContext,
+} from './storefront-market-context.service';
 
 export interface ResolvedStorefrontPrice {
   amountMinor: number;
@@ -52,6 +55,15 @@ export class ResolvedStorefrontPriceService {
     );
   }
 
+  async resolveManyForCurrentRequest(
+    inventories: ProductInventoryEntity[],
+  ): Promise<Map<string, ResolvedStorefrontPrice | undefined>> {
+    return this.resolveMany(
+      inventories,
+      await this.storefrontMarketContextService.resolveCurrentRequest(),
+    );
+  }
+
   async resolve(
     inventory: ProductInventoryEntity,
     context?: {
@@ -60,7 +72,33 @@ export class ResolvedStorefrontPriceService {
       at?: Date;
     },
   ): Promise<ResolvedStorefrontPrice | undefined> {
+    return this.resolveNormalized(
+      inventory,
+      normalizeContext(context),
+    );
+  }
+
+  async resolveMany(
+    inventories: ProductInventoryEntity[],
+    context?: StorefrontMarketContext,
+  ): Promise<Map<string, ResolvedStorefrontPrice | undefined>> {
     const normalizedContext = normalizeContext(context);
+    const rateCache = new Map<string, Promise<ExchangeRateSnapshot | null>>();
+    const resolvedEntries = await Promise.all(
+      inventories.map(async (inventory) => [
+        inventory.id,
+        await this.resolveNormalized(inventory, normalizedContext, rateCache),
+      ] as const),
+    );
+
+    return new Map(resolvedEntries);
+  }
+
+  private async resolveNormalized(
+    inventory: ProductInventoryEntity,
+    normalizedContext?: ReturnType<typeof normalizeContext>,
+    rateCache?: Map<string, Promise<ExchangeRateSnapshot | null>>,
+  ): Promise<ResolvedStorefrontPrice | undefined> {
     const shouldCache = normalizedContext
       && !isIndexedPricingSelection(this.storefrontPricingConfig, normalizedContext);
     const cacheKey = shouldCache
@@ -135,11 +173,11 @@ export class ResolvedStorefrontPriceService {
       }
 
       if (basePrice && !resolvedPrice) {
-        const rate = await this.fxRateService.getLatestRate({
+        const rate = await this.getRateWithCache({
           fromCurrency: basePrice.currency,
           toCurrency: normalizedContext!.currency,
           at: normalizedContext?.at,
-        });
+        }, rateCache);
 
         resolvedPrice = !rate
           ? {
@@ -172,6 +210,33 @@ export class ResolvedStorefrontPriceService {
     }
 
     return resolvedPrice;
+  }
+
+  private async getRateWithCache(
+    input: {
+      fromCurrency: string;
+      toCurrency: string;
+      at?: Date;
+    },
+    rateCache?: Map<string, Promise<ExchangeRateSnapshot | null>>,
+  ): Promise<ExchangeRateSnapshot | null> {
+    if (!rateCache) {
+      return this.fxRateService.getLatestRate(input);
+    }
+
+    const cacheKey = [
+      input.fromCurrency,
+      input.toCurrency,
+      input.at?.toISOString() ?? '',
+    ].join(':');
+    let ratePromise = rateCache.get(cacheKey);
+
+    if (!ratePromise) {
+      ratePromise = this.fxRateService.getLatestRate(input);
+      rateCache.set(cacheKey, ratePromise);
+    }
+
+    return ratePromise;
   }
 }
 

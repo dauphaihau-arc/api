@@ -16,9 +16,13 @@ import type {
 } from '../../../../app/product.types';
 import { PUBLIC_PRODUCT_FACET_PRIORITY } from '../../../../app/product-facet.constants';
 import { toCanonicalFacetOption } from '../../../../app/shoe-size-groups';
+import { PRODUCT_STOCK_NOTICE_THRESHOLD } from '../../../../app/product-stock.constants';
+import { ProductImageVariant } from '../../../../domain/enums/product-image-variant.enum';
+import { ProductShippingCharge } from '../../../../domain/enums/product-shipping-charge.enum';
 import { ProductState } from '../../../../domain/enums/product-state.enum';
 import { getInferredFacetTerms, isInferredFacetSupported } from '../../../inferred-facets';
 import { ProductInventoryEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-inventory.entity';
+import { VariantPriceEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/variant-price.entity';
 import { ProductEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product.entity';
 import {
   getPrimaryInventory,
@@ -105,13 +109,188 @@ implements StorefrontProductQueryRepository {
       .map((productId) => productsById.get(productId))
       .filter((product): product is LoadedRecentProduct => product != null)
       .filter((product) => this.shouldIncludeInPublicList(product));
+    const pricingByInventoryId = await this.resolvedStorefrontPriceService.resolveManyForCurrentRequest(
+      orderedProducts.flatMap((product) => product.inventoryRecords.getItems()),
+    );
 
     return Promise.all(
       orderedProducts.map((product) => toPublicProductListItem(product, {
-        resolvePricing: (inventory) => this.getResolvedPublicPricing(inventory),
+        resolvePricing: (inventory) =>
+          Promise.resolve(pricingByInventoryId.get(inventory.id) ?? {}),
         storageService: this.storageService,
       })),
     );
+  }
+
+  async findPublicCardsByIds(productIds: string[]): Promise<PublicProductListItem[]> {
+    if (productIds.length === 0) {
+      return [];
+    }
+
+    const entityManager = this.entityManager.fork();
+    const connection = entityManager.getConnection();
+    const placeholders = productIds.map(() => '?').join(', ');
+    const productRows = await connection.execute<ProductCardRow[]>(
+      `
+        select
+          p.id,
+          p.category_id,
+          p.title,
+          p.slug,
+          p.variant_type,
+          p.created_at,
+          s.id as shop_id,
+          s.public_id as shop_public_id,
+          s.shop_name,
+          s.slug as shop_slug,
+          primary_image.storage_key as image_storage_key,
+          primary_image.card_storage_key as card_image_storage_key,
+          coalesce(variant_counts.variant_count, 0) as variant_count,
+          exists (
+            select 1
+            from product_shipping_profiles psp
+            inner join product_shipping_destinations psd
+              on psd.product_shipping_profile_id = psp.id
+            where psp.product_id = p.id
+              and psd.charge_type = ?
+          ) as has_free_shipping
+        from products p
+        inner join shops s on s.id = p.shop_id
+        left join lateral (
+          select
+            pi.storage_key,
+            piv.storage_key as card_storage_key
+          from product_images pi
+          left join product_image_variants piv
+            on piv.product_image_id = pi.id
+           and piv.variant = ?
+          where pi.product_id = p.id
+          order by pi.rank asc
+          limit 1
+        ) primary_image on true
+        left join lateral (
+          select count(*)::int as variant_count
+          from product_variants pv
+          where pv.product_id = p.id
+        ) variant_counts on true
+        where p.id in (${placeholders})
+          and p.state = ?
+      `,
+      [
+        ProductShippingCharge.FREE_SHIPPING,
+        ProductImageVariant.CARD_1X1,
+        ...productIds,
+        ProductState.ACTIVE,
+      ],
+    );
+
+    if (productRows.length === 0) {
+      return [];
+    }
+
+    const inventoryRows = await connection.execute<InventoryPricingRow[]>(
+      `
+        select
+          pi.id as inventory_id,
+          pi.product_id,
+          pi.stock,
+          pi.updated_at as inventory_updated_at,
+          vp.id as price_id,
+          vp.market_code,
+          vp.currency,
+          vp.amount_minor,
+          vp.original_amount_minor,
+          vp.active_to
+        from product_inventory pi
+        left join variant_prices vp
+          on vp.product_inventory_id = pi.id
+         and vp.active_from <= ?
+         and (vp.active_to is null or vp.active_to > ?)
+        where pi.product_id in (${placeholders})
+      `,
+      [new Date(), new Date(), ...productIds],
+    );
+
+    const inventoryByProductId = new Map<string, ProductInventoryEntity[]>();
+
+    for (const row of inventoryRows) {
+      const productInventories = inventoryByProductId.get(row.product_id) ?? [];
+      let inventory = productInventories.find((item) => item.id === row.inventory_id);
+
+      if (!inventory) {
+        inventory = createSyntheticInventory(row);
+        productInventories.push(inventory);
+        inventoryByProductId.set(row.product_id, productInventories);
+      }
+
+      if (row.price_id) {
+        inventory.prices.getItems().push(createSyntheticPrice(row));
+      }
+    }
+
+    const allInventories = Array.from(inventoryByProductId.values()).flat();
+    const pricingByInventoryId = await this.resolvedStorefrontPriceService.resolveManyForCurrentRequest(
+      allInventories,
+    );
+    const productsById = new Map(productRows.map((row) => [row.id, row] as const));
+
+    const items: Array<PublicProductListItem | null> = productIds
+      .map((productId) => {
+        const row = productsById.get(productId);
+
+        if (!row) {
+          return null;
+        }
+
+        const inventories = inventoryByProductId.get(productId) ?? [];
+        const totalStock = inventories.reduce((sum, inventory) => sum + inventory.stock, 0);
+        const pricing = summarizePricing(
+          inventories.map((inventory) => pricingByInventoryId.get(inventory.id) ?? {}),
+        );
+
+        return {
+          id: row.id,
+          shop: {
+            id: row.shop_id,
+            ...(row.shop_public_id ? { publicId: row.shop_public_id } : {}),
+            shopName: row.shop_name,
+            slug: row.shop_slug,
+          },
+          ...(row.category_id ? { categoryId: row.category_id } : {}),
+          title: row.title,
+          slug: row.slug,
+          ...(row.image_storage_key
+            ? {
+              image: row.card_image_storage_key
+                ? {
+                  storageKey: row.card_image_storage_key,
+                  variant: ProductImageVariant.CARD_1X1,
+                  variants: {
+                    [ProductImageVariant.CARD_1X1]: {
+                      storageKey: row.card_image_storage_key,
+                    },
+                  },
+                }
+                : {
+                  storageKey: row.image_storage_key,
+                  variant: ProductImageVariant.ORIGINAL,
+                },
+            }
+            : {}),
+          ...(row.variant_type ? { variantType: row.variant_type } : {}),
+          ...(pricing ? { pricing } : {}),
+          availability: {
+            inStock: totalStock > 0,
+            lowStock: totalStock > 0 && totalStock < PRODUCT_STOCK_NOTICE_THRESHOLD,
+            stockTotal: totalStock,
+          },
+          variantCount: row.variant_count,
+          ...(row.has_free_shipping ? { hasFreeShipping: true } : {}),
+          createdAt: row.created_at,
+        };
+      });
+
+    return items.filter((product): product is PublicProductListItem => product != null);
   }
 
   async listPublic(
@@ -178,11 +357,15 @@ implements StorefrontProductQueryRepository {
       && !canUseDenormalizedPriceSort
       ? await this.sortProductsByComparablePrice(orderedProducts, input.order, input.page, input.limit)
       : orderedProducts;
+    const pricingByInventoryId = await this.resolvedStorefrontPriceService.resolveManyForCurrentRequest(
+      pagedProducts.flatMap((product) => product.inventoryRecords.getItems()),
+    );
 
     return {
       items: await Promise.all(
         pagedProducts.map((product) => toPublicProductListItem(product, {
-          resolvePricing: (inventory) => this.getResolvedPublicPricing(inventory),
+          resolvePricing: (inventory) =>
+            Promise.resolve(pricingByInventoryId.get(inventory.id) ?? {}),
           storageService: this.storageService,
         })),
       ),
@@ -692,6 +875,91 @@ implements StorefrontProductQueryRepository {
       currency: pricing?.currency,
     };
   }
+}
+
+interface ProductCardRow {
+  id: string;
+  category_id?: string;
+  title: string;
+  slug: string;
+  variant_type?: PublicProductListItem['variantType'];
+  created_at: Date;
+  shop_id: string;
+  shop_public_id?: string;
+  shop_name: string;
+  shop_slug: string;
+  image_storage_key?: string;
+  card_image_storage_key?: string;
+  variant_count: number;
+  has_free_shipping: boolean;
+}
+
+interface InventoryPricingRow {
+  inventory_id: string;
+  product_id: string;
+  stock: number;
+  inventory_updated_at: Date;
+  price_id?: string;
+  market_code?: string;
+  currency?: string;
+  amount_minor?: number;
+  original_amount_minor?: number;
+  active_to?: Date;
+}
+
+function createSyntheticInventory(row: InventoryPricingRow): ProductInventoryEntity {
+  const prices: VariantPriceEntity[] = [];
+
+  return {
+    id: row.inventory_id,
+    stock: row.stock,
+    updatedAt: row.inventory_updated_at,
+    prices: {
+      getItems: () => prices,
+    },
+  } as ProductInventoryEntity;
+}
+
+function createSyntheticPrice(row: InventoryPricingRow): VariantPriceEntity {
+  return {
+    id: row.price_id,
+    marketCode: row.market_code,
+    currency: row.currency,
+    amountMinor: row.amount_minor,
+    originalAmountMinor: row.original_amount_minor,
+    activeTo: row.active_to,
+  } as VariantPriceEntity;
+}
+
+function summarizePricing(
+  pricingRows: Array<{
+    amountMinor?: number;
+    originalAmountMinor?: number;
+    currency?: string;
+  }>,
+): PublicProductListItem['pricing'] | undefined {
+  const amountValues = pricingRows
+    .map((pricing) => pricing.amountMinor)
+    .filter((value): value is number => value != null);
+  const originalAmountValues = pricingRows
+    .map((pricing) => pricing.originalAmountMinor)
+    .filter((value): value is number => value != null);
+
+  if (amountValues.length === 0 && originalAmountValues.length === 0 && !pricingRows[0]?.currency) {
+    return undefined;
+  }
+
+  return {
+    ...(amountValues.length > 0 ? { minAmountMinor: Math.min(...amountValues) } : {}),
+    ...(amountValues.length > 0 ? { maxAmountMinor: Math.max(...amountValues) } : {}),
+    ...(originalAmountValues.length > 0
+      ? { originalMinAmountMinor: Math.min(...originalAmountValues) }
+      : {}),
+    ...(originalAmountValues.length > 0
+      ? { originalMaxAmountMinor: Math.max(...originalAmountValues) }
+      : {}),
+    currency: pricingRows.find((pricing) => pricing.currency)?.currency,
+  };
 }
 
 function compareFacetNames(

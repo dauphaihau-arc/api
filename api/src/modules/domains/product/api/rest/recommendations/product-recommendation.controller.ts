@@ -1,11 +1,13 @@
 import {
-  Controller, Get, Header, Param, Query, Req, Res, UseGuards, 
+  Controller, Get, Header, Inject, Param, Query, Req, Res, UseGuards,
 } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import {
   ApiOkResponse, ApiOperation, ApiParam, ApiTags, 
 } from '@nestjs/swagger';
 import { OptionalJwtAuthGuard } from '~/modules/domains/auth/api/guard/optional-jwt-auth.guard';
 import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
+import type { Cache } from 'cache-manager';
 import type { Request, Response } from 'express';
 import { PublicProductOrderHistoryService } from '../../../app/services/public-product-order-history.service';
 import { PublicProductViewHistoryService } from '../../../app/services/public-product-view-history.service';
@@ -23,6 +25,7 @@ type ProductRequest = Request & { user?: AuthenticatedUser | null };
 const STOREFRONT_CACHE_VARY_HEADER = 'x-market-code, x-currency, x-locale, x-channel';
 const PUBLIC_STOREFRONT_CACHE_CONTROL = 'public, max-age=60';
 const PRIVATE_STOREFRONT_CACHE_CONTROL = 'private, no-store';
+const PUBLIC_RESPONSE_CACHE_TTL_MS = 60_000;
 
 function setStorefrontProductCacheControl(response: Response, request: ProductRequest) {
   response.setHeader(
@@ -41,6 +44,7 @@ export class ProductRecommendationController {
     private readonly publicProductOrderHistoryService: PublicProductOrderHistoryService,
     private readonly publicProductViewHistoryService: PublicProductViewHistoryService,
     private readonly productActivitySessionService: ProductActivitySessionService,
+    @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
   ) {}
 
   @Get('recently-viewed')
@@ -76,9 +80,13 @@ export class ProductRecommendationController {
     @Query() query: RecentPublicProductsQueryDto,
   ): Promise<PublicProductRecommendationsResponse> {
     setStorefrontProductCacheControl(response, request);
-    const result = await this.publicProductViewHistoryService.listTrendingProducts({
-      limit: query.limit,
-    });
+    const result = await this.getCachedPublicResponse(
+      request,
+      buildPublicCacheKey(request, 'products:trending', [query.limit]),
+      () => this.publicProductViewHistoryService.listTrendingProducts({
+        limit: query.limit,
+      }),
+    );
 
     return toPublicProductRecommendationsResponse(result);
   }
@@ -96,9 +104,13 @@ export class ProductRecommendationController {
     @Query() query: RecentPublicProductsQueryDto,
   ): Promise<PublicProductRecommendationsResponse> {
     setStorefrontProductCacheControl(response, request);
-    const result = await this.publicProductOrderHistoryService.listBestSellingProducts({
-      limit: query.limit,
-    });
+    const result = await this.getCachedPublicResponse(
+      request,
+      buildPublicCacheKey(request, 'products:best-sellers', [query.limit]),
+      () => this.publicProductOrderHistoryService.listBestSellingProducts({
+        limit: query.limit,
+      }),
+    );
 
     return toPublicProductRecommendationsResponse(result);
   }
@@ -120,10 +132,18 @@ export class ProductRecommendationController {
     @Query() query: RecommendPublicProductsQueryDto,
   ): Promise<PublicProductRecommendationsResponse> {
     setStorefrontProductCacheControl(response, request);
-    const result = await this.recommendPublicProductsUseCase.execute(
-      shopSlug,
-      productSlug,
-      query.limit,
+    const result = await this.getCachedPublicResponse(
+      request,
+      buildPublicCacheKey(request, 'products:recommendations', [
+        shopSlug,
+        productSlug,
+        query.limit,
+      ]),
+      () => this.recommendPublicProductsUseCase.execute(
+        shopSlug,
+        productSlug,
+        query.limit,
+      ),
     );
 
     return toPublicProductRecommendationsResponse(result);
@@ -146,12 +166,56 @@ export class ProductRecommendationController {
     @Query() query: RecommendPublicProductsQueryDto,
   ): Promise<PublicProductRecommendationSectionsResponse> {
     setStorefrontProductCacheControl(response, request);
-    const result = await this.getPublicProductRecommendationSectionsUseCase.execute(
-      shopSlug,
-      productSlug,
-      query.limit,
+    const result = await this.getCachedPublicResponse(
+      request,
+      buildPublicCacheKey(request, 'products:recommendation-sections', [
+        shopSlug,
+        productSlug,
+        query.limit,
+      ]),
+      () => this.getPublicProductRecommendationSectionsUseCase.execute(
+        shopSlug,
+        productSlug,
+        query.limit,
+      ),
     );
 
     return toPublicProductRecommendationSectionsResponse(result);
   }
+
+  private async getCachedPublicResponse<T>(
+    request: ProductRequest,
+    cacheKey: string,
+    loader: () => Promise<T>,
+  ): Promise<T> {
+    if (request.user) {
+      return loader();
+    }
+
+    const cached = await this.cacheManager.get<T>(cacheKey);
+
+    if (cached !== undefined && cached !== null) {
+      return cached;
+    }
+
+    const result = await loader();
+    await this.cacheManager.set(cacheKey, result, PUBLIC_RESPONSE_CACHE_TTL_MS);
+    return result;
+  }
+}
+
+function buildPublicCacheKey(
+  request: ProductRequest,
+  resource: string,
+  params: Array<string | number | undefined>,
+): string {
+  return [
+    'storefront-public',
+    resource,
+    request.get?.('x-market-code') ?? 'default-market',
+    request.get?.('x-currency') ?? 'default-currency',
+    request.get?.('x-locale') ?? 'default-locale',
+    request.get?.('x-channel') ?? 'default-channel',
+    ...params.map((value) => String(value ?? '')),
+  ].join(':');
 }
