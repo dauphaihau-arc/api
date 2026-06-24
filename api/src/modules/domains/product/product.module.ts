@@ -23,6 +23,7 @@ import { CatalogStatusService } from './app/services/catalog-status.service';
 import { CatalogProductProjectorService } from './app/services/catalog-product-projector.service';
 import { StorefrontIndexedPriceProjectionService } from './app/services/storefront-indexed-price-projection.service';
 import { PublicProductOrderHistoryService } from './app/services/public-product-order-history.service';
+import { PublicProductBestSellerRankingService } from './app/services/public-product-best-seller-ranking.service';
 import { CreateProductDraftFacadeUseCase } from './app/use-cases/create-product-draft-facade/create-product-draft-facade.use-case';
 import { ConsumeProductImageUploadTicketUseCase } from './app/use-cases/consume-product-image-upload-ticket/consume-product-image-upload-ticket.use-case';
 import { CreateProductDraftUseCase } from './app/use-cases/create-product-draft/create-product-draft.use-case';
@@ -112,6 +113,7 @@ import { ProductShippingDestinationEntity } from '~/modules/domains/product/infr
 import { ProductShippingProfileEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-shipping-profile.entity';
 import { ProductVariantEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-variant.entity';
 import { ProductViewHistoryEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-view-history.entity';
+import { ProductBestSellerRankingEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-best-seller-ranking.entity';
 import { ProductEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product.entity';
 import { VariantPriceEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/variant-price.entity';
 import { CATALOG_CONFIG, buildCatalogConfig } from '~/config/catalog.config';
@@ -139,6 +141,7 @@ import { STOREFRONT_PRICING_CONFIG, buildStorefrontPricingConfig } from '~/confi
       ProductAttributeValueEntity,
       ProductVariantEntity,
       ProductViewHistoryEntity,
+      ProductBestSellerRankingEntity,
       ProductInventoryEntity,
       ProductReviewEntity,
       ProductReviewImageEntity,
@@ -293,6 +296,7 @@ import { STOREFRONT_PRICING_CONFIG, buildStorefrontPricingConfig } from '~/confi
     StorefrontIndexedPriceProjectionService,
     ResolvedStorefrontPriceService,
     PublicProductOrderHistoryService,
+    PublicProductBestSellerRankingService,
     PublicProductViewHistoryService,
     ProductActivitySessionService,
     PendingReviewImageUploadService,
@@ -343,6 +347,7 @@ import { STOREFRONT_PRICING_CONFIG, buildStorefrontPricingConfig } from '~/confi
     StorefrontMarketContextService,
     ResolvedStorefrontPriceService,
     PublicProductOrderHistoryService,
+    PublicProductBestSellerRankingService,
     PendingReviewImageUploadService,
     ConsumeProductImageUploadTicketUseCase,
     ConsumeReviewImageUploadTicketUseCase,

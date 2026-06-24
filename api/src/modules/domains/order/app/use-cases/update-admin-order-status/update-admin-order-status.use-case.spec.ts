@@ -95,6 +95,9 @@ describe('UpdateAdminOrderStatusUseCase', () => {
     const eventEmitter: Pick<jest.Mocked<EventEmitter2>, 'emit'> = {
       emit: jest.fn(),
     };
+    const jobDispatcher = {
+      dispatch: jest.fn().mockResolvedValue(undefined),
+    };
     const orderEventsService = {
       record: jest.fn().mockResolvedValue(undefined),
     };
@@ -102,16 +105,20 @@ describe('UpdateAdminOrderStatusUseCase', () => {
     return {
       order,
       fakeEntityManager,
+      jobDispatcher,
       useCase: new UpdateAdminOrderStatusUseCase(
         entityManager,
         eventEmitter as unknown as EventEmitter2,
+        jobDispatcher as never,
         orderEventsService as never,
       ),
     };
   }
 
   it('marks a paid order as refunded', async () => {
-    const { useCase, order, fakeEntityManager } = buildUseCase();
+    const {
+      useCase, order, fakeEntityManager, jobDispatcher, 
+    } = buildUseCase();
 
     const result = await useCase.execute('order-1', {
       status: OrderStatus.REFUNDED,
@@ -120,6 +127,14 @@ describe('UpdateAdminOrderStatusUseCase', () => {
     expect(order.status).toBe(OrderStatus.REFUNDED);
     expect(order.refundedAt).toBeInstanceOf(Date);
     expect(fakeEntityManager.flush).toHaveBeenCalled();
+    expect(jobDispatcher.dispatch).toHaveBeenCalledWith(
+      'product.refresh-best-seller-rankings',
+      { windowDays: 180, limit: 500 },
+      expect.objectContaining({
+        deduplicationKey: 'product-refresh-best-seller-rankings--180',
+        delayMs: 5000,
+      }),
+    );
     expect(result.status).toBe(OrderStatus.REFUNDED);
   });
 

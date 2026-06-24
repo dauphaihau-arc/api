@@ -12,6 +12,7 @@ import { GenerateProductImageVariantsJob } from '~/common/jobs/generate-product-
 import { GenerateReviewImageVariantsJob } from '~/common/jobs/generate-review-image-variants.job';
 import { ProjectCatalogProductJob } from '~/common/jobs/project-catalog-product.job';
 import { CleanupPendingReviewImageJob } from '~/common/jobs/cleanup-pending-review-image.job';
+import { RefreshBestSellerRankingsJob } from '~/common/jobs/refresh-best-seller-rankings.job';
 import { ProcessOrderRefundJob } from '~/common/jobs/process-order-refund.job';
 import { SendGuestOrderConfirmationEmailJob } from '~/common/jobs/send-guest-order-confirmation-email.job';
 import { SendPasswordResetEmailJob } from '~/common/jobs/send-password-reset-email.job';
@@ -41,6 +42,7 @@ export class AppJobRunner {
     private readonly generateReviewImageVariantsJob: GenerateReviewImageVariantsJob,
     private readonly projectCatalogProductJob: ProjectCatalogProductJob,
     private readonly cleanupPendingReviewImageJob: CleanupPendingReviewImageJob,
+    private readonly refreshBestSellerRankingsJob: RefreshBestSellerRankingsJob,
   ) {}
 
   async run<TName extends AppJobName>(
@@ -122,6 +124,11 @@ export class AppJobRunner {
           case appJobName.cleanupPendingReviewImage:
             await this.cleanupPendingReviewImageJob.run(
               payload as AppJobPayloadMap[typeof appJobName.cleanupPendingReviewImage],
+            );
+            return;
+          case appJobName.refreshBestSellerRankings:
+            await this.refreshBestSellerRankingsJob.run(
+              payload as AppJobPayloadMap[typeof appJobName.refreshBestSellerRankings],
             );
             return;
         }

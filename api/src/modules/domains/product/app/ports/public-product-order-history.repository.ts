@@ -4,6 +4,11 @@ export abstract class PublicProductOrderHistoryRepository {
     windowDays?: number;
   }): Promise<string[]>;
 
+  abstract refreshBestSellingProductRankings(input: {
+    limit: number;
+    windowDays?: number;
+  }): Promise<void>;
+
   abstract listFrequentlyBoughtTogetherProductIds(input: {
     productId: string;
     limit: number;

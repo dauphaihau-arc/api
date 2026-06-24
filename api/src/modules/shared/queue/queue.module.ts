@@ -17,6 +17,7 @@ import { GenerateProductImageVariantsJob } from '~/common/jobs/generate-product-
 import { GenerateReviewImageVariantsJob } from '~/common/jobs/generate-review-image-variants.job';
 import { ProjectCatalogProductJob } from '~/common/jobs/project-catalog-product.job';
 import { CleanupPendingReviewImageJob } from '~/common/jobs/cleanup-pending-review-image.job';
+import { RefreshBestSellerRankingsJob } from '~/common/jobs/refresh-best-seller-rankings.job';
 import { SendGuestOrderConfirmationEmailJob } from '~/common/jobs/send-guest-order-confirmation-email.job';
 import { SendPasswordResetEmailJob } from '~/common/jobs/send-password-reset-email.job';
 import { SendRefundFailedEmailJob } from '~/common/jobs/send-refund-failed-email.job';
@@ -143,6 +144,7 @@ const queueModuleLogger = new Logger('QueueModule');
     GenerateReviewImageVariantsJob,
     ProjectCatalogProductJob,
     CleanupPendingReviewImageJob,
+    RefreshBestSellerRankingsJob,
     {
       provide: JobDispatcher,
       inject: [QUEUE_CONFIG, BULLMQ_CONNECTION, AppJobRunner],

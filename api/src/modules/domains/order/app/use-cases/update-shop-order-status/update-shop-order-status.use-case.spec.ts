@@ -125,6 +125,7 @@ describe('UpdateShopOrderStatusUseCase', () => {
       order,
       fakeEntityManager,
       cancellationService,
+      jobDispatcher,
       notifyUserUseCase,
       useCase: new UpdateShopOrderStatusUseCase(
         entityManager,
@@ -143,6 +144,7 @@ describe('UpdateShopOrderStatusUseCase', () => {
       order,
       fakeEntityManager,
       cancellationService,
+      jobDispatcher,
       notifyUserUseCase,
     } = buildUseCase();
 
@@ -156,6 +158,14 @@ describe('UpdateShopOrderStatusUseCase', () => {
     expect(order.canceledAt).toBeInstanceOf(Date);
     expect(cancellationService.cancelOrder).toHaveBeenCalled();
     expect(fakeEntityManager.flush).toHaveBeenCalled();
+    expect(jobDispatcher.dispatch).toHaveBeenCalledWith(
+      'product.refresh-best-seller-rankings',
+      { windowDays: 180, limit: 500 },
+      expect.objectContaining({
+        deduplicationKey: 'product-refresh-best-seller-rankings--180',
+        delayMs: 5000,
+      }),
+    );
     expect(notifyUserUseCase.execute).toHaveBeenCalled();
     expect(result.id).toBe('order-1');
   });

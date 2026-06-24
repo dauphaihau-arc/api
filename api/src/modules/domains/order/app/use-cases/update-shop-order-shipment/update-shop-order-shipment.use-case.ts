@@ -1,7 +1,8 @@
 import { EntityManager } from '@mikro-orm/postgresql';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { NotifyUserUseCase } from '~/modules/shared/notification/app/use-cases/notify-user/notify-user.use-case';
+import { JobDispatcher } from '~/modules/shared/queue/app/ports/job-dispatcher';
 import { OrderEventActorType } from '../../../domain/enums/order-event-actor-type.enum';
 import { OrderEventType } from '../../../domain/enums/order-event-type.enum';
 import type { UpdateShopOrderShipmentDto } from '../../../api/rest/dto/update-shop-order-shipment.dto';
@@ -14,6 +15,7 @@ import {
   ShipmentUpdateNotAllowedError,
   ShipmentUpdatePayloadRequiredError,
 } from '../../errors/order-app.error';
+import { dispatchBestSellerRankingRefresh } from '../../best-seller-ranking-refresh';
 import { ORDER_UPDATED_SSE_EVENT } from '../../events/order-sse.event';
 import { buildScopedOrderIdentifierWhere } from '../../order-identifier';
 import { getRequiredOrderNumber } from '../../order-number';
@@ -45,10 +47,13 @@ const ALLOWED_SHIPPING_TRANSITIONS: Record<OrderShippingStatus, OrderShippingSta
 
 @Injectable()
 export class UpdateShopOrderShipmentUseCase {
+  private readonly logger = new Logger(UpdateShopOrderShipmentUseCase.name);
+
   constructor(
     private readonly entityManager: EntityManager,
     private readonly notifyUserUseCase: NotifyUserUseCase,
     private readonly eventEmitter: EventEmitter2,
+    private readonly jobDispatcher: JobDispatcher,
     private readonly orderEventsService: OrderEventsService,
   ) {}
 
@@ -192,6 +197,21 @@ export class UpdateShopOrderShipmentUseCase {
     }
 
     await entityManager.flush();
+
+    if (
+      previousOrderStatus !== order.status
+      && order.status === OrderStatus.COMPLETED
+    ) {
+      try {
+        await dispatchBestSellerRankingRefresh(this.jobDispatcher);
+      }
+      catch (error) {
+        this.logger.error(
+          `Failed to schedule best-seller ranking refresh for delivered order ${order.id}`,
+          error instanceof Error ? error.stack : undefined,
+        );
+      }
+    }
 
     if (order.user?.id && input.shippingStatus) {
       this.eventEmitter.emit(ORDER_UPDATED_SSE_EVENT, {

@@ -164,6 +164,14 @@ describe('RequestOrderCancelUseCase', () => {
       orderId: 'order-1',
       eventType: 'canceled',
     });
+    expect(jobDispatcher.dispatch).toHaveBeenCalledWith(
+      'product.refresh-best-seller-rankings',
+      { windowDays: 180, limit: 500 },
+      expect.objectContaining({
+        deduplicationKey: 'product-refresh-best-seller-rankings--180',
+        delayMs: 5000,
+      }),
+    );
     expect(notifyUserUseCase.execute).toHaveBeenCalledWith(expect.objectContaining({
       userId: 'seller-1',
       type: 'seller.order.cancel_requested',

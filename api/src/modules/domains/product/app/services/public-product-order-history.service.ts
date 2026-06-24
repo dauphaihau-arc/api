@@ -16,7 +16,7 @@ export class PublicProductOrderHistoryService {
     limit: number;
     windowDays?: number;
   }): Promise<PublicProductListItem[]> {
-    return this.listVisibleProducts(
+    return this.listVisibleProductCards(
       await this.publicProductOrderHistoryRepository.listBestSellingProductIds(input),
       input.limit,
     );
@@ -56,6 +56,21 @@ export class PublicProductOrderHistoryService {
     }
 
     const products = await this.storefrontProductQueryRepository.findPublicByIds(productIds);
+
+    return products
+      .filter((product) => product.availability.inStock)
+      .slice(0, limit);
+  }
+
+  private async listVisibleProductCards(
+    productIds: string[],
+    limit: number,
+  ): Promise<PublicProductListItem[]> {
+    if (productIds.length === 0) {
+      return [];
+    }
+
+    const products = await this.storefrontProductQueryRepository.findPublicCardsByIds(productIds);
 
     return products
       .filter((product) => product.availability.inStock)

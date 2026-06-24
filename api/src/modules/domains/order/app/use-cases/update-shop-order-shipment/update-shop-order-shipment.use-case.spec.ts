@@ -105,6 +105,9 @@ describe('UpdateShopOrderShipmentUseCase', () => {
     const eventEmitter: Pick<jest.Mocked<EventEmitter2>, 'emit'> = {
       emit: jest.fn(),
     };
+    const jobDispatcher = {
+      dispatch: jest.fn().mockResolvedValue(undefined),
+    };
     const orderEventsService = {
       record: jest.fn().mockResolvedValue(undefined),
     };
@@ -112,11 +115,13 @@ describe('UpdateShopOrderShipmentUseCase', () => {
     return {
       order,
       fakeEntityManager,
+      jobDispatcher,
       notifyUserUseCase,
       useCase: new UpdateShopOrderShipmentUseCase(
         entityManager,
         notifyUserUseCase as never,
         eventEmitter as unknown as EventEmitter2,
+        jobDispatcher as never,
         orderEventsService as never,
       ),
     };
@@ -145,7 +150,7 @@ describe('UpdateShopOrderShipmentUseCase', () => {
   });
 
   it('marks a paid order as completed when delivered', async () => {
-    const { useCase, order } = buildUseCase({
+    const { useCase, order, jobDispatcher } = buildUseCase({
       shippingStatus: OrderShippingStatus.SHIPPED,
     });
 
@@ -156,6 +161,14 @@ describe('UpdateShopOrderShipmentUseCase', () => {
     expect(order.shippingStatus).toBe(OrderShippingStatus.DELIVERED);
     expect(order.deliveredAt).toBeInstanceOf(Date);
     expect(order.status).toBe(OrderStatus.COMPLETED);
+    expect(jobDispatcher.dispatch).toHaveBeenCalledWith(
+      'product.refresh-best-seller-rankings',
+      { windowDays: 180, limit: 500 },
+      expect.objectContaining({
+        deduplicationKey: 'product-refresh-best-seller-rankings--180',
+        delayMs: 5000,
+      }),
+    );
     expect(result.status).toBe(OrderStatus.COMPLETED);
   });
 

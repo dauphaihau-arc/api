@@ -16,6 +16,7 @@ import {
   SellerOrderStatusUpdateNotAllowedError,
   SellerShippedOrderCancelNotAllowedError,
 } from '../../errors/order-app.error';
+import { dispatchBestSellerRankingRefresh } from '../../best-seller-ranking-refresh';
 import { ORDER_UPDATED_SSE_EVENT } from '../../events/order-sse.event';
 import { buildScopedOrderIdentifierWhere } from '../../order-identifier';
 import { OrderCancellationService } from '../../order-cancellation.service';
@@ -116,6 +117,16 @@ export class UpdateShopOrderStatusUseCase {
           error instanceof Error ? error.stack : undefined,
         );
       }
+    }
+
+    try {
+      await dispatchBestSellerRankingRefresh(this.jobDispatcher);
+    }
+    catch (error) {
+      this.logger.error(
+        `Failed to schedule best-seller ranking refresh for canceled shop order ${result.detail.id}`,
+        error instanceof Error ? error.stack : undefined,
+      );
     }
 
     if (result.customerUserId) {

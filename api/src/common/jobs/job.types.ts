@@ -12,6 +12,7 @@ export const appJobName = {
   generateReviewImageVariants: 'product-review.generate-image-variants',
   projectCatalogProduct: 'catalog.project-product',
   cleanupPendingReviewImage: 'product.cleanup-pending-review-image',
+  refreshBestSellerRankings: 'product.refresh-best-seller-rankings',
 } as const;
 
 export interface AppJobPayloadMap {
@@ -66,6 +67,10 @@ export interface AppJobPayloadMap {
   };
   [appJobName.cleanupPendingReviewImage]: {
     storageKey: string;
+  };
+  [appJobName.refreshBestSellerRankings]: {
+    windowDays: number;
+    limit: number;
   };
 }
 
@@ -139,6 +144,12 @@ export const appJobDeduplicationKey = {
     return buildJobDeduplicationKey(
       appJobName.cleanupPendingReviewImage,
       storageKey,
+    );
+  },
+  refreshBestSellerRankings(windowDays: number): string {
+    return buildJobDeduplicationKey(
+      appJobName.refreshBestSellerRankings,
+      windowDays,
     );
   },
 } as const;

@@ -12,8 +12,9 @@ describe('PublicProductOrderHistoryService', () => {
     const getPublicProductBySlugsUseCase: Pick<jest.Mocked<GetPublicProductBySlugsUseCase>, 'execute'> = {
       execute: jest.fn(),
     };
-    const storefrontProductQueryRepository: Pick<jest.Mocked<StorefrontProductQueryRepository>, 'findPublicByIds'> = {
+    const storefrontProductQueryRepository: Pick<jest.Mocked<StorefrontProductQueryRepository>, 'findPublicByIds' | 'findPublicCardsByIds'> = {
       findPublicByIds: jest.fn(),
+      findPublicCardsByIds: jest.fn(),
     };
 
     return {
@@ -31,7 +32,7 @@ describe('PublicProductOrderHistoryService', () => {
   it('lists best-selling in-stock products through the repository', async () => {
     const { service, repository, storefrontProductQueryRepository } = buildDependencies();
     repository.listBestSellingProductIds.mockResolvedValue(['product-1', 'product-2', 'product-3']);
-    storefrontProductQueryRepository.findPublicByIds.mockResolvedValue([
+    storefrontProductQueryRepository.findPublicCardsByIds.mockResolvedValue([
       {
         id: 'product-1',
         shop: { id: 'shop-1', shopName: 'Arc Store', slug: 'arc-store' },
@@ -66,6 +67,11 @@ describe('PublicProductOrderHistoryService', () => {
       expect.objectContaining({ id: 'product-3' }),
     ]);
     expect(repository.listBestSellingProductIds).toHaveBeenCalledWith({ limit: 2 });
+    expect(storefrontProductQueryRepository.findPublicCardsByIds).toHaveBeenCalledWith([
+      'product-1',
+      'product-2',
+      'product-3',
+    ]);
   });
 
   it('resolves the anchor product before listing frequently bought together products', async () => {

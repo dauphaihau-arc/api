@@ -38,6 +38,7 @@ import {
   buildSellerOrderCancelRequestedNotification,
   getSellerOrderNotificationRecipientId,
 } from '../../seller-order-notification';
+import { dispatchBestSellerRankingRefresh } from '../../best-seller-ranking-refresh';
 import { OrderEventsService } from '../../order-events.service';
 
 @Injectable()
@@ -214,6 +215,17 @@ export class RequestOrderCancelUseCase {
         );
       }
     }
+
+    try {
+      await dispatchBestSellerRankingRefresh(this.jobDispatcher);
+    }
+    catch (error) {
+      this.logger.error(
+        `Failed to schedule best-seller ranking refresh for canceled order ${result.id}`,
+        error instanceof Error ? error.stack : undefined,
+      );
+    }
+
     try {
       await this.jobDispatcher.dispatch('order.send-seller-order-update-email', {
         orderId: result.id,

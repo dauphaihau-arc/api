@@ -1,12 +1,14 @@
 import { EntityManager } from '@mikro-orm/postgresql';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { JobDispatcher } from '~/modules/shared/queue/app/ports/job-dispatcher';
 import type { UpdateAdminOrderStatusDto } from '../../../api/rest/dto/update-admin-order-status.dto';
 import { OrderEventActorType } from '../../../domain/enums/order-event-actor-type.enum';
 import { OrderEventType } from '../../../domain/enums/order-event-type.enum';
 import { OrderStatus } from '../../../domain/enums/order-status.enum';
 import { OrderEntity } from '../../../infra/persistence/entities/order.entity';
 import { OrderItemEntity } from '../../../infra/persistence/entities/order-item.entity';
+import { dispatchBestSellerRankingRefresh } from '../../best-seller-ranking-refresh';
 import { OrderEventsService } from '../../order-events.service';
 import { toAdminOrderDetail } from '../../admin-order-read-model';
 import { buildOrderIdentifierWhere } from '../../order-identifier';
@@ -26,9 +28,12 @@ const ALLOWED_ADMIN_STATUSES = new Set<OrderStatus>([
 
 @Injectable()
 export class UpdateAdminOrderStatusUseCase {
+  private readonly logger = new Logger(UpdateAdminOrderStatusUseCase.name);
+
   constructor(
     private readonly entityManager: EntityManager,
     private readonly eventEmitter: EventEmitter2,
+    private readonly jobDispatcher: JobDispatcher,
     private readonly orderEventsService: OrderEventsService,
   ) {}
 
@@ -95,6 +100,18 @@ export class UpdateAdminOrderStatusUseCase {
         status: order.status,
         shippingStatus: order.shippingStatus,
       });
+    }
+
+    if (order.status !== previousStatus) {
+      try {
+        await dispatchBestSellerRankingRefresh(this.jobDispatcher);
+      }
+      catch (error) {
+        this.logger.error(
+          `Failed to schedule best-seller ranking refresh for admin order ${order.id}`,
+          error instanceof Error ? error.stack : undefined,
+        );
+      }
     }
 
     const items = await entityManager.getRepository(OrderItemEntity).find(

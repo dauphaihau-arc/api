@@ -6,6 +6,7 @@ import {
   buildProductInventoryUpdatedSseEvent,
   PRODUCT_INVENTORY_UPDATED_SSE_EVENT,
 } from '~/modules/domains/product/app/events/product-inventory-sse.event';
+import { JobDispatcher } from '~/modules/shared/queue/app/ports/job-dispatcher';
 import { CouponUsageEntity } from '../../coupon/infra/persistence/entities/coupon-usage.entity';
 import { ProductInventoryEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-inventory.entity';
 import { OrderEventActorType } from '../domain/enums/order-event-actor-type.enum';
@@ -13,6 +14,7 @@ import { OrderEventType } from '../domain/enums/order-event-type.enum';
 import { OrderStatus } from '../domain/enums/order-status.enum';
 import { OrderEntity } from '../infra/persistence/entities/order.entity';
 import { OrderItemEntity } from '../infra/persistence/entities/order-item.entity';
+import { dispatchBestSellerRankingRefresh } from './best-seller-ranking-refresh';
 import { OrderEventsService } from './order-events.service';
 import { getRequiredOrderNumber } from './order-number';
 import type { CreateOrderResult } from './order.types';
@@ -22,6 +24,7 @@ export class OrderPaymentService {
   constructor(
     private readonly entityManager: EntityManager,
     private readonly eventEmitter: EventEmitter2,
+    private readonly jobDispatcher: JobDispatcher,
     private readonly orderEventsService: OrderEventsService,
   ) {}
 
@@ -94,6 +97,8 @@ export class OrderPaymentService {
 
       await entityManager.flush();
     });
+
+    await dispatchBestSellerRankingRefresh(this.jobDispatcher);
   }
 
   async markCheckoutSessionExpired(
