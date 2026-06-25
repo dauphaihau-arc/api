@@ -26,6 +26,7 @@ type ProductViewHistorySeed = {
   userEmail?: string;
   guestSessionId?: string;
   viewedAt: Date;
+  isLocal: boolean;
 };
 
 type ProductViewHistorySeedRow = {
@@ -77,11 +78,11 @@ function parseViewedAt(value: string, seedKey: string): Date {
   return viewedAt;
 }
 
-function loadProductViewHistorySeeds(): ProductViewHistorySeed[] {
-  return [
-    ...readTsvRows<ProductViewHistorySeedRow>(PRODUCT_VIEW_HISTORY_TSV_PATH),
-    ...readOptionalTsvRows<ProductViewHistorySeedRow>(PRODUCT_VIEW_HISTORY_LOCAL_TSV_PATH),
-  ].flatMap<ProductViewHistorySeed>((row, index) => {
+function mapProductViewHistorySeeds(
+  rows: ProductViewHistorySeedRow[],
+  isLocal: boolean,
+): ProductViewHistorySeed[] {
+  return rows.flatMap<ProductViewHistorySeed>((row, index) => {
     const shopSlug = row.shop_slug.trim();
     const productTitle = row.product_title.trim();
     const userEmail = row.user_email.trim() || undefined;
@@ -126,6 +127,7 @@ function loadProductViewHistorySeeds(): ProductViewHistorySeed[] {
         productTitle,
         userEmail,
         viewedAt,
+        isLocal,
       }];
     }
 
@@ -135,6 +137,7 @@ function loadProductViewHistorySeeds(): ProductViewHistorySeed[] {
         productTitle,
         guestSessionId,
         viewedAt,
+        isLocal,
       }];
     }
 
@@ -149,8 +152,19 @@ function loadProductViewHistorySeeds(): ProductViewHistorySeed[] {
       productTitle,
       guestSessionId: `${guestSessionPrefix}${padSequence(offset + 1)}`,
       viewedAt: new Date(viewedAt.getTime() + (offset * viewedAtStepMinutes * 60 * 1000)),
+      isLocal,
     }));
   });
+}
+
+function loadProductViewHistorySeeds(): ProductViewHistorySeed[] {
+  return [
+    ...mapProductViewHistorySeeds(readTsvRows<ProductViewHistorySeedRow>(PRODUCT_VIEW_HISTORY_TSV_PATH), false),
+    ...mapProductViewHistorySeeds(
+      readOptionalTsvRows<ProductViewHistorySeedRow>(PRODUCT_VIEW_HISTORY_LOCAL_TSV_PATH),
+      true,
+    ),
+  ];
 }
 
 export async function seedProductViewHistory(
@@ -179,6 +193,7 @@ export async function seedProductViewHistory(
     )
     : [];
   const existingRecordsByKey = new Map<string, ProductViewHistoryEntity>();
+  let skippedLocalSeeds = 0;
 
   existingRecords.forEach((record) => {
     const key = record.user
@@ -193,6 +208,13 @@ export async function seedProductViewHistory(
     const product = productsByShopSlugAndTitle.get(`${seed.shopSlug}::${seed.productTitle}`);
 
     if (!product) {
+      if (seed.isLocal) {
+        skippedLocalSeeds += 1;
+        console.warn(
+          `[seed][view-history] Skipping local view record for ${seed.shopSlug}::${seed.productTitle}: missing seeded product`,
+        );
+        continue;
+      }
       throw new Error(
         `Missing seeded product for product view history: ${seed.shopSlug}::${seed.productTitle}`,
       );
@@ -200,6 +222,13 @@ export async function seedProductViewHistory(
 
     const user = seed.userEmail ? usersByEmail.get(seed.userEmail) : undefined;
     if (seed.userEmail && !user) {
+      if (seed.isLocal) {
+        skippedLocalSeeds += 1;
+        console.warn(
+          `[seed][view-history] Skipping local view record for ${seed.shopSlug}::${seed.productTitle}: missing seeded user ${seed.userEmail}`,
+        );
+        continue;
+      }
       throw new Error(`Missing seeded user for product view history: ${seed.userEmail}`);
     }
 
@@ -230,4 +259,10 @@ export async function seedProductViewHistory(
   }
 
   await em.flush();
+
+  if (skippedLocalSeeds > 0) {
+    console.log(
+      `[seed][view-history] Skipped ${skippedLocalSeeds} local view record(s) with unresolved product/user references`,
+    );
+  }
 }

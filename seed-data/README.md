@@ -97,10 +97,12 @@ Rules:
 - `period` uses `<start>..<end>` offsets relative to seed runtime, where each side is `now` or an `ms`-style duration like `4d`, `12h`, or `30m`.
 - When `period` is set, leave `start_date` and `end_date` blank. When `period` is blank, both `start_date` and `end_date` are required.
 - Product images are auto-discovered from the folder derived from `shop_slug` and `title` in [product.seed.ts](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/api/database/seeds/product.seed.ts:41).
+- Products TSVs support an `is_digital` column. Use `true` for digital downloads and `false` for physical goods.
 - Product images should live under shop and product slug directories, for example `seed-data/images/products/olive-atelier/linen-weekend-dress/`.
 - Draft products can omit image folders entirely; active products still require seeded images.
 - Local-only product images can live under `seed-data/images/products-local/` with the same shop/product slug structure. The local folder is checked before the tracked folder.
 - Each product folder must contain one `hero.*` image. Additional images should be named `detail-*` and are uploaded after `hero.*`.
+- Digital seeded products still use listing images, but the seeder skips shipping-profile creation for them.
 - Review images should live under `seed-data/images/reviews/<shop-slug>/<product-slug>/<reviewer-email-slug>/`.
 - Use the slugified reviewer email for the last folder segment. Example: `member@example.com` becomes `member-example-com`.
 - Example review image folder: `seed-data/images/reviews/olive-atelier/canvas-market-tote/member-example-com/`.

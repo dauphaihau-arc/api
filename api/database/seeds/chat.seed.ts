@@ -21,6 +21,7 @@ type ConversationSeed = {
   buyerLastReadAt?: Date;
   sellerLastReadAt?: Date;
   createdAt: Date;
+  isLocal: boolean;
 };
 
 type MessageSeed = {
@@ -107,11 +108,11 @@ function parseMetadata(
   return parsed as Record<string, unknown>;
 }
 
-function loadConversationSeeds(): ConversationSeed[] {
-  return [
-    ...readTsvRows<ConversationCsvRow>(CHAT_CONVERSATIONS_TSV_PATH),
-    ...readOptionalTsvRows<ConversationCsvRow>(CHAT_CONVERSATIONS_LOCAL_TSV_PATH),
-  ].map((row, index) => {
+function mapConversationRows(
+  rows: ConversationCsvRow[],
+  isLocal: boolean,
+): ConversationSeed[] {
+  return rows.map((row, index) => {
     const seedKey = `${row.conversation_key || `row-${index + 2}`}`;
 
     if (!row.conversation_key.trim()) {
@@ -139,8 +140,19 @@ function loadConversationSeeds(): ConversationSeed[] {
         seedKey,
       ),
       createdAt: parseRequiredDate(row.created_at, 'created_at', seedKey),
+      isLocal,
     };
   });
+}
+
+function loadConversationSeeds(): ConversationSeed[] {
+  return [
+    ...mapConversationRows(readTsvRows<ConversationCsvRow>(CHAT_CONVERSATIONS_TSV_PATH), false),
+    ...mapConversationRows(
+      readOptionalTsvRows<ConversationCsvRow>(CHAT_CONVERSATIONS_LOCAL_TSV_PATH),
+      true,
+    ),
+  ];
 }
 
 function loadMessageSeeds(): MessageSeed[] {
@@ -196,6 +208,7 @@ export async function seedChat(
   const progressInterval = resolveProgressInterval(conversationSeeds.length);
   const startedAt = Date.now();
   const messagesByConversationKey = new Map<string, MessageSeed[]>();
+  let skippedLocalConversations = 0;
 
   messageSeeds.forEach((seed) => {
     const messages = messagesByConversationKey.get(seed.conversationKey) ?? [];
@@ -219,6 +232,13 @@ export async function seedChat(
     });
 
     if (!shop) {
+      if (conversationSeed.isLocal) {
+        skippedLocalConversations += 1;
+        console.warn(
+          `[seed][chat] Skipping local conversation ${conversationSeed.conversationKey}: missing shop "${conversationSeed.shopSlug}"`,
+        );
+        continue;
+      }
       throw new Error(`Missing seeded shop: ${conversationSeed.shopSlug}`);
     }
 
@@ -231,6 +251,13 @@ export async function seedChat(
       });
 
       if (!product) {
+        if (conversationSeed.isLocal) {
+          skippedLocalConversations += 1;
+          console.warn(
+            `[seed][chat] Skipping local conversation ${conversationSeed.conversationKey}: missing product "${conversationSeed.productTitle}" for shop "${conversationSeed.shopSlug}"`,
+          );
+          continue;
+        }
         throw new Error(
           `Missing seeded product "${conversationSeed.productTitle}" for shop "${conversationSeed.shopSlug}"`,
         );
@@ -321,5 +348,11 @@ export async function seedChat(
         `[seed][chat] Processed ${index + 1}/${conversationSeeds.length} conversations in ${formatDuration(Date.now() - startedAt)}`,
       );
     }
+  }
+
+  if (skippedLocalConversations > 0) {
+    console.log(
+      `[seed][chat] Skipped ${skippedLocalConversations} local conversation(s) with unresolved shop/product references`,
+    );
   }
 }

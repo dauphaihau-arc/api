@@ -6,7 +6,7 @@ import {
   PRODUCT_INVENTORY_LOCAL_TSV_PATH,
   PRODUCT_INVENTORY_TSV_PATH,
   PRODUCT_LOCAL_TSV_PATH,
-  PRODUCT_TSV_PATH
+  PRODUCT_TSV_PATH,
 } from './product-seed-paths';
 import { readOptionalTsvRows, readTsvRows } from './shared/read-tsv-rows';
 
@@ -16,6 +16,7 @@ export type ProductSeed = {
   title: string;
   description: string;
   whoMade: ProductWhoMade;
+  isDigital: boolean;
   state: 'active' | 'draft' | 'inactive';
   variantType: ProductVariantType;
   variantGroupName?: string;
@@ -40,6 +41,7 @@ type ProductCsvRow = {
   title: string;
   description: string;
   who_made: string;
+  is_digital?: string;
   state: string;
   variant_type: string;
   variant_group_name: string;
@@ -107,7 +109,7 @@ function parseVariantType(value: string, productKey: string): ProductVariantType
 
 function parseState(
   value: string | undefined,
-  productKey: string
+  productKey: string,
 ): ProductSeed['state'] {
   const normalized = value?.trim() ?? '';
 
@@ -126,10 +128,27 @@ function parseState(
   throw new Error(`Invalid state "${value}" for product seed ${productKey}`);
 }
 
+function parseIsDigital(
+  value: string | undefined,
+  productKey: string,
+): boolean {
+  const normalized = value?.trim().toLowerCase() ?? '';
+
+  if (normalized === '' || normalized === 'false') {
+    return false;
+  }
+
+  if (normalized === 'true') {
+    return true;
+  }
+
+  throw new Error(`Invalid is_digital "${value}" for product seed ${productKey}`);
+}
+
 function parseOptionalNumber(
   value: string,
   fieldName: string,
-  inventoryKey: string
+  inventoryKey: string,
 ): number | undefined {
   if (value.trim() === '') {
     return undefined;
@@ -197,7 +216,7 @@ function loadProductSeeds(): ProductSeed[] {
 
     if (!attributeKey || !optionValue) {
       throw new Error(
-        `Missing attribute_key or option_value for product attribute seed ${attributeSeedKey}`
+        `Missing attribute_key or option_value for product attribute seed ${attributeSeedKey}`,
       );
     }
 
@@ -224,6 +243,7 @@ function loadProductSeeds(): ProductSeed[] {
       title: row.title,
       description: row.description,
       whoMade: parseWhoMade(row.who_made, productKey),
+      isDigital: parseIsDigital(row.is_digital, productKey),
       state: parseState(row.state, productKey),
       variantType: parseVariantType(row.variant_type, productKey),
       variantGroupName: row.variant_group_name.trim() || undefined,

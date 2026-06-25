@@ -25,6 +25,7 @@ type LocalReviewOrderSeed = {
   productTitle: string;
   userEmail: string;
   reviewCreatedAt?: Date;
+  isLocal: boolean;
 };
 
 const LOCAL_REVIEW_CHECKOUT_SESSION_PREFIX = 'seed-local-review-';
@@ -59,6 +60,7 @@ function parseOptionalDate(value: string, seedKey: string): Date | undefined {
 function mapReviewOrderSeedRows(
   rows: ProductReviewOrderRow[],
   sourceLabel: string,
+  isLocal: boolean,
 ): LocalReviewOrderSeed[] {
   return rows.map((row, index) => {
     const shopSlug = row.shop_slug.trim();
@@ -83,6 +85,7 @@ function mapReviewOrderSeedRows(
       productTitle,
       userEmail,
       reviewCreatedAt: parseOptionalDate(row.created_at, seedKey),
+      isLocal,
     };
   });
 }
@@ -92,10 +95,12 @@ function loadReviewOrderSeeds(): LocalReviewOrderSeed[] {
     ...mapReviewOrderSeedRows(
       readTsvRows<ProductReviewOrderRow>(PRODUCT_REVIEWS_TSV_PATH),
       'tracked',
+      false,
     ),
     ...mapReviewOrderSeedRows(
       readOptionalTsvRows<ProductReviewOrderRow>(PRODUCT_REVIEWS_LOCAL_TSV_PATH),
       'local',
+      true,
     ),
   ];
 }
@@ -134,6 +139,7 @@ export async function seedLocalProductReviewOrders(em: EntityManager): Promise<v
   );
   const progressInterval = resolveProgressInterval(dedupedSeeds.length);
   const startedAt = Date.now();
+  let skippedLocalSeeds = 0;
 
   console.log(
     `[seed][local-review-orders] Upserting ${dedupedSeeds.length} exact review orders`,
@@ -162,6 +168,13 @@ export async function seedLocalProductReviewOrders(em: EntityManager): Promise<v
     const user = usersByEmail.get(seed.userEmail);
 
     if (!user) {
+      if (seed.isLocal) {
+        skippedLocalSeeds += 1;
+        console.warn(
+          `[seed][local-review-orders] Skipping local review order ${seed.userEmail}::${seed.shopSlug}::${seed.productTitle}: missing seeded user`,
+        );
+        continue;
+      }
       throw new Error(
         `Missing seeded user for local product review order ${seed.userEmail}::${seed.shopSlug}::${seed.productTitle}`,
       );
@@ -182,12 +195,26 @@ export async function seedLocalProductReviewOrders(em: EntityManager): Promise<v
     );
 
     if (!inventory) {
+      if (seed.isLocal) {
+        skippedLocalSeeds += 1;
+        console.warn(
+          `[seed][local-review-orders] Skipping local review order ${seed.userEmail}::${seed.shopSlug}::${seed.productTitle}: missing inventory`,
+        );
+        continue;
+      }
       throw new Error(`Missing inventory for local product review order ${seed.userEmail}::${seed.shopSlug}::${seed.productTitle}`);
     }
 
     const pricing = getInventoryPricingSnapshot(inventory);
 
     if (!pricing) {
+      if (seed.isLocal) {
+        skippedLocalSeeds += 1;
+        console.warn(
+          `[seed][local-review-orders] Skipping local review order ${seed.userEmail}::${seed.shopSlug}::${seed.productTitle}: missing price`,
+        );
+        continue;
+      }
       throw new Error(`Missing price for local product review order ${seed.userEmail}::${seed.shopSlug}::${seed.productTitle}`);
     }
 
@@ -264,5 +291,11 @@ export async function seedLocalProductReviewOrders(em: EntityManager): Promise<v
         `[seed][local-review-orders] Processed ${index + 1}/${dedupedSeeds.length} orders in ${formatDuration(Date.now() - startedAt)}`,
       );
     }
+  }
+
+  if (skippedLocalSeeds > 0) {
+    console.log(
+      `[seed][local-review-orders] Skipped ${skippedLocalSeeds} local review order seed(s) with unresolved user/inventory/pricing references`,
+    );
   }
 }

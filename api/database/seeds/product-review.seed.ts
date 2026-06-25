@@ -115,6 +115,7 @@ type ManualProductReviewSeed = {
   includeImages: boolean;
   imageCount: number;
   createdAt?: Date;
+  isLocal: boolean;
 };
 
 function parseRating(value: string, seedKey: string): 1 | 2 | 3 | 4 | 5 {
@@ -194,11 +195,11 @@ function parseBoolean(value: string, seedKey: string, fieldName: string): boolea
   throw new Error(`Invalid ${fieldName} "${value}" for product review seed ${seedKey}`);
 }
 
-function loadManualProductReviewSeeds(): ManualProductReviewSeed[] {
-  return [
-    ...readTsvRows<ProductReviewSeedRow>(PRODUCT_REVIEWS_TSV_PATH),
-    ...readOptionalTsvRows<ProductReviewSeedRow>(PRODUCT_REVIEWS_LOCAL_TSV_PATH),
-  ].map((row, index) => {
+function mapManualProductReviewSeeds(
+  rows: ProductReviewSeedRow[],
+  isLocal: boolean,
+): ManualProductReviewSeed[] {
+  return rows.map((row, index) => {
     const shopSlug = row.shop_slug.trim();
     const productTitle = row.product_title.trim();
     const userEmail = row.user_email.trim().toLowerCase();
@@ -227,8 +228,19 @@ function loadManualProductReviewSeeds(): ManualProductReviewSeed[] {
       includeImages: parseBoolean(row.include_images, seedKey, 'include_images'),
       imageCount: parseOptionalPositiveInteger(row.image_count, seedKey, 'image_count') ?? 1,
       createdAt: parseOptionalDate(row.created_at, seedKey),
+      isLocal,
     };
   });
+}
+
+function loadManualProductReviewSeeds(): ManualProductReviewSeed[] {
+  return [
+    ...mapManualProductReviewSeeds(readTsvRows<ProductReviewSeedRow>(PRODUCT_REVIEWS_TSV_PATH), false),
+    ...mapManualProductReviewSeeds(
+      readOptionalTsvRows<ProductReviewSeedRow>(PRODUCT_REVIEWS_LOCAL_TSV_PATH),
+      true,
+    ),
+  ];
 }
 
 function buildStableHash(value: string): number {
@@ -499,6 +511,7 @@ export async function seedProductReviews(em: EntityManager): Promise<void> {
   const touchedProductIds = new Set<string>(eligibleOrderItems.map((orderItem) => orderItem.product.id));
   const reviewCountByProductId = new Map<string, number>();
   let createdCount = 0;
+  let skippedLocalManualSeeds = 0;
 
   for (const manualSeed of manualSeeds) {
     const key = `${manualSeed.userEmail}::${manualSeed.shopSlug}::${manualSeed.productTitle}`;
@@ -506,6 +519,13 @@ export async function seedProductReviews(em: EntityManager): Promise<void> {
     const orderItem = bucket.find((candidate) => !usedOrderItemIds.has(candidate.id));
 
     if (!orderItem) {
+      if (manualSeed.isLocal) {
+        skippedLocalManualSeeds += 1;
+        console.warn(
+          `[seed][product-reviews] Skipping local manual review seed ${key}: missing eligible seeded order item`,
+        );
+        continue;
+      }
       throw new Error(`Missing eligible seed order item for product review seed ${key}`);
     }
 
@@ -534,7 +554,7 @@ export async function seedProductReviews(em: EntityManager): Promise<void> {
 
   if (manualSeeds.length > 0) {
     console.log(
-      `[seed][product-reviews] Applied ${manualSeeds.length}/${manualSeeds.length} manual review seeds in ${formatDuration(Date.now() - startedAt)}`,
+      `[seed][product-reviews] Applied ${manualSeeds.length - skippedLocalManualSeeds}/${manualSeeds.length} manual review seeds in ${formatDuration(Date.now() - startedAt)}`,
     );
   }
 

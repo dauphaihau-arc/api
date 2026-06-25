@@ -420,6 +420,23 @@ async function syncProductShipping(
   );
 }
 
+async function clearProductShipping(
+  em: EntityManager,
+  product: ProductEntity,
+): Promise<void> {
+  const profiles = await em.find(ProductShippingProfileEntity, { product });
+  const profileIds = profiles.map((profile) => profile.id);
+
+  if (profileIds.length === 0) {
+    return;
+  }
+
+  await em.nativeDelete(ProductShippingDestinationEntity, {
+    shippingProfile: { $in: profileIds },
+  });
+  await em.nativeDelete(ProductShippingProfileEntity, { id: { $in: profileIds } });
+}
+
 async function pruneSyntheticBulkCatalogProducts(
   em: EntityManager,
   shopsBySlug: Map<string, ShopEntity>,
@@ -500,7 +517,7 @@ export async function seedProducts(
         description: productSeed.description,
         state: productSeed.state as ProductState,
         whoMade: productSeed.whoMade,
-        isDigital: false,
+        isDigital: productSeed.isDigital,
         nonTaxable: false,
         views: 0,
         ratingAverage: 0,
@@ -513,6 +530,7 @@ export async function seedProducts(
     product.description = productSeed.description;
     product.state = productSeed.state as ProductState;
     product.whoMade = productSeed.whoMade;
+    product.isDigital = productSeed.isDigital;
     product.variantType = productSeed.variantType;
     product.variantGroupName = productSeed.variantGroupName;
     product.variantSubGroupName = productSeed.variantSubGroupName;
@@ -555,7 +573,12 @@ export async function seedProducts(
       productSeed.inventory,
       variantsByKey,
     );
-    await syncProductShipping(em, product, shop);
+    if (productSeed.isDigital) {
+      await clearProductShipping(em, product);
+    }
+    else {
+      await syncProductShipping(em, product, shop);
+    }
     await em.flush();
 
     if ((index + 1) % 10 === 0 || index + 1 === totalProducts) {

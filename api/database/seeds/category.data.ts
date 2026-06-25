@@ -321,6 +321,16 @@ export const categorySeedData: CategorySeedNode[] = [
         imageFilename: 'categories/headphone.jpg',
         attributes: attributesElectronicsCommon,
       },
+      {
+        name: 'Keyboard',
+        rank: 4,
+        attributes: attributesElectronicsCommon,
+      },
+      {
+        name: 'Mouse',
+        rank: 5,
+        attributes: attributesElectronicsCommon,
+      },
     ],
   },
   {
@@ -339,6 +349,25 @@ export const categorySeedData: CategorySeedNode[] = [
         rank: 2,
         imageFilename: 'categories/painting.webp',
         attributes: attributesArtCommon,
+      },
+      {
+        name: 'Sculpture',
+        rank: 3,
+        attributes: attributesArtCommon,
+        children: [
+          {
+            name: 'Figurines',
+            rank: 1,
+            attributes: [
+              ...attributesArtCommon,
+              {
+                key: 'display_style',
+                name: 'Display style',
+                options: ['Shelf', 'Desk', 'Collector display', 'Wall accent'],
+              },
+            ],
+          },
+        ],
       },
     ],
   },
@@ -476,13 +505,63 @@ export const categorySeedData: CategorySeedNode[] = [
         ],
       },
       {
-        name: 'Puppets',
+        name: 'Toys',
         rank: 2,
         imageFilename: 'categories/puppets.webp',
-        attributes: [
-          { key: 'material', name: 'Material', options: ['Paper', 'Plastic', 'Wood'] },
-          { key: 'character', name: 'Character', options: ['Animal', 'Fantasy', 'Human'] },
-          { key: 'age_group', name: 'Age group', options: ['3+', '6+', '12+'] },
+        children: [
+          {
+            name: 'Figurines',
+            rank: 1,
+            attributes: [
+              { key: 'material', name: 'Material', options: ['Paper', 'Plastic', 'Wood'] },
+              { key: 'character', name: 'Character', options: ['Animal', 'Fantasy', 'Human'] },
+              { key: 'age_group', name: 'Age group', options: ['3+', '6+', '12+'] },
+            ],
+          },
+        ],
+      },
+      {
+        name: 'Games & Puzzles',
+        rank: 3,
+        children: [
+          {
+            name: 'Board Games',
+            rank: 1,
+            attributes: [
+              {
+                key: 'game_type',
+                name: 'Game type',
+                options: ['Chess', 'Strategy', 'Abstract', 'Family'],
+              },
+              {
+                key: 'player_count',
+                name: 'Player count',
+                options: ['2', '2-4', '2-6'],
+              },
+              {
+                key: 'material',
+                name: 'Material',
+                options: ['Wood', 'Resin', 'Metal', 'Mixed'],
+              },
+            ],
+          },
+          {
+            name: 'Card Games',
+            rank: 2,
+            attributes: [
+              { key: 'player_count', name: 'Player count', options: ['2', '2-4', '2-6', '4-8'] },
+              {
+                key: 'game_type',
+                name: 'Game type',
+                options: ['Poker', 'Strategy', 'Party', 'Classic'],
+              },
+              {
+                key: 'travel_ready',
+                name: 'Travel ready',
+                options: ['Yes', 'No'],
+              },
+            ],
+          },
         ],
       },
     ],
