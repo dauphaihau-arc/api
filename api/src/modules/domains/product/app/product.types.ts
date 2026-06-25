@@ -297,6 +297,11 @@ export interface PublicProductDetail {
     slug: string;
   };
   categoryId?: string;
+  categoryPath?: Array<{
+    id: string;
+    name: string;
+    slug: string;
+  }>;
   title: string;
   slug: string;
   description: string;

@@ -6,7 +6,7 @@ import { MARKETPLACE_CURRENCIES, type MarketplaceCurrency } from '~/config/marke
 export class CreateShopDto {
   @IsString()
   @MinLength(3)
-  @MaxLength(20)
+  @MaxLength(255)
   shop_name!: string;
 
   @IsEnum(MARKETPLACE_CURRENCIES)

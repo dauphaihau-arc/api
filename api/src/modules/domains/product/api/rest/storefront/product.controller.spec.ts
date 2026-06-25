@@ -219,6 +219,18 @@ describe('ProductController', () => {
         slug: 'arc-store',
       },
       categoryId: 'category-1',
+      categoryPath: [
+        {
+          id: 'category-root',
+          name: 'Accessories',
+          slug: 'accessories',
+        },
+        {
+          id: 'category-1',
+          name: 'Handbags',
+          slug: 'handbags',
+        },
+      ],
       title: 'Handmade Bag',
       slug: 'handmade-bag',
       description: 'A detail page payload.',
@@ -251,6 +263,18 @@ describe('ProductController', () => {
         slug: 'arc-store',
       },
       category_id: 'category-1',
+      category_path: [
+        {
+          id: 'category-root',
+          name: 'Accessories',
+          slug: 'accessories',
+        },
+        {
+          id: 'category-1',
+          name: 'Handbags',
+          slug: 'handbags',
+        },
+      ],
       title: 'Handmade Bag',
       slug: 'handmade-bag',
       description: 'A detail page payload.',

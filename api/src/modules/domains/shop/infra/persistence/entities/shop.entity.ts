@@ -26,7 +26,7 @@ export class ShopEntity extends AbstractBaseEntity {
   })
   ownerUser!: CurrentUserEntity;
 
-  @Property({ fieldName: 'shop_name', length: 20 })
+  @Property({ fieldName: 'shop_name', length: 255 })
   @Unique()
   shopName!: string;
 

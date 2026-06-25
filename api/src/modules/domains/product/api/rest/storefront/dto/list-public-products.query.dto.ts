@@ -86,7 +86,7 @@ export class ListPublicProductsQueryDto {
   @ApiPropertyOptional({ name: 'is_digital' })
   @Expose({ name: 'is_digital' })
   @Transform(({ value, obj: source }) =>
-    toOptionalBoolean(value ?? source.is_digital),
+    toOptionalBoolean(value ?? source.is_digital ?? source.isDigital),
   )
   @IsBoolean()
   isDigital?: boolean;

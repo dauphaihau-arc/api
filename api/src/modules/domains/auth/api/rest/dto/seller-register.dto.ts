@@ -33,7 +33,7 @@ export class SellerRegisterDto {
   @Transform(({ value, obj: source }) => value ?? source.shop_name)
   @IsString()
   @MinLength(3)
-  @MaxLength(20)
+  @MaxLength(255)
   shopName!: string;
 
   @IsEnum(MARKETPLACE_CURRENCIES)

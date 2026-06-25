@@ -1,3 +1,4 @@
+import type { CategoryRepository } from '~/modules/domains/category/app/ports/category.repository';
 import type { StorefrontProductQueryRepository } from '../../ports/storefront-product-query.repository';
 import type { PublicProductDetail } from '../../product.types';
 import { GetPublicProductBySlugsUseCase } from './get-public-product-by-slugs.use-case';
@@ -33,9 +34,39 @@ describe('GetPublicProductBySlugsUseCase', () => {
     };
   }
 
+  function buildCategoryRepository(): Pick<jest.Mocked<CategoryRepository>, 'findById'> {
+    return {
+      findById: jest.fn(async (categoryId: string) => {
+        switch (categoryId) {
+          case 'category-1':
+            return {
+              id: 'category-1',
+              parentId: 'category-root',
+              name: 'Ceramic Mugs',
+              rank: 1,
+              attributes: [],
+            };
+          case 'category-root':
+            return {
+              id: 'category-root',
+              name: 'Home Decor',
+              rank: 1,
+              attributes: [],
+            };
+          default:
+            return null;
+        }
+      }),
+    };
+  }
+
   it('returns the public product when found by slugs', async () => {
     const repository = buildRepository();
-    const useCase = new GetPublicProductBySlugsUseCase(repository as never);
+    const categoryRepository = buildCategoryRepository();
+    const useCase = new GetPublicProductBySlugsUseCase(
+      repository as never,
+      categoryRepository as never,
+    );
 
     const result = await useCase.execute(product.shop.slug, product.slug);
 
@@ -43,6 +74,22 @@ describe('GetPublicProductBySlugsUseCase', () => {
       product.shop.slug,
       product.slug,
     );
-    expect(result).toEqual(product);
+    expect(categoryRepository.findById).toHaveBeenNthCalledWith(1, 'category-1');
+    expect(categoryRepository.findById).toHaveBeenNthCalledWith(2, 'category-root');
+    expect(result).toEqual({
+      ...product,
+      categoryPath: [
+        {
+          id: 'category-root',
+          name: 'Home Decor',
+          slug: 'home-decor',
+        },
+        {
+          id: 'category-1',
+          name: 'Ceramic Mugs',
+          slug: 'ceramic-mugs',
+        },
+      ],
+    });
   });
 });

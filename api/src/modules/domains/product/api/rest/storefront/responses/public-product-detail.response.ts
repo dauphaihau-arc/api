@@ -9,6 +9,11 @@ export type PublicProductDetailResponse = {
     slug: string;
   };
   category_id?: string;
+  category_path?: Array<{
+    id: string;
+    name: string;
+    slug: string;
+  }>;
   title: string;
   slug: string;
   description: string;

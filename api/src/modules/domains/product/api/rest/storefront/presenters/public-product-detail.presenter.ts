@@ -12,6 +12,11 @@ export const toPublicProductDetailResponse = (
     slug: product.shop.slug,
   },
   category_id: product.categoryId,
+  category_path: product.categoryPath?.map((category) => ({
+    id: category.id,
+    name: category.name,
+    slug: category.slug,
+  })),
   title: product.title,
   slug: product.slug,
   description: product.description,

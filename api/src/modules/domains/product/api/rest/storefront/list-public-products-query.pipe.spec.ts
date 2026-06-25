@@ -34,6 +34,16 @@ describe('ListPublicProductsQueryPipe', () => {
     });
   });
 
+  it('maps camelCase isDigital query fields into the DTO shape', async () => {
+    await expect(pipe.transform({
+      category_id: 'fb2c943d-9091-4496-bcbc-d599a95bdd34',
+      isDigital: 'true',
+    }, metadata)).resolves.toMatchObject({
+      categoryId: 'fb2c943d-9091-4496-bcbc-d599a95bdd34',
+      isDigital: true,
+    });
+  });
+
   it('maps attr_* query params into attributeFilters', async () => {
     await expect(pipe.transform({
       category_id: 'fb2c943d-9091-4496-bcbc-d599a95bdd34',
