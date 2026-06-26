@@ -9,19 +9,19 @@ import { Reflector } from '@nestjs/core';
 import { PinoLogger } from 'nestjs-pino';
 import request from 'supertest';
 import type { App } from 'supertest/types';
-import { GlobalExceptionFilter } from '../src/common/filters/global-exception.filter';
-import { RequestLoggingInterceptor } from '../src/common/interceptors/request-logging.interceptor';
-import { parseCorsAllowedOrigins } from '../src/config/cors.config';
-import { AppModule } from '../src/modules/app.module';
-import type { AuthUserResponse } from '../src/modules/domains/auth/app/auth.types';
-import { ProductShippingCharge } from '../src/modules/domains/product/domain/enums/product-shipping-charge.enum';
-import { ProductVariantType } from '../src/modules/domains/product/domain/enums/product-variant-type.enum';
-import { ProductWhoMade } from '../src/modules/domains/product/domain/enums/product-who-made.enum';
-import { StorageService } from '../src/modules/shared/storage/app/ports/storage.service';
-import { LocalFileStorageService } from '../src/modules/shared/storage/infra/local-file-storage.service';
-import { ObservabilityService } from '../src/modules/shared/observability/observability.service';
-import { RequestContextService } from '../src/modules/shared/request-context/request-context.service';
-import { createTestDatabase, dropTestDatabase } from '../test/e2e-postgres';
+import { GlobalExceptionFilter } from '../../src/common/filters/global-exception.filter';
+import { RequestLoggingInterceptor } from '../../src/common/interceptors/request-logging.interceptor';
+import { parseCorsAllowedOrigins } from '../../src/config/cors.config';
+import { AppModule } from '../../src/modules/app.module';
+import type { AuthUserResponse } from '../../src/modules/domains/auth/app/auth.types';
+import { ProductShippingCharge } from '../../src/modules/domains/product/domain/enums/product-shipping-charge.enum';
+import { ProductVariantType } from '../../src/modules/domains/product/domain/enums/product-variant-type.enum';
+import { ProductWhoMade } from '../../src/modules/domains/product/domain/enums/product-who-made.enum';
+import { StorageService } from '../../src/modules/shared/storage/app/ports/storage.service';
+import { LocalFileStorageService } from '../../src/modules/shared/storage/infra/local-file-storage.service';
+import { ObservabilityService } from '../../src/modules/shared/observability/observability.service';
+import { RequestContextService } from '../../src/modules/shared/request-context/request-context.service';
+import { createTestDatabase, dropTestDatabase } from '../support/test-postgres';
 
 jest.setTimeout(30_000);
 
@@ -34,7 +34,7 @@ function randomForwardedIp() {
 
 // This integration suite stays in one file because the setup and assertions share state heavily.
 // eslint-disable-next-line max-lines-per-function
-describe('Commerce flow (e2e)', () => {
+describe('Commerce flow (integration)', () => {
   let app: INestApplication<App>;
   let originalEnv: NodeJS.ProcessEnv;
   let testDb: Awaited<ReturnType<typeof createTestDatabase>>;
@@ -43,7 +43,7 @@ describe('Commerce flow (e2e)', () => {
   beforeAll(async () => {
     originalEnv = { ...process.env };
     testDb = await createTestDatabase('commerce');
-    storageRoot = await mkdtemp(path.join(os.tmpdir(), 'api-commerce-e2e-'));
+    storageRoot = await mkdtemp(path.join(os.tmpdir(), 'api-commerce-int-'));
 
     process.env.NODE_ENV = 'test';
     process.env.DB_HOST = testDb.rootConfig.host;

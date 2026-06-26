@@ -10,22 +10,37 @@ import { Reflector } from '@nestjs/core';
 import { PinoLogger } from 'nestjs-pino';
 import request from 'supertest';
 import type { App } from 'supertest/types';
-import { GlobalExceptionFilter } from '../src/common/filters/global-exception.filter';
-import { RequestLoggingInterceptor } from '../src/common/interceptors/request-logging.interceptor';
-import { parseCorsAllowedOrigins } from '../src/config/cors.config';
-import type { AuthUserResponse, UserProfile } from '../src/modules/domains/auth/app/auth.types';
-import { UserPreferenceEntity } from '../src/modules/domains/auth/infra/persistence/entities/user-preference.entity';
-import { ObservabilityService } from '../src/modules/shared/observability/observability.service';
-import { RequestContextService } from '../src/modules/shared/request-context/request-context.service';
-import { StorageService } from '../src/modules/shared/storage/app/ports/storage.service';
-import { LocalFileStorageService } from '../src/modules/shared/storage/infra/local-file-storage.service';
-import { createTestDatabase, dropTestDatabase } from '../test/e2e-postgres';
+import { GlobalExceptionFilter } from '../../src/common/filters/global-exception.filter';
+import { RequestLoggingInterceptor } from '../../src/common/interceptors/request-logging.interceptor';
+import { parseCorsAllowedOrigins } from '../../src/config/cors.config';
+import { UserPreferenceEntity } from '../../src/modules/domains/auth/infra/persistence/entities/user-preference.entity';
+import { ObservabilityService } from '../../src/modules/shared/observability/observability.service';
+import { RequestContextService } from '../../src/modules/shared/request-context/request-context.service';
+import { StorageService } from '../../src/modules/shared/storage/app/ports/storage.service';
+import { LocalFileStorageService } from '../../src/modules/shared/storage/infra/local-file-storage.service';
+import { createTestDatabase, dropTestDatabase } from '../support/test-postgres';
 
 jest.setTimeout(30_000);
 
 const API_PREFIX = '/v1';
 const expectedMemberPermissions: string[] = [];
 const VALID_TEST_PASSWORD = 'Password123!';
+type AuthHttpResponseBody = {
+  user: {
+    id: string;
+    email: string;
+    display_name?: string;
+    session_id: string;
+    roles: string[];
+    permissions: string[];
+  };
+};
+
+type CurrentUserHttpResponseBody = {
+  email: string;
+  display_name?: string;
+  permissions: string[];
+};
 
 describe('Auth flow (e2e)', () => {
   let app: INestApplication<App>;
@@ -56,7 +71,7 @@ describe('Auth flow (e2e)', () => {
     process.env.MAIL_DRIVER = 'logger';
     process.env.STORAGE_DRIVER = 'local';
     process.env.STORAGE_LOCAL_ROOT = storageRoot;
-    const { AppModule } = await import('../src/modules/app.module.js');
+    const { AppModule } = await import('../../src/modules/app.module.js');
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
@@ -146,18 +161,18 @@ describe('Auth flow (e2e)', () => {
         },
       })
       .expect(201);
-    const registerBody = registerResponse.body as unknown as AuthUserResponse;
+    const registerBody = registerResponse.body as AuthHttpResponseBody;
     const registerCookies = expectAuthCookies(registerResponse.headers['set-cookie']);
 
     expect(registerBody.user).toMatchObject({
       email,
-      displayName: 'Member User',
+      display_name: 'Member User',
       roles: ['member'],
       permissions: expectedMemberPermissions,
     });
     expect(registerResponse.headers['cache-control']).toBe('no-store');
     expect(registerBody.user.id).toEqual(expect.any(String));
-    expect(registerBody.user.sessionId).toEqual(expect.any(String));
+    expect(registerBody.user.session_id).toEqual(expect.any(String));
     const userPreference = await entityManager.fork().findOne(
       UserPreferenceEntity,
       { user: registerBody.user.id },
@@ -171,19 +186,19 @@ describe('Auth flow (e2e)', () => {
       currency: 'EUR',
     });
 
-    const sessionId = registerBody.user.sessionId;
+    const sessionId = registerBody.user.session_id;
 
     const meResponse = await agent
       .get(`${API_PREFIX}/auth/me`)
       .expect(200);
-    const meBody = meResponse.body as unknown as UserProfile;
+    const meBody = meResponse.body as CurrentUserHttpResponseBody;
 
     expect(meBody).toMatchObject({
       email,
-      displayName: 'Member User',
+      display_name: 'Member User',
       permissions: expectedMemberPermissions,
     });
-    expect(meBody).not.toHaveProperty('sessionId');
+    expect(meBody).not.toHaveProperty('session_id');
     expect(meBody).not.toHaveProperty('roles');
     expect(meResponse.headers['cache-control']).toBe('no-store');
 
@@ -194,12 +209,12 @@ describe('Auth flow (e2e)', () => {
         password: VALID_TEST_PASSWORD,
       })
       .expect(200);
-    const loginBody = loginResponse.body as unknown as AuthUserResponse;
+    const loginBody = loginResponse.body as AuthHttpResponseBody;
     const loginCookies = expectAuthCookies(loginResponse.headers['set-cookie']);
 
     expect(loginResponse.headers['cache-control']).toBe('no-store');
     expect(loginBody.user.email).toBe(email);
-    expect(loginBody.user.sessionId).not.toBe(sessionId);
+    expect(loginBody.user.session_id).not.toBe(sessionId);
     expect(loginCookies.refreshToken.value).not.toBe(
       registerCookies.refreshToken.value,
     );
@@ -244,8 +259,8 @@ function restoreProcessEnv(originalEnv: NodeJS.ProcessEnv) {
 function expectAuthCookies(setCookieHeader: string[] | undefined) {
   expect(setCookieHeader).toBeDefined();
   const parsedCookies = (setCookieHeader ?? []).map((value) => value.split(';')[0] ?? '');
-  const accessToken = parsedCookies.find((value) => value.startsWith('access_token='));
-  const refreshToken = parsedCookies.find((value) => value.startsWith('refresh_token='));
+  const accessToken = parsedCookies.find((value) => value.startsWith('accessToken='));
+  const refreshToken = parsedCookies.find((value) => value.startsWith('refreshToken='));
 
   expect(accessToken).toBeDefined();
   expect(refreshToken).toBeDefined();
