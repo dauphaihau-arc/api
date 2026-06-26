@@ -33,7 +33,16 @@ def main [file: string, verbose_file: string] {
     let total = $requests | length
     let parsed_stdout = parse_stdout_response $raw
     let parsed_verbose = parse_verbose_response $verbose_lines
-    let response = if ($parsed_stdout.status_line | is-not-empty) { $parsed_stdout } else { $parsed_verbose }
+    let response = if ($parsed_stdout.status_line | is-not-empty) {
+        {
+            status_line: $parsed_stdout.status_line,
+            headers: $parsed_stdout.headers,
+            body: $parsed_stdout.body,
+            timing: $parsed_verbose.timing,
+        }
+    } else {
+        $parsed_verbose
+    }
 
     for req in ($requests | enumerate) {
         let n = $req.index + 1
@@ -50,7 +59,7 @@ def main [file: string, verbose_file: string] {
 
         if ($response.timing | is-not-empty) {
             print $"\n(ansi cyan)Timing(ansi reset)"
-            print $response.timing
+            print (parse_timing_table $response.timing | table)
         }
     }
 
@@ -89,10 +98,20 @@ def parse_stdout_response [raw: string] {
 }
 
 def parse_verbose_response [verbose_lines: list<string>] {
-    let timing = (
+    let timing_lines = (
         $verbose_lines
-        | where { |line| $line | str starts-with "* Response:" }
-        | last
+        | reduce -f {capturing: false, lines: []} { |line, acc|
+            if ($line | str starts-with "* Timings:") {
+                {capturing: true, lines: [$line]}
+            } else if $acc.capturing and ($line | str starts-with "* ") {
+                {capturing: true, lines: ($acc.lines | append $line)}
+            } else if $acc.capturing {
+                {capturing: false, lines: $acc.lines}
+            } else {
+                $acc
+            }
+        }
+        | get lines
     )
 
     let response_lines = (
@@ -127,6 +146,20 @@ def parse_verbose_response [verbose_lines: list<string>] {
         status_line: $status_line,
         headers: $headers,
         body: "",
-        timing: ($timing | default ""),
+        timing: ($timing_lines | str join "\n"),
+    }
+}
+
+def parse_timing_table [timing: string] {
+    $timing
+    | lines
+    | where { |line| ($line | str starts-with "* ") and (($line | str contains ":")) }
+    | each { |line|
+        let cleaned = $line | str replace --regex '^\*\s+' ''
+        let parts = $cleaned | split row ": "
+        {
+            metric: ($parts | first),
+            value: ($parts | skip 1 | str join ": "),
+        }
     }
 }

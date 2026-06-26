@@ -25,6 +25,17 @@ export default defineConfig([
     },
   },
   {
+    files: ["test/performance/**/*.js"],
+    languageOptions: {
+      globals: {
+        __ENV: "readonly",
+        __ITER: "readonly",
+        __VU: "readonly",
+        open: "readonly",
+      },
+    },
+  },
+  {
     ignores: ['database/migrations/**/*.ts'],
   },
 ]);

@@ -10,6 +10,7 @@ This directory contains HTTP-level smoke tests for the API using [Hurl](https://
 ## Layout
 
 - `health.hurl` checks the public health endpoint.
+- `auth/login.hurl` checks login with seeded default credentials.
 - `products/best-sellers.hurl` checks the public storefront best-sellers endpoint.
 - `internal/catalog-status.hurl` checks the internal catalog status endpoint.
 - `internal/catalog-refresh.hurl` triggers a best-seller refresh on the internal catalog endpoint.
@@ -29,6 +30,7 @@ For manual runs, use the same variables file:
 ```bash
 cd api/api-tests
 just run health.hurl
+just run auth/login.hurl
 just run products/best-sellers.hurl
 just run internal/catalog-status.hurl
 ```
@@ -49,6 +51,7 @@ pnpm test:hurl
 ## Notes
 
 - Public health is mounted at `/health`, outside the `/v1` prefix.
+- `auth/login.hurl` expects seeded auth data; the example variables default to `member@example.com` / `Password123!`.
 - Internal catalog routes stay under `/v1/internal/catalog/*`.
 - `internal/catalog-refresh.hurl` is state-changing and may do real work depending on local seed data and catalog configuration.
 - Keep local values in `api-tests/hurl.variables`; the committed example is `api-tests/hurl.variables.example`.
