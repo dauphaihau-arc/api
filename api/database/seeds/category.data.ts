@@ -289,8 +289,14 @@ export const categorySeedData: CategorySeedNode[] = [
             attributes: attributesAccessoriesBagCommon,
           },
           {
-            name: 'Wallets',
+            name: 'Backpacks',
             rank: 3,
+            imageFilename: 'categories/handbags.png',
+            attributes: attributesAccessoriesBagCommon,
+          },
+          {
+            name: 'Wallets',
+            rank: 4,
             imageFilename: 'categories/wallets.png',
             attributes: attributesAccessoriesBagCommon,
           },
