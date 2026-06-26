@@ -41,6 +41,7 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./jest-e2e.json",
+    "test:int": "jest --config ./jest-int.json --runInBand",
     "test:hurl": "hurl --test --glob \"api-tests/**/*.hurl\" --variables-file api-tests/hurl.variables",
     "storage:clear": "ts-node -r tsconfig-paths/register ./scripts/clear-seed-storage.ts"
   },
@@ -85,6 +86,7 @@
     "@opentelemetry/semantic-conventions": "^1.41.1",
     "@sentry/nestjs": "^10.55.0",
     "@socket.io/redis-adapter": "^8.3.0",
+    "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.2",
     "bullmq": "^5.76.6",
     "cache-manager": "^7.2.8",
@@ -121,6 +123,7 @@
     "@nestjs/cli": "^11.0.0",
     "@nestjs/schematics": "^11.0.0",
     "@nestjs/testing": "^11.0.1",
+    "@types/bcrypt": "^6.0.0",
     "@types/express": "^5.0.0",
     "@types/jest": "^30.0.0",
     "@types/node": "^24.0.0",

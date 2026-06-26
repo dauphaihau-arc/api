@@ -70,6 +70,6 @@ export class RefreshSessionUseCase {
       return err(new InactiveUserError());
     }
 
-    return this.issueSessionUseCase.execute(user.id, session);
+    return this.issueSessionUseCase.execute(user.id, session, user);
   }
 }

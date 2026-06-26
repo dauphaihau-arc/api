@@ -1,5 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { err, ok, Result } from '~/common/application/result';
+import { AUTH_CONFIG } from '~/config/auth.config';
+import type { AuthConfig } from '~/config/auth.config';
 import { RequestContextService } from '~/modules/shared/request-context/request-context.service';
 import {
   AuthResponse,
@@ -15,6 +17,7 @@ import { AuthSessionRepository } from '../../ports/auth-session.repository';
 import { AuthTokenService } from '../../ports/auth-token.service';
 import { TokenHasher } from '../../ports/token-hasher';
 import { AuthUserRepository } from '../../ports/auth-user.repository';
+import type { UserAccount } from '../../../domain/models/user-account';
 
 @Injectable()
 export class IssueSessionUseCase {
@@ -24,13 +27,15 @@ export class IssueSessionUseCase {
     private readonly authTokenService: AuthTokenService,
     private readonly tokenHasher: TokenHasher,
     private readonly requestContextService: RequestContextService,
+    @Inject(AUTH_CONFIG) private readonly authConfig: AuthConfig,
   ) {}
 
   async execute(
     userId: string,
     existingSession?: UserSession,
+    existingUser?: UserAccount,
   ): Promise<Result<AuthResponse, InactiveUserError | UserNotFoundError>> {
-    const user = await this.authUserRepository.findById(userId);
+    const user = existingUser ?? await this.authUserRepository.findById(userId);
 
     if (!user) {
       return err(new UserNotFoundError());
@@ -69,15 +74,11 @@ export class IssueSessionUseCase {
       userId: user.id,
       sessionId: session.id,
     });
-    const decodedRefreshToken =
-      await this.authTokenService.verifyRefreshToken(refreshToken);
-
-    if (!decodedRefreshToken) {
-      throw new Error('Issued refresh token could not be verified');
-    }
 
     session.refreshTokenHash = this.tokenHasher.hash(refreshToken);
-    session.expiresAt = new Date(decodedRefreshToken.exp * 1000);
+    session.expiresAt = new Date(
+      Date.now() + (this.authConfig.jwtRefreshTtlSeconds * 1000),
+    );
     session.revokedAt = undefined;
     session.userAgent = requestContext.userAgent;
     session.ipAddress = requestContext.ipAddress;

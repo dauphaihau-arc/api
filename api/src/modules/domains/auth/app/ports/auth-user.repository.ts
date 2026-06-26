@@ -22,6 +22,12 @@ export interface UpdateUserAccountInput {
   status?: UserStatus;
 }
 
+export interface LoginUserAccount {
+  id: string;
+  status: UserStatus;
+  passwordHash?: PasswordHash;
+}
+
 export class UserAccountVersionConflictError extends Error {
   constructor() {
     super('User version does not match the latest persisted state');
@@ -30,6 +36,7 @@ export class UserAccountVersionConflictError extends Error {
 
 export abstract class AuthUserRepository {
   abstract findByEmail(email: Email): Promise<UserAccount | null>;
+  abstract findLoginByEmail(email: Email): Promise<LoginUserAccount | null>;
   abstract findById(id: string): Promise<UserAccount | null>;
   abstract create(
     input: CreateUserAccountInput,

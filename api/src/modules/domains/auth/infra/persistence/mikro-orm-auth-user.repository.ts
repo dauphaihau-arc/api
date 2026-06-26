@@ -4,6 +4,7 @@ import { Injectable } from '@nestjs/common';
 import {
   AuthUserRepository,
   CreateUserAccountInput,
+  LoginUserAccount,
   UpdateUserAccountInput,
   UserAccountVersionConflictError,
 } from '../../app/ports/auth-user.repository';
@@ -30,6 +31,26 @@ export class MikroOrmAuthUserRepository implements AuthUserRepository {
     );
 
     return user ? this.toUserAccount(user) : null;
+  }
+
+  async findLoginByEmail(email: Email): Promise<LoginUserAccount | null> {
+    const userRepository = this.entityManager.fork().getRepository(CurrentUserEntity);
+    const user = await userRepository.findOne(
+      { email: email.toString() },
+      { populate: ['credential'], fields: ['id', 'status', 'credential.passwordHash'] },
+    );
+
+    if (!user) {
+      return null;
+    }
+
+    return {
+      id: user.id,
+      status: user.status,
+      passwordHash: user.credential
+        ? PasswordHash.fromPersisted(user.credential.passwordHash)
+        : undefined,
+    };
   }
 
   async findById(id: string): Promise<UserAccount | null> {

@@ -68,6 +68,6 @@ export class ResetPasswordUseCase {
     passwordResetToken.usedAt = passwordUpdatedAt;
     await this.passwordResetTokenRepository.save(passwordResetToken);
 
-    return this.issueSessionUseCase.execute(user.id);
+    return this.issueSessionUseCase.execute(user.id, undefined, user);
   }
 }

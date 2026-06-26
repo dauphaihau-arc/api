@@ -27,25 +27,25 @@ export class LoginUseCase {
     >
   > {
     const email = Email.create(input.email);
-    const user = await this.authUserRepository.findByEmail(email);
+    const loginUser = await this.authUserRepository.findLoginByEmail(email);
 
-    if (!user?.passwordHash) {
+    if (!loginUser?.passwordHash) {
       return err(new InvalidCredentialsError());
     }
 
-    if (user.status !== UserStatus.ACTIVE) {
+    if (loginUser.status !== UserStatus.ACTIVE) {
       return err(new InactiveUserError());
     }
 
     const passwordMatches = await this.passwordHasher.matches(
       input.password,
-      user.passwordHash.toString(),
+      loginUser.passwordHash.toString(),
     );
 
     if (!passwordMatches) {
       return err(new InvalidCredentialsError());
     }
 
-    return this.issueSessionUseCase.execute(user.id);
+    return this.issueSessionUseCase.execute(loginUser.id);
   }
 }

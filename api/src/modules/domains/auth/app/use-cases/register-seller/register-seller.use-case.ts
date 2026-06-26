@@ -155,7 +155,11 @@ export class RegisterSellerUseCase {
       return createdUser;
     });
 
-    const authResponse = await this.issueSessionUseCase.execute(user.id);
+    const authResponse = await this.issueSessionUseCase.execute(
+      user.id,
+      undefined,
+      user,
+    );
 
     this.eventEmitter.emit(
       'user.created',
