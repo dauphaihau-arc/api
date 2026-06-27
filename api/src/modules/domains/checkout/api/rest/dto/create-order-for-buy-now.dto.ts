@@ -4,7 +4,7 @@ import {
   IsEnum,
   IsUUID,
 } from 'class-validator';
-import { PaymentType } from '../../../domain/enums/payment-type.enum';
+import { PaymentType } from '../../../../order/domain/enums/payment-type.enum';
 
 export class CreateOrderForBuyNowDto {
   @ApiProperty({ name: 'payment_type' })

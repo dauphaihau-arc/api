@@ -7,7 +7,7 @@ import {
   MaxLength,
   ValidateNested,
 } from 'class-validator';
-import { ShippingAddressDto } from './shipping-address.dto';
+import { ShippingAddressDto } from '../../../../order/api/rest/dto/shipping-address.dto';
 
 class ShopAdjustmentDto {
   @ApiProperty({ name: 'shop_id' })

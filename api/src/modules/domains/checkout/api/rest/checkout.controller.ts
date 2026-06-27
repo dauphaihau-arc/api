@@ -28,19 +28,19 @@ import { GuestOrderTrackingTokenService } from '../../app/guest-order-tracking-t
 import { GetOrdersByCheckoutSessionUseCase } from '~/modules/domains/checkout/app/use-cases/get-orders-by-checkout-session/get-orders-by-checkout-session.use-case';
 import { LookupGuestOrdersUseCase } from '~/modules/domains/checkout/app/use-cases/lookup-guest-orders/lookup-guest-orders.use-case';
 import {
-  isOrderAppError,
-  mapOrderAppErrorToHttpException,
-} from './order-http-error-mapper';
+  isCheckoutAppError,
+  mapCheckoutAppErrorToHttpException,
+} from './checkout-http-error-mapper';
 import {
   toCheckoutQuoteResponse,
   toCheckoutSessionOrderResponse,
   toCreateOrderResponse,
-  toOrderListResponse,
-} from './order.response';
-import { CreateGuestCheckoutQuoteForBuyNowDto } from '../../../checkout/api/rest/dto/create-guest-checkout-quote-for-buy-now.dto';
-import { CreateGuestCheckoutQuoteFromCartDto } from '../../../checkout/api/rest/dto/create-guest-checkout-quote-from-cart.dto';
-import { CreateGuestOrderForBuyNowDto } from '../../../checkout/api/rest/dto/create-guest-order-for-buy-now.dto';
-import { CreateGuestOrderFromCartDto } from '../../../checkout/api/rest/dto/create-guest-order-from-cart.dto';
+  toCheckoutOrderListResponse,
+} from './checkout.response';
+import { CreateGuestCheckoutQuoteForBuyNowDto } from './dto/create-guest-checkout-quote-for-buy-now.dto';
+import { CreateGuestCheckoutQuoteFromCartDto } from './dto/create-guest-checkout-quote-from-cart.dto';
+import { CreateGuestOrderForBuyNowDto } from './dto/create-guest-order-for-buy-now.dto';
+import { CreateGuestOrderFromCartDto } from './dto/create-guest-order-from-cart.dto';
 import { LookupGuestOrdersQueryDto } from './dto/lookup-guest-orders.query.dto';
 
 const checkoutRouteRateLimits = {
@@ -119,7 +119,7 @@ export class CheckoutController {
     }
 
     return this.lookupGuestOrdersUseCase.execute(resolvedLookup)
-      .then(toOrderListResponse);
+      .then(toCheckoutOrderListResponse);
   }
 
   @Post('cart/quote')
@@ -233,8 +233,8 @@ export class CheckoutController {
   }
 
   private throwMappedOrderError(error: unknown): never {
-    if (isOrderAppError(error)) {
-      throw mapOrderAppErrorToHttpException(error);
+    if (isCheckoutAppError(error)) {
+      throw mapCheckoutAppErrorToHttpException(error);
     }
 
     throw error;

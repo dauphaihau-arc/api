@@ -16,6 +16,7 @@ import { AuthModule } from './domains/auth/auth.module';
 import { CartModule } from './domains/cart/cart.module';
 import { CategoryModule } from './domains/category/category.module';
 import { CouponModule } from './domains/coupon/coupon.module';
+import { CheckoutModule } from './domains/checkout/checkout.module';
 import { OrderModule } from './domains/order/order.module';
 import { ProductModule } from './domains/product/product.module';
 import { ShopModule } from './domains/shop/shop.module';
@@ -80,6 +81,7 @@ import { WsModule } from './shared/ws/ws.module';
     ProductModule,
     CouponModule,
     CartModule,
+    CheckoutModule,
     OrderModule,
     ChatModule,
   ],

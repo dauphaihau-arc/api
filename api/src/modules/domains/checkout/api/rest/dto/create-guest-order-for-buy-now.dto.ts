@@ -5,7 +5,7 @@ import {
   IsUUID,
   ValidateNested,
 } from 'class-validator';
-import { PaymentType } from '../../../domain/enums/payment-type.enum';
+import { PaymentType } from '../../../../order/domain/enums/payment-type.enum';
 import { GuestCheckoutIdentityDto } from './guest-checkout-identity.dto';
 
 export class CreateGuestOrderForBuyNowDto {

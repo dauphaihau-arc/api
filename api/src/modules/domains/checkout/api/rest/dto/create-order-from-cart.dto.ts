@@ -3,7 +3,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import {
   IsEnum, IsUUID,
 } from 'class-validator';
-import { PaymentType } from '../../../domain/enums/payment-type.enum';
+import { PaymentType } from '../../../../order/domain/enums/payment-type.enum';
 
 export class CreateOrderFromCartDto {
   @ApiProperty({ name: 'payment_type' })

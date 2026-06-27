@@ -8,7 +8,7 @@ import {
   MaxLength,
   ValidateNested,
 } from 'class-validator';
-import { ShippingAddressDto } from './shipping-address.dto';
+import { ShippingAddressDto } from '../../../../order/api/rest/dto/shipping-address.dto';
 
 export class CreateGuestCheckoutQuoteForBuyNowDto {
   @ApiProperty({ name: 'cart_id' })

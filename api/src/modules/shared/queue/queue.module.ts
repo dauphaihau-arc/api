@@ -25,6 +25,7 @@ import { SendRefundFailedEmailJob } from '~/common/jobs/send-refund-failed-email
 import { SendRefundSucceededEmailJob } from '~/common/jobs/send-refund-succeeded-email.job';
 import { SendSellerOrderUpdateEmailJob } from '~/common/jobs/send-seller-order-update-email.job';
 import { SendWelcomeEmailJob } from '~/common/jobs/send-welcome-email.job';
+import { CheckoutModule } from '~/modules/domains/checkout/checkout.module';
 import { OrderModule } from '~/modules/domains/order/order.module';
 import { ProductModule } from '~/modules/domains/product/product.module';
 import { NotificationModule } from '../notification/notification.module';
@@ -49,6 +50,7 @@ const queueModuleLogger = new Logger('QueueModule');
     ObservabilityModule,
     PaymentModule,
     forwardRef(() => NotificationModule),
+    forwardRef(() => CheckoutModule),
     forwardRef(() => ProductModule),
     forwardRef(() => OrderModule),
   ],
