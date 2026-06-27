@@ -1,9 +1,12 @@
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
+import ms from 'ms';
 import { OrderStatus } from '~/modules/domains/order/domain/enums/order-status.enum';
 import { PublicProductOrderHistoryRepository } from '../../../../app/ports/public-product-order-history.repository';
 import { ProductState } from '../../../../domain/enums/product-state.enum';
 import { ProductBestSellerRankingEntity } from '../entities/product-best-seller-ranking.entity';
+
+const DAY_IN_MS = ms('1d');
 
 @Injectable()
 export class MikroOrmPublicProductOrderHistoryRepository
@@ -180,7 +183,7 @@ implements PublicProductOrderHistoryRepository {
 }
 
 function buildLookbackStart(windowDays: number): Date {
-  return new Date(Date.now() - (windowDays * 24 * 60 * 60 * 1000));
+  return new Date(Date.now() - (windowDays * DAY_IN_MS));
 }
 
 function buildCandidateLimit(limit: number): number {

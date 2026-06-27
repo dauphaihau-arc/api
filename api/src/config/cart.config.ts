@@ -1,4 +1,5 @@
 import type { ConfigService } from '@nestjs/config';
+import ms from 'ms';
 import { parseDurationToMilliseconds } from '../libs/duration';
 
 export interface CartConfig {
@@ -13,7 +14,7 @@ export function buildCartConfig(
   return {
     guestCartSessionTtlMs: parseDurationToMilliseconds(
       configService.get<string>('GUEST_CART_SESSION_TTL', '30d'),
-      30 * 24 * 60 * 60 * 1000,
+      ms('30d'),
     ),
   };
 }

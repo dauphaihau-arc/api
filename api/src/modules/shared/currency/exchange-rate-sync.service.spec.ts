@@ -1,4 +1,5 @@
 import type { EntityManager } from '@mikro-orm/postgresql';
+import ms from 'ms';
 import { ExchangeRateSyncService } from './exchange-rate-sync.service';
 import type { FxRateSyncConfig } from '~/config/fx-rate-sync.config';
 import type { ExchangeRateProvider } from './exchange-rate-provider';
@@ -29,7 +30,7 @@ describe('ExchangeRateSyncService', () => {
     } as unknown as EntityManager;
     const fxRateSyncConfig: FxRateSyncConfig = {
       provider: 'open-exchange-rates',
-      intervalMs: 60 * 60 * 1000,
+      intervalMs: ms('1h'),
       runOnStartup: false,
       baseCurrencies: ['USD', 'VND'],
       targetCurrencies: ['USD', 'VND', 'EUR'],

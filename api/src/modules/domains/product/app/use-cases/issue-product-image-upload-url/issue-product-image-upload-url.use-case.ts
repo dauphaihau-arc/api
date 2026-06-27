@@ -9,6 +9,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import type { Cache } from 'cache-manager';
+import ms from 'ms';
 import { randomUUID } from 'node:crypto';
 import {
   STORAGE_CONFIG,
@@ -22,7 +23,7 @@ import { ShopRepository } from '~/modules/domains/shop/app/ports/shop.repository
 import { ProductImageAssetType } from '../../../domain/enums/product-image-asset-type.enum';
 import { SellerProductQueryRepository } from '../../ports/seller-product-query.repository';
 
-const UPLOAD_TICKET_TTL_MS = 15 * 60 * 1000;
+const UPLOAD_TICKET_TTL_MS = ms('15m');
 
 export interface ProductImageUploadTicketRecord {
   shopId: string;

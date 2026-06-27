@@ -1,4 +1,5 @@
 import type { ConfigService } from '@nestjs/config';
+import ms from 'ms';
 import {
   MARKETPLACE_MARKETS,
   type MarketplaceCurrency,
@@ -27,7 +28,7 @@ export function buildFxRateSyncConfig(
     ),
     intervalMs: parseDurationToMilliseconds(
       configService.get<string>('FX_RATE_SYNC_INTERVAL', '1h'),
-      60 * 60 * 1000,
+      ms('1h'),
     ),
     runOnStartup:
       configService.get<string>('FX_RATE_SYNC_RUN_ON_STARTUP', 'false') ===

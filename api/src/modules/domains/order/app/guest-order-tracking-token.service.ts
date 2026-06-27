@@ -1,6 +1,7 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import ms from 'ms';
 import { parseDurationToMilliseconds } from '~/libs/duration';
 
 type GuestOrderTrackingTokenPayload = {
@@ -101,7 +102,7 @@ export class GuestOrderTrackingTokenService {
   private getTokenTtlInMilliseconds(): number {
     return parseDurationToMilliseconds(
       this.configService.get<string>('GUEST_ORDER_TRACKING_TTL'),
-      30 * 24 * 60 * 60 * 1000,
+      ms('30d'),
     );
   }
 

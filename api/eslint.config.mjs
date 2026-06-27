@@ -34,6 +34,9 @@ export default defineConfig([
         open: "readonly",
       },
     },
+    rules: {
+      "@stylistic/comma-dangle": ["error", "always-multiline"],
+    },
   },
   {
     ignores: ['database/migrations/**/*.ts'],

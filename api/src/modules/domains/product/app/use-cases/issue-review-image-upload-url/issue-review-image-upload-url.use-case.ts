@@ -8,6 +8,7 @@ import {
   Injectable,
 } from '@nestjs/common';
 import type { Cache } from 'cache-manager';
+import ms from 'ms';
 import { randomUUID } from 'node:crypto';
 import { resolveImageExtension, resolveStorageEnvironmentSegment, buildStorageObjectKey } from '~/modules/shared/storage/app/storage-key-builder';
 import type { AuthenticatedUser } from '~/modules/domains/auth/app/auth.types';
@@ -25,7 +26,7 @@ import { isEligibleForProductReview } from '../../product-review.helpers';
 import { PRODUCT_REVIEW_MAX_IMAGE_BYTES } from '../../product-review.constants';
 import { PendingReviewImageUploadService } from '../../pending-review-image-upload.service';
 
-export const REVIEW_IMAGE_UPLOAD_TICKET_TTL_MS = 15 * 60 * 1000;
+export const REVIEW_IMAGE_UPLOAD_TICKET_TTL_MS = ms('15m');
 
 export interface ReviewImageUploadTicketRecord {
   storageKey: string;

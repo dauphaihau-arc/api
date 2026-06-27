@@ -1,10 +1,13 @@
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
+import ms from 'ms';
 import { CurrentUserEntity } from '~/modules/domains/auth/infra/persistence/entities/current-user.entity';
 import { PublicProductViewHistoryRepository } from '../../../../app/ports/public-product-view-history.repository';
 import { ProductState } from '../../../../domain/enums/product-state.enum';
 import { ProductEntity } from '../entities/product.entity';
 import { ProductViewHistoryEntity } from '../entities/product-view-history.entity';
+
+const DAY_IN_MS = ms('1d');
 
 @Injectable()
 export class MikroOrmPublicProductViewHistoryRepository
@@ -152,5 +155,5 @@ implements PublicProductViewHistoryRepository {
 }
 
 function buildLookbackStart(windowDays: number): Date {
-  return new Date(Date.now() - (windowDays * 24 * 60 * 60 * 1000));
+  return new Date(Date.now() - (windowDays * DAY_IN_MS));
 }

@@ -12,6 +12,7 @@ import type { Cache } from 'cache-manager';
 import type { Request, Response } from 'express';
 import type { RedisClientType } from 'redis';
 import { from, lastValueFrom, Observable } from 'rxjs';
+import ms from 'ms';
 import {
   IDEMPOTENCY_OPTIONS,
   IDEMPOTENCY_REDIS,
@@ -21,8 +22,8 @@ import {
 const IDEMPOTENCY_KEY_HEADER = 'idempotency-key';
 const IDEMPOTENCY_STATUS_HEADER = 'Idempotency-Status';
 const IDEMPOTENCY_REPLAYED_HEADER = 'Idempotency-Replayed';
-const DEFAULT_RESPONSE_TTL_MS = 24 * 60 * 60 * 1000;
-const DEFAULT_LOCK_TTL_MS = 30 * 1000;
+const DEFAULT_RESPONSE_TTL_MS = ms('24h');
+const DEFAULT_LOCK_TTL_MS = ms('30s');
 
 interface CachedIdempotencyResponse {
   fingerprint: string;
