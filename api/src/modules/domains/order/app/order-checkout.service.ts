@@ -27,7 +27,7 @@ import { OrderEntity } from '../infra/persistence/entities/order.entity';
 import { OrderItemEntity } from '../infra/persistence/entities/order-item.entity';
 import type { LoadedCheckoutQuote } from './load-checkout-quote.service';
 import { OrderCheckoutOutboxService } from './order-checkout-outbox.service';
-import { CheckoutStockReservationService } from './checkout-stock-reservation.service';
+import { CheckoutStockReservationService } from '../../checkout/app/checkout-stock-reservation.service';
 import { OrderEventsService } from './order-events.service';
 import {
   buildSellerOrderCreatedNotification,

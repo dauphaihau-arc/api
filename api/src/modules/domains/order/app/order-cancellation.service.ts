@@ -7,7 +7,7 @@ import { CouponUsageEntity } from '../../coupon/infra/persistence/entities/coupo
 import { OrderStatus } from '../domain/enums/order-status.enum';
 import { OrderEntity } from '../infra/persistence/entities/order.entity';
 import { OrderItemEntity } from '../infra/persistence/entities/order-item.entity';
-import { CheckoutStockReservationService } from './checkout-stock-reservation.service';
+import { CheckoutStockReservationService } from '../../checkout/app/checkout-stock-reservation.service';
 import { OrderRefundService } from './order-refund.service';
 
 @Injectable()

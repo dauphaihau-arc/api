@@ -12,7 +12,7 @@ import { OrderStatus } from '../domain/enums/order-status.enum';
 import { OrderEntity } from '../infra/persistence/entities/order.entity';
 import { OrderItemEntity } from '../infra/persistence/entities/order-item.entity';
 import { dispatchBestSellerRankingRefresh } from './best-seller-ranking-refresh';
-import { CheckoutStockReservationService } from './checkout-stock-reservation.service';
+import { CheckoutStockReservationService } from '../../checkout/app/checkout-stock-reservation.service';
 import { OrderEventsService } from './order-events.service';
 import { getRequiredOrderNumber } from './order-number';
 import type { CreateOrderResult } from './order.types';

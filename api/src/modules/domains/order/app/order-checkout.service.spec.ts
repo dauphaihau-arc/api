@@ -4,7 +4,7 @@ import type { CouponPricingService } from '../../coupon/app/coupon-pricing.servi
 import type { NotifyUserUseCase } from '~/modules/shared/notification/app/use-cases/notify-user/notify-user.use-case';
 import { CartKind } from '../../cart/domain/enums/cart-kind.enum';
 import type { OrderCheckoutOutboxService } from './order-checkout-outbox.service';
-import type { CheckoutStockReservationService } from './checkout-stock-reservation.service';
+import type { CheckoutStockReservationService } from '../../checkout/app/checkout-stock-reservation.service';
 import { OrderCheckoutService } from './order-checkout.service';
 import type { CartSnapshot } from '../../cart/app/cart.types';
 import type { PricedCartSummary } from './order.types';

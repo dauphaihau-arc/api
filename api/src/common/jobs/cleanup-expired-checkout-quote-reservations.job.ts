@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import type { AppJobPayloadMap } from './job.types';
-import { CheckoutStockReservationService } from '~/modules/domains/order/app/checkout-stock-reservation.service';
+import { CheckoutStockReservationService } from '~/modules/domains/checkout/app/checkout-stock-reservation.service';
 
 type CleanupExpiredCheckoutQuoteReservationsPayload =
   AppJobPayloadMap['order.cleanup-expired-checkout-quote-reservations'];

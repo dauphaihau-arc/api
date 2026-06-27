@@ -2,7 +2,7 @@ import type { EntityManager } from '@mikro-orm/postgresql';
 import type { PaymentGateway } from '~/modules/shared/payment/app/ports/payment-gateway';
 import type { ModuleRef } from '@nestjs/core';
 import { OrderStatus } from '../domain/enums/order-status.enum';
-import type { CheckoutStockReservationService } from './checkout-stock-reservation.service';
+import type { CheckoutStockReservationService } from '../../checkout/app/checkout-stock-reservation.service';
 import { OrderCancellationService } from './order-cancellation.service';
 import { OrderRefundService } from './order-refund.service';
 
