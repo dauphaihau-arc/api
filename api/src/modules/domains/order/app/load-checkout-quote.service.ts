@@ -8,6 +8,7 @@ import {
   CheckoutQuoteExpiredError,
   CheckoutQuoteNotFoundError,
 } from './errors/order-app.error';
+import { CheckoutStockReservationService } from './checkout-stock-reservation.service';
 import type {
   CheckoutQuoteItemSummary,
   CheckoutQuoteShopSummary,
@@ -33,7 +34,10 @@ export interface LoadedCheckoutQuote {
 
 @Injectable()
 export class LoadCheckoutQuoteService {
-  constructor(private readonly entityManager: EntityManager) {}
+  constructor(
+    private readonly entityManager: EntityManager,
+    private readonly checkoutStockReservationService: CheckoutStockReservationService,
+  ) {}
 
   async loadForUser(userId: string, quoteId: string): Promise<LoadedCheckoutQuote> {
     const quote = await this.entityManager.fork().getRepository(CheckoutQuoteEntity).findOne({
@@ -58,12 +62,19 @@ export class LoadCheckoutQuoteService {
     return this.toLoadedQuote(quote);
   }
 
-  private toLoadedQuote(quote: CheckoutQuoteEntity | null): LoadedCheckoutQuote {
+  private async toLoadedQuote(quote: CheckoutQuoteEntity | null): Promise<LoadedCheckoutQuote> {
     if (!quote) {
       throw new CheckoutQuoteNotFoundError();
     }
 
     if (quote.expiresAt.getTime() < Date.now()) {
+      await this.entityManager.transactional(async (entityManager) => {
+        await this.checkoutStockReservationService.expireReservationsForQuote(
+          entityManager,
+          quote.id,
+          quote.expiresAt,
+        );
+      });
       throw new CheckoutQuoteExpiredError();
     }
 

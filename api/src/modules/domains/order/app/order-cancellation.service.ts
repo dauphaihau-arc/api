@@ -1,19 +1,21 @@
-import { LockMode } from '@mikro-orm/core';
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
 import {
   buildProductInventoryUpdatedSseEvent,
 } from '~/modules/domains/product/app/events/product-inventory-sse.event';
 import { CouponUsageEntity } from '../../coupon/infra/persistence/entities/coupon-usage.entity';
-import { ProductInventoryEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-inventory.entity';
 import { OrderStatus } from '../domain/enums/order-status.enum';
 import { OrderEntity } from '../infra/persistence/entities/order.entity';
 import { OrderItemEntity } from '../infra/persistence/entities/order-item.entity';
+import { CheckoutStockReservationService } from './checkout-stock-reservation.service';
 import { OrderRefundService } from './order-refund.service';
 
 @Injectable()
 export class OrderCancellationService {
-  constructor(private readonly orderRefundService: OrderRefundService) {}
+  constructor(
+    private readonly orderRefundService: OrderRefundService,
+    private readonly checkoutStockReservationService: CheckoutStockReservationService,
+  ) {}
 
   async cancelOrder(
     entityManager: EntityManager,
@@ -70,23 +72,14 @@ export class OrderCancellationService {
       { populate: ['coupon'] },
     );
 
-    const inventoryEvents: Array<ReturnType<typeof buildProductInventoryUpdatedSseEvent>> = [];
-
-    for (const item of orderItems) {
-      const inventory = await entityManager.getRepository(ProductInventoryEntity).findOne(
-        { id: item.inventory.id },
-        { lockMode: LockMode.PESSIMISTIC_WRITE },
-      );
-
-      if (inventory) {
-        inventory.stock += item.quantity;
-        inventoryEvents.push(buildProductInventoryUpdatedSseEvent({
-          productId: item.product.id,
-          inventoryId: inventory.id,
-          stock: inventory.stock,
-        }));
-      }
-    }
+    const inventoryEvents = await this.checkoutStockReservationService.restoreInventoryForOrderItems(
+      entityManager,
+      orderItems.map((item) => ({
+        inventoryId: item.inventory.id,
+        productId: item.product.id,
+        quantity: item.quantity,
+      })),
+    );
 
     for (const usage of couponUsages) {
       usage.coupon.usesCount = Math.max(0, usage.coupon.usesCount - 1);

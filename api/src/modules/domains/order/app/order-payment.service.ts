@@ -1,20 +1,18 @@
-import { LockMode } from '@mikro-orm/core';
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import {
-  buildProductInventoryUpdatedSseEvent,
   PRODUCT_INVENTORY_UPDATED_SSE_EVENT,
 } from '~/modules/domains/product/app/events/product-inventory-sse.event';
 import { JobDispatcher } from '~/modules/shared/queue/app/ports/job-dispatcher';
 import { CouponUsageEntity } from '../../coupon/infra/persistence/entities/coupon-usage.entity';
-import { ProductInventoryEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-inventory.entity';
 import { OrderEventActorType } from '../domain/enums/order-event-actor-type.enum';
 import { OrderEventType } from '../domain/enums/order-event-type.enum';
 import { OrderStatus } from '../domain/enums/order-status.enum';
 import { OrderEntity } from '../infra/persistence/entities/order.entity';
 import { OrderItemEntity } from '../infra/persistence/entities/order-item.entity';
 import { dispatchBestSellerRankingRefresh } from './best-seller-ranking-refresh';
+import { CheckoutStockReservationService } from './checkout-stock-reservation.service';
 import { OrderEventsService } from './order-events.service';
 import { getRequiredOrderNumber } from './order-number';
 import type { CreateOrderResult } from './order.types';
@@ -25,6 +23,7 @@ export class OrderPaymentService {
     private readonly entityManager: EntityManager,
     private readonly eventEmitter: EventEmitter2,
     private readonly jobDispatcher: JobDispatcher,
+    private readonly checkoutStockReservationService: CheckoutStockReservationService,
     private readonly orderEventsService: OrderEventsService,
   ) {}
 
@@ -123,23 +122,15 @@ export class OrderPaymentService {
         { populate: ['coupon'] },
       );
 
-      const restockedInventoryEvents: ReturnType<typeof buildProductInventoryUpdatedSseEvent>[] = [];
-
-      for (const item of orderItems) {
-        const inventory = await entityManager.getRepository(ProductInventoryEntity).findOne(
-          { id: item.inventory.id },
-          { lockMode: LockMode.PESSIMISTIC_WRITE },
-        );
-
-        if (inventory) {
-          inventory.stock += item.quantity;
-          restockedInventoryEvents.push(buildProductInventoryUpdatedSseEvent({
+      const restockedInventoryEvents =
+        await this.checkoutStockReservationService.restoreInventoryForOrderItems(
+          entityManager,
+          orderItems.map((item) => ({
+            inventoryId: item.inventory.id,
             productId: item.product.id,
-            inventoryId: inventory.id,
-            stock: inventory.stock,
-          }));
-        }
-      }
+            quantity: item.quantity,
+          })),
+        );
 
       for (const usage of couponUsages) {
         usage.coupon.usesCount = Math.max(0, usage.coupon.usesCount - 1);

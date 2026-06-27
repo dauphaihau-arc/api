@@ -50,9 +50,11 @@ import { UpdateAdminOrderStatusUseCase } from './app/use-cases/update-admin-orde
 import { UpdateAdminOrderRefundUseCase } from './app/use-cases/update-admin-order-refund/update-admin-order-refund.use-case';
 import { UpdateAdminOrderSupportNoteUseCase } from './app/use-cases/update-admin-order-support-note/update-admin-order-support-note.use-case';
 import { CreateCheckoutQuoteService } from './app/create-checkout-quote.service';
+import { CheckoutStockReservationService } from './app/checkout-stock-reservation.service';
 import { LoadCheckoutQuoteService } from './app/load-checkout-quote.service';
 import { OrderCheckoutOutboxService } from './app/order-checkout-outbox.service';
 import { OrderEventsService } from './app/order-events.service';
+import { CheckoutStockReservationEntity } from './infra/persistence/entities/checkout-stock-reservation.entity';
 import { CheckoutQuoteEntity } from './infra/persistence/entities/checkout-quote.entity';
 import { CheckoutQuoteItemEntity } from './infra/persistence/entities/checkout-quote-item.entity';
 import { OrderEventEntity } from './infra/persistence/entities/order-event.entity';
@@ -88,6 +90,7 @@ import { UpdateShopOrderRefundUseCase } from './app/use-cases/update-shop-order-
     MikroOrmModule.forFeature([
       OutboxEventEntity,
       OrderEventEntity,
+      CheckoutStockReservationEntity,
       CheckoutQuoteEntity,
       CheckoutQuoteItemEntity,
       OrderEntity,
@@ -116,6 +119,7 @@ import { UpdateShopOrderRefundUseCase } from './app/use-cases/update-shop-order-
     },
     OrderCheckoutService,
     OrderTotalPolicyService,
+    CheckoutStockReservationService,
     CreateCheckoutQuoteService,
     LoadCheckoutQuoteService,
     OrderCancellationService,
@@ -152,6 +156,11 @@ import { UpdateShopOrderRefundUseCase } from './app/use-cases/update-shop-order-
     ForwardOrderUpdatedToSseListener,
     ProcessOrderRefundJob,
   ],
-  exports: [OrderCheckoutOutboxService, OrderRefundService, ProcessOrderRefundJob],
+  exports: [
+    CheckoutStockReservationService,
+    OrderCheckoutOutboxService,
+    OrderRefundService,
+    ProcessOrderRefundJob,
+  ],
 })
 export class OrderModule {}

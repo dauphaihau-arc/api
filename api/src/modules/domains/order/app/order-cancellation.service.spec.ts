@@ -2,6 +2,7 @@ import type { EntityManager } from '@mikro-orm/postgresql';
 import type { PaymentGateway } from '~/modules/shared/payment/app/ports/payment-gateway';
 import type { ModuleRef } from '@nestjs/core';
 import { OrderStatus } from '../domain/enums/order-status.enum';
+import type { CheckoutStockReservationService } from './checkout-stock-reservation.service';
 import { OrderCancellationService } from './order-cancellation.service';
 import { OrderRefundService } from './order-refund.service';
 
@@ -24,6 +25,18 @@ describe('OrderCancellationService', () => {
       paymentDetails: { type: 'card' },
     };
     const remove = jest.fn();
+    const checkoutStockReservationService = {
+      restoreInventoryForOrderItems: jest.fn().mockImplementation(async (_entityManager, items) => {
+        inventory.stock += items[0]?.quantity ?? 0;
+        return [
+          {
+            productId: 'product-1',
+            inventoryId: 'inventory-1',
+            stock: inventory.stock,
+          },
+        ];
+      }),
+    } as unknown as jest.Mocked<CheckoutStockReservationService>;
     const fakeEntityManager = {
       getRepository: jest.fn((entity: { name?: string }) => {
         switch (entity?.name) {
@@ -31,8 +44,6 @@ describe('OrderCancellationService', () => {
             return { find: jest.fn().mockResolvedValue([orderItem]) };
           case 'CouponUsageEntity':
             return { find: jest.fn().mockResolvedValue([couponUsage]) };
-          case 'ProductInventoryEntity':
-            return { findOne: jest.fn().mockResolvedValue(inventory) };
           default:
             return {};
         }
@@ -46,7 +57,10 @@ describe('OrderCancellationService', () => {
       {} as ModuleRef,
       { record: jest.fn().mockResolvedValue(undefined) } as never,
     );
-    const service = new OrderCancellationService(refundService);
+    const service = new OrderCancellationService(
+      refundService,
+      checkoutStockReservationService,
+    );
     const canceledAt = new Date('2026-05-24T00:00:00.000Z');
 
     const result = await service.cancelOrder(fakeEntityManager, order as never, {
@@ -68,6 +82,14 @@ describe('OrderCancellationService', () => {
     expect(order.status).toBe(OrderStatus.CANCELED);
     expect(order.cancelReason).toBe('Changed my mind');
     expect(inventory.stock).toBe(5);
+    expect(checkoutStockReservationService.restoreInventoryForOrderItems).toHaveBeenCalledWith(
+      fakeEntityManager,
+      [{
+        inventoryId: 'inventory-1',
+        productId: 'product-1',
+        quantity: 3,
+      }],
+    );
     expect(couponUsage.coupon.usesCount).toBe(3);
     expect(remove).toHaveBeenCalledWith(couponUsage);
     expect(order.paymentDetails).toEqual({

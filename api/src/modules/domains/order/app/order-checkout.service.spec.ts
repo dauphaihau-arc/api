@@ -4,6 +4,7 @@ import type { CouponPricingService } from '../../coupon/app/coupon-pricing.servi
 import type { NotifyUserUseCase } from '~/modules/shared/notification/app/use-cases/notify-user/notify-user.use-case';
 import { CartKind } from '../../cart/domain/enums/cart-kind.enum';
 import type { OrderCheckoutOutboxService } from './order-checkout-outbox.service';
+import type { CheckoutStockReservationService } from './checkout-stock-reservation.service';
 import { OrderCheckoutService } from './order-checkout.service';
 import type { CartSnapshot } from '../../cart/app/cart.types';
 import type { PricedCartSummary } from './order.types';
@@ -160,6 +161,25 @@ describe('OrderCheckoutService', () => {
       processEventById: jest.fn().mockResolvedValue(options?.processResult),
       processPendingEvents: jest.fn(),
     } as unknown as jest.Mocked<OrderCheckoutOutboxService>;
+    const checkoutStockReservationService = {
+      consumeReservationsForQuote: jest.fn().mockResolvedValue(undefined),
+      allocateInventoryForOrderItems: jest.fn().mockResolvedValue({
+        inventoryById: new Map([[
+          'inventory-1',
+          {
+            id: 'inventory-1',
+            stock: 3,
+          },
+        ]]),
+        inventoryEvents: [
+          {
+            productId: 'product-1',
+            inventoryId: 'inventory-1',
+            stock: 3,
+          },
+        ],
+      }),
+    } as unknown as jest.Mocked<CheckoutStockReservationService>;
 
     const eventEmitter: Pick<jest.Mocked<EventEmitter2>, 'emit'> = {
       emit: jest.fn(),
@@ -180,6 +200,7 @@ describe('OrderCheckoutService', () => {
     const service = new OrderCheckoutService(
       entityManager,
       couponPricingService,
+      checkoutStockReservationService,
       orderCheckoutOutboxService,
       orderEventsService as never,
       notifyUserUseCase,
@@ -196,6 +217,7 @@ describe('OrderCheckoutService', () => {
       orderRepository,
       orderItemRepository,
       orderCheckoutOutboxService,
+      checkoutStockReservationService,
     };
   }
 
@@ -208,6 +230,7 @@ describe('OrderCheckoutService', () => {
       orderRepository,
       orderItemRepository,
       orderCheckoutOutboxService,
+      checkoutStockReservationService,
     } = buildService({
       processResult: {
         id: 'cs_test_1',
@@ -251,9 +274,19 @@ describe('OrderCheckoutService', () => {
         lineTotalMinor: 1800,
       }),
     );
+    expect(checkoutStockReservationService.allocateInventoryForOrderItems).toHaveBeenCalledWith(
+      expect.anything(),
+      [{
+        inventoryId: 'inventory-1',
+        productId: 'product-1',
+        quantity: 2,
+        title: 'Product 1',
+      }],
+    );
     expect(
       orderCheckoutOutboxService.createCheckoutSessionRequestedEvent,
     ).toHaveBeenCalled();
+    expect(checkoutStockReservationService.consumeReservationsForQuote).not.toHaveBeenCalled();
     expect(orderCheckoutOutboxService.processEventById).toHaveBeenCalledWith('outbox-1');
     expect(eventEmitter.emit).toHaveBeenCalled();
     expect(notifyUserUseCase.execute).toHaveBeenCalledWith(expect.objectContaining({
@@ -374,6 +407,7 @@ describe('OrderCheckoutService', () => {
   it('copies quote minor-unit amounts and provenance into persisted orders', async () => {
     const {
       service,
+      checkoutStockReservationService,
       orderTotalPolicyService,
       orderRepository,
       orderItemRepository,
@@ -504,6 +538,22 @@ describe('OrderCheckoutService', () => {
       totalMinor: 1800,
       currency: 'USD',
     });
+    expect(checkoutStockReservationService.consumeReservationsForQuote).toHaveBeenCalledWith(
+      expect.anything(),
+      {
+        quoteId: 'quote-1',
+        items: [{ inventoryId: 'inventory-1', quantity: 2 }],
+      },
+    );
+    expect(checkoutStockReservationService.allocateInventoryForOrderItems).toHaveBeenCalledWith(
+      expect.anything(),
+      [{
+        inventoryId: 'inventory-1',
+        productId: 'product-1',
+        quantity: 2,
+        title: 'Product 1',
+      }],
+    );
     expect(orderItemRepository.create).toHaveBeenCalledWith(
       expect.objectContaining({
         unitPriceMinor: 900,

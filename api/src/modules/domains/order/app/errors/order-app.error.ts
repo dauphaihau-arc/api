@@ -42,6 +42,20 @@ export class CheckoutQuoteExpiredError extends OrderAppError {
   }
 }
 
+export class CheckoutQuoteReservationUnavailableError extends OrderAppError {
+  constructor() {
+    super('Checkout quote inventory reservation is no longer available');
+  }
+}
+
+export class CheckoutQuoteReservationOutOfStockError extends OrderAppError {
+  constructor(title?: string) {
+    super(title
+      ? `Insufficient stock to reserve ${title} for checkout`
+      : 'Insufficient stock to reserve checkout items');
+  }
+}
+
 export class CheckoutQuoteCartChangedError extends OrderAppError {
   constructor() {
     super('Checkout quote no longer matches the selected cart items');

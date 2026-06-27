@@ -17,6 +17,7 @@ import { GenerateProductImageVariantsJob } from '~/common/jobs/generate-product-
 import { GenerateReviewImageVariantsJob } from '~/common/jobs/generate-review-image-variants.job';
 import { ProjectCatalogProductJob } from '~/common/jobs/project-catalog-product.job';
 import { CleanupPendingReviewImageJob } from '~/common/jobs/cleanup-pending-review-image.job';
+import { CleanupExpiredCheckoutQuoteReservationsJob } from '~/common/jobs/cleanup-expired-checkout-quote-reservations.job';
 import { RefreshBestSellerRankingsJob } from '~/common/jobs/refresh-best-seller-rankings.job';
 import { SendGuestOrderConfirmationEmailJob } from '~/common/jobs/send-guest-order-confirmation-email.job';
 import { SendPasswordResetEmailJob } from '~/common/jobs/send-password-reset-email.job';
@@ -144,6 +145,7 @@ const queueModuleLogger = new Logger('QueueModule');
     GenerateReviewImageVariantsJob,
     ProjectCatalogProductJob,
     CleanupPendingReviewImageJob,
+    CleanupExpiredCheckoutQuoteReservationsJob,
     RefreshBestSellerRankingsJob,
     {
       provide: JobDispatcher,

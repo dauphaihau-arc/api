@@ -29,6 +29,9 @@ export class CheckoutQuoteEntity extends AbstractBaseEntity {
   @Property({ fieldName: 'cart_id' })
   cartId!: string;
 
+  @Property({ fieldName: 'quote_fingerprint', length: 64, nullable: true })
+  quoteFingerprint?: string;
+
   @Property({ fieldName: 'presentment_currency', length: 3, nullable: true })
   presentmentCurrency?: string;
 

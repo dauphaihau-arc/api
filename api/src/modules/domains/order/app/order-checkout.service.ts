@@ -1,4 +1,3 @@
-import { LockMode } from '@mikro-orm/core';
 import { EntityManager } from '@mikro-orm/postgresql';
 import {
   BadRequestException,
@@ -6,10 +5,10 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import ms from 'ms';
 import { fromMinorUnits, toMinorUnits } from '~/common/utils/money';
 import { MARKETPLACE_CURRENCIES } from '~/config/marketplace.config';
 import {
-  buildProductInventoryUpdatedSseEvent,
   PRODUCT_INVENTORY_UPDATED_SSE_EVENT,
 } from '~/modules/domains/product/app/events/product-inventory-sse.event';
 import { NotifyUserUseCase } from '~/modules/shared/notification/app/use-cases/notify-user/notify-user.use-case';
@@ -17,7 +16,6 @@ import type { CartSnapshot } from '../../cart/app/cart.types';
 import { CurrentUserEntity } from '../../auth/infra/persistence/entities/current-user.entity';
 import { CouponPricingService } from '../../coupon/app/coupon-pricing.service';
 import { CouponUsageEntity } from '../../coupon/infra/persistence/entities/coupon-usage.entity';
-import { ProductInventoryEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-inventory.entity';
 import { ProductEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product.entity';
 import { ShopEntity } from '../../shop/infra/persistence/entities/shop.entity';
 import { OrderEventActorType } from '../domain/enums/order-event-actor-type.enum';
@@ -29,6 +27,7 @@ import { OrderEntity } from '../infra/persistence/entities/order.entity';
 import { OrderItemEntity } from '../infra/persistence/entities/order-item.entity';
 import type { LoadedCheckoutQuote } from './load-checkout-quote.service';
 import { OrderCheckoutOutboxService } from './order-checkout-outbox.service';
+import { CheckoutStockReservationService } from './checkout-stock-reservation.service';
 import { OrderEventsService } from './order-events.service';
 import {
   buildSellerOrderCreatedNotification,
@@ -43,11 +42,14 @@ import type {
 } from './order.types';
 import { OrderTotalPolicyService } from './order-total-policy.service';
 
+const SHIPPING_ESTIMATED_DELIVERY_MS = ms('7d');
+
 @Injectable()
 export class OrderCheckoutService {
   constructor(
     private readonly entityManager: EntityManager,
     private readonly couponPricingService: CouponPricingService,
+    private readonly checkoutStockReservationService: CheckoutStockReservationService,
     private readonly orderCheckoutOutboxService: OrderCheckoutOutboxService,
     private readonly orderEventsService: OrderEventsService,
     private readonly notifyUserUseCase: NotifyUserUseCase,
@@ -95,13 +97,39 @@ export class OrderCheckoutService {
     });
 
     const result = await this.entityManager.transactional(async (entityManager) => {
-      const inventoryRepository = entityManager.getRepository(ProductInventoryEntity);
       const orderRepository = entityManager.getRepository(OrderEntity);
       const orderItemRepository = entityManager.getRepository(OrderItemEntity);
       const usageRepository = entityManager.getRepository(CouponUsageEntity);
       const createdOrders: OrderEntity[] = [];
-      const inventoryEvents: ReturnType<typeof buildProductInventoryUpdatedSseEvent>[] = [];
       let checkoutOutboxEventId: string | undefined;
+      const inventoryReservationItems: Array<{
+        inventoryId: string;
+        productId: string;
+        quantity: number;
+        title: string;
+      }> = pricedShops.flatMap((shop) =>
+        shop.items.map((item) => ({
+          inventoryId: item.inventoryId,
+          productId: item.productId,
+          quantity: item.quantity,
+          title: item.title,
+        })));
+
+      if (quote) {
+        await this.checkoutStockReservationService.consumeReservationsForQuote(entityManager, {
+          quoteId: quote.id,
+          items: quote.items.map((item) => ({
+            inventoryId: item.inventoryId,
+            quantity: item.quantity,
+          })),
+        });
+      }
+
+      const { inventoryById, inventoryEvents } =
+        await this.checkoutStockReservationService.allocateInventoryForOrderItems(
+          entityManager,
+          inventoryReservationItems,
+        );
 
       for (const shop of pricedShops) {
         const quoteShop = quote
@@ -154,7 +182,7 @@ export class OrderCheckoutService {
           shippingAddress: toPersistedShippingAddress(input.shippingAddress),
           shippingOriginCountries: shop.originCountries,
           shippingToCountry: input.shippingAddress.country,
-          shippingEstimatedDelivery: new Date(Date.now() + (7 * 24 * 60 * 60 * 1000)),
+          shippingEstimatedDelivery: new Date(Date.now() + SHIPPING_ESTIMATED_DELIVERY_MS),
           paymentDetails: {
             type: input.paymentType,
             cart_id: cartId,
@@ -195,25 +223,11 @@ export class OrderCheckoutService {
           const pricedItem = quote
             ? undefined
             : item as NonNullable<typeof pricedCart>['shops'][number]['items'][number];
-          const inventory = await inventoryRepository.findOne(
-            { id: item.inventoryId },
-            { lockMode: LockMode.PESSIMISTIC_WRITE, populate: ['productVariant'] },
-          );
+          const inventory = inventoryById.get(item.inventoryId);
 
           if (!inventory) {
             throw new NotFoundException('Inventory not found');
           }
-
-          if (inventory.stock < item.quantity) {
-            throw new BadRequestException(`Insufficient stock for ${item.title}`);
-          }
-
-          inventory.stock -= item.quantity;
-          inventoryEvents.push(buildProductInventoryUpdatedSseEvent({
-            productId: item.productId,
-            inventoryId: inventory.id,
-            stock: inventory.stock,
-          }));
 
           const orderItem = orderItemRepository.create({
             order,
