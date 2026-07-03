@@ -302,7 +302,6 @@ The application is composed in [src/modules/app.module.ts](/Volumes/Local/dev/pj
 At a high level it:
 - loads global config
 - configures logging
-- configures GraphQL
 - configures MikroORM
 - imports shared modules
 - imports domain modules
@@ -313,7 +312,7 @@ Module-level DI decisions happen inside each domain module, for example [src/mod
 
 - Start at `src/modules/app.module.ts` to see global composition.
 - Start at `src/modules/domains/<domain>/<domain>.module.ts` to understand one domain.
-- Read `api/` when you care about HTTP or GraphQL behavior.
+- Read `api/` when you care about HTTP behavior.
 - Read `app/use-cases/` when you care about business workflows.
 - Read `app/ports/` to find boundaries and expected collaborators.
 - Read `infra/` to see actual persistence or external implementations.

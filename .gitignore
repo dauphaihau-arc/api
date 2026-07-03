@@ -48,5 +48,3 @@ seed-data/images/*-local/
 api/database/migrations/.snapshot-*.json
 !api/database/migrations/.snapshot-app.json
 api/api-tests/hurl.variables
-
-implements/

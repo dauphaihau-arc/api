@@ -42,7 +42,6 @@ Top-level structure:
 
 - **REST-first API** - the main application surface is versioned REST endpoints under `/v1`
 - **OpenAPI and Scalar docs** - REST endpoints are exposed as generated OpenAPI JSON at `/docs/openapi.json` and browsable API reference at `/docs`
-- **GraphQL surface** - a smaller GraphQL surface exists for user management and shares the same authorization model
 - **JWT guards with cookie-backed sessions** - authentication uses JWT-based access control with cookie-managed access and refresh session flows
 - **Role and permission model** - authorization is enforced through explicit permission checks and seeded access data
 - **DTO validation plus config schema validation** - request DTOs use Nest validation, while environment configuration is validated with Zod at startup

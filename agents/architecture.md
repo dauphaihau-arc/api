@@ -21,7 +21,7 @@ Use this file when a task changes domain behavior, repositories, use cases, modu
 - Use domain errors when invalid state, invalid input, or business invariants are rejected by the domain model.
 - Use application errors when a use case cannot complete because of lookup, policy, workflow, token, session, or orchestration outcomes.
 - Do not throw HTTP-facing exceptions from domain or application layers.
-- Map domain and application errors to HTTP or GraphQL responses only at the transport boundary.
+- Map domain and application errors to transport responses only at the transport boundary.
 
 ## Nest DI Cycles
 

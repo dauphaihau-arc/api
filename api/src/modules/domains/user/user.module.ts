@@ -24,7 +24,6 @@ import { DeleteMyAddressUseCase } from './app/use-cases/delete-my-address/delete
 import { GetMyAddressUseCase } from './app/use-cases/get-my-address/get-my-address.use-case';
 import { ListMyAddressesUseCase } from './app/use-cases/list-my-addresses/list-my-addresses.use-case';
 import { UpdateMyAddressUseCase } from './app/use-cases/update-my-address/update-my-address.use-case';
-import { UserResolver } from './api/graphql/user.resolver';
 import { MeAddressesController } from './api/rest/me-addresses.controller';
 import { UserController } from './api/rest/user.controller';
 import { UserAddressCommandRepository } from './app/ports/user-address-command.repository';
@@ -95,7 +94,6 @@ import { UserAddressEntity } from './infra/persistence/entities/user-address.ent
     GetMyAddressUseCase,
     UpdateMyAddressUseCase,
     DeleteMyAddressUseCase,
-    UserResolver,
   ],
   exports: [GetMyAddressUseCase],
 })

@@ -15,7 +15,7 @@ Repositories should stay narrow. They are persistence adapters behind ports, not
   - command or mutation flows
 - When a repository is split by CQRS responsibility, name the concrete classes and files explicitly with `Query` or `Command`.
 - Keep use case orchestration in use cases, not repositories.
-- Keep HTTP, GraphQL, and transport exceptions out of repositories.
+- Keep HTTP and transport exceptions out of repositories.
 - Keep repository ports small and task-shaped. Do not grow a single port indefinitely just to reuse one concrete class.
 
 ## Query And Command Boundaries

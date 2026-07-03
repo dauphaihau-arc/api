@@ -8,7 +8,7 @@ The goal of the layered error model is to keep error semantics aligned with the 
 
 - domain errors represent invalid domain state or broken business invariants
 - application errors represent use-case or orchestration failures
-- transport layers map those errors into HTTP or GraphQL responses
+- transport layers map those errors into API responses
 
 This keeps the domain model independent from delivery concerns while making application flows easier to reason about and test.
 
@@ -69,7 +69,7 @@ Short rule:
 
 ## Transport Independence
 
-Domain and application layers should not depend on HTTP exceptions or HTTP status codes. These layers must remain independent from delivery mechanisms because the same domain rule or use case may be executed from REST controllers, GraphQL resolvers, background jobs, event handlers, or CLI commands.
+Domain and application layers should not depend on HTTP exceptions or HTTP status codes. These layers must remain independent from delivery mechanisms because the same domain rule or use case may be executed from REST controllers, background jobs, event handlers, or CLI commands.
 
 Instead of coupling business logic to transport concerns, this codebase prefers explicit error types with clear semantic meaning. Transport-facing layers are responsible for translating those errors into the appropriate response shape and status code.
 
