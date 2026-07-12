@@ -34,6 +34,7 @@ Top-level structure:
 - **Quote-based checkout snapshots** - checkout persists a priced quote snapshot before order creation so downstream payment and support flows operate on stored pricing state instead of mutable cart state. See [`docs/checkout-quote-design.md`](docs/checkout-quote-design.md)
 - **Multi-currency pricing** - the pricing model supports presentment currency, checkout currency, market-aware pricing, FX metadata, and stored pricing provenance. See [`docs/multi-currency/multi-currency-pricing-design.md`](docs/multi-currency/multi-currency-pricing-design.md)
 - **FX rate synchronization** - exchange rates can be synced into the app and consumed through shared market services and rounding policy rules
+- **AI-assisted product copy generation** - seller workflows can generate draft product descriptions through a shared OpenAI-backed text generation service with domain-specific prompting
 - **Stripe checkout and refunds** - payment flows integrate with Stripe for checkout session creation, webhook processing, and refund handling
 - **Transactional outbox for checkout** - checkout session creation is decoupled from the write transaction through durable outbox events and retryable post-commit processing. See [`docs/outbox-pattern.md`](docs/outbox-pattern.md) and [`docs/checkout-transactional-outbox.md`](docs/checkout-transactional-outbox.md)
 - **Structured storage keys and asset processing** - uploaded product assets use predictable storage key conventions and image-processing flows. See [`docs/structured-storage-keys.md`](docs/structured-storage-keys.md)
@@ -47,7 +48,6 @@ Top-level structure:
 - **DTO validation plus config schema validation** - request DTOs use Nest validation, while environment configuration is validated with Zod at startup
 - **Rate limiting** - Nest throttling protects the global API surface and sensitive endpoints
 - **Idempotency keys on selected writes** - selected write endpoints can safely deduplicate repeated client requests and replay cached responses
-- **Shared AI text generation integration** - seller tooling can call a shared OpenAI-backed text generation service for assisted product description drafting, while keeping provider-specific infrastructure in `shared/ai` and product-specific prompting in the product domain
 - **SSE endpoints** - Server-Sent Events are available for user event streams and product inventory updates
 - **Authenticated WebSocket chat gateway** - Socket.IO-based realtime chat delivery is available on `/ws`, with cookie-authenticated connections, per-conversation authorization, and Redis-backed room fanout. See [`docs/chat-websocket-flow.md`](docs/chat-websocket-flow.md)
 - **Signed object access** - S3-compatible presigned URLs are used for controlled file access
