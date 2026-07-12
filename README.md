@@ -1,6 +1,6 @@
 # ARC Ecommerce API
 
-Backend API for the ARC ecommerce app, built with NestJS, MikroORM, PostgreSQL, Redis, and MinIO.
+Backend API for the ARC ecommerce app, built with NestJS, MikroORM, PostgreSQL, Redis, optional MongoDB/Atlas Search, and MinIO.
 
 ## Overview
 
@@ -56,6 +56,7 @@ Top-level structure:
 ### Operations
 
 - **Structured persistence** - MikroORM handles relational persistence with explicit migrations and repeatable seed flows
+- **Polyglot persistence for catalog read models** - the primary transactional system persists to PostgreSQL, while the product catalog can be projected into MongoDB for Atlas Search-backed storefront queries and recommendations
 - **Dedicated worker process** - the app includes a separate worker entrypoint for BullMQ jobs, outbox processing, and scheduled tasks
 - **Audit logging** - high-value product mutations can be persisted with actor and request metadata for business traceability
 - **Structured logging with correlation IDs** - request and error logs include request and actor context to make API and async flows traceable across the system
