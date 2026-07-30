@@ -1,25 +1,64 @@
 compose_file := "infra/docker-compose.yml"
+compose_project := "arc-api"
+legacy_compose_project := "infra"
 api_dir := "api"
+
+# --------- Private helpers
+
+[private]
+_compose-down volume_args='':
+  docker compose -p {{ compose_project }} -f {{ compose_file }} down {{ volume_args }} --remove-orphans
+  if [ "{{ legacy_compose_project }}" != "{{ compose_project }}" ]; then docker compose -p {{ legacy_compose_project }} -f {{ compose_file }} down {{ volume_args }} --remove-orphans; fi
+
+[private]
+_api-with-env command environment='':
+  env_file="{{ if environment == "" { ".env" } else { ".env." + environment } }}"; \
+  cd {{ api_dir }} && \
+  test -f "$env_file" && \
+  set -a && \
+  . "$env_file" && \
+  set +a && \
+  {{ command }}
+
+[private]
+_api-with-default-env command environment='':
+  env_file="{{ if environment == "" { ".env" } else { ".env." + environment } }}"; \
+  cd {{ api_dir }} && \
+  if [ ! -f "$env_file" ] && [ "$env_file" = ".env" ] && [ -f ".env.example" ]; then cp ".env.example" "$env_file"; fi && \
+  test -f "$env_file" && \
+  set -a && \
+  . "$env_file" && \
+  set +a && \
+  {{ command }}
+
+[private]
+_api-with-infisical project_id env_name command:
+  cd {{ api_dir }} && \
+  test -n "$INFISICAL_TOKEN" && \
+  ENV_ARG='{{ if env_name != "" { "--env=" + env_name } else { "" } }}' && \
+  pnpm exec infisical run --projectId="{{ project_id }}" $ENV_ARG --token="$INFISICAL_TOKEN" -- {{ command }}
 
 # --------- Infrastructure
 
 infra-up:
-  docker compose -f {{ compose_file }} --profile catalog-nosql up -d
+  docker compose -p {{ compose_project }} -f {{ compose_file }} --profile catalog-nosql up -d
 
 infra-down:
-  docker compose -f {{ compose_file }} down
+  just _compose-down
 
 # Wipes all named volumes, including Postgres, MinIO, and Redis data.
 infra-fresh:
-  docker compose -f {{ compose_file }} down -v
-  docker compose -f {{ compose_file }} --profile catalog-nosql up -d
+  just _compose-down "-v"
+  docker compose -p {{ compose_project }} -f {{ compose_file }} --profile catalog-nosql up -d
 
 stack-up:
-  docker compose -f {{ compose_file }} --profile app up -d --build
+  cd {{ api_dir }} && \
+  if [ ! -f ".env.docker" ] && [ -f ".env.docker.example" ]; then cp ".env.docker.example" ".env.docker"; fi && \
+  cd .. && \
+  docker compose -p {{ compose_project }} -f {{ compose_file }} --profile app up -d --build
 
 stack-down:
-  docker compose -f {{ compose_file }} down
-
+  just _compose-down
 
 
 # --------- API app
@@ -27,94 +66,48 @@ stack-down:
 api-install:
   @cd {{ api_dir }} && pnpm install
 
-api-up:
-  cd {{ api_dir }} && \
-  if [ ! -f ".env" ] && [ -f ".env.example" ]; then cp ".env.example" ".env"; fi && \
-  test -f ".env" && \
-  set -a && \
-  . ".env" && \
-  set +a && \
-  pnpm start:dev
+api-up environment='':
+  just _api-with-default-env "pnpm start:dev" "{{ environment }}"
 
-api-up-observability:
-  cd {{ api_dir }} && \
-  mkdir -p logs && \
-  if [ ! -f ".env" ] && [ -f ".env.example" ]; then cp ".env.example" ".env"; fi && \
-  test -f ".env" && \
-  set -a && \
-  . ".env" && \
-  set +a && \
-  LOG_PRETTY=false pnpm start:dev 2>&1 | tee logs/api.log
+api-up-observability environment='':
+  just _api-with-default-env "mkdir -p logs && LOG_PRETTY=false pnpm start:dev 2>&1 | tee logs/api.log" "{{ environment }}"
 
 api-up-infisical project_id *env_name:
-  cd {{ api_dir }} && \
-  test -n "$INFISICAL_TOKEN" && \
-  ENV_ARG='{{ if env_name != "" { "--env=" + env_name } else { "" } }}' && \
-  pnpm exec infisical run --projectId="{{ project_id }}" $ENV_ARG --token="$INFISICAL_TOKEN" -- pnpm start:dev
+  just _api-with-infisical "{{ project_id }}" "{{ env_name }}" "pnpm start:dev"
 
-api-worker-up:
-  cd {{ api_dir }} && \
-  if [ ! -f ".env" ] && [ -f ".env.example" ]; then cp ".env.example" ".env"; fi && \
-  test -f ".env" && \
-  set -a && \
-  . ".env" && \
-  set +a && \
-  pnpm start:worker:dev
+api-worker-up environment='':
+  just _api-with-default-env "pnpm start:worker:dev" "{{ environment }}"
 
-api-worker-up-observability:
-  cd {{ api_dir }} && \
-  mkdir -p logs && \
-  if [ ! -f ".env" ] && [ -f ".env.example" ]; then cp ".env.example" ".env"; fi && \
-  test -f ".env" && \
-  set -a && \
-  . ".env" && \
-  set +a && \
-  LOG_PRETTY=false pnpm start:worker:dev 2>&1 | tee logs/worker.log
+api-worker-up-observability environment='':
+  just _api-with-default-env "mkdir -p logs && LOG_PRETTY=false pnpm start:worker:dev 2>&1 | tee logs/worker.log" "{{ environment }}"
 
 api-worker-up-infisical project_id *env_name:
-  cd {{ api_dir }} && \
-  test -n "$INFISICAL_TOKEN" && \
-  ENV_ARG='{{ if env_name != "" { "--env=" + env_name } else { "" } }}' && \
-  pnpm exec infisical run --projectId="{{ project_id }}" $ENV_ARG --token="$INFISICAL_TOKEN" -- pnpm start:worker:dev
+  just _api-with-infisical "{{ project_id }}" "{{ env_name }}" "pnpm start:worker:dev"
 
-# List environment variables from Infisical
+# List environment variables from Infisical.
 api-env-infisical project_id *env_name:
-  cd {{ api_dir }} && \
-  test -n "$INFISICAL_TOKEN" && \
-  ENV_ARG='{{ if env_name != "" { "--env=" + env_name } else { "" } }}' && \
-  pnpm exec infisical run --projectId="{{ project_id }}" $ENV_ARG --token="$INFISICAL_TOKEN" -- env | sort
+  just _api-with-infisical "{{ project_id }}" "{{ env_name }}" "env | sort"
 
 
 # --------- Migrations
 
-db-migration-up:
-  cd {{ api_dir }} && \
-  test -f ".env" && \
-  set -a && \
-  . ".env" && \
-  set +a && \
-  pnpm db:migration:up
+db-migration-up environment='':
+  just _api-with-env "pnpm db:migration:up" "{{ environment }}"
 
 db-migration-up-infisical project_id *env_name:
-  cd {{ api_dir }} && \
-  test -n "$INFISICAL_TOKEN" && \
-  ENV_ARG='{{ if env_name != "" { "--env=" + env_name } else { "" } }}' && \
-  pnpm exec infisical run --projectId="{{ project_id }}" $ENV_ARG --token="$INFISICAL_TOKEN" -- pnpm db:migration:up
+  just _api-with-infisical "{{ project_id }}" "{{ env_name }}" "pnpm db:migration:up"
 
-db-migration-down:
-  cd {{ api_dir }} && \
-  test -f ".env" && \
-  set -a && \
-  . ".env" && \
-  set +a && \
-  pnpm db:migration:down
+db-migration-down environment='':
+  just _api-with-env "pnpm db:migration:down" "{{ environment }}"
 
 db-migration-down-infisical project_id *env_name:
-  cd {{ api_dir }} && \
-  test -n "$INFISICAL_TOKEN" && \
-  ENV_ARG='{{ if env_name != "" { "--env=" + env_name } else { "" } }}' && \
-  pnpm exec infisical run --projectId="{{ project_id }}" $ENV_ARG --token="$INFISICAL_TOKEN" -- pnpm db:migration:down
-  
+  just _api-with-infisical "{{ project_id }}" "{{ env_name }}" "pnpm db:migration:down"
+
+db-migration-create environment='':
+  just _api-with-env "pnpm db:migration:create" "{{ environment }}"
+
+db-migration-create-infisical project_id *env_name:
+  just _api-with-infisical "{{ project_id }}" "{{ env_name }}" "pnpm db:migration:create"
 
 
 # -------------------- Seeding
@@ -124,165 +117,104 @@ seed-validate:
   scripts/validate-local-seed-data.sh
 
 # Clears schema, seeds the full demo dataset, refreshes catalog products, and uploads seeded assets.
-seed-full: seed-validate db-clear
-  just db-seed-demo
-  just refresh-catalog-products
-  just storage-fresh
+seed-full environment='': seed-validate
+  just db-clear {{ environment }}
+  just db-seed-demo {{ environment }}
+  just refresh-catalog-products {{ environment }}
+  just storage-fresh {{ environment }}
 
 # Clears schema, seeds the full demo dataset, refreshes catalog products, and uploads seeded assets.
 seed-full-infisical project_id *env_name: seed-validate
-  just db-clear-infisical {{project_id}} {{env_name}}
-  just db-seed-demo-infisical {{project_id}} {{env_name}}
-  just refresh-catalog-products-infisical {{project_id}} {{env_name}}
-  just storage-fresh-infisical {{project_id}} {{env_name}}
+  just db-clear-infisical {{ project_id }} {{ env_name }}
+  just db-seed-demo-infisical {{ project_id }} {{ env_name }}
+  just refresh-catalog-products-infisical {{ project_id }} {{ env_name }}
+  just storage-fresh-infisical {{ project_id }} {{ env_name }}
 
-db-seed-demo: seed-validate
-  cd {{ api_dir }} && \
-  test -f ".env" && \
-  set -a && \
-  . ".env" && \
-  set +a && \
-  pnpm db:seed:demo
+db-seed-demo environment='': seed-validate
+  just _api-with-env "pnpm db:seed:demo" "{{ environment }}"
 
-db-seed: seed-validate
-  cd {{ api_dir }} && \
-  test -f ".env" && \
-  set -a && \
-  . ".env" && \
-  set +a && \
-  pnpm db:seed
+db-seed environment='': seed-validate
+  just _api-with-env "pnpm db:seed" "{{ environment }}"
 
 # Example:
 # export INFISICAL_TOKEN="your-token"
 # just db-seed-demo-infisical your-project-id
 # just db-seed-demo-infisical your-project-id prod
 db-seed-demo-infisical project_id *env_name: seed-validate
-  cd {{ api_dir }} && \
-  test -n "$INFISICAL_TOKEN" && \
-  ENV_ARG='{{ if env_name != "" { "--env=" + env_name } else { "" } }}' && \
-  pnpm exec infisical run --projectId="{{ project_id }}" $ENV_ARG --token="$INFISICAL_TOKEN" -- pnpm db:seed:demo
+  just _api-with-infisical "{{ project_id }}" "{{ env_name }}" "pnpm db:seed:demo"
 
 db-seed-infisical project_id *env_name: seed-validate
-  cd {{ api_dir }} && \
-  test -n "$INFISICAL_TOKEN" && \
-  ENV_ARG='{{ if env_name != "" { "--env=" + env_name } else { "" } }}' && \
-  pnpm exec infisical run --projectId="{{ project_id }}" $ENV_ARG --token="$INFISICAL_TOKEN" -- pnpm db:seed
+  just _api-with-infisical "{{ project_id }}" "{{ env_name }}" "pnpm db:seed"
 
-refresh-catalog-products:
-  cd {{ api_dir }} && \
-  test -f ".env" && \
-  set -a && \
-  . ".env" && \
-  set +a && \
-  if [ "${CATALOG_STORE_DRIVER:-postgres}" = "mongodb" ]; then pnpm catalog:refresh-products; else echo "Skipping catalog products refresh (CATALOG_STORE_DRIVER=${CATALOG_STORE_DRIVER:-postgres})"; fi
+refresh-catalog-products environment='':
+  just _api-with-env 'if [ "${CATALOG_STORE_DRIVER:-postgres}" = "mongodb" ]; then pnpm catalog:refresh-products; else echo "Skipping catalog products refresh (CATALOG_STORE_DRIVER=${CATALOG_STORE_DRIVER:-postgres})"; fi' "{{ environment }}"
 
 refresh-catalog-products-infisical project_id *env_name:
-  cd {{ api_dir }} && \
-  test -n "$INFISICAL_TOKEN" && \
-  ENV_ARG='{{ if env_name != "" { "--env=" + env_name } else { "" } }}' && \
-  pnpm exec infisical run --projectId="{{ project_id }}" $ENV_ARG --token="$INFISICAL_TOKEN" -- sh -c 'if [ "${CATALOG_STORE_DRIVER:-postgres}" = "mongodb" ]; then pnpm catalog:refresh-products; else echo "Skipping catalog products refresh (CATALOG_STORE_DRIVER=${CATALOG_STORE_DRIVER:-postgres})"; fi'
+  just _api-with-infisical "{{ project_id }}" "{{ env_name }}" 'sh -c '\''if [ "${CATALOG_STORE_DRIVER:-postgres}" = "mongodb" ]; then pnpm catalog:refresh-products; else echo "Skipping catalog products refresh (CATALOG_STORE_DRIVER=${CATALOG_STORE_DRIVER:-postgres})"; fi'\'''
 
-db-clear:
-  cd {{ api_dir }} && \
-  test -f ".env" && \
-  set -a && \
-  . ".env" && \
-  set +a && \
-  pnpm db:clear
+db-clear environment='':
+  just _api-with-env "pnpm db:clear" "{{ environment }}"
 
 db-clear-infisical project_id *env_name:
-  cd {{ api_dir }} && \
-  test -n "$INFISICAL_TOKEN" && \
-  ENV_ARG='{{ if env_name != "" { "--env=" + env_name } else { "" } }}' && \
-  pnpm exec infisical run --projectId="{{ project_id }}" $ENV_ARG --token="$INFISICAL_TOKEN" -- pnpm db:clear
+  just _api-with-infisical "{{ project_id }}" "{{ env_name }}" "pnpm db:clear"
 
 # Clears schema, reruns migrations via the seed script, then seeds reference data.
-db-fresh: seed-validate db-clear
-  just db-seed
-  just refresh-catalog-products
+db-fresh environment='': seed-validate
+  just db-clear {{ environment }}
+  just db-seed {{ environment }}
+  just refresh-catalog-products {{ environment }}
 
 # Clears schema, reruns migrations via the seed script, then seeds the full demo dataset.
-db-fresh-demo: seed-validate db-clear
-  just db-seed-demo
-  just refresh-catalog-products
+db-fresh-demo environment='': seed-validate
+  just db-clear {{ environment }}
+  just db-seed-demo {{ environment }}
+  just refresh-catalog-products {{ environment }}
 
 # Clears schema, reruns migrations via the seed script, then seeds reference data.
 db-fresh-infisical project_id *env_name: seed-validate
-  just db-clear-infisical {{project_id}} {{env_name}}
-  just db-seed-infisical {{project_id}} {{env_name}}
-  just refresh-catalog-products-infisical {{project_id}} {{env_name}}
+  just db-clear-infisical {{ project_id }} {{ env_name }}
+  just db-seed-infisical {{ project_id }} {{ env_name }}
+  just refresh-catalog-products-infisical {{ project_id }} {{ env_name }}
 
 # Clears schema, reruns migrations via the seed script, then seeds the full demo dataset.
 db-fresh-demo-infisical project_id *env_name: seed-validate
-  just db-clear-infisical {{project_id}} {{env_name}}
-  just db-seed-demo-infisical {{project_id}} {{env_name}}
-  just refresh-catalog-products-infisical {{project_id}} {{env_name}}
+  just db-clear-infisical {{ project_id }} {{ env_name }}
+  just db-seed-demo-infisical {{ project_id }} {{ env_name }}
+  just refresh-catalog-products-infisical {{ project_id }} {{ env_name }}
 
 
-
-redis-clear:
-  cd {{ api_dir }} && \
-  test -f ".env" && \
-  set -a && \
-  . ".env" && \
-  set +a && \
-  pnpm redis:clear
+redis-clear environment='':
+  just _api-with-env "pnpm redis:clear" "{{ environment }}"
 
 redis-clear-infisical project_id *env_name:
-  cd {{ api_dir }} && \
-  test -n "$INFISICAL_TOKEN" && \
-  ENV_ARG='{{ if env_name != "" { "--env=" + env_name } else { "" } }}' && \
-  pnpm exec infisical run --projectId="{{ project_id }}" $ENV_ARG --token="$INFISICAL_TOKEN" -- pnpm redis:clear
+  just _api-with-infisical "{{ project_id }}" "{{ env_name }}" "pnpm redis:clear"
 
 
 # Upload seed images to the configured storage backend and generate product variants.
 # Default env (`.env`) is intended for local MinIO, but local file storage also works.
 # Requires seeded categories/shops/products to already exist in the database.
-storage-seed:
-  cd {{ api_dir }} && \
-  test -f ".env" && \
-  set -a && \
-  . ".env" && \
-  set +a && \
-  pnpm ts-node -r tsconfig-paths/register ./scripts/upload-minio-assets.ts
+storage-seed environment='':
+  just _api-with-env "pnpm ts-node -r tsconfig-paths/register ./scripts/upload-minio-assets.ts" "{{ environment }}"
 
 storage-seed-infisical project_id *env_name:
-  cd {{ api_dir }} && \
-  test -n "$INFISICAL_TOKEN" && \
-  ENV_ARG='{{ if env_name != "" { "--env=" + env_name } else { "" } }}' && \
-  pnpm exec infisical run --projectId="{{ project_id }}" $ENV_ARG --token="$INFISICAL_TOKEN" -- pnpm ts-node -r tsconfig-paths/register ./scripts/upload-minio-assets.ts
+  just _api-with-infisical "{{ project_id }}" "{{ env_name }}" "pnpm ts-node -r tsconfig-paths/register ./scripts/upload-minio-assets.ts"
 
-storage-clear:
-  cd {{ api_dir }} && \
-  test -f ".env" && \
-  set -a && \
-  . ".env" && \
-  set +a && \
-  pnpm storage:clear
+storage-clear environment='':
+  just _api-with-env "pnpm storage:clear" "{{ environment }}"
 
 storage-clear-infisical project_id *env_name:
-  cd {{ api_dir }} && \
-  test -n "$INFISICAL_TOKEN" && \
-  ENV_ARG='{{ if env_name != "" { "--env=" + env_name } else { "" } }}' && \
-  pnpm exec infisical run --projectId="{{ project_id }}" $ENV_ARG --token="$INFISICAL_TOKEN" -- pnpm storage:clear
+  just _api-with-infisical "{{ project_id }}" "{{ env_name }}" "pnpm storage:clear"
 
-storage-fresh: storage-clear
-  just storage-seed
+storage-fresh environment='':
+  just storage-clear {{ environment }}
+  just storage-seed {{ environment }}
 
-review-image-variants-backfill:
-  cd {{ api_dir }} && \
-  test -f ".env" && \
-  set -a && \
-  . ".env" && \
-  set +a && \
-  pnpm ts-node -r tsconfig-paths/register ./scripts/backfill-review-image-variants.ts
+review-image-variants-backfill environment='':
+  just _api-with-env "pnpm ts-node -r tsconfig-paths/register ./scripts/backfill-review-image-variants.ts" "{{ environment }}"
 
 review-image-variants-backfill-infisical project_id *env_name:
-  cd {{ api_dir }} && \
-  test -n "$INFISICAL_TOKEN" && \
-  ENV_ARG='{{ if env_name != "" { "--env=" + env_name } else { "" } }}' && \
-  pnpm exec infisical run --projectId="{{ project_id }}" $ENV_ARG --token="$INFISICAL_TOKEN" -- pnpm ts-node -r tsconfig-paths/register ./scripts/backfill-review-image-variants.ts
+  just _api-with-infisical "{{ project_id }}" "{{ env_name }}" "pnpm ts-node -r tsconfig-paths/register ./scripts/backfill-review-image-variants.ts"
 
 storage-fresh-infisical project_id *env_name:
-  just storage-clear-infisical {{project_id}} {{env_name}}
-  just storage-seed-infisical {{project_id}} {{env_name}}
+  just storage-clear-infisical {{ project_id }} {{ env_name }}
+  just storage-seed-infisical {{ project_id }} {{ env_name }}
