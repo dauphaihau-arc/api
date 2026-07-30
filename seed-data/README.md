@@ -122,6 +122,7 @@ just r2-upload-assets
 
 Local-only workflow:
 
+- Run `just seed-validate` before seeding to confirm local-only auth-user emails, shop slugs, and products do not appear in shared TSV files.
 - Add machine-specific ignore rules to `.git/info/exclude` instead of `.gitignore`.
 - Put extra local auth users in `seed-data/auth-users.local.tsv`.
 - Put local-only user address rows in `seed-data/user-addresses.local.tsv`.

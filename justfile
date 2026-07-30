@@ -120,20 +120,23 @@ db-migration-down-infisical project_id *env_name:
 # -------------------- Seeding
 # See docs/seeding.md for seed mode guidance and command examples.
 
+seed-validate:
+  scripts/validate-local-seed-data.sh
+
 # Clears schema, seeds the full demo dataset, refreshes catalog products, and uploads seeded assets.
-seed-full: db-clear
+seed-full: seed-validate db-clear
   just db-seed-demo
   just refresh-catalog-products
   just storage-fresh
 
 # Clears schema, seeds the full demo dataset, refreshes catalog products, and uploads seeded assets.
-seed-full-infisical project_id *env_name:
+seed-full-infisical project_id *env_name: seed-validate
   just db-clear-infisical {{project_id}} {{env_name}}
   just db-seed-demo-infisical {{project_id}} {{env_name}}
   just refresh-catalog-products-infisical {{project_id}} {{env_name}}
   just storage-fresh-infisical {{project_id}} {{env_name}}
 
-db-seed-demo:
+db-seed-demo: seed-validate
   cd {{ api_dir }} && \
   test -f ".env" && \
   set -a && \
@@ -141,7 +144,7 @@ db-seed-demo:
   set +a && \
   pnpm db:seed:demo
 
-db-seed:
+db-seed: seed-validate
   cd {{ api_dir }} && \
   test -f ".env" && \
   set -a && \
@@ -153,13 +156,13 @@ db-seed:
 # export INFISICAL_TOKEN="your-token"
 # just db-seed-demo-infisical your-project-id
 # just db-seed-demo-infisical your-project-id prod
-db-seed-demo-infisical project_id *env_name:
+db-seed-demo-infisical project_id *env_name: seed-validate
   cd {{ api_dir }} && \
   test -n "$INFISICAL_TOKEN" && \
   ENV_ARG='{{ if env_name != "" { "--env=" + env_name } else { "" } }}' && \
   pnpm exec infisical run --projectId="{{ project_id }}" $ENV_ARG --token="$INFISICAL_TOKEN" -- pnpm db:seed:demo
 
-db-seed-infisical project_id *env_name:
+db-seed-infisical project_id *env_name: seed-validate
   cd {{ api_dir }} && \
   test -n "$INFISICAL_TOKEN" && \
   ENV_ARG='{{ if env_name != "" { "--env=" + env_name } else { "" } }}' && \
@@ -194,23 +197,23 @@ db-clear-infisical project_id *env_name:
   pnpm exec infisical run --projectId="{{ project_id }}" $ENV_ARG --token="$INFISICAL_TOKEN" -- pnpm db:clear
 
 # Clears schema, reruns migrations via the seed script, then seeds reference data.
-db-fresh: db-clear
+db-fresh: seed-validate db-clear
   just db-seed
   just refresh-catalog-products
 
 # Clears schema, reruns migrations via the seed script, then seeds the full demo dataset.
-db-fresh-demo: db-clear
+db-fresh-demo: seed-validate db-clear
   just db-seed-demo
   just refresh-catalog-products
 
 # Clears schema, reruns migrations via the seed script, then seeds reference data.
-db-fresh-infisical project_id *env_name:
+db-fresh-infisical project_id *env_name: seed-validate
   just db-clear-infisical {{project_id}} {{env_name}}
   just db-seed-infisical {{project_id}} {{env_name}}
   just refresh-catalog-products-infisical {{project_id}} {{env_name}}
 
 # Clears schema, reruns migrations via the seed script, then seeds the full demo dataset.
-db-fresh-demo-infisical project_id *env_name:
+db-fresh-demo-infisical project_id *env_name: seed-validate
   just db-clear-infisical {{project_id}} {{env_name}}
   just db-seed-demo-infisical {{project_id}} {{env_name}}
   just refresh-catalog-products-infisical {{project_id}} {{env_name}}
