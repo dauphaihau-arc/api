@@ -11,7 +11,7 @@ The codebase follows a modular Clean Architecture style with Domain-Driven Desig
 Top-level structure:
 
 - `api/` - NestJS application source, config, migrations, and scripts
-- `agents/` - agent guidance, architecture notes, testing notes, and repo rules
+- `api/agent-skills/` - agent guidance for source structure, boundaries, API conventions, testing, and repo rules
 - `infra/` - local Docker Compose services for core dependencies and the observability stack
 - `docs/` - supporting documentation and migration notes
 - `perf/` - reusable local performance scenarios and runners

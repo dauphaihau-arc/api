@@ -10,20 +10,20 @@ Repositories should stay narrow. They are persistence adapters behind ports, not
 
 - Split repositories by persistence responsibility when a class starts mixing unrelated behaviors.
 - Prefer separating:
-  - storefront/public reads
-  - seller/backoffice reads
+  - public or consumer-facing reads
+  - internal or operator-facing reads
   - command or mutation flows
 - When a repository is split by CQRS responsibility, name the concrete classes and files explicitly with `Query` or `Command`.
 - Keep use case orchestration in use cases, not repositories.
-- Keep HTTP and transport exceptions out of repositories.
+- Keep HTTP, GraphQL, and transport exceptions out of repositories.
 - Keep repository ports small and task-shaped. Do not grow a single port indefinitely just to reuse one concrete class.
 
 ## Query And Command Boundaries
 
-- Read repositories may use SQL/read-model shaping when needed for performance or ranking.
+- Read repositories may use SQL or read-model shaping when needed for filtering, ranking, pagination, or performance.
 - Command repositories should focus on loading aggregates, mutating them, and flushing changes.
-- If a read path needs very different projection or ranking logic from another read path, prefer a separate query repository over branching a giant method.
-- Prefer names like `MikroOrmStorefrontProductQueryRepository` and `MikroOrmProductCommandRepository` over ambiguous read-side names.
+- If a read path needs a very different projection, audience, or ranking strategy from another read path, prefer a separate query repository over branching a giant method.
+- Prefer names like `MikroOrmPublicCatalogItemQueryRepository`, `MikroOrmAdminCatalogItemQueryRepository`, or `MikroOrmCatalogItemCommandRepository` over vague names such as `CatalogRepository`.
 
 ## Projection Guidance
 
@@ -31,18 +31,20 @@ Repositories should stay narrow. They are persistence adapters behind ports, not
 - Entity-to-read-model mapping can live beside a repository briefly, but extract it once:
   - the same projection is used by more than one repository
   - projection code becomes a large share of the repository
-  - the repository starts mixing SQL/query decisions with transport-facing shaping
+  - the repository starts mixing query decisions with transport-facing shaping
 - Prefer explicit projector files with narrow names, for example:
-  - `product-draft-summary.projector.ts`
-  - `storefront-product.projector.ts`
+  - `catalog-item-summary.projector.ts`
+  - `public-catalog-item.projector.ts`
+  - `admin-catalog-item-detail.projector.ts`
 - Repositories should call projectors; projectors should not perform their own database queries.
-- Avoid mixing multiple audience projections in one class. Public/storefront projections and seller/draft projections usually change for different reasons.
+- Avoid mixing multiple audience projections in one class. Public, internal, partner, and backoffice projections usually change for different reasons.
 
-## Product Module Rule
+## Scaling Rule
 
-- Do not add new responsibilities to a monolithic `MikroOrmProductRepository`.
-- For product persistence, prefer separate classes for:
-  - storefront product queries
-  - seller product queries
-  - product commands and pricing writes
+- Do not keep adding responsibilities to a monolithic repository once a module has distinct read and write paths.
+- For growing modules, prefer separate classes for:
+  - public or consumer queries
+  - internal or operator queries
+  - command or mutation persistence
+  - specialized read models that depend on different storage or projection strategies
 - If an existing port must stay stable temporarily, use a thin delegating adapter instead of keeping all logic in one concrete class.
