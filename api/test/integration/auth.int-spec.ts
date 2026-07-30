@@ -10,16 +10,16 @@ import { Test } from '@nestjs/testing';
 import { PinoLogger } from 'nestjs-pino';
 import request from 'supertest';
 import type { App } from 'supertest/types';
-import { GlobalExceptionFilter } from '../../src/common/filters/global-exception.filter';
-import { RequestLoggingInterceptor } from '../../src/common/interceptors/request-logging.interceptor';
-import { parseCorsAllowedOrigins } from '../../src/config/cors.config';
-import type { AuthUserResponse } from '../../src/modules/domains/auth/app/auth.types';
-import { UserSessionEntity } from '../../src/modules/domains/auth/infra/persistence/entities/user-session.entity';
-import { AppModule } from '../../src/modules/app.module';
-import { ObservabilityService } from '../../src/modules/shared/observability/observability.service';
-import { RequestContextService } from '../../src/modules/shared/request-context/request-context.service';
-import { StorageService } from '../../src/modules/shared/storage/app/ports/storage.service';
-import { LocalFileStorageService } from '../../src/modules/shared/storage/infra/local-file-storage.service';
+import { GlobalExceptionFilter } from '~/platform/filters/global-exception.filter';
+import { RequestLoggingInterceptor } from '~/platform/interceptors/request-logging.interceptor';
+import { parseCorsAllowedOrigins } from '~/platform/config/cors.config';
+import type { AuthUserResponse } from '~/domains/auth/app/auth.types';
+import { UserSessionEntity } from '~/domains/auth/infra/persistence/entities/user-session.entity';
+import { AppModule } from '~/bootstrap/app.module';
+import { ObservabilityService } from '~/platform/observability/observability.service';
+import { RequestContextService } from '~/platform/request-context/request-context.service';
+import { StorageService } from '~/integrations/storage/app/ports/storage.service';
+import { LocalFileStorageService } from '~/integrations/storage/infra/local-file-storage.service';
 import { createTestDatabase, dropTestDatabase } from '../support/test-postgres';
 
 jest.setTimeout(30_000);
@@ -220,9 +220,12 @@ function restoreProcessEnv(originalEnv: NodeJS.ProcessEnv) {
   Object.assign(process.env, originalEnv);
 }
 
-function expectAuthCookies(setCookieHeader: string[] | undefined) {
+function expectAuthCookies(setCookieHeader: string | string[] | undefined) {
   expect(setCookieHeader).toBeDefined();
-  const parsedCookies = (setCookieHeader ?? []).map((value) => value.split(';')[0] ?? '');
+  const cookieHeaders = Array.isArray(setCookieHeader)
+    ? setCookieHeader
+    : [setCookieHeader as string];
+  const parsedCookies = cookieHeaders.map((value) => value.split(';')[0] ?? '');
   const accessToken = parsedCookies.find((value) => value.startsWith('accessToken='));
   const refreshToken = parsedCookies.find((value) => value.startsWith('refreshToken='));
 

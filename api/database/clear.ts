@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import { Client } from 'pg';
-import { buildDatabaseConfig } from '../src/config/database.config';
+import { buildDatabaseConfig } from '~/platform/config/database.config';
 
 async function main() {
   const config = buildDatabaseConfig(process.env);

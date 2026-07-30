@@ -1,18 +1,18 @@
 import type { EntityManager } from '@mikro-orm/postgresql';
-import type { CurrentUserEntity } from '~/modules/domains/auth/infra/persistence/entities/current-user.entity';
-import { CartKind } from '~/modules/domains/cart/domain/enums/cart-kind.enum';
-import { CartEntity } from '~/modules/domains/cart/infra/persistence/entities/cart.entity';
-import { CartItemEntity } from '~/modules/domains/cart/infra/persistence/entities/cart-item.entity';
-import { CouponUsageEntity } from '~/modules/domains/coupon/infra/persistence/entities/coupon-usage.entity';
-import { CouponEntity } from '~/modules/domains/coupon/infra/persistence/entities/coupon.entity';
-import { CouponType } from '~/modules/domains/coupon/domain/enums/coupon-type.enum';
-import { OrderShippingStatus } from '~/modules/domains/order/domain/enums/order-shipping-status.enum';
-import { OrderStatus } from '~/modules/domains/order/domain/enums/order-status.enum';
-import { PaymentType } from '~/modules/domains/order/domain/enums/payment-type.enum';
-import { OrderEntity } from '~/modules/domains/order/infra/persistence/entities/order.entity';
-import { OrderItemEntity } from '~/modules/domains/order/infra/persistence/entities/order-item.entity';
-import { ProductInventoryEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-inventory.entity';
-import { getInventoryPricingSnapshot } from '~/modules/domains/product/infra/persistence/mikro-orm/reads/variant-price-read';
+import type { CurrentUserEntity } from '~/domains/auth/infra/persistence/entities/current-user.entity';
+import { CartKind } from '~/domains/cart/domain/enums/cart-kind.enum';
+import { CartEntity } from '~/domains/cart/infra/persistence/entities/cart.entity';
+import { CartItemEntity } from '~/domains/cart/infra/persistence/entities/cart-item.entity';
+import { CouponUsageEntity } from '~/domains/coupon/infra/persistence/entities/coupon-usage.entity';
+import { CouponEntity } from '~/domains/coupon/infra/persistence/entities/coupon.entity';
+import { CouponType } from '~/domains/coupon/domain/enums/coupon-type.enum';
+import { OrderShippingStatus } from '~/domains/order/domain/enums/order-shipping-status.enum';
+import { OrderStatus } from '~/domains/order/domain/enums/order-status.enum';
+import { PaymentType } from '~/domains/order/domain/enums/payment-type.enum';
+import { OrderEntity } from '~/domains/order/infra/persistence/entities/order.entity';
+import { OrderItemEntity } from '~/domains/order/infra/persistence/entities/order-item.entity';
+import { ProductInventoryEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-inventory.entity';
+import { getInventoryPricingSnapshot } from '~/domains/product/infra/persistence/mikro-orm/reads/variant-price-read';
 
 type OrderSeed = {
   inventoryId: string;

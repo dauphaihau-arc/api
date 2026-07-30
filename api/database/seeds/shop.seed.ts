@@ -1,7 +1,7 @@
 import type { EntityManager } from '@mikro-orm/postgresql';
-import type { MarketplaceCurrency } from '../../src/config/marketplace.config';
-import type { CurrentUserEntity } from '../../src/modules/domains/auth/infra/persistence/entities/current-user.entity';
-import { ShopEntity } from '../../src/modules/domains/shop/infra/persistence/entities/shop.entity';
+import type { MarketplaceCurrency } from '~/platform/config/marketplace.config';
+import type { CurrentUserEntity } from '~/domains/auth/infra/persistence/entities/current-user.entity';
+import { ShopEntity } from '~/domains/shop/infra/persistence/entities/shop.entity';
 import { SHOPS_LOCAL_TSV_PATH, SHOPS_TSV_PATH } from './product-seed-paths';
 import { readOptionalTsvRows, readTsvRows } from './shared/read-tsv-rows';
 

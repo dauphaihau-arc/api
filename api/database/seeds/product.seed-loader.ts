@@ -1,5 +1,5 @@
-import { ProductVariantType } from '../../src/modules/domains/product/domain/enums/product-variant-type.enum';
-import { ProductWhoMade } from '../../src/modules/domains/product/domain/enums/product-who-made.enum';
+import { ProductVariantType } from '~/domains/product/domain/enums/product-variant-type.enum';
+import { ProductWhoMade } from '~/domains/product/domain/enums/product-who-made.enum';
 import {
   PRODUCT_ATTRIBUTES_LOCAL_TSV_PATH,
   PRODUCT_ATTRIBUTES_TSV_PATH,

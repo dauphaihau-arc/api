@@ -1,7 +1,7 @@
 import type { EntityManager } from '@mikro-orm/postgresql';
-import { CouponEntity } from '../../src/modules/domains/coupon/infra/persistence/entities/coupon.entity';
-import { ProductEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product.entity';
-import type { ShopEntity } from '../../src/modules/domains/shop/infra/persistence/entities/shop.entity';
+import { CouponEntity } from '~/domains/coupon/infra/persistence/entities/coupon.entity';
+import { ProductEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product.entity';
+import type { ShopEntity } from '~/domains/shop/infra/persistence/entities/shop.entity';
 import { couponSeeds } from './coupon.seed-loader';
 
 function resolveProgressInterval(total: number, maxSteps = 5): number {

@@ -1,7 +1,7 @@
 import type { EntityManager } from '@mikro-orm/postgresql';
-import type { CurrentUserEntity } from '~/modules/domains/auth/infra/persistence/entities/current-user.entity';
-import { ProductEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product.entity';
-import { ProductViewHistoryEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-view-history.entity';
+import type { CurrentUserEntity } from '~/domains/auth/infra/persistence/entities/current-user.entity';
+import { ProductEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product.entity';
+import { ProductViewHistoryEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-view-history.entity';
 import {
   PRODUCT_VIEW_HISTORY_LOCAL_TSV_PATH,
   PRODUCT_VIEW_HISTORY_TSV_PATH,

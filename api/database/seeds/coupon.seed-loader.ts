@@ -1,8 +1,8 @@
 import * as path from 'node:path';
 import ms, { type StringValue } from 'ms';
-import { CouponAppliesTo } from '../../src/modules/domains/coupon/domain/enums/coupon-applies-to.enum';
-import { CouponMinOrderType } from '../../src/modules/domains/coupon/domain/enums/coupon-min-order-type.enum';
-import { CouponType } from '../../src/modules/domains/coupon/domain/enums/coupon-type.enum';
+import { CouponAppliesTo } from '~/domains/coupon/domain/enums/coupon-applies-to.enum';
+import { CouponMinOrderType } from '~/domains/coupon/domain/enums/coupon-min-order-type.enum';
+import { CouponType } from '~/domains/coupon/domain/enums/coupon-type.enum';
 import { readTsvRows } from './shared/read-tsv-rows';
 
 export type CouponSeed = {
@@ -52,7 +52,7 @@ type CouponProductRow = {
 const COUPONS_TSV_PATH = path.resolve(__dirname, '../../../seed-data/coupons.tsv');
 const COUPON_PRODUCTS_TSV_PATH = path.resolve(
   __dirname,
-  '../../../seed-data/coupon-products.tsv'
+  '../../../seed-data/coupon-products.tsv',
 );
 
 function parseOptionalNumber(value: string, fieldName: string, couponKey: string): number | undefined {
@@ -158,7 +158,7 @@ function resolveCouponWindow(row: CouponRow, couponKey: string): { startDate: st
   if (!period) {
     if (!startDate || !endDate) {
       throw new Error(
-        `Coupon seed ${couponKey} must define either period or both start_date and end_date`
+        `Coupon seed ${couponKey} must define either period or both start_date and end_date`,
       );
     }
 
@@ -167,14 +167,14 @@ function resolveCouponWindow(row: CouponRow, couponKey: string): { startDate: st
 
   if (startDate || endDate) {
     throw new Error(
-      `Coupon seed ${couponKey} cannot define period together with start_date or end_date`
+      `Coupon seed ${couponKey} cannot define period together with start_date or end_date`,
     );
   }
 
   const [startOffsetRaw, endOffsetRaw, extraSegment] = period.split('..');
   if (!startOffsetRaw || !endOffsetRaw || extraSegment !== undefined) {
     throw new Error(
-      `Invalid period "${period}" for coupon seed ${couponKey}; expected <start>..<end>`
+      `Invalid period "${period}" for coupon seed ${couponKey}; expected <start>..<end>`,
     );
   }
 

@@ -3,7 +3,7 @@ import * as path from 'node:path';
 import {
   buildStorageObjectKey,
   resolveStorageEnvironmentSegment,
-} from '~/modules/shared/storage/app/storage-key-builder';
+} from '~/integrations/storage/app/storage-key-builder';
 import { slugifySeedValue } from './product-seed-image-resolver';
 
 const IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp']);

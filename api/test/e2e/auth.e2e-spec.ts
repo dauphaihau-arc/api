@@ -10,14 +10,14 @@ import { Reflector } from '@nestjs/core';
 import { PinoLogger } from 'nestjs-pino';
 import request from 'supertest';
 import type { App } from 'supertest/types';
-import { GlobalExceptionFilter } from '../../src/common/filters/global-exception.filter';
-import { RequestLoggingInterceptor } from '../../src/common/interceptors/request-logging.interceptor';
-import { parseCorsAllowedOrigins } from '../../src/config/cors.config';
-import { UserPreferenceEntity } from '../../src/modules/domains/auth/infra/persistence/entities/user-preference.entity';
-import { ObservabilityService } from '../../src/modules/shared/observability/observability.service';
-import { RequestContextService } from '../../src/modules/shared/request-context/request-context.service';
-import { StorageService } from '../../src/modules/shared/storage/app/ports/storage.service';
-import { LocalFileStorageService } from '../../src/modules/shared/storage/infra/local-file-storage.service';
+import { GlobalExceptionFilter } from '~/platform/filters/global-exception.filter';
+import { RequestLoggingInterceptor } from '~/platform/interceptors/request-logging.interceptor';
+import { parseCorsAllowedOrigins } from '~/platform/config/cors.config';
+import { UserPreferenceEntity } from '~/domains/auth/infra/persistence/entities/user-preference.entity';
+import { ObservabilityService } from '~/platform/observability/observability.service';
+import { RequestContextService } from '~/platform/request-context/request-context.service';
+import { StorageService } from '~/integrations/storage/app/ports/storage.service';
+import { LocalFileStorageService } from '~/integrations/storage/infra/local-file-storage.service';
 import { createTestDatabase, dropTestDatabase } from '../support/test-postgres';
 
 jest.setTimeout(30_000);
@@ -71,7 +71,7 @@ describe('Auth flow (e2e)', () => {
     process.env.MAIL_DRIVER = 'logger';
     process.env.STORAGE_DRIVER = 'local';
     process.env.STORAGE_LOCAL_ROOT = storageRoot;
-    const { AppModule } = await import('../../src/modules/app.module.js');
+    const { AppModule } = await import('~/bootstrap/app.module.js');
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
@@ -256,9 +256,12 @@ function restoreProcessEnv(originalEnv: NodeJS.ProcessEnv) {
   Object.assign(process.env, originalEnv);
 }
 
-function expectAuthCookies(setCookieHeader: string[] | undefined) {
+function expectAuthCookies(setCookieHeader: string | string[] | undefined) {
   expect(setCookieHeader).toBeDefined();
-  const parsedCookies = (setCookieHeader ?? []).map((value) => value.split(';')[0] ?? '');
+  const cookieHeaders = Array.isArray(setCookieHeader)
+    ? setCookieHeader
+    : [setCookieHeader as string];
+  const parsedCookies = cookieHeaders.map((value) => value.split(';')[0] ?? '');
   const accessToken = parsedCookies.find((value) => value.startsWith('accessToken='));
   const refreshToken = parsedCookies.find((value) => value.startsWith('refreshToken='));
 

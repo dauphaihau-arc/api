@@ -1,16 +1,16 @@
 import type { EntityManager } from '@mikro-orm/postgresql';
-import { OrderShippingStatus } from '~/modules/domains/order/domain/enums/order-shipping-status.enum';
-import { OrderStatus } from '~/modules/domains/order/domain/enums/order-status.enum';
-import { ProductImageVariantStatus } from '~/modules/domains/product/domain/enums/product-image-variant-status.enum';
-import { OrderItemEntity } from '~/modules/domains/order/infra/persistence/entities/order-item.entity';
-import { ProductReviewStatus } from '~/modules/domains/product/domain/enums/product-review-status.enum';
-import { MikroOrmProductReviewAggregateRepository } from '~/modules/domains/product/infra/persistence/mikro-orm/repositories/mikro-orm-product-review-aggregate.repository';
-import { ProductReviewEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-review.entity';
-import { ProductReviewImageEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-review-image.entity';
+import { OrderShippingStatus } from '~/domains/order/domain/enums/order-shipping-status.enum';
+import { OrderStatus } from '~/domains/order/domain/enums/order-status.enum';
+import { ProductImageVariantStatus } from '~/domains/product/domain/enums/product-image-variant-status.enum';
+import { OrderItemEntity } from '~/domains/order/infra/persistence/entities/order-item.entity';
+import { ProductReviewStatus } from '~/domains/product/domain/enums/product-review-status.enum';
+import { MikroOrmProductReviewAggregateRepository } from '~/domains/product/infra/persistence/mikro-orm/repositories/mikro-orm-product-review-aggregate.repository';
+import { ProductReviewEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-review.entity';
+import { ProductReviewImageEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-review-image.entity';
 import {
   isEligibleForProductReview,
   trimOptionalReviewText,
-} from '~/modules/domains/product/app/product-review.helpers';
+} from '~/domains/product/app/product-review.helpers';
 import {
   PRODUCT_REVIEWS_LOCAL_TSV_PATH,
   PRODUCT_REVIEWS_TSV_PATH,

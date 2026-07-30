@@ -6,10 +6,10 @@ import {
   type MarketplaceCurrency,
   type MarketplaceLanguage,
   type MarketplaceRegion,
-} from '../../src/config/marketplace.config';
-import type { CurrentUserEntity } from '../../src/modules/domains/auth/infra/persistence/entities/current-user.entity';
-import { UserPreferenceEntity } from '../../src/modules/domains/auth/infra/persistence/entities/user-preference.entity';
-import { UserAddressEntity } from '../../src/modules/domains/user/infra/persistence/entities/user-address.entity';
+} from '~/platform/config/marketplace.config';
+import type { CurrentUserEntity } from '~/domains/auth/infra/persistence/entities/current-user.entity';
+import { UserPreferenceEntity } from '~/domains/auth/infra/persistence/entities/user-preference.entity';
+import { UserAddressEntity } from '~/domains/user/infra/persistence/entities/user-address.entity';
 import {
   USER_ADDRESSES_LOCAL_TSV_PATH,
   USER_ADDRESSES_TSV_PATH,

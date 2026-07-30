@@ -1,15 +1,15 @@
 import 'reflect-metadata';
 import { MikroORM } from '@mikro-orm/postgresql';
-import { buildDatabaseConfig } from '../src/config/database.config';
-import { buildStorageConfig } from '../src/config/storage.config';
-import { ReviewImageService } from '../src/modules/domains/product/app/services/review-image.service';
-import { ProductReviewImageEntity } from '../src/modules/domains/product/infra/persistence/mikro-orm/entities/product-review-image.entity';
-import { ProductReviewImageVariantEntity } from '../src/modules/domains/product/infra/persistence/mikro-orm/entities/product-review-image-variant.entity';
-import { MikroOrmReviewImageVariantGenerationRepository } from '../src/modules/domains/product/infra/persistence/mikro-orm/repositories/mikro-orm-review-image-variant-generation.repository';
-import { SharpImageTransformService } from '../src/modules/shared/image-transform/infra/sharp-image-transform.service';
-import { LocalFileStorageService } from '../src/modules/shared/storage/infra/local-file-storage.service';
-import { MinioStorageService } from '../src/modules/shared/storage/infra/minio-storage.service';
-import type { StorageService } from '../src/modules/shared/storage/app/ports/storage.service';
+import { buildDatabaseConfig } from '~/platform/config/database.config';
+import { buildStorageConfig } from '~/platform/config/storage.config';
+import { ReviewImageService } from '~/domains/product/app/services/review-image.service';
+import { ProductReviewImageEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-review-image.entity';
+import { ProductReviewImageVariantEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-review-image-variant.entity';
+import { MikroOrmReviewImageVariantGenerationRepository } from '~/domains/product/infra/persistence/mikro-orm/repositories/mikro-orm-review-image-variant-generation.repository';
+import { SharpImageTransformService } from '~/integrations/image-transform/infra/sharp-image-transform.service';
+import { LocalFileStorageService } from '~/integrations/storage/infra/local-file-storage.service';
+import { MinioStorageService } from '~/integrations/storage/infra/minio-storage.service';
+import type { StorageService } from '~/integrations/storage/app/ports/storage.service';
 
 const REVIEW_VARIANT_CONCURRENCY = 3;
 

@@ -1,7 +1,7 @@
 import type { EntityManager } from '@mikro-orm/postgresql';
-import type { CurrentUserEntity } from '~/modules/domains/auth/infra/persistence/entities/current-user.entity';
-import { ProductEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product.entity';
-import { ShopEntity } from '~/modules/domains/shop/infra/persistence/entities/shop.entity';
+import type { CurrentUserEntity } from '~/domains/auth/infra/persistence/entities/current-user.entity';
+import { ProductEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product.entity';
+import { ShopEntity } from '~/domains/shop/infra/persistence/entities/shop.entity';
 import {
   CHAT_CONVERSATIONS_LOCAL_TSV_PATH,
   CHAT_CONVERSATIONS_TSV_PATH,
@@ -9,8 +9,8 @@ import {
   CHAT_MESSAGES_TSV_PATH,
 } from './product-seed-paths';
 import { readOptionalTsvRows, readTsvRows } from './shared/read-tsv-rows';
-import { ChatConversationEntity } from '../../src/modules/domains/chat/infra/persistence/entities/chat-conversation.entity';
-import { ChatMessageEntity } from '../../src/modules/domains/chat/infra/persistence/entities/chat-message.entity';
+import { ChatConversationEntity } from '~/domains/chat/infra/persistence/entities/chat-conversation.entity';
+import { ChatMessageEntity } from '~/domains/chat/infra/persistence/entities/chat-message.entity';
 
 type ConversationSeed = {
   conversationKey: string;

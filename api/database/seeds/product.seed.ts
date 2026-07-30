@@ -1,27 +1,27 @@
 import type { EntityManager } from '@mikro-orm/postgresql';
 import { basename, extname } from 'node:path';
 import * as path from 'node:path';
-import { CategoryAttributeEntity } from '../../src/modules/domains/category/infra/persistence/entities/category-attribute.entity';
-import { CategoryEntity } from '../../src/modules/domains/category/infra/persistence/entities/category.entity';
-import { ProductState } from '../../src/modules/domains/product/domain/enums/product-state.enum';
-import { ProductImageVariantStatus } from '../../src/modules/domains/product/domain/enums/product-image-variant-status.enum';
-import { ProductShippingCharge } from '../../src/modules/domains/product/domain/enums/product-shipping-charge.enum';
-import { ProductVariantType } from '../../src/modules/domains/product/domain/enums/product-variant-type.enum';
-import type { MarketplaceCurrency } from '../../src/config/marketplace.config';
+import { CategoryAttributeEntity } from '~/domains/category/infra/persistence/entities/category-attribute.entity';
+import { CategoryEntity } from '~/domains/category/infra/persistence/entities/category.entity';
+import { ProductState } from '~/domains/product/domain/enums/product-state.enum';
+import { ProductImageVariantStatus } from '~/domains/product/domain/enums/product-image-variant-status.enum';
+import { ProductShippingCharge } from '~/domains/product/domain/enums/product-shipping-charge.enum';
+import { ProductVariantType } from '~/domains/product/domain/enums/product-variant-type.enum';
+import type { MarketplaceCurrency } from '~/platform/config/marketplace.config';
 import {
   buildStorageObjectKey,
   resolveStorageEnvironmentSegment,
-} from '../../src/modules/shared/storage/app/storage-key-builder';
-import { ProductAttributeValueEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-attribute-value.entity';
-import { ProductImageEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-image.entity';
-import { ProductInventoryEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-inventory.entity';
-import { ProductShippingDestinationEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-shipping-destination.entity';
-import { ProductShippingProfileEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-shipping-profile.entity';
-import { VariantPriceEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/variant-price.entity';
-import { VARIANT_PRICE_TYPES } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/variant-price.entity';
-import { ProductVariantEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-variant.entity';
-import { ProductEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product.entity';
-import type { ShopEntity } from '../../src/modules/domains/shop/infra/persistence/entities/shop.entity';
+} from '~/integrations/storage/app/storage-key-builder';
+import { ProductAttributeValueEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-attribute-value.entity';
+import { ProductImageEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-image.entity';
+import { ProductInventoryEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-inventory.entity';
+import { ProductShippingDestinationEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-shipping-destination.entity';
+import { ProductShippingProfileEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-shipping-profile.entity';
+import { VariantPriceEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/variant-price.entity';
+import { VARIANT_PRICE_TYPES } from '~/domains/product/infra/persistence/mikro-orm/entities/variant-price.entity';
+import { ProductVariantEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-variant.entity';
+import { ProductEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product.entity';
+import type { ShopEntity } from '~/domains/shop/infra/persistence/entities/shop.entity';
 import { productSeeds, type ProductSeed } from './product.seed-loader';
 import { PRODUCT_IMAGE_ROOT_DIRS } from './product-seed-paths';
 import {

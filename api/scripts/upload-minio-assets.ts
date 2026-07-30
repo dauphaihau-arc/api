@@ -5,38 +5,38 @@ import * as path from 'node:path';
 import { ListObjectsV2Command, S3Client } from '@aws-sdk/client-s3';
 import { TableNotFoundException } from '@mikro-orm/core';
 import { MikroORM, type EntityManager } from '@mikro-orm/postgresql';
-import { validateAppEnv } from '../src/config/app-env.config';
-import { buildDatabaseConfig } from '../src/config/database.config';
+import { validateAppEnv } from '~/platform/config/app-env.config';
+import { buildDatabaseConfig } from '~/platform/config/database.config';
 import {
   buildStorageConfig,
   type LocalStorageConfig,
   type MinioStorageConfig,
   type StorageConfig,
-} from '../src/config/storage.config';
+} from '~/platform/config/storage.config';
 import {
   CATEGORY_IMAGE_VARIANT_SPECS,
   type CategoryImageVariant,
-} from '../src/modules/domains/category/app/config/category-image-variant.config';
-import { CategoryEntity } from '../src/modules/domains/category/infra/persistence/entities/category.entity';
-import { ProductImageService } from '../src/modules/domains/product/app/services/product-image.service';
-import { ReviewImageService } from '../src/modules/domains/product/app/services/review-image.service';
-import { ProductImageVariantStatus } from '../src/modules/domains/product/domain/enums/product-image-variant-status.enum';
-import { ProductImageEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-image.entity';
-import { ProductImageVariantEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-image-variant.entity';
-import { ProductReviewImageEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-review-image.entity';
-import { ProductReviewImageVariantEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-review-image-variant.entity';
-import { MikroOrmProductImageVariantGenerationRepository } from '~/modules/domains/product/infra/persistence/mikro-orm/repositories/mikro-orm-product-image-variant-generation.repository';
-import { MikroOrmReviewImageVariantGenerationRepository } from '~/modules/domains/product/infra/persistence/mikro-orm/repositories/mikro-orm-review-image-variant-generation.repository';
-import { ProductEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product.entity';
-import { ShopEntity } from '../src/modules/domains/shop/infra/persistence/entities/shop.entity';
-import { SharpImageTransformService } from '../src/modules/shared/image-transform/infra/sharp-image-transform.service';
-import type { StorageService } from '../src/modules/shared/storage/app/ports/storage.service';
+} from '~/domains/category/app/config/category-image-variant.config';
+import { CategoryEntity } from '~/domains/category/infra/persistence/entities/category.entity';
+import { ProductImageService } from '~/domains/product/app/services/product-image.service';
+import { ReviewImageService } from '~/domains/product/app/services/review-image.service';
+import { ProductImageVariantStatus } from '~/domains/product/domain/enums/product-image-variant-status.enum';
+import { ProductImageEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-image.entity';
+import { ProductImageVariantEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-image-variant.entity';
+import { ProductReviewImageEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-review-image.entity';
+import { ProductReviewImageVariantEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-review-image-variant.entity';
+import { MikroOrmProductImageVariantGenerationRepository } from '~/domains/product/infra/persistence/mikro-orm/repositories/mikro-orm-product-image-variant-generation.repository';
+import { MikroOrmReviewImageVariantGenerationRepository } from '~/domains/product/infra/persistence/mikro-orm/repositories/mikro-orm-review-image-variant-generation.repository';
+import { ProductEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product.entity';
+import { ShopEntity } from '~/domains/shop/infra/persistence/entities/shop.entity';
+import { SharpImageTransformService } from '~/integrations/image-transform/infra/sharp-image-transform.service';
+import type { StorageService } from '~/integrations/storage/app/ports/storage.service';
 import {
   buildStorageObjectKey,
   resolveStorageEnvironmentSegment,
-} from '../src/modules/shared/storage/app/storage-key-builder';
-import { LocalFileStorageService } from '../src/modules/shared/storage/infra/local-file-storage.service';
-import { MinioStorageService } from '../src/modules/shared/storage/infra/minio-storage.service';
+} from '~/integrations/storage/app/storage-key-builder';
+import { LocalFileStorageService } from '~/integrations/storage/infra/local-file-storage.service';
+import { MinioStorageService } from '~/integrations/storage/infra/minio-storage.service';
 import {
   resolveOptionalSeedProductAssetDirectory,
   resolveOptionalSeedProductImagePaths,

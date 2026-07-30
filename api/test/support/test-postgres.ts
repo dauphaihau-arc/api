@@ -1,7 +1,7 @@
 import { MikroORM } from '@mikro-orm/postgresql';
 import { randomUUID } from 'crypto';
 import { Client } from 'pg';
-import { buildDatabaseConfig } from '../../src/config/database.config';
+import { buildDatabaseConfig } from '~/platform/config/database.config';
 
 type TestDatabaseContext = {
   dbName: string;

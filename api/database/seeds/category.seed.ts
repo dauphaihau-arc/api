@@ -1,13 +1,13 @@
 import type { EntityManager } from '@mikro-orm/postgresql';
 import { basename, extname } from 'node:path';
-import { toSlug } from '~/common/utils/slugify';
-import { CategoryAttributeOptionEntity } from '~/modules/domains/category/infra/persistence/entities/category-attribute-option.entity';
-import { CategoryAttributeEntity } from '~/modules/domains/category/infra/persistence/entities/category-attribute.entity';
-import { CategoryEntity } from '~/modules/domains/category/infra/persistence/entities/category.entity';
+import { toSlug } from '~/platform/utils/slugify';
+import { CategoryAttributeOptionEntity } from '~/domains/category/infra/persistence/entities/category-attribute-option.entity';
+import { CategoryAttributeEntity } from '~/domains/category/infra/persistence/entities/category-attribute.entity';
+import { CategoryEntity } from '~/domains/category/infra/persistence/entities/category.entity';
 import {
   buildStorageObjectKey,
   resolveStorageEnvironmentSegment,
-} from '~/modules/shared/storage/app/storage-key-builder';
+} from '~/integrations/storage/app/storage-key-builder';
 import {
   categorySeedData,
   type CategorySeedAttribute,

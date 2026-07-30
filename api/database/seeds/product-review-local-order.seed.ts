@@ -1,12 +1,12 @@
 import type { EntityManager } from '@mikro-orm/postgresql';
-import { CurrentUserEntity } from '~/modules/domains/auth/infra/persistence/entities/current-user.entity';
-import { OrderShippingStatus } from '~/modules/domains/order/domain/enums/order-shipping-status.enum';
-import { OrderStatus } from '~/modules/domains/order/domain/enums/order-status.enum';
-import { PaymentType } from '~/modules/domains/order/domain/enums/payment-type.enum';
-import { OrderEntity } from '~/modules/domains/order/infra/persistence/entities/order.entity';
-import { OrderItemEntity } from '~/modules/domains/order/infra/persistence/entities/order-item.entity';
-import { ProductInventoryEntity } from '~/modules/domains/product/infra/persistence/mikro-orm/entities/product-inventory.entity';
-import { getInventoryPricingSnapshot } from '~/modules/domains/product/infra/persistence/mikro-orm/reads/variant-price-read';
+import { CurrentUserEntity } from '~/domains/auth/infra/persistence/entities/current-user.entity';
+import { OrderShippingStatus } from '~/domains/order/domain/enums/order-shipping-status.enum';
+import { OrderStatus } from '~/domains/order/domain/enums/order-status.enum';
+import { PaymentType } from '~/domains/order/domain/enums/payment-type.enum';
+import { OrderEntity } from '~/domains/order/infra/persistence/entities/order.entity';
+import { OrderItemEntity } from '~/domains/order/infra/persistence/entities/order-item.entity';
+import { ProductInventoryEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-inventory.entity';
+import { getInventoryPricingSnapshot } from '~/domains/product/infra/persistence/mikro-orm/reads/variant-price-read';
 import {
   PRODUCT_REVIEWS_LOCAL_TSV_PATH,
   PRODUCT_REVIEWS_TSV_PATH,
