@@ -1,0 +1,146 @@
+name: Deploy Database ERD
+
+on:
+  pull_request:
+    paths:
+      - "api/database/migrations/**"
+      - "api/src/**/*.entity.ts"
+      - "api/mikro-orm.config.ts"
+      - "api/src/platform/config/database.config.ts"
+      - ".github/workflows/deploy-database-erd.yml"
+  push:
+    branches:
+      - production
+    paths:
+      - "api/database/migrations/**"
+      - "api/src/**/*.entity.ts"
+      - "api/mikro-orm.config.ts"
+      - "api/src/platform/config/database.config.ts"
+      - ".github/workflows/deploy-database-erd.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: database-erd-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: api
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: erd
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres -d erd"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.3.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.0.0
+          cache: pnpm
+          cache-dependency-path: api/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install --yes postgresql-client
+
+      - name: Apply migrations
+        env:
+          NODE_ENV: test
+          DB_HOST: 127.0.0.1
+          DB_PORT: 5432
+          DB_USER: postgres
+          DB_PASSWORD: postgres
+          DB_NAME: erd
+        run: pnpm db:migration:up
+
+      - name: Dump schema
+        env:
+          PGPASSWORD: postgres
+        run: >-
+          pg_dump
+          --schema-only
+          --no-owner
+          --no-privileges
+          --exclude-table=mikro_orm_migrations
+          --host 127.0.0.1
+          --port 5432
+          --username postgres
+          --dbname erd
+          --file schema.sql
+
+      - name: Build Liam ERD
+        run: >-
+          pnpm dlx @liam-hq/cli@0.7.24 erd build
+          --input schema.sql
+          --format postgres
+          --output-dir ../database-erd
+
+      - name: Check Pages setup
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+        run: >-
+          gh api
+          --silent
+          "repos/${REPOSITORY}/pages"
+          || {
+            echo "::error::GitHub Pages is not enabled for this repository. Enable Pages in repository Settings > Pages and set Source to GitHub Actions, then rerun this workflow.";
+            exit 1;
+          }
+
+      - name: Configure Pages
+        if: github.event_name != 'pull_request'
+        uses: actions/configure-pages@v6
+
+      - name: Upload Pages artifact
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: database-erd
+
+      - name: Upload PR artifact
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v6
+        with:
+          name: database-erd
+          path: database-erd
+
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
