@@ -1,6 +1,6 @@
 import type { EntityManager } from '@mikro-orm/postgresql';
-import { CartKind } from '../../cart/domain/enums/cart-kind.enum';
-import type { CartSnapshot } from '../../cart/app/cart.types';
+import { CartKind } from '../../../cart/domain/enums/cart-kind.enum';
+import type { CartSnapshot } from '../../../cart/app/cart.types';
 import { CouponPricingService } from './coupon-pricing.service';
 
 describe('CouponPricingService', () => {

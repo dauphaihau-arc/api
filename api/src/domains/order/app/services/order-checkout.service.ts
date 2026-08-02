@@ -6,40 +6,40 @@ import {
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import ms from 'ms';
-import { fromMinorUnits, toMinorUnits } from '~/platform/utils/money';
-import { MARKETPLACE_CURRENCIES } from '~/platform/config/marketplace.config';
+import { fromMinorUnits, toMinorUnits } from '../../../../platform/utils/money';
+import { MARKETPLACE_CURRENCIES } from '../../../../platform/config/marketplace.config';
 import {
   PRODUCT_INVENTORY_UPDATED_SSE_EVENT,
-} from '~/domains/product/app/events/product-inventory-sse.event';
-import { NotifyUserUseCase } from '~/integrations/notification/app/use-cases/notify-user/notify-user.use-case';
-import type { CartSnapshot } from '../../cart/app/cart.types';
-import { CurrentUserEntity } from '../../auth/infra/persistence/entities/current-user.entity';
-import { CouponPricingService } from '../../coupon/app/coupon-pricing.service';
-import { CouponUsageEntity } from '../../coupon/infra/persistence/entities/coupon-usage.entity';
-import { ProductEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product.entity';
-import { ShopEntity } from '../../shop/infra/persistence/entities/shop.entity';
-import { OrderEventActorType } from '../domain/enums/order-event-actor-type.enum';
-import { OrderEventType } from '../domain/enums/order-event-type.enum';
-import { PaymentType } from '../domain/enums/payment-type.enum';
-import { OrderShippingStatus } from '../domain/enums/order-shipping-status.enum';
-import { OrderStatus } from '../domain/enums/order-status.enum';
-import { OrderEntity } from '../infra/persistence/entities/order.entity';
-import { OrderItemEntity } from '../infra/persistence/entities/order-item.entity';
+} from '../../../product/app/events/product-inventory-sse.event';
+import { NotifyUserUseCase } from '../../../../integrations/notification/app/use-cases/notify-user/notify-user.use-case';
+import type { CartSnapshot } from '../../../cart/app/cart.types';
+import { CurrentUserEntity } from '../../../auth/infra/persistence/entities/current-user.entity';
+import { CouponPricingService } from '../../../coupon/app/services/coupon-pricing.service';
+import { CouponUsageEntity } from '../../../coupon/infra/persistence/entities/coupon-usage.entity';
+import { ProductEntity } from '../../../product/infra/persistence/mikro-orm/entities/product.entity';
+import { ShopEntity } from '../../../shop/infra/persistence/entities/shop.entity';
+import { OrderEventActorType } from '../../domain/enums/order-event-actor-type.enum';
+import { OrderEventType } from '../../domain/enums/order-event-type.enum';
+import { PaymentType } from '../../domain/enums/payment-type.enum';
+import { OrderShippingStatus } from '../../domain/enums/order-shipping-status.enum';
+import { OrderStatus } from '../../domain/enums/order-status.enum';
+import { OrderEntity } from '../../infra/persistence/entities/order.entity';
+import { OrderItemEntity } from '../../infra/persistence/entities/order-item.entity';
 import type { LoadedCheckoutQuote } from './load-checkout-quote.service';
 import { OrderCheckoutOutboxService } from './order-checkout-outbox.service';
-import { CheckoutStockReservationService } from '../../checkout/app/checkout-stock-reservation.service';
+import { CheckoutStockReservationService } from '../../../checkout/app/services/checkout-stock-reservation.service';
 import { OrderEventsService } from './order-events.service';
 import {
   buildSellerOrderCreatedNotification,
   getSellerOrderNotificationRecipientId,
-} from './seller-order-notification';
-import { getRequiredOrderNumber } from './order-number';
+} from '../seller-order-notification';
+import { getRequiredOrderNumber } from '../order-number';
 import type {
   CheckoutActor,
   CreateOrderResult,
   ShippingAddressInput,
   ShopAdjustmentInput,
-} from './order.types';
+} from '../order.types';
 import { OrderTotalPolicyService } from './order-total-policy.service';
 
 const SHIPPING_ESTIMATED_DELIVERY_MS = ms('7d');
@@ -102,6 +102,7 @@ export class OrderCheckoutService {
       const usageRepository = entityManager.getRepository(CouponUsageEntity);
       const createdOrders: OrderEntity[] = [];
       let checkoutOutboxEventId: string | undefined;
+
       const inventoryReservationItems: Array<{
         inventoryId: string;
         productId: string;

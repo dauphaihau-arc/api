@@ -1,5 +1,5 @@
 import type { CartRepository } from '~/domains/cart/app/ports/cart.repository';
-import type { CreateCheckoutQuoteService } from '../../create-checkout-quote.service';
+import type { CreateCheckoutQuoteService } from '../../services/create-checkout-quote.service';
 import { CreateGuestCheckoutQuoteFromCartUseCase } from './create-guest-checkout-quote-from-cart.use-case';
 
 describe('CreateGuestCheckoutQuoteFromCartUseCase', () => {

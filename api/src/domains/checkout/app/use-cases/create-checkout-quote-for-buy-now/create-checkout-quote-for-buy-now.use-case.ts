@@ -8,7 +8,7 @@ import {
   AddressNotFoundError,
   TemporaryCartNotFoundError,
 } from '../../../../order/app/errors/order-app.error';
-import { CreateCheckoutQuoteService } from '../../create-checkout-quote.service';
+import { CreateCheckoutQuoteService } from '../../services/create-checkout-quote.service';
 
 @Injectable()
 export class CreateCheckoutQuoteForBuyNowUseCase {

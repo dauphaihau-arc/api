@@ -27,7 +27,7 @@ import {
 } from '~/platform/config/checkout.config';
 import { OptionalJwtAuthGuard } from '~/domains/auth/api/guard/optional-jwt-auth.guard';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
-import { CouponPricingService } from '~/domains/coupon/app/coupon-pricing.service';
+import { CouponPricingService } from '~/domains/coupon/app/services/coupon-pricing.service';
 import { AddCartItemUseCase } from '../../app/use-cases/add-cart-item/add-cart-item.use-case';
 import { GetCartUseCase } from '../../app/use-cases/get-cart/get-cart.use-case';
 import { MergeGuestCartUseCase } from '../../app/use-cases/merge-guest-cart/merge-guest-cart.use-case';

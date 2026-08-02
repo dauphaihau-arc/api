@@ -3,7 +3,7 @@ import type { EventEmitter2 } from '@nestjs/event-emitter';
 import { OrderShippingStatus } from '../../../domain/enums/order-shipping-status.enum';
 import { OrderStatus } from '../../../domain/enums/order-status.enum';
 import { SellerShippedOrderCancelNotAllowedError } from '../../errors/order-app.error';
-import type { OrderCancellationService } from '../../order-cancellation.service';
+import type { OrderCancellationService } from '../../services/order-cancellation.service';
 import { UpdateShopOrderStatusUseCase } from './update-shop-order-status.use-case';
 
 describe('UpdateShopOrderStatusUseCase', () => {

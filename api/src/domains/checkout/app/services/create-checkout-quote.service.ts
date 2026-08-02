@@ -5,34 +5,34 @@ import ms from 'ms';
 import {
   appJobDeduplicationKey,
   appJobName,
-} from '~/integrations/queue/app/app-job.types';
-import { toMinorUnits } from '~/platform/utils/money';
-import { MARKETPLACE_CURRENCIES } from '~/platform/config/marketplace.config';
-import { CurrentUserEntity } from '~/domains/auth/infra/persistence/entities/current-user.entity';
-import type { CartSnapshot } from '~/domains/cart/app/cart.types';
-import { CouponPricingService } from '~/domains/coupon/app/coupon-pricing.service';
-import { StorefrontMarketContextService } from '~/domains/product/app/services/storefront-market-context.service';
-import { ProductInventoryEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-inventory.entity';
-import { JobDispatcher } from '~/integrations/queue/app/ports/job-dispatcher';
+} from '../../../../integrations/queue/app/app-job.types';
+import { toMinorUnits } from '../../../../platform/utils/money';
+import { MARKETPLACE_CURRENCIES } from '../../../../platform/config/marketplace.config';
+import { CurrentUserEntity } from '../../../auth/infra/persistence/entities/current-user.entity';
+import type { CartSnapshot } from '../../../cart/app/cart.types';
+import { CouponPricingService } from '../../../coupon/app/services/coupon-pricing.service';
+import { StorefrontMarketContextService } from '../../../product/app/services/storefront-market-context.service';
+import { ProductInventoryEntity } from '../../../product/infra/persistence/mikro-orm/entities/product-inventory.entity';
+import { JobDispatcher } from '../../../../integrations/queue/app/ports/job-dispatcher';
 import {
   CheckoutQuoteActorType,
   CheckoutQuoteEntity,
-} from '../infra/persistence/entities/checkout-quote.entity';
-import { CheckoutQuoteItemEntity } from '../infra/persistence/entities/checkout-quote-item.entity';
+} from '../../infra/persistence/entities/checkout-quote.entity';
+import { CheckoutQuoteItemEntity } from '../../infra/persistence/entities/checkout-quote-item.entity';
 import {
   CheckoutStockReservationEntity,
   CheckoutStockReservationStatus,
-} from '../infra/persistence/entities/checkout-stock-reservation.entity';
+} from '../../infra/persistence/entities/checkout-stock-reservation.entity';
 import { CheckoutStockReservationService } from './checkout-stock-reservation.service';
-import { CheckoutQuoteNoItemsError } from '../../order/app/errors/order-app.error';
+import { CheckoutQuoteNoItemsError } from '../../../order/app/errors/order-app.error';
 import type {
   CheckoutQuoteResult,
   CheckoutQuoteShopSummary,
   PricedCartItem,
   ShippingAddressInput,
   ShopAdjustmentInput,
-} from '../../order/app/order.types';
-import { OrderTotalPolicyService } from '../../order/app/order-total-policy.service';
+} from '../../../order/app/order.types';
+import { OrderTotalPolicyService } from '../../../order/app/services/order-total-policy.service';
 
 const QUOTE_TTL_MS = ms('30m');
 

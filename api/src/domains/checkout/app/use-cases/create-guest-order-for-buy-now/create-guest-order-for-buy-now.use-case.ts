@@ -17,9 +17,9 @@ import {
   CheckoutQuoteCartChangedError,
   TemporaryCartNotFoundError,
 } from '../../../../order/app/errors/order-app.error';
-import { GuestOrderTrackingTokenService } from '../../guest-order-tracking-token.service';
-import { LoadCheckoutQuoteService } from '../../load-checkout-quote.service';
-import { OrderCheckoutService } from '../../../../order/app/order-checkout.service';
+import { GuestOrderTrackingTokenService } from '../../services/guest-order-tracking-token.service';
+import { LoadCheckoutQuoteService } from '../../services/load-checkout-quote.service';
+import { OrderCheckoutService } from '../../../../order/app/services/order-checkout.service';
 
 @Injectable()
 export class CreateGuestOrderForBuyNowUseCase {

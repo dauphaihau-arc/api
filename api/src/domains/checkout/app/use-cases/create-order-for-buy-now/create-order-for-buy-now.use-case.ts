@@ -8,8 +8,8 @@ import {
   CheckoutQuoteCartChangedError,
   TemporaryCartNotFoundError,
 } from '../../../../order/app/errors/order-app.error';
-import { LoadCheckoutQuoteService } from '../../load-checkout-quote.service';
-import { OrderCheckoutService } from '../../../../order/app/order-checkout.service';
+import { LoadCheckoutQuoteService } from '../../services/load-checkout-quote.service';
+import { OrderCheckoutService } from '../../../../order/app/services/order-checkout.service';
 
 @Injectable()
 export class CreateOrderForBuyNowUseCase {

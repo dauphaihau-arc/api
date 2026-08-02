@@ -19,7 +19,7 @@ import { dispatchBestSellerRankingRefresh } from '../../best-seller-ranking-refr
 import { ORDER_UPDATED_SSE_EVENT } from '../../events/order-sse.event';
 import { buildScopedOrderIdentifierWhere } from '../../order-identifier';
 import { getRequiredOrderNumber } from '../../order-number';
-import { OrderEventsService } from '../../order-events.service';
+import { OrderEventsService } from '../../services/order-events.service';
 import { buildShopOrderDetail } from '../../shop-order-detail.loader';
 import type { ShopOrderDetail } from '../../order.types';
 

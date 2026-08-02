@@ -6,7 +6,7 @@ import { UserStatus } from '../../../../auth/domain/enums/user-status.enum';
 import { OrderShippingStatus } from '../../../domain/enums/order-shipping-status.enum';
 import { OrderStatus } from '../../../domain/enums/order-status.enum';
 import { BuyerShippedOrderCancelNotAllowedError } from '../../errors/order-app.error';
-import type { OrderCancellationService } from '../../order-cancellation.service';
+import type { OrderCancellationService } from '../../services/order-cancellation.service';
 import { RequestOrderCancelUseCase } from './request-order-cancel.use-case';
 
 describe('RequestOrderCancelUseCase', () => {

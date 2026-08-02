@@ -1,5 +1,5 @@
 import type { CartSnapshot } from '../../cart/app/cart.types';
-import type { LoadedCheckoutQuote } from '../../order/app/load-checkout-quote.service';
+import type { LoadedCheckoutQuote } from '../../order/app/services/load-checkout-quote.service';
 
 export function doesCartMatchCheckoutQuote(
   cart: CartSnapshot,

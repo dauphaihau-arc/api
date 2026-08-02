@@ -1,10 +1,10 @@
 import type { EntityManager } from '@mikro-orm/postgresql';
 import type { ModuleRef } from '@nestjs/core';
-import type { PaymentGateway } from '~/integrations/payment/app/ports/payment-gateway';
-import type { NotifyUserUseCase } from '~/integrations/notification/app/use-cases/notify-user/notify-user.use-case';
-import type { JobDispatcher } from '~/integrations/queue/app/ports/job-dispatcher';
-import { PaymentType } from '../domain/enums/payment-type.enum';
-import { OrderStatus } from '../domain/enums/order-status.enum';
+import type { PaymentGateway } from '../../../../integrations/payment/app/ports/payment-gateway';
+import type { NotifyUserUseCase } from '../../../../integrations/notification/app/use-cases/notify-user/notify-user.use-case';
+import type { JobDispatcher } from '../../../../integrations/queue/app/ports/job-dispatcher';
+import { PaymentType } from '../../domain/enums/payment-type.enum';
+import { OrderStatus } from '../../domain/enums/order-status.enum';
 import { OrderRefundService } from './order-refund.service';
 
 describe('OrderRefundService', () => {

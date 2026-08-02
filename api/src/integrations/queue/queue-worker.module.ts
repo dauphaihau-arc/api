@@ -8,7 +8,7 @@ import { validateAppEnv } from '~/platform/config/app-env.config';
 import { buildDatabaseConfig } from '~/platform/config/database.config';
 import { OrderModule } from '~/domains/order/order.module';
 import { CurrencyModule } from '~/integrations/currency/currency.module';
-import { OrderCheckoutOutboxWorkerService } from '~/domains/order/app/order-checkout-outbox-worker.service';
+import { OrderCheckoutOutboxWorkerService } from '~/domains/order/app/services/order-checkout-outbox-worker.service';
 import { QueueModule } from './queue.module';
 import { BullMqWorkerService } from './infra/bullmq-worker.service';
 

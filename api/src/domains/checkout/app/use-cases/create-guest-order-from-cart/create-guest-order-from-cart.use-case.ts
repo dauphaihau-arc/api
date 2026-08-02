@@ -12,13 +12,13 @@ import { CartRepository } from '~/domains/cart/app/ports/cart.repository';
 import { JobDispatcher } from '~/integrations/queue/app/ports/job-dispatcher';
 import { doesCartMatchCheckoutQuote } from '../../checkout-quote-cart-matcher';
 import { buildGuestOrderTrackingUrl } from '../../guest-order-tracking-url.builder';
-import { GuestOrderTrackingTokenService } from '../../guest-order-tracking-token.service';
+import { GuestOrderTrackingTokenService } from '../../services/guest-order-tracking-token.service';
 import {
   CartNotFoundError,
   CheckoutQuoteCartChangedError,
 } from '../../../../order/app/errors/order-app.error';
-import { LoadCheckoutQuoteService } from '../../load-checkout-quote.service';
-import { OrderCheckoutService } from '../../../../order/app/order-checkout.service';
+import { LoadCheckoutQuoteService } from '../../services/load-checkout-quote.service';
+import { OrderCheckoutService } from '../../../../order/app/services/order-checkout.service';
 
 @Injectable()
 export class CreateGuestOrderFromCartUseCase {

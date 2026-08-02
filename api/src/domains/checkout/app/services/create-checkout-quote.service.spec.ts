@@ -1,11 +1,11 @@
 import type { EntityManager } from '@mikro-orm/postgresql';
-import { OrderTotalLimitExceededError } from '../../order/app/errors/order-app.error';
+import { OrderTotalLimitExceededError } from '../../../order/app/errors/order-app.error';
 import type { CheckoutStockReservationService } from './checkout-stock-reservation.service';
 import { CreateCheckoutQuoteService } from './create-checkout-quote.service';
-import type { CouponPricingService } from '../../coupon/app/coupon-pricing.service';
-import type { StorefrontMarketContextService } from '../../product/app/services/storefront-market-context.service';
-import type { OrderTotalPolicyService } from '../../order/app/order-total-policy.service';
-import type { JobDispatcher } from '~/integrations/queue/app/ports/job-dispatcher';
+import type { CouponPricingService } from '../../../coupon/app/services/coupon-pricing.service';
+import type { StorefrontMarketContextService } from '../../../product/app/services/storefront-market-context.service';
+import type { OrderTotalPolicyService } from '../../../order/app/services/order-total-policy.service';
+import type { JobDispatcher } from '../../../../integrations/queue/app/ports/job-dispatcher';
 
 describe('CreateCheckoutQuoteService', () => {
   it('rejects quote creation when the total exceeds the currency-specific limit', async () => {

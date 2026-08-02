@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type Stripe from 'stripe';
-import { OrderPaymentService } from '../../order-payment.service';
+import { OrderPaymentService } from '../../services/order-payment.service';
 
 @Injectable()
 export class HandleStripeWebhookUseCase {

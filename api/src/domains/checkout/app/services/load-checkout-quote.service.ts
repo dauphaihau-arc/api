@@ -3,18 +3,18 @@ import { Injectable } from '@nestjs/common';
 import {
   CheckoutQuoteActorType,
   CheckoutQuoteEntity,
-} from '../infra/persistence/entities/checkout-quote.entity';
+} from '../../infra/persistence/entities/checkout-quote.entity';
 import {
   CheckoutQuoteExpiredError,
   CheckoutQuoteNotFoundError,
-} from '../../order/app/errors/order-app.error';
+} from '../../../order/app/errors/order-app.error';
 import { CheckoutStockReservationService } from './checkout-stock-reservation.service';
 import type {
   CheckoutQuoteItemSummary,
   CheckoutQuoteShopSummary,
   ShippingAddressInput,
   ShopAdjustmentInput,
-} from '../../order/app/order.types';
+} from '../../../order/app/order.types';
 
 export interface LoadedCheckoutQuote {
   id: string;

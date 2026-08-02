@@ -3,19 +3,19 @@ import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import {
   PRODUCT_INVENTORY_UPDATED_SSE_EVENT,
-} from '~/domains/product/app/events/product-inventory-sse.event';
-import { JobDispatcher } from '~/integrations/queue/app/ports/job-dispatcher';
-import { CouponUsageEntity } from '../../coupon/infra/persistence/entities/coupon-usage.entity';
-import { OrderEventActorType } from '../domain/enums/order-event-actor-type.enum';
-import { OrderEventType } from '../domain/enums/order-event-type.enum';
-import { OrderStatus } from '../domain/enums/order-status.enum';
-import { OrderEntity } from '../infra/persistence/entities/order.entity';
-import { OrderItemEntity } from '../infra/persistence/entities/order-item.entity';
-import { dispatchBestSellerRankingRefresh } from './best-seller-ranking-refresh';
-import { CheckoutStockReservationService } from '../../checkout/app/checkout-stock-reservation.service';
+} from '../../../product/app/events/product-inventory-sse.event';
+import { JobDispatcher } from '../../../../integrations/queue/app/ports/job-dispatcher';
+import { CouponUsageEntity } from '../../../coupon/infra/persistence/entities/coupon-usage.entity';
+import { OrderEventActorType } from '../../domain/enums/order-event-actor-type.enum';
+import { OrderEventType } from '../../domain/enums/order-event-type.enum';
+import { OrderStatus } from '../../domain/enums/order-status.enum';
+import { OrderEntity } from '../../infra/persistence/entities/order.entity';
+import { OrderItemEntity } from '../../infra/persistence/entities/order-item.entity';
+import { dispatchBestSellerRankingRefresh } from '../best-seller-ranking-refresh';
+import { CheckoutStockReservationService } from '../../../checkout/app/services/checkout-stock-reservation.service';
 import { OrderEventsService } from './order-events.service';
-import { getRequiredOrderNumber } from './order-number';
-import type { CreateOrderResult } from './order.types';
+import { getRequiredOrderNumber } from '../order-number';
+import type { CreateOrderResult } from '../order.types';
 
 @Injectable()
 export class OrderPaymentService {

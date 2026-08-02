@@ -1,23 +1,23 @@
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
-import { fromMinorUnits, toMinorUnits } from '~/platform/utils/money';
-import type { CartSnapshot } from '../../cart/app/cart.types';
+import { fromMinorUnits, toMinorUnits } from '../../../../platform/utils/money';
+import type { CartSnapshot } from '../../../cart/app/cart.types';
 import type {
   PricedCartItem,
   PricedCartSummary,
   ShippingAddressInput,
   ShopAdjustmentInput,
-} from '../../order/app/order.types';
+} from '../../../order/app/order.types';
 import {
   computeCouponDiscount,
   couponAppliesToProduct,
   couponMeetsMinimum,
   isCouponActive,
-} from '../../order/app/order.types';
-import { CouponType } from '../domain/enums/coupon-type.enum';
-import { CouponUsageEntity } from '../infra/persistence/entities/coupon-usage.entity';
-import { CouponEntity } from '../infra/persistence/entities/coupon.entity';
-import { ProductShippingProfileEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-shipping-profile.entity';
+} from '../../../order/app/order.types';
+import { CouponType } from '../../domain/enums/coupon-type.enum';
+import { CouponUsageEntity } from '../../infra/persistence/entities/coupon-usage.entity';
+import { CouponEntity } from '../../infra/persistence/entities/coupon.entity';
+import { ProductShippingProfileEntity } from '../../../product/infra/persistence/mikro-orm/entities/product-shipping-profile.entity';
 
 @Injectable()
 export class CouponPricingService {

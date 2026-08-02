@@ -5,7 +5,7 @@ import {
   OnApplicationShutdown,
   OnModuleInit,
 } from '@nestjs/common';
-import { QUEUE_CONFIG, type QueueConfig } from '~/platform/config/queue.config';
+import { QUEUE_CONFIG, type QueueConfig } from '../../../../platform/config/queue.config';
 import { OrderCheckoutOutboxService } from './order-checkout-outbox.service';
 
 @Injectable()

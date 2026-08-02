@@ -1,21 +1,21 @@
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable, Logger } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
-import { fromMinorUnits } from '~/platform/utils/money';
-import { PaymentGateway } from '~/integrations/payment/app/ports/payment-gateway';
-import { NotifyUserUseCase } from '~/integrations/notification/app/use-cases/notify-user/notify-user.use-case';
-import { JobDispatcher } from '~/integrations/queue/app/ports/job-dispatcher';
-import { OrderEventActorType } from '../domain/enums/order-event-actor-type.enum';
-import { OrderEventType } from '../domain/enums/order-event-type.enum';
-import { PaymentType } from '../domain/enums/payment-type.enum';
-import { OrderStatus } from '../domain/enums/order-status.enum';
-import { OrderEntity } from '../infra/persistence/entities/order.entity';
+import { fromMinorUnits } from '../../../../platform/utils/money';
+import { PaymentGateway } from '../../../../integrations/payment/app/ports/payment-gateway';
+import { NotifyUserUseCase } from '../../../../integrations/notification/app/use-cases/notify-user/notify-user.use-case';
+import { JobDispatcher } from '../../../../integrations/queue/app/ports/job-dispatcher';
+import { OrderEventActorType } from '../../domain/enums/order-event-actor-type.enum';
+import { OrderEventType } from '../../domain/enums/order-event-type.enum';
+import { PaymentType } from '../../domain/enums/payment-type.enum';
+import { OrderStatus } from '../../domain/enums/order-status.enum';
+import { OrderEntity } from '../../infra/persistence/entities/order.entity';
 import { OrderEventsService } from './order-events.service';
 import {
   buildSellerOrderRefundNotification,
   getSellerOrderNotificationRecipientId,
-} from './seller-order-notification';
-import { getRequiredOrderNumber } from './order-number';
+} from '../seller-order-notification';
+import { getRequiredOrderNumber } from '../order-number';
 
 type RefundStatus = 'pending' | 'succeeded' | 'failed' | 'not_required';
 

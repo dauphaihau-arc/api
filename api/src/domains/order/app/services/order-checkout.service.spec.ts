@@ -1,17 +1,17 @@
 import type { EventEmitter2 } from '@nestjs/event-emitter';
 import type { EntityManager } from '@mikro-orm/postgresql';
-import type { CouponPricingService } from '../../coupon/app/coupon-pricing.service';
-import type { NotifyUserUseCase } from '~/integrations/notification/app/use-cases/notify-user/notify-user.use-case';
-import { CartKind } from '../../cart/domain/enums/cart-kind.enum';
+import type { CouponPricingService } from '../../../coupon/app/services/coupon-pricing.service';
+import type { NotifyUserUseCase } from '../../../../integrations/notification/app/use-cases/notify-user/notify-user.use-case';
+import { CartKind } from '../../../cart/domain/enums/cart-kind.enum';
 import type { OrderCheckoutOutboxService } from './order-checkout-outbox.service';
-import type { CheckoutStockReservationService } from '../../checkout/app/checkout-stock-reservation.service';
+import type { CheckoutStockReservationService } from '../../../checkout/app/services/checkout-stock-reservation.service';
 import { OrderCheckoutService } from './order-checkout.service';
-import type { CartSnapshot } from '../../cart/app/cart.types';
-import type { PricedCartSummary } from './order.types';
-import { PaymentType } from '../domain/enums/payment-type.enum';
-import { OrderStatus } from '../domain/enums/order-status.enum';
+import type { CartSnapshot } from '../../../cart/app/cart.types';
+import type { PricedCartSummary } from '../order.types';
+import { PaymentType } from '../../domain/enums/payment-type.enum';
+import { OrderStatus } from '../../domain/enums/order-status.enum';
 import type { OrderTotalPolicyService } from './order-total-policy.service';
-import { OrderTotalLimitExceededError } from './errors/order-app.error';
+import { OrderTotalLimitExceededError } from '../errors/order-app.error';
 
 // This spec keeps the checkout matrix in one place because the setup is shared across scenarios.
 // eslint-disable-next-line max-lines-per-function

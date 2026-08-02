@@ -5,7 +5,7 @@ import {
   CheckoutSessionIdRequiredError,
   CheckoutSessionNotFoundError,
 } from '../../../../order/app/errors/order-app.error';
-import { OrderPaymentService } from '../../../../order/app/order-payment.service';
+import { OrderPaymentService } from '../../../../order/app/services/order-payment.service';
 
 @Injectable()
 export class GetOrdersByCheckoutSessionUseCase {

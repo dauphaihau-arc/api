@@ -24,7 +24,7 @@ import { CreateGuestCheckoutQuoteForBuyNowUseCase } from '~/domains/checkout/app
 import { CreateGuestOrderForBuyNowUseCase } from '~/domains/checkout/app/use-cases/create-guest-order-for-buy-now/create-guest-order-for-buy-now.use-case';
 import { CreateGuestCheckoutQuoteFromCartUseCase } from '~/domains/checkout/app/use-cases/create-guest-checkout-quote-from-cart/create-guest-checkout-quote-from-cart.use-case';
 import { CreateGuestOrderFromCartUseCase } from '~/domains/checkout/app/use-cases/create-guest-order-from-cart/create-guest-order-from-cart.use-case';
-import { GuestOrderTrackingTokenService } from '../../app/guest-order-tracking-token.service';
+import { GuestOrderTrackingTokenService } from '../../app/services/guest-order-tracking-token.service';
 import { GetOrdersByCheckoutSessionUseCase } from '~/domains/checkout/app/use-cases/get-orders-by-checkout-session/get-orders-by-checkout-session.use-case';
 import { LookupGuestOrdersUseCase } from '~/domains/checkout/app/use-cases/lookup-guest-orders/lookup-guest-orders.use-case';
 import {

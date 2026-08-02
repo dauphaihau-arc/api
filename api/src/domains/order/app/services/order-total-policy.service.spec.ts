@@ -1,4 +1,4 @@
-import { OrderTotalLimitExceededError } from './errors/order-app.error';
+import { OrderTotalLimitExceededError } from '../errors/order-app.error';
 import { OrderTotalPolicyService } from './order-total-policy.service';
 
 describe('OrderTotalPolicyService', () => {

@@ -3,7 +3,7 @@ import { CheckoutStockReservationService } from './checkout-stock-reservation.se
 import {
   CheckoutQuoteReservationOutOfStockError,
   CheckoutQuoteReservationUnavailableError,
-} from '../../order/app/errors/order-app.error';
+} from '../../../order/app/errors/order-app.error';
 
 describe('CheckoutStockReservationService', () => {
   it('allocates stock through the shared inventory boundary', async () => {

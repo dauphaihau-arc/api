@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { CartRepository } from '~/domains/cart/app/ports/cart.repository';
 import type { CreateGuestCheckoutQuoteFromCartDto } from '../../../api/rest/dto/create-guest-checkout-quote-from-cart.dto';
 import { CartNotFoundError } from '../../../../order/app/errors/order-app.error';
-import { CreateCheckoutQuoteService } from '../../create-checkout-quote.service';
+import { CreateCheckoutQuoteService } from '../../services/create-checkout-quote.service';
 
 @Injectable()
 export class CreateGuestCheckoutQuoteFromCartUseCase {

@@ -3,7 +3,7 @@ import { CartRepository } from '~/domains/cart/app/ports/cart.repository';
 import { CartKind } from '~/domains/cart/domain/enums/cart-kind.enum';
 import type { CreateGuestCheckoutQuoteForBuyNowDto } from '../../../api/rest/dto/create-guest-checkout-quote-for-buy-now.dto';
 import { TemporaryCartNotFoundError } from '../../../../order/app/errors/order-app.error';
-import { CreateCheckoutQuoteService } from '../../create-checkout-quote.service';
+import { CreateCheckoutQuoteService } from '../../services/create-checkout-quote.service';
 
 @Injectable()
 export class CreateGuestCheckoutQuoteForBuyNowUseCase {

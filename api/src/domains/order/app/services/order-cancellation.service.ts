@@ -2,12 +2,12 @@ import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
 import {
   buildProductInventoryUpdatedSseEvent,
-} from '~/domains/product/app/events/product-inventory-sse.event';
-import { CouponUsageEntity } from '../../coupon/infra/persistence/entities/coupon-usage.entity';
-import { OrderStatus } from '../domain/enums/order-status.enum';
-import { OrderEntity } from '../infra/persistence/entities/order.entity';
-import { OrderItemEntity } from '../infra/persistence/entities/order-item.entity';
-import { CheckoutStockReservationService } from '../../checkout/app/checkout-stock-reservation.service';
+} from '../../../product/app/events/product-inventory-sse.event';
+import { CouponUsageEntity } from '../../../coupon/infra/persistence/entities/coupon-usage.entity';
+import { OrderStatus } from '../../domain/enums/order-status.enum';
+import { OrderEntity } from '../../infra/persistence/entities/order.entity';
+import { OrderItemEntity } from '../../infra/persistence/entities/order-item.entity';
+import { CheckoutStockReservationService } from '../../../checkout/app/services/checkout-stock-reservation.service';
 import { OrderRefundService } from './order-refund.service';
 
 @Injectable()

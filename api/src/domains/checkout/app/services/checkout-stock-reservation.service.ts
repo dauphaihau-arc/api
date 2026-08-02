@@ -7,17 +7,17 @@ import {
 } from '@nestjs/common';
 import {
   buildProductInventoryUpdatedSseEvent,
-} from '~/domains/product/app/events/product-inventory-sse.event';
-import { ProductInventoryEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-inventory.entity';
+} from '../../../product/app/events/product-inventory-sse.event';
+import { ProductInventoryEntity } from '../../../product/infra/persistence/mikro-orm/entities/product-inventory.entity';
 import {
   CheckoutQuoteReservationUnavailableError,
   CheckoutQuoteReservationOutOfStockError,
-} from '../../order/app/errors/order-app.error';
+} from '../../../order/app/errors/order-app.error';
 import {
   CheckoutStockReservationEntity,
   CheckoutStockReservationStatus,
-} from '../infra/persistence/entities/checkout-stock-reservation.entity';
-import { CheckoutQuoteEntity } from '../infra/persistence/entities/checkout-quote.entity';
+} from '../../infra/persistence/entities/checkout-stock-reservation.entity';
+import { CheckoutQuoteEntity } from '../../infra/persistence/entities/checkout-quote.entity';
 
 @Injectable()
 export class CheckoutStockReservationService {

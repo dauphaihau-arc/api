@@ -2,7 +2,7 @@ import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import { UserStatus } from '~/domains/auth/domain/enums/user-status.enum';
 import type { CartRepository } from '~/domains/cart/app/ports/cart.repository';
 import type { GetMyAddressUseCase } from '~/domains/user/app/use-cases/get-my-address/get-my-address.use-case';
-import type { CreateCheckoutQuoteService } from '../../create-checkout-quote.service';
+import type { CreateCheckoutQuoteService } from '../../services/create-checkout-quote.service';
 import { CreateCheckoutQuoteFromCartUseCase } from './create-checkout-quote-from-cart.use-case';
 
 describe('CreateCheckoutQuoteFromCartUseCase', () => {

@@ -18,7 +18,7 @@ import {
   SellerRefundNotAllowedError,
   SellerRefundRequiresCardPaymentError,
 } from '../../errors/order-app.error';
-import { OrderEventsService } from '../../order-events.service';
+import { OrderEventsService } from '../../services/order-events.service';
 import { buildScopedOrderIdentifierWhere } from '../../order-identifier';
 import { buildShopOrderDetail } from '../../shop-order-detail.loader';
 import type { ShopOrderDetail } from '../../order.types';

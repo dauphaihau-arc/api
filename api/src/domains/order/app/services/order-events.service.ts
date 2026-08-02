@@ -1,10 +1,10 @@
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
-import { OrderEventActorType } from '../domain/enums/order-event-actor-type.enum';
-import { OrderEventType } from '../domain/enums/order-event-type.enum';
-import { OrderEventEntity } from '../infra/persistence/entities/order-event.entity';
-import { OrderEntity } from '../infra/persistence/entities/order.entity';
-import type { OrderTimelineEvent } from './order.types';
+import { OrderEventActorType } from '../../domain/enums/order-event-actor-type.enum';
+import { OrderEventType } from '../../domain/enums/order-event-type.enum';
+import { OrderEventEntity } from '../../infra/persistence/entities/order-event.entity';
+import { OrderEntity } from '../../infra/persistence/entities/order.entity';
+import type { OrderTimelineEvent } from '../order.types';
 
 type RecordOrderEventInput = {
   order: OrderEntity;

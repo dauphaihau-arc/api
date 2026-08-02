@@ -18,7 +18,7 @@ import {
   BuyerShippedOrderCancelNotAllowedError,
   OrderNotFoundError,
 } from '../../errors/order-app.error';
-import { OrderCancellationService } from '../../order-cancellation.service';
+import { OrderCancellationService } from '../../services/order-cancellation.service';
 import { buildScopedOrderIdentifierWhere } from '../../order-identifier';
 import { getRequiredOrderNumber } from '../../order-number';
 import {
@@ -39,7 +39,7 @@ import {
   getSellerOrderNotificationRecipientId,
 } from '../../seller-order-notification';
 import { dispatchBestSellerRankingRefresh } from '../../best-seller-ranking-refresh';
-import { OrderEventsService } from '../../order-events.service';
+import { OrderEventsService } from '../../services/order-events.service';
 
 @Injectable()
 export class RequestOrderCancelUseCase {

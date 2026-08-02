@@ -2,9 +2,9 @@ import type { CartRepository } from '~/domains/cart/app/ports/cart.repository';
 import { CartKind } from '~/domains/cart/domain/enums/cart-kind.enum';
 import type { PaymentConfig } from '~/platform/config/payment.config';
 import type { JobDispatcher } from '~/integrations/queue/app/ports/job-dispatcher';
-import type { LoadCheckoutQuoteService } from '../../../../order/app/load-checkout-quote.service';
-import type { OrderCheckoutService } from '../../../../order/app/order-checkout.service';
-import type { GuestOrderTrackingTokenService } from '../../../../order/app/guest-order-tracking-token.service';
+import type { LoadCheckoutQuoteService } from '../../../../order/app/services/load-checkout-quote.service';
+import type { OrderCheckoutService } from '../../../../order/app/services/order-checkout.service';
+import type { GuestOrderTrackingTokenService } from '../../../../order/app/services/guest-order-tracking-token.service';
 import { CreateGuestOrderFromCartUseCase } from './create-guest-order-from-cart.use-case';
 
 describe('CreateGuestOrderFromCartUseCase', () => {

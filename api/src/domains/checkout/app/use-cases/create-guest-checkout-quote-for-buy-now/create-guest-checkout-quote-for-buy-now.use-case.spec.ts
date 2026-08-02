@@ -1,6 +1,6 @@
 import type { CartRepository } from '~/domains/cart/app/ports/cart.repository';
 import { CartKind } from '~/domains/cart/domain/enums/cart-kind.enum';
-import type { CreateCheckoutQuoteService } from '../../create-checkout-quote.service';
+import type { CreateCheckoutQuoteService } from '../../services/create-checkout-quote.service';
 import { CreateGuestCheckoutQuoteForBuyNowUseCase } from './create-guest-checkout-quote-for-buy-now.use-case';
 
 describe('CreateGuestCheckoutQuoteForBuyNowUseCase', () => {

@@ -1,8 +1,8 @@
 import type { EntityManager } from '@mikro-orm/postgresql';
-import type { PaymentGateway } from '~/integrations/payment/app/ports/payment-gateway';
-import { OrderStatus } from '../domain/enums/order-status.enum';
+import type { PaymentGateway } from '../../../../integrations/payment/app/ports/payment-gateway';
+import { OrderStatus } from '../../domain/enums/order-status.enum';
 import { OrderCheckoutOutboxService } from './order-checkout-outbox.service';
-import { OutboxEventStatus } from '../infra/persistence/entities/outbox-event.entity';
+import { OutboxEventStatus } from '../../infra/persistence/entities/outbox-event.entity';
 
 describe('OrderCheckoutOutboxService', () => {
   function buildService(options?: { paymentFails?: boolean; attemptCount?: number }) {

@@ -2,8 +2,8 @@ import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import { UserStatus } from '~/domains/auth/domain/enums/user-status.enum';
 import type { CartRepository } from '~/domains/cart/app/ports/cart.repository';
 import { CartKind } from '~/domains/cart/domain/enums/cart-kind.enum';
-import type { LoadCheckoutQuoteService } from '../../../../order/app/load-checkout-quote.service';
-import type { OrderCheckoutService } from '../../../../order/app/order-checkout.service';
+import type { LoadCheckoutQuoteService } from '../../../../order/app/services/load-checkout-quote.service';
+import type { OrderCheckoutService } from '../../../../order/app/services/order-checkout.service';
 import { CreateOrderFromCartUseCase } from './create-order-from-cart.use-case';
 
 describe('CreateOrderFromCartUseCase', () => {

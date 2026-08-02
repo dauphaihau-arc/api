@@ -9,7 +9,7 @@ import { OrderStatus } from '../../../domain/enums/order-status.enum';
 import { OrderEntity } from '../../../infra/persistence/entities/order.entity';
 import { OrderItemEntity } from '../../../infra/persistence/entities/order-item.entity';
 import { dispatchBestSellerRankingRefresh } from '../../best-seller-ranking-refresh';
-import { OrderEventsService } from '../../order-events.service';
+import { OrderEventsService } from '../../services/order-events.service';
 import { toAdminOrderDetail } from '../../admin-order-read-model';
 import { buildOrderIdentifierWhere } from '../../order-identifier';
 import {

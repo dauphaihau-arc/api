@@ -1,6 +1,6 @@
 import { CartController } from './cart.controller';
 import type { GuestCartSessionService } from './guest-cart-session.service';
-import type { CouponPricingService } from '~/domains/coupon/app/coupon-pricing.service';
+import type { CouponPricingService } from '~/domains/coupon/app/services/coupon-pricing.service';
 import type { AddCartItemUseCase } from '../../app/use-cases/add-cart-item/add-cart-item.use-case';
 import type { GetCartUseCase } from '../../app/use-cases/get-cart/get-cart.use-case';
 import type { MergeGuestCartUseCase } from '../../app/use-cases/merge-guest-cart/merge-guest-cart.use-case';

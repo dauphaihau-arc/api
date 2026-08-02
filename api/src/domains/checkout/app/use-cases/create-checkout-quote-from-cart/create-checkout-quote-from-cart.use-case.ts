@@ -4,7 +4,7 @@ import { CartRepository } from '~/domains/cart/app/ports/cart.repository';
 import { GetMyAddressUseCase } from '~/domains/user/app/use-cases/get-my-address/get-my-address.use-case';
 import type { CreateCheckoutQuoteFromCartDto } from '../../../api/rest/dto/create-checkout-quote-from-cart.dto';
 import { AddressNotFoundError, CartNotFoundError } from '../../../../order/app/errors/order-app.error';
-import { CreateCheckoutQuoteService } from '../../create-checkout-quote.service';
+import { CreateCheckoutQuoteService } from '../../services/create-checkout-quote.service';
 
 @Injectable()
 export class CreateCheckoutQuoteFromCartUseCase {

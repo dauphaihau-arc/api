@@ -1,15 +1,15 @@
 import { LockMode } from '@mikro-orm/core';
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable, Logger } from '@nestjs/common';
-import { PaymentGateway } from '~/integrations/payment/app/ports/payment-gateway';
-import { OrderEventActorType } from '../domain/enums/order-event-actor-type.enum';
-import { OrderEventType } from '../domain/enums/order-event-type.enum';
-import { OrderStatus } from '../domain/enums/order-status.enum';
-import { OrderEntity } from '../infra/persistence/entities/order.entity';
+import { PaymentGateway } from '../../../../integrations/payment/app/ports/payment-gateway';
+import { OrderEventActorType } from '../../domain/enums/order-event-actor-type.enum';
+import { OrderEventType } from '../../domain/enums/order-event-type.enum';
+import { OrderStatus } from '../../domain/enums/order-status.enum';
+import { OrderEntity } from '../../infra/persistence/entities/order.entity';
 import {
   OutboxEventEntity,
   OutboxEventStatus,
-} from '../infra/persistence/entities/outbox-event.entity';
+} from '../../infra/persistence/entities/outbox-event.entity';
 import { OrderEventsService } from './order-events.service';
 
 const CHECKOUT_OUTBOX_EVENT_NAME = 'order.checkout-session-requested';

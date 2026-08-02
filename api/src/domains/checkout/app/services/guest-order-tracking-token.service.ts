@@ -2,7 +2,7 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import ms from 'ms';
-import { parseDurationToMilliseconds } from '~/shared/libs/duration';
+import { parseDurationToMilliseconds } from '../../../../shared/libs/duration';
 
 type GuestOrderTrackingTokenPayload = {
   ['v']: 1;

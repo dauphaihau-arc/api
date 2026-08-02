@@ -3,8 +3,8 @@ import {
   CHECKOUT_CONFIG,
   getMaxOrderTotalMinor,
   type CheckoutConfig,
-} from '~/platform/config/checkout.config';
-import { OrderTotalLimitExceededError } from './errors/order-app.error';
+} from '../../../../platform/config/checkout.config';
+import { OrderTotalLimitExceededError } from '../errors/order-app.error';
 
 @Injectable()
 export class OrderTotalPolicyService {
