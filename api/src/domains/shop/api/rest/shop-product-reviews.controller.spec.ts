@@ -5,16 +5,15 @@ import { ProductReviewStatus } from '~/domains/product/domain/enums/product-revi
 import { ShopProductReviewsController } from './shop-product-reviews.controller';
 
 describe('ShopProductReviewsController', () => {
-  const shopRepository = {
-    findOwnedById: jest.fn(),
-    findById: jest.fn(),
+  const shopAccessService = {
+    assertCanManageShop: jest.fn(),
   };
   const listShopProductReviewsUseCase = {
     execute: jest.fn(),
   };
 
   const controller = new ShopProductReviewsController(
-    shopRepository as never,
+    shopAccessService as never,
     listShopProductReviewsUseCase as never,
   );
 
@@ -29,7 +28,7 @@ describe('ShopProductReviewsController', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    shopRepository.findOwnedById.mockResolvedValue({ id: 'shop-1' });
+    shopAccessService.assertCanManageShop.mockResolvedValue(undefined);
   });
 
   it('requires shop management permissions', () => {
@@ -149,5 +148,6 @@ describe('ShopProductReviewsController', () => {
         has_previous_page: false,
       },
     });
+    expect(shopAccessService.assertCanManageShop).toHaveBeenCalledWith(currentUser, 'shop-1');
   });
 });

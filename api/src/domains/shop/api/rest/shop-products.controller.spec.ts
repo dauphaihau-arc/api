@@ -4,11 +4,7 @@ import { ok } from '~/platform/application/result';
 import { ShopProductsController } from './shop-products.controller';
 
 describe('ShopProductsController', () => {
-  const shopRepository = {
-    findByActorUserId: jest.fn(),
-    findOwnedById: jest.fn(),
-    findById: jest.fn(),
-  };
+  const shopAccessService = { assertCanManageShop: jest.fn() };
   const createProductDraftFacadeUseCase = { execute: jest.fn() };
   const createProductDraftUseCase = { execute: jest.fn() };
   const getProductByIdUseCase = { execute: jest.fn() };
@@ -26,7 +22,7 @@ describe('ShopProductsController', () => {
   const bulkMutateShopProductsUseCase = { execute: jest.fn() };
 
   const controller = new ShopProductsController(
-    shopRepository as never,
+    shopAccessService as never,
     createProductDraftFacadeUseCase as never,
     createProductDraftUseCase as never,
     getProductByIdUseCase as never,
@@ -46,9 +42,7 @@ describe('ShopProductsController', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    shopRepository.findOwnedById.mockResolvedValue({
-      id: 'shop-1',
-    });
+    shopAccessService.assertCanManageShop.mockResolvedValue(undefined);
   });
 
   it('registers GET :id on the controller method', () => {
@@ -220,6 +214,10 @@ describe('ShopProductsController', () => {
       },
     });
     expect(getProductByIdUseCase.execute).toHaveBeenCalledWith('product-1');
+    expect(shopAccessService.assertCanManageShop).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: 'user-1' }),
+      'shop-1',
+    );
   });
 
   it('returns created product drafts in snake_case for the HTTP boundary', async () => {
@@ -369,5 +367,9 @@ describe('ShopProductsController', () => {
         has_previous_page: false,
       },
     });
+    expect(shopAccessService.assertCanManageShop).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: 'user-1' }),
+      'shop-1',
+    );
   });
 });

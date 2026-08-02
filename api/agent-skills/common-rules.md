@@ -40,7 +40,8 @@ Preferred order:
 1. Imports
 2. Constants / types
 3. Exported API (class/functions)
-4. Private helper functions
+4. `// ---------- Private helpers ----------`
+5. Private helper functions
 
 
 ## Validation
