@@ -2,7 +2,6 @@ import {
   BadRequestException,
   Body,
   Controller,
-  ForbiddenException,
   Get,
   Header,
   HttpCode,
@@ -62,6 +61,7 @@ import type {
   ProductDraftSummary,
 } from '~/domains/product/app/product.types';
 import { BulkMutateShopProductsDto } from '~/domains/shop/api/rest/dto/bulk-mutate-shop-products.dto';
+import { ShopAccessService } from '~/domains/shop/app/services/shop-access.service';
 import { CreateProductDraftFacadeDto } from '~/domains/shop/api/rest/dto/create-product-draft-facade.dto';
 import { CreateProductDto } from '~/domains/shop/api/rest/dto/create-product.dto';
 import {
@@ -77,7 +77,6 @@ import { SetProductShippingDto } from '~/domains/shop/api/rest/dto/set-product-s
 import { SetProductVariantsDto } from '~/domains/shop/api/rest/dto/set-product-variants.dto';
 import { UpdateProductDto } from '~/domains/shop/api/rest/dto/update-product.dto';
 import { mapProductAppErrorToHttpException } from '~/domains/shop/api/rest/product-http-error-mapper';
-import { ShopRepository } from '../../app/ports/shop.repository';
 import { toShopProductDetailResponse } from './shop-product-detail.presenter';
 import type { ShopProductDetailResponse } from './shop-product-detail.response';
 import { toShopProductListResponse } from './shop-product-list.presenter';
@@ -98,7 +97,7 @@ const shopProductRouteRateLimits = {
 @ApiCookieAuth('accessCookie')
 export class ShopProductsController {
   constructor(
-    private readonly shopRepository: ShopRepository,
+    private readonly shopAccessService: ShopAccessService,
     private readonly createProductDraftFacadeUseCase: CreateProductDraftFacadeUseCase,
     private readonly createProductDraftUseCase: CreateProductDraftUseCase,
     private readonly getProductByIdUseCase: GetProductByIdUseCase,
@@ -129,7 +128,7 @@ export class ShopProductsController {
     @Query() query: ListShopProductsQueryDto,
     @CurrentUser() currentUser: AuthenticatedUser,
   ): Promise<ShopProductListResponse> {
-    await this.assertActorCanManageShop(currentUser, shopId);
+    await this.shopAccessService.assertCanManageShop(currentUser, shopId);
 
     const result = await this.listShopProductsUseCase.execute({
       shopId,
@@ -157,7 +156,7 @@ export class ShopProductsController {
     @Param('id') id: string,
     @CurrentUser() currentUser: AuthenticatedUser,
   ): Promise<ShopProductDetailResponse> {
-    await this.assertActorCanManageShop(currentUser, shopId);
+    await this.shopAccessService.assertCanManageShop(currentUser, shopId);
 
     const product = await this.getProductOrThrow(shopId, id);
 
@@ -230,7 +229,7 @@ export class ShopProductsController {
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() body: GenerateProductDescriptionDto,
   ): Promise<GenerateProductDescriptionResponseDto> {
-    await this.assertActorCanManageShop(currentUser, shopId);
+    await this.shopAccessService.assertCanManageShop(currentUser, shopId);
 
     return {
       description: await this.generateProductDescriptionUseCase.execute(body),
@@ -253,7 +252,7 @@ export class ShopProductsController {
     succeeded_ids: string[];
     failed: Array<{ id: string; code: string; reason: string }>;
   }> {
-    await this.assertActorCanManageShop(currentUser, shopId);
+    await this.shopAccessService.assertCanManageShop(currentUser, shopId);
 
     const result = await this.bulkMutateShopProductsUseCase.execute(currentUser, {
       shopId,
@@ -453,37 +452,8 @@ export class ShopProductsController {
     shopId: string,
     productId: string,
   ): Promise<void> {
-    await this.assertActorCanManageShop(currentUser, shopId);
+    await this.shopAccessService.assertCanManageShop(currentUser, shopId);
     await this.getProductOrThrow(shopId, productId);
-  }
-
-  private async assertActorCanManageShop(
-    currentUser: AuthenticatedUser,
-    shopId: string,
-  ): Promise<void> {
-    if (currentUser.roles.includes('admin')) {
-      const shop = await this.shopRepository.findById(shopId);
-
-      if (!shop) {
-        throw new NotFoundException('Shop was not found');
-      }
-
-      return;
-    }
-
-    const shop = await this.shopRepository.findOwnedById(shopId, currentUser.userId);
-
-    if (shop) {
-      return;
-    }
-
-    const existingShop = await this.shopRepository.findById(shopId);
-
-    if (!existingShop) {
-      throw new NotFoundException('Shop was not found');
-    }
-
-    throw new ForbiddenException('You do not own this shop');
   }
 
   private async getProductOrThrow(

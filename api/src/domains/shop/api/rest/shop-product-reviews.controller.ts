@@ -1,9 +1,7 @@
 import {
   Controller,
-  ForbiddenException,
   Get,
   Header,
-  NotFoundException,
   Param,
   Query,
   UseGuards,
@@ -21,7 +19,7 @@ import { JwtAuthGuard } from '~/domains/auth/api/guard/jwt-auth.guard';
 import { PermissionsGuard } from '~/domains/auth/api/guard/permissions.guard';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import { ListShopProductReviewsUseCase } from '~/domains/product/app/use-cases/list-shop-product-reviews/list-shop-product-reviews.use-case';
-import { ShopRepository } from '../../app/ports/shop.repository';
+import { ShopAccessService } from '../../app/services/shop-access.service';
 import { ListShopProductReviewsQueryDto } from './dto/list-shop-product-reviews.query.dto';
 import { toShopProductReviewListResponse } from './shop-product-review.presenter';
 import type { ShopProductReviewListResponse } from './shop-product-review.response';
@@ -33,7 +31,7 @@ import type { ShopProductReviewListResponse } from './shop-product-review.respon
 @ApiCookieAuth('accessCookie')
 export class ShopProductReviewsController {
   constructor(
-    private readonly shopRepository: ShopRepository,
+    private readonly shopAccessService: ShopAccessService,
     private readonly listShopProductReviewsUseCase: ListShopProductReviewsUseCase,
   ) {}
 
@@ -50,7 +48,7 @@ export class ShopProductReviewsController {
     @Param('shop_id') shopId: string,
     @Query() query: ListShopProductReviewsQueryDto,
   ): Promise<ShopProductReviewListResponse> {
-    await this.assertActorCanManageShop(currentUser, shopId);
+    await this.shopAccessService.assertCanManageShop(currentUser, shopId);
 
     return this.listShopProductReviewsUseCase.execute({
       shopId,
@@ -60,34 +58,5 @@ export class ShopProductReviewsController {
       productId: query.productId,
       sort: query.sort,
     }).then(toShopProductReviewListResponse);
-  }
-
-  private async assertActorCanManageShop(
-    currentUser: AuthenticatedUser,
-    shopId: string,
-  ): Promise<void> {
-    if (currentUser.roles.includes('admin')) {
-      const shop = await this.shopRepository.findById(shopId);
-
-      if (!shop) {
-        throw new NotFoundException('Shop was not found');
-      }
-
-      return;
-    }
-
-    const shop = await this.shopRepository.findOwnedById(shopId, currentUser.userId);
-
-    if (shop) {
-      return;
-    }
-
-    const existingShop = await this.shopRepository.findById(shopId);
-
-    if (!existingShop) {
-      throw new NotFoundException('Shop was not found');
-    }
-
-    throw new ForbiddenException('You do not own this shop');
   }
 }

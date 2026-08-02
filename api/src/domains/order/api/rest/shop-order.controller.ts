@@ -1,10 +1,8 @@
 import {
   Body,
   Controller,
-  ForbiddenException,
   Get,
   Header,
-  NotFoundException,
   Param,
   Patch,
   Query,
@@ -22,7 +20,7 @@ import { CurrentUser } from '~/platform/decorators/current-user.decorator';
 import { JwtAuthGuard } from '~/domains/auth/api/guard/jwt-auth.guard';
 import { PermissionsGuard } from '~/domains/auth/api/guard/permissions.guard';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
-import { ShopRepository } from '~/domains/shop/app/ports/shop.repository';
+import { ShopAccessService } from '~/domains/shop/app/services/shop-access.service';
 import { GetShopOrderByIdUseCase } from '../../app/use-cases/get-shop-order-by-id/get-shop-order-by-id.use-case';
 import { ListShopOrdersUseCase } from '../../app/use-cases/list-shop-orders/list-shop-orders.use-case';
 import { UpdateShopOrderShipmentUseCase } from '../../app/use-cases/update-shop-order-shipment/update-shop-order-shipment.use-case';
@@ -48,7 +46,7 @@ import {
 @ApiCookieAuth('accessCookie')
 export class ShopOrderController {
   constructor(
-    private readonly shopRepository: ShopRepository,
+    private readonly shopAccessService: ShopAccessService,
     private readonly listShopOrdersUseCase: ListShopOrdersUseCase,
     private readonly getShopOrderByIdUseCase: GetShopOrderByIdUseCase,
     private readonly updateShopOrderStatusUseCase: UpdateShopOrderStatusUseCase,
@@ -69,7 +67,7 @@ export class ShopOrderController {
     @Param('shop_id') shopId: string,
     @Query() query: ListShopOrdersQueryDto,
   ) {
-    await this.assertActorCanManageShop(currentUser, shopId);
+    await this.shopAccessService.assertCanManageShop(currentUser, shopId);
 
     return this.listShopOrdersUseCase.execute(shopId, query)
       .then(toShopOrderListResponse);
@@ -89,7 +87,7 @@ export class ShopOrderController {
     @Param('shop_id') shopId: string,
     @Param('order_id') orderId: string,
   ) {
-    await this.assertActorCanManageShop(currentUser, shopId);
+    await this.shopAccessService.assertCanManageShop(currentUser, shopId);
 
     try {
       return toShopOrderDetailResponse(
@@ -116,7 +114,7 @@ export class ShopOrderController {
     @Param('order_id') orderId: string,
     @Body() body: UpdateShopOrderStatusDto,
   ) {
-    await this.assertActorCanManageShop(currentUser, shopId);
+    await this.shopAccessService.assertCanManageShop(currentUser, shopId);
 
     try {
       return toShopOrderDetailResponse(
@@ -143,7 +141,7 @@ export class ShopOrderController {
     @Param('order_id') orderId: string,
     @Body() body: UpdateShopOrderShipmentDto,
   ) {
-    await this.assertActorCanManageShop(currentUser, shopId);
+    await this.shopAccessService.assertCanManageShop(currentUser, shopId);
 
     try {
       return toShopOrderDetailResponse(
@@ -170,7 +168,7 @@ export class ShopOrderController {
     @Param('order_id') orderId: string,
     @Body() body: UpdateShopOrderRefundDto,
   ) {
-    await this.assertActorCanManageShop(currentUser, shopId);
+    await this.shopAccessService.assertCanManageShop(currentUser, shopId);
 
     try {
       return toShopOrderDetailResponse(
@@ -180,35 +178,6 @@ export class ShopOrderController {
     catch (error) {
       this.throwMappedOrderError(error);
     }
-  }
-
-  private async assertActorCanManageShop(
-    currentUser: AuthenticatedUser,
-    shopId: string,
-  ): Promise<void> {
-    if (currentUser.roles.includes('admin')) {
-      const shop = await this.shopRepository.findById(shopId);
-
-      if (!shop) {
-        throw new NotFoundException('Shop was not found');
-      }
-
-      return;
-    }
-
-    const shop = await this.shopRepository.findOwnedById(shopId, currentUser.userId);
-
-    if (shop) {
-      return;
-    }
-
-    const existingShop = await this.shopRepository.findById(shopId);
-
-    if (!existingShop) {
-      throw new NotFoundException('Shop was not found');
-    }
-
-    throw new ForbiddenException('You do not own this shop');
   }
 
   private throwMappedOrderError(error: unknown): never {

@@ -1,10 +1,8 @@
 import {
   Body,
   Controller,
-  ForbiddenException,
   Get,
   Header,
-  NotFoundException,
   Patch,
   Param,
   Post,
@@ -23,7 +21,7 @@ import { RequirePermissions } from '~/platform/decorators/require-permissions.de
 import { JwtAuthGuard } from '~/domains/auth/api/guard/jwt-auth.guard';
 import { PermissionsGuard } from '~/domains/auth/api/guard/permissions.guard';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
-import { ShopRepository } from '~/domains/shop/app/ports/shop.repository';
+import { ShopAccessService } from '~/domains/shop/app/services/shop-access.service';
 import {
   buildChatConversationListQuery,
   buildChatMessageListQuery,
@@ -54,7 +52,7 @@ import {
 @ApiCookieAuth('accessCookie')
 export class ShopChatController {
   constructor(
-    private readonly shopRepository: ShopRepository,
+    private readonly shopAccessService: ShopAccessService,
     private readonly listShopChatConversationsUseCase: ListShopChatConversationsUseCase,
     private readonly getShopChatUnreadCountUseCase: GetShopChatUnreadCountUseCase,
     private readonly getShopChatMessagesUseCase: GetShopChatMessagesUseCase,
@@ -72,7 +70,7 @@ export class ShopChatController {
     @Param('shop_id') shopId: string,
     @Query() query: ListChatConversationsQueryDto,
   ) {
-    await this.assertActorCanManageShop(currentUser, shopId);
+    await this.shopAccessService.assertCanManageShop(currentUser, shopId);
 
     return toChatConversationListResponse(
       await this.listShopChatConversationsUseCase.execute(
@@ -91,7 +89,7 @@ export class ShopChatController {
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('shop_id') shopId: string,
   ) {
-    await this.assertActorCanManageShop(currentUser, shopId);
+    await this.shopAccessService.assertCanManageShop(currentUser, shopId);
 
     return {
       unread_count: await this.getShopChatUnreadCountUseCase.execute(shopId, currentUser.userId),
@@ -110,7 +108,7 @@ export class ShopChatController {
     @Param('conversation_id') conversationId: string,
     @Query() query: ListChatMessagesQueryDto,
   ) {
-    await this.assertActorCanManageShop(currentUser, shopId);
+    await this.shopAccessService.assertCanManageShop(currentUser, shopId);
 
     try {
       return toChatMessageListResponse(
@@ -137,7 +135,7 @@ export class ShopChatController {
     @Param('shop_id') shopId: string,
     @Param('conversation_id') conversationId: string,
   ) {
-    await this.assertActorCanManageShop(currentUser, shopId);
+    await this.shopAccessService.assertCanManageShop(currentUser, shopId);
 
     try {
       return {
@@ -163,7 +161,7 @@ export class ShopChatController {
     @Param('conversation_id') conversationId: string,
     @Body() body: SendChatMessageDto,
   ) {
-    await this.assertActorCanManageShop(currentUser, shopId);
+    await this.shopAccessService.assertCanManageShop(currentUser, shopId);
 
     try {
       return {
@@ -180,35 +178,6 @@ export class ShopChatController {
     catch (error) {
       this.throwMappedChatError(error);
     }
-  }
-
-  private async assertActorCanManageShop(
-    currentUser: AuthenticatedUser,
-    shopId: string,
-  ): Promise<void> {
-    if (currentUser.roles.includes('admin')) {
-      const shop = await this.shopRepository.findById(shopId);
-
-      if (!shop) {
-        throw new NotFoundException('Shop was not found');
-      }
-
-      return;
-    }
-
-    const shop = await this.shopRepository.findOwnedById(shopId, currentUser.userId);
-
-    if (shop) {
-      return;
-    }
-
-    const existingShop = await this.shopRepository.findById(shopId);
-
-    if (!existingShop) {
-      throw new NotFoundException('Shop was not found');
-    }
-
-    throw new ForbiddenException('You do not own this shop');
   }
 
   private throwMappedChatError(error: unknown): never {
