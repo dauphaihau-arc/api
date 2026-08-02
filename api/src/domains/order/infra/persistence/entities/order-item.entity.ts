@@ -45,8 +45,8 @@ export class OrderItemEntity extends AbstractBaseEntity {
   @Property({ type: 'numeric', precision: 12, scale: 2 })
   price!: number;
 
-  @Property({ fieldName: 'unit_price_minor', nullable: true })
-  unitPriceMinor?: number;
+  @Property({ fieldName: 'unit_price_minor' })
+  unitPriceMinor!: number;
 
   @Property({
     fieldName: 'sale_price', type: 'numeric', precision: 12, scale: 2, nullable: true, 
@@ -59,8 +59,8 @@ export class OrderItemEntity extends AbstractBaseEntity {
   @Property()
   quantity!: number;
 
-  @Property({ fieldName: 'line_total_minor', nullable: true })
-  lineTotalMinor?: number;
+  @Property({ fieldName: 'line_total_minor' })
+  lineTotalMinor!: number;
 
   @Property({ fieldName: 'currency', length: 3, nullable: true })
   currency?: string;

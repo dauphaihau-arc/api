@@ -5,8 +5,20 @@ import {
   getOrderSubtotalMinor,
   getOrderTotalMinor,
 } from './order-money';
-import type { OrderEntity } from '../infra/persistence/entities/order.entity';
-import type { OrderItemEntity } from '../infra/persistence/entities/order-item.entity';
+type LegacyOrderItemMoney = Parameters<typeof getOrderItemAmountMinor>[0] & {
+  unitPriceMinor?: number;
+  lineTotalMinor?: number;
+};
+
+type LegacyOrderMoney = Parameters<typeof getOrderSubtotalMinor>[0] &
+Parameters<typeof getOrderShippingMinor>[0] &
+Parameters<typeof getOrderDiscountMinor>[0] &
+Parameters<typeof getOrderTotalMinor>[0] & {
+  subtotalMinor?: number;
+  shippingMinor?: number;
+  discountMinor?: number;
+  totalMinor?: number;
+};
 
 describe('getOrderItemAmountMinor', () => {
   it('returns unitPriceMinor when present', () => {
@@ -30,7 +42,7 @@ describe('getOrderItemAmountMinor', () => {
       salePrice: undefined,
       price: 15,
       currency: 'USD',
-    })).toBe(1250);
+    } as unknown as LegacyOrderItemMoney)).toBe(1250);
   });
 
   it('falls back to salePrice using order currency when stored minors are missing', () => {
@@ -42,7 +54,7 @@ describe('getOrderItemAmountMinor', () => {
       salePrice: 12.5,
       price: 15,
       currency: undefined,
-    }, 'USD')).toBe(1250);
+    } as unknown as LegacyOrderItemMoney, 'USD')).toBe(1250);
   });
 
   it('throws when no recoverable pricing data exists', () => {
@@ -52,34 +64,14 @@ describe('getOrderItemAmountMinor', () => {
       lineTotalMinor: undefined,
       quantity: 1,
       salePrice: undefined,
+      price: undefined,
       currency: undefined,
-    } as Pick<
-      OrderItemEntity,
-      | 'unitPriceMinor'
-      | 'lineTotalMinor'
-      | 'quantity'
-      | 'salePrice'
-      | 'price'
-      | 'currency'
-      | 'id'
-    >)).toThrow('Order item item-4 is missing unitPriceMinor');
+    } as unknown as LegacyOrderItemMoney)).toThrow('Order item item-4 is missing unitPriceMinor');
   });
 });
 
 describe('order minor fallbacks', () => {
-  const legacyOrder: Pick<
-    OrderEntity,
-    | 'id'
-    | 'currency'
-    | 'subtotalMinor'
-    | 'subtotal'
-    | 'shippingMinor'
-    | 'totalShippingFee'
-    | 'discountMinor'
-    | 'totalDiscount'
-    | 'totalMinor'
-    | 'total'
-  > = {
+  const legacyOrder = {
     id: 'order-1',
     currency: 'USD',
     subtotalMinor: undefined,
@@ -90,7 +82,7 @@ describe('order minor fallbacks', () => {
     totalDiscount: 1.5,
     totalMinor: undefined,
     total: 13.5,
-  };
+  } as unknown as LegacyOrderMoney;
 
   it('falls back subtotalMinor from subtotal', () => {
     expect(getOrderSubtotalMinor(legacyOrder)).toBe(1200);

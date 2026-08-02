@@ -4672,7 +4672,7 @@
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
-          "nullable": true,
+          "nullable": false,
           "unique": false,
           "length": null,
           "precision": 32,
@@ -4704,7 +4704,7 @@
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
-          "nullable": true,
+          "nullable": false,
           "unique": false,
           "length": null,
           "precision": 32,
@@ -4867,7 +4867,14 @@
           "primary": true
         }
       ],
-      "checks": [],
+      "checks": [
+        {
+          "name": "order_items_minor_amounts_non_negative_check",
+          "columnName": "line_total_minor",
+          "definition": "CHECK (((unit_price_minor >= 0) AND (line_total_minor >= 0)))",
+          "expression": "(unit_price_minor >= 0) AND (line_total_minor >= 0)"
+        }
+      ],
       "foreignKeys": {
         "order_items_inventory_id_foreign": {
           "columnNames": [
@@ -5448,7 +5455,7 @@
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
-          "nullable": true,
+          "nullable": false,
           "unique": false,
           "length": null,
           "precision": 32,
@@ -5464,7 +5471,7 @@
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
-          "nullable": true,
+          "nullable": false,
           "unique": false,
           "length": null,
           "precision": 32,
@@ -5480,7 +5487,7 @@
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
-          "nullable": true,
+          "nullable": false,
           "unique": false,
           "length": null,
           "precision": 32,
@@ -5496,7 +5503,7 @@
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
-          "nullable": true,
+          "nullable": false,
           "unique": false,
           "length": null,
           "precision": 32,
@@ -5567,7 +5574,14 @@
           "primary": false
         }
       ],
-      "checks": [],
+      "checks": [
+        {
+          "name": "orders_minor_amounts_non_negative_check",
+          "columnName": "discount_minor",
+          "definition": "CHECK (((subtotal_minor >= 0) AND (shipping_minor >= 0) AND (discount_minor >= 0) AND (total_minor >= 0)))",
+          "expression": "(subtotal_minor >= 0) AND (shipping_minor >= 0) AND (discount_minor >= 0) AND (total_minor >= 0)"
+        }
+      ],
       "foreignKeys": {
         "orders_shop_id_foreign": {
           "columnNames": [

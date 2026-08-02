@@ -13,6 +13,7 @@ import { OrderEntity } from '~/domains/order/infra/persistence/entities/order.en
 import { OrderItemEntity } from '~/domains/order/infra/persistence/entities/order-item.entity';
 import { ProductInventoryEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-inventory.entity';
 import { getInventoryPricingSnapshot } from '~/domains/product/infra/persistence/mikro-orm/reads/variant-price-read';
+import { toMinorUnits } from '~/platform/utils/money';
 
 type OrderSeed = {
   inventoryId: string;
@@ -207,6 +208,10 @@ export async function seedOrderCartDemo(
           ? Number(((subtotal * coupon.percentOff) / 100).toFixed(2))
           : 0;
     const total = Number((subtotal + orderSeed.shippingFee - totalDiscount).toFixed(2));
+    const subtotalMinor = toMinorUnits(subtotal, 'USD');
+    const shippingMinor = toMinorUnits(orderSeed.shippingFee, 'USD');
+    const discountMinor = toMinorUnits(totalDiscount, 'USD');
+    const totalMinor = toMinorUnits(total, 'USD');
     const createdAt = new Date(Date.UTC(2026, 4, 10 + (index * 2), 9, 30, 0));
 
     const order = em.create(OrderEntity, {
@@ -218,9 +223,13 @@ export async function seedOrderCartDemo(
       shippingStatus: OrderShippingStatus.DELIVERED,
       currency: 'USD',
       subtotal,
+      subtotalMinor,
       totalShippingFee: orderSeed.shippingFee,
+      shippingMinor,
       totalDiscount,
+      discountMinor,
       total,
+      totalMinor,
       note: orderSeed.note,
       promoCodes: coupon ? [coupon.code] : [],
       shippingAddress: buildShippingAddress(),
@@ -238,6 +247,8 @@ export async function seedOrderCartDemo(
     });
     em.persist(order);
 
+    const unitPriceMinor = pricing?.amountMinor ?? toMinorUnits(unitPrice, 'USD');
+
     em.persist(
       em.create(OrderItemEntity, {
         order,
@@ -254,7 +265,11 @@ export async function seedOrderCartDemo(
         salePrice: pricing?.originalAmountMinor != null
           ? fromMinor(pricing.amountMinor)
           : undefined,
+        unitPriceMinor,
+        originalAmountMinor: pricing?.originalAmountMinor,
         quantity: orderSeed.quantity,
+        lineTotalMinor: unitPriceMinor * orderSeed.quantity,
+        currency: 'USD',
         percentCouponCode: coupon?.type === CouponType.PERCENTAGE ? coupon.code : undefined,
         percentCouponPercent:
           coupon?.type === CouponType.PERCENTAGE ? coupon.percentOff : undefined,

@@ -1,6 +1,6 @@
 const ZERO_DECIMAL_CURRENCIES = new Set(['JPY', 'KRW', 'VND']);
 
-function getMinorUnitScale(currency: string): number {
+export function getMinorUnitScale(currency: string): number {
   return ZERO_DECIMAL_CURRENCIES.has(currency) ? 1 : 100;
 }
 
