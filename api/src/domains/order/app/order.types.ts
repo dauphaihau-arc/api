@@ -307,6 +307,55 @@ export interface ShopOrderListResult {
   };
 }
 
+export type ShopDashboardTimeRange =
+  | 'today'
+  | 'yesterday'
+  | 'last_7_days'
+  | 'last_30_days'
+  | 'this_month'
+  | 'last_month'
+  | 'all_time';
+
+export interface ShopDashboardPeriod {
+  range: ShopDashboardTimeRange;
+  from: Date;
+  to: Date;
+}
+
+export interface ShopDashboardSummary {
+  revenueMinor: number;
+  orderCount: number;
+  itemsSold: number;
+  averageOrderValueMinor: number;
+  currency: string;
+}
+
+export interface ShopDashboardRevenuePoint {
+  date: string;
+  label: string;
+  revenueMinor: number;
+  orderCount: number;
+}
+
+export interface ShopDashboardTopProduct {
+  productId: string;
+  title: string;
+  slug: string;
+  imageUrl?: string;
+  quantitySold: number;
+  orderCount: number;
+  revenueMinor: number;
+  currency: string;
+}
+
+export interface ShopDashboardResult {
+  period: ShopDashboardPeriod;
+  summary: ShopDashboardSummary;
+  revenueSeries: ShopDashboardRevenuePoint[];
+  recentOrders: ShopOrderSummary[];
+  topSellingProducts: ShopDashboardTopProduct[];
+}
+
 export interface ShopOrderDetail extends ShopOrderSummary {
   shippingAddress: OrderShippingAddressSummary;
   timeline: OrderTimelineEvent[];

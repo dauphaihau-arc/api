@@ -5,6 +5,7 @@ import type {
   CreateOrderResult,
   MyOrderDetail,
   OrderListResult,
+  ShopDashboardResult,
   ShopOrderDetail,
   ShopOrderListResult,
   ShopOrderSummary,
@@ -304,7 +305,7 @@ function toShopOrderProductResponse(orderShop: ShopOrderSummary) {
   }));
 }
 
-function toShopOrderSummaryResponse(orderShop: ShopOrderSummary) {
+export function toShopOrderSummaryResponse(orderShop: ShopOrderSummary) {
   return {
     id: orderShop.id,
     order_number: orderShop.orderNumber,
@@ -354,6 +355,40 @@ export function toShopOrderListResponse(result: ShopOrderListResult) {
     total_pages: result.totalPages,
     total_results: result.totalResults,
     status_counts: result.statusCounts,
+  };
+}
+
+export function toShopDashboardResponse(result: ShopDashboardResult) {
+  return {
+    period: {
+      range: result.period.range,
+      from: result.period.from,
+      to: result.period.to,
+    },
+    summary: {
+      revenue_minor: result.summary.revenueMinor,
+      order_count: result.summary.orderCount,
+      items_sold: result.summary.itemsSold,
+      average_order_value_minor: result.summary.averageOrderValueMinor,
+      currency: result.summary.currency,
+    },
+    revenue_series: result.revenueSeries.map((point) => ({
+      date: point.date,
+      label: point.label,
+      revenue_minor: point.revenueMinor,
+      order_count: point.orderCount,
+    })),
+    recent_orders: result.recentOrders.map(toShopOrderSummaryResponse),
+    top_selling_products: result.topSellingProducts.map((product) => ({
+      product_id: product.productId,
+      title: product.title,
+      slug: product.slug,
+      image_url: product.imageUrl,
+      quantity_sold: product.quantitySold,
+      order_count: product.orderCount,
+      revenue_minor: product.revenueMinor,
+      currency: product.currency,
+    })),
   };
 }
 
