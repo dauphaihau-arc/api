@@ -68,6 +68,9 @@ Preferred order:
 - Migrations must support rolling deployment.
 - Destructive schema changes or bulk data updates require explicit approval.
 - Use transactions when an operation must be atomic.
+- Prefer repository-level access for ordinary domain reads/writes.
+- Application services/use cases may inject `EntityManager` when they own a transaction boundary, need locking, coordinate multiple entities, or must pass the same transactional manager across collaborators.
+- Avoid direct `EntityManager` use in pure domain policy services.
 
 ## Observability
 
