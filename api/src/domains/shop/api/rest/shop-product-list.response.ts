@@ -9,6 +9,7 @@ export type ShopProductListResponse = {
     slug: string;
     description: string;
     state: string;
+    image_url?: string;
     who_made: string;
     is_digital: boolean;
     non_taxable: boolean;
@@ -17,7 +18,7 @@ export type ShopProductListResponse = {
     variant_sub_group_name?: string;
     images: Array<{
       id: string;
-      storage_key: string;
+      image_url?: string;
       rank: number;
       variant_status: string;
       variant_error?: string;
@@ -25,7 +26,7 @@ export type ShopProductListResponse = {
       variants?: Array<{
         id: string;
         variant: string;
-        storage_key: string;
+        image_url?: string;
         width?: number;
         height?: number;
         format?: string;
@@ -45,7 +46,6 @@ export type ShopProductListResponse = {
       name: string;
       option_value_1?: string;
       option_value_2?: string;
-      image_storage_key?: string;
       rank: number;
     }>;
     inventory: Array<{

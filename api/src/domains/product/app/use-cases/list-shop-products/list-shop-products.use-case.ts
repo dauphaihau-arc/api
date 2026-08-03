@@ -22,6 +22,7 @@ export class ListShopProductsUseCase {
 
   async execute(query: ListShopProductsQuery): Promise<ShopProductListResult> {
     const normalizedSearch = query.search?.trim() || undefined;
+
     const [result, allResult, activeResult, inactiveResult, draftResult] = await Promise.all([
       this.productRepository.listByShop({
         shopId: query.shopId,

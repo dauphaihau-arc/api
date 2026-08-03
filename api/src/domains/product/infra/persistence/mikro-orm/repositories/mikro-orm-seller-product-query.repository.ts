@@ -64,6 +64,7 @@ implements SellerProductQueryRepository {
     );
 
     const normalizedSearch = input.search?.trim().toLowerCase();
+
     const filteredProducts = products.filter((product) => {
       if (!this.shouldIncludeInShopList(product.state, input.state)) {
         return false;

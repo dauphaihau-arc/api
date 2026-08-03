@@ -274,7 +274,7 @@ describe('ShopProductsController', () => {
     });
   });
 
-  it('returns thumb_1x1 as the list image storage_key when available', async () => {
+  it('returns thumb_1x1 as the list image_url when available', async () => {
     listShopProductsUseCase.execute.mockResolvedValue({
       items: [
         {
@@ -297,6 +297,7 @@ describe('ShopProductsController', () => {
             {
               id: 'image-1',
               storageKey: 'products/image-1/original.webp',
+              url: 'https://cdn.example.test/products/image-1/original.webp',
               rank: 1,
               variantStatus: 'ready',
               variantError: undefined,
@@ -306,6 +307,7 @@ describe('ShopProductsController', () => {
                   id: 'variant-thumb-1',
                   variant: 'thumb_1x1',
                   storageKey: 'products/image-1/thumb_1x1.webp',
+                  url: 'https://cdn.example.test/products/image-1/thumb_1x1.webp',
                   width: 200,
                   height: 200,
                   format: 'webp',
@@ -343,15 +345,16 @@ describe('ShopProductsController', () => {
       items: [
         {
           id: 'product-1',
+          image_url: 'https://cdn.example.test/products/image-1/thumb_1x1.webp',
           images: [
             {
               id: 'image-1',
-              storage_key: 'products/image-1/thumb_1x1.webp',
+              image_url: 'https://cdn.example.test/products/image-1/thumb_1x1.webp',
               variants: [
                 {
                   id: 'variant-thumb-1',
                   variant: 'thumb_1x1',
-                  storage_key: 'products/image-1/thumb_1x1.webp',
+                  image_url: 'https://cdn.example.test/products/image-1/thumb_1x1.webp',
                 },
               ],
             },
