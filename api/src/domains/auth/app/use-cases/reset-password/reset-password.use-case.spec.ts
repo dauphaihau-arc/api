@@ -5,6 +5,7 @@ import type { PasswordResetTokenRepository } from '../../ports/password-reset-to
 import type { TokenHasher } from '../../ports/token-hasher';
 import type { IssueSessionUseCase } from '../issue-session/issue-session.use-case';
 import {
+  AuthPortalAccessDeniedError,
   InvalidPasswordResetTokenError,
   PasswordResetTokenExpiredError,
 } from '../../errors/auth-app.error';
@@ -91,6 +92,7 @@ describe('ResetPasswordUseCase', () => {
     const result = await useCase.execute({
       token: 'raw-token',
       password: 'new-password-123',
+      app: 'storefront',
     });
 
     expect(result.isOk).toBe(true);
@@ -138,6 +140,7 @@ describe('ResetPasswordUseCase', () => {
     const result = await useCase.execute({
       token: 'raw-token',
       password: 'new-password-123',
+      app: 'storefront',
     });
 
     expect(result.isOk).toBe(false);
@@ -178,6 +181,7 @@ describe('ResetPasswordUseCase', () => {
     const result = await useCase.execute({
       token: 'raw-token',
       password: 'new-password-123',
+      app: 'storefront',
     });
 
     expect(result.isOk).toBe(false);
@@ -185,5 +189,69 @@ describe('ResetPasswordUseCase', () => {
       throw new Error('Expected reset password to fail');
     }
     expect(result.error).toBeInstanceOf(PasswordResetTokenExpiredError);
+  });
+
+  it('rejects password reset sessions outside the user portal role', async () => {
+    const authUserRepository: jest.Mocked<AuthUserRepository> = {
+      findByEmail: jest.fn(),
+      findLoginByEmail: jest.fn(),
+      findById: jest.fn().mockResolvedValue({
+        id: 'admin-1',
+        version: 1,
+        email: Email.create('admin@example.com'),
+        displayName: 'Admin User',
+        status: UserStatus.ACTIVE,
+        roles: [RoleKey.create('admin')],
+        permissions: [],
+      }),
+      create: jest.fn(),
+      update: jest.fn(),
+      updatePassword: jest.fn(),
+      assignRole: jest.fn(),
+      ensureRole: jest.fn(),
+    };
+    const authSessionRepository: jest.Mocked<AuthSessionRepository> = {
+      findById: jest.fn(),
+      create: jest.fn(),
+      save: jest.fn(),
+      revokeAllForUser: jest.fn(),
+    };
+    const passwordResetTokenRepository: jest.Mocked<PasswordResetTokenRepository> = {
+      create: jest.fn(),
+      findByTokenHash: jest.fn().mockResolvedValue({
+        id: 'token-1',
+        userId: 'admin-1',
+        tokenHash: 'hashed-token',
+        expiresAt: new Date(Date.now() + 10_000),
+      }),
+      save: jest.fn(),
+      invalidateActiveTokensForUser: jest.fn(),
+    };
+    const passwordHasher = {} as jest.Mocked<PasswordHasher>;
+    const tokenHasher: jest.Mocked<TokenHasher> = {
+      hash: jest.fn().mockReturnValue('hashed-token'),
+    };
+    const issueSessionUseCase = {} as jest.Mocked<IssueSessionUseCase>;
+    const useCase = new ResetPasswordUseCase(
+      authUserRepository,
+      authSessionRepository,
+      passwordResetTokenRepository,
+      passwordHasher,
+      tokenHasher,
+      issueSessionUseCase,
+    );
+
+    const result = await useCase.execute({
+      token: 'raw-token',
+      password: 'new-password-123',
+      app: 'seller',
+    });
+
+    expect(result.isOk).toBe(false);
+    if (result.isOk) {
+      throw new Error('Expected reset password to fail');
+    }
+    expect(result.error).toBeInstanceOf(AuthPortalAccessDeniedError);
+    expect(authUserRepository.updatePassword).not.toHaveBeenCalled();
   });
 });

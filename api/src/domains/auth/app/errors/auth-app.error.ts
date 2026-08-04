@@ -18,6 +18,12 @@ export class InactiveUserError extends AuthAppError {
   }
 }
 
+export class AuthPortalAccessDeniedError extends AuthAppError {
+  constructor() {
+    super('This account cannot access this portal');
+  }
+}
+
 export class EmailAlreadyRegisteredError extends AuthAppError {
   constructor() {
     super('Email is already registered');

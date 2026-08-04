@@ -89,13 +89,14 @@ export default function authLogin(data) {
     JSON.stringify({
       email: credentials.email,
       password: credentials.password,
+      app: 'storefront',
     }),
     {
       headers: {
         'Content-Type': 'application/json',
         'X-Forwarded-For': forwardedIp(),
       },
-    }
+    },
   );
 
   check(response, {

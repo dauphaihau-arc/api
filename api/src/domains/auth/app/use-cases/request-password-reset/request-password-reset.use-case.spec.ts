@@ -199,4 +199,53 @@ describe('RequestPasswordResetUseCase', () => {
     expect(passwordResetTokenRepository.create).not.toHaveBeenCalled();
     expect(jobDispatcher.dispatch).not.toHaveBeenCalled();
   });
+
+  it('returns silently when the user cannot access the reset portal', async () => {
+    const authUserRepository: jest.Mocked<AuthUserRepository> = {
+      findByEmail: jest.fn().mockResolvedValue({
+        id: 'admin-1',
+        version: 1,
+        email: Email.create('admin@example.com'),
+        displayName: 'Admin User',
+        status: UserStatus.ACTIVE,
+        roles: [RoleKey.create('admin')],
+        permissions: [],
+      }),
+      findLoginByEmail: jest.fn(),
+      findById: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      updatePassword: jest.fn(),
+      assignRole: jest.fn(),
+      ensureRole: jest.fn(),
+    };
+    const passwordResetTokenRepository: jest.Mocked<PasswordResetTokenRepository> = {
+      create: jest.fn(),
+      findByTokenHash: jest.fn(),
+      save: jest.fn(),
+      invalidateActiveTokensForUser: jest.fn(),
+    };
+    const tokenHasher: jest.Mocked<TokenHasher> = {
+      hash: jest.fn(),
+    };
+    const jobDispatcher: jest.Mocked<JobDispatcher> = {
+      dispatch: jest.fn(),
+    };
+    const configService: Pick<jest.Mocked<ConfigService>, 'get'> = {
+      get: jest.fn(),
+    };
+    const useCase = new RequestPasswordResetUseCase(
+      authUserRepository,
+      passwordResetTokenRepository,
+      tokenHasher,
+      jobDispatcher,
+      configService as unknown as ConfigService,
+    );
+
+    await useCase.execute('admin@example.com', 'seller');
+
+    expect(passwordResetTokenRepository.invalidateActiveTokensForUser).not.toHaveBeenCalled();
+    expect(passwordResetTokenRepository.create).not.toHaveBeenCalled();
+    expect(jobDispatcher.dispatch).not.toHaveBeenCalled();
+  });
 });

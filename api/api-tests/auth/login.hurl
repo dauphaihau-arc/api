@@ -3,7 +3,8 @@ Content-Type: application/json
 ```json
 {
   "email": "{{auth_login_email}}",
-  "password": "{{auth_login_password}}"
+  "password": "{{auth_login_password}}",
+  "app": "storefront"
 }
 ```
 HTTP 200

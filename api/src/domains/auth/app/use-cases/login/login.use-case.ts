@@ -2,10 +2,12 @@ import { Injectable } from '@nestjs/common';
 import { err, Result } from '~/platform/application/result';
 import { AuthResponse, LoginUserInput } from '../../auth.types';
 import {
+  AuthPortalAccessDeniedError,
   InactiveUserError,
   InvalidCredentialsError,
   UserNotFoundError,
 } from '../../errors/auth-app.error';
+import { canAccessAuthPortal } from '../../portal-access';
 import { UserStatus } from '../../../domain/enums/user-status.enum';
 import { Email } from '../../../domain/value-objects/email';
 import { PasswordHasher } from '../../ports/password-hasher';
@@ -23,7 +25,10 @@ export class LoginUseCase {
   async execute(input: LoginUserInput): Promise<
     Result<
       AuthResponse,
-      InactiveUserError | InvalidCredentialsError | UserNotFoundError
+      | AuthPortalAccessDeniedError
+      | InactiveUserError
+      | InvalidCredentialsError
+      | UserNotFoundError
     >
   > {
     const email = Email.create(input.email);
@@ -46,6 +51,16 @@ export class LoginUseCase {
       return err(new InvalidCredentialsError());
     }
 
-    return this.issueSessionUseCase.execute(loginUser.id);
+    const user = await this.authUserRepository.findById(loginUser.id);
+
+    if (!user) {
+      return err(new UserNotFoundError());
+    }
+
+    if (!canAccessAuthPortal(user.roles.map((role) => role.toString()), input.app)) {
+      return err(new AuthPortalAccessDeniedError());
+    }
+
+    return this.issueSessionUseCase.execute(user.id, undefined, user);
   }
 }

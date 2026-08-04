@@ -160,6 +160,7 @@ describe('Auth login (integration)', () => {
       .send({
         email,
         password: VALID_TEST_PASSWORD,
+        app: 'storefront',
       })
       .expect(200);
     const loginBody = loginResponse.body as unknown as AuthUserResponse;
@@ -202,6 +203,7 @@ describe('Auth login (integration)', () => {
       .send({
         email,
         password: 'WrongPassword123!',
+        app: 'storefront',
       })
       .expect(401);
 

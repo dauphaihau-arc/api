@@ -2,10 +2,12 @@ import { Injectable } from '@nestjs/common';
 import { err, Result } from '~/platform/application/result';
 import type { AuthResponse } from '../../auth.types';
 import {
+  AuthPortalAccessDeniedError,
   InvalidPasswordResetTokenError,
   PasswordResetTokenExpiredError,
   UserNotFoundError,
 } from '../../errors/auth-app.error';
+import { canAccessAuthPortal, type AuthPortal } from '../../portal-access';
 import { PasswordHash } from '../../../domain/value-objects/password-hash';
 import { AuthSessionRepository } from '../../ports/auth-session.repository';
 import { AuthUserRepository } from '../../ports/auth-user.repository';
@@ -28,9 +30,11 @@ export class ResetPasswordUseCase {
   async execute(input: {
     token: string;
     password: string;
+    app: AuthPortal;
   }): Promise<
     Result<
       AuthResponse,
+      | AuthPortalAccessDeniedError
       | InvalidPasswordResetTokenError
       | PasswordResetTokenExpiredError
       | UserNotFoundError
@@ -52,6 +56,15 @@ export class ResetPasswordUseCase {
 
     if (!user) {
       return err(new UserNotFoundError());
+    }
+
+    if (
+      !canAccessAuthPortal(
+        user.roles.map((role) => role.toString()),
+        input.app,
+      )
+    ) {
+      return err(new AuthPortalAccessDeniedError());
     }
 
     const passwordUpdatedAt = new Date();

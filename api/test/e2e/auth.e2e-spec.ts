@@ -39,6 +39,7 @@ type AuthHttpResponseBody = {
 type CurrentUserHttpResponseBody = {
   email: string;
   display_name?: string;
+  roles: string[];
   permissions: string[];
 };
 
@@ -196,10 +197,10 @@ describe('Auth flow (e2e)', () => {
     expect(meBody).toMatchObject({
       email,
       display_name: 'Member User',
+      roles: ['member'],
       permissions: expectedMemberPermissions,
     });
     expect(meBody).not.toHaveProperty('session_id');
-    expect(meBody).not.toHaveProperty('roles');
     expect(meResponse.headers['cache-control']).toBe('no-store');
 
     const loginResponse = await agent
@@ -207,6 +208,7 @@ describe('Auth flow (e2e)', () => {
       .send({
         email,
         password: VALID_TEST_PASSWORD,
+        app: 'storefront',
       })
       .expect(200);
     const loginBody = loginResponse.body as AuthHttpResponseBody;

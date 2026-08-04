@@ -5,6 +5,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import {
+  AuthPortalAccessDeniedError,
   AuthAppError,
   EmailAlreadyRegisteredError,
   InactiveUserError,
@@ -40,7 +41,10 @@ export function mapAuthAppErrorToHttpException(
     return new UnauthorizedException(error.message);
   }
 
-  if (error instanceof InactiveUserError) {
+  if (
+    error instanceof InactiveUserError
+    || error instanceof AuthPortalAccessDeniedError
+  ) {
     return new ForbiddenException(error.message);
   }
 

@@ -1,4 +1,5 @@
-import { IsEmail, IsString } from 'class-validator';
+import { IsEmail, IsIn, IsString } from 'class-validator';
+import type { AuthPortal } from '../../../app/portal-access';
 import { IsAuthPassword } from '../validation/password-validation';
 
 export class LoginDto {
@@ -8,4 +9,7 @@ export class LoginDto {
   @IsString()
   @IsAuthPassword()
   password!: string;
+
+  @IsIn(['storefront', 'seller', 'admin'])
+  app!: AuthPortal;
 }

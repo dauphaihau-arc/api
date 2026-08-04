@@ -264,6 +264,7 @@ export class AuthController {
       await this.resetPasswordUseCase.execute({
         token: query.token,
         password: body.password,
+        app: body.app,
       }),
       mapAuthAppErrorToHttpException,
     );

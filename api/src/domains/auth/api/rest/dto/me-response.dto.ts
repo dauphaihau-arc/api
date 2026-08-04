@@ -40,6 +40,12 @@ export class CurrentUserResponseDto {
     type: [String],
   })
   @Expose()
+  roles!: string[];
+
+  @ApiProperty({
+    type: [String],
+  })
+  @Expose()
   permissions!: string[];
 
   @ApiProperty({
@@ -61,6 +67,7 @@ export class CurrentUserResponseDto {
     dto.id = userProfile.id;
     dto.email = userProfile.email;
     dto.displayName = userProfile.displayName;
+    dto.roles = userProfile.roles;
     dto.permissions = userProfile.permissions;
     if (userProfile.preferences) {
       dto.preferences = Object.assign(new MePreferencesResponseDto(), userProfile.preferences);

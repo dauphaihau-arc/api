@@ -34,6 +34,7 @@ export interface RegisterUserInput {
 export interface LoginUserInput {
   email: string;
   password: string;
+  app: 'storefront' | 'seller' | 'admin';
 }
 
 export interface UserProfile {

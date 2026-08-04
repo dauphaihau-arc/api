@@ -8,6 +8,7 @@ import { AuthUserRepository } from '../../ports/auth-user.repository';
 import { PasswordResetTokenRepository } from '../../ports/password-reset-token.repository';
 import { TokenHasher } from '../../ports/token-hasher';
 import { JobDispatcher } from '~/integrations/queue/app/ports/job-dispatcher';
+import { canAccessAuthPortal } from '../../portal-access';
 
 const PASSWORD_RESET_TOKEN_BYTES = 32;
 const PASSWORD_RESET_TOKEN_TTL_MS = ms('1h');
@@ -33,6 +34,18 @@ export class RequestPasswordResetUseCase {
     if (!user) {
       this.logger.log(
         `Password reset requested for unknown email ${email.toString()}`,
+      );
+      return;
+    }
+
+    if (
+      !canAccessAuthPortal(
+        user.roles.map((role) => role.toString()),
+        app,
+      )
+    ) {
+      this.logger.log(
+        `Password reset requested for user ${user.id} outside allowed portal`,
       );
       return;
     }
