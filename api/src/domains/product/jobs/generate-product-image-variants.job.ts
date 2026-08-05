@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ProductImageService } from '~/domains/product/app/services/product-image.service';
 import { CatalogProductProjectorService } from '~/domains/product/app/services/catalog-product-projector.service';
-import type { AppJobPayloadMap } from '~/integrations/queue/app/app-job.types';
+import type { AppJobPayloadMap } from '~/platform/jobs/app-job.types';
 
 type GenerateProductImageVariantsPayload =
   AppJobPayloadMap['product.generate-image-variants'];

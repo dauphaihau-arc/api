@@ -1,7 +1,5 @@
-import {
-  appJobDeduplicationKey,
-  appJobName,
-} from '~/integrations/queue/app/app-job.types';
+import { appJobDeduplicationKey } from '~/platform/jobs/app-job-deduplication';
+import { appJobName } from '~/platform/jobs/app-job.names';
 import type { JobDispatcher } from '~/integrations/queue/app/ports/job-dispatcher';
 
 export const BEST_SELLER_RANKING_WINDOW_DAYS = 180;

@@ -14,8 +14,8 @@ import type { QueueConfig } from '~/platform/config/queue.config';
 import type {
   AppJobName,
   AppJobPayloadMap,
-} from '~/integrations/queue/app/app-job.types';
-import { AppJobRunner } from './app-job-runner';
+} from '~/platform/jobs/app-job.types';
+import { JobRunner } from '~/platform/jobs/job-runner';
 import { BULLMQ_CONNECTION } from './queue.constants';
 
 type AppQueueJob = Job<AppJobPayloadMap[AppJobName], unknown, AppJobName>;
@@ -29,7 +29,7 @@ export class BullMqWorkerService
   constructor(
     @Inject(QUEUE_CONFIG) private readonly queueConfig: QueueConfig,
     @Inject(BULLMQ_CONNECTION) private readonly connection: Redis | null,
-    private readonly appJobRunner: AppJobRunner,
+    private readonly jobRunner: JobRunner,
   ) {}
 
   onModuleInit(): void {
@@ -79,6 +79,6 @@ export class BullMqWorkerService
   }
 
   private async processJob(job: AppQueueJob): Promise<void> {
-    await this.appJobRunner.run(job.name, job.data);
+    await this.jobRunner.run(job.name, job.data);
   }
 }

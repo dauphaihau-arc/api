@@ -1,7 +1,7 @@
 import type { EventEmitter2 } from '@nestjs/event-emitter';
 import type { EntityManager } from '@mikro-orm/postgresql';
 import type { CouponPricingService } from '../../../coupon/app/services/coupon-pricing.service';
-import type { NotifyUserUseCase } from '../../../../integrations/notification/app/use-cases/notify-user/notify-user.use-case';
+import type { NotifyUserUseCase } from '../../../../domains/notification/app/use-cases/notify-user/notify-user.use-case';
 import { CartKind } from '../../../cart/domain/enums/cart-kind.enum';
 import type { OrderCheckoutOutboxService } from './order-checkout-outbox.service';
 import type { CheckoutStockReservationService } from '../../../checkout/app/services/checkout-stock-reservation.service';

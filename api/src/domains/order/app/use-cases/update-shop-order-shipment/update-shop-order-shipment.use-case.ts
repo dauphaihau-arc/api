@@ -1,7 +1,7 @@
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { NotifyUserUseCase } from '~/integrations/notification/app/use-cases/notify-user/notify-user.use-case';
+import { NotifyUserUseCase } from '~/domains/notification/app/use-cases/notify-user/notify-user.use-case';
 import { JobDispatcher } from '~/integrations/queue/app/ports/job-dispatcher';
 import { OrderEventActorType } from '../../../domain/enums/order-event-actor-type.enum';
 import { OrderEventType } from '../../../domain/enums/order-event-type.enum';

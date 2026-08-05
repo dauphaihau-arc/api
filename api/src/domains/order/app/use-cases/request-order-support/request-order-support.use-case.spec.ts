@@ -1,6 +1,6 @@
 import type { EntityManager } from '@mikro-orm/postgresql';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
-import type { NotifyUserUseCase } from '~/integrations/notification/app/use-cases/notify-user/notify-user.use-case';
+import type { NotifyUserUseCase } from '~/domains/notification/app/use-cases/notify-user/notify-user.use-case';
 import { UserStatus } from '../../../../auth/domain/enums/user-status.enum';
 import { RequestOrderSupportUseCase } from './request-order-support.use-case';
 

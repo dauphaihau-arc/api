@@ -3,7 +3,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import { PRODUCT_INVENTORY_UPDATED_SSE_EVENT } from '~/domains/product/app/events/product-inventory-sse.event';
-import { NotifyUserUseCase } from '~/integrations/notification/app/use-cases/notify-user/notify-user.use-case';
+import { NotifyUserUseCase } from '~/domains/notification/app/use-cases/notify-user/notify-user.use-case';
 import { JobDispatcher } from '~/integrations/queue/app/ports/job-dispatcher';
 import { ORDER_UPDATED_SSE_EVENT } from '../../events/order-sse.event';
 import type { RequestOrderCancelDto } from '../../../api/rest/dto/request-order-cancel.dto';

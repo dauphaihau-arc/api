@@ -3,11 +3,9 @@ import { ModuleRef } from '@nestjs/core';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 import { captureException } from '~/platform/sentry/sentry';
 import { getAppTracer, setSpanError } from '~/platform/observability/tracing';
-import {
-  appJobName,
-  AppJobName,
-  AppJobPayloadMap,
-} from '~/integrations/queue/app/app-job.types';
+import { appJobName } from '~/platform/jobs/app-job.names';
+import type { AppJobName, AppJobPayloadMap } from '~/platform/jobs/app-job.types';
+import { JobRunner } from './job-runner';
 import { RefreshExchangeRatesJob } from '~/integrations/currency/jobs/refresh-exchange-rates.job';
 import { GenerateProductImageVariantsJob } from '~/domains/product/jobs/generate-product-image-variants.job';
 import { GenerateReviewImageVariantsJob } from '~/domains/product/jobs/generate-review-image-variants.job';
@@ -22,11 +20,11 @@ import { SendPasswordResetEmailJob } from '~/domains/auth/jobs/send-password-res
 import { SendRefundFailedEmailJob } from '~/domains/order/jobs/send-refund-failed-email.job';
 import { SendRefundSucceededEmailJob } from '~/domains/order/jobs/send-refund-succeeded-email.job';
 import { SendSellerOrderUpdateEmailJob } from '~/domains/order/jobs/send-seller-order-update-email.job';
-import { SendWebPushNotificationJob } from '~/integrations/notification/jobs/send-web-push-notification.job';
+import { SendWebPushNotificationJob } from '~/domains/notification/jobs/send-web-push-notification.job';
 import { SendWelcomeEmailJob } from '~/domains/user/jobs/send-welcome-email.job';
 
 @Injectable()
-export class AppJobRunner {
+export class AppJobRunner extends JobRunner {
   private readonly tracer = getAppTracer();
 
   constructor(
@@ -48,7 +46,9 @@ export class AppJobRunner {
     private readonly cleanupPendingReviewImageJob: CleanupPendingReviewImageJob,
     private readonly cleanupExpiredCheckoutQuoteReservationsJob: CleanupExpiredCheckoutQuoteReservationsJob,
     private readonly refreshBestSellerRankingsJob: RefreshBestSellerRankingsJob,
-  ) {}
+  ) {
+    super();
+  }
 
   async run<TName extends AppJobName>(
     name: TName,
@@ -152,6 +152,7 @@ export class AppJobRunner {
       }
       catch (error) {
         setSpanError(span, error);
+
         this.logger.error({
           context: AppJobRunner.name,
           err: error instanceof Error ? error : undefined,
@@ -159,6 +160,7 @@ export class AppJobRunner {
           jobName: String(name),
           payload,
         }, 'Queue job failed');
+
         captureException(error, (scope) => {
           scope.setTag('runtime', 'worker');
           scope.setTag('job.name', String(name));

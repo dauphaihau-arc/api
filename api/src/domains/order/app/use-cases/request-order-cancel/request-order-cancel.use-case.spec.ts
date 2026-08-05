@@ -1,7 +1,7 @@
 import type { EntityManager } from '@mikro-orm/postgresql';
 import type { EventEmitter2 } from '@nestjs/event-emitter';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
-import type { NotifyUserUseCase } from '~/integrations/notification/app/use-cases/notify-user/notify-user.use-case';
+import type { NotifyUserUseCase } from '~/domains/notification/app/use-cases/notify-user/notify-user.use-case';
 import { UserStatus } from '../../../../auth/domain/enums/user-status.enum';
 import { OrderShippingStatus } from '../../../domain/enums/order-shipping-status.enum';
 import { OrderStatus } from '../../../domain/enums/order-status.enum';

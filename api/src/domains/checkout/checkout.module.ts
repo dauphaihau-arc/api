@@ -18,7 +18,7 @@ import { ProductVariantEntity } from '../product/infra/persistence/mikro-orm/ent
 import { ShopModule } from '../shop/shop.module';
 import { ShopEntity } from '../shop/infra/persistence/entities/shop.entity';
 import { UserModule } from '../user/user.module';
-import { NotificationModule } from '~/integrations/notification/notification.module';
+import { NotificationModule } from '~/domains/notification/notification.module';
 import { PaymentModule } from '~/integrations/payment/payment.module';
 import { QueueModule } from '~/integrations/queue/queue.module';
 import { StorageModule } from '~/integrations/storage/storage.module';

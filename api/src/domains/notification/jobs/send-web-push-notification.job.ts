@@ -1,8 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
-import type { AppJobPayloadMap } from '~/integrations/queue/app/app-job.types';
-import { WebPushSender } from '~/integrations/notification/app/ports/web-push-sender';
-import { WebPushSubscriptionRepository } from '~/integrations/notification/app/ports/web-push-subscription.repository';
-import { isWebPushSubscriptionGoneError } from '~/integrations/notification/infra/web-push.errors';
+import type { AppJobPayloadMap } from '~/platform/jobs/app-job.types';
+import { WebPushSender } from '~/domains/notification/app/ports/web-push-sender';
+import { WebPushSubscriptionRepository } from '~/domains/notification/app/ports/web-push-subscription.repository';
+import { isWebPushSubscriptionGoneError } from '~/domains/notification/infra/web-push.errors';
 
 type SendWebPushNotificationPayload =
   AppJobPayloadMap['notification.send-web-push'];

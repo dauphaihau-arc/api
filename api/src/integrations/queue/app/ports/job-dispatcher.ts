@@ -2,7 +2,7 @@ import type {
   AppJobName,
   AppJobPayloadMap,
   DispatchJobOptions,
-} from '~/integrations/queue/app/app-job.types';
+} from '~/platform/jobs/app-job.types';
 
 export abstract class JobDispatcher {
   abstract dispatch<TName extends AppJobName>(

@@ -1,4 +1,5 @@
-import { forwardRef, Logger, Module } from '@nestjs/common';
+import { Logger, Module } from '@nestjs/common';
+import { ModuleRef } from '@nestjs/core';
 import { Queue } from 'bullmq';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import {
@@ -8,30 +9,8 @@ import {
 } from '~/platform/config/queue.config';
 import { ObservabilityModule } from '~/platform/observability/observability.module';
 import { ObservabilityService } from '~/platform/observability/observability.service';
-import { MailModule } from '~/integrations/mail/mail.module';
-import { PaymentModule } from '~/integrations/payment/payment.module';
-import { StorageModule } from '~/integrations/storage/storage.module';
 import Redis from 'ioredis';
-import { RefreshExchangeRatesJob } from '~/integrations/currency/jobs/refresh-exchange-rates.job';
-import { GenerateProductImageVariantsJob } from '~/domains/product/jobs/generate-product-image-variants.job';
-import { GenerateReviewImageVariantsJob } from '~/domains/product/jobs/generate-review-image-variants.job';
-import { ProjectCatalogProductJob } from '~/domains/product/jobs/project-catalog-product.job';
-import { CleanupPendingReviewImageJob } from '~/domains/product/jobs/cleanup-pending-review-image.job';
-import { CleanupExpiredCheckoutQuoteReservationsJob } from '~/domains/checkout/jobs/cleanup-expired-checkout-quote-reservations.job';
-import { RefreshBestSellerRankingsJob } from '~/domains/product/jobs/refresh-best-seller-rankings.job';
-import { SendGuestOrderConfirmationEmailJob } from '~/domains/order/jobs/send-guest-order-confirmation-email.job';
-import { SendPasswordResetEmailJob } from '~/domains/auth/jobs/send-password-reset-email.job';
-import { SendRefundFailedEmailJob } from '~/domains/order/jobs/send-refund-failed-email.job';
-import { SendRefundSucceededEmailJob } from '~/domains/order/jobs/send-refund-succeeded-email.job';
-import { SendSellerOrderUpdateEmailJob } from '~/domains/order/jobs/send-seller-order-update-email.job';
-import { SendWelcomeEmailJob } from '~/domains/user/jobs/send-welcome-email.job';
-import { CheckoutModule } from '~/domains/checkout/checkout.module';
-import { OrderModule } from '~/domains/order/order.module';
-import { ProductModule } from '~/domains/product/product.module';
-import { NotificationModule } from '~/integrations/notification/notification.module';
-import { CurrencyModule } from '~/integrations/currency/currency.module';
 import { JobDispatcher } from './app/ports/job-dispatcher';
-import { AppJobRunner } from './infra/app-job-runner';
 import { BullMqConnectionManager } from './infra/bullmq-connection-manager';
 import { BullMqJobDispatcher } from './infra/bullmq-job-dispatcher';
 import { BullMqQueueManager } from './infra/bullmq-queue-manager';
@@ -44,15 +23,7 @@ const queueModuleLogger = new Logger('QueueModule');
 @Module({
   imports: [
     ConfigModule,
-    MailModule,
-    CurrencyModule,
-    StorageModule,
     ObservabilityModule,
-    PaymentModule,
-    forwardRef(() => NotificationModule),
-    forwardRef(() => CheckoutModule),
-    forwardRef(() => ProductModule),
-    forwardRef(() => OrderModule),
   ],
   providers: [
     {
@@ -135,27 +106,13 @@ const queueModuleLogger = new Logger('QueueModule');
     BullMqConnectionManager,
     BullMqQueueManager,
     QueueConfigLoggerService,
-    AppJobRunner,
-    RefreshExchangeRatesJob,
-    SendWelcomeEmailJob,
-    SendPasswordResetEmailJob,
-    SendGuestOrderConfirmationEmailJob,
-    SendRefundSucceededEmailJob,
-    SendRefundFailedEmailJob,
-    SendSellerOrderUpdateEmailJob,
-    GenerateProductImageVariantsJob,
-    GenerateReviewImageVariantsJob,
-    ProjectCatalogProductJob,
-    CleanupPendingReviewImageJob,
-    CleanupExpiredCheckoutQuoteReservationsJob,
-    RefreshBestSellerRankingsJob,
     {
       provide: JobDispatcher,
-      inject: [QUEUE_CONFIG, BULLMQ_CONNECTION, AppJobRunner],
+      inject: [QUEUE_CONFIG, BULLMQ_CONNECTION, ModuleRef],
       useFactory: (
         queueConfig: QueueConfig,
         connection: Redis | null,
-        appJobRunner: AppJobRunner,
+        moduleRef: ModuleRef,
       ) => {
         if (queueConfig.driver === 'redis') {
           if (!connection) {
@@ -167,7 +124,7 @@ const queueModuleLogger = new Logger('QueueModule');
           return new BullMqJobDispatcher(queueConfig, connection);
         }
 
-        return new InlineJobDispatcher(appJobRunner);
+        return new InlineJobDispatcher(moduleRef);
       },
     },
   ],
@@ -176,7 +133,6 @@ const queueModuleLogger = new Logger('QueueModule');
     BULLMQ_CONNECTION,
     BULLMQ_QUEUE,
     JobDispatcher,
-    AppJobRunner,
   ],
 })
 export class QueueModule {}

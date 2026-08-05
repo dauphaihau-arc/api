@@ -25,8 +25,9 @@ import { HealthModule } from '~/platform/health/health.module';
 import { MailModule } from '~/integrations/mail/mail.module';
 import { CurrencyModule } from '~/integrations/currency/currency.module';
 import { MarketplaceModule } from '~/integrations/marketplace/marketplace.module';
-import { NotificationModule } from '~/integrations/notification/notification.module';
+import { NotificationModule } from '~/domains/notification/notification.module';
 import { ObservabilityModule } from '~/platform/observability/observability.module';
+import { JobsModule } from '~/platform/jobs/jobs.module';
 import { QueueModule } from '~/integrations/queue/queue.module';
 import { RateLimitModule } from '~/integrations/rate-limit/rate-limit.module';
 import { StorageModule } from '~/integrations/storage/storage.module';
@@ -57,6 +58,7 @@ import { WsModule } from '~/platform/ws/ws.module';
     ObservabilityModule,
     PaymentModule,
     QueueModule,
+    JobsModule,
     RateLimitModule,
     SseModule,
     WsModule,

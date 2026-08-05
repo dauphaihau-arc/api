@@ -1,13 +1,13 @@
 import { NestFactory } from '@nestjs/core';
 import { Logger, PinoLogger } from 'nestjs-pino';
 import { captureException, initializeSentry } from '~/platform/sentry/sentry';
-import { QueueWorkerModule } from '~/integrations/queue/queue-worker.module';
+import { JobsWorkerModule } from '~/platform/jobs/jobs-worker.module';
 import { validateAppEnv } from '~/platform/config/app-env.config';
 
 async function bootstrap() {
   initializeSentry('worker');
   validateAppEnv(process.env);
-  const app = await NestFactory.createApplicationContext(QueueWorkerModule, {
+  const app = await NestFactory.createApplicationContext(JobsWorkerModule, {
     bufferLogs: true,
   });
   app.useLogger(app.get(Logger));

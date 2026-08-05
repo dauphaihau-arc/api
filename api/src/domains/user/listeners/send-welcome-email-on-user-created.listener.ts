@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import { appJobDeduplicationKey, appJobName } from '~/integrations/queue/app/app-job.types';
+import { appJobDeduplicationKey } from '~/platform/jobs/app-job-deduplication';
+import { appJobName } from '~/platform/jobs/app-job.names';
 import { UserCreatedEvent } from '../events/user-created.event';
 import { JobDispatcher } from '~/integrations/queue/app/ports/job-dispatcher';
 

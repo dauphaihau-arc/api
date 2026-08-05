@@ -2,7 +2,7 @@ import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable, Logger } from '@nestjs/common';
 import { OrderEntity } from '~/domains/order/infra/persistence/entities/order.entity';
 import { MailSender } from '~/integrations/mail/app/ports/mail-sender';
-import type { AppJobPayloadMap } from '~/integrations/queue/app/app-job.types';
+import type { AppJobPayloadMap } from '~/platform/jobs/app-job.types';
 
 type SendRefundFailedEmailPayload =
   AppJobPayloadMap['order.send-refund-failed-email'];

@@ -7,7 +7,7 @@ import type {
   AppJobName,
   AppJobPayloadMap,
   DispatchJobOptions,
-} from '~/integrations/queue/app/app-job.types';
+} from '~/platform/jobs/app-job.types';
 import type { JobDispatcher } from '../app/ports/job-dispatcher';
 
 export class BullMqJobDispatcher

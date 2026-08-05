@@ -2,7 +2,7 @@ import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PRODUCT_INVENTORY_UPDATED_SSE_EVENT } from '~/domains/product/app/events/product-inventory-sse.event';
-import { NotifyUserUseCase } from '~/integrations/notification/app/use-cases/notify-user/notify-user.use-case';
+import { NotifyUserUseCase } from '~/domains/notification/app/use-cases/notify-user/notify-user.use-case';
 import { JobDispatcher } from '~/integrations/queue/app/ports/job-dispatcher';
 import type { UpdateShopOrderStatusDto } from '../../../api/rest/dto/update-shop-order-status.dto';
 import { OrderEventActorType } from '../../../domain/enums/order-event-actor-type.enum';

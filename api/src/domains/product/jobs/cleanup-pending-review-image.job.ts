@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import type { AppJobPayloadMap } from '~/integrations/queue/app/app-job.types';
+import type { AppJobPayloadMap } from '~/platform/jobs/app-job.types';
 import { PendingReviewImageUploadService } from '~/domains/product/app/pending-review-image-upload.service';
 import { StorageService } from '~/integrations/storage/app/ports/storage.service';
 

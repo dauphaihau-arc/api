@@ -1,7 +1,7 @@
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { appJobDeduplicationKey } from '~/integrations/queue/app/app-job.types';
+import { appJobDeduplicationKey } from '~/platform/jobs/app-job-deduplication';
 import { JobDispatcher } from '~/integrations/queue/app/ports/job-dispatcher';
 import type { UpdateAdminOrderRefundDto } from '../../../api/rest/dto/update-admin-order-refund.dto';
 import { AdminOrderRefundAction } from '../../../api/rest/dto/update-admin-order-refund.dto';

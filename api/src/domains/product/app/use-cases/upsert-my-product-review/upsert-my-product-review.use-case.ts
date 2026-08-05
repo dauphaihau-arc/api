@@ -1,7 +1,8 @@
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Inject, Injectable } from '@nestjs/common';
-import { appJobDeduplicationKey, appJobName } from '~/integrations/queue/app/app-job.types';
+import { appJobDeduplicationKey } from '~/platform/jobs/app-job-deduplication';
+import { appJobName } from '~/platform/jobs/app-job.names';
 import type { Cache } from 'cache-manager';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import { OrderItemEntity } from '~/domains/order/infra/persistence/entities/order-item.entity';

@@ -3,10 +3,8 @@ import {
   PAYMENT_CONFIG,
   type PaymentConfig,
 } from '~/platform/config/payment.config';
-import {
-  appJobDeduplicationKey,
-  appJobName,
-} from '~/integrations/queue/app/app-job.types';
+import { appJobDeduplicationKey } from '~/platform/jobs/app-job-deduplication';
+import { appJobName } from '~/platform/jobs/app-job.names';
 import type { CreateGuestOrderFromCartDto } from '../../../api/rest/dto/create-guest-order-from-cart.dto';
 import { CartRepository } from '~/domains/cart/app/ports/cart.repository';
 import { JobDispatcher } from '~/integrations/queue/app/ports/job-dispatcher';

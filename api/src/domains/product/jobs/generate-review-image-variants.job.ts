@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ReviewImageService } from '~/domains/product/app/services/review-image.service';
-import type { AppJobPayloadMap } from '~/integrations/queue/app/app-job.types';
+import type { AppJobPayloadMap } from '~/platform/jobs/app-job.types';
 
 type GenerateReviewImageVariantsPayload =
   AppJobPayloadMap['product-review.generate-image-variants'];

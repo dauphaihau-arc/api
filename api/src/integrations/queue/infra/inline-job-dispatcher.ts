@@ -1,16 +1,17 @@
 import { Logger } from '@nestjs/common';
+import type { ModuleRef } from '@nestjs/core';
 import type {
   AppJobName,
   AppJobPayloadMap,
   DispatchJobOptions,
-} from '~/integrations/queue/app/app-job.types';
+} from '~/platform/jobs/app-job.types';
+import { JobRunner } from '~/platform/jobs/job-runner';
 import type { JobDispatcher } from '../app/ports/job-dispatcher';
-import type { AppJobRunner } from './app-job-runner';
 
 export class InlineJobDispatcher implements JobDispatcher {
   private readonly logger = new Logger(InlineJobDispatcher.name);
 
-  constructor(private readonly appJobRunner: AppJobRunner) {}
+  constructor(private readonly moduleRef: ModuleRef) {}
 
   async dispatch<TName extends AppJobName>(
     name: TName,
@@ -23,7 +24,7 @@ export class InlineJobDispatcher implements JobDispatcher {
 
     if (options?.delayMs && options.delayMs > 0) {
       const timer = setTimeout(() => {
-        void this.appJobRunner.run(name, payload).catch((error) => {
+        void this.runJob(name, payload).catch((error) => {
           this.logger.error(
             `Inline delayed job ${name} failed: ${error instanceof Error ? error.message : String(error)}`,
           );
@@ -33,6 +34,13 @@ export class InlineJobDispatcher implements JobDispatcher {
       return;
     }
 
-    await this.appJobRunner.run(name, payload);
+    await this.runJob(name, payload);
+  }
+
+  private async runJob<TName extends AppJobName>(
+    name: TName,
+    payload: AppJobPayloadMap[TName],
+  ): Promise<void> {
+    await this.moduleRef.get(JobRunner, { strict: false }).run(name, payload);
   }
 }

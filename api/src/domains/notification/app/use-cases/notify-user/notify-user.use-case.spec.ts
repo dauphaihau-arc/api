@@ -1,4 +1,4 @@
-import { appJobName } from '~/integrations/queue/app/app-job.types';
+import { appJobName } from '~/platform/jobs/app-job.names';
 import type { JobDispatcher } from '~/integrations/queue/app/ports/job-dispatcher';
 import type { NotificationRepository } from '../../ports/notification.repository';
 import { NotifyUserUseCase } from './notify-user.use-case';

@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import type { AppJobPayloadMap } from '~/integrations/queue/app/app-job.types';
+import type { AppJobPayloadMap } from '~/platform/jobs/app-job.types';
 import { CatalogProductProjectorService } from '~/domains/product/app/services/catalog-product-projector.service';
 
 type ProjectCatalogProductPayload =

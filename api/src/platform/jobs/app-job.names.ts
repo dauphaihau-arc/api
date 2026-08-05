@@ -1,0 +1,18 @@
+export const appJobName = {
+  refreshExchangeRates: 'fx.refresh-rates',
+  sendWelcomeEmail: 'user.send-welcome-email',
+  sendPasswordResetEmail: 'user.send-password-reset-email',
+  sendGuestOrderConfirmationEmail: 'order.send-guest-confirmation-email',
+  processOrderRefund: 'order.process-refund',
+  sendRefundSucceededEmail: 'order.send-refund-succeeded-email',
+  sendRefundFailedEmail: 'order.send-refund-failed-email',
+  sendSellerOrderUpdateEmail: 'order.send-seller-order-update-email',
+  processShopOrderExport: 'order.process-shop-order-export',
+  sendWebPushNotification: 'notification.send-web-push',
+  generateProductImageVariants: 'product.generate-image-variants',
+  generateReviewImageVariants: 'product-review.generate-image-variants',
+  projectCatalogProduct: 'catalog.project-product',
+  cleanupPendingReviewImage: 'product.cleanup-pending-review-image',
+  cleanupExpiredCheckoutQuoteReservations: 'order.cleanup-expired-checkout-quote-reservations',
+  refreshBestSellerRankings: 'product.refresh-best-seller-rankings',
+} as const;

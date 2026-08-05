@@ -48,7 +48,7 @@ import { MikroOrmShopOrderExportQueryRepository } from './infra/persistence/repo
 import { MikroOrmShopOrderExportRepository } from './infra/persistence/repositories/mikro-orm-shop-order-export.repository';
 import { CheckoutModule } from '../checkout/checkout.module';
 import { PaymentModule } from '~/integrations/payment/payment.module';
-import { NotificationModule } from '~/integrations/notification/notification.module';
+import { NotificationModule } from '~/domains/notification/notification.module';
 import { QueueModule } from '~/integrations/queue/queue.module';
 import { SseModule } from '~/platform/sse/sse.module';
 import { StorageModule } from '~/integrations/storage/storage.module';

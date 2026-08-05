@@ -2,10 +2,8 @@ import { createHash } from 'node:crypto';
 import { EntityManager } from '@mikro-orm/postgresql';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import ms from 'ms';
-import {
-  appJobDeduplicationKey,
-  appJobName,
-} from '../../../../integrations/queue/app/app-job.types';
+import { appJobDeduplicationKey } from '../../../../platform/jobs/app-job-deduplication';
+import { appJobName } from '../../../../platform/jobs/app-job.names';
 import { toMinorUnits } from '../../../../platform/utils/money';
 import { MARKETPLACE_CURRENCIES } from '../../../../platform/config/marketplace.config';
 import { CurrentUserEntity } from '../../../auth/infra/persistence/entities/current-user.entity';

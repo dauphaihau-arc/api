@@ -3,14 +3,14 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { LoggerModule } from 'nestjs-pino';
-import { buildPinoLoggerParams } from '~/platform/logging/pino-logger.config';
-import { validateAppEnv } from '~/platform/config/app-env.config';
-import { buildDatabaseConfig } from '~/platform/config/database.config';
-import { OrderModule } from '~/domains/order/order.module';
-import { CurrencyModule } from '~/integrations/currency/currency.module';
 import { OrderCheckoutOutboxWorkerService } from '~/domains/order/app/services/order-checkout-outbox-worker.service';
-import { QueueModule } from './queue.module';
-import { BullMqWorkerService } from './infra/bullmq-worker.service';
+import { OrderModule } from '~/domains/order/order.module';
+import { QueueModule } from '~/integrations/queue/queue.module';
+import { BullMqWorkerService } from '~/integrations/queue/infra/bullmq-worker.service';
+import { buildDatabaseConfig } from '~/platform/config/database.config';
+import { validateAppEnv } from '~/platform/config/app-env.config';
+import { buildPinoLoggerParams } from '~/platform/logging/pino-logger.config';
+import { JobsModule } from './jobs.module';
 
 @Module({
   imports: [
@@ -26,7 +26,7 @@ import { BullMqWorkerService } from './infra/bullmq-worker.service';
       registerRequestContext: false,
     }),
     QueueModule,
-    CurrencyModule,
+    JobsModule,
     OrderModule,
   ],
   providers: [
@@ -34,4 +34,4 @@ import { BullMqWorkerService } from './infra/bullmq-worker.service';
     OrderCheckoutOutboxWorkerService,
   ],
 })
-export class QueueWorkerModule {}
+export class JobsWorkerModule {}

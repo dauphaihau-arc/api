@@ -11,7 +11,7 @@ import { MARKETPLACE_CURRENCIES } from '../../../../platform/config/marketplace.
 import {
   PRODUCT_INVENTORY_UPDATED_SSE_EVENT,
 } from '../../../product/app/events/product-inventory-sse.event';
-import { NotifyUserUseCase } from '../../../../integrations/notification/app/use-cases/notify-user/notify-user.use-case';
+import { NotifyUserUseCase } from '../../../../domains/notification/app/use-cases/notify-user/notify-user.use-case';
 import type { CartSnapshot } from '../../../cart/app/cart.types';
 import { CurrentUserEntity } from '../../../auth/infra/persistence/entities/current-user.entity';
 import { CouponPricingService } from '../../../coupon/app/services/coupon-pricing.service';

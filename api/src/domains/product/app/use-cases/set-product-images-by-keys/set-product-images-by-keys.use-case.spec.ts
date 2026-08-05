@@ -1,7 +1,8 @@
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import { UserStatus } from '~/domains/auth/domain/enums/user-status.enum';
 import type { ShopRepository } from '~/domains/shop/app/ports/shop.repository';
-import { appJobDeduplicationKey, appJobName } from '~/integrations/queue/app/app-job.types';
+import { appJobDeduplicationKey } from '~/platform/jobs/app-job-deduplication';
+import { appJobName } from '~/platform/jobs/app-job.names';
 import type { JobDispatcher } from '~/integrations/queue/app/ports/job-dispatcher';
 import type { ProductCommandRepository } from '../../ports/product-command.repository';
 import type { SellerProductQueryRepository } from '../../ports/seller-product-query.repository';

@@ -1,4 +1,4 @@
-import type { NotifyUserInput } from '~/integrations/notification/app/notification.types';
+import type { NotifyUserInput } from '~/domains/notification/app/notification.types';
 
 type SellerOrderNotificationData = Record<string, unknown> & {
   target: 'seller_order_detail';

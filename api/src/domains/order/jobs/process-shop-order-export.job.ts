@@ -7,9 +7,9 @@ import os from 'node:os';
 import { randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { NotifyUserUseCase } from '~/integrations/notification/app/use-cases/notify-user/notify-user.use-case';
+import { NotifyUserUseCase } from '~/domains/notification/app/use-cases/notify-user/notify-user.use-case';
 import { StorageService } from '~/integrations/storage/app/ports/storage.service';
-import type { AppJobPayloadMap, appJobName } from '~/integrations/queue/app/app-job.types';
+import type { AppJobPayloadMap } from '~/platform/jobs/app-job.types';
 import { ExportShopOrdersQueryDto, ShopOrderExportColumnPreset } from '../api/rest/dto/export-shop-orders.query.dto';
 import {
   ORDER_EXPORT_COMPLETED_SSE_EVENT,
@@ -29,7 +29,7 @@ import { resolveExportColumns } from '../app/use-cases/export-shop-orders/shop-o
 import { OrderExportStatus } from '../domain/enums/order-export-status.enum';
 
 type ProcessShopOrderExportPayload =
-  AppJobPayloadMap[typeof appJobName.processShopOrderExport];
+  AppJobPayloadMap['order.process-shop-order-export'];
 
 const EXPORT_BATCH_SIZE = 1_000;
 

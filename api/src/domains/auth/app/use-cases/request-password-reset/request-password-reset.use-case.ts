@@ -2,7 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import ms from 'ms';
-import { appJobName } from '~/integrations/queue/app/app-job.types';
+import { appJobName } from '~/platform/jobs/app-job.names';
 import { Email } from '../../../domain/value-objects/email';
 import { AuthUserRepository } from '../../ports/auth-user.repository';
 import { PasswordResetTokenRepository } from '../../ports/password-reset-token.repository';

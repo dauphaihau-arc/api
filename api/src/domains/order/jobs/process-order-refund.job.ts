@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { AppJobPayloadMap } from '~/integrations/queue/app/app-job.types';
+import type { AppJobPayloadMap } from '~/platform/jobs/app-job.types';
 import { OrderRefundService } from '~/domains/order/app/services/order-refund.service';
 
 type ProcessOrderRefundPayload =

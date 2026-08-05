@@ -1,7 +1,7 @@
 import { MikroOrmModule } from '@mikro-orm/nestjs';
 import { forwardRef, Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { SendWebPushNotificationJob } from '~/integrations/notification/jobs/send-web-push-notification.job';
+import { SendWebPushNotificationJob } from '~/domains/notification/jobs/send-web-push-notification.job';
 import { WEB_PUSH_CONFIG, buildWebPushConfig } from '~/platform/config/web-push.config';
 import { CurrentUserEntity } from '~/domains/auth/infra/persistence/entities/current-user.entity';
 import { QueueModule } from '~/integrations/queue/queue.module';

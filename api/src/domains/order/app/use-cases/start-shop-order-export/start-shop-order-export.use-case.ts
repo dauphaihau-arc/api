@@ -1,9 +1,7 @@
 import ms from 'ms';
 import { Injectable } from '@nestjs/common';
-import {
-  appJobDeduplicationKey,
-  appJobName,
-} from '~/integrations/queue/app/app-job.types';
+import { appJobDeduplicationKey } from '~/platform/jobs/app-job-deduplication';
+import { appJobName } from '~/platform/jobs/app-job.names';
 import { JobDispatcher } from '~/integrations/queue/app/ports/job-dispatcher';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import { ExportShopOrdersQueryDto } from '../../../api/rest/dto/export-shop-orders.query.dto';
