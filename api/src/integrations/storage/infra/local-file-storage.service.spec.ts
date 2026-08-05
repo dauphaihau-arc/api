@@ -1,6 +1,7 @@
 import { mkdtemp, readFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { Readable } from 'node:stream';
 import { LocalFileStorageService } from './local-file-storage.service';
 
 describe('LocalFileStorageService', () => {
@@ -40,6 +41,26 @@ describe('LocalFileStorageService', () => {
     await expect(
       readFile(path.join(tempRoot, 'avatars', 'user-1.txt'), 'utf8'),
     ).resolves.toBe('hello storage');
+  });
+
+  it('writes readable stream objects without buffering through the caller', async () => {
+    const { service, tempRoot } = await createService();
+
+    const result = await service.putObject({
+      key: 'exports/orders.csv',
+      body: Readable.from(['id,total\r\n', 'order-1,10\r\n']),
+      contentType: 'text/csv',
+    });
+
+    expect(result).toEqual({
+      key: 'exports/orders.csv',
+      size: 22,
+      contentType: 'text/csv',
+      url: 'https://cdn.example.com/files/exports/orders.csv',
+    });
+    await expect(
+      readFile(path.join(tempRoot, 'exports', 'orders.csv'), 'utf8'),
+    ).resolves.toBe('id,total\r\norder-1,10\r\n');
   });
 
   it('deletes objects idempotently', async () => {

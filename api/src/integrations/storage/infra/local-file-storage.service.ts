@@ -1,7 +1,10 @@
 import {
   access, mkdir, readFile, rm, stat, writeFile, 
 } from 'node:fs/promises';
+import { createWriteStream } from 'node:fs';
 import path from 'node:path';
+import { Readable } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
 import type { LocalStorageConfig } from '~/platform/config/storage.config';
 import type { StorageService } from '../app/ports/storage.service';
 import type { PutStorageObjectInput, StoredObject } from '../app/storage.types';
@@ -17,16 +20,16 @@ export class LocalFileStorageService implements StorageService {
   async putObject(input: PutStorageObjectInput): Promise<StoredObject> {
     const normalizedKey = this.normalizeKey(input.key);
     const filePath = this.resolveFilePath(normalizedKey);
-    const body = this.toBuffer(input.body);
 
     await mkdir(path.dirname(filePath), {
       recursive: true,
     });
-    await writeFile(filePath, body);
+
+    const size = await this.writeBody(filePath, input.body);
 
     return {
       key: normalizedKey,
-      size: body.byteLength,
+      size,
       contentType: input.contentType,
       url: this.getPublicUrl(normalizedKey),
     };
@@ -82,6 +85,20 @@ export class LocalFileStorageService implements StorageService {
 
   private normalizeKey(key: string): string {
     return normalizeStorageKey(key);
+  }
+
+  private async writeBody(
+    filePath: string,
+    body: PutStorageObjectInput['body'],
+  ): Promise<number> {
+    if (body instanceof Readable) {
+      await pipeline(body, createWriteStream(filePath));
+      return (await stat(filePath)).size;
+    }
+
+    const buffer = this.toBuffer(body);
+    await writeFile(filePath, buffer);
+    return buffer.byteLength;
   }
 
   private toBuffer(body: Buffer | Uint8Array | string): Buffer {

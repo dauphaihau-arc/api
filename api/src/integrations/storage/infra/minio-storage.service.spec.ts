@@ -52,6 +52,33 @@ describe('MinioStorageService', () => {
     });
   });
 
+  it('uploads readable stream objects with explicit content length', async () => {
+    const { service, send } = createService();
+    send
+      .mockResolvedValueOnce({})
+      .mockResolvedValueOnce({})
+      .mockResolvedValueOnce({});
+
+    const body = Readable.from(['id,total\r\n', 'order-1,10\r\n']);
+    const result = await service.putObject({
+      key: 'exports/orders.csv',
+      body,
+      contentType: 'text/csv',
+      contentLength: 22,
+    });
+
+    expect(send).toHaveBeenCalledWith(expect.any(PutObjectCommand));
+    const putCommand = send.mock.calls[2][0] as PutObjectCommand;
+    expect(putCommand.input.Body).toBe(body);
+    expect(putCommand.input.ContentLength).toBe(22);
+    expect(result).toEqual({
+      key: 'exports/orders.csv',
+      size: 22,
+      contentType: 'text/csv',
+      url: 'http://127.0.0.1:9000/app-files/exports/orders.csv',
+    });
+  });
+
   it('reads object bodies from sdk streams', async () => {
     const { service, send } = createService();
     send

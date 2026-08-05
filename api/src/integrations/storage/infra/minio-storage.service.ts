@@ -45,19 +45,20 @@ export class MinioStorageService implements StorageService {
     await this.ensureBucket();
 
     const normalizedKey = normalizeStorageKey(input.key);
-    const body = this.toBuffer(input.body);
+    const body = this.toPutObjectBody(input.body);
+    const contentLength = input.contentLength ?? this.getBodyLength(input.body);
 
     await this.client.send(new PutObjectCommand({
       Bucket: this.storageConfig.bucket,
       Key: normalizedKey,
       Body: body,
       ContentType: input.contentType,
-      ContentLength: body.byteLength,
+      ContentLength: contentLength,
     }));
 
     return {
       key: normalizedKey,
-      size: body.byteLength,
+      size: contentLength ?? 0,
       contentType: input.contentType,
       url: this.getPublicUrl(normalizedKey),
     };
@@ -324,6 +325,28 @@ export class MinioStorageService implements StorageService {
     }
 
     throw new Error('Unsupported storage object body.');
+  }
+
+  private toPutObjectBody(
+    body: PutStorageObjectInput['body'],
+  ): Buffer | Uint8Array | string | Readable {
+    if (body instanceof Readable) {
+      return body;
+    }
+
+    return this.toBuffer(body);
+  }
+
+  private getBodyLength(body: PutStorageObjectInput['body']): number | undefined {
+    if (typeof body === 'string') {
+      return Buffer.byteLength(body);
+    }
+
+    if (body instanceof Readable) {
+      return undefined;
+    }
+
+    return body.byteLength;
   }
 
   private toBuffer(body: Buffer | Uint8Array | string): Buffer {
