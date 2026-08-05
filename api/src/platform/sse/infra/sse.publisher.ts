@@ -1,16 +1,98 @@
-import { Injectable } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
+import {
+  Injectable,
+  Logger,
+  OnApplicationShutdown,
+  OnModuleInit,
+} from '@nestjs/common';
 import type { MessageEvent } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import Redis from 'ioredis';
 import { Observable, Subject, interval } from 'rxjs';
 import type { SseMessage } from '../app/sse.types';
 
 type SseStream = Subject<MessageEvent>;
+type SseRedisEnvelope = {
+  originId: string;
+  channelKey: string;
+  message: SseMessage;
+};
 
 const HEARTBEAT_INTERVAL_MS = 25_000;
 const RETRY_INTERVAL_MS = 5_000;
 
 @Injectable()
-export class SsePublisher {
+export class SsePublisher implements OnModuleInit, OnApplicationShutdown {
+  private readonly logger = new Logger(SsePublisher.name);
+  private readonly originId = randomUUID();
   private readonly streamsByChannelKey = new Map<string, Set<SseStream>>();
+  private pubClient: Redis | null = null;
+  private subClient: Redis | null = null;
+  private redisChannel: string | null = null;
+
+  constructor(private readonly configService: ConfigService) {}
+
+  async onModuleInit(): Promise<void> {
+    if (this.configService.get<string>('QUEUE_DRIVER') !== 'redis') {
+      return;
+    }
+
+    const redisUrl = this.configService.get<string>(
+      'QUEUE_REDIS_URL',
+      this.configService.get<string>('REDIS_URL', 'redis://127.0.0.1:6379'),
+    );
+
+    const prefix = this.configService.get<string>('QUEUE_PREFIX', 'nest-template');
+    const redisChannel = `${prefix}:sse:user-events`;
+
+    const pubClient = new Redis(redisUrl, {
+      lazyConnect: true,
+      maxRetriesPerRequest: null,
+      enableReadyCheck: false,
+      retryStrategy: () => null,
+    });
+
+    const subClient = new Redis(redisUrl, {
+      lazyConnect: true,
+      maxRetriesPerRequest: null,
+      enableReadyCheck: false,
+      retryStrategy: () => null,
+    });
+
+    pubClient.on('error', (error) => {
+      this.logger.warn(`SSE Redis publisher error: ${error.message}`);
+    });
+    subClient.on('error', (error) => {
+      this.logger.warn(`SSE Redis subscriber error: ${error.message}`);
+    });
+
+    await Promise.all([
+      pubClient.connect(),
+      subClient.connect(),
+    ]);
+
+    await subClient.subscribe(redisChannel);
+
+    subClient.on('message', (channel, rawMessage) => {
+      if (channel !== redisChannel) {
+        return;
+      }
+
+      this.handleRedisMessage(rawMessage);
+    });
+
+    this.pubClient = pubClient;
+    this.subClient = subClient;
+    this.redisChannel = redisChannel;
+    this.logger.log(`Subscribed SSE publisher to Redis channel ${redisChannel}`);
+  }
+
+  async onApplicationShutdown(): Promise<void> {
+    await Promise.all([
+      this.subClient?.quit(),
+      this.pubClient?.quit(),
+    ]);
+  }
 
   createChannelStream(
     channelKey: string,
@@ -88,6 +170,61 @@ export class SsePublisher {
     const streams = this.streamsByChannelKey.get(channelKey);
 
     this.publishToStreams(streams, message);
+    this.publishToRedis(channelKey, message);
+  }
+
+  private publishToRedis(channelKey: string, message: SseMessage): void {
+    if (!this.pubClient || !this.redisChannel) {
+      return;
+    }
+
+    const envelope: SseRedisEnvelope = {
+      originId: this.originId,
+      channelKey,
+      message,
+    };
+
+    void this.pubClient.publish(this.redisChannel, JSON.stringify(envelope))
+      .catch((error: unknown) => {
+        this.logger.warn(
+          `Failed to publish SSE message to Redis: ${this.toErrorMessage(error)}`,
+        );
+      });
+  }
+
+  private handleRedisMessage(rawMessage: string): void {
+    const envelope = this.parseRedisEnvelope(rawMessage);
+
+    if (!envelope || envelope.originId === this.originId) {
+      return;
+    }
+
+    this.publishToStreams(
+      this.streamsByChannelKey.get(envelope.channelKey),
+      envelope.message,
+    );
+  }
+
+  private parseRedisEnvelope(rawMessage: string): SseRedisEnvelope | null {
+    try {
+      const parsed = JSON.parse(rawMessage) as Partial<SseRedisEnvelope>;
+
+      if (
+        typeof parsed.originId !== 'string'
+        || typeof parsed.channelKey !== 'string'
+        || !parsed.message
+        || typeof parsed.message.type !== 'string'
+        || typeof parsed.message.data !== 'object'
+        || parsed.message.data === null
+      ) {
+        return null;
+      }
+
+      return parsed as SseRedisEnvelope;
+    }
+    catch {
+      return null;
+    }
   }
 
   private publishToStreams(
@@ -134,5 +271,9 @@ export class SsePublisher {
     if (streams.size === 0) {
       this.streamsByChannelKey.delete(channelKey);
     }
+  }
+
+  private toErrorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : String(error);
   }
 }
