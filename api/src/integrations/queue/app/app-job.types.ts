@@ -7,6 +7,7 @@ export const appJobName = {
   sendRefundSucceededEmail: 'order.send-refund-succeeded-email',
   sendRefundFailedEmail: 'order.send-refund-failed-email',
   sendSellerOrderUpdateEmail: 'order.send-seller-order-update-email',
+  processShopOrderExport: 'order.process-shop-order-export',
   sendWebPushNotification: 'notification.send-web-push',
   generateProductImageVariants: 'product.generate-image-variants',
   generateReviewImageVariants: 'product-review.generate-image-variants',
@@ -49,6 +50,9 @@ export interface AppJobPayloadMap {
   [appJobName.sendSellerOrderUpdateEmail]: {
     orderId: string;
     eventType: 'canceled' | 'refunded';
+  };
+  [appJobName.processShopOrderExport]: {
+    exportId: string;
   };
   [appJobName.sendWebPushNotification]: {
     userId: string;
@@ -117,6 +121,12 @@ export const appJobDeduplicationKey = {
     return buildJobDeduplicationKey(
       appJobName.processOrderRefund,
       orderId,
+    );
+  },
+  processShopOrderExport(exportId: string): string {
+    return buildJobDeduplicationKey(
+      appJobName.processShopOrderExport,
+      exportId,
     );
   },
   sendWebPushNotification(userId: string, notificationId: string): string {

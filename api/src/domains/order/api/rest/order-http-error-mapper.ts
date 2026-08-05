@@ -2,6 +2,7 @@ import type { HttpException } from '@nestjs/common';
 import {
   BadRequestException,
   NotFoundException,
+  UnprocessableEntityException,
 } from '@nestjs/common';
 import {
   AddressNotFoundError,
@@ -23,6 +24,8 @@ import {
   CheckoutSessionNotFoundError,
   InvalidShippingStatusTransitionError,
   OrderAppError,
+  OrderExportNotFoundError,
+  OrderExportNotReadyError,
   OrderNotFoundError,
   OrderTotalLimitExceededError,
   SellerRefundActionNotAllowedError,
@@ -52,6 +55,8 @@ type OrderHttpErrorCode =
   | 'CHECKOUT_QUOTE_CART_CHANGED'
   | 'ORDER_TOTAL_LIMIT_EXCEEDED'
   | 'ORDER_NOT_FOUND'
+  | 'ORDER_EXPORT_NOT_FOUND'
+  | 'ORDER_EXPORT_NOT_READY'
   | 'CHECKOUT_SESSION_ID_REQUIRED'
   | 'CHECKOUT_SESSION_NOT_FOUND'
   | 'CHECKOUT_SESSION_EXPIRED'
@@ -79,11 +84,16 @@ export function mapOrderAppErrorToHttpException(
     || error instanceof TemporaryCartNotFoundError
     || error instanceof AddressNotFoundError
     || error instanceof OrderNotFoundError
+    || error instanceof OrderExportNotFoundError
     || error instanceof CheckoutSessionNotFoundError
     || error instanceof CheckoutSessionExpiredError
     || error instanceof CheckoutQuoteNotFoundError
   ) {
     return new NotFoundException(buildOrderErrorPayload(error));
+  }
+
+  if (error instanceof OrderExportNotReadyError) {
+    return new UnprocessableEntityException(buildOrderErrorPayload(error));
   }
 
   if (
@@ -159,6 +169,12 @@ function getOrderErrorCode(error: OrderAppError): OrderHttpErrorCode {
   }
   if (error instanceof OrderNotFoundError) {
     return 'ORDER_NOT_FOUND';
+  }
+  if (error instanceof OrderExportNotFoundError) {
+    return 'ORDER_EXPORT_NOT_FOUND';
+  }
+  if (error instanceof OrderExportNotReadyError) {
+    return 'ORDER_EXPORT_NOT_READY';
   }
   if (error instanceof CheckoutSessionIdRequiredError) {
     return 'CHECKOUT_SESSION_ID_REQUIRED';

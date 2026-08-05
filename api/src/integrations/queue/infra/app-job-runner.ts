@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { ModuleRef } from '@nestjs/core';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 import { captureException } from '~/platform/sentry/sentry';
 import { getAppTracer, setSpanError } from '~/platform/observability/tracing';
@@ -15,6 +16,7 @@ import { CleanupPendingReviewImageJob } from '~/domains/product/jobs/cleanup-pen
 import { CleanupExpiredCheckoutQuoteReservationsJob } from '~/domains/checkout/jobs/cleanup-expired-checkout-quote-reservations.job';
 import { RefreshBestSellerRankingsJob } from '~/domains/product/jobs/refresh-best-seller-rankings.job';
 import { ProcessOrderRefundJob } from '~/domains/order/jobs/process-order-refund.job';
+import { ProcessShopOrderExportJob } from '~/domains/order/jobs/process-shop-order-export.job';
 import { SendGuestOrderConfirmationEmailJob } from '~/domains/order/jobs/send-guest-order-confirmation-email.job';
 import { SendPasswordResetEmailJob } from '~/domains/auth/jobs/send-password-reset-email.job';
 import { SendRefundFailedEmailJob } from '~/domains/order/jobs/send-refund-failed-email.job';
@@ -30,6 +32,7 @@ export class AppJobRunner {
   constructor(
     @InjectPinoLogger(AppJobRunner.name)
     private readonly logger: PinoLogger,
+    private readonly moduleRef: ModuleRef,
     private readonly refreshExchangeRatesJob: RefreshExchangeRatesJob,
     private readonly sendWelcomeEmailJob: SendWelcomeEmailJob,
     private readonly sendPasswordResetEmailJob: SendPasswordResetEmailJob,
@@ -101,6 +104,11 @@ export class AppJobRunner {
           case appJobName.sendSellerOrderUpdateEmail:
             await this.sendSellerOrderUpdateEmailJob.run(
               payload as AppJobPayloadMap[typeof appJobName.sendSellerOrderUpdateEmail],
+            );
+            return;
+          case appJobName.processShopOrderExport:
+            await this.moduleRef.get(ProcessShopOrderExportJob, { strict: false }).run(
+              payload as AppJobPayloadMap[typeof appJobName.processShopOrderExport],
             );
             return;
           case appJobName.sendWebPushNotification:

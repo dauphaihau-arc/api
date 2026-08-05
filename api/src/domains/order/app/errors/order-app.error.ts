@@ -74,6 +74,18 @@ export class OrderNotFoundError extends OrderAppError {
   }
 }
 
+export class OrderExportNotFoundError extends OrderAppError {
+  constructor() {
+    super('Order export was not found');
+  }
+}
+
+export class OrderExportNotReadyError extends OrderAppError {
+  constructor() {
+    super('Order export is not ready');
+  }
+}
+
 export class CheckoutSessionIdRequiredError extends OrderAppError {
   constructor() {
     super('session_id is required');

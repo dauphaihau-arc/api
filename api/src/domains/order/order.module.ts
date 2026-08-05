@@ -1,6 +1,7 @@
 import { MikroOrmModule } from '@mikro-orm/nestjs';
 import { forwardRef, Module } from '@nestjs/common';
 import { ProcessOrderRefundJob } from '~/domains/order/jobs/process-order-refund.job';
+import { ProcessShopOrderExportJob } from '~/domains/order/jobs/process-shop-order-export.job';
 import { AuthModule } from '../auth/auth.module';
 import { CouponModule } from '../coupon/coupon.module';
 import { CouponUsageEntity } from '../coupon/infra/persistence/entities/coupon-usage.entity';
@@ -8,6 +9,7 @@ import { AdminOrderController } from './api/rest/admin-order.controller';
 import { MeOrderController } from './api/rest/me-order.controller';
 import { OrderWebhookController } from './api/rest/order-webhook.controller';
 import { ShopDashboardController } from './api/rest/shop-dashboard.controller';
+import { ShopOrderExportController } from './api/rest/shop-order-export.controller';
 import { ShopOrderController } from './api/rest/shop-order.controller';
 import { OrderCancellationService } from './app/services/order-cancellation.service';
 import { OrderCheckoutService } from './app/services/order-checkout.service';
@@ -20,6 +22,10 @@ import { GetShopDashboardUseCase } from './app/use-cases/get-shop-dashboard/get-
 import { GetShopOrderByIdUseCase } from './app/use-cases/get-shop-order-by-id/get-shop-order-by-id.use-case';
 import { HandleStripeWebhookUseCase } from './app/use-cases/handle-stripe-webhook/handle-stripe-webhook.use-case';
 import { ListAdminOrdersUseCase } from './app/use-cases/list-admin-orders/list-admin-orders.use-case';
+import { ExportShopOrdersUseCase } from './app/use-cases/export-shop-orders/export-shop-orders.use-case';
+import { StartShopOrderExportUseCase } from './app/use-cases/start-shop-order-export/start-shop-order-export.use-case';
+import { GetShopOrderExportUseCase } from './app/use-cases/get-shop-order-export/get-shop-order-export.use-case';
+import { DownloadShopOrderExportUseCase } from './app/use-cases/download-shop-order-export/download-shop-order-export.use-case';
 import { ListOrdersUseCase } from './app/use-cases/list-orders/list-orders.use-case';
 import { ListShopOrdersUseCase } from './app/use-cases/list-shop-orders/list-shop-orders.use-case';
 import { RequestOrderCancelUseCase } from './app/use-cases/request-order-cancel/request-order-cancel.use-case';
@@ -30,11 +36,16 @@ import { UpdateAdminOrderSupportNoteUseCase } from './app/use-cases/update-admin
 import { OrderCheckoutOutboxService } from './app/services/order-checkout-outbox.service';
 import { OrderEventsService } from './app/services/order-events.service';
 import { ShopDashboardQueryRepository } from './app/ports/shop-dashboard-query.repository';
+import { ShopOrderExportQueryRepository } from './app/ports/shop-order-export-query.repository';
+import { ShopOrderExportRepository } from './app/ports/shop-order-export.repository';
 import { OrderEventEntity } from './infra/persistence/entities/order-event.entity';
 import { OutboxEventEntity } from './infra/persistence/entities/outbox-event.entity';
 import { OrderEntity } from './infra/persistence/entities/order.entity';
+import { OrderExportEntity } from './infra/persistence/entities/order-export.entity';
 import { OrderItemEntity } from './infra/persistence/entities/order-item.entity';
 import { MikroOrmShopDashboardQueryRepository } from './infra/persistence/repositories/mikro-orm-shop-dashboard-query.repository';
+import { MikroOrmShopOrderExportQueryRepository } from './infra/persistence/repositories/mikro-orm-shop-order-export-query.repository';
+import { MikroOrmShopOrderExportRepository } from './infra/persistence/repositories/mikro-orm-shop-order-export.repository';
 import { CheckoutModule } from '../checkout/checkout.module';
 import { PaymentModule } from '~/integrations/payment/payment.module';
 import { NotificationModule } from '~/integrations/notification/notification.module';
@@ -43,6 +54,7 @@ import { SseModule } from '~/platform/sse/sse.module';
 import { StorageModule } from '~/integrations/storage/storage.module';
 import { ShopModule } from '../shop/shop.module';
 import { ForwardOrderUpdatedToSseListener } from './listeners/forward-order-updated-to-sse.listener';
+import { ForwardOrderExportToSseListener } from './listeners/forward-order-export-to-sse.listener';
 import { UpdateShopOrderShipmentUseCase } from './app/use-cases/update-shop-order-shipment/update-shop-order-shipment.use-case';
 import { UpdateShopOrderStatusUseCase } from './app/use-cases/update-shop-order-status/update-shop-order-status.use-case';
 import { UpdateShopOrderRefundUseCase } from './app/use-cases/update-shop-order-refund/update-shop-order-refund.use-case';
@@ -62,6 +74,7 @@ import { UpdateShopOrderRefundUseCase } from './app/use-cases/update-shop-order-
       OutboxEventEntity,
       OrderEventEntity,
       OrderEntity,
+      OrderExportEntity,
       OrderItemEntity,
       CouponUsageEntity,
     ]),
@@ -71,12 +84,21 @@ import { UpdateShopOrderRefundUseCase } from './app/use-cases/update-shop-order-
     MeOrderController,
     OrderWebhookController,
     ShopDashboardController,
+    ShopOrderExportController,
     ShopOrderController,
   ],
   providers: [
     {
       provide: ShopDashboardQueryRepository,
       useClass: MikroOrmShopDashboardQueryRepository,
+    },
+    {
+      provide: ShopOrderExportQueryRepository,
+      useClass: MikroOrmShopOrderExportQueryRepository,
+    },
+    {
+      provide: ShopOrderExportRepository,
+      useClass: MikroOrmShopOrderExportRepository,
     },
     OrderCheckoutService,
     OrderTotalPolicyService,
@@ -93,6 +115,10 @@ import { UpdateShopOrderRefundUseCase } from './app/use-cases/update-shop-order-
     HandleStripeWebhookUseCase,
     ListOrdersUseCase,
     ListShopOrdersUseCase,
+    ExportShopOrdersUseCase,
+    StartShopOrderExportUseCase,
+    GetShopOrderExportUseCase,
+    DownloadShopOrderExportUseCase,
     GetShopDashboardUseCase,
     GetShopOrderByIdUseCase,
     UpdateAdminOrderStatusUseCase,
@@ -102,7 +128,9 @@ import { UpdateShopOrderRefundUseCase } from './app/use-cases/update-shop-order-
     UpdateShopOrderShipmentUseCase,
     UpdateShopOrderRefundUseCase,
     ForwardOrderUpdatedToSseListener,
+    ForwardOrderExportToSseListener,
     ProcessOrderRefundJob,
+    ProcessShopOrderExportJob,
   ],
   exports: [
     OrderCheckoutService,
@@ -111,6 +139,9 @@ import { UpdateShopOrderRefundUseCase } from './app/use-cases/update-shop-order-
     OrderCheckoutOutboxService,
     OrderRefundService,
     ProcessOrderRefundJob,
+    ProcessShopOrderExportJob,
+    ShopOrderExportQueryRepository,
+    ShopOrderExportRepository,
   ],
 })
 export class OrderModule {}
