@@ -24,7 +24,7 @@ import { CacheModule } from '~/integrations/cache/cache.module';
 import { HealthModule } from '~/platform/health/health.module';
 import { MailModule } from '~/integrations/mail/mail.module';
 import { CurrencyModule } from '~/integrations/currency/currency.module';
-import { MarketplaceModule } from '~/integrations/marketplace/marketplace.module';
+import { MarketplaceModule } from '~/domains/marketplace/marketplace.module';
 import { NotificationModule } from '~/domains/notification/notification.module';
 import { ObservabilityModule } from '~/platform/observability/observability.module';
 import { JobsModule } from '~/platform/jobs/jobs.module';
