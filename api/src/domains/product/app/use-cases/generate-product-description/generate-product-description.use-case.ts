@@ -1,6 +1,10 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { CategoryQueryRepository } from '~/domains/category/app/ports/category-query.repository';
 import { TextGenerationService } from '~/integrations/ai/app/ports/text-generation.service';
+import {
+  OPENAI_CONFIG,
+  type OpenAiConfig,
+} from '~/platform/config/openai.config';
 import { ProductVariantType } from '../../../domain/enums/product-variant-type.enum';
 import { ProductWhoMade } from '../../../domain/enums/product-who-made.enum';
 import type { ProductDescriptionAttributeFact } from './generate-product-description.types';
@@ -25,9 +29,20 @@ export class GenerateProductDescriptionUseCase {
     private readonly textGenerationService: TextGenerationService,
     @Inject(CategoryQueryRepository)
     private readonly categoryQueryRepository: CategoryQueryRepository,
+    @Inject(OPENAI_CONFIG)
+    private readonly openAiConfig: Pick<
+      OpenAiConfig,
+      'defaultModel' | 'productDescriptionEnabled'
+    >,
   ) {}
 
   async execute(input: GenerateProductDescriptionInput): Promise<string> {
+    if (!this.openAiConfig.productDescriptionEnabled) {
+      throw new ServiceUnavailableException(
+        'AI description generation is temporarily unavailable.',
+      );
+    }
+
     const category = input.categoryId
       ? await this.categoryQueryRepository.findById(input.categoryId)
       : null;
@@ -47,6 +62,7 @@ export class GenerateProductDescriptionUseCase {
     return this.textGenerationService.generateText({
       instructions: buildInstructions(),
       input: buildPromptInput(promptInput),
+      model: this.openAiConfig.defaultModel,
       maxOutputTokens: 600,
     });
   }

@@ -24,7 +24,7 @@ export class OpenAiTextGenerationService implements TextGenerationService {
   constructor(
     @Inject(OPENAI_CONFIG) private readonly openAiConfig: OpenAiConfig,
   ) {
-    if (openAiConfig.productDescriptionEnabled && openAiConfig.apiKey) {
+    if (openAiConfig.apiKey) {
       this.client = new OpenAI({
         apiKey: openAiConfig.apiKey,
         baseURL: openAiConfig.baseUrl,
@@ -34,21 +34,15 @@ export class OpenAiTextGenerationService implements TextGenerationService {
   }
 
   async generateText(input: GenerateTextInput): Promise<string> {
-    if (!this.openAiConfig.productDescriptionEnabled) {
-      throw new ServiceUnavailableException(
-        'AI description generation is temporarily unavailable.',
-      );
-    }
-
     if (!this.client) {
       throw new ServiceUnavailableException(
-        'AI description generation is temporarily unavailable.',
+        'Text generation is temporarily unavailable.',
       );
     }
 
     try {
       const response = await this.client.responses.create({
-        model: this.openAiConfig.productDescriptionModel,
+        model: input.model ?? this.openAiConfig.defaultModel,
         reasoning: {
           effort: 'low',
         },
@@ -73,7 +67,7 @@ export class OpenAiTextGenerationService implements TextGenerationService {
 
       if (error instanceof APIConnectionTimeoutError) {
         throw new ServiceUnavailableException(
-          'AI description generation is temporarily unavailable.',
+          'Text generation is temporarily unavailable.',
           {
             cause: error,
           },
@@ -82,7 +76,7 @@ export class OpenAiTextGenerationService implements TextGenerationService {
 
       if (error instanceof APIConnectionError) {
         throw new ServiceUnavailableException(
-          'AI description generation is temporarily unavailable.',
+          'Text generation is temporarily unavailable.',
           {
             cause: error,
           },
@@ -92,7 +86,7 @@ export class OpenAiTextGenerationService implements TextGenerationService {
       if (error instanceof APIError) {
         if (error.status === 429) {
           throw new ServiceUnavailableException(
-            'AI description generation is temporarily unavailable.',
+            'Text generation is temporarily unavailable.',
             {
               cause: error,
             },
@@ -100,7 +94,7 @@ export class OpenAiTextGenerationService implements TextGenerationService {
         }
 
         throw new BadGatewayException(
-          'AI description generation is temporarily unavailable.',
+          'Text generation is temporarily unavailable.',
           {
             cause: error,
           },
@@ -108,7 +102,7 @@ export class OpenAiTextGenerationService implements TextGenerationService {
       }
 
       throw new InternalServerErrorException(
-        'AI description generation is temporarily unavailable.',
+        'Text generation is temporarily unavailable.',
         {
           cause: error instanceof Error ? error : undefined,
         },

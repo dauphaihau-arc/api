@@ -39,6 +39,10 @@ describe('GenerateProductDescriptionUseCase', () => {
     const useCase = new GenerateProductDescriptionUseCase(
       textGenerationService,
       categoryQueryRepository,
+      {
+        defaultModel: 'gpt-test',
+        productDescriptionEnabled: true,
+      },
     );
 
     await expect(useCase.execute({
@@ -67,6 +71,7 @@ describe('GenerateProductDescriptionUseCase', () => {
         'Tags: oak, minimal',
         'Attributes: Material: Oak',
       ].join('\n'),
+      model: 'gpt-test',
       maxOutputTokens: 600,
     });
   });

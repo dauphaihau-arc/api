@@ -4,7 +4,7 @@ export interface OpenAiConfig {
   apiKey?: string;
   productDescriptionEnabled: boolean;
   baseUrl: string;
-  productDescriptionModel: string;
+  defaultModel: string;
   timeoutMs: number;
 }
 
@@ -21,9 +21,12 @@ export function buildOpenAiConfig(
       'OPENAI_BASE_URL',
       'https://api.openai.com/v1',
     ),
-    productDescriptionModel: configService.get<string>(
-      'OPENAI_PRODUCT_DESCRIPTION_MODEL',
-      'gpt-5.4-nano',
+    defaultModel: configService.get<string>(
+      'OPENAI_MODEL',
+      configService.get<string>(
+        'OPENAI_PRODUCT_DESCRIPTION_MODEL',
+        'gpt-5.4-nano',
+      ),
     ),
     timeoutMs: Number(configService.get<string>('OPENAI_TIMEOUT_MS', '10000')),
   };
