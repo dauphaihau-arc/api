@@ -162,12 +162,14 @@ async function syncProductImages(
     const storageKey = buildStorageObjectKey({
       env: resolveStorageEnvironmentSegment(process.env.NODE_ENV),
       visibility: 'public',
-      path: [
-        { domain: 'shops', id: shop.publicId },
-        { domain: 'products', id: product.publicId },
+      pathSegments: [
+        'shops',
+        shop.publicId,
+        'products',
+        product.publicId,
+        'images',
+        filenameWithoutExtension,
       ],
-      collection: 'images',
-      assetPath: [filenameWithoutExtension],
       extension,
       filename: 'original',
     });

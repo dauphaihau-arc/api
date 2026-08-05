@@ -276,12 +276,14 @@ function buildSeedProductImageStorageKey(
   return buildStorageObjectKey({
     env: resolveStorageEnvironmentSegment(process.env.NODE_ENV),
     visibility: 'public',
-    path: [
-      { domain: 'shops', id: shop.publicId ?? shop.id },
-      { domain: 'products', id: product.publicId ?? product.id },
+    pathSegments: [
+      'shops',
+      shop.publicId ?? shop.id,
+      'products',
+      product.publicId ?? product.id,
+      'images',
+      filenameWithoutExtension,
     ],
-    collection: 'images',
-    assetPath: [filenameWithoutExtension],
     extension,
     filename: 'original',
   });

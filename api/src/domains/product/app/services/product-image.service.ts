@@ -102,12 +102,14 @@ export class ProductImageService {
         const key = buildStorageObjectKey({
           env: resolveStorageEnvironmentSegment(process.env.NODE_ENV),
           visibility: 'public',
-          path: [
-            { domain: 'shops', id: product.shop.publicId ?? product.shop.id },
-            { domain: 'products', id: product.publicId ?? product.id },
+          pathSegments: [
+            'shops',
+            product.shop.publicId ?? product.shop.id,
+            'products',
+            product.publicId ?? product.id,
+            'images',
+            resolveProductImageStorageId(image.storageKey),
           ],
-          collection: 'images',
-          assetPath: [resolveProductImageStorageId(image.storageKey)],
           extension: spec.format,
           filename: variant,
         });

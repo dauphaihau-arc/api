@@ -7,30 +7,24 @@ export function buildStorageObjectKey(
   const extension = normalizeExtension(input.extension);
   const filename = input.filename.trim().replace(/\.+/g, '');
 
-  if (input.path.length === 0) {
-    throw new Error('Storage path must include at least one domain node.');
+  if (input.pathSegments.length === 0) {
+    throw new Error('Storage object key must include at least one path segment.');
   }
 
-  if (input.assetPath.length === 0) {
-    throw new Error('Storage asset path must include at least one segment.');
-  }
+  const pathSegments = input.pathSegments.map((segment) => {
+    const normalized = segment.trim();
 
-  const pathSegments = input.path.flatMap((node) => {
-    const id = node.id.trim();
-
-    if (!id) {
-      throw new Error(`Storage path node "${node.domain}" is missing an id.`);
+    if (!normalized) {
+      throw new Error('Storage object key path segments must not be blank.');
     }
 
-    return [node.domain, id];
+    return normalized;
   });
 
   return [
     env,
     input.visibility,
     ...pathSegments,
-    input.collection,
-    ...input.assetPath.map((segment) => segment.trim()).filter(Boolean),
     `${filename}.${extension}`,
   ].join('/');
 }

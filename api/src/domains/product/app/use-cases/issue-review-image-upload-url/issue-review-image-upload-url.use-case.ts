@@ -12,7 +12,8 @@ import ms from 'ms';
 import { randomUUID } from 'node:crypto';
 import { resolveImageExtension, resolveStorageEnvironmentSegment, buildStorageObjectKey } from '~/integrations/storage/app/storage-key-builder';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
-import { appJobDeduplicationKey, appJobName } from '~/integrations/queue/app/app-job.types';
+import { appJobDeduplicationKey } from '~/platform/jobs/app-job-deduplication';
+import { appJobName } from '~/platform/jobs/app-job.names';
 import {
   STORAGE_CONFIG,
   type StorageConfig,
@@ -95,12 +96,15 @@ export class IssueReviewImageUploadUrlUseCase {
     const key = buildStorageObjectKey({
       env: resolveStorageEnvironmentSegment(process.env.NODE_ENV),
       visibility: 'public',
-      path: [
-        { domain: 'users', id: actor.userId },
-        { domain: 'products', id: orderItem.id },
+      pathSegments: [
+        'users',
+        actor.userId,
+        'products',
+        orderItem.id,
+        'images',
+        'product-reviews',
+        randomUUID(),
       ],
-      collection: 'images',
-      assetPath: ['product-reviews', randomUUID()],
       extension,
       filename: 'original',
     });

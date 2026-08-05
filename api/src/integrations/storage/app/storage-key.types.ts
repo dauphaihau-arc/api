@@ -1,22 +1,11 @@
 export type StorageVisibility = 'public' | 'private';
 
-export type StoragePathDomain = 'shops' | 'products' | 'categories' | 'users';
-
-export type StorageCollection = 'images';
-
-export type StorageAssetPath = string[];
-
-export interface StoragePathNode {
-  domain: StoragePathDomain;
-  id: string;
-}
+export type StorageObjectKeySegment = string;
 
 export interface BuildStorageObjectKeyInput {
   env: string;
   visibility: StorageVisibility;
-  path: StoragePathNode[];
-  collection: StorageCollection;
-  assetPath: StorageAssetPath;
+  pathSegments: StorageObjectKeySegment[];
   extension: string;
   filename: string;
 }

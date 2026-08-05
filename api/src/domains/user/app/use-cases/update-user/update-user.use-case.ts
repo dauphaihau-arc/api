@@ -124,9 +124,7 @@ export class UpdateUserUseCase {
     return buildStorageObjectKey({
       env: resolveStorageEnvironmentSegment(process.env.NODE_ENV),
       visibility: 'public',
-      path: [{ domain: 'users', id: userId }],
-      collection: 'images',
-      assetPath: ['original'],
+      pathSegments: ['users', userId, 'images', 'original'],
       extension: resolveImageExtension(contentType),
       filename: randomUUID(),
     });

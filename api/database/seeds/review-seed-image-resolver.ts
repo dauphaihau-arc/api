@@ -102,12 +102,16 @@ export function buildSeedReviewImageStorageKey(
   return buildStorageObjectKey({
     env: resolveStorageEnvironmentSegment(process.env.NODE_ENV),
     visibility: 'public',
-    path: [
-      { domain: 'shops', id: shopSlug },
-      { domain: 'products', id: slugifySeedValue(productTitle) },
+    pathSegments: [
+      'shops',
+      shopSlug,
+      'products',
+      slugifySeedValue(productTitle),
+      'images',
+      'reviews',
+      slugifySeedValue(userEmail),
+      filenameWithoutExtension,
     ],
-    collection: 'images',
-    assetPath: ['reviews', slugifySeedValue(userEmail), filenameWithoutExtension],
     extension,
     filename: 'original',
   });

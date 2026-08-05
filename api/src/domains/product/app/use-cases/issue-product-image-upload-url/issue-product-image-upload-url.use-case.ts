@@ -73,12 +73,14 @@ export class IssueProductImageUploadUrlUseCase {
     const key = buildStorageObjectKey({
       env: resolveStorageEnvironmentSegment(process.env.NODE_ENV),
       visibility: 'public',
-      path: [
-        { domain: 'shops', id: shopStorageId },
-        { domain: 'products', id: productStorageId },
+      pathSegments: [
+        'shops',
+        shopStorageId,
+        'products',
+        productStorageId,
+        'images',
+        imageId,
       ],
-      collection: 'images',
-      assetPath: [imageId],
       extension,
       filename: assetType,
     });

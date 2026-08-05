@@ -51,9 +51,7 @@ function buildCategoryImageStorageKey(
   return buildStorageObjectKey({
     env: resolveStorageEnvironmentSegment(process.env.NODE_ENV),
     visibility: 'public',
-    path: [{ domain: 'categories', id: categoryId }],
-    collection: 'images',
-    assetPath: ['original'],
+    pathSegments: ['categories', categoryId, 'images', 'original'],
     extension,
     filename: filenameWithoutExtension,
   });

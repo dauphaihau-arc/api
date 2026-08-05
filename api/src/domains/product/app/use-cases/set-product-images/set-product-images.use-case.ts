@@ -1,7 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { createPublicId } from '~/platform/ids/public-id';
 import { err, ok, type Result } from '~/platform/application/result';
-import { appJobDeduplicationKey, appJobName } from '~/integrations/queue/app/app-job.types';
+import { appJobDeduplicationKey } from '~/platform/jobs/app-job-deduplication';
+import { appJobName } from '~/platform/jobs/app-job.names';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import { ShopRepository } from '~/domains/shop/app/ports/shop.repository';
 import { JobDispatcher } from '~/integrations/queue/app/ports/job-dispatcher';
@@ -137,12 +138,7 @@ export class SetProductImagesUseCase {
     return buildStorageObjectKey({
       env: resolveStorageEnvironmentSegment(process.env.NODE_ENV),
       visibility: 'public',
-      path: [
-        { domain: 'shops', id: shopId },
-        { domain: 'products', id: productId },
-      ],
-      collection: 'images',
-      assetPath: [imageId],
+      pathSegments: ['shops', shopId, 'products', productId, 'images', imageId],
       extension: resolveImageExtension(contentType),
       filename: 'original',
     });

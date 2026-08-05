@@ -5,22 +5,17 @@ import {
 } from './storage-key-builder';
 
 describe('storage key builder', () => {
-  it('builds a structured product image storage key', () => {
+  it('builds a structured storage object key from path segments', () => {
     const key = buildStorageObjectKey({
       env: 'production',
       visibility: 'public',
-      path: [
-        { domain: 'shops', id: 'shop-1' },
-        { domain: 'products', id: 'product-1' },
-      ],
-      collection: 'images',
-      assetPath: ['image-1'],
+      pathSegments: ['scope-a', 'entity-1', 'files', 'asset-1'],
       extension: 'webp',
       filename: 'card_1x1',
     });
 
     expect(key).toBe(
-      'prod/public/shops/shop-1/products/product-1/images/image-1/card_1x1.webp',
+      'prod/public/scope-a/entity-1/files/asset-1/card_1x1.webp',
     );
   });
 
