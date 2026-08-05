@@ -1,13 +1,11 @@
-import type Stripe from 'stripe';
-
-export interface StripeCheckoutLineItemInput {
+export interface CheckoutLineItemInput {
   name: string;
   imageUrl?: string;
   unitAmountMinor: number;
   quantity: number;
 }
 
-export interface StripeShippingAddressInput {
+export interface ShippingAddressInput {
   fullName: string;
   address1: string;
   address2?: string;
@@ -18,38 +16,60 @@ export interface StripeShippingAddressInput {
   phone?: string;
 }
 
-export interface CreateStripeCheckoutSessionInput {
+export interface CreateCheckoutSessionInput {
   customerEmail: string;
   currency: string;
   metadata?: Record<string, string>;
-  lineItems: StripeCheckoutLineItemInput[];
+  lineItems: CheckoutLineItemInput[];
   shippingAmountMinor: number;
   discountAmountMinor?: number;
-  shippingAddress?: StripeShippingAddressInput;
+  shippingAddress?: ShippingAddressInput;
   successPath?: string;
   cancelPath?: string;
 }
 
-export abstract class PaymentGateway {
-  abstract createStripeCheckoutSession(
-    input: CreateStripeCheckoutSessionInput
-  ): Promise<{ id: string; url: string; expiresAt?: Date }>;
+export interface CheckoutSessionResult {
+  id: string;
+  url: string;
+  expiresAt?: Date;
+}
 
-  abstract constructStripeWebhookEvent(
+export interface CheckoutSessionDetails {
+  id: string;
+  status?: string | null;
+  paymentStatus?: string | null;
+  paymentIntentId?: string;
+  expiresAt?: Date;
+}
+
+export interface PaymentWebhookEvent<TObject = unknown> {
+  id: string;
+  type: string;
+  data: {
+    object: TObject;
+  };
+}
+
+export interface RefundResult {
+  id: string;
+  status: string;
+  amount: number;
+  failureReason?: string | null;
+}
+
+export abstract class PaymentGateway {
+  abstract createCheckoutSession(
+    input: CreateCheckoutSessionInput
+  ): Promise<CheckoutSessionResult>;
+
+  abstract constructWebhookEvent(
     payload: Buffer,
     signature?: string
-  ): Stripe.Event;
+  ): PaymentWebhookEvent;
 
-  abstract retrieveStripeCheckoutSession(
+  abstract retrieveCheckoutSession(
     sessionId: string
-  ): Promise<Stripe.Checkout.Session>;
+  ): Promise<CheckoutSessionDetails>;
 
-  abstract createStripeRefund(
-    paymentIntentId: string
-  ): Promise<{
-    id: string;
-    status: string;
-    amount: number;
-    failureReason?: string | null;
-  }>;
+  abstract createRefund(paymentIntentId: string): Promise<RefundResult>;
 }

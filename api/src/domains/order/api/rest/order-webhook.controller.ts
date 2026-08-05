@@ -39,7 +39,7 @@ export class OrderWebhookController {
     @Req() request: Request & { rawBody?: Buffer },
     @Headers('stripe-signature') signature?: string,
   ) {
-    const event = this.paymentGateway.constructStripeWebhookEvent(
+    const event = this.paymentGateway.constructWebhookEvent(
       request.rawBody ?? Buffer.from(JSON.stringify(request.body ?? {})),
       signature,
     );

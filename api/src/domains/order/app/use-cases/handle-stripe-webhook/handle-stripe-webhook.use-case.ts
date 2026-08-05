@@ -1,27 +1,30 @@
 import { Injectable } from '@nestjs/common';
-import type Stripe from 'stripe';
+import type {
+  CheckoutSessionDetails,
+  PaymentWebhookEvent,
+} from '~/integrations/payment/app/ports/payment-gateway';
 import { OrderPaymentService } from '../../services/order-payment.service';
 
 @Injectable()
 export class HandleStripeWebhookUseCase {
   constructor(private readonly orderPaymentService: OrderPaymentService) {}
 
-  async execute(event: Stripe.Event): Promise<void> {
+  async execute(event: PaymentWebhookEvent): Promise<void> {
     switch (event.type) {
       case 'checkout.session.completed': {
-        const session = event.data.object as Stripe.Checkout.Session;
+        const session = event.data.object as CheckoutSessionDetails;
         await this.orderPaymentService.markCheckoutSessionCompleted(session.id, {
-          paymentIntentId: session.payment_intent?.toString(),
-          paymentStatus: session.payment_status,
+          paymentIntentId: session.paymentIntentId,
+          paymentStatus: session.paymentStatus,
           completedAt: new Date(),
         });
         return;
       }
       case 'checkout.session.expired': {
-        const session = event.data.object as Stripe.Checkout.Session;
+        const session = event.data.object as CheckoutSessionDetails;
         await this.orderPaymentService.markCheckoutSessionExpired(
           session.id,
-          session.expires_at ? new Date(session.expires_at * 1000) : undefined,
+          session.expiresAt,
         );
         return;
       }

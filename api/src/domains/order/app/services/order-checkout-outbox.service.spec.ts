@@ -75,15 +75,16 @@ describe('OrderCheckoutOutboxService', () => {
     } as unknown as EntityManager;
 
     const paymentGateway: jest.Mocked<PaymentGateway> = {
-      createStripeCheckoutSession: options?.paymentFails
+      createCheckoutSession: options?.paymentFails
         ? jest.fn().mockRejectedValue(new Error('Stripe down'))
         : jest.fn().mockResolvedValue({
           id: 'cs_test_1',
           url: 'https://stripe.test/session-1',
           expiresAt: new Date('2026-05-20T12:00:00.000Z'),
         }),
-      constructStripeWebhookEvent: jest.fn(),
-      retrieveStripeCheckoutSession: jest.fn(),
+      constructWebhookEvent: jest.fn(),
+      retrieveCheckoutSession: jest.fn(),
+      createRefund: jest.fn(),
     } as unknown as jest.Mocked<PaymentGateway>;
     const orderEventsService = {
       record: jest.fn().mockResolvedValue(undefined),
@@ -110,7 +111,7 @@ describe('OrderCheckoutOutboxService', () => {
 
     const result = await service.processEventById('outbox-1');
 
-    expect(paymentGateway.createStripeCheckoutSession).toHaveBeenCalledWith(
+    expect(paymentGateway.createCheckoutSession).toHaveBeenCalledWith(
       expect.objectContaining({
         customerEmail: 'member@example.com',
         currency: 'USD',

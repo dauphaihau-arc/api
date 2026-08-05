@@ -3,7 +3,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
 import { fromMinorUnits } from '../../../../platform/utils/money';
 import { PaymentGateway } from '../../../../integrations/payment/app/ports/payment-gateway';
-import { NotifyUserUseCase } from '../../../../integrations/notification/app/use-cases/notify-user/notify-user.use-case';
+import { NotifyUserUseCase } from '../../../../domains/notification/app/use-cases/notify-user/notify-user.use-case';
 import { JobDispatcher } from '../../../../integrations/queue/app/ports/job-dispatcher';
 import { OrderEventActorType } from '../../domain/enums/order-event-actor-type.enum';
 import { OrderEventType } from '../../domain/enums/order-event-type.enum';
@@ -77,7 +77,7 @@ export class OrderRefundService {
     }
 
     try {
-      const refund = await this.paymentGateway.createStripeRefund(paymentIntentId);
+      const refund = await this.paymentGateway.createRefund(paymentIntentId);
       const refundStatus = refund.status === 'succeeded' ? 'succeeded' : 'failed';
       await this.markRefundResult(orderId, {
         refundStatus: refund.status === 'succeeded' ? 'succeeded' : 'failed',

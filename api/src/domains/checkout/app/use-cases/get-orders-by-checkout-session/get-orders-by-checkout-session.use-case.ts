@@ -25,12 +25,12 @@ export class GetOrdersByCheckoutSessionUseCase {
       throw new CheckoutSessionNotFoundError();
     }
 
-    const session = await this.paymentGateway.retrieveStripeCheckoutSession(sessionId);
+    const session = await this.paymentGateway.retrieveCheckoutSession(sessionId);
 
-    if (session.payment_status === 'paid') {
+    if (session.paymentStatus === 'paid') {
       await this.orderPaymentService.markCheckoutSessionCompleted(sessionId, {
-        paymentIntentId: session.payment_intent?.toString(),
-        paymentStatus: session.payment_status,
+        paymentIntentId: session.paymentIntentId,
+        paymentStatus: session.paymentStatus,
         completedAt: new Date(),
       });
       result = await this.orderPaymentService.getOrdersByCheckoutSession(sessionId);
@@ -39,7 +39,7 @@ export class GetOrdersByCheckoutSessionUseCase {
     if (session.status === 'expired') {
       await this.orderPaymentService.markCheckoutSessionExpired(
         sessionId,
-        session.expires_at ? new Date(session.expires_at * 1000) : undefined,
+        session.expiresAt,
       );
       throw new CheckoutSessionExpiredError();
     }

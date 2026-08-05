@@ -87,7 +87,7 @@ export class OrderCheckoutOutboxService {
     }
 
     try {
-      const checkoutSession = await this.paymentGateway.createStripeCheckoutSession({
+      const checkoutSession = await this.paymentGateway.createCheckoutSession({
         customerEmail: claimed.payload.customerEmail,
         currency: claimed.payload.currency,
         metadata: {

@@ -1,7 +1,7 @@
 import type { EntityManager } from '@mikro-orm/postgresql';
 import type { ModuleRef } from '@nestjs/core';
 import type { PaymentGateway } from '../../../../integrations/payment/app/ports/payment-gateway';
-import type { NotifyUserUseCase } from '../../../../integrations/notification/app/use-cases/notify-user/notify-user.use-case';
+import type { NotifyUserUseCase } from '../../../../domains/notification/app/use-cases/notify-user/notify-user.use-case';
 import type { JobDispatcher } from '../../../../integrations/queue/app/ports/job-dispatcher';
 import { PaymentType } from '../../domain/enums/payment-type.enum';
 import { OrderStatus } from '../../domain/enums/order-status.enum';
@@ -73,7 +73,7 @@ describe('OrderRefundService', () => {
       transactional: jest.fn(async (callback) => await callback(transactionalEntityManager)),
     } as unknown as EntityManager;
     const paymentGateway = {
-      createStripeRefund: jest.fn().mockResolvedValue({
+      createRefund: jest.fn().mockResolvedValue({
         id: 're_123',
         status: 'succeeded',
         amount: 3000,
@@ -102,7 +102,7 @@ describe('OrderRefundService', () => {
 
     await service.processRefund('order-1');
 
-    expect(paymentGateway.createStripeRefund).toHaveBeenCalledWith('pi_123');
+    expect(paymentGateway.createRefund).toHaveBeenCalledWith('pi_123');
     expect(jobDispatcher.dispatch).toHaveBeenNthCalledWith(1, 'order.send-refund-succeeded-email', { orderId: 'order-1' });
     expect(jobDispatcher.dispatch).toHaveBeenNthCalledWith(2, 'order.send-seller-order-update-email', {
       orderId: 'order-1',
@@ -163,7 +163,7 @@ describe('OrderRefundService', () => {
       transactional: jest.fn(async (callback) => await callback(transactionalEntityManager)),
     } as unknown as EntityManager;
     const paymentGateway = {
-      createStripeRefund: jest.fn().mockRejectedValue(new Error('Stripe timeout')),
+      createRefund: jest.fn().mockRejectedValue(new Error('Stripe timeout')),
     } as unknown as PaymentGateway;
     const jobDispatcher = {
       dispatch: jest.fn().mockResolvedValue(undefined),

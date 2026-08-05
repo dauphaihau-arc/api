@@ -4,8 +4,10 @@ import { MARKETPLACE_CURRENCIES } from '~/platform/config/marketplace.config';
 import type { PaymentConfig } from '~/platform/config/payment.config';
 import { PaymentGateway } from '../app/ports/payment-gateway';
 import type {
-  CreateStripeCheckoutSessionInput,
-  StripeCheckoutLineItemInput,
+  CheckoutLineItemInput,
+  CheckoutSessionDetails,
+  CreateCheckoutSessionInput,
+  PaymentWebhookEvent,
 } from '../app/ports/payment-gateway';
 
 const ZERO_DECIMAL_CURRENCIES = ['JPY', 'KRW', 'VND'] as const;
@@ -21,8 +23,8 @@ export class StripePaymentGateway extends PaymentGateway {
       : null;
   }
 
-  async createStripeCheckoutSession(
-    input: CreateStripeCheckoutSessionInput,
+  async createCheckoutSession(
+    input: CreateCheckoutSessionInput,
   ): Promise<{ id: string; url: string; expiresAt?: Date }> {
     const stripe = this.requireStripe();
     const appBaseUrl = this.paymentConfig.appBaseUrl;
@@ -107,7 +109,7 @@ export class StripePaymentGateway extends PaymentGateway {
     };
   }
 
-  constructStripeWebhookEvent(payload: Buffer, signature?: string): Stripe.Event {
+  constructWebhookEvent(payload: Buffer, signature?: string): PaymentWebhookEvent {
     const stripe = this.requireStripe();
     const webhookSecret = this.paymentConfig.stripeWebhookSecretKey;
 
@@ -115,14 +117,18 @@ export class StripePaymentGateway extends PaymentGateway {
       throw new BadRequestException('Stripe webhook signature is missing');
     }
 
-    return stripe.webhooks.constructEvent(payload, signature, webhookSecret);
+    return this.toWebhookEvent(
+      stripe.webhooks.constructEvent(payload, signature, webhookSecret),
+    );
   }
 
-  retrieveStripeCheckoutSession(sessionId: string): Promise<Stripe.Checkout.Session> {
-    return this.requireStripe().checkout.sessions.retrieve(sessionId);
+  async retrieveCheckoutSession(sessionId: string): Promise<CheckoutSessionDetails> {
+    const session = await this.requireStripe().checkout.sessions.retrieve(sessionId);
+
+    return this.toCheckoutSessionDetails(session);
   }
 
-  async createStripeRefund(paymentIntentId: string) {
+  async createRefund(paymentIntentId: string) {
     const refund = await this.requireStripe().refunds.create({
       payment_intent: paymentIntentId,
     });
@@ -150,7 +156,7 @@ export class StripePaymentGateway extends PaymentGateway {
   }
 
   private toCheckoutLineItem(
-    item: StripeCheckoutLineItemInput,
+    item: CheckoutLineItemInput,
     currency: string,
   ): Stripe.Checkout.SessionCreateParams.LineItem {
     return {
@@ -172,5 +178,41 @@ export class StripePaymentGateway extends PaymentGateway {
     }
 
     return Math.round(amountMinor);
+  }
+
+  private toWebhookEvent(event: Stripe.Event): PaymentWebhookEvent {
+    return {
+      id: event.id,
+      type: event.type,
+      data: {
+        object: this.toWebhookObject(event),
+      },
+    };
+  }
+
+  private toWebhookObject(event: Stripe.Event): unknown {
+    switch (event.type) {
+      case 'checkout.session.completed':
+      case 'checkout.session.expired':
+        return this.toCheckoutSessionDetails(
+          event.data.object as Stripe.Checkout.Session,
+        );
+      default:
+        return event.data.object;
+    }
+  }
+
+  private toCheckoutSessionDetails(
+    session: Stripe.Checkout.Session,
+  ): CheckoutSessionDetails {
+    return {
+      id: session.id,
+      status: session.status,
+      paymentStatus: session.payment_status,
+      paymentIntentId: session.payment_intent?.toString(),
+      expiresAt: session.expires_at
+        ? new Date(session.expires_at * 1000)
+        : undefined,
+    };
   }
 }
