@@ -72,6 +72,12 @@ export const appJobDeduplicationKey = {
       storageKey,
     );
   },
+  processProductImport(importId: string): string {
+    return buildJobDeduplicationKey(
+      appJobName.processProductImport,
+      importId,
+    );
+  },
   cleanupExpiredCheckoutQuoteReservations(quoteId: string): string {
     return buildJobDeduplicationKey(
       appJobName.cleanupExpiredCheckoutQuoteReservations,

@@ -53,6 +53,10 @@ import { SetProductShippingUseCase } from './app/use-cases/set-product-shipping/
 import { SetProductVariantsUseCase } from './app/use-cases/set-product-variants/set-product-variants.use-case';
 import { UpsertMyProductReviewUseCase } from './app/use-cases/upsert-my-product-review/upsert-my-product-review.use-case';
 import { UpdateProductDetailsUseCase } from './app/use-cases/update-product-details/update-product-details.use-case';
+import { DownloadProductImportReportUseCase } from './app/use-cases/download-product-import-report/download-product-import-report.use-case';
+import { DownloadProductImportTemplateUseCase } from './app/use-cases/download-product-import-template/download-product-import-template.use-case';
+import { GetProductImportUseCase } from './app/use-cases/get-product-import/get-product-import.use-case';
+import { StartProductImportUseCase } from './app/use-cases/start-product-import/start-product-import.use-case';
 import { ProductCommandRepository } from './app/ports/product-command.repository';
 import { ProductPricingRepository } from './app/ports/product-pricing.repository';
 import { ProductImageVariantGenerationRepository } from './app/ports/product-image-variant-generation.repository';
@@ -69,6 +73,9 @@ import { ProductReviewAggregateRepository } from './app/ports/product-review-agg
 import { PublicProductOrderHistoryRepository } from './app/ports/public-product-order-history.repository';
 import { PublicProductViewHistoryRepository } from './app/ports/public-product-view-history.repository';
 import { SellerProductQueryRepository } from './app/ports/seller-product-query.repository';
+import { ProductImportCommandRepository } from './app/ports/product-import-command.repository';
+import { ProductImportQueryRepository } from './app/ports/product-import-query.repository';
+import { ProductImportValidationQueryRepository } from './app/ports/product-import-validation-query.repository';
 import { StorefrontProductQueryRepository } from './app/ports/storefront-product-query.repository';
 import { InternalCatalogController } from './api/rest/internal/internal-catalog.controller';
 import { ProductActivityController } from './api/rest/activity/product-activity.controller';
@@ -79,7 +86,10 @@ import { ProductInventoryEventsController } from './api/rest/inventory-events/pr
 import { MeProductReviewController } from './api/rest/me/me-product-review.controller';
 import { ReviewImageUploadController } from './api/rest/me/review-image-upload.controller';
 import { ProductUploadController } from './api/rest/uploads/product-upload.controller';
+import { ForwardProductImportToSseListener } from './listeners/forward-product-import-to-sse.listener';
 import { ForwardProductInventoryUpdatedToSseListener } from './listeners/forward-product-inventory-updated-to-sse.listener';
+import { ProcessProductImportJob } from './jobs/process-product-import.job';
+import { ShopProductImportController } from '../shop/api/rest/shop-product-import.controller';
 import { ShopProductsController } from '../shop/api/rest/shop-products.controller';
 import { ShopProductReviewsController } from '../shop/api/rest/shop-product-reviews.controller';
 import { AtlasProductRecommendationQueryRepository } from './infra/search/atlas/repositories/atlas-product-recommendation-query.repository';
@@ -94,6 +104,9 @@ import { MikroOrmPublicProductViewHistoryRepository } from './infra/persistence/
 import { MikroOrmProductRecommendationQueryRepository } from './infra/persistence/mikro-orm/repositories/mikro-orm-product-recommendation-query.repository';
 import { MikroOrmProductReviewAggregateRepository } from './infra/persistence/mikro-orm/repositories/mikro-orm-product-review-aggregate.repository';
 import { MikroOrmSellerProductQueryRepository } from './infra/persistence/mikro-orm/repositories/mikro-orm-seller-product-query.repository';
+import { MikroOrmProductImportCommandRepository } from './infra/persistence/mikro-orm/repositories/mikro-orm-product-import-command.repository';
+import { MikroOrmProductImportQueryRepository } from './infra/persistence/mikro-orm/repositories/mikro-orm-product-import-query.repository';
+import { MikroOrmProductImportValidationQueryRepository } from './infra/persistence/mikro-orm/repositories/mikro-orm-product-import-validation-query.repository';
 import { MikroOrmStorefrontProductQueryRepository } from './infra/persistence/mikro-orm/repositories/mikro-orm-storefront-product-query.repository';
 import { MongoCatalogProductDocumentRepository } from './infra/catalog/mongo/repositories/mongo-catalog-product-document.repository';
 import { MongoCatalogProductPriceDocumentRepository } from './infra/catalog/mongo/repositories/mongo-catalog-product-price-document.repository';
@@ -115,6 +128,8 @@ import { ProductVariantEntity } from '~/domains/product/infra/persistence/mikro-
 import { ProductViewHistoryEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-view-history.entity';
 import { ProductBestSellerRankingEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-best-seller-ranking.entity';
 import { ProductEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product.entity';
+import { ProductImportEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-import.entity';
+import { ProductImportRowEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-import-row.entity';
 import { VariantPriceEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/variant-price.entity';
 import { CATALOG_CONFIG, buildCatalogConfig } from '~/platform/config/catalog.config';
 import { STOREFRONT_PRICING_CONFIG, buildStorefrontPricingConfig } from '~/platform/config/storefront-pricing.config';
@@ -143,6 +158,8 @@ import { STOREFRONT_PRICING_CONFIG, buildStorefrontPricingConfig } from '~/platf
       ProductViewHistoryEntity,
       ProductBestSellerRankingEntity,
       ProductInventoryEntity,
+      ProductImportEntity,
+      ProductImportRowEntity,
       ProductReviewEntity,
       ProductReviewImageEntity,
       ProductReviewImageVariantEntity,
@@ -162,6 +179,7 @@ import { STOREFRONT_PRICING_CONFIG, buildStorefrontPricingConfig } from '~/platf
     ReviewImageUploadController,
     ProductUploadController,
     ShopProductsController,
+    ShopProductImportController,
     ShopProductReviewsController,
   ],
   providers: [
@@ -258,6 +276,18 @@ import { STOREFRONT_PRICING_CONFIG, buildStorefrontPricingConfig } from '~/platf
       useExisting: MikroOrmProductCommandRepository,
     },
     {
+      provide: ProductImportCommandRepository,
+      useExisting: MikroOrmProductImportCommandRepository,
+    },
+    {
+      provide: ProductImportQueryRepository,
+      useExisting: MikroOrmProductImportQueryRepository,
+    },
+    {
+      provide: ProductImportValidationQueryRepository,
+      useExisting: MikroOrmProductImportValidationQueryRepository,
+    },
+    {
       provide: ProductImageVariantGenerationRepository,
       useExisting: MikroOrmProductImageVariantGenerationRepository,
     },
@@ -289,6 +319,9 @@ import { STOREFRONT_PRICING_CONFIG, buildStorefrontPricingConfig } from '~/platf
     MikroOrmProductReviewAggregateRepository,
     MikroOrmSellerProductReviewQueryRepository,
     MikroOrmSellerProductQueryRepository,
+    MikroOrmProductImportCommandRepository,
+    MikroOrmProductImportQueryRepository,
+    MikroOrmProductImportValidationQueryRepository,
     MikroOrmStorefrontProductQueryRepository,
 
     CatalogStatusService,
@@ -328,8 +361,14 @@ import { STOREFRONT_PRICING_CONFIG, buildStorefrontPricingConfig } from '~/platf
     SetProductPricingUseCase,
     SetProductShippingUseCase,
     SetProductVariantsUseCase,
+    DownloadProductImportReportUseCase,
+    DownloadProductImportTemplateUseCase,
+    GetProductImportUseCase,
+    StartProductImportUseCase,
     UpsertMyProductReviewUseCase,
     UpdateProductDetailsUseCase,
+    ProcessProductImportJob,
+    ForwardProductImportToSseListener,
     ForwardProductInventoryUpdatedToSseListener,
   ],
   exports: [
@@ -380,6 +419,7 @@ import { STOREFRONT_PRICING_CONFIG, buildStorefrontPricingConfig } from '~/platf
     SetProductVariantsUseCase,
     UpsertMyProductReviewUseCase,
     UpdateProductDetailsUseCase,
+    ProcessProductImportJob,
   ],
 })
 export class ProductModule {}

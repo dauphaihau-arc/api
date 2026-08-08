@@ -7,6 +7,7 @@ import {
   Injectable,
   NestInterceptor,
 } from '@nestjs/common';
+import { createHash } from 'node:crypto';
 import { Reflector } from '@nestjs/core';
 import type { Cache } from 'cache-manager';
 import type { Request, Response } from 'express';
@@ -32,6 +33,17 @@ interface CachedIdempotencyResponse {
 }
 
 type IdempotencyRedisClient = Pick<RedisClientType, 'set' | 'del'>;
+
+interface RequestUploadedFile {
+  originalname?: string;
+  mimetype?: string;
+  size?: number;
+  buffer?: Buffer;
+}
+
+interface RequestWithUploadedFile extends Request {
+  file?: RequestUploadedFile;
+}
 
 @Injectable()
 export class IdempotencyKeyInterceptor implements NestInterceptor {
@@ -82,9 +94,9 @@ export class IdempotencyKeyInterceptor implements NestInterceptor {
   ): Promise<unknown> {
     const cacheKey = this.buildResponseCacheKey(options.scope, idempotencyKey);
     const lockKey = this.buildLockKey(options.scope, idempotencyKey);
-    const fingerprint = this.buildFingerprint(request.body);
-    const cachedResponse =
-      await this.cacheManager.get<CachedIdempotencyResponse>(cacheKey);
+    const fingerprint = this.buildFingerprint(this.buildFingerprintPayload(request));
+
+    const cachedResponse = await this.cacheManager.get<CachedIdempotencyResponse>(cacheKey);
 
     if (cachedResponse) {
       this.assertMatchingFingerprint(cachedResponse.fingerprint, fingerprint);
@@ -189,6 +201,24 @@ export class IdempotencyKeyInterceptor implements NestInterceptor {
 
   private buildLockKey(scope: string, idempotencyKey: string): string {
     return `${scope}:idempotency:lock:${idempotencyKey}`;
+  }
+
+  private buildFingerprintPayload(request: Request): unknown {
+    const uploadedFile = (request as RequestWithUploadedFile).file;
+
+    if (!uploadedFile) {
+      return request.body;
+    }
+
+    return {
+      body: request.body,
+      file: {
+        originalname: uploadedFile.originalname,
+        mimetype: uploadedFile.mimetype,
+        size: uploadedFile.size,
+        sha256: uploadedFile.buffer ? createHash('sha256').update(uploadedFile.buffer).digest('hex') : undefined,
+      },
+    };
   }
 
   private buildFingerprint(payload: unknown): string {

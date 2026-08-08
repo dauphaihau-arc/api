@@ -13,6 +13,7 @@ export const appJobName = {
   generateReviewImageVariants: 'product-review.generate-image-variants',
   projectCatalogProduct: 'catalog.project-product',
   cleanupPendingReviewImage: 'product.cleanup-pending-review-image',
+  processProductImport: 'product.process-import',
   cleanupExpiredCheckoutQuoteReservations: 'order.cleanup-expired-checkout-quote-reservations',
   refreshBestSellerRankings: 'product.refresh-best-seller-rankings',
 } as const;

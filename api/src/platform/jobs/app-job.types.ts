@@ -54,6 +54,9 @@ export interface AppJobPayloadMap {
   'product.cleanup-pending-review-image': {
     storageKey: string;
   };
+  'product.process-import': {
+    importId: string;
+  };
   'order.cleanup-expired-checkout-quote-reservations': {
     quoteId: string;
   };

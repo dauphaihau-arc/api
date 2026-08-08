@@ -11,6 +11,7 @@ import { GenerateProductImageVariantsJob } from '~/domains/product/jobs/generate
 import { GenerateReviewImageVariantsJob } from '~/domains/product/jobs/generate-review-image-variants.job';
 import { ProjectCatalogProductJob } from '~/domains/product/jobs/project-catalog-product.job';
 import { CleanupPendingReviewImageJob } from '~/domains/product/jobs/cleanup-pending-review-image.job';
+import { ProcessProductImportJob } from '~/domains/product/jobs/process-product-import.job';
 import { CleanupExpiredCheckoutQuoteReservationsJob } from '~/domains/checkout/jobs/cleanup-expired-checkout-quote-reservations.job';
 import { RefreshBestSellerRankingsJob } from '~/domains/product/jobs/refresh-best-seller-rankings.job';
 import { ProcessOrderRefundJob } from '~/domains/order/jobs/process-order-refund.job';
@@ -134,6 +135,11 @@ export class AppJobRunner extends JobRunner {
           case appJobName.cleanupPendingReviewImage:
             await this.cleanupPendingReviewImageJob.run(
               payload as AppJobPayloadMap[typeof appJobName.cleanupPendingReviewImage],
+            );
+            return;
+          case appJobName.processProductImport:
+            await this.moduleRef.get(ProcessProductImportJob, { strict: false }).run(
+              payload as AppJobPayloadMap[typeof appJobName.processProductImport],
             );
             return;
           case appJobName.cleanupExpiredCheckoutQuoteReservations:
