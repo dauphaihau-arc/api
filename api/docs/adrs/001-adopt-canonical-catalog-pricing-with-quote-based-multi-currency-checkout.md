@@ -100,6 +100,4 @@ Minor-unit storage avoids floating-point ambiguity and better supports currencie
 
 ## Related Documents
 
-- [multi-currency-pricing-design-temp.md](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/docs/multi-currency/multi-currency-pricing-design-temp.md)
-- [multi-currency-pricing-design.md](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/docs/multi-currency/multi-currency-pricing-design.md)
-- [checkout-quote-design.md](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/docs/checkout-quote-design.md)
+- [Checkout Quote Design](../checkout-quote-design.md)
