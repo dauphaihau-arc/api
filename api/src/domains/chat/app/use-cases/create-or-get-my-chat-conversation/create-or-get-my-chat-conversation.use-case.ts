@@ -1,17 +1,11 @@
 import { EntityManager } from '@mikro-orm/postgresql';
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
-import { CurrentUserEntity } from '~/domains/auth/infra/persistence/entities/current-user.entity';
-import { ProductEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product.entity';
-import { ShopEntity } from '~/domains/shop/infra/persistence/entities/shop.entity';
-import { buildChatMessageBodyPreview } from '../../chat-message-preview';
+import type { ProductEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product.entity';
 import {
-  buildChatProductReferenceMetadata,
-  CHAT_MESSAGE_TYPES,
   getProductReferenceProductId,
 } from '../../chat-product-reference';
-import { toChatConversationSummary } from '../../chat-read-model';
 import type { ChatConversationSummary } from '../../chat.types';
 import {
   ChatProductNotFoundError,
@@ -22,13 +16,16 @@ import {
   CHAT_MESSAGE_CREATED_EVENT,
   type ChatMessageCreatedEventPayload,
 } from '../../events/chat-message-created.event';
-import { ChatConversationEntity } from '../../../infra/persistence/entities/chat-conversation.entity';
-import { ChatMessageEntity } from '../../../infra/persistence/entities/chat-message.entity';
+import { ChatCommandRepository } from '../../ports/chat-command.repository';
+import type { ChatConversationEntity } from '../../../infra/persistence/entities/chat-conversation.entity';
+import type { ChatMessageEntity } from '../../../infra/persistence/entities/chat-message.entity';
 
 @Injectable()
 export class CreateOrGetMyChatConversationUseCase {
   constructor(
     private readonly entityManager: EntityManager,
+    @Inject(ChatCommandRepository)
+    private readonly chatCommands: ChatCommandRepository,
     private readonly eventEmitter: EventEmitter2,
   ) {}
 
@@ -39,114 +36,76 @@ export class CreateOrGetMyChatConversationUseCase {
       productId?: string;
     },
   ): Promise<ChatConversationSummary> {
-    const entityManager = this.entityManager.fork();
+    const { summary, eventPayload } = await this.entityManager.fork().transactional(async (entityManager) => {
+      const shop = await this.chatCommands.loadShopForConversationStart(entityManager, input.shopId);
 
-    const shop = await entityManager.getRepository(ShopEntity).findOne(
-      { id: input.shopId },
-      { populate: ['ownerUser'] },
-    );
+      if (!shop) {
+        throw new ChatShopNotFoundError();
+      }
 
-    if (!shop) {
-      throw new ChatShopNotFoundError();
-    }
+      const product = input.productId
+        ? await this.chatCommands.loadProductForConversationReference(entityManager, input.productId)
+        : null;
 
-    let product: ProductEntity | null = null;
-
-    if (input.productId) {
-      product = await entityManager.getRepository(ProductEntity).findOne(
-        { id: input.productId },
-        {
-          populate: [
-            'shop',
-            'images.variants',
-            'inventoryRecords.prices',
-          ],
-        },
-      );
-
-      if (!product) {
+      if (input.productId && !product) {
         throw new ChatProductNotFoundError();
       }
 
-      if (product.shop.id !== shop.id) {
+      if (product && product.shop.id !== shop.id) {
         throw new ChatProductShopMismatchError();
       }
+
+      const conversation = await this.chatCommands.loadBuyerShopConversationForStart(
+        entityManager,
+        actor.userId,
+        shop.id,
+      ) ?? this.chatCommands.createBuyerShopConversation(entityManager, actor.userId, shop);
+
+      const productReferenceMessage = product
+        ? await this.addProductReferenceMessageIfNeeded(entityManager, conversation, product)
+        : null;
+
+      await entityManager.flush();
+
+      return {
+        summary: await this.chatCommands.populateConversationSummary(entityManager, conversation),
+        eventPayload: productReferenceMessage
+          ? {
+            conversation_id: conversation.id,
+            message_id: productReferenceMessage.id,
+            sender_user_id: conversation.buyerUser.id,
+            recipient_user_ids: [conversation.shop.ownerUser.id],
+            body: productReferenceMessage.body,
+            message_type: productReferenceMessage.messageType,
+            shop_id: conversation.shop.id,
+            occurred_at: productReferenceMessage.createdAt.toISOString(),
+            metadata: productReferenceMessage.metadata,
+          } satisfies ChatMessageCreatedEventPayload
+          : null,
+      };
+    });
+
+    if (eventPayload) {
+      this.eventEmitter.emit(CHAT_MESSAGE_CREATED_EVENT, eventPayload);
     }
 
-    const conversation = await entityManager.getRepository(ChatConversationEntity).findOne(
-      {
-        buyerUser: actor.userId,
-        shop: shop.id,
-      },
-      { populate: ['buyerUser', 'shop.ownerUser', 'lastMessage', 'lastMessageSenderUser'] },
-    );
-
-    if (conversation) {
-      await this.addProductReferenceMessageIfNeeded(entityManager, conversation, product);
-      await entityManager.populate(conversation, ['buyerUser', 'shop.ownerUser', 'lastMessage', 'lastMessageSenderUser']);
-      return toChatConversationSummary(conversation);
-    }
-
-    const createdConversation = new ChatConversationEntity();
-    createdConversation.buyerUser = entityManager.getReference(CurrentUserEntity, actor.userId);
-    createdConversation.shop = shop;
-
-    await entityManager.persist(createdConversation).flush();
-    await this.addProductReferenceMessageIfNeeded(entityManager, createdConversation, product);
-    await entityManager.populate(createdConversation, ['buyerUser', 'shop.ownerUser', 'lastMessage', 'lastMessageSenderUser']);
-
-    return toChatConversationSummary(createdConversation);
+    return summary;
   }
 
   private async addProductReferenceMessageIfNeeded(
     entityManager: EntityManager,
     conversation: ChatConversationEntity,
-    product: ProductEntity | null,
-  ): Promise<void> {
-    if (!product) {
-      return;
-    }
-
-    const existingProductReferences = await entityManager.getRepository(ChatMessageEntity).find({
+    product: ProductEntity,
+  ): Promise<ChatMessageEntity | null> {
+    const existingProductReferences = await this.chatCommands.loadProductReferenceMessagesForConversation(
+      entityManager,
       conversation,
-      messageType: CHAT_MESSAGE_TYPES.PRODUCT_REFERENCE,
-    });
+    );
 
     if (existingProductReferences.some(message => getProductReferenceProductId(message.metadata) === product.id)) {
-      return;
+      return null;
     }
 
-    const message = new ChatMessageEntity();
-    message.conversation = conversation;
-    message.senderUser = conversation.buyerUser;
-    message.messageType = CHAT_MESSAGE_TYPES.PRODUCT_REFERENCE;
-    message.body = product.title;
-    message.metadata = buildChatProductReferenceMetadata(product);
-
-    conversation.lastMessageAt = message.createdAt;
-    conversation.lastMessageSenderUser = message.senderUser;
-    conversation.lastMessage = message;
-    conversation.lastMessageBodyPreview = buildChatMessageBodyPreview(message.body);
-    conversation.lastMessageType = message.messageType;
-    conversation.buyerLastReadAt = message.createdAt;
-    conversation.buyerUnreadCount = 0;
-    conversation.sellerUnreadCount += 1;
-
-    await entityManager.persist(message).flush();
-
-    this.eventEmitter.emit(
-      CHAT_MESSAGE_CREATED_EVENT,
-      {
-        conversation_id: conversation.id,
-        message_id: message.id,
-        sender_user_id: conversation.buyerUser.id,
-        recipient_user_ids: [conversation.shop.ownerUser.id],
-        body: message.body,
-        message_type: message.messageType,
-        shop_id: conversation.shop.id,
-        occurred_at: message.createdAt.toISOString(),
-        metadata: message.metadata,
-      } satisfies ChatMessageCreatedEventPayload,
-    );
+    return this.chatCommands.addProductReferenceMessage(entityManager, conversation, product);
   }
 }

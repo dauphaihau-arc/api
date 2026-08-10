@@ -1,23 +1,21 @@
 import { EntityManager } from '@mikro-orm/postgresql';
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
-import { CurrentUserEntity } from '~/domains/auth/infra/persistence/entities/current-user.entity';
-import { buildChatMessageBodyPreview } from '../../chat-message-preview';
-import { toChatMessageSummary } from '../../chat-read-model';
 import type { ChatMessageSummary } from '../../chat.types';
 import { ChatConversationNotFoundError } from '../../errors/chat-app.error';
 import {
   CHAT_MESSAGE_CREATED_EVENT,
   type ChatMessageCreatedEventPayload,
 } from '../../events/chat-message-created.event';
-import { ChatConversationEntity } from '../../../infra/persistence/entities/chat-conversation.entity';
-import { ChatMessageEntity } from '../../../infra/persistence/entities/chat-message.entity';
+import { ChatCommandRepository } from '../../ports/chat-command.repository';
 
 @Injectable()
 export class SendShopChatMessageUseCase {
   constructor(
     private readonly entityManager: EntityManager,
+    @Inject(ChatCommandRepository)
+    private readonly chatCommands: ChatCommandRepository,
     private readonly eventEmitter: EventEmitter2,
   ) {}
 
@@ -30,53 +28,43 @@ export class SendShopChatMessageUseCase {
       metadata?: Record<string, unknown>;
     },
   ): Promise<ChatMessageSummary> {
-    const entityManager = this.entityManager.fork();
+    const { summary, eventPayload } = await this.entityManager.fork().transactional(async (entityManager) => {
+      const conversation = await this.chatCommands.loadConversationForShopMessage(
+        entityManager,
+        shopId,
+        conversationId,
+      );
 
-    const conversation = await entityManager.getRepository(ChatConversationEntity).findOne(
-      { id: conversationId, shop: shopId },
-      { populate: ['buyerUser', 'shop.ownerUser'] },
-    );
+      if (!conversation) {
+        throw new ChatConversationNotFoundError();
+      }
 
-    if (!conversation) {
-      throw new ChatConversationNotFoundError();
-    }
-
-    const message = new ChatMessageEntity();
-    message.conversation = conversation;
-    message.senderUser = entityManager.getReference(CurrentUserEntity, actor.userId);
-    message.body = input.body.trim();
-
-    if (input.metadata) {
-      message.metadata = input.metadata;
-    }
-
-    conversation.lastMessageAt = message.createdAt;
-    conversation.lastMessageSenderUser = message.senderUser;
-    conversation.lastMessage = message;
-    conversation.lastMessageBodyPreview = buildChatMessageBodyPreview(message.body);
-    conversation.lastMessageType = message.messageType;
-    conversation.sellerLastReadAt = message.createdAt;
-    conversation.sellerUnreadCount = 0;
-    conversation.buyerUnreadCount += 1;
-
-    await entityManager.persist(message).flush();
-    await entityManager.populate(message, ['conversation', 'senderUser']);
-
-    this.eventEmitter.emit(
-      CHAT_MESSAGE_CREATED_EVENT,
-      {
-        conversation_id: conversation.id,
-        message_id: message.id,
-        sender_user_id: actor.userId,
-        recipient_user_ids: [conversation.buyerUser.id, conversation.shop.ownerUser.id],
-        body: message.body,
-        message_type: message.messageType,
-        shop_id: conversation.shop.id,
-        occurred_at: message.createdAt.toISOString(),
+      const message = this.chatCommands.addShopMessage(entityManager, conversation, {
+        senderUserId: actor.userId,
+        body: input.body,
         metadata: input.metadata,
-      } satisfies ChatMessageCreatedEventPayload,
-    );
+      });
 
-    return toChatMessageSummary(message);
+      await entityManager.flush();
+
+      return {
+        summary: await this.chatCommands.populateMessageSummary(entityManager, message),
+        eventPayload: {
+          conversation_id: conversation.id,
+          message_id: message.id,
+          sender_user_id: actor.userId,
+          recipient_user_ids: [conversation.buyerUser.id, conversation.shop.ownerUser.id],
+          body: message.body,
+          message_type: message.messageType,
+          shop_id: conversation.shop.id,
+          occurred_at: message.createdAt.toISOString(),
+          metadata: input.metadata,
+        } satisfies ChatMessageCreatedEventPayload,
+      };
+    });
+
+    this.eventEmitter.emit(CHAT_MESSAGE_CREATED_EVENT, eventPayload);
+
+    return summary;
   }
 }

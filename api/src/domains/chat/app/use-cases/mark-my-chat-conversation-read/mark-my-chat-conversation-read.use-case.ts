@@ -1,40 +1,33 @@
-import { EntityManager } from '@mikro-orm/postgresql';
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
-import { toChatConversationSummary } from '../../chat-read-model';
 import type { ChatConversationSummary } from '../../chat.types';
 import {
   ChatConversationAccessDeniedError,
   ChatConversationNotFoundError,
 } from '../../errors/chat-app.error';
-import { ChatConversationEntity } from '../../../infra/persistence/entities/chat-conversation.entity';
+import { ChatCommandRepository } from '../../ports/chat-command.repository';
 
 @Injectable()
 export class MarkMyChatConversationReadUseCase {
-  constructor(private readonly entityManager: EntityManager) {}
+  constructor(
+    @Inject(ChatCommandRepository)
+    private readonly chatCommands: ChatCommandRepository,
+  ) {}
 
   async execute(
     actor: AuthenticatedUser,
     conversationId: string,
   ): Promise<ChatConversationSummary> {
-    const entityManager = this.entityManager.fork();
-    const conversation = await entityManager.getRepository(ChatConversationEntity).findOne(
-      { id: conversationId },
-      { populate: ['buyerUser', 'shop.ownerUser', 'lastMessage', 'lastMessageSenderUser'] },
-    );
+    const result = await this.chatCommands.markBuyerConversationRead(actor.userId, conversationId);
 
-    if (!conversation) {
+    if (result.status === 'not_found') {
       throw new ChatConversationNotFoundError();
     }
 
-    if (conversation.buyerUser.id !== actor.userId) {
+    if (result.status === 'access_denied') {
       throw new ChatConversationAccessDeniedError();
     }
 
-    conversation.buyerLastReadAt = new Date();
-    conversation.buyerUnreadCount = 0;
-    await entityManager.flush();
-
-    return toChatConversationSummary(conversation);
+    return result.conversation;
   }
 }

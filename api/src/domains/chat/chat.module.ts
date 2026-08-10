@@ -7,6 +7,8 @@ import { ShopModule } from '../shop/shop.module';
 import { ShopEntity } from '../shop/infra/persistence/entities/shop.entity';
 import { MeChatController } from './api/rest/me-chat.controller';
 import { ShopChatController } from './api/rest/shop-chat.controller';
+import { ChatCommandRepository } from './app/ports/chat-command.repository';
+import { ChatQueryRepository } from './app/ports/chat-query.repository';
 import { CreateOrGetMyChatConversationUseCase } from './app/use-cases/create-or-get-my-chat-conversation/create-or-get-my-chat-conversation.use-case';
 import { GetMyChatUnreadCountUseCase } from './app/use-cases/get-my-chat-unread-count/get-my-chat-unread-count.use-case';
 import { GetMyChatMessagesUseCase } from './app/use-cases/get-my-chat-messages/get-my-chat-messages.use-case';
@@ -20,6 +22,8 @@ import { SendMyChatMessageUseCase } from './app/use-cases/send-my-chat-message/s
 import { SendShopChatMessageUseCase } from './app/use-cases/send-shop-chat-message/send-shop-chat-message.use-case';
 import { ChatConversationEntity } from './infra/persistence/entities/chat-conversation.entity';
 import { ChatMessageEntity } from './infra/persistence/entities/chat-message.entity';
+import { MikroOrmChatCommandRepository } from './infra/persistence/repositories/mikro-orm-chat-command.repository';
+import { MikroOrmChatQueryRepository } from './infra/persistence/repositories/mikro-orm-chat-query.repository';
 import { ForwardChatMessageToWsListener } from './listeners/forward-chat-message-to-ws.listener';
 
 @Module({
@@ -36,6 +40,16 @@ import { ForwardChatMessageToWsListener } from './listeners/forward-chat-message
   ],
   controllers: [MeChatController, ShopChatController],
   providers: [
+    {
+      provide: ChatCommandRepository,
+      useExisting: MikroOrmChatCommandRepository,
+    },
+    {
+      provide: ChatQueryRepository,
+      useExisting: MikroOrmChatQueryRepository,
+    },
+    MikroOrmChatCommandRepository,
+    MikroOrmChatQueryRepository,
     CreateOrGetMyChatConversationUseCase,
     ListMyChatConversationsUseCase,
     ListShopChatConversationsUseCase,
