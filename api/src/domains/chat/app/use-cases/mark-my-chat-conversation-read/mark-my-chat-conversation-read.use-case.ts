@@ -20,7 +20,7 @@ export class MarkMyChatConversationReadUseCase {
     const entityManager = this.entityManager.fork();
     const conversation = await entityManager.getRepository(ChatConversationEntity).findOne(
       { id: conversationId },
-      { populate: ['buyerUser', 'shop.ownerUser', 'product', 'lastMessageSenderUser'] },
+      { populate: ['buyerUser', 'shop.ownerUser', 'lastMessage', 'lastMessageSenderUser'] },
     );
 
     if (!conversation) {
@@ -32,6 +32,7 @@ export class MarkMyChatConversationReadUseCase {
     }
 
     conversation.buyerLastReadAt = new Date();
+    conversation.buyerUnreadCount = 0;
     await entityManager.flush();
 
     return toChatConversationSummary(conversation);

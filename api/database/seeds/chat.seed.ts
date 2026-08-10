@@ -11,6 +11,11 @@ import {
 import { readOptionalTsvRows, readTsvRows } from './shared/read-tsv-rows';
 import { ChatConversationEntity } from '~/domains/chat/infra/persistence/entities/chat-conversation.entity';
 import { ChatMessageEntity } from '~/domains/chat/infra/persistence/entities/chat-message.entity';
+import { buildChatMessageBodyPreview } from '~/domains/chat/app/chat-message-preview';
+import {
+  buildChatProductReferenceMetadata,
+  CHAT_MESSAGE_TYPES,
+} from '~/domains/chat/app/chat-product-reference';
 
 type ConversationSeed = {
   conversationKey: string;
@@ -209,6 +214,7 @@ export async function seedChat(
   const startedAt = Date.now();
   const messagesByConversationKey = new Map<string, MessageSeed[]>();
   let skippedLocalConversations = 0;
+  let seededMessageCount = 0;
 
   messageSeeds.forEach((seed) => {
     const messages = messagesByConversationKey.get(seed.conversationKey) ?? [];
@@ -248,6 +254,12 @@ export async function seedChat(
       product = await em.findOne(ProductEntity, {
         shop,
         title: conversationSeed.productTitle,
+      }, {
+        populate: [
+          'shop',
+          'images.variants',
+          'inventoryRecords.prices',
+        ],
       });
 
       if (!product) {
@@ -277,7 +289,6 @@ export async function seedChat(
       {
         buyerUser: buyer,
         shop,
-        product: product?.id ?? null,
       },
       { populate: ['messages'] },
     );
@@ -286,6 +297,8 @@ export async function seedChat(
       buyerUser: buyer,
       shop,
       status: conversationSeed.status,
+      buyerUnreadCount: 0,
+      sellerUnreadCount: 0,
     });
 
     if (existingConversation) {
@@ -296,7 +309,6 @@ export async function seedChat(
 
     conversation.buyerUser = buyer;
     conversation.shop = shop;
-    conversation.product = product ?? undefined;
     conversation.status = conversationSeed.status;
     conversation.createdAt = conversationSeed.createdAt;
     conversation.updatedAt = conversationSeed.createdAt;
@@ -304,10 +316,31 @@ export async function seedChat(
     conversation.sellerLastReadAt = conversationSeed.sellerLastReadAt;
     conversation.lastMessageAt = undefined;
     conversation.lastMessageSenderUser = undefined;
+    conversation.lastMessage = undefined;
+    conversation.lastMessageBodyPreview = undefined;
+    conversation.lastMessageType = undefined;
+    conversation.buyerUnreadCount = 0;
+    conversation.sellerUnreadCount = 0;
     em.persist(conversation);
     await em.flush();
 
     let lastMessage: ChatMessageEntity | undefined;
+
+    if (product) {
+      const productReferenceMessage = em.create(ChatMessageEntity, {
+        conversation,
+        senderUser: buyer,
+        body: product.title,
+        messageType: CHAT_MESSAGE_TYPES.PRODUCT_REFERENCE,
+        metadata: buildChatProductReferenceMetadata(product),
+      });
+
+      productReferenceMessage.createdAt = new Date(conversationSeed.createdAt.getTime() - 1);
+      productReferenceMessage.updatedAt = productReferenceMessage.createdAt;
+      em.persist(productReferenceMessage);
+      lastMessage = productReferenceMessage;
+      seededMessageCount += 1;
+    }
 
     for (const messageSeed of conversationMessages) {
       const sender = usersByEmail.get(messageSeed.senderEmail);
@@ -329,11 +362,29 @@ export async function seedChat(
       message.updatedAt = messageSeed.editedAt ?? messageSeed.createdAt;
       em.persist(message);
       lastMessage = message;
+      seededMessageCount += 1;
     }
 
     if (lastMessage) {
       conversation.lastMessageAt = lastMessage.createdAt;
       conversation.lastMessageSenderUser = lastMessage.senderUser;
+      conversation.lastMessage = lastMessage;
+      conversation.lastMessageBodyPreview = buildChatMessageBodyPreview(lastMessage.body);
+      conversation.lastMessageType = lastMessage.messageType;
+      conversation.buyerUnreadCount = conversationMessages.filter(messageSeed =>
+        messageSeed.senderEmail !== buyer.email
+        && (
+          !conversation.buyerLastReadAt
+          || conversation.buyerLastReadAt < messageSeed.createdAt
+        ),
+      ).length;
+      conversation.sellerUnreadCount = conversationMessages.filter(messageSeed =>
+        messageSeed.senderEmail !== shop.ownerUser.email
+        && (
+          !conversation.sellerLastReadAt
+          || conversation.sellerLastReadAt < messageSeed.createdAt
+        ),
+      ).length;
       conversation.updatedAt = lastMessage.updatedAt;
     }
 
@@ -342,13 +393,17 @@ export async function seedChat(
 
     if (
       (index + 1) % progressInterval === 0
-      || index + 1 === conversationSeeds.length
+      && index + 1 !== conversationSeeds.length
     ) {
       console.log(
-        `[seed][chat] Processed ${index + 1}/${conversationSeeds.length} conversations in ${formatDuration(Date.now() - startedAt)}`,
+        `[seed][chat] Processed ${index + 1}/${conversationSeeds.length} conversations and ${seededMessageCount}/${messageSeeds.length} messages in ${formatDuration(Date.now() - startedAt)}`,
       );
     }
   }
+
+  console.log(
+    `[seed][chat] Processed ${conversationSeeds.length}/${conversationSeeds.length} conversations and ${seededMessageCount}/${messageSeeds.length} messages in ${formatDuration(Date.now() - startedAt)}`,
+  );
 
   if (skippedLocalConversations > 0) {
     console.log(

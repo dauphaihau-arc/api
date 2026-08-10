@@ -8,14 +8,12 @@ import {
 } from '@mikro-orm/core';
 import { AbstractBaseEntity } from '~/platform/database/abstract-base.entity';
 import { CurrentUserEntity } from '~/domains/auth/infra/persistence/entities/current-user.entity';
-import { ProductEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product.entity';
 import { ShopEntity } from '~/domains/shop/infra/persistence/entities/shop.entity';
 import { ChatMessageEntity } from './chat-message.entity';
 
 @Entity({ tableName: 'chat_conversations' })
 @Index({ properties: ['buyerUser'] })
 @Index({ properties: ['shop'] })
-@Index({ properties: ['product'] })
 @Index({ properties: ['status'] })
 @Index({ properties: ['lastMessageAt'] })
 export class ChatConversationEntity extends AbstractBaseEntity {
@@ -31,13 +29,6 @@ export class ChatConversationEntity extends AbstractBaseEntity {
   })
   shop!: ShopEntity;
 
-  @ManyToOne(() => ProductEntity, {
-    fieldName: 'product_id',
-    nullable: true,
-    deleteRule: 'set null',
-  })
-  product?: ProductEntity;
-
   @Property({ fieldName: 'status', length: 20, default: 'open' })
   status = 'open';
 
@@ -51,11 +42,30 @@ export class ChatConversationEntity extends AbstractBaseEntity {
   })
   lastMessageSenderUser?: CurrentUserEntity;
 
+  @ManyToOne(() => ChatMessageEntity, {
+    fieldName: 'last_message_id',
+    nullable: true,
+    deleteRule: 'set null',
+  })
+  lastMessage?: ChatMessageEntity;
+
+  @Property({ fieldName: 'last_message_body_preview', length: 160, nullable: true })
+  lastMessageBodyPreview?: string;
+
+  @Property({ fieldName: 'last_message_type', length: 20, nullable: true })
+  lastMessageType?: string;
+
   @Property({ fieldName: 'buyer_last_read_at', nullable: true })
   buyerLastReadAt?: Date;
 
   @Property({ fieldName: 'seller_last_read_at', nullable: true })
   sellerLastReadAt?: Date;
+
+  @Property({ fieldName: 'buyer_unread_count', default: 0 })
+  buyerUnreadCount = 0;
+
+  @Property({ fieldName: 'seller_unread_count', default: 0 })
+  sellerUnreadCount = 0;
 
   @OneToMany(() => ChatMessageEntity, (message) => message.conversation)
   messages = new Collection<ChatMessageEntity>(this);

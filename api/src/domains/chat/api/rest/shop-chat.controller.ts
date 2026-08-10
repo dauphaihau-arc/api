@@ -92,7 +92,7 @@ export class ShopChatController {
     await this.shopAccessService.assertCanManageShop(currentUser, shopId);
 
     return {
-      unread_count: await this.getShopChatUnreadCountUseCase.execute(shopId, currentUser.userId),
+      unread_count: await this.getShopChatUnreadCountUseCase.execute(shopId),
     };
   }
 

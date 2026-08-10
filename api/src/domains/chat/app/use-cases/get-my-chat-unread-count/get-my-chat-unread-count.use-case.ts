@@ -12,14 +12,9 @@ export class GetMyChatUnreadCountUseCase {
         select count(*)::text as total
         from "chat_conversations"
         where "buyer_user_id" = ?
-          and "last_message_at" is not null
-          and "last_message_sender_user_id" <> ?
-          and (
-            "buyer_last_read_at" is null
-            or "buyer_last_read_at" < "last_message_at"
-          )
+          and "buyer_unread_count" > 0
       `,
-      [actor.userId, actor.userId],
+      [actor.userId],
     );
 
     return Number(rows[0]?.total ?? '0');

@@ -16,10 +16,11 @@ export class ListShopChatConversationsUseCase {
     query: ChatConversationListQuery,
   ): Promise<ChatConversationListResult> {
     const repository = this.entityManager.fork().getRepository(ChatConversationEntity);
+
     const [conversations, total] = await repository.findAndCount(
       { shop: shopId },
       {
-        populate: ['buyerUser', 'shop.ownerUser', 'product'],
+        populate: ['buyerUser', 'shop.ownerUser', 'lastMessage', 'lastMessageSenderUser'],
         orderBy: {
           lastMessageAt: 'desc',
           createdAt: 'desc',

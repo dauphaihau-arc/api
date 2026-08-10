@@ -21,7 +21,7 @@ export class ListMyChatConversationsUseCase {
     const [conversations, total] = await repository.findAndCount(
       { buyerUser: actor.userId },
       {
-        populate: ['buyerUser', 'shop.ownerUser', 'product'],
+        populate: ['buyerUser', 'shop.ownerUser', 'lastMessage', 'lastMessageSenderUser'],
         orderBy: {
           lastMessageAt: 'desc',
           createdAt: 'desc',

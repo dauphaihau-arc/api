@@ -38,6 +38,7 @@ export class ForwardChatMessageToWsListener {
         message: {
           id: payload.message_id,
           body: payload.body,
+          message_type: payload.message_type,
           sender_user_id: payload.sender_user_id,
           occurred_at: payload.occurred_at ?? new Date().toISOString(),
           metadata: payload.metadata ?? null,

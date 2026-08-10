@@ -1396,22 +1396,6 @@
           "enumItems": [],
           "mappedType": "uuid"
         },
-        "product_id": {
-          "name": "product_id",
-          "type": "uuid",
-          "unsigned": false,
-          "autoincrement": false,
-          "primary": false,
-          "nullable": true,
-          "unique": false,
-          "length": null,
-          "precision": null,
-          "scale": null,
-          "default": null,
-          "comment": null,
-          "enumItems": [],
-          "mappedType": "uuid"
-        },
         "status": {
           "name": "status",
           "type": "varchar(20)",
@@ -1491,11 +1475,102 @@
           "comment": null,
           "enumItems": [],
           "mappedType": "datetime"
+        },
+        "last_message_id": {
+          "name": "last_message_id",
+          "type": "uuid",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "uuid"
+        },
+        "last_message_body_preview": {
+          "name": "last_message_body_preview",
+          "type": "varchar(160)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": 160,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "string"
+        },
+        "last_message_type": {
+          "name": "last_message_type",
+          "type": "varchar(20)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": 20,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "string"
+        },
+        "buyer_unread_count": {
+          "name": "buyer_unread_count",
+          "type": "int4",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": false,
+          "length": null,
+          "precision": 32,
+          "scale": 0,
+          "default": "0",
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "integer"
+        },
+        "seller_unread_count": {
+          "name": "seller_unread_count",
+          "type": "int4",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": false,
+          "length": null,
+          "precision": 32,
+          "scale": 0,
+          "default": "0",
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "integer"
         }
       },
       "name": "chat_conversations",
       "schema": "public",
       "indexes": [
+        {
+          "columnNames": [
+            "buyer_user_id",
+            "buyer_unread_count"
+          ],
+          "composite": true,
+          "constraint": false,
+          "keyName": "chat_conversations_buyer_unread_count_index",
+          "unique": false,
+          "primary": false
+        },
         {
           "columnNames": [
             "buyer_user_id"
@@ -1513,6 +1588,16 @@
           "composite": false,
           "constraint": false,
           "keyName": "chat_conversations_last_message_at_index",
+          "unique": false,
+          "primary": false
+        },
+        {
+          "columnNames": [
+            "last_message_id"
+          ],
+          "composite": false,
+          "constraint": false,
+          "keyName": "chat_conversations_last_message_id_index",
           "unique": false,
           "primary": false
         },
@@ -1538,11 +1623,12 @@
         },
         {
           "columnNames": [
-            "product_id"
+            "shop_id",
+            "seller_unread_count"
           ],
-          "composite": false,
+          "composite": true,
           "constraint": false,
-          "keyName": "chat_conversations_product_id_index",
+          "keyName": "chat_conversations_seller_unread_count_index",
           "unique": false,
           "primary": false
         },
@@ -1582,6 +1668,19 @@
           "updateRule": "cascade",
           "deleteRule": "cascade"
         },
+        "chat_conversations_last_message_id_foreign": {
+          "columnNames": [
+            "last_message_id"
+          ],
+          "constraintName": "chat_conversations_last_message_id_foreign",
+          "localTableName": "public.chat_conversations",
+          "referencedTableName": "public.chat_messages",
+          "referencedColumnNames": [
+            "id"
+          ],
+          "updateRule": "cascade",
+          "deleteRule": "set null"
+        },
         "chat_conversations_last_message_sender_user_id_foreign": {
           "columnNames": [
             "last_message_sender_user_id"
@@ -1589,19 +1688,6 @@
           "constraintName": "chat_conversations_last_message_sender_user_id_foreign",
           "localTableName": "public.chat_conversations",
           "referencedTableName": "public.users",
-          "referencedColumnNames": [
-            "id"
-          ],
-          "updateRule": "cascade",
-          "deleteRule": "set null"
-        },
-        "chat_conversations_product_id_foreign": {
-          "columnNames": [
-            "product_id"
-          ],
-          "constraintName": "chat_conversations_product_id_foreign",
-          "localTableName": "public.chat_conversations",
-          "referencedTableName": "public.products",
           "referencedColumnNames": [
             "id"
           ],

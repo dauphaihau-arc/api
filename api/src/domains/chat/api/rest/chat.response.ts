@@ -9,24 +9,33 @@ export function toChatConversationResponse(conversation: ChatConversationSummary
   return {
     id: conversation.id,
     buyer_user_id: conversation.buyerUserId,
+    buyer: {
+      id: conversation.buyerUserId,
+      display_name: conversation.buyerDisplayName ?? null,
+      avatar: conversation.buyerAvatar ?? null,
+    },
     shop: {
       id: conversation.shopId,
       owner_user_id: conversation.shopOwnerUserId,
       shop_name: conversation.shopName,
       slug: conversation.shopSlug,
     },
-    product: conversation.productId
+    status: conversation.status,
+    last_message: conversation.lastMessageId && conversation.lastMessageAt && conversation.lastMessageSenderUserId
       ? {
-        id: conversation.productId,
-        title: conversation.productTitle,
-        slug: conversation.productSlug,
+        id: conversation.lastMessageId,
+        body_preview: conversation.lastMessageBodyPreview ?? '',
+        sender_user_id: conversation.lastMessageSenderUserId,
+        message_type: conversation.lastMessageType ?? 'text',
+        created_at: conversation.lastMessageAt,
       }
       : null,
-    status: conversation.status,
     last_message_at: conversation.lastMessageAt ?? null,
     last_message_sender_user_id: conversation.lastMessageSenderUserId ?? null,
     buyer_last_read_at: conversation.buyerLastReadAt ?? null,
     seller_last_read_at: conversation.sellerLastReadAt ?? null,
+    buyer_unread_count: conversation.buyerUnreadCount,
+    seller_unread_count: conversation.sellerUnreadCount,
     created_at: conversation.createdAt,
     updated_at: conversation.updatedAt,
   };
@@ -60,9 +69,10 @@ export function toChatMessageListResponse(result: ChatMessageListResult) {
   return {
     conversation: toChatConversationResponse(result.conversation),
     results: result.results.map(toChatMessageResponse),
-    page: result.page,
     limit: result.limit,
-    total_pages: result.totalPages,
-    total_results: result.totalResults,
+    page_info: {
+      has_more_before: result.pageInfo.hasMoreBefore,
+      before_cursor: result.pageInfo.beforeCursor ?? null,
+    },
   };
 }

@@ -6,6 +6,7 @@ export type ChatMessageCreatedEventPayload = {
   sender_user_id: string;
   recipient_user_ids: string[];
   body: string;
+  message_type: string;
   shop_id?: string;
   occurred_at?: string;
   metadata?: Record<string, unknown>;

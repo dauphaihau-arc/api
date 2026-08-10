@@ -16,7 +16,7 @@ export class MarkShopChatConversationReadUseCase {
     const entityManager = this.entityManager.fork();
     const conversation = await entityManager.getRepository(ChatConversationEntity).findOne(
       { id: conversationId, shop: shopId },
-      { populate: ['buyerUser', 'shop.ownerUser', 'product', 'lastMessageSenderUser'] },
+      { populate: ['buyerUser', 'shop.ownerUser', 'lastMessage', 'lastMessageSenderUser'] },
     );
 
     if (!conversation) {
@@ -24,6 +24,7 @@ export class MarkShopChatConversationReadUseCase {
     }
 
     conversation.sellerLastReadAt = new Date();
+    conversation.sellerUnreadCount = 0;
     await entityManager.flush();
 
     return toChatConversationSummary(conversation);

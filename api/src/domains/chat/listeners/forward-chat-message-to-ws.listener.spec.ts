@@ -14,6 +14,7 @@ describe('ForwardChatMessageToWsListener', () => {
       sender_user_id: 'user-sender',
       recipient_user_ids: ['user-recipient', 'user-sender'],
       body: 'Hello there',
+      message_type: 'text',
       shop_id: 'shop-1',
       occurred_at: '2026-06-03T12:00:00.000Z',
       metadata: { product_id: 'product-1' },
@@ -37,6 +38,7 @@ describe('ForwardChatMessageToWsListener', () => {
           message: {
             id: 'message-1',
             body: 'Hello there',
+            message_type: 'text',
             sender_user_id: 'user-sender',
             occurred_at: '2026-06-03T12:00:00.000Z',
             metadata: { product_id: 'product-1' },

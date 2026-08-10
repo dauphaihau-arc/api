@@ -3,6 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import { CurrentUserEntity } from '~/domains/auth/infra/persistence/entities/current-user.entity';
+import { buildChatMessageBodyPreview } from '../../chat-message-preview';
 import { toChatMessageSummary } from '../../chat-read-model';
 import type { ChatMessageSummary } from '../../chat.types';
 import { ChatConversationAccessDeniedError, ChatConversationNotFoundError } from '../../errors/chat-app.error';
@@ -31,7 +32,7 @@ export class SendMyChatMessageUseCase {
     const entityManager = this.entityManager.fork();
     const conversation = await entityManager.getRepository(ChatConversationEntity).findOne(
       { id: conversationId },
-      { populate: ['buyerUser', 'shop.ownerUser', 'product'] },
+      { populate: ['buyerUser', 'shop.ownerUser'] },
     );
 
     if (!conversation) {
@@ -53,9 +54,14 @@ export class SendMyChatMessageUseCase {
 
     conversation.lastMessageAt = message.createdAt;
     conversation.lastMessageSenderUser = message.senderUser;
+    conversation.lastMessage = message;
+    conversation.lastMessageBodyPreview = buildChatMessageBodyPreview(message.body);
+    conversation.lastMessageType = message.messageType;
     conversation.buyerLastReadAt = message.createdAt;
+    conversation.buyerUnreadCount = 0;
+    conversation.sellerUnreadCount += 1;
 
-    await entityManager.persistAndFlush(message);
+    await entityManager.persist(message).flush();
     await entityManager.populate(message, ['conversation', 'senderUser']);
 
     this.eventEmitter.emit(
@@ -66,6 +72,7 @@ export class SendMyChatMessageUseCase {
         sender_user_id: actor.userId,
         recipient_user_ids: [conversation.shop.ownerUser.id],
         body: message.body,
+        message_type: message.messageType,
         shop_id: conversation.shop.id,
         occurred_at: message.createdAt.toISOString(),
         metadata: input.metadata,
