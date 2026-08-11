@@ -4,7 +4,7 @@ The API is hosted on Render.
 
 Current state:
 
-- Render already has service configuration in [render.yaml](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/render.yaml:1).
+- Render already has service configuration in [render.yaml](../../../render.yaml:1).
 - Render can auto-deploy directly from Git commits.
 
 Optional improvement:

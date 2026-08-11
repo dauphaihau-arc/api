@@ -70,4 +70,4 @@ The v1 template is versioned as `product-import-v1`, includes a `Metadata` sheet
 ## Related Documents
 
 - [Import Product Design](../../../../../docs/features/import-product-design/README.md)
-- [Export Order Design](../../../../../docs/features/export-order-design.md)
+- [Export Order Design](../../../../../docs/features/export-order-design/README.md)

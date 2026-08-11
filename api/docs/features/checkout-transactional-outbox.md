@@ -4,13 +4,13 @@ This document explains how the generic outbox pattern is applied specifically to
 
 Related generic pattern:
 
-- [outbox-pattern.md](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/docs/outbox-pattern.md)
+- [outbox-pattern.md](../architecture/outbox-pattern.md)
 
 ## Problem
 
 The current checkout flow creates orders and calls Stripe within the same database transaction:
 
-- [order-checkout.service.ts](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/api/src/modules/domains/order/app/order-checkout.service.ts)
+- [order-checkout.service.ts](../../src/domains/order/app/services/order-checkout.service.ts)
 
 That means the transaction stays open while the application waits for an external network call. This has several risks:
 
@@ -50,7 +50,7 @@ For `CARD` payments:
 
 Current order statuses are defined in:
 
-- [order-status.enum.ts](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/api/src/modules/domains/order/domain/enums/order-status.enum.ts)
+- [order-status.enum.ts](../../src/domains/order/domain/enums/order-status.enum.ts)
 
 Current `CARD` orders are created as `AWAITING_PAYMENT`. For outbox-based checkout, add one intermediate state:
 
@@ -76,7 +76,7 @@ Optional future state:
 
 Checkout uses the shared `outbox_events` table through:
 
-- [outbox-event.entity.ts](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/api/src/modules/domains/order/infra/persistence/entities/outbox-event.entity.ts)
+- [outbox-event.entity.ts](../../src/domains/order/infra/persistence/entities/outbox-event.entity.ts)
 
 For this flow, the important event is:
 
@@ -128,7 +128,7 @@ The worker should operate from the persisted checkout snapshot.
 
 ### 1. Order creation transaction
 
-In [order-checkout.service.ts](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/api/src/modules/domains/order/app/order-checkout.service.ts):
+In [order-checkout.service.ts](../../src/domains/order/app/services/order-checkout.service.ts):
 
 - keep pricing before the transaction if needed
 - create orders, inventory reservations, and coupon usages inside the transaction
@@ -140,8 +140,8 @@ In [order-checkout.service.ts](/Volumes/Local/dev/pj-personal/apps/arc/codebase/
 
 Checkout is processed by:
 
-- [order-checkout-outbox.service.ts](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/api/src/modules/domains/order/app/order-checkout-outbox.service.ts)
-- [order-checkout-outbox-worker.service.ts](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/api/src/modules/domains/order/app/order-checkout-outbox-worker.service.ts)
+- [order-checkout-outbox.service.ts](../../src/domains/order/app/services/order-checkout-outbox.service.ts)
+- [order-checkout-outbox-worker.service.ts](../../src/domains/order/app/services/order-checkout-outbox-worker.service.ts)
 
 That processor:
 
@@ -153,8 +153,8 @@ That processor:
 
 Since the project already has queue abstractions and workers:
 
-- [job-dispatcher.ts](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/api/src/modules/shared/queue/app/ports/job-dispatcher.ts)
-- [worker.ts](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/api/src/worker.ts)
+- [job-dispatcher.ts](../../src/integrations/queue/app/ports/job-dispatcher.ts)
+- [worker.ts](../../src/bootstrap/worker.ts)
 
 The current implementation keeps Postgres as the durable source of truth and uses a polling worker for retries.
 
@@ -185,8 +185,8 @@ If retries are exhausted:
 
 Webhook handling should remain separate:
 
-- [handle-stripe-webhook.use-case.ts](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/api/src/modules/domains/order/app/use-cases/handle-stripe-webhook/handle-stripe-webhook.use-case.ts)
-- [order-webhook.controller.ts](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/api/src/modules/domains/order/api/rest/order-webhook.controller.ts)
+- [handle-stripe-webhook.use-case.ts](../../src/domains/order/app/use-cases/handle-stripe-webhook/handle-stripe-webhook.use-case.ts)
+- [order-webhook.controller.ts](../../src/domains/order/api/rest/order-webhook.controller.ts)
 
 With the new status model:
 

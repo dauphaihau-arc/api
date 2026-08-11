@@ -243,7 +243,7 @@ Short rule:
 - depend on another domain's capability
 - do not depend on another domain's persistence internals
 
-For a deeper explanation, examples, and review heuristics, see [Cross-Domain Infra Leakage](/Volumes/Local/dev/pj-personal/apps/camille/camille-v2/apps/api/api/docs/cross-domain-infra-leakage.md).
+For a deeper explanation, examples, and review heuristics, see the Cross-Domain Infra Leakage note if it is added to this repo.
 
 ## Common Mistakes
 

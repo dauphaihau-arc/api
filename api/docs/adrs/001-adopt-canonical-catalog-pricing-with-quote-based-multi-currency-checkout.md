@@ -100,4 +100,4 @@ Minor-unit storage avoids floating-point ambiguity and better supports currencie
 
 ## Related Documents
 
-- [Checkout Quote Design](../checkout-quote-design.md)
+- [Checkout Quote Design](../features/checkout-quote-design.md)

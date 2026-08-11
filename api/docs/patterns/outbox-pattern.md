@@ -39,7 +39,7 @@ Typical candidates:
 
 The shared outbox entity is:
 
-- [outbox-event.entity.ts](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/api/src/modules/domains/order/infra/persistence/entities/outbox-event.entity.ts)
+- [outbox-event.entity.ts](../../src/domains/order/infra/persistence/entities/outbox-event.entity.ts)
 
 It persists:
 
@@ -93,6 +93,6 @@ If retry budget is exhausted:
 
 The first implemented use case is checkout session creation:
 
-- [checkout-transactional-outbox.md](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/docs/checkout-transactional-outbox.md)
+- [checkout-transactional-outbox.md](../features/checkout-transactional-outbox.md)
 
 That flow uses a checkout-specific processor on top of the shared `outbox_events` table.

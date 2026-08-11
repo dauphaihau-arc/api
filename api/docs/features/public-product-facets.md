@@ -5,15 +5,15 @@ browse and search flows.
 
 Relevant code:
 
-- [product.controller.ts](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/api/src/modules/domains/product/api/rest/product.controller.ts)
-- [list-public-products.query.dto.ts](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/api/src/modules/domains/product/api/rest/dto/list-public-products.query.dto.ts)
-- [list-public-products.use-case.ts](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/api/src/modules/domains/product/app/use-cases/list-public-products/list-public-products.use-case.ts)
-- [storefront-product-query.repository.ts](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/api/src/modules/domains/product/app/ports/storefront-product-query.repository.ts)
-- [catalog-search-document.mapper.ts](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/api/src/modules/domains/product/infra/catalog-search-document.mapper.ts)
-- [atlas-search-storefront-product-query.repository.ts](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/api/src/modules/domains/product/infra/atlas-search-storefront-product-query.repository.ts)
-- [mongo-storefront-product-query.repository.ts](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/api/src/modules/domains/product/infra/mongo-storefront-product-query.repository.ts)
-- [mikro-orm-storefront-product-query.repository.ts](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/api/src/modules/domains/product/infra/mikro-orm-storefront-product-query.repository.ts)
-- [category.controller.ts](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/api/src/modules/domains/category/api/rest/category.controller.ts)
+- [product.controller.ts](../../src/domains/product/api/rest/storefront/product.controller.ts)
+- [list-public-products.query.dto.ts](../../src/domains/product/api/rest/storefront/dto/list-public-products.query.dto.ts)
+- [list-public-products.use-case.ts](../../src/domains/product/app/use-cases/list-public-products/list-public-products.use-case.ts)
+- [storefront-product-query.repository.ts](../../src/domains/product/app/ports/storefront-product-query.repository.ts)
+- [catalog-search-document.mapper.ts](../../src/domains/product/infra/catalog/mongo/documents/catalog-search-document.mapper.ts)
+- [atlas-search-storefront-product-query.repository.ts](../../src/domains/product/infra/search/atlas/repositories/atlas-search-storefront-product-query.repository.ts)
+- [mongo-storefront-product-query.repository.ts](../../src/domains/product/infra/catalog/mongo/repositories/mongo-catalog-search-document.repository.ts)
+- [mikro-orm-storefront-product-query.repository.ts](../../src/domains/product/infra/persistence/mikro-orm/repositories/mikro-orm-storefront-product-query.repository.ts)
+- [category.controller.ts](../../src/domains/category/api/rest/category.controller.ts)
 
 ## Purpose
 
@@ -38,7 +38,7 @@ attribute definition for a category.
 
 Implemented in:
 
-- [product.controller.ts](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/api/src/modules/domains/product/api/rest/product.controller.ts:68)
+- [product.controller.ts](../../src/domains/product/api/rest/storefront/product.controller.ts:68)
 
 The endpoint accepts the same query surface as public product listing and
 returns facet data instead of product rows.
@@ -47,7 +47,7 @@ returns facet data instead of product rows.
 
 The request DTO is shared with public product listing:
 
-- [list-public-products.query.dto.ts](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/api/src/modules/domains/product/api/rest/dto/list-public-products.query.dto.ts:102)
+- [list-public-products.query.dto.ts](../../src/domains/product/api/rest/storefront/dto/list-public-products.query.dto.ts:102)
 
 Supported inputs include:
 
@@ -65,7 +65,7 @@ query params.
 
 Parsing is handled by:
 
-- [list-public-products.query.dto.ts](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/api/src/modules/domains/product/api/rest/dto/list-public-products.query.dto.ts:55)
+- [list-public-products.query.dto.ts](../../src/domains/product/api/rest/storefront/dto/list-public-products.query.dto.ts:55)
 
 Preferred example:
 
@@ -89,7 +89,7 @@ Important notes:
 
 The product module owns the facets response contract:
 
-- [product.types.ts](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/api/src/modules/domains/product/app/product.types.ts:307)
+- [product.types.ts](../../src/domains/product/app/product.types.ts:307)
 
 Shape:
 
@@ -133,13 +133,13 @@ Important properties:
 
 The use case entrypoint is:
 
-- [list-public-products.use-case.ts](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/api/src/modules/domains/product/app/use-cases/list-public-products/list-public-products.use-case.ts:61)
+- [list-public-products.use-case.ts](../../src/domains/product/app/use-cases/list-public-products/list-public-products.use-case.ts:61)
 
 ## Repository Contract
 
 The repository contract is defined in:
 
-- [storefront-product-query.repository.ts](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/api/src/modules/domains/product/app/ports/storefront-product-query.repository.ts:20)
+- [storefront-product-query.repository.ts](../../src/domains/product/app/ports/storefront-product-query.repository.ts:20)
 
 ```ts
 abstract listPublicFacets(
@@ -232,7 +232,7 @@ Example:
 
 This behavior is implemented through inferred facet projection in:
 
-- [inferred-facets.ts](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/api/src/modules/domains/product/infra/inferred-facets.ts)
+- [inferred-facets.ts](../../src/domains/product/infra/inferred-facets.ts)
 
 The goal is product-discovery tolerance for broad buyer-facing filters, while
 still preserving exact structured attributes when they exist.
@@ -243,7 +243,7 @@ still preserving exact structured attributes when they exist.
 
 Implementation:
 
-- [atlas-search-storefront-product-query.repository.ts](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/api/src/modules/domains/product/infra/atlas-search-storefront-product-query.repository.ts:133)
+- [atlas-search-storefront-product-query.repository.ts](../../src/domains/product/infra/search/atlas/repositories/atlas-search-storefront-product-query.repository.ts:133)
 
 Behavior:
 
@@ -256,7 +256,7 @@ Behavior:
 Attribute filters are applied inside the Atlas search stage through
 `embeddedDocument` conditions:
 
-- [atlas-search-storefront-product-query.repository.ts](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/api/src/modules/domains/product/infra/atlas-search-storefront-product-query.repository.ts:295)
+- [atlas-search-storefront-product-query.repository.ts](../../src/domains/product/infra/search/atlas/repositories/atlas-search-storefront-product-query.repository.ts:295)
 
 This implementation requires attribute data and inferred facet data to exist in
 the projected search document.
@@ -265,7 +265,7 @@ the projected search document.
 
 Implementation:
 
-- [mongo-storefront-product-query.repository.ts](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/api/src/modules/domains/product/infra/mongo-storefront-product-query.repository.ts:103)
+- [mongo-storefront-product-query.repository.ts](../../src/domains/product/infra/catalog/mongo/repositories/mongo-catalog-search-document.repository.ts:103)
 
 Behavior:
 
@@ -280,13 +280,13 @@ For supported inferred facets, Mongo filtering also allows a match through
 
 Facet result construction lives in:
 
-- [mongo-storefront-product-query.repository.ts](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/api/src/modules/domains/product/infra/mongo-storefront-product-query.repository.ts:371)
+- [mongo-storefront-product-query.repository.ts](../../src/domains/product/infra/catalog/mongo/repositories/mongo-catalog-search-document.repository.ts:371)
 
 ### MikroORM / SQL fallback
 
 Implementation:
 
-- [mikro-orm-storefront-product-query.repository.ts](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/api/src/modules/domains/product/infra/mikro-orm-storefront-product-query.repository.ts:145)
+- [mikro-orm-storefront-product-query.repository.ts](../../src/domains/product/infra/persistence/mikro-orm/repositories/mikro-orm-storefront-product-query.repository.ts:145)
 
 Behavior:
 
@@ -303,7 +303,7 @@ into a term set and match title or description text as a relaxed fallback.
 Attribute filters are applied through `exists (...)` clauses in the SQL query
 builder:
 
-- [mikro-orm-storefront-product-query.repository.ts](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/api/src/modules/domains/product/infra/mikro-orm-storefront-product-query.repository.ts:335)
+- [mikro-orm-storefront-product-query.repository.ts](../../src/domains/product/infra/persistence/mikro-orm/repositories/mikro-orm-storefront-product-query.repository.ts:335)
 
 ## Read Model Dependency
 
@@ -312,11 +312,11 @@ containing category attribute data.
 
 That shape is introduced in:
 
-- [catalog-search-document.mapper.ts](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/api/src/modules/domains/product/infra/catalog-search-document.mapper.ts:6)
+- [catalog-search-document.mapper.ts](../../src/domains/product/infra/catalog/mongo/documents/catalog-search-document.mapper.ts:6)
 
 Attribute projection is populated in:
 
-- [catalog-search-document.mapper.ts](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/api/src/modules/domains/product/infra/catalog-search-document.mapper.ts:108)
+- [catalog-search-document.mapper.ts](../../src/domains/product/infra/catalog/mongo/documents/catalog-search-document.mapper.ts:108)
 
 The projected documents also include:
 
@@ -389,7 +389,7 @@ name.
 
 Priority source:
 
-- [product-facet.constants.ts](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/api/src/modules/domains/product/app/product-facet.constants.ts)
+- [product-facet.constants.ts](../../src/domains/product/app/product-facet.constants.ts)
 
 This is a presentation-oriented product browse rule, not a category metadata
 rule.
@@ -407,7 +407,7 @@ Reason:
 
 The category endpoint:
 
-- [category.controller.ts](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/api/src/modules/domains/category/api/rest/category.controller.ts:79)
+- [category.controller.ts](../../src/domains/category/api/rest/category.controller.ts:79)
 
 returns the configured attribute definition for a category, including all known
 options.
@@ -436,5 +436,5 @@ storefront querying rather than the category module alone.
 
 ## Related Documents
 
-- [atlas-search-catalog.md](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/docs/atlas-search-catalog.md)
-- [002-adopt-projected-catalog-read-model-with-pluggable-search.md](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/docs/adrs/002-adopt-projected-catalog-read-model-with-pluggable-search.md)
+- [atlas-search-indexes.md](../operations/atlas-search-indexes.md)
+- [002-adopt-projected-catalog-read-model-with-pluggable-search.md](../adrs/002-adopt-projected-catalog-read-model-with-pluggable-search.md)

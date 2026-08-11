@@ -1,6 +1,6 @@
 # Local Dev Runtime Modes
 
-This document explains how local development is intended to work in this repo, and why the `api` and `worker` services still exist in [infra/docker-compose.yml](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/infra/docker-compose.yml).
+This document explains how local development is intended to work in this repo, and why the `api` and `worker` services still exist in [infra/docker-compose.yml](../../../infra/docker-compose.yml).
 
 ## Summary
 
@@ -65,7 +65,7 @@ Tradeoffs:
 
 ## Purpose of `api` in Compose
 
-The `api` service in [infra/docker-compose.yml](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/infra/docker-compose.yml) is not the primary day-to-day dev process anymore. Its role is:
+The `api` service in [infra/docker-compose.yml](../../../infra/docker-compose.yml) is not the primary day-to-day dev process anymore. Its role is:
 
 - provide a containerized HTTP API runtime
 - validate the Docker image build and startup path

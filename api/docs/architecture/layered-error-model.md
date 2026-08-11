@@ -27,7 +27,7 @@ Typical examples:
 
 Reference:
 
-- [auth-domain.error.ts](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/api/src/modules/domains/auth/domain/errors/auth-domain.error.ts)
+- [auth-domain.error.ts](../../src/domains/auth/domain/errors/auth-domain.error.ts)
 
 Examples from that file include:
 
@@ -48,7 +48,7 @@ Typical examples:
 
 Reference:
 
-- [auth-app.error.ts](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/api/src/modules/domains/auth/app/errors/auth-app.error.ts)
+- [auth-app.error.ts](../../src/domains/auth/app/errors/auth-app.error.ts)
 
 Examples from that file include:
 
@@ -88,5 +88,5 @@ These cases should be modeled deliberately with named error types so they can be
 
 ## Related Code
 
-- [domains](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/api/src/modules/domains/)
-- [shared](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/api/src/modules/shared/)
+- [domains](../../src/domains)
+- [shared](../../src/shared)

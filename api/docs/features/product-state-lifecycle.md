@@ -27,8 +27,8 @@ It means:
 
 Reference:
 
-- [product.entity.ts](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/api/src/modules/domains/product/infra/persistence/entities/product.entity.ts:56)
-- [mikro-orm-product.repository.ts](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/api/src/modules/domains/product/infra/mikro-orm-product.repository.ts:652)
+- [product.entity.ts](../../src/domains/product/infra/persistence/mikro-orm/entities/product.entity.ts:56)
+- [mikro-orm-product.repository.ts](../../src/domains/product/infra/persistence/mikro-orm/repositories/mikro-orm-product-command.repository.ts:652)
 
 ### `ACTIVE`
 
@@ -42,8 +42,8 @@ It means:
 
 Reference:
 
-- [mikro-orm-product.repository.ts](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/api/src/modules/domains/product/infra/mikro-orm-product.repository.ts:80)
-- [mikro-orm-product.repository.ts](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/api/src/modules/domains/product/infra/mikro-orm-product.repository.ts:156)
+- [mikro-orm-product.repository.ts](../../src/domains/product/infra/persistence/mikro-orm/repositories/mikro-orm-product-command.repository.ts:80)
+- [mikro-orm-product.repository.ts](../../src/domains/product/infra/persistence/mikro-orm/repositories/mikro-orm-product-command.repository.ts:156)
 
 ### `INACTIVE`
 
@@ -76,7 +76,7 @@ Reason:
 
 Reference:
 
-- [bulk-mutate-shop-products.use-case.ts](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/api/src/modules/domains/product/app/use-cases/bulk-mutate-shop-products/bulk-mutate-shop-products.use-case.ts:133)
+- [bulk-mutate-shop-products.use-case.ts](../../src/domains/product/app/use-cases/bulk-mutate-shop-products/bulk-mutate-shop-products.use-case.ts:133)
 
 ## Publish History
 
@@ -86,7 +86,7 @@ That means `publishedAt` acts as the historical signal that a product has gone l
 
 Reference:
 
-- [mikro-orm-product.repository.ts](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/api/src/modules/domains/product/infra/mikro-orm-product.repository.ts:644)
+- [mikro-orm-product.repository.ts](../../src/domains/product/infra/persistence/mikro-orm/repositories/mikro-orm-product-command.repository.ts:644)
 
 ## Public Visibility
 
@@ -101,8 +101,8 @@ As a result:
 
 Reference:
 
-- [mikro-orm-product.repository.ts](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/api/src/modules/domains/product/infra/mikro-orm-product.repository.ts:80)
-- [mikro-orm-product.repository.ts](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/api/src/modules/domains/product/infra/mikro-orm-product.repository.ts:156)
+- [mikro-orm-product.repository.ts](../../src/domains/product/infra/persistence/mikro-orm/repositories/mikro-orm-product-command.repository.ts:80)
+- [mikro-orm-product.repository.ts](../../src/domains/product/infra/persistence/mikro-orm/repositories/mikro-orm-product-command.repository.ts:156)
 
 ## Short Rule
 

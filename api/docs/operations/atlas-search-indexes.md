@@ -14,7 +14,7 @@ Index names:
 - `product_suggestions`
 
 The current Atlas implementation lives in:
-- [atlas-search-storefront-product-query.repository.ts](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/api/src/modules/domains/product/infra/search/atlas/repositories/atlas-search-storefront-product-query.repository.ts)
+- [atlas-search-storefront-product-query.repository.ts](../../src/domains/product/infra/search/atlas/repositories/atlas-search-storefront-product-query.repository.ts)
 
 ## Purpose
 
@@ -31,13 +31,13 @@ The current Atlas implementation lives in:
 Create both indexes on the `catalog_product_search` collection using the JSON
 definitions in:
 
-- [product_search.index.json](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/docs/atlas-search/product_search.index.json)
-- [product_suggestions.index.json](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/docs/atlas-search/product_suggestions.index.json)
+- [product_search.index.json](../../infra/atlas-search/product_search.index.json)
+- [product_suggestions.index.json](../../infra/atlas-search/product_suggestions.index.json)
 
 ## Field Expectations
 
 These indexes assume search documents shaped like:
-- [catalog-search-document.mapper.ts](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/api/src/modules/domains/product/infra/catalog/mongo/documents/catalog-search-document.mapper.ts)
+- [catalog-search-document.mapper.ts](../../src/domains/product/infra/catalog/mongo/documents/catalog-search-document.mapper.ts)
 
 Important indexed fields:
 - `title`

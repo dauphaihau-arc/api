@@ -24,8 +24,8 @@ Storage keys are built in a fixed segment order:
 
 Current builder inputs are defined in:
 
-- [storage-key.types.ts](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/api/src/modules/shared/storage/app/storage-key.types.ts)
-- [storage-key-builder.ts](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/api/src/modules/shared/storage/app/storage-key-builder.ts)
+- [storage-key.types.ts](../../src/integrations/storage/app/storage-key.types.ts)
+- [storage-key-builder.ts](../../src/integrations/storage/app/storage-key-builder.ts)
 
 ## Segment Meanings
 
@@ -47,13 +47,13 @@ prod/public/shops/shop-1/products/product-1/images/original/asset-1.webp
 
 Reference:
 
-- [storage-key-builder.spec.ts](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/api/src/modules/shared/storage/app/storage-key-builder.spec.ts)
+- [storage-key-builder.spec.ts](../../src/integrations/storage/app/storage-key-builder.spec.ts)
 
 ## Product Upload Flow
 
 The product image upload flow uses this convention when issuing upload URLs:
 
-- [issue-product-image-upload-url.use-case.ts](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/api/src/modules/domains/product/app/use-cases/issue-product-image-upload-url/issue-product-image-upload-url.use-case.ts)
+- [issue-product-image-upload-url.use-case.ts](../../src/domains/product/app/use-cases/issue-product-image-upload-url/issue-product-image-upload-url.use-case.ts)
 
 That flow builds keys using:
 

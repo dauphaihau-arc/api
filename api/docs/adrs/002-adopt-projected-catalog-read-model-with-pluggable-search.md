@@ -129,7 +129,7 @@ coupling to the transactional schema.
 
 ## Related Documents
 
-- [001-adopt-canonical-catalog-pricing-with-quote-based-multi-currency-checkout.md](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/docs/adrs/001-adopt-canonical-catalog-pricing-with-quote-based-multi-currency-checkout.md)
-- [atlas-search-catalog.md](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/docs/atlas-search-catalog.md)
-- [product_search.index.json](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/docs/atlas-search/product_search.index.json)
-- [product_suggestions.index.json](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/docs/atlas-search/product_suggestions.index.json)
+- [001-adopt-canonical-catalog-pricing-with-quote-based-multi-currency-checkout.md](./001-adopt-canonical-catalog-pricing-with-quote-based-multi-currency-checkout.md)
+- [atlas-search-indexes.md](../operations/atlas-search-indexes.md)
+- [product_search.index.json](../../infra/atlas-search/product_search.index.json)
+- [product_suggestions.index.json](../../infra/atlas-search/product_suggestions.index.json)
