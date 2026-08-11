@@ -77,10 +77,10 @@ export function buildChatProductReferenceMetadata(product: ProductEntity): ChatP
 export function getProductReferenceProductId(metadata?: Record<string, unknown>): string | undefined {
   const productReference = metadata?.product_reference;
 
-  if (!productReference || typeof productReference !== 'object') {
+  if (!productReference || typeof productReference !== 'object' || Array.isArray(productReference)) {
     return undefined;
   }
-
-  const productId = Reflect.get(productReference, 'product_id');
+  
+  const productId = (productReference as Record<string, unknown>).product_id;
   return typeof productId === 'string' ? productId : undefined;
 }

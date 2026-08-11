@@ -1,9 +1,17 @@
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
+import { ProductEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product.entity';
+import { ResolvedStorefrontPriceService } from '~/domains/product/app/services/resolved-storefront-price.service';
+import { getActiveBasePrice } from '~/domains/product/infra/persistence/mikro-orm/reads/variant-price-read';
 import {
   decodeChatMessageCursor,
   encodeChatMessageCursor,
 } from '../../../app/chat-message-cursor';
+import { getProductReferenceProductId } from '../../../app/chat-product-reference';
+import {
+  applyProductReferenceDisplayPrices,
+  type ChatProductReferenceDisplayPrice,
+} from '../../../app/chat-product-reference-pricing';
 import {
   toChatConversationSummary,
   toChatMessageSummary,
@@ -25,9 +33,14 @@ const CHAT_CONVERSATION_SUMMARY_POPULATE = [
   'lastMessageSenderUser',
 ] as const;
 
+type ProductReferencePricingMode = 'buyer_presentment' | 'seller_base';
+
 @Injectable()
 export class MikroOrmChatQueryRepository implements ChatQueryRepository {
-  constructor(private readonly entityManager: EntityManager) {}
+  constructor(
+    private readonly entityManager: EntityManager,
+    private readonly resolvedStorefrontPriceService: ResolvedStorefrontPriceService,
+  ) {}
 
   async listBuyerConversations(
     buyerUserId: string,
@@ -111,7 +124,7 @@ export class MikroOrmChatQueryRepository implements ChatQueryRepository {
       return null;
     }
 
-    return this.listConversationMessages(entityManager, conversation, query);
+    return this.listConversationMessages(entityManager, conversation, query, 'buyer_presentment');
   }
 
   async listShopMessages(
@@ -120,6 +133,7 @@ export class MikroOrmChatQueryRepository implements ChatQueryRepository {
     query: ChatMessageListQuery,
   ): Promise<ChatMessageListResult | null> {
     const entityManager = this.entityManager.fork();
+
     const conversation = await entityManager.getRepository(ChatConversationEntity).findOne(
       { id: conversationId, shop: shopId },
       { populate: CHAT_CONVERSATION_SUMMARY_POPULATE },
@@ -129,13 +143,14 @@ export class MikroOrmChatQueryRepository implements ChatQueryRepository {
       return null;
     }
 
-    return this.listConversationMessages(entityManager, conversation, query);
+    return this.listConversationMessages(entityManager, conversation, query, 'seller_base');
   }
 
   private async listConversationMessages(
     entityManager: EntityManager,
     conversation: ChatConversationEntity,
     query: ChatMessageListQuery,
+    pricingMode: ProductReferencePricingMode,
   ): Promise<ChatMessageListResult> {
     const cursor = query.before ? decodeChatMessageCursor(query.before) : undefined;
 
@@ -167,7 +182,7 @@ export class MikroOrmChatQueryRepository implements ChatQueryRepository {
 
     return {
       conversation: toChatConversationSummary(conversation),
-      results: pageMessages.map(toChatMessageSummary),
+      results: await this.toMessageSummaries(entityManager, pageMessages, pricingMode),
       limit: query.limit,
       pageInfo: {
         hasMoreBefore,
@@ -179,6 +194,89 @@ export class MikroOrmChatQueryRepository implements ChatQueryRepository {
           : undefined,
       },
     };
+  }
+
+  private async toMessageSummaries(
+    entityManager: EntityManager,
+    messages: ChatMessageEntity[],
+    pricingMode: ProductReferencePricingMode,
+  ) {
+    const summaries = messages.map(toChatMessageSummary);
+
+    const productIds = [
+      ...new Set(
+        summaries
+          .map((message) => getProductReferenceProductId(message.metadata))
+          .filter((productId): productId is string => productId != null),
+      ),
+    ];
+
+    if (productIds.length === 0) {
+      return summaries;
+    }
+
+    const products = await entityManager.getRepository(ProductEntity).find(
+      { id: { $in: productIds } },
+      { populate: ['inventoryRecords.prices'] },
+    );
+    const displayPrices = await this.resolveProductReferenceDisplayPrices(products, pricingMode);
+
+    return applyProductReferenceDisplayPrices(summaries, displayPrices);
+  }
+
+  private async resolveProductReferenceDisplayPrices(
+    products: ProductEntity[],
+    pricingMode: ProductReferencePricingMode,
+  ): Promise<Map<string, ChatProductReferenceDisplayPrice>> {
+
+    const pricingByInventoryId = pricingMode === 'buyer_presentment'
+      ? await this.resolvedStorefrontPriceService.resolveManyForCurrentRequest(
+        products.flatMap((product) => product.inventoryRecords.getItems()),
+      )
+      : undefined;
+
+    const priceByProductId = new Map<string, ChatProductReferenceDisplayPrice>();
+
+    for (const product of products) {
+      const prices = product.inventoryRecords
+        .getItems()
+        .map((inventory) => {
+          if (pricingByInventoryId) {
+            return pricingByInventoryId.get(inventory.id);
+          }
+
+          const basePrice = getActiveBasePrice(inventory);
+
+          return basePrice
+            ? {
+              amountMinor: basePrice.amountMinor,
+              ...(basePrice.originalAmountMinor !== undefined
+                ? { originalAmountMinor: basePrice.originalAmountMinor }
+                : {}),
+              currency: basePrice.currency,
+            }
+            : undefined;
+        })
+        .filter((price): price is NonNullable<typeof price> => price != null && price.amountMinor != null)
+        .sort((left, right) => left.amountMinor - right.amountMinor);
+
+      const lowestPrice = prices[0];
+
+      if (!lowestPrice) {
+        continue;
+      }
+
+      priceByProductId.set(product.id, {
+        productId: product.id,
+        amountMinor: lowestPrice.amountMinor,
+        ...(lowestPrice.originalAmountMinor !== undefined
+          ? { originalAmountMinor: lowestPrice.originalAmountMinor }
+          : {}),
+        currency: lowestPrice.currency,
+      });
+    }
+
+    return priceByProductId;
   }
 }
 

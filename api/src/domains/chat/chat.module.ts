@@ -3,6 +3,7 @@ import { Module } from '@nestjs/common';
 import { WsModule } from '~/platform/ws/ws.module';
 import { CurrentUserEntity } from '../auth/infra/persistence/entities/current-user.entity';
 import { ProductEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product.entity';
+import { ProductModule } from '~/domains/product/product.module';
 import { ShopModule } from '../shop/shop.module';
 import { ShopEntity } from '../shop/infra/persistence/entities/shop.entity';
 import { MeChatController } from './api/rest/me-chat.controller';
@@ -30,6 +31,7 @@ import { ForwardChatMessageToWsListener } from './listeners/forward-chat-message
   imports: [
     WsModule,
     ShopModule,
+    ProductModule,
     MikroOrmModule.forFeature([
       ChatConversationEntity,
       ChatMessageEntity,
