@@ -17,6 +17,7 @@ import { AuthSessionRepository } from '../../ports/auth-session.repository';
 import { AuthTokenService } from '../../ports/auth-token.service';
 import { TokenHasher } from '../../ports/token-hasher';
 import { AuthUserRepository } from '../../ports/auth-user.repository';
+import { UserPreferenceRepository } from '../../ports/user-preference.repository';
 import type { UserAccount } from '../../../domain/models/user-account';
 
 @Injectable()
@@ -26,6 +27,7 @@ export class IssueSessionUseCase {
     private readonly authSessionRepository: AuthSessionRepository,
     private readonly authTokenService: AuthTokenService,
     private readonly tokenHasher: TokenHasher,
+    private readonly userPreferenceRepository: UserPreferenceRepository,
     private readonly requestContextService: RequestContextService,
     @Inject(AUTH_CONFIG) private readonly authConfig: AuthConfig,
   ) {}
@@ -45,7 +47,9 @@ export class IssueSessionUseCase {
       return err(new InactiveUserError());
     }
 
+    const preferences = await this.userPreferenceRepository.findByUserId(user.id);
     const requestContext = this.requestContextService.get();
+
     const session =
       existingSession ??
       (await this.authSessionRepository.create({
@@ -95,6 +99,7 @@ export class IssueSessionUseCase {
         sessionId: authenticatedUser.sessionId,
         roles: authenticatedUser.roles,
         permissions: authenticatedUser.permissions,
+        ...(preferences ? { preferences } : {}),
       },
     });
   }
