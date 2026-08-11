@@ -96,7 +96,7 @@ Rules:
 - Coupon seeds may use a seed-only `period` column instead of explicit `start_date` and `end_date`.
 - `period` uses `<start>..<end>` offsets relative to seed runtime, where each side is `now` or an `ms`-style duration like `4d`, `12h`, or `30m`.
 - When `period` is set, leave `start_date` and `end_date` blank. When `period` is blank, both `start_date` and `end_date` are required.
-- Product images are auto-discovered from the folder derived from `shop_slug` and `title` in [product.seed.ts](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/api/database/seeds/product.seed.ts:41).
+- Product images are auto-discovered from the folder derived from `shop_slug` and `title` in [product.seed.ts](../api/database/seeds/product.seed.ts:41).
 - Products TSVs support an `is_digital` column. Use `true` for digital downloads and `false` for physical goods.
 - Product images should live under shop and product slug directories, for example `seed-data/images/products/olive-atelier/linen-weekend-dress/`.
 - Draft products can omit image folders entirely; active products still require seeded images.
@@ -111,7 +111,7 @@ Rules:
 - Supported review image extensions are `.jpg`, `.jpeg`, `.png`, and `.webp`.
 - Supported product image extensions are `.jpg`, `.jpeg`, `.png`, and `.webp`.
 - `product-inventory.tsv` should contain one row per SKU. Non-variant products still need one inventory row.
-- Keep filenames aligned with the relative keys referenced in [category.data.ts](/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api/api/database/seeds/category.data.ts:62).
+- Keep filenames aligned with the relative keys referenced in [category.data.ts](../api/database/seeds/category.data.ts:62).
 - Hidden files like `.DS_Store` are ignored.
 
 Usage:

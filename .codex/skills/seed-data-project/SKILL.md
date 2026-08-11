@@ -5,7 +5,7 @@ description: Handles this project's local shop seed-data workflow, including TSV
 
 # Local Shop Seed Data
 
-Project-scoped skill for `/Volumes/Local/dev/pj-personal/apps/arc/codebase/apps/api`.
+Project-scoped skill for this API workspace.
 
 ## Quick Start
 
