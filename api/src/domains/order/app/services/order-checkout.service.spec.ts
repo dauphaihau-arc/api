@@ -4,7 +4,8 @@ import type { CouponPricingService } from '../../../coupon/app/services/coupon-p
 import type { NotifyUserUseCase } from '../../../../domains/notification/app/use-cases/notify-user/notify-user.use-case';
 import { CartKind } from '../../../cart/domain/enums/cart-kind.enum';
 import type { OrderCheckoutOutboxService } from './order-checkout-outbox.service';
-import type { CheckoutStockReservationService } from '../../../checkout/app/services/checkout-stock-reservation.service';
+import type { CheckoutStockReservationPort } from '../../../checkout/app/ports/checkout-stock-reservation.port';
+import type { OrderInventoryOutboxService } from './order-inventory-outbox.service';
 import { OrderCheckoutService } from './order-checkout.service';
 import type { CartSnapshot } from '../../../cart/app/cart.types';
 import type { PricedCartSummary } from '../order.types';
@@ -12,6 +13,12 @@ import { PaymentType } from '../../domain/enums/payment-type.enum';
 import { OrderStatus } from '../../domain/enums/order-status.enum';
 import type { OrderTotalPolicyService } from './order-total-policy.service';
 import { OrderTotalLimitExceededError } from '../errors/order-app.error';
+
+function waitForDeferredCheckoutSideEffects(): Promise<void> {
+  return new Promise((resolve) => {
+    setImmediate(resolve);
+  });
+}
 
 // This spec keeps the checkout matrix in one place because the setup is shared across scenarios.
 // eslint-disable-next-line max-lines-per-function
@@ -120,6 +127,7 @@ describe('OrderCheckoutService', () => {
           case 'ProductInventoryEntity':
             return {
               findOne: jest.fn().mockResolvedValue(inventory),
+              find: jest.fn().mockResolvedValue([inventory]),
             };
           case 'OrderEntity':
             return orderRepository;
@@ -161,6 +169,11 @@ describe('OrderCheckoutService', () => {
       processEventById: jest.fn().mockResolvedValue(options?.processResult),
       processPendingEvents: jest.fn(),
     } as unknown as jest.Mocked<OrderCheckoutOutboxService>;
+    const orderInventoryOutboxService: jest.Mocked<OrderInventoryOutboxService> = {
+      createOrderCreatedEvent: jest.fn().mockResolvedValue({
+        id: 'inventory-outbox-1',
+      } as never),
+    } as unknown as jest.Mocked<OrderInventoryOutboxService>;
     const checkoutStockReservationService = {
       consumeReservationsForQuote: jest.fn().mockResolvedValue(undefined),
       allocateInventoryForOrderItems: jest.fn().mockResolvedValue({
@@ -179,7 +192,7 @@ describe('OrderCheckoutService', () => {
           },
         ],
       }),
-    } as unknown as jest.Mocked<CheckoutStockReservationService>;
+    } as unknown as jest.Mocked<CheckoutStockReservationPort>;
 
     const eventEmitter: Pick<jest.Mocked<EventEmitter2>, 'emit'> = {
       emit: jest.fn(),
@@ -202,6 +215,7 @@ describe('OrderCheckoutService', () => {
       couponPricingService,
       checkoutStockReservationService,
       orderCheckoutOutboxService,
+      orderInventoryOutboxService,
       orderEventsService as never,
       notifyUserUseCase,
       eventEmitter as unknown as EventEmitter2,
@@ -217,11 +231,12 @@ describe('OrderCheckoutService', () => {
       orderRepository,
       orderItemRepository,
       orderCheckoutOutboxService,
+      orderInventoryOutboxService,
       checkoutStockReservationService,
     };
   }
 
-  it('writes a checkout outbox event for card payments and returns a checkout URL when immediate processing succeeds', async () => {
+  it('writes a checkout outbox event for card payments and returns checkout pending', async () => {
     const {
       service,
       eventEmitter,
@@ -230,6 +245,7 @@ describe('OrderCheckoutService', () => {
       orderRepository,
       orderItemRepository,
       orderCheckoutOutboxService,
+      orderInventoryOutboxService,
       checkoutStockReservationService,
     } = buildService({
       processResult: {
@@ -286,8 +302,12 @@ describe('OrderCheckoutService', () => {
     expect(
       orderCheckoutOutboxService.createCheckoutSessionRequestedEvent,
     ).toHaveBeenCalled();
+    expect(orderInventoryOutboxService.createOrderCreatedEvent).not.toHaveBeenCalled();
     expect(checkoutStockReservationService.consumeReservationsForQuote).not.toHaveBeenCalled();
-    expect(orderCheckoutOutboxService.processEventById).toHaveBeenCalledWith('outbox-1');
+    expect(orderCheckoutOutboxService.processEventById).not.toHaveBeenCalled();
+
+    await waitForDeferredCheckoutSideEffects();
+
     expect(eventEmitter.emit).toHaveBeenCalled();
     expect(notifyUserUseCase.execute).toHaveBeenCalledWith(expect.objectContaining({
       userId: 'seller-1',
@@ -300,12 +320,12 @@ describe('OrderCheckoutService', () => {
         shopId: 'shop-1',
       }),
     }));
-    expect(result.checkoutSessionUrl).toBe('https://stripe.test/session-1');
-    expect(result.checkoutSessionId).toBe('cs_test_1');
-    expect(result.checkoutPending).toBe(false);
+    expect(result.checkoutSessionUrl).toBeUndefined();
+    expect(result.checkoutSessionId).toBeUndefined();
+    expect(result.checkoutPending).toBe(true);
   });
 
-  it('returns checkout pending when immediate outbox processing does not produce a checkout URL', async () => {
+  it('returns checkout pending while checkout session is prepared by the worker', async () => {
     const { service, orderTotalPolicyService } = buildService();
 
     const result = await service.createOrders(
@@ -336,6 +356,7 @@ describe('OrderCheckoutService', () => {
       service,
       orderRepository,
       orderCheckoutOutboxService,
+      orderInventoryOutboxService,
     } = buildService();
 
     const result = await service.createOrders(
@@ -361,6 +382,7 @@ describe('OrderCheckoutService', () => {
     expect(
       orderCheckoutOutboxService.createCheckoutSessionRequestedEvent,
     ).not.toHaveBeenCalled();
+    expect(orderInventoryOutboxService.createOrderCreatedEvent).not.toHaveBeenCalled();
     expect(orderCheckoutOutboxService.processEventById).not.toHaveBeenCalled();
     expect(result.checkoutPending).toBe(false);
   });
@@ -411,6 +433,7 @@ describe('OrderCheckoutService', () => {
       orderTotalPolicyService,
       orderRepository,
       orderItemRepository,
+      orderInventoryOutboxService,
     } = buildService();
 
     await service.createOrders(
@@ -435,6 +458,7 @@ describe('OrderCheckoutService', () => {
         quote: {
           id: 'quote-1',
           cartId: 'cart-1',
+          reservationId: 'reservation-remote-1',
           marketCode: 'US',
           presentmentCurrency: 'USD',
           checkoutCurrency: 'USD',
@@ -545,15 +569,7 @@ describe('OrderCheckoutService', () => {
         items: [{ inventoryId: 'inventory-1', quantity: 2 }],
       },
     );
-    expect(checkoutStockReservationService.allocateInventoryForOrderItems).toHaveBeenCalledWith(
-      expect.anything(),
-      [{
-        inventoryId: 'inventory-1',
-        productId: 'product-1',
-        quantity: 2,
-        title: 'Product 1',
-      }],
-    );
+    expect(checkoutStockReservationService.allocateInventoryForOrderItems).not.toHaveBeenCalled();
     expect(orderItemRepository.create).toHaveBeenCalledWith(
       expect.objectContaining({
         unitPriceMinor: 900,
@@ -566,6 +582,15 @@ describe('OrderCheckoutService', () => {
         fxRate: '1.10',
         fxSource: 'seed',
       }),
+    );
+    expect(orderInventoryOutboxService.createOrderCreatedEvent).toHaveBeenCalledWith(
+      expect.anything(),
+      {
+        orderIds: ['order-1'],
+        quoteId: 'quote-1',
+        reservationId: 'reservation-remote-1',
+        items: [{ inventoryId: 'inventory-1', quantity: 2 }],
+      },
     );
   });
 

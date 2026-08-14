@@ -35,6 +35,7 @@ export class CreateCheckoutQuoteForBuyNowUseCase {
     }
 
     const firstShop = cart.items[0]?.inventory.shopId;
+
     const shopAdjustments = firstShop
       ? [{ shopId: firstShop, promoCodes: body.promoCodes, note: body.note }]
       : [];

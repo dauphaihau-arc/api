@@ -4,6 +4,7 @@ import { ConfigModule } from '@nestjs/config';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { LoggerModule } from 'nestjs-pino';
 import { OrderCheckoutOutboxWorkerService } from '~/domains/order/app/services/order-checkout-outbox-worker.service';
+import { OrderInventoryOutboxWorkerService } from '~/domains/order/app/services/order-inventory-outbox-worker.service';
 import { OrderModule } from '~/domains/order/order.module';
 import { QueueModule } from '~/integrations/queue/queue.module';
 import { BullMqWorkerService } from '~/integrations/queue/infra/bullmq-worker.service';
@@ -32,6 +33,7 @@ import { JobsModule } from './jobs.module';
   providers: [
     BullMqWorkerService,
     OrderCheckoutOutboxWorkerService,
+    OrderInventoryOutboxWorkerService,
   ],
 })
 export class JobsWorkerModule {}

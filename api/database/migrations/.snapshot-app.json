@@ -2747,6 +2747,22 @@
           "comment": null,
           "enumItems": [],
           "mappedType": "string"
+        },
+        "reservation_id": {
+          "name": "reservation_id",
+          "type": "varchar(255)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": 255,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "string"
         }
       },
       "name": "checkout_quotes",
@@ -2782,6 +2798,17 @@
           "keyName": "checkout_quotes_pkey",
           "unique": true,
           "primary": true
+        },
+        {
+          "columnNames": [
+            "reservation_id"
+          ],
+          "composite": false,
+          "constraint": false,
+          "keyName": "checkout_quotes_reservation_id_index",
+          "unique": false,
+          "primary": false,
+          "expression": "CREATE INDEX checkout_quotes_reservation_id_index ON public.checkout_quotes USING btree (reservation_id) WHERE (reservation_id IS NOT NULL)"
         },
         {
           "columnNames": [
@@ -3027,6 +3054,42 @@
       "name": "checkout_stock_reservations",
       "schema": "public",
       "indexes": [
+        {
+          "columnNames": [
+            "inventory_id",
+            "expires_at"
+          ],
+          "composite": true,
+          "constraint": false,
+          "keyName": "checkout_stock_reservations_active_inventory_expires_index",
+          "unique": false,
+          "primary": false,
+          "expression": "CREATE INDEX checkout_stock_reservations_active_inventory_expires_index ON public.checkout_stock_reservations USING btree (inventory_id, expires_at) WHERE ((status)::text = 'active'::text)"
+        },
+        {
+          "columnNames": [
+            "quote_id",
+            "expires_at"
+          ],
+          "composite": true,
+          "constraint": false,
+          "keyName": "checkout_stock_reservations_active_quote_expires_index",
+          "unique": false,
+          "primary": false,
+          "expression": "CREATE INDEX checkout_stock_reservations_active_quote_expires_index ON public.checkout_stock_reservations USING btree (quote_id, expires_at) WHERE ((status)::text = 'active'::text)"
+        },
+        {
+          "columnNames": [
+            "quote_id",
+            "inventory_id"
+          ],
+          "composite": true,
+          "constraint": false,
+          "keyName": "checkout_stock_reservations_active_quote_inventory_index",
+          "unique": false,
+          "primary": false,
+          "expression": "CREATE INDEX checkout_stock_reservations_active_quote_inventory_index ON public.checkout_stock_reservations USING btree (quote_id, inventory_id) WHERE ((status)::text = 'active'::text)"
+        },
         {
           "columnNames": [
             "cart_id"
@@ -4062,6 +4125,405 @@
           "keyName": "exchange_rates_pkey",
           "unique": true,
           "primary": true
+        }
+      ],
+      "checks": [],
+      "foreignKeys": {},
+      "nativeEnums": {},
+      "comment": null
+    },
+    {
+      "columns": {
+        "event_id": {
+          "name": "event_id",
+          "type": "varchar(255)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": true,
+          "nullable": false,
+          "unique": false,
+          "length": 255,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "string"
+        },
+        "reservation_id": {
+          "name": "reservation_id",
+          "type": "uuid",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "uuid"
+        },
+        "processed_at": {
+          "name": "processed_at",
+          "type": "timestamptz(6)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": false,
+          "length": 6,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "datetime"
+        }
+      },
+      "name": "inventory_processed_events",
+      "schema": "public",
+      "indexes": [
+        {
+          "columnNames": [
+            "event_id"
+          ],
+          "composite": false,
+          "constraint": false,
+          "keyName": "inventory_processed_events_pkey",
+          "unique": true,
+          "primary": true
+        },
+        {
+          "columnNames": [
+            "reservation_id"
+          ],
+          "composite": false,
+          "constraint": false,
+          "keyName": "inventory_processed_events_reservation_id_index",
+          "unique": false,
+          "primary": false
+        }
+      ],
+      "checks": [],
+      "foreignKeys": {
+        "inventory_processed_events_reservation_id_foreign": {
+          "columnNames": [
+            "reservation_id"
+          ],
+          "constraintName": "inventory_processed_events_reservation_id_foreign",
+          "localTableName": "public.inventory_processed_events",
+          "referencedTableName": "public.inventory_reservations",
+          "referencedColumnNames": [
+            "id"
+          ],
+          "updateRule": "cascade",
+          "deleteRule": "cascade"
+        }
+      },
+      "nativeEnums": {},
+      "comment": null
+    },
+    {
+      "columns": {
+        "reservation_id": {
+          "name": "reservation_id",
+          "type": "uuid",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": true,
+          "nullable": false,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "uuid"
+        },
+        "inventory_id": {
+          "name": "inventory_id",
+          "type": "uuid",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": true,
+          "nullable": false,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "uuid"
+        },
+        "quantity": {
+          "name": "quantity",
+          "type": "int4",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": false,
+          "length": null,
+          "precision": 32,
+          "scale": 0,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "integer"
+        },
+        "title": {
+          "name": "title",
+          "type": "varchar(255)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": 255,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "string"
+        }
+      },
+      "name": "inventory_reservation_items",
+      "schema": "public",
+      "indexes": [
+        {
+          "columnNames": [
+            "inventory_id"
+          ],
+          "composite": false,
+          "constraint": false,
+          "keyName": "inventory_reservation_items_inventory_id_index",
+          "unique": false,
+          "primary": false
+        },
+        {
+          "columnNames": [
+            "reservation_id",
+            "inventory_id"
+          ],
+          "composite": true,
+          "constraint": false,
+          "keyName": "inventory_reservation_items_pkey",
+          "unique": true,
+          "primary": true
+        }
+      ],
+      "checks": [],
+      "foreignKeys": {
+        "inventory_reservation_items_inventory_id_foreign": {
+          "columnNames": [
+            "inventory_id"
+          ],
+          "constraintName": "inventory_reservation_items_inventory_id_foreign",
+          "localTableName": "public.inventory_reservation_items",
+          "referencedTableName": "public.product_inventory",
+          "referencedColumnNames": [
+            "id"
+          ],
+          "updateRule": "cascade",
+          "deleteRule": "restrict"
+        },
+        "inventory_reservation_items_reservation_id_foreign": {
+          "columnNames": [
+            "reservation_id"
+          ],
+          "constraintName": "inventory_reservation_items_reservation_id_foreign",
+          "localTableName": "public.inventory_reservation_items",
+          "referencedTableName": "public.inventory_reservations",
+          "referencedColumnNames": [
+            "id"
+          ],
+          "updateRule": "cascade",
+          "deleteRule": "cascade"
+        }
+      },
+      "nativeEnums": {},
+      "comment": null
+    },
+    {
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": true,
+          "nullable": false,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "uuid"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamptz(6)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": false,
+          "length": 6,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "datetime"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamptz(6)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": false,
+          "length": 6,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "datetime"
+        },
+        "quote_id": {
+          "name": "quote_id",
+          "type": "varchar(255)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": true,
+          "length": 255,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "string"
+        },
+        "cart_id": {
+          "name": "cart_id",
+          "type": "varchar(255)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": false,
+          "length": 255,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "string"
+        },
+        "status": {
+          "name": "status",
+          "type": "varchar(20)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": false,
+          "length": 20,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "string"
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamptz(6)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": false,
+          "length": 6,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "datetime"
+        },
+        "idempotency_key": {
+          "name": "idempotency_key",
+          "type": "varchar(255)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": true,
+          "length": 255,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "string"
+        }
+      },
+      "name": "inventory_reservations",
+      "schema": "public",
+      "indexes": [
+        {
+          "columnNames": [
+            "idempotency_key"
+          ],
+          "composite": false,
+          "constraint": false,
+          "keyName": "inventory_reservations_idempotency_key_unique",
+          "unique": true,
+          "primary": false
+        },
+        {
+          "columnNames": [
+            "id"
+          ],
+          "composite": false,
+          "constraint": false,
+          "keyName": "inventory_reservations_pkey",
+          "unique": true,
+          "primary": true
+        },
+        {
+          "columnNames": [
+            "quote_id"
+          ],
+          "composite": false,
+          "constraint": false,
+          "keyName": "inventory_reservations_quote_id_unique",
+          "unique": true,
+          "primary": false
+        },
+        {
+          "columnNames": [
+            "status",
+            "expires_at"
+          ],
+          "composite": true,
+          "constraint": false,
+          "keyName": "inventory_reservations_status_expires_index",
+          "unique": false,
+          "primary": false
         }
       ],
       "checks": [],

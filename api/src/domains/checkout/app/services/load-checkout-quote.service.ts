@@ -8,7 +8,7 @@ import {
   CheckoutQuoteExpiredError,
   CheckoutQuoteNotFoundError,
 } from '../../../order/app/errors/order-app.error';
-import { CheckoutStockReservationService } from './checkout-stock-reservation.service';
+import { CheckoutStockReservationPort } from '../ports/checkout-stock-reservation.port';
 import type {
   CheckoutQuoteItemSummary,
   CheckoutQuoteShopSummary,
@@ -19,6 +19,7 @@ import type {
 export interface LoadedCheckoutQuote {
   id: string;
   cartId: string;
+  reservationId?: string;
   marketCode?: string;
   presentmentCurrency?: string;
   checkoutCurrency: string;
@@ -36,7 +37,7 @@ export interface LoadedCheckoutQuote {
 export class LoadCheckoutQuoteService {
   constructor(
     private readonly entityManager: EntityManager,
-    private readonly checkoutStockReservationService: CheckoutStockReservationService,
+    private readonly checkoutStockReservationService: CheckoutStockReservationPort,
   ) {}
 
   async loadForUser(userId: string, quoteId: string): Promise<LoadedCheckoutQuote> {
@@ -102,6 +103,7 @@ export class LoadCheckoutQuoteService {
     return {
       id: quote.id,
       cartId: quote.cartId,
+      reservationId: quote.reservationId,
       marketCode: quote.marketCode,
       presentmentCurrency: quote.presentmentCurrency,
       checkoutCurrency: quote.checkoutCurrency,

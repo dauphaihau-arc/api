@@ -7,14 +7,14 @@ import { CouponUsageEntity } from '../../../coupon/infra/persistence/entities/co
 import { OrderStatus } from '../../domain/enums/order-status.enum';
 import { OrderEntity } from '../../infra/persistence/entities/order.entity';
 import { OrderItemEntity } from '../../infra/persistence/entities/order-item.entity';
-import { CheckoutStockReservationService } from '../../../checkout/app/services/checkout-stock-reservation.service';
+import { CheckoutStockReservationPort } from '../../../checkout/app/ports/checkout-stock-reservation.port';
 import { OrderRefundService } from './order-refund.service';
 
 @Injectable()
 export class OrderCancellationService {
   constructor(
     private readonly orderRefundService: OrderRefundService,
-    private readonly checkoutStockReservationService: CheckoutStockReservationService,
+    private readonly checkoutStockReservationService: CheckoutStockReservationPort,
   ) {}
 
   async cancelOrder(

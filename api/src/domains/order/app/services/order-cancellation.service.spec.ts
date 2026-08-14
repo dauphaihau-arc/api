@@ -2,7 +2,7 @@ import type { EntityManager } from '@mikro-orm/postgresql';
 import type { PaymentGateway } from '../../../../integrations/payment/app/ports/payment-gateway';
 import type { ModuleRef } from '@nestjs/core';
 import { OrderStatus } from '../../domain/enums/order-status.enum';
-import type { CheckoutStockReservationService } from '../../../checkout/app/services/checkout-stock-reservation.service';
+import type { CheckoutStockReservationPort } from '../../../checkout/app/ports/checkout-stock-reservation.port';
 import { OrderCancellationService } from './order-cancellation.service';
 import { OrderRefundService } from './order-refund.service';
 
@@ -36,7 +36,7 @@ describe('OrderCancellationService', () => {
           },
         ];
       }),
-    } as unknown as jest.Mocked<CheckoutStockReservationService>;
+    } as unknown as jest.Mocked<CheckoutStockReservationPort>;
     const fakeEntityManager = {
       getRepository: jest.fn((entity: { name?: string }) => {
         switch (entity?.name) {

@@ -11,10 +11,16 @@ services:
     depends_on:
       - postgres
       - redis
+      - rabbitmq
+      - inventory-service
       - minio
       - otel-collector
     env_file:
       - ../api/.env.docker
+    environment:
+      INVENTORY_RESERVATION_DRIVER: remote
+      INVENTORY_SERVICE_BASE_URL: http://inventory-service:8080
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
     ports:
       - "3000:3000"
 
@@ -29,12 +35,34 @@ services:
     depends_on:
       - postgres
       - redis
+      - rabbitmq
+      - inventory-service
       - minio
       - otel-collector
     env_file:
       - ../api/.env.docker
     environment:
       OTEL_SERVICE_NAME: arc-api-worker
+      INVENTORY_RESERVATION_DRIVER: remote
+      INVENTORY_SERVICE_BASE_URL: http://inventory-service:8080
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
+
+  inventory-service:
+    profiles: ["app"]
+    build:
+      context: ../inventory-service
+      dockerfile: Dockerfile
+    container_name: arc-inventory-service
+    restart: unless-stopped
+    depends_on:
+      - rabbitmq
+    environment:
+      PORT: "8080"
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
+      RABBITMQ_DOMAIN_EVENTS_EXCHANGE: arc.domain-events
+      RABBITMQ_INVENTORY_ORDER_EVENTS_QUEUE: inventory.order-events
+    ports:
+      - "8080:8080"
 
   postgres:
     image: postgres:16-alpine
@@ -83,6 +111,21 @@ services:
       - redis_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: arc-rabbitmq
+    restart: unless-stopped
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -173,6 +216,7 @@ volumes:
   postgres_data:
   minio_data:
   redis_data:
+  rabbitmq_data:
   loki_data:
   prometheus_data:
   tempo_data:

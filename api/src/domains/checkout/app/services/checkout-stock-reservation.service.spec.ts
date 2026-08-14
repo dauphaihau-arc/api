@@ -8,13 +8,14 @@ import {
 describe('CheckoutStockReservationService', () => {
   it('allocates stock through the shared inventory boundary', async () => {
     const inventory = { id: 'inventory-1', stock: 5 };
+    const inventoryRepository = {
+      find: jest.fn().mockResolvedValue([inventory]),
+    };
     const entityManager = {
       getRepository: jest.fn((entity: { name?: string }) => {
         switch (entity?.name) {
           case 'ProductInventoryEntity':
-            return {
-              findOne: jest.fn().mockResolvedValue(inventory),
-            };
+            return inventoryRepository;
           default:
             return {};
         }
@@ -31,6 +32,13 @@ describe('CheckoutStockReservationService', () => {
     }]);
 
     expect(inventory.stock).toBe(3);
+    expect(inventoryRepository.find).toHaveBeenCalledWith(
+      { id: { $in: ['inventory-1'] } },
+      expect.objectContaining({
+        lockMode: expect.anything(),
+        orderBy: { id: 'asc' },
+      }),
+    );
     expect(result.inventoryById.get('inventory-1')).toBe(inventory);
     expect(result.inventoryEvents).toEqual([
       expect.objectContaining({
@@ -43,13 +51,14 @@ describe('CheckoutStockReservationService', () => {
 
   it('restores stock through the shared inventory boundary', async () => {
     const inventory = { id: 'inventory-1', stock: 2 };
+    const inventoryRepository = {
+      find: jest.fn().mockResolvedValue([inventory]),
+    };
     const entityManager = {
       getRepository: jest.fn((entity: { name?: string }) => {
         switch (entity?.name) {
           case 'ProductInventoryEntity':
-            return {
-              findOne: jest.fn().mockResolvedValue(inventory),
-            };
+            return inventoryRepository;
           default:
             return {};
         }
@@ -65,6 +74,13 @@ describe('CheckoutStockReservationService', () => {
     }]);
 
     expect(inventory.stock).toBe(5);
+    expect(inventoryRepository.find).toHaveBeenCalledWith(
+      { id: { $in: ['inventory-1'] } },
+      expect.objectContaining({
+        lockMode: expect.anything(),
+        orderBy: { id: 'asc' },
+      }),
+    );
     expect(result).toEqual([
       expect.objectContaining({
         productId: 'product-1',
@@ -74,26 +90,40 @@ describe('CheckoutStockReservationService', () => {
     ]);
   });
 
-  it('rejects quote reservation when active holds already consume the remaining stock', async () => {
-    const reservationRepository = {
-      find: jest.fn().mockResolvedValue([{ quantity: 3 }]),
-      create: jest.fn(),
-    };
+  it('decrements stock when reserving a quote', async () => {
+    const execute = jest.fn().mockResolvedValue([{ reserved_count: '1' }]);
     const entityManager = {
-      getRepository: jest.fn((entity: { name?: string }) => {
-        switch (entity?.name) {
-          case 'CheckoutStockReservationEntity':
-            return reservationRepository;
-          case 'ProductInventoryEntity':
-            return {
-              findOne: jest.fn().mockResolvedValue({ id: 'inventory-1', stock: 5 }),
-            };
-          default:
-            return {};
-        }
-      }),
-      getReference: jest.fn((_entity: unknown, id: string) => ({ id })),
+      getRepository: jest.fn(),
+      execute,
       persist: jest.fn(),
+      flush: jest.fn().mockResolvedValue(undefined),
+    } as unknown as EntityManager;
+
+    const service = new CheckoutStockReservationService({} as EntityManager);
+
+    await service.reserveForQuote(entityManager, {
+      quoteId: 'quote-1',
+      cartId: 'cart-1',
+      expiresAt: new Date(Date.now() + 60_000),
+      items: [{ inventoryId: 'inventory-1', quantity: 3, title: 'Product 1' }],
+    });
+
+    expect(execute).toHaveBeenCalledWith(
+      expect.stringContaining('updated_inventory as'),
+      ['inventory-1', 3, 'quote-1', 'cart-1', expect.any(Date)],
+    );
+    expect(entityManager.flush).toHaveBeenCalledTimes(1);
+    expect(entityManager.getRepository).not.toHaveBeenCalled();
+    expect(entityManager.persist).not.toHaveBeenCalled();
+  });
+
+  it('rejects quote reservation when available stock is below the requested quantity', async () => {
+    const execute = jest.fn().mockResolvedValue([{ reserved_count: '0' }]);
+    const entityManager = {
+      getRepository: jest.fn(),
+      execute,
+      persist: jest.fn(),
+      flush: jest.fn().mockResolvedValue(undefined),
     } as unknown as EntityManager;
 
     const service = new CheckoutStockReservationService({} as EntityManager);
@@ -106,18 +136,47 @@ describe('CheckoutStockReservationService', () => {
         items: [{ inventoryId: 'inventory-1', quantity: 3, title: 'Product 1' }],
       }),
     ).rejects.toThrow(CheckoutQuoteReservationOutOfStockError);
+    expect(entityManager.flush).toHaveBeenCalledTimes(1);
+    expect(execute).toHaveBeenCalledWith(
+      expect.stringContaining('updated_inventory as'),
+      ['inventory-1', 3, 'quote-1', 'cart-1', expect.any(Date)],
+    );
+    expect(entityManager.persist).not.toHaveBeenCalled();
+  });
+
+  it('aggregates duplicate inventory rows before reserving a quote', async () => {
+    const execute = jest.fn().mockResolvedValue([{ reserved_count: '1' }]);
+    const entityManager = {
+      getRepository: jest.fn(),
+      execute,
+      persist: jest.fn(),
+      flush: jest.fn().mockResolvedValue(undefined),
+    } as unknown as EntityManager;
+
+    const service = new CheckoutStockReservationService({} as EntityManager);
+
+    await service.reserveForQuote(entityManager, {
+      quoteId: 'quote-1',
+      cartId: 'cart-1',
+      expiresAt: new Date(Date.now() + 60_000),
+      items: [
+        { inventoryId: 'inventory-1', quantity: 2, title: 'Product 1' },
+        { inventoryId: 'inventory-1', quantity: 1, title: 'Product 1' },
+      ],
+    });
+
+    expect(execute).toHaveBeenCalledWith(
+      expect.stringContaining('values (?::uuid, ?::int)'),
+      ['inventory-1', 3, 'quote-1', 'cart-1', expect.any(Date)],
+    );
   });
 
   it('marks quote reservations consumed after validating each reserved item', async () => {
-    const reservation = { quantity: 2 };
     const reservations = [
-      { status: 'active', quantity: 2 },
-      { status: 'active', quantity: 1 },
+      { inventory: { id: 'inventory-1' }, status: 'active', quantity: 2 },
+      { inventory: { id: 'inventory-2' }, status: 'active', quantity: 1 },
     ];
     const reservationRepository = {
-      findOne: jest.fn()
-        .mockResolvedValueOnce(reservation)
-        .mockResolvedValueOnce({ quantity: 1 }),
       find: jest.fn().mockResolvedValue(reservations),
     };
     const entityManager = {
@@ -135,6 +194,19 @@ describe('CheckoutStockReservationService', () => {
       consumedAt: new Date('2026-06-27T00:00:00.000Z'),
     });
 
+    expect(reservationRepository.find).toHaveBeenCalledTimes(1);
+    expect(reservationRepository.find).toHaveBeenCalledWith(
+      {
+        quote: 'quote-1',
+        inventory: { $in: ['inventory-1', 'inventory-2'] },
+        status: 'active',
+        expiresAt: { $gt: new Date('2026-06-27T00:00:00.000Z') },
+      },
+      expect.objectContaining({
+        lockMode: expect.anything(),
+        orderBy: { inventory: 'asc' },
+      }),
+    );
     expect(reservations).toEqual([
       expect.objectContaining({
         status: 'consumed',
@@ -149,7 +221,7 @@ describe('CheckoutStockReservationService', () => {
 
   it('fails order creation when a required quote reservation is missing', async () => {
     const reservationRepository = {
-      findOne: jest.fn().mockResolvedValue(null),
+      find: jest.fn().mockResolvedValue([]),
     };
     const entityManager = {
       getRepository: jest.fn(() => reservationRepository),
@@ -166,15 +238,9 @@ describe('CheckoutStockReservationService', () => {
   });
 
   it('expires active reservations for a quote via transactional cleanup', async () => {
-    const reservations = [
-      { status: 'active', expiresAt: new Date('2026-06-27T00:00:00.000Z') },
-      { status: 'active', expiresAt: new Date('2026-06-27T00:00:00.000Z') },
-    ];
-    const reservationRepository = {
-      find: jest.fn().mockResolvedValue(reservations),
-    };
+    const execute = jest.fn().mockResolvedValue([{ expired_count: '2' }]);
     const transactionalEntityManager = {
-      getRepository: jest.fn(() => reservationRepository),
+      execute,
     };
     const entityManager = {
       transactional: jest.fn(async (work: (em: EntityManager) => Promise<number>) =>
@@ -189,15 +255,15 @@ describe('CheckoutStockReservationService', () => {
     );
 
     expect(expiredCount).toBe(2);
-    expect(reservations).toEqual([
-      expect.objectContaining({
-        status: 'expired',
-        releasedAt: new Date('2026-06-27T00:00:00.000Z'),
-      }),
-      expect.objectContaining({
-        status: 'expired',
-        releasedAt: new Date('2026-06-27T00:00:00.000Z'),
-      }),
-    ]);
+    expect(execute).toHaveBeenCalledWith(
+      expect.stringContaining('with expired as'),
+      [
+        'expired',
+        new Date('2026-06-27T00:00:00.000Z'),
+        'quote-1',
+        'active',
+        new Date('2026-06-27T00:00:00.000Z'),
+      ],
+    );
   });
 });

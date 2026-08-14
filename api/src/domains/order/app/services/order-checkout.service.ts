@@ -2,6 +2,7 @@ import { EntityManager } from '@mikro-orm/postgresql';
 import {
   BadRequestException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -10,6 +11,7 @@ import { fromMinorUnits, toMinorUnits } from '../../../../platform/utils/money';
 import { MARKETPLACE_CURRENCIES } from '../../../../platform/config/marketplace.config';
 import {
   PRODUCT_INVENTORY_UPDATED_SSE_EVENT,
+  type ProductInventoryUpdatedSseEventPayload,
 } from '../../../product/app/events/product-inventory-sse.event';
 import { NotifyUserUseCase } from '../../../../domains/notification/app/use-cases/notify-user/notify-user.use-case';
 import type { CartSnapshot } from '../../../cart/app/cart.types';
@@ -17,6 +19,7 @@ import { CurrentUserEntity } from '../../../auth/infra/persistence/entities/curr
 import { CouponPricingService } from '../../../coupon/app/services/coupon-pricing.service';
 import { CouponUsageEntity } from '../../../coupon/infra/persistence/entities/coupon-usage.entity';
 import { ProductEntity } from '../../../product/infra/persistence/mikro-orm/entities/product.entity';
+import { ProductInventoryEntity } from '../../../product/infra/persistence/mikro-orm/entities/product-inventory.entity';
 import { ShopEntity } from '../../../shop/infra/persistence/entities/shop.entity';
 import { OrderEventActorType } from '../../domain/enums/order-event-actor-type.enum';
 import { OrderEventType } from '../../domain/enums/order-event-type.enum';
@@ -27,7 +30,8 @@ import { OrderEntity } from '../../infra/persistence/entities/order.entity';
 import { OrderItemEntity } from '../../infra/persistence/entities/order-item.entity';
 import type { LoadedCheckoutQuote } from './load-checkout-quote.service';
 import { OrderCheckoutOutboxService } from './order-checkout-outbox.service';
-import { CheckoutStockReservationService } from '../../../checkout/app/services/checkout-stock-reservation.service';
+import { CheckoutStockReservationPort } from '../../../checkout/app/ports/checkout-stock-reservation.port';
+import { OrderInventoryOutboxService } from './order-inventory-outbox.service';
 import { OrderEventsService } from './order-events.service';
 import {
   buildSellerOrderCreatedNotification,
@@ -46,11 +50,14 @@ const SHIPPING_ESTIMATED_DELIVERY_MS = ms('7d');
 
 @Injectable()
 export class OrderCheckoutService {
+  private readonly logger = new Logger(OrderCheckoutService.name);
+
   constructor(
     private readonly entityManager: EntityManager,
     private readonly couponPricingService: CouponPricingService,
-    private readonly checkoutStockReservationService: CheckoutStockReservationService,
+    private readonly checkoutStockReservationService: CheckoutStockReservationPort,
     private readonly orderCheckoutOutboxService: OrderCheckoutOutboxService,
+    private readonly orderInventoryOutboxService: OrderInventoryOutboxService,
     private readonly orderEventsService: OrderEventsService,
     private readonly notifyUserUseCase: NotifyUserUseCase,
     private readonly eventEmitter: EventEmitter2,
@@ -71,9 +78,11 @@ export class OrderCheckoutService {
     },
   ): Promise<CreateOrderResult> {
     const quote = input.quote;
+
     const currency = quote
       ? quote.checkoutCurrency
       : normalizeCurrency(input.currency);
+
     const pricedCart = quote
       ? undefined
       : await this.couponPricingService.priceCart({
@@ -82,7 +91,9 @@ export class OrderCheckoutService {
         shippingAddress: input.shippingAddress,
         shopAdjustments: input.shopAdjustments,
       });
+
     const pricedShops = quote?.shops ?? pricedCart?.shops ?? [];
+
     const totalMinor = quote
       ? quote.totalMinor
       : toMinorUnits(pricedCart?.totalPrice ?? 0, currency);
@@ -126,8 +137,12 @@ export class OrderCheckoutService {
         });
       }
 
-      const { inventoryById, inventoryEvents } =
-        await this.checkoutStockReservationService.allocateInventoryForOrderItems(
+      const { inventoryById, inventoryEvents } = quote
+        ? {
+          inventoryById: await this.loadInventoryById(entityManager, inventoryReservationItems),
+          inventoryEvents: [],
+        }
+        : await this.checkoutStockReservationService.allocateInventoryForOrderItems(
           entityManager,
           inventoryReservationItems,
         );
@@ -136,13 +151,16 @@ export class OrderCheckoutService {
         const quoteShop = quote
           ? shop as LoadedCheckoutQuote['shops'][number]
           : undefined;
+
         const pricedShop = quote
           ? undefined
           : shop as NonNullable<typeof pricedCart>['shops'][number];
+
         const shopEntity = await entityManager.getRepository(ShopEntity).findOne(
           { id: shop.shopId },
           { populate: ['ownerUser'] },
         );
+
         if (!shopEntity) {
           throw new NotFoundException('Shop not found');
         }
@@ -198,9 +216,11 @@ export class OrderCheckoutService {
         });
         entityManager.persist(order);
         await entityManager.flush();
+
         if ('refresh' in entityManager && typeof entityManager.refresh === 'function') {
           await entityManager.refresh(order);
         }
+
         await this.orderEventsService.record(entityManager, {
           order,
           type: OrderEventType.ORDER_CREATED,
@@ -221,9 +241,11 @@ export class OrderCheckoutService {
           const quoteItem = quote
             ? item as LoadedCheckoutQuote['items'][number]
             : undefined;
+
           const pricedItem = quote
             ? undefined
             : item as NonNullable<typeof pricedCart>['shops'][number]['items'][number];
+
           const inventory = inventoryById.get(item.inventoryId);
 
           if (!inventory) {
@@ -346,6 +368,21 @@ export class OrderCheckoutService {
         checkoutOutboxEventId = outboxEvent.id;
       }
 
+      if (quote) {
+        await this.orderInventoryOutboxService.createOrderCreatedEvent(
+          entityManager,
+          {
+            orderIds: createdOrders.map((order) => order.id),
+            quoteId: quote.id,
+            reservationId: quote.reservationId,
+            items: quote.items.map((item) => ({
+              inventoryId: item.inventoryId,
+              quantity: item.quantity,
+            })),
+          },
+        );
+      }
+
       await entityManager.flush();
 
       return {
@@ -363,35 +400,53 @@ export class OrderCheckoutService {
       };
     });
 
-    const checkoutSessionResult = result.checkoutOutboxEventId
-      ? await this.orderCheckoutOutboxService.processEventById(result.checkoutOutboxEventId)
-      : undefined;
+    this.emitInventoryEventsAfterCheckout(result.inventoryEvents);
+    this.notifySellersAfterCheckout(result.orderShops);
 
-    for (const inventoryEvent of result.inventoryEvents) {
-      this.eventEmitter.emit(PRODUCT_INVENTORY_UPDATED_SSE_EVENT, inventoryEvent);
+    return {
+      checkoutPending: result.checkoutPending,
+      orderShops: result.orderShops,
+    };
+  }
+
+  private emitInventoryEventsAfterCheckout(
+    inventoryEvents: ProductInventoryUpdatedSseEventPayload[],
+  ): void {
+    for (const inventoryEvent of inventoryEvents) {
+      setImmediate(() => {
+        this.eventEmitter.emit(PRODUCT_INVENTORY_UPDATED_SSE_EVENT, inventoryEvent);
+      });
     }
+  }
 
-    for (const orderShop of result.orderShops) {
-      if (!('ownerUserId' in orderShop) || typeof orderShop.ownerUserId !== 'string') {
+  private notifySellersAfterCheckout(orderShops: Array<{
+    id: string;
+    orderNumber: string;
+    shopId: string;
+    ownerUserId?: string | null;
+  }>): void {
+    for (const orderShop of orderShops) {
+      if (!orderShop.ownerUserId) {
         continue;
       }
 
-      await this.notifyUserUseCase.execute(
-        buildSellerOrderCreatedNotification(
-          orderShop.ownerUserId,
-          orderShop.id,
-          orderShop.orderNumber,
-          orderShop.shopId,
-        ),
-      );
+      const ownerUserId = orderShop.ownerUserId;
+      setImmediate(() => {
+        void this.notifyUserUseCase.execute(
+          buildSellerOrderCreatedNotification(
+            ownerUserId,
+            orderShop.id,
+            orderShop.orderNumber,
+            orderShop.shopId,
+          ),
+        ).catch((error) => {
+          this.logger.error(
+            `Failed to schedule seller order notification for order ${orderShop.id}`,
+            error instanceof Error ? error.stack : undefined,
+          );
+        });
+      });
     }
-
-    return {
-      checkoutPending: result.checkoutPending && !checkoutSessionResult?.url,
-      checkoutSessionId: checkoutSessionResult?.id,
-      checkoutSessionUrl: checkoutSessionResult?.url,
-      orderShops: result.orderShops,
-    };
   }
 
   private async clearCart(
@@ -426,6 +481,30 @@ export class OrderCheckoutService {
       'delete from carts where id = ? and not exists (select 1 from cart_items where cart_items.cart_id = carts.id)',
       [cartId],
     );
+  }
+
+  private async loadInventoryById(
+    entityManager: EntityManager,
+    items: Array<{ inventoryId: string }>,
+  ): Promise<Map<string, ProductInventoryEntity>> {
+    const inventoryIds = [...new Set(items.map((item) => item.inventoryId))].sort();
+    if (inventoryIds.length === 0) {
+      return new Map();
+    }
+
+    const inventories = await entityManager.getRepository(ProductInventoryEntity).find({
+      id: { $in: inventoryIds },
+    });
+
+    const inventoryById = new Map(inventories.map((inventory) => [inventory.id, inventory]));
+
+    for (const inventoryId of inventoryIds) {
+      if (!inventoryById.has(inventoryId)) {
+        throw new NotFoundException('Inventory not found');
+      }
+    }
+
+    return inventoryById;
   }
 }
 

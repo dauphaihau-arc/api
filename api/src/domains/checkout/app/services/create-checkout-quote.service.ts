@@ -21,7 +21,7 @@ import {
   CheckoutStockReservationEntity,
   CheckoutStockReservationStatus,
 } from '../../infra/persistence/entities/checkout-stock-reservation.entity';
-import { CheckoutStockReservationService } from './checkout-stock-reservation.service';
+import { CheckoutStockReservationPort } from '../ports/checkout-stock-reservation.port';
 import { CheckoutQuoteNoItemsError } from '../../../order/app/errors/order-app.error';
 import type {
   CheckoutQuoteResult,
@@ -41,7 +41,7 @@ export class CreateCheckoutQuoteService {
     private readonly couponPricingService: CouponPricingService,
     private readonly storefrontMarketContextService: StorefrontMarketContextService,
     private readonly orderTotalPolicyService: OrderTotalPolicyService,
-    private readonly checkoutStockReservationService: CheckoutStockReservationService,
+    private readonly checkoutStockReservationService: CheckoutStockReservationPort,
     private readonly jobDispatcher: JobDispatcher,
   ) {}
 
@@ -54,11 +54,12 @@ export class CreateCheckoutQuoteService {
     presentmentCurrency?: string;
     shopAdjustments?: ShopAdjustmentInput[];
   }): Promise<CheckoutQuoteResult> {
-    const storefrontMarketContext =
-      await this.storefrontMarketContextService.resolveCurrentRequest();
+    const storefrontMarketContext = await this.storefrontMarketContextService.resolveCurrentRequest();
+
     const presentmentCurrency = normalizePresentmentCurrency(
       input.presentmentCurrency ?? storefrontMarketContext?.currency,
     );
+
     const pricedCart = await this.couponPricingService.priceCart({
       userId: input.actor.type === 'user' ? input.actor.userId : undefined,
       cart: input.cart,
@@ -79,6 +80,7 @@ export class CreateCheckoutQuoteService {
     const shippingMinor = toMinorUnits(pricedCart.totalShippingFee, checkoutCurrency);
     const discountMinor = toMinorUnits(pricedCart.totalDiscount, checkoutCurrency);
     const totalMinor = toMinorUnits(pricedCart.totalPrice, checkoutCurrency);
+
     const quoteFingerprint = buildQuoteFingerprint({
       presentmentCurrency,
       marketCode: storefrontMarketContext?.marketCode,
@@ -99,10 +101,16 @@ export class CreateCheckoutQuoteService {
       currency: checkoutCurrency,
     });
 
-    const { createdNewQuote, quote: persistedQuote, items: persistedItems } = await this.entityManager.transactional(async (entityManager) => {
+    const {
+      createdNewQuote,
+      quote: persistedQuote,
+      items: persistedItems, 
+    } = await this.entityManager.transactional(async (entityManager) => {
+
       const quoteRepository = entityManager.getRepository(CheckoutQuoteEntity);
       const quoteItemRepository = entityManager.getRepository(CheckoutQuoteItemEntity);
       const now = new Date();
+
       const existingQuote = await this.findReusableQuote(entityManager, {
         actor: input.actor,
         cartId: input.cart.id,
@@ -161,7 +169,7 @@ export class CreateCheckoutQuoteService {
       });
       entityManager.persist(checkoutQuote);
 
-      await this.checkoutStockReservationService.reserveForQuote(entityManager, {
+      const reservationResult = await this.checkoutStockReservationService.reserveForQuote(entityManager, {
         quoteId: checkoutQuote.id,
         cartId: input.cart.id,
         expiresAt,
@@ -172,17 +180,26 @@ export class CreateCheckoutQuoteService {
         })),
       });
 
+      const reservationId = getReservationId(reservationResult);
+      if (reservationId) {
+        checkoutQuote.reservationId = reservationId;
+      }
+
       const quoteItems = allItems.map((item) => {
         const unitPriceCheckoutMinor = item.unitPriceMinor ??
           toMinorUnits(item.effectiveUnitPrice, checkoutCurrency);
+
         const sourceCurrency = item.sourceCurrency ?? checkoutCurrency;
+
         const unitPriceSourceMinor = item.sourceUnitPriceMinor ??
           unitPriceCheckoutMinor;
+
         const originalAmountMinor = item.originalAmountMinor != null
           ? item.originalAmountMinor
           : item.effectiveUnitPrice < item.price
             ? toMinorUnits(item.price, checkoutCurrency)
             : undefined;
+
         const quoteItem = quoteItemRepository.create({
           quote: checkoutQuote,
           inventory: entityManager.getReference(ProductInventoryEntity, item.inventoryId),
@@ -210,6 +227,7 @@ export class CreateCheckoutQuoteService {
           fxEffectiveAt: item.fxEffectiveAt,
           fxSourceTimestamp: item.fxSourceTimestamp,
         });
+
         entityManager.persist(quoteItem);
 
         return {
@@ -568,4 +586,17 @@ function resolveCheckoutCurrency(
   }
 
   return currency;
+}
+
+function getReservationId(result: unknown): string | undefined {
+  if (
+    result
+    && typeof result === 'object'
+    && 'reservationId' in result
+    && typeof result.reservationId === 'string'
+  ) {
+    return result.reservationId;
+  }
+
+  return undefined;
 }

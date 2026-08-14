@@ -12,7 +12,7 @@ import { OrderStatus } from '../../domain/enums/order-status.enum';
 import { OrderEntity } from '../../infra/persistence/entities/order.entity';
 import { OrderItemEntity } from '../../infra/persistence/entities/order-item.entity';
 import { dispatchBestSellerRankingRefresh } from '../best-seller-ranking-refresh';
-import { CheckoutStockReservationService } from '../../../checkout/app/services/checkout-stock-reservation.service';
+import { CheckoutStockReservationPort } from '../../../checkout/app/ports/checkout-stock-reservation.port';
 import { OrderEventsService } from './order-events.service';
 import { getRequiredOrderNumber } from '../order-number';
 import type { CreateOrderResult } from '../order.types';
@@ -23,7 +23,7 @@ export class OrderPaymentService {
     private readonly entityManager: EntityManager,
     private readonly eventEmitter: EventEmitter2,
     private readonly jobDispatcher: JobDispatcher,
-    private readonly checkoutStockReservationService: CheckoutStockReservationService,
+    private readonly checkoutStockReservationService: CheckoutStockReservationPort,
     private readonly orderEventsService: OrderEventsService,
   ) {}
 

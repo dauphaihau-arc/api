@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import type { AppJobPayloadMap } from '~/platform/jobs/app-job.types';
-import { CheckoutStockReservationService } from '~/domains/checkout/app/services/checkout-stock-reservation.service';
+import { CheckoutStockReservationPort } from '~/domains/checkout/app/ports/checkout-stock-reservation.port';
 
 type CleanupExpiredCheckoutQuoteReservationsPayload =
   AppJobPayloadMap['order.cleanup-expired-checkout-quote-reservations'];
@@ -10,7 +10,7 @@ export class CleanupExpiredCheckoutQuoteReservationsJob {
   private readonly logger = new Logger(CleanupExpiredCheckoutQuoteReservationsJob.name);
 
   constructor(
-    private readonly checkoutStockReservationService: CheckoutStockReservationService,
+    private readonly checkoutStockReservationService: CheckoutStockReservationPort,
   ) {}
 
   async run(

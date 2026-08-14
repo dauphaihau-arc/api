@@ -1,7 +1,12 @@
 import { MikroOrmModule } from '@mikro-orm/nestjs';
 import { forwardRef, Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ProcessOrderRefundJob } from '~/domains/order/jobs/process-order-refund.job';
 import { ProcessShopOrderExportJob } from '~/domains/order/jobs/process-shop-order-export.job';
+import {
+  RABBITMQ_CONFIG,
+  buildRabbitMqConfig,
+} from '~/platform/config/rabbitmq.config';
 import { AuthModule } from '../auth/auth.module';
 import { CouponModule } from '../coupon/coupon.module';
 import { CouponUsageEntity } from '../coupon/infra/persistence/entities/coupon-usage.entity';
@@ -35,6 +40,9 @@ import { UpdateAdminOrderRefundUseCase } from './app/use-cases/update-admin-orde
 import { UpdateAdminOrderSupportNoteUseCase } from './app/use-cases/update-admin-order-support-note/update-admin-order-support-note.use-case';
 import { OrderCheckoutOutboxService } from './app/services/order-checkout-outbox.service';
 import { OrderEventsService } from './app/services/order-events.service';
+import { OrderInventoryEventPublisher } from './app/ports/order-inventory-event.publisher';
+import { OrderInventoryOutboxPublisherService } from './app/services/order-inventory-outbox-publisher.service';
+import { OrderInventoryOutboxService } from './app/services/order-inventory-outbox.service';
 import { ShopDashboardQueryRepository } from './app/ports/shop-dashboard-query.repository';
 import { ShopOrderExportQueryRepository } from './app/ports/shop-order-export-query.repository';
 import { ShopOrderExportRepository } from './app/ports/shop-order-export.repository';
@@ -46,6 +54,11 @@ import { OrderItemEntity } from './infra/persistence/entities/order-item.entity'
 import { MikroOrmShopDashboardQueryRepository } from './infra/persistence/repositories/mikro-orm-shop-dashboard-query.repository';
 import { MikroOrmShopOrderExportQueryRepository } from './infra/persistence/repositories/mikro-orm-shop-order-export-query.repository';
 import { MikroOrmShopOrderExportRepository } from './infra/persistence/repositories/mikro-orm-shop-order-export.repository';
+import {
+  AMQP_CONNECT,
+  RabbitMqOrderInventoryEventPublisher,
+} from './infra/messaging/rabbitmq-order-inventory-event.publisher';
+import { connect } from 'amqplib';
 import { CheckoutModule } from '../checkout/checkout.module';
 import { PaymentModule } from '~/integrations/payment/payment.module';
 import { NotificationModule } from '~/domains/notification/notification.module';
@@ -61,6 +74,7 @@ import { UpdateShopOrderRefundUseCase } from './app/use-cases/update-shop-order-
 
 @Module({
   imports: [
+    ConfigModule,
     forwardRef(() => AuthModule),
     forwardRef(() => CheckoutModule),
     CouponModule,
@@ -89,6 +103,12 @@ import { UpdateShopOrderRefundUseCase } from './app/use-cases/update-shop-order-
   ],
   providers: [
     {
+      provide: RABBITMQ_CONFIG,
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) =>
+        buildRabbitMqConfig(configService),
+    },
+    {
       provide: ShopDashboardQueryRepository,
       useClass: MikroOrmShopDashboardQueryRepository,
     },
@@ -105,6 +125,16 @@ import { UpdateShopOrderRefundUseCase } from './app/use-cases/update-shop-order-
     OrderCancellationService,
     OrderRefundService,
     OrderCheckoutOutboxService,
+    OrderInventoryOutboxService,
+    OrderInventoryOutboxPublisherService,
+    {
+      provide: AMQP_CONNECT,
+      useValue: connect,
+    },
+    {
+      provide: OrderInventoryEventPublisher,
+      useClass: RabbitMqOrderInventoryEventPublisher,
+    },
     OrderEventsService,
     OrderPaymentService,
     GetAdminOrderByIdUseCase,
@@ -137,6 +167,8 @@ import { UpdateShopOrderRefundUseCase } from './app/use-cases/update-shop-order-
     OrderPaymentService,
     OrderTotalPolicyService,
     OrderCheckoutOutboxService,
+    OrderInventoryOutboxService,
+    OrderInventoryOutboxPublisherService,
     OrderRefundService,
     ProcessOrderRefundJob,
     ProcessShopOrderExportJob,

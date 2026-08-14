@@ -5,6 +5,10 @@ import {
   CHECKOUT_CONFIG,
   buildCheckoutConfig,
 } from '~/platform/config/checkout.config';
+import {
+  INVENTORY_RESERVATION_CONFIG,
+  buildInventoryReservationConfig,
+} from '~/platform/config/inventory-reservation.config';
 import { AuthModule } from '../auth/auth.module';
 import { CurrentUserEntity } from '../auth/infra/persistence/entities/current-user.entity';
 import { CartModule } from '../cart/cart.module';
@@ -24,10 +28,13 @@ import { QueueModule } from '~/integrations/queue/queue.module';
 import { StorageModule } from '~/integrations/storage/storage.module';
 import { CheckoutController } from './api/rest/checkout.controller';
 import { MeCheckoutController } from './api/rest/me-checkout.controller';
+import { CheckoutStockReservationPort } from './app/ports/checkout-stock-reservation.port';
+import { RemoteInventoryReservationClient } from './app/ports/remote-inventory-reservation.client';
 import { CheckoutStockReservationService } from './app/services/checkout-stock-reservation.service';
 import { CreateCheckoutQuoteService } from './app/services/create-checkout-quote.service';
 import { GuestOrderTrackingTokenService } from './app/services/guest-order-tracking-token.service';
 import { LoadCheckoutQuoteService } from './app/services/load-checkout-quote.service';
+import { RemoteAwareCheckoutStockReservationService } from './app/services/remote-aware-checkout-stock-reservation.service';
 import { CreateCheckoutQuoteForBuyNowUseCase } from './app/use-cases/create-checkout-quote-for-buy-now/create-checkout-quote-for-buy-now.use-case';
 import { CreateCheckoutQuoteFromCartUseCase } from './app/use-cases/create-checkout-quote-from-cart/create-checkout-quote-from-cart.use-case';
 import { CreateGuestCheckoutQuoteForBuyNowUseCase } from './app/use-cases/create-guest-checkout-quote-for-buy-now/create-guest-checkout-quote-for-buy-now.use-case';
@@ -41,6 +48,10 @@ import { LookupGuestOrdersUseCase } from './app/use-cases/lookup-guest-orders/lo
 import { CheckoutQuoteEntity } from './infra/persistence/entities/checkout-quote.entity';
 import { CheckoutQuoteItemEntity } from './infra/persistence/entities/checkout-quote-item.entity';
 import { CheckoutStockReservationEntity } from './infra/persistence/entities/checkout-stock-reservation.entity';
+import {
+  FETCH,
+  HttpRemoteInventoryReservationClient,
+} from './infra/remote/http-remote-inventory-reservation.client';
 import { OrderEntity } from '../order/infra/persistence/entities/order.entity';
 import { OrderItemEntity } from '../order/infra/persistence/entities/order-item.entity';
 
@@ -83,7 +94,26 @@ import { OrderItemEntity } from '../order/infra/persistence/entities/order-item.
       useFactory: (configService: ConfigService) =>
         buildCheckoutConfig(configService),
     },
+    {
+      provide: INVENTORY_RESERVATION_CONFIG,
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) =>
+        buildInventoryReservationConfig(configService),
+    },
     CheckoutStockReservationService,
+    RemoteAwareCheckoutStockReservationService,
+    {
+      provide: CheckoutStockReservationPort,
+      useExisting: RemoteAwareCheckoutStockReservationService,
+    },
+    {
+      provide: FETCH,
+      useValue: fetch,
+    },
+    {
+      provide: RemoteInventoryReservationClient,
+      useClass: HttpRemoteInventoryReservationClient,
+    },
     CreateCheckoutQuoteService,
     LoadCheckoutQuoteService,
     GuestOrderTrackingTokenService,
@@ -100,7 +130,9 @@ import { OrderItemEntity } from '../order/infra/persistence/entities/order-item.
   ],
   exports: [
     CHECKOUT_CONFIG,
-    CheckoutStockReservationService,
+    INVENTORY_RESERVATION_CONFIG,
+    CheckoutStockReservationPort,
+    RemoteInventoryReservationClient,
     LoadCheckoutQuoteService,
     GuestOrderTrackingTokenService,
     CreateGuestCheckoutQuoteFromCartUseCase,

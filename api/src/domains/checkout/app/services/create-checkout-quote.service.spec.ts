@@ -1,6 +1,6 @@
 import type { EntityManager } from '@mikro-orm/postgresql';
 import { OrderTotalLimitExceededError } from '../../../order/app/errors/order-app.error';
-import type { CheckoutStockReservationService } from './checkout-stock-reservation.service';
+import type { CheckoutStockReservationPort } from '../ports/checkout-stock-reservation.port';
 import { CreateCheckoutQuoteService } from './create-checkout-quote.service';
 import type { CouponPricingService } from '../../../coupon/app/services/coupon-pricing.service';
 import type { StorefrontMarketContextService } from '../../../product/app/services/storefront-market-context.service';
@@ -87,8 +87,10 @@ describe('CreateCheckoutQuoteService', () => {
       }),
     } as unknown as jest.Mocked<OrderTotalPolicyService>;
     const checkoutStockReservationService = {
-      reserveForQuote: jest.fn(),
-    } as unknown as jest.Mocked<CheckoutStockReservationService>;
+      reserveForQuote: jest.fn().mockResolvedValue({
+        reservationId: 'reservation-remote-1',
+      }),
+    } as unknown as jest.Mocked<CheckoutStockReservationPort>;
     const jobDispatcher = {
       dispatch: jest.fn(),
     } as unknown as jest.Mocked<JobDispatcher>;
@@ -261,8 +263,10 @@ describe('CreateCheckoutQuoteService', () => {
       assertWithinLimit: jest.fn(),
     } as unknown as jest.Mocked<OrderTotalPolicyService>;
     const checkoutStockReservationService = {
-      reserveForQuote: jest.fn(),
-    } as unknown as jest.Mocked<CheckoutStockReservationService>;
+      reserveForQuote: jest.fn().mockResolvedValue({
+        reservationId: 'reservation-remote-1',
+      }),
+    } as unknown as jest.Mocked<CheckoutStockReservationPort>;
     const jobDispatcher = {
       dispatch: jest.fn(),
     } as unknown as jest.Mocked<JobDispatcher>;
@@ -410,8 +414,10 @@ describe('CreateCheckoutQuoteService', () => {
       assertWithinLimit: jest.fn(),
     } as unknown as jest.Mocked<OrderTotalPolicyService>;
     const checkoutStockReservationService = {
-      reserveForQuote: jest.fn(),
-    } as unknown as jest.Mocked<CheckoutStockReservationService>;
+      reserveForQuote: jest.fn().mockResolvedValue({
+        reservationId: 'reservation-remote-1',
+      }),
+    } as unknown as jest.Mocked<CheckoutStockReservationPort>;
     const jobDispatcher = {
       dispatch: jest.fn(),
     } as unknown as jest.Mocked<JobDispatcher>;
@@ -452,6 +458,11 @@ describe('CreateCheckoutQuoteService', () => {
     ).resolves.toEqual(
       expect.objectContaining({
         quoteId: 'quote-2',
+      }),
+    );
+    expect((quoteRepository.create as jest.Mock).mock.results[0]?.value).toEqual(
+      expect.objectContaining({
+        reservationId: 'reservation-remote-1',
       }),
     );
   });

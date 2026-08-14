@@ -2,6 +2,7 @@ compose_file := "infra/docker-compose.yml"
 compose_project := "arc-api"
 legacy_compose_project := "infra"
 api_dir := "api"
+inventory_service_dir := "inventory-service"
 
 # --------- Private helpers
 
@@ -25,6 +26,16 @@ _api-with-default-env command environment='':
   env_file="{{ if environment == "" { ".env" } else { ".env." + environment } }}"; \
   cd {{ api_dir }} && \
   if [ ! -f "$env_file" ] && [ "$env_file" = ".env" ] && [ -f ".env.example" ]; then cp ".env.example" "$env_file"; fi && \
+  test -f "$env_file" && \
+  set -a && \
+  . "$env_file" && \
+  set +a && \
+  {{ command }}
+
+[private]
+_inventory-service-with-env command environment='':
+  env_file="{{ if environment == "" { ".env" } else { ".env." + environment } }}"; \
+  cd {{ inventory_service_dir }} && \
   test -f "$env_file" && \
   set -a && \
   . "$env_file" && \
@@ -87,6 +98,11 @@ api-worker-up-infisical project_id *env_name:
 # List environment variables from Infisical.
 api-env-infisical project_id *env_name:
   just _api-with-infisical "{{ project_id }}" "{{ env_name }}" "env | sort"
+
+# --------- Inventory service app
+  
+inventory-service-up environment='':
+  just _inventory-service-with-env "go run ./cmd/inventory-service" "{{ environment }}"
 
 
 # --------- Migrations
