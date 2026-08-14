@@ -5,6 +5,7 @@ import type { NotifyUserUseCase } from '../../../../domains/notification/app/use
 import type { JobDispatcher } from '../../../../integrations/queue/app/ports/job-dispatcher';
 import { PaymentType } from '../../domain/enums/payment-type.enum';
 import { OrderStatus } from '../../domain/enums/order-status.enum';
+import type { OrderRefundQueryRepository } from '../ports/order-refund-query.repository';
 import { OrderRefundService } from './order-refund.service';
 
 describe('OrderRefundService', () => {
@@ -17,6 +18,10 @@ describe('OrderRefundService', () => {
       {} as PaymentGateway,
       moduleRef,
       { record: jest.fn().mockResolvedValue(undefined) } as never,
+      {
+        findById: jest.fn(),
+        findByIdWithShopOwner: jest.fn(),
+      } as unknown as OrderRefundQueryRepository,
     );
     const order = {
       paymentType: PaymentType.CARD,
@@ -98,6 +103,10 @@ describe('OrderRefundService', () => {
       paymentGateway,
       moduleRef,
       { record: jest.fn().mockResolvedValue(undefined) } as never,
+      {
+        findById: jest.fn().mockResolvedValue(order),
+        findByIdWithShopOwner: jest.fn().mockResolvedValue(order),
+      } as unknown as OrderRefundQueryRepository,
     );
 
     await service.processRefund('order-1');
@@ -184,6 +193,10 @@ describe('OrderRefundService', () => {
       paymentGateway,
       moduleRef,
       { record: jest.fn().mockResolvedValue(undefined) } as never,
+      {
+        findById: jest.fn().mockResolvedValue(order),
+        findByIdWithShopOwner: jest.fn().mockResolvedValue(order),
+      } as unknown as OrderRefundQueryRepository,
     );
 
     await service.processRefund('order-1');

@@ -16,6 +16,7 @@ import {
   getSellerOrderNotificationRecipientId,
 } from '../seller-order-notification';
 import { getRequiredOrderNumber } from '../order-number';
+import { OrderRefundQueryRepository } from '../ports/order-refund-query.repository';
 
 type RefundStatus = 'pending' | 'succeeded' | 'failed' | 'not_required';
 
@@ -28,6 +29,7 @@ export class OrderRefundService {
     private readonly paymentGateway: PaymentGateway,
     private readonly moduleRef: ModuleRef,
     private readonly orderEventsService: OrderEventsService,
+    private readonly orderRefundQueryRepository: OrderRefundQueryRepository,
   ) {}
 
   prepareRefundOnCancellation(
@@ -55,8 +57,7 @@ export class OrderRefundService {
   }
 
   async processRefund(orderId: string): Promise<void> {
-    const entityManager = this.entityManager.fork();
-    const order = await entityManager.getRepository(OrderEntity).findOne({ id: orderId });
+    const order = await this.orderRefundQueryRepository.findById(orderId);
 
     if (!order || order.paymentType !== PaymentType.CARD) {
       return;
@@ -199,10 +200,7 @@ export class OrderRefundService {
       const notifyUserUseCase = this.moduleRef.get(NotifyUserUseCase, {
         strict: false,
       });
-      const order = await this.entityManager
-        .fork()
-        .getRepository(OrderEntity)
-        .findOne({ id: orderId }, { populate: ['shop.ownerUser'] });
+      const order = await this.orderRefundQueryRepository.findByIdWithShopOwner(orderId);
       const sellerUserId = order
         ? getSellerOrderNotificationRecipientId(order)
         : null;

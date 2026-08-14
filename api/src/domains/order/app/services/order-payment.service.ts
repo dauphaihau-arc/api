@@ -9,13 +9,14 @@ import { CouponUsageEntity } from '../../../coupon/infra/persistence/entities/co
 import { OrderEventActorType } from '../../domain/enums/order-event-actor-type.enum';
 import { OrderEventType } from '../../domain/enums/order-event-type.enum';
 import { OrderStatus } from '../../domain/enums/order-status.enum';
-import { OrderEntity } from '../../infra/persistence/entities/order.entity';
 import { OrderItemEntity } from '../../infra/persistence/entities/order-item.entity';
 import { dispatchBestSellerRankingRefresh } from '../best-seller-ranking-refresh';
 import { CheckoutStockReservationPort } from '../../../checkout/app/ports/checkout-stock-reservation.port';
 import { OrderEventsService } from './order-events.service';
 import { getRequiredOrderNumber } from '../order-number';
 import type { CreateOrderResult } from '../order.types';
+import { OrderCartCleanupRepository } from '../ports/order-cart-cleanup.repository';
+import { OrderCheckoutSessionRepository } from '../ports/order-checkout-session.repository';
 
 @Injectable()
 export class OrderPaymentService {
@@ -25,11 +26,14 @@ export class OrderPaymentService {
     private readonly jobDispatcher: JobDispatcher,
     private readonly checkoutStockReservationService: CheckoutStockReservationPort,
     private readonly orderEventsService: OrderEventsService,
+    private readonly orderCheckoutSessionRepository: OrderCheckoutSessionRepository,
+    private readonly orderCartCleanupRepository: OrderCartCleanupRepository,
   ) {}
 
   async getOrdersByCheckoutSession(sessionId: string): Promise<CreateOrderResult> {
-    const entityManager = this.entityManager.fork();
-    const orders = await this.findOrdersByCheckoutSession(entityManager, sessionId);
+    const orders = await this.orderCheckoutSessionRepository.findOrdersByCheckoutSession(
+      sessionId,
+    );
 
     return {
       orderShops: orders.map((order) => ({
@@ -51,7 +55,10 @@ export class OrderPaymentService {
     },
   ): Promise<void> {
     await this.entityManager.transactional(async (entityManager) => {
-      const orders = await this.findOrdersByCheckoutSession(entityManager, sessionId);
+      const orders = await this.orderCheckoutSessionRepository.findOrdersByCheckoutSession(
+        sessionId,
+        { entityManager },
+      );
       const actionableOrders = orders.filter((order) => order.status === OrderStatus.AWAITING_PAYMENT);
 
       if (actionableOrders.length === 0) {
@@ -91,7 +98,11 @@ export class OrderPaymentService {
         : undefined;
 
       if (cartId) {
-        await this.clearCart(entityManager, cartId, isTempCart, quotedInventoryIds);
+        await this.orderCartCleanupRepository.clearCheckoutCart({
+          cartId,
+          isTempCart,
+          inventoryIds: quotedInventoryIds,
+        }, { entityManager });
       }
 
       await entityManager.flush();
@@ -105,7 +116,10 @@ export class OrderPaymentService {
     expiredAt?: Date,
   ): Promise<void> {
     const inventoryEvents = await this.entityManager.transactional(async (entityManager) => {
-      const orders = await this.findOrdersByCheckoutSession(entityManager, sessionId);
+      const orders = await this.orderCheckoutSessionRepository.findOrdersByCheckoutSession(
+        sessionId,
+        { entityManager },
+      );
       const actionableOrders = orders.filter((order) => order.status === OrderStatus.AWAITING_PAYMENT);
 
       if (actionableOrders.length === 0) {
@@ -169,59 +183,4 @@ export class OrderPaymentService {
     }
   }
 
-  private async findOrdersByCheckoutSession(
-    entityManager: EntityManager,
-    sessionId: string,
-  ): Promise<OrderEntity[]> {
-    const rows = await entityManager.getConnection().execute<{ id: string }[]>(
-      `select id
-       from orders
-       where payment_details ->> 'checkout_session_id' = ?`,
-      [sessionId],
-    );
-    const orderIds = rows.map((row) => row.id);
-
-    if (orderIds.length === 0) {
-      return [];
-    }
-
-    return entityManager.getRepository(OrderEntity).find(
-      { id: { $in: orderIds } },
-      { populate: ['shop'], orderBy: { createdAt: 'asc' } },
-    );
-  }
-
-  private async clearCart(
-    entityManager: EntityManager,
-    cartId: string,
-    isTempCart: boolean,
-    inventoryIds?: string[],
-  ): Promise<void> {
-    if (isTempCart) {
-      await entityManager.getConnection().execute(
-        'delete from carts where id = ?',
-        [cartId],
-      );
-      return;
-    }
-
-    if (inventoryIds && inventoryIds.length > 0) {
-      const placeholders = inventoryIds.map(() => '?').join(', ');
-      await entityManager.getConnection().execute(
-        `delete from cart_items where cart_id = ? and product_inventory_id in (${placeholders})`,
-        [cartId, ...inventoryIds],
-      );
-    }
-    else {
-      await entityManager.getConnection().execute(
-        'delete from cart_items where cart_id = ? and is_select_order = true',
-        [cartId],
-      );
-    }
-
-    await entityManager.getConnection().execute(
-      'delete from carts where id = ? and not exists (select 1 from cart_items where cart_items.cart_id = carts.id)',
-      [cartId],
-    );
-  }
 }

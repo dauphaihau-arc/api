@@ -40,7 +40,12 @@ import { UpdateAdminOrderRefundUseCase } from './app/use-cases/update-admin-orde
 import { UpdateAdminOrderSupportNoteUseCase } from './app/use-cases/update-admin-order-support-note/update-admin-order-support-note.use-case';
 import { OrderCheckoutOutboxService } from './app/services/order-checkout-outbox.service';
 import { OrderEventsService } from './app/services/order-events.service';
+import { OrderCartCleanupRepository } from './app/ports/order-cart-cleanup.repository';
+import { OrderCheckoutSessionRepository } from './app/ports/order-checkout-session.repository';
 import { OrderInventoryEventPublisher } from './app/ports/order-inventory-event.publisher';
+import { OrderInventoryQueryRepository } from './app/ports/order-inventory-query.repository';
+import { OrderRefundQueryRepository } from './app/ports/order-refund-query.repository';
+import { OrderShopQueryRepository } from './app/ports/order-shop-query.repository';
 import { OrderInventoryOutboxPublisherService } from './app/services/order-inventory-outbox-publisher.service';
 import { OrderInventoryOutboxService } from './app/services/order-inventory-outbox.service';
 import { ShopDashboardQueryRepository } from './app/ports/shop-dashboard-query.repository';
@@ -52,6 +57,11 @@ import { OrderEntity } from './infra/persistence/entities/order.entity';
 import { OrderExportEntity } from './infra/persistence/entities/order-export.entity';
 import { OrderItemEntity } from './infra/persistence/entities/order-item.entity';
 import { MikroOrmShopDashboardQueryRepository } from './infra/persistence/repositories/mikro-orm-shop-dashboard-query.repository';
+import { MikroOrmOrderCartCleanupRepository } from './infra/persistence/repositories/mikro-orm-order-cart-cleanup.repository';
+import { MikroOrmOrderCheckoutSessionRepository } from './infra/persistence/repositories/mikro-orm-order-checkout-session.repository';
+import { MikroOrmOrderInventoryQueryRepository } from './infra/persistence/repositories/mikro-orm-order-inventory-query.repository';
+import { MikroOrmOrderRefundQueryRepository } from './infra/persistence/repositories/mikro-orm-order-refund-query.repository';
+import { MikroOrmOrderShopQueryRepository } from './infra/persistence/repositories/mikro-orm-order-shop-query.repository';
 import { MikroOrmShopOrderExportQueryRepository } from './infra/persistence/repositories/mikro-orm-shop-order-export-query.repository';
 import { MikroOrmShopOrderExportRepository } from './infra/persistence/repositories/mikro-orm-shop-order-export.repository';
 import {
@@ -119,6 +129,26 @@ import { UpdateShopOrderRefundUseCase } from './app/use-cases/update-shop-order-
     {
       provide: ShopOrderExportRepository,
       useClass: MikroOrmShopOrderExportRepository,
+    },
+    {
+      provide: OrderCheckoutSessionRepository,
+      useClass: MikroOrmOrderCheckoutSessionRepository,
+    },
+    {
+      provide: OrderCartCleanupRepository,
+      useClass: MikroOrmOrderCartCleanupRepository,
+    },
+    {
+      provide: OrderInventoryQueryRepository,
+      useClass: MikroOrmOrderInventoryQueryRepository,
+    },
+    {
+      provide: OrderRefundQueryRepository,
+      useClass: MikroOrmOrderRefundQueryRepository,
+    },
+    {
+      provide: OrderShopQueryRepository,
+      useClass: MikroOrmOrderShopQueryRepository,
     },
     OrderCheckoutService,
     OrderTotalPolicyService,

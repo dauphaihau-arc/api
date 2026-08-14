@@ -20,7 +20,6 @@ import { CouponPricingService } from '../../../coupon/app/services/coupon-pricin
 import { CouponUsageEntity } from '../../../coupon/infra/persistence/entities/coupon-usage.entity';
 import { ProductEntity } from '../../../product/infra/persistence/mikro-orm/entities/product.entity';
 import { ProductInventoryEntity } from '../../../product/infra/persistence/mikro-orm/entities/product-inventory.entity';
-import { ShopEntity } from '../../../shop/infra/persistence/entities/shop.entity';
 import { OrderEventActorType } from '../../domain/enums/order-event-actor-type.enum';
 import { OrderEventType } from '../../domain/enums/order-event-type.enum';
 import { PaymentType } from '../../domain/enums/payment-type.enum';
@@ -44,6 +43,9 @@ import type {
   ShippingAddressInput,
   ShopAdjustmentInput,
 } from '../order.types';
+import { OrderCartCleanupRepository } from '../ports/order-cart-cleanup.repository';
+import { OrderInventoryQueryRepository } from '../ports/order-inventory-query.repository';
+import { OrderShopQueryRepository } from '../ports/order-shop-query.repository';
 import { OrderTotalPolicyService } from './order-total-policy.service';
 
 const SHIPPING_ESTIMATED_DELIVERY_MS = ms('7d');
@@ -62,6 +64,9 @@ export class OrderCheckoutService {
     private readonly notifyUserUseCase: NotifyUserUseCase,
     private readonly eventEmitter: EventEmitter2,
     private readonly orderTotalPolicyService: OrderTotalPolicyService,
+    private readonly orderCartCleanupRepository: OrderCartCleanupRepository,
+    private readonly orderInventoryQueryRepository: OrderInventoryQueryRepository,
+    private readonly orderShopQueryRepository: OrderShopQueryRepository,
   ) {}
 
   async createOrders(
@@ -156,9 +161,9 @@ export class OrderCheckoutService {
           ? undefined
           : shop as NonNullable<typeof pricedCartSummary>['shops'][number];
 
-        const shopEntity = await entityManager.getRepository(ShopEntity).findOne(
-          { id: shop.shopId },
-          { populate: ['ownerUser'] },
+        const shopEntity = await this.orderShopQueryRepository.findByIdWithOwner(
+          shop.shopId,
+          { entityManager },
         );
 
         if (!shopEntity) {
@@ -319,12 +324,11 @@ export class OrderCheckoutService {
       }
 
       if (input.paymentType === PaymentType.CASH) {
-        await this.clearCart(
-          entityManager,
+        await this.orderCartCleanupRepository.clearCheckoutCart({
           cartId,
-          input.isTempCart,
-          quote?.items.map((item) => item.inventoryId),
-        );
+          isTempCart: input.isTempCart,
+          inventoryIds: quote?.items.map((item) => item.inventoryId),
+        }, { entityManager });
       }
 
       if (input.paymentType === PaymentType.CARD) {
@@ -449,54 +453,15 @@ export class OrderCheckoutService {
     }
   }
 
-  private async clearCart(
-    entityManager: EntityManager,
-    cartId: string,
-    isTempCart: boolean,
-    inventoryIds?: string[],
-  ): Promise<void> {
-    if (isTempCart) {
-      await entityManager.getConnection().execute(
-        'delete from carts where id = ?',
-        [cartId],
-      );
-      return;
-    }
-
-    if (inventoryIds && inventoryIds.length > 0) {
-      const placeholders = inventoryIds.map(() => '?').join(', ');
-      await entityManager.getConnection().execute(
-        `delete from cart_items where cart_id = ? and product_inventory_id in (${placeholders})`,
-        [cartId, ...inventoryIds],
-      );
-    }
-    else {
-      await entityManager.getConnection().execute(
-        'delete from cart_items where cart_id = ? and is_select_order = true',
-        [cartId],
-      );
-    }
-
-    await entityManager.getConnection().execute(
-      'delete from carts where id = ? and not exists (select 1 from cart_items where cart_items.cart_id = carts.id)',
-      [cartId],
-    );
-  }
-
   private async loadInventoryById(
     entityManager: EntityManager,
     items: Array<{ inventoryId: string }>,
   ): Promise<Map<string, ProductInventoryEntity>> {
     const inventoryIds = [...new Set(items.map((item) => item.inventoryId))].sort();
-    if (inventoryIds.length === 0) {
-      return new Map();
-    }
-
-    const inventories = await entityManager.getRepository(ProductInventoryEntity).find({
-      id: { $in: inventoryIds },
-    });
-
-    const inventoryById = new Map(inventories.map((inventory) => [inventory.id, inventory]));
+    const inventoryById = await this.orderInventoryQueryRepository.findByIds(
+      inventoryIds,
+      { entityManager },
+    );
 
     for (const inventoryId of inventoryIds) {
       if (!inventoryById.has(inventoryId)) {

@@ -12,6 +12,9 @@ import type { PricedCartSummary } from '../order.types';
 import { PaymentType } from '../../domain/enums/payment-type.enum';
 import { OrderStatus } from '../../domain/enums/order-status.enum';
 import type { OrderTotalPolicyService } from './order-total-policy.service';
+import type { OrderCartCleanupRepository } from '../ports/order-cart-cleanup.repository';
+import type { OrderInventoryQueryRepository } from '../ports/order-inventory-query.repository';
+import type { OrderShopQueryRepository } from '../ports/order-shop-query.repository';
 import { OrderTotalLimitExceededError } from '../errors/order-app.error';
 
 function waitForDeferredCheckoutSideEffects(): Promise<void> {
@@ -135,10 +138,6 @@ describe('OrderCheckoutService', () => {
             return orderItemRepository;
           case 'CouponUsageEntity':
             return usageRepository;
-          case 'ShopEntity':
-            return {
-              findOne: jest.fn().mockResolvedValue(shop),
-            };
           default:
             return {
               findOne: jest.fn(),
@@ -209,6 +208,15 @@ describe('OrderCheckoutService', () => {
     const orderEventsService = {
       record: jest.fn().mockResolvedValue(undefined),
     };
+    const orderCartCleanupRepository = {
+      clearCheckoutCart: jest.fn().mockResolvedValue(undefined),
+    } as unknown as jest.Mocked<OrderCartCleanupRepository>;
+    const orderInventoryQueryRepository = {
+      findByIds: jest.fn().mockResolvedValue(new Map([['inventory-1', inventory]])),
+    } as unknown as jest.Mocked<OrderInventoryQueryRepository>;
+    const orderShopQueryRepository = {
+      findByIdWithOwner: jest.fn().mockResolvedValue(shop),
+    } as unknown as jest.Mocked<OrderShopQueryRepository>;
 
     const service = new OrderCheckoutService(
       entityManager,
@@ -220,6 +228,9 @@ describe('OrderCheckoutService', () => {
       notifyUserUseCase,
       eventEmitter as unknown as EventEmitter2,
       orderTotalPolicyService as unknown as OrderTotalPolicyService,
+      orderCartCleanupRepository,
+      orderInventoryQueryRepository,
+      orderShopQueryRepository,
     );
 
     return {
@@ -233,6 +244,9 @@ describe('OrderCheckoutService', () => {
       orderCheckoutOutboxService,
       orderInventoryOutboxService,
       checkoutStockReservationService,
+      orderCartCleanupRepository,
+      orderInventoryQueryRepository,
+      orderShopQueryRepository,
     };
   }
 

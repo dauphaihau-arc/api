@@ -3,6 +3,7 @@ import type { PaymentGateway } from '../../../../integrations/payment/app/ports/
 import type { ModuleRef } from '@nestjs/core';
 import { OrderStatus } from '../../domain/enums/order-status.enum';
 import type { CheckoutStockReservationPort } from '../../../checkout/app/ports/checkout-stock-reservation.port';
+import type { OrderRefundQueryRepository } from '../ports/order-refund-query.repository';
 import { OrderCancellationService } from './order-cancellation.service';
 import { OrderRefundService } from './order-refund.service';
 
@@ -56,6 +57,10 @@ describe('OrderCancellationService', () => {
       {} as PaymentGateway,
       {} as ModuleRef,
       { record: jest.fn().mockResolvedValue(undefined) } as never,
+      {
+        findById: jest.fn(),
+        findByIdWithShopOwner: jest.fn(),
+      } as unknown as OrderRefundQueryRepository,
     );
     const service = new OrderCancellationService(
       refundService,
