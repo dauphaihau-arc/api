@@ -1,0 +1,11 @@
+{
+  "vus": 200,
+  "duration": "1m",
+  "sleepSeconds": 0,
+  "thresholds": {
+    "http_req_failed": ["rate<0.05"],
+    "http_req_duration": ["p(95)<1500", "p(99)<3000"],
+    "checks": ["rate>0.95"],
+    "checkout_expected_result": ["rate>0.95"]
+  }
+}
