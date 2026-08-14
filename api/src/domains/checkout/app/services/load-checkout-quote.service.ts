@@ -1,14 +1,12 @@
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
-import {
-  CheckoutQuoteActorType,
-  CheckoutQuoteEntity,
-} from '../../infra/persistence/entities/checkout-quote.entity';
+import type { CheckoutQuoteEntity } from '../../infra/persistence/entities/checkout-quote.entity';
 import {
   CheckoutQuoteExpiredError,
   CheckoutQuoteNotFoundError,
 } from '../../../order/app/errors/order-app.error';
 import { CheckoutStockReservationPort } from '../ports/checkout-stock-reservation.port';
+import { CheckoutQuoteRepository } from '../ports/checkout-quote.repository';
 import type {
   CheckoutQuoteItemSummary,
   CheckoutQuoteShopSummary,
@@ -37,14 +35,14 @@ export interface LoadedCheckoutQuote {
 export class LoadCheckoutQuoteService {
   constructor(
     private readonly entityManager: EntityManager,
+    private readonly checkoutQuoteRepository: CheckoutQuoteRepository,
     private readonly checkoutStockReservationService: CheckoutStockReservationPort,
   ) {}
 
   async loadForUser(userId: string, quoteId: string): Promise<LoadedCheckoutQuote> {
-    const quote = await this.entityManager.fork().getRepository(CheckoutQuoteEntity).findOne({
-      id: quoteId,
-      actorType: CheckoutQuoteActorType.USER,
-      user: userId,
+    const quote = await this.checkoutQuoteRepository.findForUser({
+      userId,
+      quoteId,
     });
 
     return this.toLoadedQuote(quote);
@@ -54,10 +52,9 @@ export class LoadCheckoutQuoteService {
     guestSessionId: string,
     quoteId: string,
   ): Promise<LoadedCheckoutQuote> {
-    const quote = await this.entityManager.fork().getRepository(CheckoutQuoteEntity).findOne({
-      id: quoteId,
-      actorType: CheckoutQuoteActorType.GUEST,
+    const quote = await this.checkoutQuoteRepository.findForGuest({
       guestSessionId,
+      quoteId,
     });
 
     return this.toLoadedQuote(quote);

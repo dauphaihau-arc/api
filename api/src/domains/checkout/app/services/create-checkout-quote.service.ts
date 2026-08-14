@@ -17,11 +17,8 @@ import {
   CheckoutQuoteEntity,
 } from '../../infra/persistence/entities/checkout-quote.entity';
 import { CheckoutQuoteItemEntity } from '../../infra/persistence/entities/checkout-quote-item.entity';
-import {
-  CheckoutStockReservationEntity,
-  CheckoutStockReservationStatus,
-} from '../../infra/persistence/entities/checkout-stock-reservation.entity';
 import { CheckoutStockReservationPort } from '../ports/checkout-stock-reservation.port';
+import { CheckoutQuoteRepository } from '../ports/checkout-quote.repository';
 import { CheckoutQuoteNoItemsError } from '../../../order/app/errors/order-app.error';
 import type {
   CheckoutQuoteResult,
@@ -38,6 +35,7 @@ const QUOTE_TTL_MS = ms('30m');
 export class CreateCheckoutQuoteService {
   constructor(
     private readonly entityManager: EntityManager,
+    private readonly checkoutQuoteRepository: CheckoutQuoteRepository,
     private readonly couponPricingService: CouponPricingService,
     private readonly storefrontMarketContextService: StorefrontMarketContextService,
     private readonly orderTotalPolicyService: OrderTotalPolicyService,
@@ -104,19 +102,20 @@ export class CreateCheckoutQuoteService {
     const {
       createdNewQuote,
       quote: persistedQuote,
-      items: persistedItems, 
+      items: persistedItems,
     } = await this.entityManager.transactional(async (entityManager) => {
-
       const quoteRepository = entityManager.getRepository(CheckoutQuoteEntity);
       const quoteItemRepository = entityManager.getRepository(CheckoutQuoteItemEntity);
       const now = new Date();
 
-      const existingQuote = await this.findReusableQuote(entityManager, {
+      const existingQuote = await this.checkoutQuoteRepository.findReusable({
         actor: input.actor,
         cartId: input.cart.id,
         quoteFingerprint,
         reservationCount: allItems.length,
         now,
+      }, {
+        entityManager,
       });
 
       if (existingQuote) {
@@ -351,49 +350,6 @@ export class CreateCheckoutQuoteService {
       shops,
       items: persistedItems,
     };
-  }
-
-  private async findReusableQuote(
-    entityManager: EntityManager,
-    input: {
-      actor:
-        | { type: 'user'; userId: string }
-        | { type: 'guest'; guestSessionId: string };
-      cartId: string;
-      quoteFingerprint: string;
-      reservationCount: number;
-      now: Date;
-    },
-  ): Promise<CheckoutQuoteEntity | null> {
-    const quote = await entityManager.getRepository(CheckoutQuoteEntity).findOne(
-      {
-        cartId: input.cartId,
-        quoteFingerprint: input.quoteFingerprint,
-        expiresAt: { $gt: input.now },
-        ...(input.actor.type === 'user'
-          ? {
-            actorType: CheckoutQuoteActorType.USER,
-            user: input.actor.userId,
-          }
-          : {
-            actorType: CheckoutQuoteActorType.GUEST,
-            guestSessionId: input.actor.guestSessionId,
-          }),
-      },
-      { orderBy: { createdAt: 'desc' as const } },
-    );
-
-    if (!quote) {
-      return null;
-    }
-
-    const activeReservations = await entityManager.getRepository(CheckoutStockReservationEntity).count({
-      quote: quote.id,
-      status: CheckoutStockReservationStatus.ACTIVE,
-      expiresAt: { $gt: input.now },
-    });
-
-    return activeReservations === input.reservationCount ? quote : null;
   }
 }
 

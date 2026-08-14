@@ -1,6 +1,7 @@
 import type { EntityManager } from '@mikro-orm/postgresql';
 import { OrderTotalLimitExceededError } from '../../../order/app/errors/order-app.error';
 import type { CheckoutStockReservationPort } from '../ports/checkout-stock-reservation.port';
+import type { CheckoutQuoteRepository } from '../ports/checkout-quote.repository';
 import { CreateCheckoutQuoteService } from './create-checkout-quote.service';
 import type { CouponPricingService } from '../../../coupon/app/services/coupon-pricing.service';
 import type { StorefrontMarketContextService } from '../../../product/app/services/storefront-market-context.service';
@@ -91,12 +92,16 @@ describe('CreateCheckoutQuoteService', () => {
         reservationId: 'reservation-remote-1',
       }),
     } as unknown as jest.Mocked<CheckoutStockReservationPort>;
+    const checkoutQuoteRepository = {
+      findReusable: jest.fn(),
+    } as unknown as jest.Mocked<CheckoutQuoteRepository>;
     const jobDispatcher = {
       dispatch: jest.fn(),
     } as unknown as jest.Mocked<JobDispatcher>;
 
     const service = new CreateCheckoutQuoteService(
       entityManager,
+      checkoutQuoteRepository,
       couponPricingService,
       storefrontMarketContextService,
       orderTotalPolicyService,
@@ -184,12 +189,11 @@ describe('CreateCheckoutQuoteService', () => {
         },
       ],
     };
+    const checkoutQuoteRepository = {
+      findReusable: jest.fn().mockResolvedValue(existingQuote),
+    } as unknown as jest.Mocked<CheckoutQuoteRepository>;
     const quoteRepository = {
-      findOne: jest.fn().mockResolvedValue(existingQuote),
       create: jest.fn(),
-    };
-    const reservationRepository = {
-      count: jest.fn().mockResolvedValue(1),
     };
     const quoteItemRepository = {
       create: jest.fn(),
@@ -199,8 +203,6 @@ describe('CreateCheckoutQuoteService', () => {
         switch (entity?.name) {
           case 'CheckoutQuoteEntity':
             return quoteRepository;
-          case 'CheckoutStockReservationEntity':
-            return reservationRepository;
           case 'CheckoutQuoteItemEntity':
             return quoteItemRepository;
           default:
@@ -273,6 +275,7 @@ describe('CreateCheckoutQuoteService', () => {
 
     const service = new CreateCheckoutQuoteService(
       entityManager,
+      checkoutQuoteRepository,
       couponPricingService,
       storefrontMarketContextService,
       orderTotalPolicyService,
@@ -321,10 +324,12 @@ describe('CreateCheckoutQuoteService', () => {
     expect(quoteRepository.create).not.toHaveBeenCalled();
     expect(checkoutStockReservationService.reserveForQuote).not.toHaveBeenCalled();
     expect(jobDispatcher.dispatch).not.toHaveBeenCalled();
-    expect(reservationRepository.count).toHaveBeenCalledWith(
+    expect(checkoutQuoteRepository.findReusable).toHaveBeenCalledWith(
       expect.objectContaining({
-        quote: 'quote-1',
+        cartId: 'cart-1',
+        reservationCount: 1,
       }),
+      { entityManager: transactionalEntityManager },
     );
   });
 
@@ -418,12 +423,16 @@ describe('CreateCheckoutQuoteService', () => {
         reservationId: 'reservation-remote-1',
       }),
     } as unknown as jest.Mocked<CheckoutStockReservationPort>;
+    const checkoutQuoteRepository = {
+      findReusable: jest.fn().mockResolvedValue(null),
+    } as unknown as jest.Mocked<CheckoutQuoteRepository>;
     const jobDispatcher = {
       dispatch: jest.fn(),
     } as unknown as jest.Mocked<JobDispatcher>;
 
     const service = new CreateCheckoutQuoteService(
       entityManager,
+      checkoutQuoteRepository,
       couponPricingService,
       storefrontMarketContextService,
       orderTotalPolicyService,

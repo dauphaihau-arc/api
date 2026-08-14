@@ -9,7 +9,9 @@ import { ProductInventoryEntity } from '../../../product/infra/persistence/mikro
 import {
   CheckoutQuoteReservationUnavailableError,
 } from '../../../order/app/errors/order-app.error';
-import { CheckoutQuoteEntity } from '../../infra/persistence/entities/checkout-quote.entity';
+import type { CheckoutQuoteEntity } from '../../infra/persistence/entities/checkout-quote.entity';
+import { CheckoutInventoryQueryRepository } from '../ports/checkout-inventory-query.repository';
+import { CheckoutQuoteRepository } from '../ports/checkout-quote.repository';
 import { CheckoutStockReservationPort } from '../ports/checkout-stock-reservation.port';
 import { RemoteInventoryReservationClient } from '../ports/remote-inventory-reservation.client';
 import { CheckoutStockReservationService } from './checkout-stock-reservation.service';
@@ -23,6 +25,8 @@ implements CheckoutStockReservationPort {
     private readonly localReservationService: CheckoutStockReservationService,
     private readonly remoteReservationClient: RemoteInventoryReservationClient,
     private readonly entityManager: EntityManager,
+    private readonly checkoutQuoteRepository: CheckoutQuoteRepository,
+    private readonly checkoutInventoryQueryRepository: CheckoutInventoryQueryRepository,
   ) {}
 
   async allocateInventoryForOrderItems(
@@ -171,18 +175,17 @@ implements CheckoutStockReservationPort {
     entityManager: EntityManager,
     items: Array<{ inventoryId: string }>,
   ): Promise<Map<string, ProductInventoryEntity>> {
-    const inventoryById = new Map<string, ProductInventoryEntity>();
+    const sortedItems = sortItemsByInventoryId(items);
 
-    for (const item of sortItemsByInventoryId(items)) {
-      const inventory = await entityManager.getRepository(ProductInventoryEntity).findOne({
-        id: item.inventoryId,
-      });
+    const inventoryById = await this.checkoutInventoryQueryRepository.findByIds(
+      sortedItems.map((item) => item.inventoryId),
+      { entityManager },
+    );
 
-      if (!inventory) {
+    for (const item of sortedItems) {
+      if (!inventoryById.has(item.inventoryId)) {
         throw new NotFoundException('Inventory not found');
       }
-
-      inventoryById.set(inventory.id, inventory);
     }
 
     return inventoryById;
@@ -192,7 +195,7 @@ implements CheckoutStockReservationPort {
     entityManager: EntityManager,
     quoteId: string,
   ): Promise<CheckoutQuoteEntity | null> {
-    return entityManager.getRepository(CheckoutQuoteEntity).findOne({ id: quoteId });
+    return this.checkoutQuoteRepository.findById(quoteId, { entityManager });
   }
 }
 

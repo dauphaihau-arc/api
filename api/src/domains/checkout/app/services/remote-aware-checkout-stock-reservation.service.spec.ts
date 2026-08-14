@@ -2,6 +2,8 @@ import type { EntityManager } from '@mikro-orm/postgresql';
 import { CheckoutQuoteReservationUnavailableError } from '../../../order/app/errors/order-app.error';
 import type { ProductInventoryEntity } from '../../../product/infra/persistence/mikro-orm/entities/product-inventory.entity';
 import type { InventoryReservationConfig } from '~/platform/config/inventory-reservation.config';
+import type { CheckoutInventoryQueryRepository } from '../ports/checkout-inventory-query.repository';
+import type { CheckoutQuoteRepository } from '../ports/checkout-quote.repository';
 import type { RemoteInventoryReservationClient } from '../ports/remote-inventory-reservation.client';
 import type { CheckoutStockReservationService } from './checkout-stock-reservation.service';
 import { RemoteAwareCheckoutStockReservationService } from './remote-aware-checkout-stock-reservation.service';
@@ -54,12 +56,11 @@ describe('RemoteAwareCheckoutStockReservationService', () => {
   });
 
   it('validates a stored remote reservation during quote consumption', async () => {
-    const { service, remoteReservationClient } = buildService({
+    const { service, remoteReservationClient, checkoutQuoteRepository } = buildService({
       config: { driver: 'remote', serviceBaseUrl: 'http://inventory-service:8080' },
-    });
-    const entityManager = buildEntityManager({
       quote: { id: 'quote-1', reservationId: 'reservation-1' },
     });
+    const entityManager = {} as EntityManager;
     remoteReservationClient.validateReservation.mockResolvedValue({
       valid: true,
       status: 'ACTIVE',
@@ -75,15 +76,18 @@ describe('RemoteAwareCheckoutStockReservationService', () => {
       reservationId: 'reservation-1',
       items: [{ inventoryId: 'inventory-1', quantity: 1 }],
     });
+    expect(checkoutQuoteRepository.findById).toHaveBeenCalledWith(
+      'quote-1',
+      { entityManager },
+    );
   });
 
   it('rejects quote consumption when the remote reservation is not active', async () => {
     const { service, remoteReservationClient } = buildService({
       config: { driver: 'remote', serviceBaseUrl: 'http://inventory-service:8080' },
-    });
-    const entityManager = buildEntityManager({
       quote: { id: 'quote-1', reservationId: 'reservation-1' },
     });
+    const entityManager = {} as EntityManager;
     remoteReservationClient.validateReservation.mockResolvedValue({
       valid: false,
       status: 'EXPIRED',
@@ -97,10 +101,11 @@ describe('RemoteAwareCheckoutStockReservationService', () => {
 
   it('loads inventory references without mutating stock in remote mode', async () => {
     const inventory = { id: 'inventory-1', stock: 5 };
-    const { service } = buildService({
+    const { service, checkoutInventoryQueryRepository } = buildService({
       config: { driver: 'remote', serviceBaseUrl: 'http://inventory-service:8080' },
+      inventoryById: new Map([['inventory-1', inventory as ProductInventoryEntity]]),
     });
-    const entityManager = buildEntityManager({ inventory });
+    const entityManager = {} as EntityManager;
 
     const result = await service.allocateInventoryForOrderItems(entityManager, [{
       inventoryId: 'inventory-1',
@@ -112,15 +117,18 @@ describe('RemoteAwareCheckoutStockReservationService', () => {
     expect(inventory.stock).toBe(5);
     expect(result.inventoryById.get('inventory-1')).toBe(inventory);
     expect(result.inventoryEvents).toEqual([]);
+    expect(checkoutInventoryQueryRepository.findByIds).toHaveBeenCalledWith(
+      ['inventory-1'],
+      { entityManager },
+    );
   });
 
   it('releases a remote reservation when a quote expires', async () => {
     const { service, remoteReservationClient } = buildService({
       config: { driver: 'remote', serviceBaseUrl: 'http://inventory-service:8080' },
-    });
-    const entityManager = buildEntityManager({
       quote: { id: 'quote-1', reservationId: 'reservation-1' },
     });
+    const entityManager = {} as EntityManager;
     remoteReservationClient.releaseReservation.mockResolvedValue({
       reservationId: 'reservation-1',
       status: 'RELEASED',
@@ -145,6 +153,8 @@ describe('RemoteAwareCheckoutStockReservationService', () => {
 function buildService(input: {
   config: InventoryReservationConfig;
   localReservationService?: jest.Mocked<CheckoutStockReservationService>;
+  quote?: { id: string; reservationId?: string };
+  inventoryById?: Map<string, ProductInventoryEntity>;
 }) {
   const localReservationService =
     input.localReservationService ?? buildLocalReservationService();
@@ -155,20 +165,30 @@ function buildService(input: {
   } as unknown as jest.Mocked<RemoteInventoryReservationClient>;
   const rootEntityManager = {
     transactional: jest.fn(async (work: (em: EntityManager) => Promise<number>) =>
-      work(buildEntityManager({}) as EntityManager)),
+      work({} as EntityManager)),
   } as unknown as EntityManager;
+  const checkoutQuoteRepository = {
+    findById: jest.fn().mockResolvedValue(input.quote ?? null),
+  } as unknown as jest.Mocked<CheckoutQuoteRepository>;
+  const checkoutInventoryQueryRepository = {
+    findByIds: jest.fn().mockResolvedValue(input.inventoryById ?? new Map()),
+  } as unknown as jest.Mocked<CheckoutInventoryQueryRepository>;
 
   const service = new RemoteAwareCheckoutStockReservationService(
     input.config,
     localReservationService,
     remoteReservationClient,
     rootEntityManager,
+    checkoutQuoteRepository,
+    checkoutInventoryQueryRepository,
   );
 
   return {
     service,
     localReservationService,
     remoteReservationClient,
+    checkoutQuoteRepository,
+    checkoutInventoryQueryRepository,
   };
 }
 
@@ -181,30 +201,4 @@ function buildLocalReservationService(): jest.Mocked<CheckoutStockReservationSer
     expireReservationsForQuote: jest.fn(),
     cleanupExpiredForQuote: jest.fn(),
   } as unknown as jest.Mocked<CheckoutStockReservationService>;
-}
-
-function buildEntityManager(input: {
-  quote?: { id: string; reservationId?: string };
-  inventory?: { id: string; stock: number };
-}): EntityManager {
-  return {
-    getRepository: jest.fn((entity: { name?: string }) => {
-      switch (entity?.name) {
-        case 'CheckoutQuoteEntity':
-          return {
-            findOne: jest.fn().mockResolvedValue(input.quote ?? null),
-          };
-        case 'ProductInventoryEntity':
-          return {
-            findOne: jest.fn().mockResolvedValue(
-              (input.inventory as ProductInventoryEntity | undefined) ?? null,
-            ),
-          };
-        default:
-          return {
-            findOne: jest.fn(),
-          };
-      }
-    }),
-  } as unknown as EntityManager;
 }
