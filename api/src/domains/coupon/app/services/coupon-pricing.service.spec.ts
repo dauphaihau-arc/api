@@ -74,7 +74,7 @@ describe('CouponPricingService', () => {
       ],
     };
 
-    const priced = await service.priceCart({ cart });
+    const priced = await service.buildPricedCartSummary({ cart });
     const item = priced.shops[0]?.items[0];
 
     expect(item?.currency).toBe('USD');

@@ -169,7 +169,7 @@ export class CartController {
     if (!body.inventoryId) {
       const cart = await this.getCartUseCase.execute(actor, body.cartId);
       const priced = cart
-        ? await this.couponPricingService.priceCart({
+        ? await this.couponPricingService.buildPricedCartSummary({
           userId: actor.type === 'user' ? actor.userId : undefined,
           cart,
           shopAdjustments: body.additionInfoShopCarts,
@@ -210,7 +210,7 @@ export class CartController {
       });
     }
 
-    const priced = await this.couponPricingService.priceCart({
+    const priced = await this.couponPricingService.buildPricedCartSummary({
       userId: actor.type === 'user' ? actor.userId : undefined,
       cart,
       shopAdjustments: body.additionInfoShopCarts,

@@ -35,7 +35,7 @@ describe('CreateCheckoutQuoteService', () => {
       transactional: jest.fn(),
     } as unknown as EntityManager;
     const couponPricingService = {
-      priceCart: jest.fn().mockResolvedValue({
+      buildPricedCartSummary: jest.fn().mockResolvedValue({
         shops: [
           {
             shopId: 'shop-1',
@@ -216,7 +216,7 @@ describe('CreateCheckoutQuoteService', () => {
         work(transactionalEntityManager as unknown as EntityManager)),
     } as unknown as EntityManager;
     const couponPricingService = {
-      priceCart: jest.fn().mockResolvedValue({
+      buildPricedCartSummary: jest.fn().mockResolvedValue({
         shops: [
           {
             shopId: 'shop-1',
@@ -365,7 +365,7 @@ describe('CreateCheckoutQuoteService', () => {
         work(transactionalEntityManager as unknown as EntityManager)),
     } as unknown as EntityManager;
     const couponPricingService = {
-      priceCart: jest.fn().mockResolvedValue({
+      buildPricedCartSummary: jest.fn().mockResolvedValue({
         shops: [
           {
             shopId: 'shop-1',

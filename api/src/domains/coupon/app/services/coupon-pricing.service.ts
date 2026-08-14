@@ -23,7 +23,7 @@ import { ProductShippingProfileEntity } from '../../../product/infra/persistence
 export class CouponPricingService {
   constructor(private readonly entityManager: EntityManager) {}
 
-  async priceCart(input: {
+  async buildPricedCartSummary(input: {
     userId?: string;
     cart: CartSnapshot;
     shopAdjustments?: ShopAdjustmentInput[];
@@ -81,9 +81,11 @@ export class CouponPricingService {
       const pricingCurrency = snapshotPrice.currency;
       const baseUnitPriceMinor = snapshotPrice.originalAmountMinor ?? snapshotPrice.amountMinor;
       const baseUnitPrice = fromMinorUnits(baseUnitPriceMinor, pricingCurrency);
+
       const saleUnitPrice = snapshotPrice.originalAmountMinor != null
         ? fromMinorUnits(snapshotPrice.amountMinor, pricingCurrency)
         : undefined;
+
       const activeAutoCoupons = (autoCouponsByShop.get(item.inventory.shopId) ?? [])
         .filter((coupon) =>
           isCouponActive(coupon)

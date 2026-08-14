@@ -83,20 +83,20 @@ export class OrderCheckoutService {
       ? quote.checkoutCurrency
       : normalizeCurrency(input.currency);
 
-    const pricedCart = quote
+    const pricedCartSummary = quote
       ? undefined
-      : await this.couponPricingService.priceCart({
+      : await this.couponPricingService.buildPricedCartSummary({
         userId: actor.type === 'user' ? actor.userId : undefined,
         cart,
         shippingAddress: input.shippingAddress,
         shopAdjustments: input.shopAdjustments,
       });
 
-    const pricedShops = quote?.shops ?? pricedCart?.shops ?? [];
+    const pricedShops = quote?.shops ?? pricedCartSummary?.shops ?? [];
 
     const totalMinor = quote
       ? quote.totalMinor
-      : toMinorUnits(pricedCart?.totalPrice ?? 0, currency);
+      : toMinorUnits(pricedCartSummary?.totalPrice ?? 0, currency);
 
     if (pricedShops.length === 0) {
       throw new BadRequestException('No selected cart items to order');
@@ -154,7 +154,7 @@ export class OrderCheckoutService {
 
         const pricedShop = quote
           ? undefined
-          : shop as NonNullable<typeof pricedCart>['shops'][number];
+          : shop as NonNullable<typeof pricedCartSummary>['shops'][number];
 
         const shopEntity = await entityManager.getRepository(ShopEntity).findOne(
           { id: shop.shopId },
@@ -244,7 +244,7 @@ export class OrderCheckoutService {
 
           const pricedItem = quote
             ? undefined
-            : item as NonNullable<typeof pricedCart>['shops'][number]['items'][number];
+            : item as NonNullable<typeof pricedCartSummary>['shops'][number]['items'][number];
 
           const inventory = inventoryById.get(item.inventoryId);
 
@@ -343,7 +343,7 @@ export class OrderCheckoutService {
                   : undefined;
                 const pricedItem = quote
                   ? undefined
-                  : item as NonNullable<typeof pricedCart>['shops'][number]['items'][number];
+                  : item as NonNullable<typeof pricedCartSummary>['shops'][number]['items'][number];
 
                 return {
                   name: item.title,
@@ -357,10 +357,10 @@ export class OrderCheckoutService {
             ),
             shippingAmountMinor: quote
               ? quote.shippingMinor
-              : toMinorUnits(pricedCart?.totalShippingFee ?? 0, currency),
+              : toMinorUnits(pricedCartSummary?.totalShippingFee ?? 0, currency),
             discountAmountMinor: quote
               ? quote.discountMinor
-              : toMinorUnits(pricedCart?.totalDiscount ?? 0, currency),
+              : toMinorUnits(pricedCartSummary?.totalDiscount ?? 0, currency),
             shippingAddress: input.shippingAddress,
           },
         );

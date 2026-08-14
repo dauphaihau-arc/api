@@ -31,7 +31,7 @@ describe('OrderCheckoutService', () => {
     items: [],
   };
 
-  const pricedCart: PricedCartSummary = {
+  const pricedCartSummary: PricedCartSummary = {
     cart,
     currency: 'USD',
     shops: [
@@ -159,7 +159,7 @@ describe('OrderCheckoutService', () => {
     } as unknown as EntityManager;
 
     const couponPricingService: jest.Mocked<CouponPricingService> = {
-      priceCart: jest.fn().mockResolvedValue(pricedCart),
+      buildPricedCartSummary: jest.fn().mockResolvedValue(pricedCartSummary),
     } as unknown as jest.Mocked<CouponPricingService>;
 
     const orderCheckoutOutboxService: jest.Mocked<OrderCheckoutOutboxService> = {

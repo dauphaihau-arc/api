@@ -16,7 +16,7 @@ describe('CartController', () => {
       },
     };
     const couponPricingService = {
-      priceCart: jest.fn(),
+      buildPricedCartSummary: jest.fn(),
     } as unknown as jest.Mocked<CouponPricingService>;
     const guestCartSessionService = {
       extractSessionId: jest.fn(),

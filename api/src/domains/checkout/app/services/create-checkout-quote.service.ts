@@ -60,14 +60,14 @@ export class CreateCheckoutQuoteService {
       input.presentmentCurrency ?? storefrontMarketContext?.currency,
     );
 
-    const pricedCart = await this.couponPricingService.priceCart({
+    const pricedCartSummary = await this.couponPricingService.buildPricedCartSummary({
       userId: input.actor.type === 'user' ? input.actor.userId : undefined,
       cart: input.cart,
       shippingAddress: input.shippingAddress,
       shopAdjustments: input.shopAdjustments,
     });
 
-    const allItems = pricedCart.shops.flatMap((shop) => shop.items);
+    const allItems = pricedCartSummary.shops.flatMap((shop) => shop.items);
 
     if (allItems.length === 0) {
       throw new CheckoutQuoteNoItemsError();
@@ -76,10 +76,10 @@ export class CreateCheckoutQuoteService {
     const checkoutCurrency = resolveCheckoutCurrency(allItems);
 
     const expiresAt = new Date(Date.now() + QUOTE_TTL_MS);
-    const subtotalMinor = toMinorUnits(pricedCart.subtotalPrice, checkoutCurrency);
-    const shippingMinor = toMinorUnits(pricedCart.totalShippingFee, checkoutCurrency);
-    const discountMinor = toMinorUnits(pricedCart.totalDiscount, checkoutCurrency);
-    const totalMinor = toMinorUnits(pricedCart.totalPrice, checkoutCurrency);
+    const subtotalMinor = toMinorUnits(pricedCartSummary.subtotalPrice, checkoutCurrency);
+    const shippingMinor = toMinorUnits(pricedCartSummary.totalShippingFee, checkoutCurrency);
+    const discountMinor = toMinorUnits(pricedCartSummary.totalDiscount, checkoutCurrency);
+    const totalMinor = toMinorUnits(pricedCartSummary.totalPrice, checkoutCurrency);
 
     const quoteFingerprint = buildQuoteFingerprint({
       presentmentCurrency,
@@ -262,7 +262,7 @@ export class CreateCheckoutQuoteService {
         };
       });
 
-      const shops: CheckoutQuoteShopSummary[] = pricedCart.shops.map((shop) => ({
+      const shops: CheckoutQuoteShopSummary[] = pricedCartSummary.shops.map((shop) => ({
         shopId: shop.shopId,
         shopName: shop.shopName,
         shopSlug: shop.items[0]?.shopSlug ?? '',
