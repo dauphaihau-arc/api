@@ -19,9 +19,15 @@ For normal feature work and bug fixing:
 just infra-up
 just api-up-observability
 just api-worker-up-observability
+just inventory-service-up
 ```
 
 What this gives you:
+
+| Runtime location | Processes |
+| --- | --- |
+| Docker | Postgres, Redis, MinIO, RabbitMQ, Prometheus, Grafana, ... |
+| Host | NestJS API, NestJS worker, Go `inventory-service`, k6 |
 
 - API and worker run on the host with watch mode.
 - Postgres, Redis, MinIO, OpenTelemetry Collector, Prometheus, Loki, Tempo, Grafana, and related infra run in Docker.
