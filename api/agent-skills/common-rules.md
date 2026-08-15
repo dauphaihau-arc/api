@@ -63,6 +63,12 @@ Preferred order:
 
 - Use bounded timeouts for external calls.
 
+## Request Path Work
+
+- Keep synchronous request paths limited to work required for the immediate response or correctness gate.
+- Move non-critical side effects to outbox, jobs, events, or workers when failure can be retried or reconciled.
+- Do not detach required correctness work with floating promises; async work must have ownership, retries, and observability.
+
 ## Database
 
 - Never modify an already applied migration.
