@@ -286,7 +286,7 @@ implements StorefrontProductQueryRepository {
           },
           variantCount: row.variant_count,
           ...(row.has_free_shipping ? { hasFreeShipping: true } : {}),
-          createdAt: row.created_at,
+          createdAt: toDate(row.created_at, 'product created_at'),
         };
       });
 
@@ -883,7 +883,7 @@ interface ProductCardRow {
   title: string;
   slug: string;
   variant_type?: PublicProductListItem['variantType'];
-  created_at: Date;
+  created_at: Date | string;
   shop_id: string;
   shop_public_id?: string;
   shop_name: string;
@@ -898,13 +898,13 @@ interface InventoryPricingRow {
   inventory_id: string;
   product_id: string;
   stock: number;
-  inventory_updated_at: Date;
+  inventory_updated_at: Date | string;
   price_id?: string;
   market_code?: string;
   currency?: string;
   amount_minor?: number;
   original_amount_minor?: number;
-  active_to?: Date;
+  active_to?: Date | string;
 }
 
 function createSyntheticInventory(row: InventoryPricingRow): ProductInventoryEntity {
@@ -913,7 +913,7 @@ function createSyntheticInventory(row: InventoryPricingRow): ProductInventoryEnt
   return {
     id: row.inventory_id,
     stock: row.stock,
-    updatedAt: row.inventory_updated_at,
+    updatedAt: toDate(row.inventory_updated_at, 'inventory_updated_at'),
     prices: {
       getItems: () => prices,
     },
@@ -927,8 +927,22 @@ function createSyntheticPrice(row: InventoryPricingRow): VariantPriceEntity {
     currency: row.currency,
     amountMinor: row.amount_minor,
     originalAmountMinor: row.original_amount_minor,
-    activeTo: row.active_to,
+    activeTo: row.active_to ? toDate(row.active_to, 'price active_to') : undefined,
   } as VariantPriceEntity;
+}
+
+function toDate(value: Date | string, fieldName: string): Date {
+  if (value instanceof Date) {
+    return value;
+  }
+
+  const parsed = new Date(value);
+
+  if (Number.isNaN(parsed.getTime())) {
+    throw new Error(`Invalid ${fieldName} timestamp`);
+  }
+
+  return parsed;
 }
 
 function summarizePricing(
