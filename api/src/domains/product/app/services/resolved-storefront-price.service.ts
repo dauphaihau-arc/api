@@ -1,6 +1,5 @@
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Inject, Injectable } from '@nestjs/common';
-import type { Cache } from 'cache-manager';
+import { OptionalCacheService } from '~/integrations/cache/optional-cache.service';
 import {
   STOREFRONT_PRICING_CONFIG,
   type StorefrontPricingConfig,
@@ -39,8 +38,7 @@ export class ResolvedStorefrontPriceService {
   constructor(
     @Inject(STOREFRONT_PRICING_CONFIG)
     private readonly storefrontPricingConfig: StorefrontPricingConfig,
-    @Inject(CACHE_MANAGER)
-    private readonly cacheManager: Cache,
+    private readonly optionalCacheService: OptionalCacheService,
     private readonly storefrontMarketContextService: StorefrontMarketContextService,
     private readonly fxRateService: FxRateService,
     private readonly roundingPolicyService: RoundingPolicyService,
@@ -106,7 +104,10 @@ export class ResolvedStorefrontPriceService {
       : undefined;
 
     if (cacheKey) {
-      const cached = await this.cacheManager.get<ResolvedStorefrontPrice>(cacheKey);
+      const cached = await this.optionalCacheService.get<ResolvedStorefrontPrice>(
+        'storefront.rare-price',
+        cacheKey,
+      );
 
       if (cached) {
         return cached;
@@ -202,7 +203,8 @@ export class ResolvedStorefrontPriceService {
     }
 
     if (cacheKey && resolvedPrice) {
-      await this.cacheManager.set(
+      await this.optionalCacheService.set(
+        'storefront.rare-price',
         cacheKey,
         resolvedPrice,
         this.storefrontPricingConfig.rarePriceCacheTtlMs,

@@ -1,8 +1,8 @@
 import { RequestMethod } from '@nestjs/common';
 import { METHOD_METADATA, PATH_METADATA } from '@nestjs/common/constants';
 import { GUARDS_METADATA } from '@nestjs/common/constants';
-import type { Cache } from 'cache-manager';
 import { OptionalJwtAuthGuard } from '~/domains/auth/api/guard/optional-jwt-auth.guard';
+import type { OptionalCacheService } from '~/integrations/cache/optional-cache.service';
 import type { PublicProductOrderHistoryService } from '../../../app/services/public-product-order-history.service';
 import type { PublicProductViewHistoryService } from '../../../app/services/public-product-view-history.service';
 import type { GetPublicProductRecommendationSectionsUseCase } from '../../../app/use-cases/get-public-product-recommendation-sections/get-public-product-recommendation-sections.use-case';
@@ -27,7 +27,7 @@ describe('ProductRecommendationController', () => {
   const productActivitySessionService: Pick<jest.Mocked<ProductActivitySessionService>, 'extractSessionId'> = {
     extractSessionId: jest.fn(),
   };
-  const cacheManager: Pick<jest.Mocked<Cache>, 'get' | 'set'> = {
+  const optionalCacheService: Pick<jest.Mocked<OptionalCacheService>, 'get' | 'set'> = {
     get: jest.fn(),
     set: jest.fn(),
   };
@@ -45,13 +45,13 @@ describe('ProductRecommendationController', () => {
     publicProductOrderHistoryService as never,
     publicProductViewHistoryService as never,
     productActivitySessionService as never,
-    cacheManager as never,
+    optionalCacheService as never,
   );
 
   beforeEach(() => {
     jest.clearAllMocks();
     guestRequest.get.mockReturnValue(undefined);
-    cacheManager.get.mockResolvedValue(undefined);
+    optionalCacheService.get.mockResolvedValue(undefined);
   });
 
   it('registers GET by-slug/:shop_slug/:product_slug/recommendations on the controller method', () => {
@@ -380,11 +380,11 @@ describe('ProductRecommendationController', () => {
       limit: 8,
     });
     expect(response.setHeader).toHaveBeenCalledWith('Cache-Control', 'public, max-age=60');
-    expect(cacheManager.set).toHaveBeenCalledTimes(1);
+    expect(optionalCacheService.set).toHaveBeenCalledTimes(1);
   });
 
   it('serves cached best-sellers responses for anonymous requests', async () => {
-    cacheManager.get.mockResolvedValue([
+    optionalCacheService.get.mockResolvedValue([
       {
         id: 'cached-product',
         shop: {

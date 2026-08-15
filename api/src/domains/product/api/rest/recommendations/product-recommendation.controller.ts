@@ -1,13 +1,12 @@
 import {
-  Controller, Get, Header, Inject, Param, Query, Req, Res, UseGuards,
+  Controller, Get, Header, Param, Query, Req, Res, UseGuards,
 } from '@nestjs/common';
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import {
   ApiOkResponse, ApiOperation, ApiParam, ApiTags, 
 } from '@nestjs/swagger';
 import { OptionalJwtAuthGuard } from '~/domains/auth/api/guard/optional-jwt-auth.guard';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
-import type { Cache } from 'cache-manager';
+import { OptionalCacheService } from '~/integrations/cache/optional-cache.service';
 import type { Request, Response } from 'express';
 import { PublicProductOrderHistoryService } from '../../../app/services/public-product-order-history.service';
 import { PublicProductViewHistoryService } from '../../../app/services/public-product-view-history.service';
@@ -44,7 +43,7 @@ export class ProductRecommendationController {
     private readonly publicProductOrderHistoryService: PublicProductOrderHistoryService,
     private readonly publicProductViewHistoryService: PublicProductViewHistoryService,
     private readonly productActivitySessionService: ProductActivitySessionService,
-    @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
+    private readonly optionalCacheService: OptionalCacheService,
   ) {}
 
   @Get('recently-viewed')
@@ -80,6 +79,7 @@ export class ProductRecommendationController {
     @Query() query: RecentPublicProductsQueryDto,
   ): Promise<PublicProductRecommendationsResponse> {
     setStorefrontProductCacheControl(response, request);
+
     const result = await this.getCachedPublicResponse(
       request,
       buildPublicCacheKey(request, 'products:trending', [query.limit]),
@@ -104,6 +104,7 @@ export class ProductRecommendationController {
     @Query() query: RecentPublicProductsQueryDto,
   ): Promise<PublicProductRecommendationsResponse> {
     setStorefrontProductCacheControl(response, request);
+
     const result = await this.getCachedPublicResponse(
       request,
       buildPublicCacheKey(request, 'products:best-sellers', [query.limit]),
@@ -132,6 +133,7 @@ export class ProductRecommendationController {
     @Query() query: RecommendPublicProductsQueryDto,
   ): Promise<PublicProductRecommendationsResponse> {
     setStorefrontProductCacheControl(response, request);
+
     const result = await this.getCachedPublicResponse(
       request,
       buildPublicCacheKey(request, 'products:recommendations', [
@@ -192,14 +194,24 @@ export class ProductRecommendationController {
       return loader();
     }
 
-    const cached = await this.cacheManager.get<T>(cacheKey);
+    const cached = await this.optionalCacheService.get<T>(
+      'storefront.public-products',
+      cacheKey,
+    );
 
     if (cached !== undefined && cached !== null) {
       return cached;
     }
 
     const result = await loader();
-    await this.cacheManager.set(cacheKey, result, PUBLIC_RESPONSE_CACHE_TTL_MS);
+
+    await this.optionalCacheService.set(
+      'storefront.public-products',
+      cacheKey,
+      result,
+      PUBLIC_RESPONSE_CACHE_TTL_MS,
+    );
+
     return result;
   }
 }

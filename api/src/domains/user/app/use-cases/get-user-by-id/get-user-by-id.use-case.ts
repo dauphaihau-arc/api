@@ -1,6 +1,5 @@
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { Inject, Injectable } from '@nestjs/common';
-import type { Cache } from 'cache-manager';
+import { Injectable } from '@nestjs/common';
+import { OptionalCacheService } from '~/integrations/cache/optional-cache.service';
 import { UserRepository } from '../../ports/user.repository';
 import type { UserSummary } from '../../user.types';
 import { buildUserByIdCacheKey } from '../../user-cache.keys';
@@ -9,12 +8,15 @@ import { buildUserByIdCacheKey } from '../../user-cache.keys';
 export class GetUserByIdUseCase {
   constructor(
     private readonly userRepository: UserRepository,
-    @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
+    private readonly optionalCacheService: OptionalCacheService,
   ) {}
 
   async execute(id: string): Promise<UserSummary | null> {
     const cacheKey = buildUserByIdCacheKey(id);
-    const cachedUser = await this.cacheManager.get<UserSummary>(cacheKey);
+    const cachedUser = await this.optionalCacheService.get<UserSummary>(
+      'user.by-id',
+      cacheKey,
+    );
 
     if (cachedUser) {
       return cachedUser;
@@ -23,7 +25,7 @@ export class GetUserByIdUseCase {
     const user = await this.userRepository.findById(id);
 
     if (user) {
-      await this.cacheManager.set(cacheKey, user);
+      await this.optionalCacheService.set('user.by-id', cacheKey, user);
     }
 
     return user;
