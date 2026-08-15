@@ -5,6 +5,7 @@ import {
   buildCacheConfig,
   buildCacheModuleOptions,
 } from '~/platform/config/cache.config';
+import { OptionalCacheService } from './optional-cache.service';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import {
         buildCacheModuleOptions(buildCacheConfig(configService)),
     }),
   ],
-  exports: [NestCacheModule],
+  providers: [OptionalCacheService],
+  exports: [NestCacheModule, OptionalCacheService],
 })
 export class CacheModule {}
