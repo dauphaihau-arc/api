@@ -19,6 +19,7 @@ implements PublicProductOrderHistoryRepository {
   }): Promise<string[]> {
     const windowDays = input.windowDays ?? 180;
     const rankingRepository = this.entityManager.fork().getRepository(ProductBestSellerRankingEntity);
+
     let rows = await rankingRepository.getEntityManager().getConnection().execute<Array<{
       product_id: string;
     }>>(
@@ -37,6 +38,7 @@ implements PublicProductOrderHistoryRepository {
         windowDays,
         limit: buildRefreshLimit(input.limit),
       });
+
       rows = await rankingRepository.getEntityManager().getConnection().execute<Array<{
         product_id: string;
       }>>(

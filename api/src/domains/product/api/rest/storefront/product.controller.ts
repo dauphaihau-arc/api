@@ -93,6 +93,7 @@ export class ProductController {
     @Query() rawQuery: Record<string, unknown>,
   ): Promise<PublicProductListResponse> {
     setStorefrontProductCacheControl(response, request);
+
     const query = await this.listPublicProductsQueryPipe.transform(rawQuery, {
       type: 'query',
       metatype: ListPublicProductsQueryDto,
@@ -116,6 +117,7 @@ export class ProductController {
     @Query() rawQuery: Record<string, unknown>,
   ): Promise<PublicProductFacetResponse> {
     setStorefrontProductCacheControl(response, request);
+
     const query = await this.listPublicProductsQueryPipe.transform(rawQuery, {
       type: 'query',
       metatype: ListPublicProductsQueryDto,
@@ -144,6 +146,7 @@ export class ProductController {
     @Param('product_slug') productSlug: string,
   ): Promise<PublicProductDetailResponse> {
     setStorefrontProductCacheControl(response, request);
+
     const product = await this.getPublicProductBySlugsUseCase.execute(
       shopSlug,
       productSlug,
