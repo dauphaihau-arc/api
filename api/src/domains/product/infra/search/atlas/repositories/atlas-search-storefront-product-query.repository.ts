@@ -415,30 +415,14 @@ implements StorefrontProductQueryRepository {
   ): Promise<PublicProductListResult> {
     const filter = this.buildDirectBrowseFilter(input);
     const countStartedAt = process.hrtime.bigint();
-    const total = await searchCollection.countDocuments(filter);
-    const countDurationMs = this.durationMsSince(countStartedAt);
 
-    this.logger.info(
-      this.buildListPublicLogPayload(
-        'catalog.storefront.list_public.direct_browse_count',
-        {
-          branch: 'direct_browse',
-          countDurationMs,
-          total,
-          ...requestSummary,
-        },
-      ),
-      `Direct browse count finished in ${Math.round(countDurationMs)}ms`,
-    );
+    const countPromise = searchCollection.countDocuments(filter)
+      .then((total) => ({
+        total,
+        countDurationMs: this.durationMsSince(countStartedAt),
+      }));
 
-    if (total === 0) {
-      return {
-        items: [],
-        meta: buildPaginationMeta(input.page, input.limit, 0),
-      };
-    }
-
-    const documents = await searchCollection
+    const documentsPromise = searchCollection
       .find(filter, {
         projection: {
           _id: 1,
@@ -463,6 +447,34 @@ implements StorefrontProductQueryRepository {
       .skip((input.page - 1) * input.limit)
       .limit(input.limit)
       .toArray();
+
+    const [
+      {
+        total,
+        countDurationMs,
+      },
+      documents,
+    ] = await Promise.all([countPromise, documentsPromise]);
+
+    this.logger.info(
+      this.buildListPublicLogPayload(
+        'catalog.storefront.list_public.direct_browse_count',
+        {
+          branch: 'direct_browse',
+          countDurationMs,
+          total,
+          ...requestSummary,
+        },
+      ),
+      `Direct browse count finished in ${Math.round(countDurationMs)}ms`,
+    );
+
+    if (total === 0) {
+      return {
+        items: [],
+        meta: buildPaginationMeta(input.page, input.limit, 0),
+      };
+    }
 
     return {
       items: documents.map((document) => toPublicProductListItemFromSearchDocument(document, pricingSelection)),
@@ -635,6 +647,7 @@ implements StorefrontProductQueryRepository {
     const priceFieldPath = pricingSelection
       ? getIndexedPricingFieldPath(pricingSelection, 'minAmountMinor')
       : 'price.minAmountMinor';
+
     const filter: Array<Record<string, unknown>> = [
       { equals: { path: 'state', value: ProductState.ACTIVE } },
       { equals: { path: 'flags.hasImages', value: true } },

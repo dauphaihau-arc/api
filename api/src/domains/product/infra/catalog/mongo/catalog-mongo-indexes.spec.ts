@@ -8,6 +8,28 @@ import {
 } from './catalog-mongo-indexes';
 
 describe('syncCatalogMongoIndexes', () => {
+  it('keeps direct public browse indexes aligned with storefront sort patterns', () => {
+    expect(CATALOG_SEARCH_COLLECTION_INDEXES).toEqual(
+      expect.arrayContaining([
+        {
+          key: {
+            state: 1,
+            'flags.hasImages': 1,
+            'ranking.createdAt': -1,
+          },
+        },
+        {
+          key: {
+            state: 1,
+            'flags.hasImages': 1,
+            categoryId: 1,
+            'ranking.createdAt': -1,
+          },
+        },
+      ]),
+    );
+  });
+
   it('creates indexes for every catalog MongoDB collection', async () => {
     const createIndexesByCollection = new Map<string, jest.Mock>();
     const getCollection = jest.fn(async (collectionName: string) => {

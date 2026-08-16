@@ -168,6 +168,12 @@ refresh-catalog-products environment='':
 refresh-catalog-products-infisical project_id *env_name:
   just _api-with-infisical "{{ project_id }}" "{{ env_name }}" "pnpm catalog:refresh-products"
 
+sync-catalog-indexes environment='':
+  just _api-with-env "pnpm catalog:indexes:sync" "{{ environment }}"
+
+sync-catalog-indexes-infisical project_id *env_name:
+  just _api-with-infisical "{{ project_id }}" "{{ env_name }}" "pnpm catalog:indexes:sync"
+
 db-clear environment='':
   just _api-with-env "pnpm db:clear" "{{ environment }}"
 

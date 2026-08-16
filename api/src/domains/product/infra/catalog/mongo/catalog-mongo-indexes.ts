@@ -13,7 +13,10 @@ type MongoIndexCollectionLike = {
 export const CATALOG_PRODUCT_COLLECTION_INDEXES = [
   { key: { productId: 1 }, unique: true },
   { key: { state: 1, shopSlug: 1, slug: 1 } },
+
+  // Category product listing by creation date.
   { key: { state: 1, categoryId: 1, 'sort.createdAt': -1 } },
+
   { key: { state: 1, updatedAt: -1 } },
 ] as const satisfies readonly CatalogMongoIndexDefinition[];
 
@@ -38,6 +41,8 @@ export const CATALOG_SEARCH_COLLECTION_INDEXES = [
       'flags.hasImages': 1,
     },
   },
+
+  // Category browse ranking.
   {
     key: {
       state: 1,
@@ -47,6 +52,18 @@ export const CATALOG_SEARCH_COLLECTION_INDEXES = [
       'ranking.createdAt': -1,
     },
   },
+
+  // Category newest browse.
+  {
+    key: {
+      state: 1,
+      'flags.hasImages': 1,
+      categoryId: 1,
+      'ranking.createdAt': -1,
+    },
+  },
+
+  // Filtered browse ranking for maker/digital facets.
   {
     key: {
       state: 1,
@@ -57,11 +74,22 @@ export const CATALOG_SEARCH_COLLECTION_INDEXES = [
       'ranking.createdAt': -1,
     },
   },
+
+  // General browse ranking.
   {
     key: {
       state: 1,
       'flags.hasImages': 1,
       'ranking.popularityScore': -1,
+      'ranking.createdAt': -1,
+    },
+  },
+
+  // General newest browse.
+  {
+    key: {
+      state: 1,
+      'flags.hasImages': 1,
       'ranking.createdAt': -1,
     },
   },
