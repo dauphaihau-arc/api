@@ -8,7 +8,7 @@ services:
     buildCommand: pnpm install --prod=false && pnpm build
     startCommand: pnpm exec infisical run --projectId="$INFISICAL_PROJECT_ID" --env="$INFISICAL_ENV" --token="$INFISICAL_TOKEN" -- sh -lc 'pnpm db:migration:up && exec pnpm start:prod'
     healthCheckPath: /health
-    autoDeployTrigger: commit
+    autoDeployTrigger: checksPass
     envVars:
       - key: INFISICAL_PROJECT_ID
         sync: false
