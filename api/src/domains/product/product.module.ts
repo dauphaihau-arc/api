@@ -32,6 +32,7 @@ import { GetPublicProductBySlugsUseCase } from './app/use-cases/get-public-produ
 import { GetPublicProductRecommendationSectionsUseCase } from './app/use-cases/get-public-product-recommendation-sections/get-public-product-recommendation-sections.use-case';
 import { IssueProductImageUploadUrlUseCase } from './app/use-cases/issue-product-image-upload-url/issue-product-image-upload-url.use-case';
 import { IssueReviewImageUploadUrlUseCase } from './app/use-cases/issue-review-image-upload-url/issue-review-image-upload-url.use-case';
+import { ListPublicProductFacetsUseCase } from './app/use-cases/list-public-product-facets/list-public-product-facets.use-case';
 import { ListPublicProductReviewImagesUseCase } from './app/use-cases/list-public-product-review-images/list-public-product-review-images.use-case';
 import { ListPublicProductReviewsUseCase } from './app/use-cases/list-public-product-reviews/list-public-product-reviews.use-case';
 import { ListPublicProductsUseCase } from './app/use-cases/list-public-products/list-public-products.use-case';
@@ -317,6 +318,7 @@ import { STOREFRONT_PRICING_CONFIG, buildStorefrontPricingConfig } from '~/platf
     GenerateProductDescriptionUseCase,
     IssueProductImageUploadUrlUseCase,
     IssueReviewImageUploadUrlUseCase,
+    ListPublicProductFacetsUseCase,
     ListPublicProductReviewImagesUseCase,
     ListPublicProductReviewsUseCase,
     ListPublicProductsUseCase,
@@ -373,6 +375,7 @@ import { STOREFRONT_PRICING_CONFIG, buildStorefrontPricingConfig } from '~/platf
     GetPublicProductRecommendationSectionsUseCase,
     IssueProductImageUploadUrlUseCase,
     IssueReviewImageUploadUrlUseCase,
+    ListPublicProductFacetsUseCase,
     ListPublicProductReviewImagesUseCase,
     ListPublicProductReviewsUseCase,
     ListPublicProductsUseCase,

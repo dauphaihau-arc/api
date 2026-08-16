@@ -3,6 +3,7 @@ import { METHOD_METADATA, PATH_METADATA } from '@nestjs/common/constants';
 import { GUARDS_METADATA } from '@nestjs/common/constants';
 import { OptionalJwtAuthGuard } from '~/domains/auth/api/guard/optional-jwt-auth.guard';
 import type { GetPublicProductBySlugsUseCase } from '../../../app/use-cases/get-public-product-by-slugs/get-public-product-by-slugs.use-case';
+import type { ListPublicProductFacetsUseCase } from '../../../app/use-cases/list-public-product-facets/list-public-product-facets.use-case';
 import type { ListPublicProductReviewImagesUseCase } from '../../../app/use-cases/list-public-product-review-images/list-public-product-review-images.use-case';
 import type { ListPublicProductReviewsUseCase } from '../../../app/use-cases/list-public-product-reviews/list-public-product-reviews.use-case';
 import type { ListPublicProductsUseCase } from '../../../app/use-cases/list-public-products/list-public-products.use-case';
@@ -11,31 +12,34 @@ import { ProductVariantType } from '../../../domain/enums/product-variant-type.e
 import { ProductWhoMade } from '../../../domain/enums/product-who-made.enum';
 import { ProductController } from './product.controller';
 
-describe('ProductController', () => {
-  const listPublicProductsUseCase: Pick<jest.Mocked<ListPublicProductsUseCase>, 'execute' | 'executeFacets'> = {
-    execute: jest.fn(),
-    executeFacets: jest.fn(),
-  };
-  const getPublicProductBySlugsUseCase: Pick<jest.Mocked<GetPublicProductBySlugsUseCase>, 'execute'> = {
-    execute: jest.fn(),
-  };
-  const suggestPublicProductsUseCase: Pick<jest.Mocked<SuggestPublicProductsUseCase>, 'execute'> = {
-    execute: jest.fn(),
-  };
-  const listPublicProductReviewsUseCase: Pick<jest.Mocked<ListPublicProductReviewsUseCase>, 'execute'> = {
-    execute: jest.fn(),
-  };
-  const listPublicProductReviewImagesUseCase: Pick<jest.Mocked<ListPublicProductReviewImagesUseCase>, 'execute'> = {
-    execute: jest.fn(),
-  };
-  const guestRequest = {} as any;
-  const authenticatedRequest = { user: { userId: 'user-1' } } as any;
-  const response = {
-    setHeader: jest.fn(),
-  } as any;
+const listPublicProductsUseCase: Pick<jest.Mocked<ListPublicProductsUseCase>, 'execute'> = {
+  execute: jest.fn(),
+};
+const listPublicProductFacetsUseCase: Pick<jest.Mocked<ListPublicProductFacetsUseCase>, 'execute'> = {
+  execute: jest.fn(),
+};
+const getPublicProductBySlugsUseCase: Pick<jest.Mocked<GetPublicProductBySlugsUseCase>, 'execute'> = {
+  execute: jest.fn(),
+};
+const suggestPublicProductsUseCase: Pick<jest.Mocked<SuggestPublicProductsUseCase>, 'execute'> = {
+  execute: jest.fn(),
+};
+const listPublicProductReviewsUseCase: Pick<jest.Mocked<ListPublicProductReviewsUseCase>, 'execute'> = {
+  execute: jest.fn(),
+};
+const listPublicProductReviewImagesUseCase: Pick<jest.Mocked<ListPublicProductReviewImagesUseCase>, 'execute'> = {
+  execute: jest.fn(),
+};
+const guestRequest = {} as any;
+const authenticatedRequest = { user: { userId: 'user-1' } } as any;
+const response = {
+  setHeader: jest.fn(),
+} as any;
 
+describe('ProductController', () => {
   const controller = new ProductController(
     listPublicProductsUseCase as never,
+    listPublicProductFacetsUseCase as never,
     getPublicProductBySlugsUseCase as never,
     suggestPublicProductsUseCase as never,
     listPublicProductReviewsUseCase as never,
@@ -72,7 +76,7 @@ describe('ProductController', () => {
   });
 
   it('returns public product facets', async () => {
-    listPublicProductsUseCase.executeFacets.mockResolvedValue([
+    listPublicProductFacetsUseCase.execute.mockResolvedValue([
       {
         facetKey: 'material',
         attributeName: 'Material',
@@ -104,7 +108,7 @@ describe('ProductController', () => {
         },
       ],
     });
-    expect(listPublicProductsUseCase.executeFacets).toHaveBeenCalledWith({
+    expect(listPublicProductFacetsUseCase.execute).toHaveBeenCalledWith({
       page: 1,
       limit: 12,
       categoryId: '19e56f7f-2dbd-4e4b-95fc-99f82f6d5b0e',

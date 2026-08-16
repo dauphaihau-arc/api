@@ -1,5 +1,6 @@
 import type { CategoryRepository } from '~/domains/category/app/ports/category.repository';
 import type { StorefrontProductQueryRepository } from '../../ports/storefront-product-query.repository';
+import { ListPublicProductFacetsUseCase } from '../list-public-product-facets/list-public-product-facets.use-case';
 import { ListPublicProductsUseCase } from './list-public-products.use-case';
 
 type ProductRepositoryMock = Pick<
@@ -33,6 +34,10 @@ const createUseCaseHarness = () => {
       productRepository as never,
       categoryRepository as never,
     ),
+    facetsUseCase: new ListPublicProductFacetsUseCase(
+      productRepository as never,
+      categoryRepository as never,
+    ),
   };
 };
 
@@ -40,7 +45,10 @@ const registerMissingCategorySpec = ({
   categoryRepository,
   productRepository,
   useCase,
-}: ReturnType<typeof createUseCaseHarness>) => {
+}: Pick<
+  ReturnType<typeof createUseCaseHarness>,
+  'categoryRepository' | 'productRepository' | 'useCase'
+>) => {
   it('returns an empty result when a requested category does not exist', async () => {
     categoryRepository.findById.mockResolvedValue(null);
 
@@ -64,7 +72,12 @@ const registerMissingCategorySpec = ({
 };
 
 describe('ListPublicProductsUseCase', function () {
-  const { productRepository, categoryRepository, useCase } = createUseCaseHarness();
+  const {
+    productRepository,
+    categoryRepository,
+    useCase,
+    facetsUseCase,
+  } = createUseCaseHarness();
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -80,7 +93,7 @@ describe('ListPublicProductsUseCase', function () {
     categoryRepository.findAllByParentId.mockResolvedValue([]);
     productRepository.listPublicFacets.mockResolvedValue([]);
 
-    await useCase.executeFacets({
+    await facetsUseCase.execute({
       page: 1,
       limit: 12,
       categoryId: 'category-1',
@@ -122,7 +135,7 @@ describe('ListPublicProductsUseCase', function () {
     categoryRepository.findAllByParentId.mockResolvedValue([]);
     productRepository.listPublicFacets.mockResolvedValue([]);
 
-    await useCase.executeFacets({
+    await facetsUseCase.execute({
       page: 1,
       limit: 12,
       categoryId: 'category-1',
@@ -179,7 +192,7 @@ describe('ListPublicProductsUseCase', function () {
       },
     ]);
 
-    await expect(useCase.executeFacets({
+    await expect(facetsUseCase.execute({
       page: 1,
       limit: 12,
       categoryId: 'category-1',
@@ -290,7 +303,7 @@ describe('ListPublicProductsUseCase', function () {
       },
     ]);
 
-    await expect(useCase.executeFacets({
+    await expect(facetsUseCase.execute({
       page: 1,
       limit: 12,
       categoryId: 'leaf-category',
@@ -369,7 +382,7 @@ describe('ListPublicProductsUseCase', function () {
       },
     ]);
 
-    await expect(useCase.executeFacets({
+    await expect(facetsUseCase.execute({
       page: 1,
       limit: 12,
       categoryId: 'shoes-category',
@@ -477,7 +490,7 @@ describe('ListPublicProductsUseCase', function () {
       },
     ]);
 
-    await expect(useCase.executeFacets({
+    await expect(facetsUseCase.execute({
       page: 1,
       limit: 12,
       categoryId: 'shoes-category',
@@ -541,7 +554,7 @@ describe('ListPublicProductsUseCase', function () {
       },
     ]);
 
-    await expect(useCase.executeFacets({
+    await expect(facetsUseCase.execute({
       page: 1,
       limit: 12,
       categoryId: 'category-1',
