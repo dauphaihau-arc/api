@@ -5,7 +5,6 @@ import {
   type StorefrontPricingConfig,
 } from '~/platform/config/storefront-pricing.config';
 import { ProductRecommendationQueryRepository } from '../../../../app/ports/product-recommendation-query.repository';
-import { CatalogProductPriceDocumentRepository } from '../../../../app/ports/catalog-product-price-document.repository';
 import {
   getIndexedPriceSummary,
   isIndexedPricingSelection,
@@ -21,11 +20,8 @@ import type {
 import { compareRecommendationCandidates } from '../../../../app/services/public-product-recommendation-scoring';
 import { ProductState } from '../../../../domain/enums/product-state.enum';
 import { CatalogMongoAccess } from '../../../catalog/mongo/access/catalog-mongo.access';
-import type { CatalogProductDocument } from '../../../catalog/mongo/documents/catalog-product-document.mapper';
-import type { CatalogProductPriceDocument } from '../../../catalog/mongo/documents/catalog-product-price-document.mapper';
 import type { CatalogSearchDocument } from '../../../catalog/mongo/documents/catalog-search-document.mapper';
 import { PRODUCT_STOCK_NOTICE_THRESHOLD } from '../../../../app/product-stock.constants';
-import { MikroOrmProductRecommendationQueryRepository } from '../../../persistence/mikro-orm/repositories/mikro-orm-product-recommendation-query.repository';
 import { CATALOG_SEARCH_COLLECTION_INDEXES } from '../../../catalog/mongo/repositories/mongo-catalog-search-document.repository';
 
 type MongoAggregateCursorLike<TDocument> = {
@@ -50,10 +46,8 @@ implements ProductRecommendationQueryRepository {
     private readonly catalogConfig: CatalogConfig,
     @Inject(STOREFRONT_PRICING_CONFIG)
     private readonly storefrontPricingConfig: StorefrontPricingConfig,
-    private readonly catalogProductPriceDocumentRepository: CatalogProductPriceDocumentRepository,
     private readonly catalogMongoAccess: CatalogMongoAccess,
     private readonly storefrontMarketContextService: StorefrontMarketContextService,
-    private readonly mikroOrmProductRecommendationQueryRepository: MikroOrmProductRecommendationQueryRepository,
   ) {}
 
   async listPublicByShopSlug(
@@ -62,14 +56,15 @@ implements ProductRecommendationQueryRepository {
     const pricingSelection = resolveIndexedPricingSelection(
       await this.storefrontMarketContextService.resolveCurrentRequest(),
     );
-    if (!isIndexedPricingSelection(this.storefrontPricingConfig, pricingSelection)) {
-      return this.mikroOrmProductRecommendationQueryRepository.listPublicByShopSlug(input);
-    }
-    const collection = await this.getProductsCollection();
-    const documents = await collection.aggregate<CatalogProductDocument>([
+
+    const indexedPricingSelection = this.toIndexedPricingSelection(pricingSelection);
+    const collection = await this.getSearchCollection();
+
+    const documents = await collection.aggregate<CatalogSearchDocument>([
       {
         $match: {
           state: ProductState.ACTIVE,
+          'flags.hasImages': true,
           shopSlug: input.shopSlug,
           ...(input.excludeProductSlug
             ? { slug: { $ne: input.excludeProductSlug } }
@@ -78,27 +73,18 @@ implements ProductRecommendationQueryRepository {
       },
       {
         $sort: {
-          'sort.createdAt': -1,
+          'ranking.createdAt': -1,
         },
       },
       {
-        $limit: Math.max(input.limit * 3, input.limit),
+        $limit: input.limit,
       },
     ]).toArray();
-    const priceDocumentByProductId = new Map(
-      (await this.catalogProductPriceDocumentRepository.findByProductIds(
-        documents.map((document) => document.productId),
-      )).map((document) => [document.productId, document] as const),
-    );
 
-    return documents
-      .filter((document) => document.images.length > 0)
-      .slice(0, input.limit)
-      .map((document) => toPublicProductListItemFromCatalogDocument(
-        document,
-        priceDocumentByProductId.get(document.productId),
-        pricingSelection,
-      ));
+    return documents.map((document) => toPublicProductListItemFromSearchDocument(
+      document,
+      indexedPricingSelection,
+    ));
   }
 
   async recommendSimilarPublic(
@@ -108,11 +94,10 @@ implements ProductRecommendationQueryRepository {
     const pricingSelection = resolveIndexedPricingSelection(
       await this.storefrontMarketContextService.resolveCurrentRequest(),
     );
-    if (!isIndexedPricingSelection(this.storefrontPricingConfig, pricingSelection)) {
-      return this.mikroOrmProductRecommendationQueryRepository.recommendSimilarPublic(input);
-    }
+    const indexedPricingSelection = this.toIndexedPricingSelection(pricingSelection);
 
     const searchCollection = await this.getSearchCollection();
+
     const anchor = await searchCollection.findOne({
       shopSlug: input.shopSlug,
       slug: input.productSlug,
@@ -128,18 +113,12 @@ implements ProductRecommendationQueryRepository {
 
     return candidates
       .sort((left, right) => compareRecommendationCandidates(
-        toRecommendationScorableSearchProduct(anchor, pricingSelection),
-        toRecommendationScorableSearchProduct(left, pricingSelection),
-        toRecommendationScorableSearchProduct(right, pricingSelection),
+        toRecommendationScorableSearchProduct(anchor, indexedPricingSelection),
+        toRecommendationScorableSearchProduct(left, indexedPricingSelection),
+        toRecommendationScorableSearchProduct(right, indexedPricingSelection),
       ))
       .slice(0, input.limit)
-      .map((document) => toPublicProductListItemFromSearchDocument(document, pricingSelection));
-  }
-
-  private async getProductsCollection(): Promise<MongoCollectionLike<CatalogProductDocument>> {
-    return this.catalogMongoAccess.getCollection<MongoCollectionLike<CatalogProductDocument>>(
-      this.catalogConfig.mongodbProductsCollection,
-    );
+      .map((document) => toPublicProductListItemFromSearchDocument(document, indexedPricingSelection));
   }
 
   private async getSearchCollection(): Promise<MongoCollectionLike<CatalogSearchDocument>> {
@@ -153,13 +132,17 @@ implements ProductRecommendationQueryRepository {
   }
 
   private assertAtlasSearchEnabled(): void {
-    if (this.catalogConfig.driver !== 'mongodb') {
-      throw new Error('Atlas Search storefront repository requires mongodb catalog driver');
-    }
-
     if (this.catalogConfig.searchDriver !== 'atlas') {
       throw new Error('Atlas Search storefront repository requires CATALOG_SEARCH_DRIVER=atlas');
     }
+  }
+
+  private toIndexedPricingSelection(
+    pricingSelection: StorefrontIndexedPricingSelection | undefined,
+  ): StorefrontIndexedPricingSelection | undefined {
+    return isIndexedPricingSelection(this.storefrontPricingConfig, pricingSelection)
+      ? pricingSelection
+      : undefined;
   }
 
   private async ensureSearchCollectionIndexes(
@@ -306,44 +289,6 @@ function toPublicProductListItemFromSearchDocument(
     },
     variantCount: document.variantCount,
     createdAt: document.ranking.createdAt,
-  };
-}
-
-function toPublicProductListItemFromCatalogDocument(
-  document: CatalogProductDocument,
-  priceDocument?: CatalogProductPriceDocument | null,
-  pricingSelection?: StorefrontIndexedPricingSelection,
-): PublicProductListItem {
-  const totalStock = document.inventory.reduce((sum, inventory) => sum + inventory.stock, 0);
-  const indexedPricing = getIndexedPriceSummary(priceDocument?.summaryByMarket, pricingSelection);
-
-  return {
-    id: document.productId,
-    shop: {
-      id: document.shopId,
-      publicId: document.shopPublicId,
-      shopName: document.shopName,
-      slug: document.shopSlug,
-    },
-    categoryId: document.categoryId,
-    title: document.title,
-    slug: document.slug,
-    image: document.primaryImage,
-    variantType: document.variantType,
-    pricing: {
-      minAmountMinor: indexedPricing?.minAmountMinor,
-      maxAmountMinor: indexedPricing?.maxAmountMinor,
-      originalMinAmountMinor: indexedPricing?.originalMinAmountMinor,
-      originalMaxAmountMinor: indexedPricing?.originalMaxAmountMinor,
-      currency: indexedPricing?.currency,
-    },
-    availability: {
-      inStock: totalStock > 0,
-      lowStock: totalStock > 0 && totalStock < PRODUCT_STOCK_NOTICE_THRESHOLD,
-      stockTotal: totalStock,
-    },
-    variantCount: document.variantCount,
-    createdAt: document.sort.createdAt,
   };
 }
 

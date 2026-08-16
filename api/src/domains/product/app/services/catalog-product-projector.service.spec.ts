@@ -9,7 +9,7 @@ import { CatalogProductProjectorService } from './catalog-product-projector.serv
 import type { StorefrontIndexedPriceProjectionService } from './storefront-indexed-price-projection.service';
 
 describe('CatalogProductProjectorService', () => {
-  function buildService(driver: 'mongodb' | 'postgresql' = 'mongodb') {
+  function buildService() {
     const sourceRepository: Pick<jest.Mocked<CatalogProductProjectorSourceRepository>, 'findById'> = {
       findById: jest.fn(),
     };
@@ -44,7 +44,7 @@ describe('CatalogProductProjectorService', () => {
         sourceRepository as never,
         storageService as never,
         {
-          driver,
+          driver: 'mongodb',
           searchDriver: 'atlas',
         } as never,
         productDocumentRepository as never,
@@ -61,14 +61,6 @@ describe('CatalogProductProjectorService', () => {
       storefrontIndexedPriceProjectionService,
     };
   }
-
-  it('does nothing when catalog projection is disabled', async () => {
-    const { service, sourceRepository } = buildService('postgresql');
-
-    await service.projectProduct('product-1');
-
-    expect(sourceRepository.findById).not.toHaveBeenCalled();
-  });
 
   it('removes projected documents when the product is missing or inactive', async () => {
     const {

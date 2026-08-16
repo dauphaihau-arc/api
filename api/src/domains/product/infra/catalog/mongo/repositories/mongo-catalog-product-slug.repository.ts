@@ -62,10 +62,6 @@ implements CatalogProductSlugRepository {
   }
 
   async upsert(document: CatalogProductSlugDocument): Promise<void> {
-    if (!this.catalogMongoAccess.isEnabled()) {
-      return;
-    }
-
     const collection = await this.getCollection();
 
     const existingDocument = await collection.findOne(
@@ -85,10 +81,6 @@ implements CatalogProductSlugRepository {
   }
 
   async deleteByProductId(productId: string): Promise<void> {
-    if (!this.catalogMongoAccess.isEnabled()) {
-      return;
-    }
-
     const collection = await this.getCollection();
     await collection.deleteOne({ productId });
   }

@@ -40,7 +40,6 @@ import type { CatalogProductPriceDocument } from '../../../catalog/mongo/documen
 import type { CatalogSearchDocument } from '../../../catalog/mongo/documents/catalog-search-document.mapper';
 import { getInferredFacetTerms, isInferredFacetSupported } from '../../../inferred-facets';
 import { PRODUCT_STOCK_NOTICE_THRESHOLD } from '../../../../app/product-stock.constants';
-import { MikroOrmStorefrontProductQueryRepository } from '../../../persistence/mikro-orm/repositories/mikro-orm-storefront-product-query.repository';
 
 type MongoAggregateCursorLike<TDocument> = {
   toArray(): Promise<TDocument[]>;
@@ -86,7 +85,6 @@ implements StorefrontProductQueryRepository {
     private readonly catalogMongoAccess: CatalogMongoAccess,
     private readonly storefrontMarketContextService: StorefrontMarketContextService,
     private readonly requestContextService: RequestContextService,
-    private readonly mikroOrmStorefrontProductQueryRepository: MikroOrmStorefrontProductQueryRepository,
   ) {}
 
   async findPublicByShopSlugAndProductSlug(
@@ -111,13 +109,6 @@ implements StorefrontProductQueryRepository {
     const pricingSelection = resolveIndexedPricingSelection(
       await this.storefrontMarketContextService.resolveCurrentRequest(),
     );
-    if (!isIndexedPricingSelection(this.storefrontPricingConfig, pricingSelection)) {
-      return this.mikroOrmStorefrontProductQueryRepository.findPublicByShopSlugAndProductSlug(
-        shopSlug,
-        productSlug,
-      );
-    }
-
     return document ? toPublicProductDetail(document, priceDocument, pricingSelection) : null;
   }
 
@@ -129,10 +120,6 @@ implements StorefrontProductQueryRepository {
     const pricingSelection = resolveIndexedPricingSelection(
       await this.storefrontMarketContextService.resolveCurrentRequest(),
     );
-
-    if (!isIndexedPricingSelection(this.storefrontPricingConfig, pricingSelection)) {
-      return this.mikroOrmStorefrontProductQueryRepository.findPublicByIds(productIds);
-    }
 
     this.assertAtlasSearchEnabled();
 
@@ -188,10 +175,7 @@ implements StorefrontProductQueryRepository {
     const pricingSelection = resolveIndexedPricingSelection(
       await this.storefrontMarketContextService.resolveCurrentRequest(),
     );
-    if (!isIndexedPricingSelection(this.storefrontPricingConfig, pricingSelection)) {
-      return this.mikroOrmStorefrontProductQueryRepository.listPublic(input);
-    }
-    const indexedPricingSelection: StorefrontIndexedPricingSelection = pricingSelection!;
+    const indexedPricingSelection = this.toIndexedPricingSelection(pricingSelection);
     const requestSummary = this.summarizeListPublicInput(input, indexedPricingSelection);
 
     if (this.canUseDirectBrowseQuery(input)) {
@@ -268,9 +252,7 @@ implements StorefrontProductQueryRepository {
     const pricingSelection = resolveIndexedPricingSelection(
       await this.storefrontMarketContextService.resolveCurrentRequest(),
     );
-    if (!isIndexedPricingSelection(this.storefrontPricingConfig, pricingSelection)) {
-      return this.mikroOrmStorefrontProductQueryRepository.listPublicFacets(input);
-    }
+    const indexedPricingSelection = this.toIndexedPricingSelection(pricingSelection);
 
     const searchCollection = await this.getSearchCollection();
     const documents = await searchCollection.aggregate<{
@@ -281,7 +263,7 @@ implements StorefrontProductQueryRepository {
       };
     }>([
       {
-        $search: this.buildListSearchStage(input, pricingSelection),
+        $search: this.buildListSearchStage(input, indexedPricingSelection),
       },
       {
         $unwind: '$attributes',
@@ -425,7 +407,7 @@ implements StorefrontProductQueryRepository {
   private async listPublicFromBrowseCollection(
     searchCollection: MongoCollectionLike<CatalogSearchDocument>,
     input: ListPublicProductsInput,
-    pricingSelection: StorefrontIndexedPricingSelection,
+    pricingSelection: StorefrontIndexedPricingSelection | undefined,
     requestSummary: ReturnType<typeof this.summarizeListPublicInput>,
   ): Promise<PublicProductListResult> {
     const filter = this.buildDirectBrowseFilter(input);
@@ -574,7 +556,7 @@ implements StorefrontProductQueryRepository {
 
   private summarizeListPublicInput(
     input: ListPublicProductsInput,
-    pricingSelection: StorefrontIndexedPricingSelection,
+    pricingSelection: StorefrontIndexedPricingSelection | undefined,
   ): {
     page: number;
     limit: number;
@@ -585,8 +567,8 @@ implements StorefrontProductQueryRepository {
     attributeFilterCount: number;
     minPriceMinor?: number;
     maxPriceMinor?: number;
-    marketCode: string;
-    currency: string;
+    marketCode?: string;
+    currency?: string;
   } {
     return {
       page: input.page,
@@ -598,8 +580,12 @@ implements StorefrontProductQueryRepository {
       attributeFilterCount: input.attributeFilters?.length ?? 0,
       ...(input.minPriceMinor !== undefined ? { minPriceMinor: input.minPriceMinor } : {}),
       ...(input.maxPriceMinor !== undefined ? { maxPriceMinor: input.maxPriceMinor } : {}),
-      marketCode: pricingSelection.marketCode,
-      currency: pricingSelection.currency,
+      ...(pricingSelection
+        ? {
+          marketCode: pricingSelection.marketCode,
+          currency: pricingSelection.currency,
+        }
+        : {}),
     };
   }
 
@@ -856,13 +842,17 @@ implements StorefrontProductQueryRepository {
   }
 
   private assertAtlasSearchEnabled(): void {
-    if (this.catalogConfig.driver !== 'mongodb') {
-      throw new Error('Atlas Search storefront repository requires mongodb catalog driver');
-    }
-
     if (this.catalogConfig.searchDriver !== 'atlas') {
       throw new Error('Atlas Search storefront repository requires CATALOG_SEARCH_DRIVER=atlas');
     }
+  }
+
+  private toIndexedPricingSelection(
+    pricingSelection: StorefrontIndexedPricingSelection | undefined,
+  ): StorefrontIndexedPricingSelection | undefined {
+    return isIndexedPricingSelection(this.storefrontPricingConfig, pricingSelection)
+      ? pricingSelection
+      : undefined;
   }
 
 }

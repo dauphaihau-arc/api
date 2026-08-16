@@ -25,10 +25,6 @@ export class CatalogMongoAccess implements OnApplicationShutdown {
     private readonly catalogConfig: CatalogConfig,
   ) {}
 
-  isEnabled(): boolean {
-    return this.catalogConfig.driver === 'mongodb';
-  }
-
   async ping(): Promise<void> {
     await this.getDb();
   }
@@ -43,8 +39,6 @@ export class CatalogMongoAccess implements OnApplicationShutdown {
   }
 
   private async getDb(): Promise<MongoDbLike> {
-    this.assertEnabled();
-
     if (!this.client) {
       this.client = await this.createMongoClient();
     }
@@ -55,12 +49,6 @@ export class CatalogMongoAccess implements OnApplicationShutdown {
     }
 
     return this.db;
-  }
-
-  private assertEnabled(): void {
-    if (!this.isEnabled()) {
-      throw new Error('Catalog Mongo access is not enabled');
-    }
   }
 
   private async createMongoClient(): Promise<MongoClientLike> {

@@ -32,7 +32,7 @@ const appEnvBaseSchema = z.object({
   DB_USER: z.string().trim().min(1).optional(),
   DB_PASSWORD: z.string().trim().min(1).optional(),
   DB_NAME: z.string().trim().min(1).optional(),
-  CATALOG_STORE_DRIVER: z.enum(['postgres', 'mongodb']).default('postgres'),
+  CATALOG_STORE_DRIVER: z.enum(['mongodb']).default('mongodb'),
   CATALOG_SEARCH_DRIVER: z.enum(['atlas']).default('atlas'),
   CATALOG_MONGODB_URI: z.url().optional(),
   CATALOG_MONGODB_DB_NAME: z.string().trim().min(1).optional(),
@@ -242,22 +242,20 @@ const appEnvSchema = appEnvBaseSchema.superRefine((env, context) => {
     });
   }
 
-  if (env.CATALOG_STORE_DRIVER === 'mongodb') {
-    for (const field of [
-      'CATALOG_MONGODB_URI',
-      'CATALOG_MONGODB_DB_NAME',
-      'CATALOG_MONGODB_PRODUCTS_COLLECTION',
-      'CATALOG_MONGODB_PRICES_COLLECTION',
-      'CATALOG_MONGODB_SLUGS_COLLECTION',
-      'CATALOG_MONGODB_SEARCH_COLLECTION',
-    ] as const) {
-      if (!env[field]) {
-        context.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: [field],
-          message: `Expected ${field} when CATALOG_STORE_DRIVER is mongodb.`,
-        });
-      }
+  for (const field of [
+    'CATALOG_MONGODB_URI',
+    'CATALOG_MONGODB_DB_NAME',
+    'CATALOG_MONGODB_PRODUCTS_COLLECTION',
+    'CATALOG_MONGODB_PRICES_COLLECTION',
+    'CATALOG_MONGODB_SLUGS_COLLECTION',
+    'CATALOG_MONGODB_SEARCH_COLLECTION',
+  ] as const) {
+    if (!env[field]) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: [field],
+        message: `Expected ${field} for catalog MongoDB.`,
+      });
     }
   }
 

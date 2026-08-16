@@ -39,10 +39,6 @@ implements CatalogProductPriceDocumentRepository {
   }
 
   async upsert(document: CatalogProductPriceDocument): Promise<void> {
-    if (!this.catalogMongoAccess.isEnabled()) {
-      return;
-    }
-
     const collection = await this.getCollection();
     await collection.updateOne(
       { productId: document.productId },
@@ -52,25 +48,17 @@ implements CatalogProductPriceDocumentRepository {
   }
 
   async deleteByProductId(productId: string): Promise<void> {
-    if (!this.catalogMongoAccess.isEnabled()) {
-      return;
-    }
-
     const collection = await this.getCollection();
     await collection.deleteOne({ productId });
   }
 
   async findByProductId(productId: string): Promise<CatalogProductPriceDocument | null> {
-    if (!this.catalogMongoAccess.isEnabled()) {
-      return null;
-    }
-
     const collection = await this.getCollection();
     return collection.findOne({ productId });
   }
 
   async findByProductIds(productIds: string[]): Promise<CatalogProductPriceDocument[]> {
-    if (!this.catalogMongoAccess.isEnabled() || productIds.length === 0) {
+    if (productIds.length === 0) {
       return [];
     }
 

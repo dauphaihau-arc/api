@@ -101,13 +101,11 @@ import { MikroOrmPublicProductOrderHistoryRepository } from './infra/persistence
 import { MikroOrmPublicProductReviewQueryRepository } from './infra/persistence/mikro-orm/repositories/mikro-orm-public-product-review-query.repository';
 import { MikroOrmSellerProductReviewQueryRepository } from './infra/persistence/mikro-orm/repositories/mikro-orm-seller-product-review-query.repository';
 import { MikroOrmPublicProductViewHistoryRepository } from './infra/persistence/mikro-orm/repositories/mikro-orm-public-product-view-history.repository';
-import { MikroOrmProductRecommendationQueryRepository } from './infra/persistence/mikro-orm/repositories/mikro-orm-product-recommendation-query.repository';
 import { MikroOrmProductReviewAggregateRepository } from './infra/persistence/mikro-orm/repositories/mikro-orm-product-review-aggregate.repository';
 import { MikroOrmSellerProductQueryRepository } from './infra/persistence/mikro-orm/repositories/mikro-orm-seller-product-query.repository';
 import { MikroOrmProductImportCommandRepository } from './infra/persistence/mikro-orm/repositories/mikro-orm-product-import-command.repository';
 import { MikroOrmProductImportQueryRepository } from './infra/persistence/mikro-orm/repositories/mikro-orm-product-import-query.repository';
 import { MikroOrmProductImportValidationQueryRepository } from './infra/persistence/mikro-orm/repositories/mikro-orm-product-import-validation-query.repository';
-import { MikroOrmStorefrontProductQueryRepository } from './infra/persistence/mikro-orm/repositories/mikro-orm-storefront-product-query.repository';
 import { MongoCatalogProductDocumentRepository } from './infra/catalog/mongo/repositories/mongo-catalog-product-document.repository';
 import { MongoCatalogProductPriceDocumentRepository } from './infra/catalog/mongo/repositories/mongo-catalog-product-price-document.repository';
 import { MongoCatalogSearchDocumentRepository } from './infra/catalog/mongo/repositories/mongo-catalog-search-document.repository';
@@ -197,35 +195,11 @@ import { STOREFRONT_PRICING_CONFIG, buildStorefrontPricingConfig } from '~/platf
     },
     {
       provide: StorefrontProductQueryRepository,
-      inject: [
-        CATALOG_CONFIG,
-        AtlasSearchStorefrontProductQueryRepository,
-        MikroOrmStorefrontProductQueryRepository,
-      ],
-      useFactory: (
-        catalogConfig: ReturnType<typeof buildCatalogConfig>,
-        atlasSearchStorefrontProductQueryRepository: AtlasSearchStorefrontProductQueryRepository,
-        mikroOrmStorefrontProductQueryRepository: MikroOrmStorefrontProductQueryRepository,
-      ) =>
-        catalogConfig.driver === 'mongodb'
-          ? atlasSearchStorefrontProductQueryRepository
-          : mikroOrmStorefrontProductQueryRepository,
+      useExisting: AtlasSearchStorefrontProductQueryRepository,
     },
     {
       provide: ProductRecommendationQueryRepository,
-      inject: [
-        CATALOG_CONFIG,
-        AtlasProductRecommendationQueryRepository,
-        MikroOrmProductRecommendationQueryRepository,
-      ],
-      useFactory: (
-        catalogConfig: ReturnType<typeof buildCatalogConfig>,
-        atlasProductRecommendationQueryRepository: AtlasProductRecommendationQueryRepository,
-        mikroOrmProductRecommendationQueryRepository: MikroOrmProductRecommendationQueryRepository,
-      ) =>
-        catalogConfig.driver === 'mongodb'
-          ? atlasProductRecommendationQueryRepository
-          : mikroOrmProductRecommendationQueryRepository,
+      useExisting: AtlasProductRecommendationQueryRepository,
     },
     {
       provide: SellerProductQueryRepository,
@@ -315,14 +289,12 @@ import { STOREFRONT_PRICING_CONFIG, buildStorefrontPricingConfig } from '~/platf
     MikroOrmPublicProductOrderHistoryRepository,
     MikroOrmPublicProductReviewQueryRepository,
     MikroOrmPublicProductViewHistoryRepository,
-    MikroOrmProductRecommendationQueryRepository,
     MikroOrmProductReviewAggregateRepository,
     MikroOrmSellerProductReviewQueryRepository,
     MikroOrmSellerProductQueryRepository,
     MikroOrmProductImportCommandRepository,
     MikroOrmProductImportQueryRepository,
     MikroOrmProductImportValidationQueryRepository,
-    MikroOrmStorefrontProductQueryRepository,
 
     CatalogStatusService,
     CatalogProductProjectorService,

@@ -69,10 +69,6 @@ implements CatalogSearchDocumentRepository {
   }
 
   async upsert(document: CatalogSearchDocument): Promise<void> {
-    if (!this.catalogMongoAccess.isEnabled()) {
-      return;
-    }
-
     const collection = await this.getCollection();
     await collection.updateOne(
       { productId: document.productId },
@@ -82,10 +78,6 @@ implements CatalogSearchDocumentRepository {
   }
 
   async deleteByProductId(productId: string): Promise<void> {
-    if (!this.catalogMongoAccess.isEnabled()) {
-      return;
-    }
-
     const collection = await this.getCollection();
     await collection.deleteOne({ productId });
   }

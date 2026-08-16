@@ -48,10 +48,6 @@ implements CatalogProductDocumentRepository {
   }
 
   async getStats(): Promise<CatalogProductDocumentStats | null> {
-    if (!this.catalogMongoAccess.isEnabled()) {
-      return null;
-    }
-
     try {
       const collection = await this.getCollection();
       const [totalDocuments, activeDocuments, latestDocument] = await Promise.all([
@@ -81,10 +77,6 @@ implements CatalogProductDocumentRepository {
   }
 
   async upsert(document: CatalogProductDocument): Promise<void> {
-    if (!this.catalogMongoAccess.isEnabled()) {
-      return;
-    }
-
     const collection = await this.getCollection();
     await collection.updateOne(
       { productId: document.productId },
@@ -94,10 +86,6 @@ implements CatalogProductDocumentRepository {
   }
 
   async deleteByProductId(productId: string): Promise<void> {
-    if (!this.catalogMongoAccess.isEnabled()) {
-      return;
-    }
-
     const collection = await this.getCollection();
     await collection.deleteOne({ productId });
   }

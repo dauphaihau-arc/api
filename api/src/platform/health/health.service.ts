@@ -121,13 +121,6 @@ export class HealthService {
   }
 
   private async checkCatalog(): Promise<HealthComponent> {
-    if (this.catalogConfig.driver !== 'mongodb') {
-      return {
-        status: 'ok',
-        details: 'Catalog driver is postgres',
-      };
-    }
-
     try {
       await Promise.all([
         this.catalogProductDocumentRepository.ping(),

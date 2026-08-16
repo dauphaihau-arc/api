@@ -11,8 +11,7 @@ Relevant code:
 - [storefront-product-query.repository.ts](../../src/domains/product/app/ports/storefront-product-query.repository.ts)
 - [catalog-search-document.mapper.ts](../../src/domains/product/infra/catalog/mongo/documents/catalog-search-document.mapper.ts)
 - [atlas-search-storefront-product-query.repository.ts](../../src/domains/product/infra/search/atlas/repositories/atlas-search-storefront-product-query.repository.ts)
-- [mongo-storefront-product-query.repository.ts](../../src/domains/product/infra/catalog/mongo/repositories/mongo-catalog-search-document.repository.ts)
-- [mikro-orm-storefront-product-query.repository.ts](../../src/domains/product/infra/persistence/mikro-orm/repositories/mikro-orm-storefront-product-query.repository.ts)
+- [mongo-catalog-search-document.repository.ts](../../src/domains/product/infra/catalog/mongo/repositories/mongo-catalog-search-document.repository.ts)
 - [category.controller.ts](../../src/domains/category/api/rest/category.controller.ts)
 
 ## Purpose
@@ -280,30 +279,25 @@ For supported inferred facets, Mongo filtering also allows a match through
 
 Facet result construction lives in:
 
-- [mongo-storefront-product-query.repository.ts](../../src/domains/product/infra/catalog/mongo/repositories/mongo-catalog-search-document.repository.ts:371)
+- [atlas-search-storefront-product-query.repository.ts](../../src/domains/product/infra/search/atlas/repositories/atlas-search-storefront-product-query.repository.ts:248)
 
-### MikroORM / SQL fallback
+### Atlas / Mongo Catalog
 
 Implementation:
 
-- [mikro-orm-storefront-product-query.repository.ts](../../src/domains/product/infra/persistence/mikro-orm/repositories/mikro-orm-storefront-product-query.repository.ts:145)
+- [atlas-search-storefront-product-query.repository.ts](../../src/domains/product/infra/search/atlas/repositories/atlas-search-storefront-product-query.repository.ts:626)
 
 Behavior:
 
-- resolves matching product IDs using the public list predicate
-- returns early if no products match
-- queries attribute rows by joining product attribute values, category
-  attributes, and category attribute options
-- groups by attribute name and option value in SQL
+- resolves matching products through the projected catalog search document
+- applies public visibility and image filters through the Atlas search stage
+- applies category, maker, digital, price, and attribute filters against the
+  catalog search document
+- groups matching attribute values from `attributes`
 - folds the grouped rows into `PublicProductFacet[]`
 
-For supported inferred facets, SQL filtering can expand a selected option key
-into a term set and match title or description text as a relaxed fallback.
-
-Attribute filters are applied through `exists (...)` clauses in the SQL query
-builder:
-
-- [mikro-orm-storefront-product-query.repository.ts](../../src/domains/product/infra/persistence/mikro-orm/repositories/mikro-orm-storefront-product-query.repository.ts:335)
+For supported inferred facets, Atlas filtering can match selected option keys
+through `inferredFacets` as a relaxed fallback.
 
 ## Read Model Dependency
 

@@ -30,10 +30,6 @@ export class CatalogProductProjectorService {
   ) {}
 
   async projectProduct(productId: string): Promise<void> {
-    if (this.catalogConfig.driver !== 'mongodb') {
-      return;
-    }
-
     const product = await this.catalogProductProjectorSourceRepository.findById(productId);
 
     if (!product || product.state !== ProductState.ACTIVE) {
@@ -42,16 +38,19 @@ export class CatalogProductProjectorService {
     }
 
     const indexedPricingProjection = await this.storefrontIndexedPriceProjectionService.projectProduct(product);
+
     const document = toCatalogProductDocument(
       product,
       (storageKey) => this.storageService.getPublicUrl(storageKey),
     );
     const priceDocument = toCatalogProductPriceDocument(product, indexedPricingProjection);
+
     const searchDocument = toCatalogSearchDocument(
       product,
       (storageKey) => this.storageService.getPublicUrl(storageKey),
       indexedPricingProjection.summaryByMarket,
     );
+
     const slugDocument = toCatalogProductSlugDocument(product);
 
     await Promise.all([
@@ -65,10 +64,6 @@ export class CatalogProductProjectorService {
   }
 
   async removeProduct(productId: string): Promise<void> {
-    if (this.catalogConfig.driver !== 'mongodb') {
-      return;
-    }
-
     await Promise.all([
       this.catalogProductDocumentRepository.deleteByProductId(productId),
       this.catalogProductPriceDocumentRepository.deleteByProductId(productId),

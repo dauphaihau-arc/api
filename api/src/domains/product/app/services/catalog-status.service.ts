@@ -45,18 +45,6 @@ export class CatalogStatusService {
       state: ProductState.ACTIVE,
     });
 
-    if (this.catalogConfig.driver !== 'mongodb') {
-      return {
-        driver: this.catalogConfig.driver,
-        searchDriver: this.catalogConfig.searchDriver,
-        enabled: false,
-        source: {
-          activeProducts,
-        },
-        projection: {},
-      };
-    }
-
     const stats = await this.catalogProductDocumentRepository.getStats();
 
     return {
