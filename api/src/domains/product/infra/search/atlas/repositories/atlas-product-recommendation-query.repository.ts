@@ -22,7 +22,6 @@ import { ProductState } from '../../../../domain/enums/product-state.enum';
 import { CatalogMongoAccess } from '../../../catalog/mongo/access/catalog-mongo.access';
 import type { CatalogSearchDocument } from '../../../catalog/mongo/documents/catalog-search-document.mapper';
 import { PRODUCT_STOCK_NOTICE_THRESHOLD } from '../../../../app/product-stock.constants';
-import { CATALOG_SEARCH_COLLECTION_INDEXES } from '../../../catalog/mongo/repositories/mongo-catalog-search-document.repository';
 
 type MongoAggregateCursorLike<TDocument> = {
   toArray(): Promise<TDocument[]>;
@@ -33,14 +32,11 @@ type MongoCollectionLike<TDocument> = {
   aggregate<TResult = TDocument>(
     pipeline: Array<Record<string, unknown>>
   ): MongoAggregateCursorLike<TResult>;
-  createIndexes?(indexes: Array<Record<string, unknown>>): Promise<void>;
 };
 
 @Injectable()
 export class AtlasProductRecommendationQueryRepository
 implements ProductRecommendationQueryRepository {
-  private searchCollectionIndexesPromise?: Promise<void>;
-
   constructor(
     @Inject(CATALOG_CONFIG)
     private readonly catalogConfig: CatalogConfig,
@@ -122,13 +118,9 @@ implements ProductRecommendationQueryRepository {
   }
 
   private async getSearchCollection(): Promise<MongoCollectionLike<CatalogSearchDocument>> {
-    const collection = await this.catalogMongoAccess.getCollection<MongoCollectionLike<CatalogSearchDocument>>(
+    return this.catalogMongoAccess.getCollection<MongoCollectionLike<CatalogSearchDocument>>(
       this.catalogConfig.mongodbSearchCollection,
     );
-
-    await this.ensureSearchCollectionIndexes(collection);
-
-    return collection;
   }
 
   private assertAtlasSearchEnabled(): void {
@@ -143,20 +135,6 @@ implements ProductRecommendationQueryRepository {
     return isIndexedPricingSelection(this.storefrontPricingConfig, pricingSelection)
       ? pricingSelection
       : undefined;
-  }
-
-  private async ensureSearchCollectionIndexes(
-    collection: MongoCollectionLike<CatalogSearchDocument>,
-  ): Promise<void> {
-    if (!collection.createIndexes) {
-      return;
-    }
-
-    this.searchCollectionIndexesPromise ??= collection.createIndexes([
-      ...CATALOG_SEARCH_COLLECTION_INDEXES,
-    ]);
-
-    await this.searchCollectionIndexesPromise;
   }
 
   private async findRecommendationCandidates(

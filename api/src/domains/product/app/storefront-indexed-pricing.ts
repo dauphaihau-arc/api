@@ -49,7 +49,9 @@ export function resolveIndexedPricingSelection(context?: {
 
   const market = enabledMarkets.find((entry) => entry.code === context?.marketCode?.trim()) ??
     defaultMarket;
+
   const requestedCurrency = context?.currency?.trim();
+
   const currency = requestedCurrency && market.supportedCurrencies.includes(requestedCurrency as never)
     ? requestedCurrency
     : market.defaultCurrency;

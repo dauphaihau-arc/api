@@ -172,9 +172,11 @@ implements StorefrontProductQueryRepository {
     this.assertAtlasSearchEnabled();
 
     const searchCollection = await this.getSearchCollection();
+
     const pricingSelection = resolveIndexedPricingSelection(
       await this.storefrontMarketContextService.resolveCurrentRequest(),
     );
+
     const indexedPricingSelection = this.toIndexedPricingSelection(pricingSelection);
     const requestSummary = this.summarizeListPublicInput(input, indexedPricingSelection);
 
@@ -188,6 +190,7 @@ implements StorefrontProductQueryRepository {
     }
 
     const searchStage = this.buildListSearchStage(input, indexedPricingSelection);
+
     const totalResults = await searchCollection.aggregate<AtlasSearchMetaResult>([
       {
         $searchMeta: {
@@ -414,6 +417,7 @@ implements StorefrontProductQueryRepository {
     const countStartedAt = process.hrtime.bigint();
     const total = await searchCollection.countDocuments(filter);
     const countDurationMs = this.durationMsSince(countStartedAt);
+
     this.logger.info(
       this.buildListPublicLogPayload(
         'catalog.storefront.list_public.direct_browse_count',
@@ -459,6 +463,7 @@ implements StorefrontProductQueryRepository {
       .skip((input.page - 1) * input.limit)
       .limit(input.limit)
       .toArray();
+
     return {
       items: documents.map((document) => toPublicProductListItemFromSearchDocument(document, pricingSelection)),
       meta: buildPaginationMeta(input.page, input.limit, total),

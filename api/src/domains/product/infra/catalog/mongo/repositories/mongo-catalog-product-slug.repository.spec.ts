@@ -6,12 +6,10 @@ describe('MongoCatalogProductSlugRepository', () => {
     const updateOne = jest.fn(async () => undefined);
     const deleteOne = jest.fn(async () => undefined);
     const findOne = jest.fn(async () => ({ _id: 'olive-atelier::old-slug' }));
-    const createIndexes = jest.fn(async () => undefined);
     const getCollection = jest.fn(async () => ({
       updateOne,
       deleteOne,
       findOne,
-      createIndexes,
     }));
     const repository = new MongoCatalogProductSlugRepository(
       {
@@ -54,7 +52,6 @@ describe('MongoCatalogProductSlugRepository', () => {
     const updateOne = jest.fn(async () => undefined);
     const deleteOne = jest.fn(async () => undefined);
     const findOne = jest.fn(async () => ({ _id: 'olive-atelier::same-slug' }));
-    const createIndexes = jest.fn(async () => undefined);
     const repository = new MongoCatalogProductSlugRepository(
       {
         mongodbSlugsCollection: 'catalog_product_slugs',
@@ -65,7 +62,6 @@ describe('MongoCatalogProductSlugRepository', () => {
           updateOne,
           deleteOne,
           findOne,
-          createIndexes,
         }),
       } as never,
     );

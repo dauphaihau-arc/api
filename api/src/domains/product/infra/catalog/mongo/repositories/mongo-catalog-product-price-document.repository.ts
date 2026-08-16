@@ -22,7 +22,6 @@ type MongoPriceCollectionLike = {
     filter: Record<string, unknown>,
     options?: Record<string, unknown>
   ): { toArray(): Promise<CatalogProductPriceDocument[]> };
-  createIndexes(indexes: Array<Record<string, unknown>>): Promise<void>;
 };
 
 @Injectable()
@@ -69,15 +68,8 @@ implements CatalogProductPriceDocumentRepository {
   }
 
   private async getCollection() {
-    const collection = await this.catalogMongoAccess.getCollection<MongoPriceCollectionLike>(
+    return this.catalogMongoAccess.getCollection<MongoPriceCollectionLike>(
       this.catalogConfig.mongodbPricesCollection,
     );
-
-    await collection.createIndexes([
-      { key: { productId: 1 }, unique: true },
-      { key: { updatedAt: -1 } },
-    ]);
-
-    return collection;
   }
 }

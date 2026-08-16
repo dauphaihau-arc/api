@@ -24,7 +24,6 @@ type MongoProductCollectionLike = {
     filter: Record<string, unknown>,
     options?: Record<string, unknown>
   ): Promise<CatalogProductDocument | null>;
-  createIndexes(indexes: Array<Record<string, unknown>>): Promise<void>;
 };
 
 type UpdatedAtDocument = {
@@ -91,17 +90,8 @@ implements CatalogProductDocumentRepository {
   }
 
   private async getCollection() {
-    const collection = await this.catalogMongoAccess.getCollection<MongoProductCollectionLike>(
+    return this.catalogMongoAccess.getCollection<MongoProductCollectionLike>(
       this.catalogConfig.mongodbProductsCollection,
     );
-
-    await collection.createIndexes([
-      { key: { productId: 1 }, unique: true },
-      { key: { state: 1, shopSlug: 1, slug: 1 } },
-      { key: { state: 1, categoryId: 1, 'sort.createdAt': -1 } },
-      { key: { state: 1, updatedAt: -1 } },
-    ]);
-
-    return collection;
   }
 }

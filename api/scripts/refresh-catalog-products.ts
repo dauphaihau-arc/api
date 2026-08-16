@@ -10,6 +10,7 @@ import { MongoCatalogProductDocumentRepository } from '~/domains/product/infra/c
 import { MongoCatalogProductPriceDocumentRepository } from '~/domains/product/infra/catalog/mongo/repositories/mongo-catalog-product-price-document.repository';
 import { MongoCatalogSearchDocumentRepository } from '~/domains/product/infra/catalog/mongo/repositories/mongo-catalog-search-document.repository';
 import { MongoCatalogProductSlugRepository } from '~/domains/product/infra/catalog/mongo/repositories/mongo-catalog-product-slug.repository';
+import { syncCatalogMongoIndexes } from '~/domains/product/infra/catalog/mongo/catalog-mongo-indexes';
 import { MikroOrmCatalogProductProjectorSourceRepository } from '~/domains/product/infra/persistence/mikro-orm/repositories/mikro-orm-catalog-product-projector-source.repository';
 import { ProductEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product.entity';
 import { LocalFileStorageService } from '~/integrations/storage/infra/local-file-storage.service';
@@ -123,6 +124,9 @@ async function main() {
 
     console.log('Ensuring Atlas Search indexes');
     await ensureAtlasSearchIndexes(catalogConfig, catalogMongoAccess);
+
+    console.log('Ensuring catalog MongoDB collection indexes');
+    await syncCatalogMongoIndexes(catalogConfig, catalogMongoAccess);
 
     console.log('Clearing existing catalog projection collections');
     const [

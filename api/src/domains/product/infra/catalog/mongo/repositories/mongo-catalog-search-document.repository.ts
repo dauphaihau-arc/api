@@ -14,46 +14,7 @@ type MongoSearchCollectionLike = {
     options?: Record<string, unknown>
   ): Promise<void>;
   deleteOne(filter: Record<string, unknown>): Promise<void>;
-  createIndexes(indexes: Array<Record<string, unknown>>): Promise<void>;
 };
-
-export const CATALOG_SEARCH_COLLECTION_INDEXES = [
-  { key: { productId: 1 }, unique: true },
-  {
-    key: {
-      shopSlug: 1, slug: 1, state: 1, 'flags.hasImages': 1, 
-    }, 
-  },
-  {
-    key: {
-      state: 1,
-      'flags.hasImages': 1,
-      categoryId: 1,
-      'ranking.popularityScore': -1,
-      'ranking.createdAt': -1,
-    },
-  },
-  {
-    key: {
-      state: 1,
-      'flags.hasImages': 1,
-      whoMade: 1,
-      isDigital: 1,
-      'ranking.popularityScore': -1,
-      'ranking.createdAt': -1,
-    },
-  },
-  {
-    key: {
-      state: 1,
-      'flags.hasImages': 1,
-      'ranking.popularityScore': -1,
-      'ranking.createdAt': -1,
-    },
-  },
-  { key: { state: 1, 'price.minAmountMinor': 1 } },
-  { key: { state: 1, updatedAt: -1 } },
-] as const;
 
 @Injectable()
 export class MongoCatalogSearchDocumentRepository
@@ -83,12 +44,8 @@ implements CatalogSearchDocumentRepository {
   }
 
   private async getCollection() {
-    const collection = await this.catalogMongoAccess.getCollection<MongoSearchCollectionLike>(
+    return this.catalogMongoAccess.getCollection<MongoSearchCollectionLike>(
       this.catalogConfig.mongodbSearchCollection,
     );
-
-    await collection.createIndexes([...CATALOG_SEARCH_COLLECTION_INDEXES]);
-
-    return collection;
   }
 }

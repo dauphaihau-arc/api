@@ -21,7 +21,6 @@ type MongoSlugCollectionLike<TDocument> = {
     filter: Record<string, unknown>,
     options?: Record<string, unknown>
   ): Promise<TDocument | null>;
-  createIndexes(indexes: Array<Record<string, unknown>>): Promise<void>;
 };
 
 type ExistingSlugDocument = Pick<CatalogProductSlugDocument, '_id'>;
@@ -86,16 +85,8 @@ implements CatalogProductSlugRepository {
   }
 
   private async getCollection() {
-    const collection = await this.catalogMongoAccess.getCollection<MongoSlugCollectionLike<CatalogProductSlugDocument>>(
+    return this.catalogMongoAccess.getCollection<MongoSlugCollectionLike<CatalogProductSlugDocument>>(
       this.catalogConfig.mongodbSlugsCollection,
     );
-
-    await collection.createIndexes([
-      { key: { shopSlug: 1, productSlug: 1 }, unique: true },
-      { key: { productId: 1 }, unique: true },
-      { key: { shopId: 1, state: 1 } },
-    ]);
-
-    return collection;
   }
 }

@@ -23,6 +23,7 @@
     "db:clear": "ts-node -r tsconfig-paths/register ./database/clear.ts",
     "db:seed:demo": "ts-node -r tsconfig-paths/register ./database/seed.ts",
     "db:seed": "ts-node -r tsconfig-paths/register ./database/seed-reference.ts",
+    "catalog:indexes:sync": "ts-node -r tsconfig-paths/register ./scripts/sync-catalog-indexes.ts",
     "catalog:refresh-products": "ts-node -r tsconfig-paths/register ./scripts/refresh-catalog-products.ts",
     "format": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "redis:clear": "ts-node -r tsconfig-paths/register ./scripts/clear-redis.ts",
