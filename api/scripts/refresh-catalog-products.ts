@@ -19,6 +19,7 @@ import type { StorageService } from '~/integrations/storage/app/ports/storage.se
 import { FxRateService } from '~/integrations/currency/fx-rate.service';
 import { RoundingPolicyService } from '~/integrations/currency/rounding-policy.service';
 import { StorefrontIndexedPriceProjectionService } from '~/domains/product/app/services/storefront-indexed-price-projection.service';
+import { ensureAtlasSearchIndexes } from './catalog/ensure-atlas-search-indexes';
 
 type MongoDeleteManyCollectionLike = {
   deleteMany(filter: Record<string, never>): Promise<{ deletedCount?: number }>;
@@ -34,7 +35,8 @@ async function runWithTimeout(
   try {
     await Promise.race([
       operation,
-      new Promise<never>((_, reject) => {
+      new Promise<never>((resolveTimeout, reject) => {
+        void resolveTimeout;
         timeoutHandle = setTimeout(() => {
           reject(new Error(`${label} timed out after ${timeoutMs}ms`));
         }, timeoutMs);
@@ -64,12 +66,6 @@ async function main() {
 
   const catalogConfig = buildCatalogConfig(configService);
   const storefrontPricingConfig = buildStorefrontPricingConfig(configService);
-
-  if (catalogConfig.driver !== 'mongodb') {
-    throw new Error(
-      'CATALOG_STORE_DRIVER must be mongodb to run catalog backfill',
-    );
-  }
 
   console.log(
     `Catalog target -> driver=${catalogConfig.driver} uri=${catalogConfig.mongodbUri} db=${catalogConfig.mongodbDbName} products=${catalogConfig.mongodbProductsCollection} prices=${catalogConfig.mongodbPricesCollection} slugs=${catalogConfig.mongodbSlugsCollection}`,
@@ -124,6 +120,9 @@ async function main() {
       catalogSearchRepository.ping(),
     ]);
     console.log('MongoDB connectivity OK');
+
+    console.log('Ensuring Atlas Search indexes');
+    await ensureAtlasSearchIndexes(catalogConfig, catalogMongoAccess);
 
     console.log('Clearing existing catalog projection collections');
     const [

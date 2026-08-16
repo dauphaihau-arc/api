@@ -163,10 +163,10 @@ db-seed-infisical project_id *env_name: seed-validate
   just _api-with-infisical "{{ project_id }}" "{{ env_name }}" "pnpm db:seed"
 
 refresh-catalog-products environment='':
-  just _api-with-env 'if [ "${CATALOG_STORE_DRIVER:-postgres}" = "mongodb" ]; then pnpm catalog:refresh-products; else echo "Skipping catalog products refresh (CATALOG_STORE_DRIVER=${CATALOG_STORE_DRIVER:-postgres})"; fi' "{{ environment }}"
+  just _api-with-env "pnpm catalog:refresh-products" "{{ environment }}"
 
 refresh-catalog-products-infisical project_id *env_name:
-  just _api-with-infisical "{{ project_id }}" "{{ env_name }}" 'sh -c '\''if [ "${CATALOG_STORE_DRIVER:-postgres}" = "mongodb" ]; then pnpm catalog:refresh-products; else echo "Skipping catalog products refresh (CATALOG_STORE_DRIVER=${CATALOG_STORE_DRIVER:-postgres})"; fi'\'''
+  just _api-with-infisical "{{ project_id }}" "{{ env_name }}" "pnpm catalog:refresh-products"
 
 db-clear environment='':
   just _api-with-env "pnpm db:clear" "{{ environment }}"

@@ -28,11 +28,34 @@ The current Atlas implementation lives in:
 
 ## Create In Atlas
 
+`just refresh-catalog-products` creates missing Atlas Search indexes before it
+clears and rebuilds catalog projection collections. The script reads the index
+payloads from:
+
+- [product_search.index.json](../../infra/atlas-search/product_search.index.json)
+- [product_suggestions.index.json](../../infra/atlas-search/product_suggestions.index.json)
+
+The MongoDB user in `CATALOG_MONGODB_URI` must be allowed to create search
+indexes. Local Docker MongoDB does not support Atlas Search index commands, so
+the script logs a skip message in local-only environments.
+
+## Manual Atlas UI Fallback
+
 Create both indexes on the `catalog_product_search` collection using the JSON
 definitions in:
 
 - [product_search.index.json](../../infra/atlas-search/product_search.index.json)
 - [product_suggestions.index.json](../../infra/atlas-search/product_suggestions.index.json)
+
+When using the Atlas UI JSON editor, paste only the inner `definition` object.
+The repo files keep the wrapper shape used by automation:
+
+```json
+{
+  "name": "product_search",
+  "definition": {}
+}
+```
 
 ## Field Expectations
 
@@ -55,7 +78,7 @@ Important indexed fields:
 ## Notes
 
 - Atlas Search is not available in local Docker MongoDB.
-- Local development now defaults to `CATALOG_STORE_DRIVER=postgres`, which
-  uses the MikroORM query repositories instead of Atlas.
-- Atlas mode should only be enabled when the app can reach the real MongoDB
-  catalog store and these Atlas indexes exist.
+- Local development should use a MongoDB catalog store with the same Atlas
+  Search index contract as production, typically a shared dev Atlas cluster.
+- The storefront product query and recommendation repositories no longer have
+  a MikroORM/Postgres fallback.
