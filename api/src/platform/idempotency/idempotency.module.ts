@@ -1,10 +1,12 @@
-import { Module } from '@nestjs/common';
+import { Logger, Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { createClient } from 'redis';
 import { IdempotencyKeyInterceptor } from '~/platform/interceptors/idempotency-key.interceptor';
 import { IDEMPOTENCY_REDIS } from '~/platform/interceptors/idempotency.constants';
 import { buildCacheConfig } from '~/platform/config/cache.config';
 import { CacheModule } from '~/integrations/cache/cache.module';
+
+const idempotencyRedisLogger = new Logger('IdempotencyRedis');
 
 @Module({
   imports: [ConfigModule, CacheModule],
@@ -21,6 +23,9 @@ import { CacheModule } from '~/integrations/cache/cache.module';
 
         const client = createClient({
           url: cacheConfig.redisUrl,
+        });
+        client.on('error', (error) => {
+          idempotencyRedisLogger.warn(`Redis idempotency client error: ${error.message}`);
         });
 
         await client.connect();

@@ -2,7 +2,7 @@ import {
   ThrottlerStorage,
   ThrottlerStorageService,
 } from '@nestjs/throttler';
-import { Module } from '@nestjs/common';
+import { Logger, Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { createClient } from 'redis';
 import {
@@ -11,6 +11,8 @@ import {
 } from '~/platform/config/rate-limit.config';
 import { RedisRateLimitStorage } from './infra/redis-rate-limit.storage';
 import { RATE_LIMIT_STORAGE } from './rate-limit.constants';
+
+const rateLimitLogger = new Logger('RateLimitRedis');
 
 @Module({
   imports: [ConfigModule],
@@ -33,6 +35,9 @@ import { RATE_LIMIT_STORAGE } from './rate-limit.constants';
 
         const client = createClient({
           url: rateLimitConfig.redisUrl,
+        });
+        client.on('error', (error) => {
+          rateLimitLogger.warn(`Redis rate limit client error: ${error.message}`);
         });
 
         await client.connect();
