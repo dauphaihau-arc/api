@@ -10,7 +10,7 @@ type ProductRepositoryMock = Pick<
 
 type CategoryRepositoryMock = Pick<
   jest.Mocked<CategoryRepository>,
-  'findById' | 'findAllByParentId'
+  'findById' | 'findAllByParentId' | 'findSelfAndDescendantIds'
 >;
 
 const createProductRepositoryMock = (): ProductRepositoryMock => ({
@@ -21,6 +21,7 @@ const createProductRepositoryMock = (): ProductRepositoryMock => ({
 const createCategoryRepositoryMock = (): CategoryRepositoryMock => ({
   findById: jest.fn(),
   findAllByParentId: jest.fn(),
+  findSelfAndDescendantIds: undefined,
 });
 
 const createUseCaseHarness = () => {
@@ -84,6 +85,56 @@ describe('ListPublicProductsUseCase', function () {
   });
 
   registerMissingCategorySpec({ categoryRepository, productRepository, useCase });
+
+  it('uses the batched category subtree lookup when the repository supports it', async () => {
+    const batchedCategoryRepository: CategoryRepositoryMock = {
+      findById: jest.fn(),
+      findAllByParentId: jest.fn(),
+      findSelfAndDescendantIds: jest.fn().mockResolvedValue([
+        'category-1',
+        'category-child-1',
+        'category-child-2',
+      ]),
+    };
+    const localUseCase = new ListPublicProductsUseCase(
+      productRepository as never,
+      batchedCategoryRepository as never,
+    );
+    productRepository.listPublic.mockResolvedValue({
+      items: [],
+      meta: {
+        page: 1,
+        limit: 12,
+        total: 0,
+        totalPages: 0,
+        hasNextPage: false,
+        hasPreviousPage: false,
+      },
+    });
+
+    await localUseCase.execute({
+      page: 1,
+      limit: 12,
+      categoryId: 'category-1',
+    });
+
+    expect(batchedCategoryRepository.findSelfAndDescendantIds).toHaveBeenCalledWith('category-1');
+    expect(batchedCategoryRepository.findById).not.toHaveBeenCalled();
+    expect(batchedCategoryRepository.findAllByParentId).not.toHaveBeenCalled();
+    expect(productRepository.listPublic).toHaveBeenCalledWith({
+      page: 1,
+      limit: 12,
+      categoryIds: ['category-1', 'category-child-1', 'category-child-2'],
+      search: undefined,
+      title: undefined,
+      isDigital: undefined,
+      whoMade: undefined,
+      minPriceMinor: undefined,
+      maxPriceMinor: undefined,
+      attributeFilters: undefined,
+      order: undefined,
+    });
+  });
 
   it('normalizes id-based attribute filters for facet queries', async () => {
     categoryRepository.findById.mockResolvedValue({

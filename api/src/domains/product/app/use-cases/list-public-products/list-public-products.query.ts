@@ -148,6 +148,11 @@ async function resolveCategorySubtreeIds(
   categoryRepository: CategoryRepository,
   categoryId: string,
 ): Promise<string[]> {
+  if (categoryRepository.findSelfAndDescendantIds) {
+    const ids = await categoryRepository.findSelfAndDescendantIds(categoryId);
+    return ids ?? [];
+  }
+
   const category = await categoryRepository.findById(categoryId);
 
   if (!category) {

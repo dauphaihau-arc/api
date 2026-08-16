@@ -16,6 +16,31 @@ export class MikroOrmCategoryQueryRepository implements CategoryQueryRepository 
     private readonly storageService: StorageService,
   ) {}
 
+  async findSelfAndDescendantIds(id: string): Promise<string[] | null> {
+    const rows = await this.entityManager.getConnection().execute<Array<{ id: string }>>(
+      `
+        with recursive category_tree as (
+          select id
+          from categories
+          where id = ?
+
+          union all
+
+          select child.id
+          from categories child
+          inner join category_tree parent on child.parent_id = parent.id
+        )
+        select id
+        from category_tree
+      `,
+      [id],
+    );
+
+    return rows.length > 0
+      ? rows.map((row) => row.id)
+      : null;
+  }
+
   async findAllByParentId(parentId?: string): Promise<CategorySummary[]> {
     const repository = this.entityManager.fork().getRepository(CategoryEntity);
     const categories = await repository.find(
