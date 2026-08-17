@@ -23,6 +23,14 @@ import { ProductShippingCharge } from '~/domains/product/domain/enums/product-sh
 import { ProductVariantType } from '~/domains/product/domain/enums/product-variant-type.enum';
 import { ProductWhoMade } from '~/domains/product/domain/enums/product-who-made.enum';
 
+function optionalBlankStringToUndefined(value: unknown): unknown {
+  if (typeof value === 'string' && value.trim().length === 0) {
+    return undefined;
+  }
+
+  return value;
+}
+
 export class CreateProductDraftFacadeImageDto {
   @ApiProperty({ name: 'storage_key' })
   @Expose({ name: 'storage_key' })
@@ -95,6 +103,7 @@ export class CreateProductDraftFacadeInventoryDto {
 
   @IsOptional()
   @ApiPropertyOptional()
+  @Transform(({ value }) => optionalBlankStringToUndefined(value))
   @IsString()
   @MinLength(1)
   sku?: string;

@@ -14,6 +14,14 @@ import {
 import { Expose, Transform, Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
+function optionalBlankStringToUndefined(value: unknown): unknown {
+  if (typeof value === 'string' && value.trim().length === 0) {
+    return undefined;
+  }
+
+  return value;
+}
+
 export class ProductInventoryRowDto {
   @IsOptional()
   @ApiPropertyOptional({ name: 'product_variant_id' })
@@ -24,6 +32,7 @@ export class ProductInventoryRowDto {
 
   @IsOptional()
   @ApiPropertyOptional()
+  @Transform(({ value }) => optionalBlankStringToUndefined(value))
   @IsString()
   @MinLength(1)
   sku?: string;
