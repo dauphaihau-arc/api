@@ -24,6 +24,7 @@ export class WsRedisAdapterService implements OnApplicationShutdown {
     const redisUrl = this.configService.get<string>('REDIS_URL', 'redis://127.0.0.1:6379');
     const pubClient = createClient({ url: redisUrl });
     const subClient = pubClient.duplicate();
+
     pubClient.on('error', (error) => {
       this.logger.warn(`Socket.IO Redis publisher error: ${error.message}`);
     });
