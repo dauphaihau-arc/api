@@ -10,7 +10,6 @@ import {
   ActorCannotCreateProductDraftError,
   CategoryNotFoundError,
   InvalidProductVariantConfigurationError,
-  ProductSlugAlreadyExistsError,
 } from '../../errors/product-app.error';
 import { ProductCommandRepository } from '../../ports/product-command.repository';
 import { SellerProductQueryRepository } from '../../ports/seller-product-query.repository';
@@ -32,8 +31,7 @@ export interface CreateProductDraftInput {
 type CreateProductDraftError =
   | ActorCannotCreateProductDraftError
   | CategoryNotFoundError
-  | InvalidProductVariantConfigurationError
-  | ProductSlugAlreadyExistsError;
+  | InvalidProductVariantConfigurationError;
 
 @Injectable()
 export class CreateProductDraftUseCase {
@@ -49,6 +47,7 @@ export class CreateProductDraftUseCase {
     input: CreateProductDraftInput,
   ): Promise<Result<ProductDraftSummary, CreateProductDraftError>> {
     const canManageAnyShop = actor.roles.includes('admin');
+
     const shop = canManageAnyShop
       ? await this.shopRepository.findById(input.shopId)
       : await this.shopRepository.findOwnedById(input.shopId, actor.userId);
@@ -71,15 +70,10 @@ export class CreateProductDraftUseCase {
       return err(variantValidationError);
     }
 
-    const slug = toSlug(input.title);
-    const existingProduct = await this.sellerProductQueryRepository.findByShopIdAndSlug(
+    const slug = await this.createAvailableSlug(
       input.shopId,
-      slug,
+      toSlug(input.title) || 'product',
     );
-
-    if (existingProduct) {
-      return err(new ProductSlugAlreadyExistsError(slug));
-    }
 
     const product = await this.productCommandRepository.createDraft({
       shopId: input.shopId,
@@ -96,6 +90,16 @@ export class CreateProductDraftUseCase {
     });
 
     return ok(product);
+  }
+
+  private async createAvailableSlug(
+    shopId: string,
+    baseSlug: string,
+  ): Promise<string> {
+    const existingSlugs = await this.sellerProductQueryRepository
+      .listSlugsByShopIdAndPrefix(shopId, baseSlug);
+
+    return chooseAvailableProductSlug(baseSlug, existingSlugs);
   }
 
   private validateVariantConfiguration(
@@ -135,4 +139,31 @@ export class CreateProductDraftUseCase {
 
     return null;
   }
+}
+
+function chooseAvailableProductSlug(
+  baseSlug: string,
+  existingSlugs: string[],
+): string {
+  const relevantSlugs = new Set(existingSlugs.filter((slug) =>
+    slug === baseSlug || isNumericSlugSuffix(baseSlug, slug),
+  ));
+
+  if (!relevantSlugs.has(baseSlug)) {
+    return baseSlug;
+  }
+
+  let suffix = 2;
+
+  while (relevantSlugs.has(`${baseSlug}-${suffix}`)) {
+    suffix += 1;
+  }
+
+  return `${baseSlug}-${suffix}`;
+}
+
+function isNumericSlugSuffix(baseSlug: string, slug: string): boolean {
+  const suffix = slug.slice(baseSlug.length + 1);
+
+  return slug.startsWith(`${baseSlug}-`) && /^[2-9]\d*$/.test(suffix);
 }

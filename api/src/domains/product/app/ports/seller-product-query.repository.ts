@@ -15,4 +15,9 @@ export abstract class SellerProductQueryRepository {
     shopId: string,
     slug: string
   ): Promise<ProductDraftSummary | null>;
+
+  abstract listSlugsByShopIdAndPrefix(
+    shopId: string,
+    slugPrefix: string
+  ): Promise<string[]>;
 }

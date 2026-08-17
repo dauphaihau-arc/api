@@ -10,7 +10,6 @@ import {
   InvalidProductVariantConfigurationError,
   ProductDraftIncompleteError,
   ProductNotFoundError,
-  ProductSlugAlreadyExistsError,
 } from '../../errors/product-app.error';
 import type { ProductDraftSummary } from '../../product.types';
 import {
@@ -71,8 +70,7 @@ type CreateProductDraftFacadeError =
   | InvalidProductAttributeSelectionError
   | InvalidProductVariantConfigurationError
   | ProductDraftIncompleteError
-  | ProductNotFoundError
-  | ProductSlugAlreadyExistsError;
+  | ProductNotFoundError;
 
 @Injectable()
 export class CreateProductDraftFacadeUseCase {

@@ -114,6 +114,25 @@ implements SellerProductQueryRepository {
     return product ? toProductDraftSummary(product, this.storageService) : null;
   }
 
+  async listSlugsByShopIdAndPrefix(
+    shopId: string,
+    slugPrefix: string,
+  ): Promise<string[]> {
+    const repository = this.entityManager.fork().getRepository(ProductEntity);
+    const products = await repository.find(
+      {
+        shop: shopId,
+        $or: [
+          { slug: slugPrefix },
+          { slug: { $like: `${slugPrefix}-%` } },
+        ],
+      },
+      { fields: ['slug'] },
+    );
+
+    return products.map((product) => product.slug);
+  }
+
   private shouldIncludeInShopList(
     productState: ProductState,
     requestedState?: ProductState,
