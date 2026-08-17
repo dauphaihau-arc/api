@@ -33,7 +33,7 @@ const appEnvBaseSchema = z.object({
   DB_PASSWORD: z.string().trim().min(1).optional(),
   DB_NAME: z.string().trim().min(1).optional(),
   CATALOG_STORE_DRIVER: z.enum(['mongodb']).default('mongodb'),
-  CATALOG_SEARCH_DRIVER: z.enum(['atlas']).default('atlas'),
+  CATALOG_SEARCH_DRIVER: z.enum(['atlas', 'mongo-basic']).default('atlas'),
   CATALOG_MONGODB_URI: z.url().optional(),
   CATALOG_MONGODB_DB_NAME: z.string().trim().min(1).optional(),
   CATALOG_MONGODB_PRODUCTS_COLLECTION: z.string().trim().min(1).optional(),

@@ -112,6 +112,8 @@ import { MongoCatalogProductPriceDocumentRepository } from './infra/catalog/mong
 import { MongoCatalogSearchDocumentRepository } from './infra/catalog/mongo/repositories/mongo-catalog-search-document.repository';
 import { MongoCatalogProductSlugRepository } from './infra/catalog/mongo/repositories/mongo-catalog-product-slug.repository';
 import { AtlasSearchStorefrontProductQueryRepository } from './infra/search/atlas/repositories/atlas-search-storefront-product-query.repository';
+import { MongoBasicProductRecommendationQueryRepository } from './infra/search/mongo-basic/repositories/mongo-basic-product-recommendation-query.repository';
+import { MongoBasicStorefrontProductQueryRepository } from './infra/search/mongo-basic/repositories/mongo-basic-storefront-product-query.repository';
 import { CatalogMongoAccess } from './infra/catalog/mongo/access/catalog-mongo.access';
 import { ProductAttributeValueEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-attribute-value.entity';
 import { ProductImageEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-image.entity';
@@ -196,11 +198,33 @@ import { STOREFRONT_PRICING_CONFIG, buildStorefrontPricingConfig } from '~/platf
     },
     {
       provide: StorefrontProductQueryRepository,
-      useExisting: AtlasSearchStorefrontProductQueryRepository,
+      inject: [
+        CATALOG_CONFIG,
+        AtlasSearchStorefrontProductQueryRepository,
+        MongoBasicStorefrontProductQueryRepository,
+      ],
+      useFactory: (
+        catalogConfig: ReturnType<typeof buildCatalogConfig>,
+        atlasRepository: AtlasSearchStorefrontProductQueryRepository,
+        mongoBasicRepository: MongoBasicStorefrontProductQueryRepository,
+      ) => catalogConfig.searchDriver === 'mongo-basic'
+        ? mongoBasicRepository
+        : atlasRepository,
     },
     {
       provide: ProductRecommendationQueryRepository,
-      useExisting: AtlasProductRecommendationQueryRepository,
+      inject: [
+        CATALOG_CONFIG,
+        AtlasProductRecommendationQueryRepository,
+        MongoBasicProductRecommendationQueryRepository,
+      ],
+      useFactory: (
+        catalogConfig: ReturnType<typeof buildCatalogConfig>,
+        atlasRepository: AtlasProductRecommendationQueryRepository,
+        mongoBasicRepository: MongoBasicProductRecommendationQueryRepository,
+      ) => catalogConfig.searchDriver === 'mongo-basic'
+        ? mongoBasicRepository
+        : atlasRepository,
     },
     {
       provide: SellerProductQueryRepository,
@@ -275,10 +299,12 @@ import { STOREFRONT_PRICING_CONFIG, buildStorefrontPricingConfig } from '~/platf
       useExisting: MikroOrmProductReviewAggregateRepository,
     },
     AtlasProductRecommendationQueryRepository,
+    MongoBasicProductRecommendationQueryRepository,
     ProductImageService,
     ReviewImageService,
     CatalogMongoAccess,
     AtlasSearchStorefrontProductQueryRepository,
+    MongoBasicStorefrontProductQueryRepository,
     MongoCatalogProductDocumentRepository,
     MongoCatalogProductPriceDocumentRepository,
     MongoCatalogSearchDocumentRepository,

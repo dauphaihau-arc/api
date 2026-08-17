@@ -122,8 +122,15 @@ async function main() {
     ]);
     console.log('MongoDB connectivity OK');
 
-    console.log('Ensuring Atlas Search indexes');
-    await ensureAtlasSearchIndexes(catalogConfig, catalogMongoAccess);
+    if (catalogConfig.searchDriver === 'atlas') {
+      console.log('Ensuring Atlas Search indexes');
+      await ensureAtlasSearchIndexes(catalogConfig, catalogMongoAccess);
+    }
+    else {
+      console.log(
+        `Skipping Atlas Search indexes for CATALOG_SEARCH_DRIVER=${catalogConfig.searchDriver}`,
+      );
+    }
 
     console.log('Ensuring catalog MongoDB collection indexes');
     await syncCatalogMongoIndexes(catalogConfig, catalogMongoAccess);
