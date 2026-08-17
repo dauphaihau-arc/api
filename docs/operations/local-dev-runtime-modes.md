@@ -30,7 +30,8 @@ What this gives you:
 | Host | NestJS API, NestJS worker, Go `inventory-service`, k6 |
 
 - API and worker run on the host with watch mode.
-- Postgres, Redis, MinIO, OpenTelemetry Collector, Prometheus, Loki, Tempo, Grafana, and related infra run in Docker.
+- Postgres, MongoDB, Redis, MinIO, OpenTelemetry Collector, Prometheus, Loki, Tempo, Grafana, and related infra run in Docker.
+- Local catalog search uses `CATALOG_SEARCH_DRIVER=mongo-basic`, backed by the MongoDB service from the `catalog-nosql` profile.
 - Traces go to the local OTEL collector.
 - Metrics are scraped by Prometheus from the host-run API.
 - Logs are mirrored into `api/logs/*.log` and scraped by Promtail into Loki.
@@ -62,6 +63,24 @@ Use this mode when you want:
 - verification of `.env.docker`
 - validation of container networking and startup behavior
 - a reproduction path closer to deployment
+
+## Catalog Search Modes
+
+Local development should use:
+
+```bash
+CATALOG_SEARCH_DRIVER=mongo-basic
+```
+
+This uses the projected MongoDB catalog documents with normal Mongo filters and regex matching. It is intended for booting the app and developing non-search-quality flows locally.
+
+Use:
+
+```bash
+CATALOG_SEARCH_DRIVER=atlas
+```
+
+when working on Atlas Search behavior, ranking, autocomplete quality, or production-like search index behavior.
 
 Tradeoffs:
 

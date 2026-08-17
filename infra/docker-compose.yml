@@ -10,6 +10,7 @@ services:
     restart: unless-stopped
     depends_on:
       - postgres
+      - mongodb
       - redis
       - rabbitmq
       - inventory-service
@@ -34,6 +35,7 @@ services:
     command: ["pnpm", "start:worker:prod"]
     depends_on:
       - postgres
+      - mongodb
       - redis
       - rabbitmq
       - inventory-service
@@ -82,6 +84,21 @@ services:
       timeout: 5s
       retries: 5
 
+  mongodb:
+    profiles: ["catalog-nosql", "app"]
+    image: mongo:7
+    container_name: arc-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   minio:
     image: minio/minio:latest
     container_name: arc-minio
@@ -100,6 +117,23 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
+  minio-init:
+    profiles: ["catalog-nosql", "app"]
+    image: minio/mc:latest
+    container_name: arc-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    volumes:
+      - ./minio/cors.json:/config/cors.json:ro
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        mc alias set local http://minio:9000 minioadmin minioadmin
+        mc mb --ignore-existing local/app-files
+        mc cors set local/app-files /config/cors.json
 
   redis:
     image: redis:7-alpine
@@ -214,6 +248,7 @@ services:
 
 volumes:
   postgres_data:
+  mongodb_data:
   minio_data:
   redis_data:
   rabbitmq_data:
