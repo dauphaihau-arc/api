@@ -9,6 +9,25 @@ import type {
 import { CategoryEntity } from './persistence/entities/category.entity';
 import { toCategorySummary } from './category-summary.projector';
 
+type CategorySubtreeRow = {
+  category_id: string;
+  parent_id: string | null;
+  category_name: string;
+  category_rank: number;
+  depth: number;
+  image_storage_key: string | null;
+  featured_facet_keys: string[] | string | null;
+  attribute_id: string | null;
+  attribute_key: string | null;
+  attribute_name: string | null;
+  attribute_input_type: string | null;
+  attribute_is_required: boolean | null;
+  attribute_rank: number | null;
+  option_id: string | null;
+  option_value: string | null;
+  option_rank: number | null;
+};
+
 @Injectable()
 export class MikroOrmCategoryQueryRepository implements CategoryQueryRepository {
   constructor(
@@ -39,6 +58,75 @@ export class MikroOrmCategoryQueryRepository implements CategoryQueryRepository 
     return rows.length > 0
       ? rows.map((row) => row.id)
       : null;
+  }
+
+  async findSelfAndDescendants(id: string): Promise<CategorySummary[] | null> {
+    const rows = await this.entityManager.getConnection().execute<CategorySubtreeRow[]>(
+      `
+        with recursive category_tree as (
+          select
+            id,
+            parent_id,
+            name,
+            rank,
+            image_storage_key,
+            featured_facet_keys,
+            0 as depth
+          from categories
+          where id = ?
+
+          union all
+
+          select
+            child.id,
+            child.parent_id,
+            child.name,
+            child.rank,
+            child.image_storage_key,
+            child.featured_facet_keys,
+            parent.depth + 1
+          from categories child
+          inner join category_tree parent on child.parent_id = parent.id
+        )
+        select
+          category_tree.id as category_id,
+          category_tree.parent_id,
+          category_tree.name as category_name,
+          category_tree.rank as category_rank,
+          category_tree.depth,
+          category_tree.image_storage_key,
+          category_tree.featured_facet_keys,
+          category_attributes.id as attribute_id,
+          category_attributes.key as attribute_key,
+          category_attributes.name as attribute_name,
+          category_attributes.input_type as attribute_input_type,
+          category_attributes.is_required as attribute_is_required,
+          category_attributes.rank as attribute_rank,
+          category_attribute_options.id as option_id,
+          category_attribute_options.value as option_value,
+          category_attribute_options.rank as option_rank
+        from category_tree
+        left join category_attributes
+          on category_attributes.category_id = category_tree.id
+        left join category_attribute_options
+          on category_attribute_options.category_attribute_id = category_attributes.id
+        order by
+          category_tree.depth asc,
+          category_tree.rank asc,
+          category_tree.name asc,
+          category_attributes.rank asc nulls last,
+          category_attributes.name asc nulls last,
+          category_attribute_options.rank asc nulls last,
+          category_attribute_options.value asc nulls last
+      `,
+      [id],
+    );
+
+    if (rows.length === 0) {
+      return null;
+    }
+
+    return toCategorySummariesFromSubtreeRows(rows, this.storageService);
   }
 
   async findAllByParentId(parentId?: string): Promise<CategorySummary[]> {
@@ -212,4 +300,103 @@ function collectLeafSuggestions(
   }
 
   return results;
+}
+
+function toCategorySummariesFromSubtreeRows(
+  rows: CategorySubtreeRow[],
+  storageService: StorageService,
+): CategorySummary[] {
+  const categories = new Map<string, CategorySummary>();
+  const attributesByCategoryId = new Map<string, Set<string>>();
+  const optionsByAttributeId = new Map<string, Set<string>>();
+
+  for (const row of rows) {
+    let category = categories.get(row.category_id);
+
+    if (!category) {
+      category = {
+        id: row.category_id,
+        parentId: row.parent_id ?? undefined,
+        name: row.category_name,
+        rank: Number(row.category_rank),
+        imageStorageKey: row.image_storage_key ?? undefined,
+        featuredFacetKeys: toFeaturedFacetKeys(row.featured_facet_keys),
+        imageUrl: row.image_storage_key
+          ? storageService.getPublicUrl(row.image_storage_key)
+          : undefined,
+        attributes: [],
+      };
+      categories.set(row.category_id, category);
+      attributesByCategoryId.set(row.category_id, new Set<string>());
+    }
+
+    if (!row.attribute_id || !row.attribute_key || !row.attribute_name) {
+      continue;
+    }
+
+    const seenAttributeIds = attributesByCategoryId.get(row.category_id);
+    let attribute = category.attributes.find((item) => item.id === row.attribute_id);
+
+    if (!attribute && !seenAttributeIds?.has(row.attribute_id)) {
+      attribute = {
+        id: row.attribute_id,
+        key: row.attribute_key,
+        name: row.attribute_name,
+        inputType: row.attribute_input_type ?? 'select',
+        isRequired: row.attribute_is_required ?? false,
+        rank: Number(row.attribute_rank ?? 1),
+        options: [],
+      };
+      category.attributes.push(attribute);
+      seenAttributeIds?.add(row.attribute_id);
+      optionsByAttributeId.set(row.attribute_id, new Set<string>());
+    }
+
+    if (!attribute || !row.option_id || !row.option_value) {
+      continue;
+    }
+
+    const seenOptionIds = optionsByAttributeId.get(row.attribute_id);
+
+    if (seenOptionIds?.has(row.option_id)) {
+      continue;
+    }
+
+    attribute.options.push({
+      id: row.option_id,
+      value: row.option_value,
+      rank: Number(row.option_rank ?? 1),
+    });
+    seenOptionIds?.add(row.option_id);
+  }
+
+  return Array.from(categories.values()).map((category) => ({
+    ...category,
+    attributes: category.attributes
+      .sort((left, right) => left.rank - right.rank)
+      .map((attribute) => ({
+        ...attribute,
+        options: attribute.options.sort((left, right) => left.rank - right.rank),
+      })),
+  }));
+}
+
+function toFeaturedFacetKeys(value: CategorySubtreeRow['featured_facet_keys']): string[] | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  if (Array.isArray(value)) {
+    return value;
+  }
+
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return Array.isArray(parsed)
+      ? parsed.filter((item): item is string => typeof item === 'string')
+      : undefined;
+  }
+  catch {
+    return undefined;
+  }
 }

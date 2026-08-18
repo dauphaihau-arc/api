@@ -21,18 +21,28 @@ export class ListPublicProductFacetsUseCase {
   ) {}
 
   async execute(query: ListPublicProductsQuery): Promise<PublicProductFacet[]> {
-    const category = query.categoryId
-      ? await this.categoryRepository.findById(query.categoryId)
+    const taxonomyCategories = query.categoryId
+      ? await this.categoryRepository.findSelfAndDescendants?.(query.categoryId) ?? null
       : null;
+
+    if (query.categoryId && taxonomyCategories?.length === 0) {
+      return [];
+    }
+
+    const category = taxonomyCategories?.[0] ?? (query.categoryId
+      ? await this.categoryRepository.findById(query.categoryId)
+      : null);
 
     const featuredFacetCategory = category
       ? await this.resolveFeaturedFacetCategory(category)
       : null;
 
-    const categoryIds = await resolveQueryCategoryIds(
-      this.categoryRepository,
-      query.categoryId,
-    );
+    const categoryIds = taxonomyCategories
+      ? taxonomyCategories.map((item) => item.id)
+      : await resolveQueryCategoryIds(
+        this.categoryRepository,
+        query.categoryId,
+      );
 
     if (query.categoryId && categoryIds?.length === 0) {
       return [];
@@ -46,6 +56,7 @@ export class ListPublicProductFacetsUseCase {
       category,
       featuredFacetCategory,
       facets,
+      taxonomyCategories,
     });
   }
 
@@ -53,15 +64,20 @@ export class ListPublicProductFacetsUseCase {
     category,
     featuredFacetCategory,
     facets,
+    taxonomyCategories,
   }: {
     category: CategorySummary | null;
     featuredFacetCategory: CategorySummary | null;
     facets: PublicProductFacet[];
+    taxonomyCategories: CategorySummary[] | null;
   }): Promise<PublicProductFacet[]> {
     const featuredFacetKeys = featuredFacetCategory?.featuredFacetKeys ?? [];
+    const leafCategories = category
+      ? await this.resolveLeafCategories(category, taxonomyCategories)
+      : [];
 
     const subtreeFacetKeys = category
-      ? await this.resolveCommonLeafFacetKeys(category)
+      ? this.resolveCommonLeafFacetKeys(leafCategories)
       : [];
 
     const taxonomyFacetKeys = Array.from(new Set([
@@ -89,12 +105,14 @@ export class ListPublicProductFacetsUseCase {
         category,
         featuredFacetCategory,
         facetKey,
+        taxonomyCategories,
       });
 
       const taxonomyOptions = await this.resolveFacetTaxonomyOptions({
         category,
         featuredFacetCategory,
         facetKey,
+        leafCategories,
       });
 
       const existingFacet = facetsByKey.get(facetKey);
@@ -121,9 +139,7 @@ export class ListPublicProductFacetsUseCase {
     return mergedFacets.sort(compareFacetNames);
   }
 
-  private async resolveCommonLeafFacetKeys(category: CategorySummary): Promise<string[]> {
-    const leafCategories = await this.resolveLeafCategories(category);
-
+  private resolveCommonLeafFacetKeys(leafCategories: CategorySummary[]): string[] {
     if (leafCategories.length === 0) {
       return [];
     }
@@ -167,10 +183,12 @@ export class ListPublicProductFacetsUseCase {
     category,
     featuredFacetCategory,
     facetKey,
+    taxonomyCategories,
   }: {
     category: CategorySummary | null;
     featuredFacetCategory: CategorySummary | null;
     facetKey: string;
+    taxonomyCategories: CategorySummary[] | null;
   }): Promise<CategorySummary['attributes'][number] | null> {
     const currentCategoryMatch = category?.attributes.find((item) => item.key === facetKey) ?? null;
     const featuredCategoryMatch = featuredFacetCategory?.attributes.find((item) => item.key === facetKey) ?? null;
@@ -190,6 +208,18 @@ export class ListPublicProductFacetsUseCase {
     }
 
     if (!category) {
+      return directMatch;
+    }
+
+    if (taxonomyCategories) {
+      for (const child of collectDescendants(category.id, taxonomyCategories)) {
+        const childAttribute = child.attributes.find((item) => item.key === facetKey);
+
+        if (childAttribute) {
+          return childAttribute;
+        }
+      }
+
       return directMatch;
     }
 
@@ -228,10 +258,12 @@ export class ListPublicProductFacetsUseCase {
     category,
     featuredFacetCategory,
     facetKey,
+    leafCategories,
   }: {
     category: CategorySummary | null;
     featuredFacetCategory: CategorySummary | null;
     facetKey: string;
+    leafCategories: CategorySummary[];
   }): Promise<PublicProductFacetOption[]> {
     const options = new Map<string, PublicProductFacetOption>();
     const categories = new Map<string, CategorySummary>();
@@ -245,8 +277,6 @@ export class ListPublicProductFacetsUseCase {
     }
 
     if (category) {
-      const leafCategories = await this.resolveLeafCategories(category);
-
       leafCategories.forEach((leafCategory) => {
         categories.set(leafCategory.id, leafCategory);
       });
@@ -266,7 +296,17 @@ export class ListPublicProductFacetsUseCase {
       .sort((left, right) => left.value.localeCompare(right.value));
   }
 
-  private async resolveLeafCategories(category: CategorySummary): Promise<CategorySummary[]> {
+  private async resolveLeafCategories(
+    category: CategorySummary,
+    taxonomyCategories: CategorySummary[] | null,
+  ): Promise<CategorySummary[]> {
+    if (taxonomyCategories) {
+      const childrenByParentId = buildChildrenByParentId(taxonomyCategories);
+
+      return taxonomyCategories
+        .filter((candidateCategory) => (childrenByParentId.get(candidateCategory.id) ?? []).length === 0);
+    }
+
     const leaves: CategorySummary[] = [];
     const pendingCategories: CategorySummary[] = [category];
 
@@ -310,4 +350,44 @@ function compareFacetNames(
   right: Pick<PublicProductFacet, 'attributeName'>,
 ): number {
   return left.attributeName.localeCompare(right.attributeName);
+}
+
+function buildChildrenByParentId(categories: CategorySummary[]): Map<string, CategorySummary[]> {
+  const childrenByParentId = new Map<string, CategorySummary[]>();
+
+  for (const category of categories) {
+    if (!category.parentId) {
+      continue;
+    }
+
+    const children = childrenByParentId.get(category.parentId) ?? [];
+    children.push(category);
+    childrenByParentId.set(category.parentId, children);
+  }
+
+  return childrenByParentId;
+}
+
+function collectDescendants(
+  categoryId: string,
+  categories: CategorySummary[],
+): CategorySummary[] {
+  const childrenByParentId = buildChildrenByParentId(categories);
+  const descendants: CategorySummary[] = [];
+  const pendingCategories = [...(childrenByParentId.get(categoryId) ?? [])];
+  const visitedCategoryIds = new Set<string>([categoryId]);
+
+  while (pendingCategories.length > 0) {
+    const category = pendingCategories.shift();
+
+    if (!category || visitedCategoryIds.has(category.id)) {
+      continue;
+    }
+
+    visitedCategoryIds.add(category.id);
+    descendants.push(category);
+    pendingCategories.push(...(childrenByParentId.get(category.id) ?? []));
+  }
+
+  return descendants;
 }

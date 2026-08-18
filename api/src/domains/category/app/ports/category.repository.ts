@@ -7,6 +7,7 @@ import type {
 
 export abstract class CategoryRepository {
   findSelfAndDescendantIds?(id: string): Promise<string[] | null>;
+  findSelfAndDescendants?(id: string): Promise<CategorySummary[] | null>;
   abstract create(input: CreateCategoryInput): Promise<CategorySummary>;
   abstract createAttribute(
     input: CreateCategoryAttributeInput

@@ -6,6 +6,7 @@ import { NoopKeyvStore } from '~/integrations/cache/noop-keyv.store';
 
 export type CacheDriver = 'memory' | 'redis' | 'disabled';
 export type OptionalCacheScope =
+  | 'category.taxonomy-subtree'
   | 'storefront.public-products'
   | 'storefront.rare-price'
   | 'user.by-id';
@@ -39,6 +40,10 @@ export function buildCacheConfig(
     optionalCacheEnabled: configService.get<string>('CACHE_ENABLED', 'true') !== 'false',
 
     optionalCacheScopes: {
+      'category.taxonomy-subtree': configService.get<string>(
+        'CATEGORY_TAXONOMY_CACHE_ENABLED',
+        'true',
+      ) !== 'false',
       'storefront.public-products': configService.get<string>(
         'STOREFRONT_PUBLIC_RESPONSE_CACHE_ENABLED',
         'true',

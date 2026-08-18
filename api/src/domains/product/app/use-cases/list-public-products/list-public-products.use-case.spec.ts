@@ -10,7 +10,7 @@ type ProductRepositoryMock = Pick<
 
 type CategoryRepositoryMock = Pick<
   jest.Mocked<CategoryRepository>,
-  'findById' | 'findAllByParentId' | 'findSelfAndDescendantIds'
+  'findById' | 'findAllByParentId' | 'findSelfAndDescendantIds' | 'findSelfAndDescendants'
 >;
 
 const createProductRepositoryMock = (): ProductRepositoryMock => ({
@@ -22,6 +22,7 @@ const createCategoryRepositoryMock = (): CategoryRepositoryMock => ({
   findById: jest.fn(),
   findAllByParentId: jest.fn(),
   findSelfAndDescendantIds: undefined,
+  findSelfAndDescendants: undefined,
 });
 
 const createUseCaseHarness = () => {
@@ -174,6 +175,183 @@ describe('ListPublicProductsUseCase', function () {
         attributeName: '',
         selectedOptionValues: [],
       }],
+      order: undefined,
+    });
+  });
+
+  it('uses one category subtree lookup when merging public product facets', async () => {
+    const batchedCategoryRepository: CategoryRepositoryMock = {
+      findById: jest.fn().mockImplementation(async (categoryId: string) => {
+        if (categoryId === 'fashion-category') {
+          return {
+            id: 'fashion-category',
+            name: 'Fashion',
+            rank: 1,
+            featuredFacetKeys: ['color', 'material'],
+            attributes: [
+              {
+                id: 'attribute-fashion-color',
+                key: 'color',
+                name: 'Color',
+                inputType: 'select',
+                isRequired: false,
+                rank: 1,
+                options: [],
+              },
+              {
+                id: 'attribute-fashion-material',
+                key: 'material',
+                name: 'Material',
+                inputType: 'select',
+                isRequired: false,
+                rank: 2,
+                options: [],
+              },
+            ],
+          };
+        }
+
+        return null;
+      }),
+      findAllByParentId: jest.fn(),
+      findSelfAndDescendantIds: jest.fn(),
+      findSelfAndDescendants: jest.fn().mockResolvedValue([
+        {
+          id: 'shoes-category',
+          parentId: 'fashion-category',
+          name: 'Shoes',
+          rank: 1,
+          attributes: [],
+        },
+        {
+          id: 'sneakers-category',
+          parentId: 'shoes-category',
+          name: 'Sneakers',
+          rank: 1,
+          attributes: [
+            {
+              id: 'attribute-sneakers-color',
+              key: 'color',
+              name: 'Color',
+              inputType: 'select',
+              isRequired: false,
+              rank: 1,
+              options: [{ id: 'option-white', value: 'White', rank: 1 }],
+            },
+            {
+              id: 'attribute-sneakers-material',
+              key: 'material',
+              name: 'Material',
+              inputType: 'select',
+              isRequired: false,
+              rank: 2,
+              options: [{ id: 'option-canvas', value: 'Canvas', rank: 1 }],
+            },
+            {
+              id: 'attribute-sneakers-size',
+              key: 'shoe_size',
+              name: 'Size',
+              inputType: 'select',
+              isRequired: false,
+              rank: 3,
+              options: [{ id: 'option-us-8', value: 'US 8', rank: 1 }],
+            },
+          ],
+        },
+        {
+          id: 'boots-category',
+          parentId: 'shoes-category',
+          name: 'Boots',
+          rank: 2,
+          attributes: [
+            {
+              id: 'attribute-boots-color',
+              key: 'color',
+              name: 'Color',
+              inputType: 'select',
+              isRequired: false,
+              rank: 1,
+              options: [{ id: 'option-black', value: 'Black', rank: 1 }],
+            },
+            {
+              id: 'attribute-boots-material',
+              key: 'material',
+              name: 'Material',
+              inputType: 'select',
+              isRequired: false,
+              rank: 2,
+              options: [{ id: 'option-leather', value: 'Leather', rank: 1 }],
+            },
+            {
+              id: 'attribute-boots-size',
+              key: 'shoe_size',
+              name: 'Size',
+              inputType: 'select',
+              isRequired: false,
+              rank: 3,
+              options: [{ id: 'option-us-9', value: 'US 9', rank: 1 }],
+            },
+          ],
+        },
+      ]),
+    };
+    const localFacetsUseCase = new ListPublicProductFacetsUseCase(
+      productRepository as never,
+      batchedCategoryRepository as never,
+    );
+    productRepository.listPublicFacets.mockResolvedValue([
+      {
+        facetKey: 'color',
+        attributeName: 'Color',
+        options: [{ optionKey: 'black', value: 'Black' }],
+      },
+    ]);
+
+    await expect(localFacetsUseCase.execute({
+      page: 1,
+      limit: 12,
+      categoryId: 'shoes-category',
+    })).resolves.toEqual([
+      {
+        facetKey: 'color',
+        attributeName: 'Color',
+        options: [
+          { optionKey: 'black', value: 'Black' },
+          { optionKey: 'white', value: 'White' },
+        ],
+      },
+      {
+        facetKey: 'material',
+        attributeName: 'Material',
+        options: [
+          { optionKey: 'canvas', value: 'Canvas' },
+          { optionKey: 'leather', value: 'Leather' },
+        ],
+      },
+      {
+        facetKey: 'shoe_size',
+        attributeName: 'Size',
+        options: [
+          { optionKey: 'us_8_eu_41', value: 'US 8 / EU 41' },
+          { optionKey: 'us_9_eu_42', value: 'US 9 / EU 42' },
+        ],
+      },
+    ]);
+
+    expect(batchedCategoryRepository.findSelfAndDescendants).toHaveBeenCalledWith('shoes-category');
+    expect(batchedCategoryRepository.findSelfAndDescendantIds).not.toHaveBeenCalled();
+    expect(batchedCategoryRepository.findAllByParentId).not.toHaveBeenCalled();
+    expect(productRepository.listPublicFacets).toHaveBeenCalledWith({
+      page: 1,
+      limit: 12,
+      categoryIds: ['shoes-category', 'sneakers-category', 'boots-category'],
+      search: undefined,
+      title: undefined,
+      isDigital: undefined,
+      whoMade: undefined,
+      minPriceMinor: undefined,
+      maxPriceMinor: undefined,
+      attributeFilters: undefined,
       order: undefined,
     });
   });

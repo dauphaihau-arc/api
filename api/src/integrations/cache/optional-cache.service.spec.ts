@@ -35,6 +35,28 @@ describe('OptionalCacheService', () => {
     );
   });
 
+  it('supports category taxonomy subtree cache scope', async () => {
+    const { cacheManager, service } = buildService();
+
+    await expect(service.get(
+      'category.taxonomy-subtree',
+      'category:taxonomy-subtree:v1:category-1',
+    )).resolves.toBe('cached-value');
+    await service.set(
+      'category.taxonomy-subtree',
+      'category:taxonomy-subtree:v1:category-1',
+      [{ id: 'category-1' }],
+      300_000,
+    );
+
+    expect(cacheManager.get).toHaveBeenCalledWith('category:taxonomy-subtree:v1:category-1');
+    expect(cacheManager.set).toHaveBeenCalledWith(
+      'category:taxonomy-subtree:v1:category-1',
+      [{ id: 'category-1' }],
+      300_000,
+    );
+  });
+
   it('skips reads and writes when global optional caching is disabled', async () => {
     const { cacheManager, service } = buildService({ CACHE_ENABLED: 'false' });
 

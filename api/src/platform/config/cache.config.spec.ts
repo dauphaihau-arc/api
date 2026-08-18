@@ -24,6 +24,7 @@ describe('buildCacheConfig', () => {
       CACHE_DRIVER: 'disabled',
       CACHE_ENABLED: 'false',
       USER_CACHE_ENABLED: 'false',
+      CATEGORY_TAXONOMY_CACHE_ENABLED: 'false',
       STOREFRONT_PUBLIC_RESPONSE_CACHE_ENABLED: 'false',
       STOREFRONT_RARE_PRICE_CACHE_ENABLED: 'false',
     });
@@ -31,6 +32,7 @@ describe('buildCacheConfig', () => {
     expect(config.driver).toBe('disabled');
     expect(config.optionalCacheEnabled).toBe(false);
     expect(config.optionalCacheScopes).toEqual({
+      'category.taxonomy-subtree': false,
       'storefront.public-products': false,
       'storefront.rare-price': false,
       'user.by-id': false,
@@ -46,6 +48,7 @@ describe('buildCacheModuleOptions', () => {
       ttlMilliseconds: 60_000,
       optionalCacheEnabled: false,
       optionalCacheScopes: {
+        'category.taxonomy-subtree': false,
         'storefront.public-products': false,
         'storefront.rare-price': false,
         'user.by-id': false,

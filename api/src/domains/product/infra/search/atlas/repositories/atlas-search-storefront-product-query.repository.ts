@@ -252,12 +252,14 @@ implements StorefrontProductQueryRepository {
     input: ListPublicProductsInput,
   ): Promise<PublicProductFacet[]> {
     this.assertAtlasSearchEnabled();
+
     const pricingSelection = resolveIndexedPricingSelection(
       await this.storefrontMarketContextService.resolveCurrentRequest(),
     );
-    const indexedPricingSelection = this.toIndexedPricingSelection(pricingSelection);
 
+    const indexedPricingSelection = this.toIndexedPricingSelection(pricingSelection);
     const searchCollection = await this.getSearchCollection();
+
     const documents = await searchCollection.aggregate<{
       _id: {
         attributeKey: string;

@@ -17,10 +17,12 @@ import { CategoryAttributeOptionEntity } from './infra/persistence/entities/cate
 import { CategoryAttributeEntity } from './infra/persistence/entities/category-attribute.entity';
 import { CategoryEntity } from './infra/persistence/entities/category.entity';
 import { StorageModule } from '~/integrations/storage/storage.module';
+import { CacheModule } from '~/integrations/cache/cache.module';
 
 @Module({
   imports: [
     ConfigModule,
+    CacheModule,
     StorageModule,
     MikroOrmModule.forFeature([
       CategoryEntity,

@@ -48,6 +48,7 @@ const appEnvBaseSchema = z.object({
   CACHE_DRIVER: z.enum(['memory', 'redis', 'disabled']).optional(),
   CACHE_ENABLED: z.enum(['true', 'false']).default('true'),
   CACHE_TTL: z.string().trim().min(1).default('60s'),
+  CATEGORY_TAXONOMY_CACHE_ENABLED: z.enum(['true', 'false']).default('true'),
   USER_CACHE_ENABLED: z.enum(['true', 'false']).default('true'),
   STOREFRONT_PUBLIC_RESPONSE_CACHE_ENABLED: z.enum(['true', 'false']).default('true'),
   STOREFRONT_RARE_PRICE_CACHE_ENABLED: z.enum(['true', 'false']).default('true'),
