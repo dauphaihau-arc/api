@@ -1,12 +1,20 @@
-# AGENT.md
+# Arc API Workspace Agent Instructions
 
 Read this file first. Do not read every markdown file in the repository by default.
+
+## Before Editing
+
+1. Determine whether the work belongs to the Nest API app, inventory service, API infrastructure, or API docs.
+2. For Nest API changes, read `api/AGENTS.md`.
+3. For architecture-sensitive Nest API changes, read the relevant files in `api/agent-skills/`.
+4. For operational or setup work, read only the relevant file under `docs/`.
 
 ## Default Flow
 
 1. Read `README.md` for top-level setup and architecture context.
-2. Read files in `api/agent-skills/` only when they are relevant to the task.
-3. Read files in `docs/` only when the task needs deeper implementation detail.
+2. For Nest API work, read `api/AGENTS.md`.
+3. Read files in `api/agent-skills/` only when they are relevant to the task.
+4. Read files in `docs/` only when the task needs deeper implementation detail.
 
 ## Routing
 
