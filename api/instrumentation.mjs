@@ -50,7 +50,6 @@ if (otelEnabled) {
 
 function hasOtlpTraceExportConfig() {
   return Boolean(
-    process.env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
-    || process.env.OTEL_EXPORTER_OTLP_ENDPOINT
+    process.env.OTEL_EXPORTER_OTLP_ENDPOINT
   );
 }

@@ -68,8 +68,12 @@ const appEnvBaseSchema = z.object({
   OTEL_ENABLED: z.enum(['true', 'false']).default('true'),
   OTEL_SERVICE_NAME: z.string().trim().min(1).default('arc-api'),
   OTEL_TRACES_CONSOLE_EXPORTER: z.enum(['true', 'false']).default('false'),
-  OTEL_EXPORTER_OTLP_ENDPOINT: z.string().trim().optional(),
-  OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: z.string().trim().optional(),
+  OTEL_LOGS_EXPORTER: z.string().trim().min(1).optional(),
+  OTEL_EXPORTER_OTLP_ENDPOINT: z.url().optional(),
+  OTEL_EXPORTER_OTLP_HEADERS: z.string().trim().optional(),
+  OTEL_EXPORTER_OTLP_PROTOCOL: z
+    .enum(['grpc', 'http/protobuf', 'http/json'])
+    .optional(),
   SENTRY_ENABLED: z.enum(['true', 'false']).default('true'),
   SENTRY_DSN: z.string().trim().optional(),
   SENTRY_ENVIRONMENT: z.string().trim().min(1).optional(),
