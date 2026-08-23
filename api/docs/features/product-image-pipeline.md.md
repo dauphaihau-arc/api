@@ -1,4 +1,4 @@
-# Product Images
+# Product Image Pipeline
 
 This document summarizes how product images move through the system:
 
