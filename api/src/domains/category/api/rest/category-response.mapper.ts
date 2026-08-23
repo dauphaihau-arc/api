@@ -37,7 +37,6 @@ export const toCategoryResponse = (
   parent_id: category.parentId,
   name: category.name,
   rank: category.rank,
-  image_storage_key: category.imageStorageKey,
   image_url: category.imageUrl,
   featured_facet_keys: category.featuredFacetKeys,
   attributes: category.attributes.map(toCategoryAttributeResponse),

@@ -15,7 +15,7 @@ export type ChatProductReferenceMetadata = {
       title: string;
       shop_slug: string;
       product_slug: string;
-      image_storage_key?: string;
+      image_url?: string;
       amount_minor?: number;
       original_amount_minor?: number;
       currency?: string;
@@ -28,7 +28,10 @@ export type ChatProductReferenceMetadata = {
   };
 };
 
-export function buildChatProductReferenceMetadata(product: ProductEntity): ChatProductReferenceMetadata {
+export function buildChatProductReferenceMetadata(
+  product: ProductEntity,
+  getPublicUrl: (storageKey: string) => string | undefined,
+): ChatProductReferenceMetadata {
   const primaryImage = product.images
     .getItems()
     .slice()
@@ -36,6 +39,7 @@ export function buildChatProductReferenceMetadata(product: ProductEntity): ChatP
   const cardImage = primaryImage?.variants
     .getItems()
     .find(variant => variant.variant === ProductImageVariant.CARD_1X1);
+  const imageStorageKey = cardImage?.storageKey ?? primaryImage?.storageKey;
   const activePrices = product.inventoryRecords
     .getItems()
     .flatMap(inventory => inventory.prices.getItems().filter(price => !price.activeTo));
@@ -52,8 +56,8 @@ export function buildChatProductReferenceMetadata(product: ProductEntity): ChatP
         title: product.title,
         shop_slug: product.shop.slug,
         product_slug: product.slug,
-        ...(cardImage?.storageKey || primaryImage?.storageKey
-          ? { image_storage_key: cardImage?.storageKey ?? primaryImage?.storageKey }
+        ...(imageStorageKey
+          ? { image_url: getPublicUrl(imageStorageKey) }
           : {}),
         ...(lowestPrice
           ? {

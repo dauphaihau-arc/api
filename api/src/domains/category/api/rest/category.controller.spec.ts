@@ -71,7 +71,6 @@ describe('CategoryController', () => {
         parent_id: undefined,
         name: 'Clothing',
         rank: 1,
-        image_storage_key: 'categories/clothing.jpg',
         image_url: 'https://cdn.example.com/categories/clothing.jpg',
         attributes: [
           {

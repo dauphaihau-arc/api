@@ -3,6 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { CurrentUserEntity } from '~/domains/auth/infra/persistence/entities/current-user.entity';
 import { ProductEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product.entity';
 import { ShopEntity } from '~/domains/shop/infra/persistence/entities/shop.entity';
+import { StorageService } from '~/integrations/storage/app/ports/storage.service';
 import { buildChatMessageBodyPreview } from '../../../app/chat-message-preview';
 import {
   CHAT_MESSAGE_TYPES,
@@ -32,7 +33,10 @@ const CHAT_CONVERSATION_SUMMARY_POPULATE = [
 
 @Injectable()
 export class MikroOrmChatCommandRepository implements ChatCommandRepository {
-  constructor(private readonly entityManager: EntityManager) {}
+  constructor(
+    private readonly entityManager: EntityManager,
+    private readonly storageService: StorageService,
+  ) {}
 
   loadShopForConversationStart(
     entityManager: EntityManager,
@@ -107,7 +111,10 @@ export class MikroOrmChatCommandRepository implements ChatCommandRepository {
     message.senderUser = conversation.buyerUser;
     message.messageType = CHAT_MESSAGE_TYPES.PRODUCT_REFERENCE;
     message.body = product.title;
-    message.metadata = buildChatProductReferenceMetadata(product);
+    message.metadata = buildChatProductReferenceMetadata(
+      product,
+      storageKey => this.storageService.getPublicUrl(storageKey),
+    );
 
     applyLastBuyerMessage(conversation, message);
     entityManager.persist(message);

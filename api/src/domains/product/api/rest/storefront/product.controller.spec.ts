@@ -400,7 +400,6 @@ describe('ProductController', () => {
           body: 'Loved it',
           image: {
             id: 'image-1',
-            storage_key: 'dev/public/users/u1/product-reviews/item-1/images/img/original.jpg',
             url: 'https://cdn.example.test/review.jpg',
             rank: 1,
           },
@@ -494,7 +493,6 @@ describe('ProductController', () => {
       items: [
         {
           id: 'image-1',
-          storage_key: 'dev/public/users/u1/product-reviews/item-1/images/img/original.jpg',
           url: 'https://cdn.example.test/review.jpg',
           rank: 1,
           review_id: 'review-1',

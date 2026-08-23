@@ -21,12 +21,10 @@ export type PublicProductReviewListResponse = {
     body?: string;
     image?: {
       id: string;
-      storage_key: string;
-      url?: string;
+      url: string;
       rank: number;
       variants?: Record<string, {
-        storage_key: string;
-        url?: string;
+        url: string;
         width?: number;
         height?: number;
         format?: string;

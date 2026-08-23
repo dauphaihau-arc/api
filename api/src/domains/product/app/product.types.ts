@@ -115,6 +115,7 @@ export interface ProductVariantSummary {
   optionValue1?: string;
   optionValue2?: string;
   imageStorageKey?: string;
+  imageUrl?: string;
   rank: number;
 }
 
@@ -235,9 +236,11 @@ export interface PublicProductListItem {
   slug: string;
   image?: {
     storageKey: string;
+    url?: string;
     variant?: string;
     variants?: Record<string, {
       storageKey: string;
+      url?: string;
     }>;
   };
   variantType?: ProductVariantType;

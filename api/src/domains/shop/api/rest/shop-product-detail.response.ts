@@ -16,7 +16,7 @@ export type ShopProductDetailResponse = {
   variant_sub_group_name?: string;
   images: Array<{
     id: string;
-    storage_key: string;
+    url: string;
     rank: number;
     variant_status: string;
     variant_error?: string;
@@ -24,7 +24,7 @@ export type ShopProductDetailResponse = {
     variants?: Array<{
       id: string;
       variant: string;
-      storage_key: string;
+      url: string;
       width?: number;
       height?: number;
       format?: string;
@@ -44,7 +44,7 @@ export type ShopProductDetailResponse = {
     name: string;
     option_value_1?: string;
     option_value_2?: string;
-    image_storage_key?: string;
+    image_url?: string;
     rank: number;
   }>;
   inventory: Array<{

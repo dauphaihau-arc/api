@@ -22,8 +22,7 @@ export function toPublicProductReviewListResponse(
       image: item.images[0]
         ? {
           id: item.images[0].id,
-          storage_key: item.images[0].storageKey,
-          url: item.images[0].url,
+          url: item.images[0].url ?? '',
           rank: item.images[0].rank,
           ...(toVariantRecord(item.images[0].variants)
             ? { variants: toVariantRecord(item.images[0].variants) }
@@ -54,15 +53,13 @@ function toVariantRecord(variants: PublicProductReviewListResult['items'][number
   }
 
   return variants.reduce<Record<string, {
-    storage_key: string;
-    url?: string;
+    url: string;
     width?: number;
     height?: number;
     format?: string;
   }>>((accumulator, variant) => {
     accumulator[variant.variant] = {
-      storage_key: variant.storageKey,
-      url: variant.url,
+      url: variant.url ?? '',
       width: variant.width,
       height: variant.height,
       format: variant.format,

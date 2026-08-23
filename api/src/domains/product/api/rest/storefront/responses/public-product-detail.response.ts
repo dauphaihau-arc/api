@@ -29,15 +29,13 @@ export type PublicProductDetailResponse = {
   };
   images: Array<{
     id: string;
-    storage_key: string;
-    url?: string;
+    url: string;
     rank: number;
     variant_status: string;
     variant_error?: string;
     variants_generated_at?: Date;
     variants?: Record<string, {
-      storage_key: string;
-      url?: string;
+      url: string;
       width?: number;
       height?: number;
       format?: string;
@@ -48,7 +46,7 @@ export type PublicProductDetailResponse = {
     name: string;
     option_value_1?: string;
     option_value_2?: string;
-    image_storage_key?: string;
+    image_url?: string;
     rank: number;
   }>;
   inventory: Array<{

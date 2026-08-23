@@ -16,8 +16,7 @@ export function toMyProductReviewResponse(review: MyProductReview) {
     body: review.body,
     images: review.images.map((image) => ({
       id: image.id,
-      storage_key: image.storageKey,
-      url: image.url,
+      url: image.url ?? '',
       size_bytes: image.sizeBytes,
       rank: image.rank,
       ...(image.variantStatus ? { variant_status: image.variantStatus } : {}),
@@ -37,15 +36,13 @@ function toVariantRecord(variants: MyProductReview['images'][number]['variants']
   }
 
   return variants.reduce<Record<string, {
-    storage_key: string;
-    url?: string;
+    url: string;
     width?: number;
     height?: number;
     format?: string;
   }>>((accumulator, variant) => {
     accumulator[variant.variant] = {
-      storage_key: variant.storageKey,
-      url: variant.url,
+      url: variant.url ?? '',
       width: variant.width,
       height: variant.height,
       format: variant.format,

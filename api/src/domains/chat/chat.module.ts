@@ -1,5 +1,6 @@
 import { MikroOrmModule } from '@mikro-orm/nestjs';
 import { Module } from '@nestjs/common';
+import { StorageModule } from '~/integrations/storage/storage.module';
 import { WsModule } from '~/platform/ws/ws.module';
 import { CurrentUserEntity } from '../auth/infra/persistence/entities/current-user.entity';
 import { ProductEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product.entity';
@@ -30,6 +31,7 @@ import { ForwardChatMessageToWsListener } from './listeners/forward-chat-message
 @Module({
   imports: [
     WsModule,
+    StorageModule,
     ShopModule,
     ProductModule,
     MikroOrmModule.forFeature([

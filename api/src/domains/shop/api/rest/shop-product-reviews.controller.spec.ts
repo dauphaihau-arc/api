@@ -115,7 +115,6 @@ describe('ShopProductReviewsController', () => {
           images: [
             {
               id: 'image-1',
-              storage_key: 'reviews/image-1.jpg',
               url: 'https://cdn.example.test/reviews/image-1.jpg',
               rank: 1,
             },

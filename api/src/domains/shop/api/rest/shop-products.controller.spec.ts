@@ -73,6 +73,7 @@ describe('ShopProductsController', () => {
         {
           id: 'image-1',
           storageKey: 'products/image-1.jpg',
+          url: 'https://cdn.example.test/products/image-1.jpg',
           rank: 1,
           variantStatus: 'ready',
           variantError: undefined,
@@ -156,7 +157,7 @@ describe('ShopProductsController', () => {
       images: [
         {
           id: 'image-1',
-          storage_key: 'products/image-1.jpg',
+          url: 'https://cdn.example.test/products/image-1.jpg',
           rank: 1,
           variant_status: 'ready',
           variant_error: undefined,
@@ -181,7 +182,7 @@ describe('ShopProductsController', () => {
           name: 'Brown / Large',
           option_value_1: 'Brown',
           option_value_2: 'Large',
-          image_storage_key: 'products/variant-1.jpg',
+          image_url: undefined,
           rank: 1,
         },
       ],

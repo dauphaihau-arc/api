@@ -19,7 +19,6 @@ export type CategoryResponse = {
   parent_id?: string;
   name: string;
   rank: number;
-  image_storage_key?: string;
   image_url?: string;
   featured_facet_keys?: string[];
   attributes: CategoryAttributeResponse[];

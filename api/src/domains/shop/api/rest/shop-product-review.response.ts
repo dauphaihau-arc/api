@@ -8,15 +8,13 @@ export type ShopProductReviewResponse = {
   status: string;
   images: Array<{
     id: string;
-    storage_key: string;
-    url?: string;
+    url: string;
     rank: number;
     variant_status?: string;
     variant_error?: string;
     variants_generated_at?: Date;
     variants?: Record<string, {
-      storage_key: string;
-      url?: string;
+      url: string;
       width?: number;
       height?: number;
       format?: string;

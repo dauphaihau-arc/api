@@ -16,14 +16,14 @@ export const toPublicProductListItemResponse = (
   slug: product.slug,
   image: product.image
     ? {
-      storage_key: product.image.storageKey,
+      url: product.image.url,
       variant: product.image.variant,
       variants: product.image.variants
         ? Object.fromEntries(
           Object.entries(product.image.variants).map(([name, variant]) => [
             name,
             {
-              storage_key: variant.storageKey,
+              url: variant.url,
             },
           ]),
         )

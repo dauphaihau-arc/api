@@ -24,7 +24,6 @@ function toMyReviewResponse(review?: {
   updatedAt: Date;
   images: Array<{
     id: string;
-    storageKey: string;
     url?: string;
     sizeBytes?: number;
     rank: number;
@@ -33,7 +32,6 @@ function toMyReviewResponse(review?: {
     variantsGeneratedAt?: Date;
     variants?: Array<{
       variant: string;
-      storageKey: string;
       url?: string;
       width?: number;
       height?: number;
@@ -55,8 +53,7 @@ function toMyReviewResponse(review?: {
     updated_at: review.updatedAt,
     images: review.images.map((image) => ({
       id: image.id,
-      storage_key: image.storageKey,
-      url: image.url,
+      url: image.url ?? '',
       size_bytes: image.sizeBytes,
       rank: image.rank,
       ...(image.variantStatus ? { variant_status: image.variantStatus } : {}),
@@ -69,7 +66,6 @@ function toMyReviewResponse(review?: {
 
 function toVariantRecord(variants?: Array<{
   variant: string;
-  storageKey: string;
   url?: string;
   width?: number;
   height?: number;
@@ -80,15 +76,13 @@ function toVariantRecord(variants?: Array<{
   }
 
   return variants.reduce<Record<string, {
-    storage_key: string;
-    url?: string;
+    url: string;
     width?: number;
     height?: number;
     format?: string;
   }>>((accumulator, variant) => {
     accumulator[variant.variant] = {
-      storage_key: variant.storageKey,
-      url: variant.url,
+      url: variant.url ?? '',
       width: variant.width,
       height: variant.height,
       format: variant.format,
@@ -399,7 +393,7 @@ export function toShopOrderDetailResponse(order: ShopOrderDetail) {
       products: order.products.map((product) => ({
         id: product.id,
         title: product.title,
-        ...(product.imageStorageKey ? { storage_key: product.imageStorageKey } : {}),
+        image_url: product.imageUrl,
         quantity: product.quantity,
         amount_minor: product.amountMinor,
         original_amount_minor: product.originalAmountMinor,

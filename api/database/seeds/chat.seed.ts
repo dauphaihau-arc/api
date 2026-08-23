@@ -332,7 +332,7 @@ export async function seedChat(
         senderUser: buyer,
         body: product.title,
         messageType: CHAT_MESSAGE_TYPES.PRODUCT_REFERENCE,
-        metadata: buildChatProductReferenceMetadata(product),
+        metadata: buildChatProductReferenceMetadata(product, storageKey => `/assetHost/${storageKey}`),
       });
 
       productReferenceMessage.createdAt = new Date(conversationSeed.createdAt.getTime() - 1);

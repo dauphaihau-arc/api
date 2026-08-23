@@ -249,6 +249,7 @@ function toPublicProductListItemFromSearchDocument(
     image: document.image
       ? {
         storageKey: document.image.storageKey,
+        url: document.image.url,
       }
       : undefined,
     variantType: document.variantType,

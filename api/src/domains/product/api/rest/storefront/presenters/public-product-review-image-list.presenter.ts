@@ -7,8 +7,7 @@ export function toPublicProductReviewImageListResponse(
   return {
     items: result.items.map((item) => ({
       id: item.id,
-      storage_key: item.storageKey,
-      url: item.url,
+      url: item.url ?? '',
       rank: item.rank,
       review_id: item.reviewId,
       review_title: item.reviewTitle,
@@ -31,15 +30,13 @@ function toVariantRecord(variants: PublicProductReviewImageListResult['items'][n
   }
 
   return variants.reduce<Record<string, {
-    storage_key: string;
-    url?: string;
+    url: string;
     width?: number;
     height?: number;
     format?: string;
   }>>((accumulator, variant) => {
     accumulator[variant.variant] = {
-      storage_key: variant.storageKey,
-      url: variant.url,
+      url: variant.url ?? '',
       width: variant.width,
       height: variant.height,
       format: variant.format,
