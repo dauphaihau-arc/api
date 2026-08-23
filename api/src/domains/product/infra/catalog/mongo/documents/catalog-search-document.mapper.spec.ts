@@ -110,7 +110,7 @@ describe('catalog-search-document.mapper', () => {
         currency: 'USD',
       },
       media: {
-        primaryImageUrl: 'https://cdn.example.test/products/olive-atelier/linen-weekend-dress/main.png',
+        primaryImageUrl: 'https://cdn.example.test/products/olive-atelier/linen-weekend-dress/card.webp',
       },
       flags: {
         hasImages: true,
@@ -129,6 +129,10 @@ describe('catalog-search-document.mapper', () => {
     expect(document.suggest).toEqual(
       expect.arrayContaining(['linen weekend dress', 'small']),
     );
+    expect(document.image).toEqual({
+      storageKey: 'products/olive-atelier/linen-weekend-dress/card.webp',
+      url: 'https://cdn.example.test/products/olive-atelier/linen-weekend-dress/card.webp',
+    });
     expect(document.keywords).toEqual(
       expect.arrayContaining(['linen weekend dress', 'relaxed linen dress', 'olive atelier']),
     );

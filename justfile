@@ -132,19 +132,19 @@ db-migration-create-infisical project_id *env_name:
 seed-validate:
   scripts/validate-local-seed-data.sh
 
-# Clears schema, seeds the full demo dataset, refreshes catalog products, and uploads seeded assets.
+# Clears schema, seeds the full demo dataset, uploads seeded assets, and refreshes catalog products.
 seed-full environment='': seed-validate
   just db-clear {{ environment }}
   just db-seed-demo {{ environment }}
-  just refresh-catalog-products {{ environment }}
   just storage-fresh {{ environment }}
+  just refresh-catalog-products {{ environment }}
 
-# Clears schema, seeds the full demo dataset, refreshes catalog products, and uploads seeded assets.
+# Clears schema, seeds the full demo dataset, uploads seeded assets, and refreshes catalog products.
 seed-full-infisical project_id *env_name: seed-validate
   just db-clear-infisical {{ project_id }} {{ env_name }}
   just db-seed-demo-infisical {{ project_id }} {{ env_name }}
-  just refresh-catalog-products-infisical {{ project_id }} {{ env_name }}
   just storage-fresh-infisical {{ project_id }} {{ env_name }}
+  just refresh-catalog-products-infisical {{ project_id }} {{ env_name }}
 
 db-seed-demo environment='': seed-validate
   just _api-with-env "pnpm db:seed:demo" "{{ environment }}"

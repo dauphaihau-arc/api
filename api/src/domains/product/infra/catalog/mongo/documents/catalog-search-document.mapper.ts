@@ -1,4 +1,5 @@
 import type { ProductState } from '../../../../domain/enums/product-state.enum';
+import { ProductImageVariant } from '../../../../domain/enums/product-image-variant.enum';
 import type { ProductVariantType } from '../../../../domain/enums/product-variant-type.enum';
 import type { ProductEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product.entity';
 import type { StorefrontIndexedPricingSummaryMatrix } from '../../../../app/storefront-indexed-pricing';
@@ -101,6 +102,10 @@ export function toCatalogSearchDocument(
     .map((snapshot) => snapshot.originalAmountMinor)
     .filter((value): value is number => value != null);
   const primaryImage = sortedImages[0];
+  const primaryCardVariant = primaryImage?.variants
+    .getItems()
+    .find((variant) => variant.variant === ProductImageVariant.CARD_1X1);
+  const listImageStorageKey = primaryCardVariant?.storageKey ?? primaryImage?.storageKey;
   const totalStock = sortedInventory.reduce((sum, row) => sum + row.stock, 0);
 
   return {
@@ -155,10 +160,10 @@ export function toCatalogSearchDocument(
         variant.optionValue2,
       ]),
     ].map(normalizeSearchText).filter(Boolean)),
-    image: primaryImage
+    image: listImageStorageKey
       ? {
-        storageKey: primaryImage.storageKey,
-        url: getPublicUrl(primaryImage.storageKey),
+        storageKey: listImageStorageKey,
+        url: getPublicUrl(listImageStorageKey),
       }
       : undefined,
     variantCount: sortedVariants.length,
@@ -183,8 +188,8 @@ export function toCatalogSearchDocument(
       totalStock,
     },
     media: {
-      primaryImageUrl: primaryImage
-        ? getPublicUrl(primaryImage.storageKey)
+      primaryImageUrl: listImageStorageKey
+        ? getPublicUrl(listImageStorageKey)
         : undefined,
     },
     ranking: {
