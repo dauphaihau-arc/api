@@ -104,6 +104,13 @@ describe('ProductImageService', () => {
     expect(image.variantError).toBeUndefined();
     expect(image.variantsGeneratedAt).toBeInstanceOf(Date);
     expect(existingVariant.storageKey).not.toBe('old-key');
+    expect(repository.createVariant).toHaveBeenCalledWith(expect.objectContaining({
+      variant: ProductImageVariant.PDP_CONTAIN,
+      storageKey: expect.stringContaining('/pdp_contain.'),
+      width: 1200,
+      height: 1200,
+      format: 'webp',
+    }));
     expect(repository.removeVariant).toHaveBeenCalledWith(staleVariant as never);
     expect(storageService.deleteObject).toHaveBeenCalledWith('stale-key');
   });

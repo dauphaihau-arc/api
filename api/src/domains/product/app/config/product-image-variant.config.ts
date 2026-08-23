@@ -38,4 +38,13 @@ export const PRODUCT_IMAGE_VARIANT_SPECS: Partial<
     background: '#ffffffff',
     removeBackground: true,
   },
+  [ProductImageVariant.PDP_CONTAIN]: {
+    width: 1200,
+    height: 1200,
+    fit: 'contain',
+    format: 'webp',
+    quality: 86,
+    background: '#00000000',
+    removeBackground: true,
+  },
 };
