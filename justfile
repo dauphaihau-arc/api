@@ -33,6 +33,10 @@ _api-with-default-env command environment='':
   {{ command }}
 
 [private]
+_api-db-preflight environment='':
+  just _api-with-default-env "node -e 'const { Client } = require(\"pg\"); const timeoutMs = Number(process.env.DB_PREFLIGHT_TIMEOUT_MS ?? 5000); const connectionUrl = (process.env.DATABASE_URL ?? \"\").trim(); const host = process.env.DB_HOST ?? \"127.0.0.1\"; const port = Number(process.env.DB_PORT ?? 5432); const user = process.env.DB_USER ?? \"postgres\"; const database = process.env.DB_NAME ?? \"app\"; const target = connectionUrl ? (() => { const url = new URL(connectionUrl); return (url.username || \"user\") + \"@\" + url.hostname + \":\" + (url.port || 5432) + url.pathname; })() : user + \"@\" + host + \":\" + port + \"/\" + database; const client = connectionUrl ? new Client({ connectionString: connectionUrl, connectionTimeoutMillis: timeoutMs }) : new Client({ host, port, user, password: process.env.DB_PASSWORD ?? \"postgres\", database, connectionTimeoutMillis: timeoutMs }); client.connect().then(() => client.query(\"select 1\")).then(() => client.end()).catch((error) => { console.error(\"DB preflight failed: cannot connect to \" + target + \" within \" + timeoutMs + \"ms.\"); console.error(\"If Docker reports arc-postgres healthy and you are using Colima, restart Colima/Lima port forwarding: colima restart\"); console.error(\"Cause: \" + error.message); process.exit(1); });'" "{{ environment }}"
+
+[private]
 _inventory-service-with-env command environment='':
   env_file="{{ if environment == "" { ".env" } else { ".env." + environment } }}"; \
   cd {{ inventory_service_dir }} && \
@@ -78,9 +82,11 @@ api-install:
   @cd {{ api_dir }} && pnpm install
 
 api-up environment='':
+  just _api-db-preflight "{{ environment }}"
   just _api-with-default-env "pnpm start:dev" "{{ environment }}"
 
 api-up-observability environment='':
+  just _api-db-preflight "{{ environment }}"
   just _api-with-default-env "mkdir -p logs && LOG_PRETTY=false pnpm start:dev 2>&1 | tee logs/api.log" "{{ environment }}"
 
 api-up-infisical project_id *env_name:
