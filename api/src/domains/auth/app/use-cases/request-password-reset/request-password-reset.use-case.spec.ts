@@ -48,11 +48,11 @@ describe('RequestPasswordResetUseCase', () => {
     const configService = {
       get: jest.fn((key: string) => {
         if (key === 'APP_BASE_URL') {
-          return 'http://localhost:4000';
+          return 'http://localhost:4001';
         }
 
         if (key === 'SELLER_APP_BASE_URL') {
-          return 'http://localhost:4001';
+          return 'http://localhost:4002';
         }
 
         return undefined;
@@ -85,7 +85,7 @@ describe('RequestPasswordResetUseCase', () => {
         email: 'member@example.com',
         displayName: 'Member User',
         resetUrl: expect.stringMatching(
-          /^http:\/\/localhost:4000\/reset\?t=/,
+          /^http:\/\/localhost:4001\/reset\?t=/,
         ),
       }),
     );
@@ -130,11 +130,11 @@ describe('RequestPasswordResetUseCase', () => {
     const configService = {
       get: jest.fn((key: string) => {
         if (key === 'APP_BASE_URL') {
-          return 'http://localhost:4000';
+          return 'http://localhost:4001';
         }
 
         if (key === 'SELLER_APP_BASE_URL') {
-          return 'http://localhost:4001';
+          return 'http://localhost:4002';
         }
 
         return undefined;
@@ -154,7 +154,7 @@ describe('RequestPasswordResetUseCase', () => {
       'user.send-password-reset-email',
       expect.objectContaining({
         resetUrl: expect.stringMatching(
-          /^http:\/\/localhost:4001\/reset\?t=/,
+          /^http:\/\/localhost:4002\/reset\?t=/,
         ),
       }),
     );

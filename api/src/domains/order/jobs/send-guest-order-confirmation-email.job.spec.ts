@@ -11,7 +11,7 @@ describe('SendGuestOrderConfirmationEmailJob', () => {
     await job.run({
       email: 'guest@example.com',
       orderIds: ['order-1', 'order-2'],
-      trackingUrl: 'http://localhost:4000/guest-orders?token=signed-tracking-token',
+      trackingUrl: 'http://localhost:4001/guest-orders?token=signed-tracking-token',
       shopNames: ['Shop 1', 'Shop 2'],
     });
 
@@ -21,7 +21,7 @@ describe('SendGuestOrderConfirmationEmailJob', () => {
         to: { email: 'guest@example.com' },
         subject: 'Your guest order confirmation',
         tags: ['guest-order-confirmation'],
-        text: expect.stringContaining('http://localhost:4000/guest-orders?token=signed-tracking-token'),
+        text: expect.stringContaining('http://localhost:4001/guest-orders?token=signed-tracking-token'),
       }),
     );
   });

@@ -2,7 +2,7 @@ import http from 'k6/http';
 import { check, sleep } from 'k6';
 import { Rate, Trend } from 'k6/metrics';
 
-const BASE_URL = __ENV.BASE_URL ?? 'http://127.0.0.1:3000/v1';
+const BASE_URL = __ENV.BASE_URL ?? 'http://127.0.0.1:4000/v1';
 const INVENTORY_ID = __ENV.INVENTORY_ID;
 const QUANTITY = Number(__ENV.QUANTITY ?? 1);
 const PLACE_ORDER = (__ENV.PLACE_ORDER ?? 'false').toLowerCase() === 'true';

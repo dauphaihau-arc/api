@@ -23,7 +23,7 @@ services:
       INVENTORY_SERVICE_BASE_URL: http://inventory-service:8080
       RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
     ports:
-      - "3000:3000"
+      - "4000:4000"
 
   worker:
     profiles: ["app"]
