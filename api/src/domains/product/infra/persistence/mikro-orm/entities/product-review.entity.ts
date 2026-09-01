@@ -9,7 +9,7 @@ import {
   Unique,
 } from '@mikro-orm/core';
 import { AbstractBaseEntity } from '~/platform/database/abstract-base.entity';
-import { CurrentUserEntity } from '~/domains/auth/infra/persistence/entities/current-user.entity';
+import { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
 import { OrderEntity } from '~/domains/order/infra/persistence/entities/order.entity';
 import { OrderItemEntity } from '~/domains/order/infra/persistence/entities/order-item.entity';
 import { ShopEntity } from '~/domains/shop/infra/persistence/entities/shop.entity';
@@ -34,11 +34,11 @@ export class ProductReviewEntity extends AbstractBaseEntity {
   })
   shop!: ShopEntity;
 
-  @ManyToOne(() => CurrentUserEntity, {
+  @ManyToOne(() => UserEntity, {
     fieldName: 'user_id',
     deleteRule: 'cascade',
   })
-  user!: CurrentUserEntity;
+  user!: UserEntity;
 
   @ManyToOne(() => OrderEntity, {
     fieldName: 'order_id',

@@ -10,17 +10,17 @@ import type {
   MarketplaceRegion,
 } from '~/platform/config/marketplace.config';
 import { AbstractAuthEntity } from './abstract-auth.entity';
-import { CurrentUserEntity } from './current-user.entity';
+import { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
 
 @Entity({ tableName: 'user_preferences' })
 export class UserPreferenceEntity extends AbstractAuthEntity {
-  @OneToOne(() => CurrentUserEntity, {
+  @OneToOne(() => UserEntity, {
     fieldName: 'user_id',
     deleteRule: 'cascade',
     updateRule: 'cascade',
   })
   @Unique()
-  user!: CurrentUserEntity;
+  user!: UserEntity;
 
   @Property({ fieldName: 'region', length: 100 })
   region!: MarketplaceRegion;

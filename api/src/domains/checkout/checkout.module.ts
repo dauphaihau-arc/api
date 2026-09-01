@@ -10,7 +10,7 @@ import {
   buildInventoryReservationConfig,
 } from '~/platform/config/inventory-reservation.config';
 import { AuthModule } from '../auth/auth.module';
-import { CurrentUserEntity } from '../auth/infra/persistence/entities/current-user.entity';
+import { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
 import { CartModule } from '../cart/cart.module';
 import { CouponModule } from '../coupon/coupon.module';
 import { CouponUsageEntity } from '../coupon/infra/persistence/entities/coupon-usage.entity';
@@ -80,7 +80,7 @@ import { OrderItemEntity } from '../order/infra/persistence/entities/order-item.
       OrderEntity,
       OrderItemEntity,
       CouponUsageEntity,
-      CurrentUserEntity,
+      UserEntity,
       ShopEntity,
       ProductEntity,
       ProductInventoryEntity,

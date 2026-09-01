@@ -1,6 +1,6 @@
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
-import { CurrentUserEntity } from '~/domains/auth/infra/persistence/entities/current-user.entity';
+import { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
 import { ShopEntity } from '~/domains/shop/infra/persistence/entities/shop.entity';
 import { OrderExportStatus } from '../../../domain/enums/order-export-status.enum';
 import {
@@ -23,7 +23,7 @@ implements ShopOrderExportRepository {
     const orderExport = new OrderExportEntity();
 
     orderExport.shop = entityManager.getReference(ShopEntity, input.shopId);
-    orderExport.requestedBy = entityManager.getReference(CurrentUserEntity, input.requestedByUserId);
+    orderExport.requestedBy = entityManager.getReference(UserEntity, input.requestedByUserId);
     orderExport.status = OrderExportStatus.QUEUED;
     orderExport.filtersJson = input.filtersJson;
     orderExport.columnsJson = input.columnsJson;

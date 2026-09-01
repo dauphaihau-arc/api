@@ -7,7 +7,7 @@ import {
   Property,
 } from '@mikro-orm/core';
 import { AbstractBaseEntity } from '~/platform/database/abstract-base.entity';
-import { CurrentUserEntity } from '~/domains/auth/infra/persistence/entities/current-user.entity';
+import { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
 import { ShopEntity } from '~/domains/shop/infra/persistence/entities/shop.entity';
 import { ChatMessageEntity } from './chat-message.entity';
 
@@ -17,11 +17,11 @@ import { ChatMessageEntity } from './chat-message.entity';
 @Index({ properties: ['status'] })
 @Index({ properties: ['lastMessageAt'] })
 export class ChatConversationEntity extends AbstractBaseEntity {
-  @ManyToOne(() => CurrentUserEntity, {
+  @ManyToOne(() => UserEntity, {
     fieldName: 'buyer_user_id',
     deleteRule: 'cascade',
   })
-  buyerUser!: CurrentUserEntity;
+  buyerUser!: UserEntity;
 
   @ManyToOne(() => ShopEntity, {
     fieldName: 'shop_id',
@@ -35,12 +35,12 @@ export class ChatConversationEntity extends AbstractBaseEntity {
   @Property({ fieldName: 'last_message_at', nullable: true })
   lastMessageAt?: Date;
 
-  @ManyToOne(() => CurrentUserEntity, {
+  @ManyToOne(() => UserEntity, {
     fieldName: 'last_message_sender_user_id',
     nullable: true,
     deleteRule: 'set null',
   })
-  lastMessageSenderUser?: CurrentUserEntity;
+  lastMessageSenderUser?: UserEntity;
 
   @ManyToOne(() => ChatMessageEntity, {
     fieldName: 'last_message_id',

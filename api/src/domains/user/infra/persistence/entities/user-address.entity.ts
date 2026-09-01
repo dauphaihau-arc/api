@@ -5,17 +5,17 @@ import {
   Property,
 } from '@mikro-orm/core';
 import { AbstractBaseEntity } from '~/platform/database/abstract-base.entity';
-import { CurrentUserEntity } from '~/domains/auth/infra/persistence/entities/current-user.entity';
+import { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
 
 @Entity({ tableName: 'user_addresses' })
 @Index({ properties: ['user', 'isPrimary'] })
 export class UserAddressEntity extends AbstractBaseEntity {
-  @ManyToOne(() => CurrentUserEntity, {
+  @ManyToOne(() => UserEntity, {
     fieldName: 'user_id',
     deleteRule: 'cascade',
     updateRule: 'cascade',
   })
-  user!: CurrentUserEntity;
+  user!: UserEntity;
 
   @Property({ fieldName: 'full_name', length: 255 })
   fullName!: string;

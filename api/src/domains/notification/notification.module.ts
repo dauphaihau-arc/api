@@ -3,7 +3,7 @@ import { forwardRef, Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { SendWebPushNotificationJob } from '~/domains/notification/jobs/send-web-push-notification.job';
 import { WEB_PUSH_CONFIG, buildWebPushConfig } from '~/platform/config/web-push.config';
-import { CurrentUserEntity } from '~/domains/auth/infra/persistence/entities/current-user.entity';
+import { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
 import { QueueModule } from '~/integrations/queue/queue.module';
 import { MeNotificationsController } from './api/rest/me-notifications.controller';
 import { NotificationCommandRepository } from './app/ports/notification-command.repository';
@@ -32,7 +32,7 @@ import { VapidWebPushSender } from './infra/web-push.sender';
     ConfigModule,
     forwardRef(() => QueueModule),
     MikroOrmModule.forFeature([
-      CurrentUserEntity,
+      UserEntity,
       NotificationEntity,
       WebPushSubscriptionEntity,
     ]),

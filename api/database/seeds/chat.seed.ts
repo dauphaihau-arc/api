@@ -1,5 +1,5 @@
 import type { EntityManager } from '@mikro-orm/postgresql';
-import type { CurrentUserEntity } from '~/domains/auth/infra/persistence/entities/current-user.entity';
+import type { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
 import { ProductEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product.entity';
 import { ShopEntity } from '~/domains/shop/infra/persistence/entities/shop.entity';
 import {
@@ -208,7 +208,7 @@ function formatDuration(ms: number): string {
 
 export async function seedChat(
   em: EntityManager,
-  usersByEmail: Map<string, CurrentUserEntity>,
+  usersByEmail: Map<string, UserEntity>,
 ): Promise<void> {
   const progressInterval = resolveProgressInterval(conversationSeeds.length);
   const startedAt = Date.now();

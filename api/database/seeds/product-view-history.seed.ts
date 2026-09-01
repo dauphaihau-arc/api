@@ -1,5 +1,5 @@
 import type { EntityManager } from '@mikro-orm/postgresql';
-import type { CurrentUserEntity } from '~/domains/auth/infra/persistence/entities/current-user.entity';
+import type { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
 import { ProductEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product.entity';
 import { ProductViewHistoryEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-view-history.entity';
 import {
@@ -169,7 +169,7 @@ function loadProductViewHistorySeeds(): ProductViewHistorySeed[] {
 
 export async function seedProductViewHistory(
   em: EntityManager,
-  usersByEmail: Map<string, CurrentUserEntity>,
+  usersByEmail: Map<string, UserEntity>,
 ): Promise<void> {
   const seeds = loadProductViewHistorySeeds();
   const progressInterval = resolveProgressInterval(seeds.length);

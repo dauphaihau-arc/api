@@ -2,7 +2,7 @@ import {
   ArrayType, Entity, Enum, Index, ManyToOne, Opt, Property, Unique,
 } from '@mikro-orm/core';
 import { AbstractBaseEntity } from '~/platform/database/abstract-base.entity';
-import { CurrentUserEntity } from '~/domains/auth/infra/persistence/entities/current-user.entity';
+import { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
 import { ShopEntity } from '~/domains/shop/infra/persistence/entities/shop.entity';
 import { OrderShippingStatus } from '../../../domain/enums/order-shipping-status.enum';
 import { OrderStatus } from '../../../domain/enums/order-status.enum';
@@ -16,12 +16,12 @@ export class OrderEntity extends AbstractBaseEntity {
   @Unique()
   orderNumber?: Opt<string>;
 
-  @ManyToOne(() => CurrentUserEntity, {
+  @ManyToOne(() => UserEntity, {
     fieldName: 'user_id',
     nullable: true,
     deleteRule: 'cascade',
   })
-  user?: CurrentUserEntity;
+  user?: UserEntity;
 
   @Property({ fieldName: 'customer_email', length: 320 })
   customerEmail!: string;

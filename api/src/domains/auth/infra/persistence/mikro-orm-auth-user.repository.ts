@@ -14,8 +14,8 @@ import { Email } from '../../domain/value-objects/email';
 import { PasswordHash } from '../../domain/value-objects/password-hash';
 import { PermissionKey } from '../../domain/value-objects/permission-key';
 import { RoleKey } from '../../domain/value-objects/role-key';
-import { CurrentUserCredentialEntity } from './entities/current-user-credential.entity';
-import { CurrentUserEntity } from './entities/current-user.entity';
+import { UserCredentialEntity } from './entities/user-credential.entity';
+import { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
 import { RoleEntity } from './entities/role.entity';
 import { UserRoleEntity } from './entities/user-role.entity';
 
@@ -24,43 +24,43 @@ export class MikroOrmAuthUserRepository implements AuthUserRepository {
   constructor(private readonly entityManager: EntityManager) {}
 
   async findByEmail(email: Email): Promise<UserAccount | null> {
-    const userRepository = this.entityManager.fork().getRepository(CurrentUserEntity);
-    const user = await userRepository.findOne(
-      { email: email.toString() },
-      { populate: ['credential', 'userRoles.role.rolePermissions.permission'] },
-    );
+    const entityManager = this.entityManager.fork();
+    const userRepository = entityManager.getRepository(UserEntity);
+    const user = await userRepository.findOne({ email: email.toString() });
 
-    return user ? this.toUserAccount(user) : null;
+    return user ? this.toUserAccount(entityManager, user) : null;
   }
 
   async findLoginByEmail(email: Email): Promise<LoginUserAccount | null> {
-    const userRepository = this.entityManager.fork().getRepository(CurrentUserEntity);
+    const entityManager = this.entityManager.fork();
+    const userRepository = entityManager.getRepository(UserEntity);
+    const credentialRepository = entityManager.getRepository(UserCredentialEntity);
     const user = await userRepository.findOne(
       { email: email.toString() },
-      { populate: ['credential'], fields: ['id', 'status', 'credential.passwordHash'] },
+      { fields: ['id', 'status'] },
     );
 
     if (!user) {
       return null;
     }
 
+    const credential = await credentialRepository.findOne({ userId: user.id });
+
     return {
       id: user.id,
       status: user.status,
-      passwordHash: user.credential
-        ? PasswordHash.fromPersisted(user.credential.passwordHash)
+      passwordHash: credential
+        ? PasswordHash.fromPersisted(credential.passwordHash)
         : undefined,
     };
   }
 
   async findById(id: string): Promise<UserAccount | null> {
-    const userRepository = this.entityManager.fork().getRepository(CurrentUserEntity);
-    const user = await userRepository.findOne(
-      { id },
-      { populate: ['credential', 'userRoles.role.rolePermissions.permission'] },
-    );
+    const entityManager = this.entityManager.fork();
+    const userRepository = entityManager.getRepository(UserEntity);
+    const user = await userRepository.findOne({ id });
 
-    return user ? this.toUserAccount(user) : null;
+    return user ? this.toUserAccount(entityManager, user) : null;
   }
 
   async create(
@@ -68,11 +68,12 @@ export class MikroOrmAuthUserRepository implements AuthUserRepository {
     entityManager?: EntityManager,
   ): Promise<UserAccount> {
     const em = entityManager ?? this.entityManager.fork();
-    const userRepository = em.getRepository(CurrentUserEntity);
+    const userRepository = em.getRepository(UserEntity);
     const credentialRepository = em.getRepository(
-      CurrentUserCredentialEntity,
+      UserCredentialEntity,
     );
     const user = userRepository.create({
+      version: 1,
       email: input.email.toString(),
       displayName: input.displayName,
       avatar: undefined,
@@ -80,24 +81,21 @@ export class MikroOrmAuthUserRepository implements AuthUserRepository {
       emailVerifiedAt: input.emailVerifiedAt,
     });
     const credential = credentialRepository.create({
-      user,
+      userId: user.id,
       passwordHash: input.passwordHash.toString(),
       passwordUpdatedAt: input.passwordUpdatedAt,
     });
 
-    user.credential = credential;
-
     await em.persistAndFlush([user, credential]);
 
-    return this.toUserAccount(user);
+    return this.toUserAccount(em, user, credential);
   }
 
   async update(id: string, input: UpdateUserAccountInput): Promise<UserAccount | null> {
     const entityManager = this.entityManager.fork();
-    const userRepository = entityManager.getRepository(CurrentUserEntity);
+    const userRepository = entityManager.getRepository(UserEntity);
     try {
       const user = await userRepository.findOne({ id }, {
-        populate: ['credential', 'userRoles.role.rolePermissions.permission'],
         lockMode: LockMode.OPTIMISTIC,
         lockVersion: input.version,
       });
@@ -120,7 +118,7 @@ export class MikroOrmAuthUserRepository implements AuthUserRepository {
 
       await entityManager.persistAndFlush(user);
 
-      return this.toUserAccount(user);
+      return this.toUserAccount(entityManager, user);
     }
     catch (error) {
       if (error instanceof OptimisticLockError) {
@@ -138,10 +136,10 @@ export class MikroOrmAuthUserRepository implements AuthUserRepository {
   }): Promise<void> {
     const entityManager = this.entityManager.fork();
     const credentialRepository = entityManager.getRepository(
-      CurrentUserCredentialEntity,
+      UserCredentialEntity,
     );
     const credential = await credentialRepository.findOneOrFail({
-      user: input.userId,
+      userId: input.userId,
     });
 
     credential.passwordHash = input.passwordHash.toString();
@@ -156,7 +154,7 @@ export class MikroOrmAuthUserRepository implements AuthUserRepository {
     entityManager?: EntityManager,
   ): Promise<void> {
     const em = entityManager ?? this.entityManager.fork();
-    const userRepository = em.getRepository(CurrentUserEntity);
+    const userRepository = em.getRepository(UserEntity);
     const roleRepository = em.getRepository(RoleEntity);
     const userRoleRepository = em.getRepository(UserRoleEntity);
     const user = await userRepository.findOneOrFail({ id: userId });
@@ -203,14 +201,24 @@ export class MikroOrmAuthUserRepository implements AuthUserRepository {
     await em.persistAndFlush(role);
   }
 
-  private toUserAccount(user: CurrentUserEntity): UserAccount {
-    const roles = user.userRoles
-      .getItems()
+  private async toUserAccount(
+    entityManager: EntityManager,
+    user: UserEntity,
+    credential?: UserCredentialEntity | null,
+  ): Promise<UserAccount> {
+    const resolvedCredential = credential ?? await entityManager
+      .getRepository(UserCredentialEntity)
+      .findOne({ userId: user.id });
+    const userRoles = await entityManager.getRepository(UserRoleEntity).find(
+      { user },
+      { populate: ['role.rolePermissions.permission'] },
+    );
+    const roles = userRoles
       .map((userRole) => RoleKey.create(userRole.role.key))
       .sort((left, right) => left.toString().localeCompare(right.toString()));
     const permissions = Array.from(
       new Map(
-        user.userRoles.getItems().flatMap((userRole) =>
+        userRoles.flatMap((userRole) =>
           userRole.role.rolePermissions.getItems().map((rolePermission) => {
             const key = PermissionKey.create(rolePermission.permission.key);
             return [key.toString(), key] as const;
@@ -227,10 +235,10 @@ export class MikroOrmAuthUserRepository implements AuthUserRepository {
       avatar: user.avatar,
       status: user.status,
       emailVerifiedAt: user.emailVerifiedAt,
-      passwordHash: user.credential
-        ? PasswordHash.fromPersisted(user.credential.passwordHash)
+      passwordHash: resolvedCredential
+        ? PasswordHash.fromPersisted(resolvedCredential.passwordHash)
         : undefined,
-      passwordUpdatedAt: user.credential?.passwordUpdatedAt,
+      passwordUpdatedAt: resolvedCredential?.passwordUpdatedAt,
       roles,
       permissions,
     };

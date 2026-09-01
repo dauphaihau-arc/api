@@ -2,7 +2,7 @@ import { EntityManager } from '@mikro-orm/postgresql';
 import { Inject, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { CART_CONFIG } from '~/platform/config/cart.config';
 import type { CartConfig } from '~/platform/config/cart.config';
-import { CurrentUserEntity } from '~/domains/auth/infra/persistence/entities/current-user.entity';
+import { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
 import { ResolvedStorefrontPriceService } from '~/domains/product/app/services/resolved-storefront-price.service';
 import { ProductImageEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-image.entity';
 import { ProductInventoryEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-inventory.entity';
@@ -343,7 +343,7 @@ export class MikroOrmCartRepository implements CartRepository {
     );
 
     if (!userCart) {
-      guestCart.user = entityManager.getReference(CurrentUserEntity, userId);
+      guestCart.user = entityManager.getReference(UserEntity, userId);
       guestCart.guestSessionId = undefined;
       guestCart.expiresAt = undefined;
       await entityManager.flush();
@@ -526,7 +526,7 @@ export class MikroOrmCartRepository implements CartRepository {
   ) {
     if (actor.type === 'user') {
       return {
-        user: entityManager.getReference(CurrentUserEntity, actor.userId),
+        user: entityManager.getReference(UserEntity, actor.userId),
         kind,
       };
     }

@@ -1,8 +1,8 @@
 import type { EntityManager } from '@mikro-orm/postgresql';
 import { buildAuthConfig } from '~/platform/config/auth.config';
 import { UserStatus } from '~/domains/auth/domain/enums/user-status.enum';
-import { CurrentUserCredentialEntity } from '~/domains/auth/infra/persistence/entities/current-user-credential.entity';
-import { CurrentUserEntity } from '~/domains/auth/infra/persistence/entities/current-user.entity';
+import { UserCredentialEntity } from '~/domains/auth/infra/persistence/entities/user-credential.entity';
+import { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
 import { RoleEntity } from '~/domains/auth/infra/persistence/entities/role.entity';
 import { UserRoleEntity } from '~/domains/auth/infra/persistence/entities/user-role.entity';
 import { BcryptPasswordHasher } from '~/domains/auth/infra/security/bcrypt-password-hasher';
@@ -108,7 +108,7 @@ function formatDuration(ms: number): string {
 
 type SeedBuyer = {
   index: number;
-  user: CurrentUserEntity;
+  user: UserEntity;
 };
 
 type SeedProductCandidate = {
@@ -185,7 +185,7 @@ export async function seedBulkOrderDemo(em: EntityManager): Promise<void> {
 }
 
 async function recreateSeedBuyers(em: EntityManager): Promise<SeedBuyer[]> {
-  const existingBuyers = await em.find(CurrentUserEntity, {
+  const existingBuyers = await em.find(UserEntity, {
     email: { $like: `${SEED_BUYER_EMAIL_PREFIX}%` },
   });
 
@@ -208,7 +208,8 @@ async function recreateSeedBuyers(em: EntityManager): Promise<SeedBuyer[]> {
 
   for (let index = 0; index < SEED_BUYER_COUNT; index += 1) {
     const buyerNumber = String(index + 1).padStart(4, '0');
-    const user = em.create(CurrentUserEntity, {
+    const user = em.create(UserEntity, {
+      version: 1,
       email: `${SEED_BUYER_EMAIL_PREFIX}${buyerNumber}@example.com`,
       displayName: `${FIRST_NAMES[index % FIRST_NAMES.length]} ${LAST_NAMES[index % LAST_NAMES.length]} ${buyerNumber}`,
       status: UserStatus.ACTIVE,
@@ -216,8 +217,8 @@ async function recreateSeedBuyers(em: EntityManager): Promise<SeedBuyer[]> {
     });
 
     em.persist(user);
-    em.persist(em.create(CurrentUserCredentialEntity, {
-      user,
+    em.persist(em.create(UserCredentialEntity, {
+      userId: user.id,
       passwordHash,
       passwordUpdatedAt: verifiedAt,
     }));

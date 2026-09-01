@@ -5,7 +5,7 @@ import {
   Property,
 } from '@mikro-orm/core';
 import { AbstractBaseEntity } from '~/platform/database/abstract-base.entity';
-import { CurrentUserEntity } from '~/domains/auth/infra/persistence/entities/current-user.entity';
+import { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
 import { ChatConversationEntity } from './chat-conversation.entity';
 
 @Entity({ tableName: 'chat_messages' })
@@ -19,11 +19,11 @@ export class ChatMessageEntity extends AbstractBaseEntity {
   })
   conversation!: ChatConversationEntity;
 
-  @ManyToOne(() => CurrentUserEntity, {
+  @ManyToOne(() => UserEntity, {
     fieldName: 'sender_user_id',
     deleteRule: 'restrict',
   })
-  senderUser!: CurrentUserEntity;
+  senderUser!: UserEntity;
 
   @Property({ fieldName: 'message_type', length: 20, default: 'text' })
   messageType = 'text';

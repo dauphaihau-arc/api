@@ -1,5 +1,5 @@
 import type { EntityManager } from '@mikro-orm/postgresql';
-import { CurrentUserEntity } from '~/domains/auth/infra/persistence/entities/current-user.entity';
+import { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
 import { OrderShippingStatus } from '~/domains/order/domain/enums/order-shipping-status.enum';
 import { OrderStatus } from '~/domains/order/domain/enums/order-status.enum';
 import { PaymentType } from '~/domains/order/domain/enums/payment-type.enum';
@@ -159,7 +159,7 @@ export async function seedLocalProductReviewOrders(em: EntityManager): Promise<v
     await em.nativeDelete(OrderEntity, { id: { $in: localReviewOrdersToDelete.map((order) => order.id) } });
   }
 
-  const users = await em.find(CurrentUserEntity, {
+  const users = await em.find(UserEntity, {
     email: { $in: dedupedSeeds.map((seed) => seed.userEmail) },
   });
   const usersByEmail = new Map(users.map((user) => [user.email, user]));

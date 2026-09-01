@@ -5,7 +5,7 @@ import {
   PasswordResetTokenRepository,
 } from '../../app/ports/password-reset-token.repository';
 import type { PasswordResetToken } from '../../domain/models/password-reset-token';
-import { CurrentUserEntity } from './entities/current-user.entity';
+import { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
 import { PasswordResetTokenEntity } from './entities/password-reset-token.entity';
 
 @Injectable()
@@ -17,7 +17,7 @@ implements PasswordResetTokenRepository {
     input: CreatePasswordResetTokenInput,
   ): Promise<PasswordResetToken> {
     const entityManager = this.entityManager.fork();
-    const userRepository = entityManager.getRepository(CurrentUserEntity);
+    const userRepository = entityManager.getRepository(UserEntity);
     const tokenRepository = entityManager.getRepository(PasswordResetTokenEntity);
     const user = await userRepository.findOneOrFail({ id: input.userId });
     const token = tokenRepository.create({

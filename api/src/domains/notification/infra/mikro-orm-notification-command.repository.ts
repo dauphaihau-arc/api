@@ -1,6 +1,6 @@
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
-import { CurrentUserEntity } from '~/domains/auth/infra/persistence/entities/current-user.entity';
+import { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
 import { NotificationCommandRepository } from '../app/ports/notification-command.repository';
 import type {
   CreateNotificationInput,
@@ -17,7 +17,7 @@ export class MikroOrmNotificationCommandRepository implements NotificationComman
     const entityManager = this.entityManager.fork();
     const repository = entityManager.getRepository(NotificationEntity);
     const notification = repository.create({
-      user: entityManager.getReference(CurrentUserEntity, input.userId),
+      user: entityManager.getReference(UserEntity, input.userId),
       type: input.type,
       channel: input.channel ?? 'in_app',
       title: input.title,

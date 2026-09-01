@@ -10,7 +10,7 @@ import {
 import { AbstractBaseEntity } from '~/platform/database/abstract-base.entity';
 import { createPublicId } from '~/platform/ids/public-id';
 import type { MarketplaceCurrency } from '~/platform/config/marketplace.config';
-import { CurrentUserEntity } from '~/domains/auth/infra/persistence/entities/current-user.entity';
+import { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
 import { ProductEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product.entity';
 
 @Entity({ tableName: 'shops' })
@@ -20,11 +20,11 @@ export class ShopEntity extends AbstractBaseEntity {
   @Unique()
   publicId: string = createPublicId();
 
-  @ManyToOne(() => CurrentUserEntity, {
+  @ManyToOne(() => UserEntity, {
     fieldName: 'owner_user_id',
     deleteRule: 'restrict',
   })
-  ownerUser!: CurrentUserEntity;
+  ownerUser!: UserEntity;
 
   @Property({ fieldName: 'shop_name', length: 255 })
   @Unique()

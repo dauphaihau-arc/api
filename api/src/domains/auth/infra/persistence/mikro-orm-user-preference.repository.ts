@@ -9,7 +9,7 @@ import {
   SaveUserPreferenceInput,
   UserPreferenceRepository,
 } from '../../app/ports/user-preference.repository';
-import { CurrentUserEntity } from './entities/current-user.entity';
+import { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
 import { UserPreferenceEntity } from './entities/user-preference.entity';
 
 @Injectable()
@@ -21,7 +21,7 @@ export class MikroOrmUserPreferenceRepository implements UserPreferenceRepositor
     entityManager?: EntityManager,
   ): Promise<void> {
     const em = entityManager ?? this.entityManager.fork();
-    const userRepository = em.getRepository(CurrentUserEntity);
+    const userRepository = em.getRepository(UserEntity);
     const userPreferenceRepository = em.getRepository(UserPreferenceEntity);
     const user = await userRepository.findOneOrFail({ id: input.userId });
     const userPreference = userPreferenceRepository.create({
@@ -39,7 +39,7 @@ export class MikroOrmUserPreferenceRepository implements UserPreferenceRepositor
     entityManager?: EntityManager,
   ): Promise<void> {
     const em = entityManager ?? this.entityManager.fork();
-    const userRepository = em.getRepository(CurrentUserEntity);
+    const userRepository = em.getRepository(UserEntity);
     const userPreferenceRepository = em.getRepository(UserPreferenceEntity);
     const user = await userRepository.findOneOrFail({ id: input.userId });
     const existingPreference = await userPreferenceRepository.findOne({ user: input.userId });

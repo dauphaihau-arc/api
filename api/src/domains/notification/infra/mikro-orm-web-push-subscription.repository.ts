@@ -1,6 +1,6 @@
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
-import { CurrentUserEntity } from '~/domains/auth/infra/persistence/entities/current-user.entity';
+import { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
 import { WebPushSubscriptionRepository } from '../app/ports/web-push-subscription.repository';
 import type {
   RegisterWebPushSubscriptionInput,
@@ -21,7 +21,7 @@ implements WebPushSubscriptionRepository {
     const existing = await repository.findOne({ endpoint: input.endpoint });
 
     if (existing) {
-      existing.user = entityManager.getReference(CurrentUserEntity, input.userId);
+      existing.user = entityManager.getReference(UserEntity, input.userId);
       existing.p256dh = input.p256dh;
       existing.auth = input.auth;
       existing.userAgent = input.userAgent;
@@ -31,7 +31,7 @@ implements WebPushSubscriptionRepository {
     }
 
     const subscription = repository.create({
-      user: entityManager.getReference(CurrentUserEntity, input.userId),
+      user: entityManager.getReference(UserEntity, input.userId),
       endpoint: input.endpoint,
       p256dh: input.p256dh,
       auth: input.auth,

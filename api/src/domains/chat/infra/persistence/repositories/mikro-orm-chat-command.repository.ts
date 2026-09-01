@@ -1,6 +1,6 @@
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
-import { CurrentUserEntity } from '~/domains/auth/infra/persistence/entities/current-user.entity';
+import { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
 import { ProductEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product.entity';
 import { ShopEntity } from '~/domains/shop/infra/persistence/entities/shop.entity';
 import { StorageService } from '~/integrations/storage/app/ports/storage.service';
@@ -84,7 +84,7 @@ export class MikroOrmChatCommandRepository implements ChatCommandRepository {
     shop: ShopEntity,
   ): ChatConversationEntity {
     const conversation = new ChatConversationEntity();
-    conversation.buyerUser = entityManager.getReference(CurrentUserEntity, buyerUserId);
+    conversation.buyerUser = entityManager.getReference(UserEntity, buyerUserId);
     conversation.shop = shop;
     entityManager.persist(conversation);
 
@@ -252,7 +252,7 @@ function buildTextMessage(
 ): ChatMessageEntity {
   const message = new ChatMessageEntity();
   message.conversation = conversation;
-  message.senderUser = entityManager.getReference(CurrentUserEntity, input.senderUserId);
+  message.senderUser = entityManager.getReference(UserEntity, input.senderUserId);
   message.body = input.body.trim();
 
   if (input.metadata) {

@@ -8,7 +8,7 @@ import {
   Property,
 } from '@mikro-orm/core';
 import { AbstractBaseEntity } from '~/platform/database/abstract-base.entity';
-import { CurrentUserEntity } from '~/domains/auth/infra/persistence/entities/current-user.entity';
+import { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
 import { ShopEntity } from '~/domains/shop/infra/persistence/entities/shop.entity';
 import { ProductImportStatus } from '../../../../domain/enums/product-import-status.enum';
 import { ProductImportRowEntity } from './product-import-row.entity';
@@ -24,12 +24,12 @@ export class ProductImportEntity extends AbstractBaseEntity {
   })
   shop!: ShopEntity;
 
-  @ManyToOne(() => CurrentUserEntity, {
+  @ManyToOne(() => UserEntity, {
     fieldName: 'requested_by_user_id',
     deleteRule: 'cascade',
     updateRule: 'cascade',
   })
-  requestedBy!: CurrentUserEntity;
+  requestedBy!: UserEntity;
 
   @Enum({ items: () => ProductImportStatus })
   status: ProductImportStatus = ProductImportStatus.QUEUED;

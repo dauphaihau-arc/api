@@ -2,7 +2,7 @@ import {
   Collection, Entity, Index, ManyToOne, OneToMany, Property,
 } from '@mikro-orm/core';
 import { AbstractBaseEntity } from '~/platform/database/abstract-base.entity';
-import { CurrentUserEntity } from '~/domains/auth/infra/persistence/entities/current-user.entity';
+import { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
 import { CartKind } from '../../../domain/enums/cart-kind.enum';
 import { CartItemEntity } from './cart-item.entity';
 
@@ -10,12 +10,12 @@ import { CartItemEntity } from './cart-item.entity';
 @Index({ properties: ['user', 'kind'] })
 @Index({ properties: ['guestSessionId', 'kind'] })
 export class CartEntity extends AbstractBaseEntity {
-  @ManyToOne(() => CurrentUserEntity, {
+  @ManyToOne(() => UserEntity, {
     fieldName: 'user_id',
     deleteRule: 'set null',
     nullable: true,
   })
-  user?: CurrentUserEntity;
+  user?: UserEntity;
 
   @Property({ fieldName: 'guest_session_id', length: 255, nullable: true })
   guestSessionId?: string;

@@ -6,18 +6,18 @@ import {
   Unique,
 } from '@mikro-orm/core';
 import { AbstractBaseEntity } from '~/platform/database/abstract-base.entity';
-import { CurrentUserEntity } from '~/domains/auth/infra/persistence/entities/current-user.entity';
+import { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
 
 @Entity({ tableName: 'web_push_subscriptions' })
 @Index({ properties: ['user', 'isActive'] })
 @Unique({ properties: ['endpoint'] })
 export class WebPushSubscriptionEntity extends AbstractBaseEntity {
-  @ManyToOne(() => CurrentUserEntity, {
+  @ManyToOne(() => UserEntity, {
     fieldName: 'user_id',
     deleteRule: 'cascade',
     updateRule: 'cascade',
   })
-  user!: CurrentUserEntity;
+  user!: UserEntity;
 
   @Property({ type: 'text' })
   endpoint!: string;

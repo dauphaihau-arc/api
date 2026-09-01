@@ -4,7 +4,7 @@ import { CouponEntity } from '~/domains/coupon/infra/persistence/entities/coupon
 import { CouponAppliesTo } from '~/domains/coupon/domain/enums/coupon-applies-to.enum';
 import { CouponMinOrderType } from '~/domains/coupon/domain/enums/coupon-min-order-type.enum';
 import { CouponType } from '~/domains/coupon/domain/enums/coupon-type.enum';
-import { CurrentUserEntity } from '~/domains/auth/infra/persistence/entities/current-user.entity';
+import { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
 import { OrderShippingStatus } from '~/domains/order/domain/enums/order-shipping-status.enum';
 import { OrderStatus } from '~/domains/order/domain/enums/order-status.enum';
 import { PaymentType } from '~/domains/order/domain/enums/payment-type.enum';
@@ -457,7 +457,7 @@ export async function seedLocalOrderScenarios(em: EntityManager): Promise<void> 
     `[seed][local-orders] Upserting ${totalOrders} diversified local orders across ${scenarios.length} scenario(s)`,
   );
 
-  const users = await em.find(CurrentUserEntity, {
+  const users = await em.find(UserEntity, {
     email: { $in: scenarios.map((scenario) => scenario.userEmail) },
   });
   const usersByEmail = new Map(users.map((user) => [user.email.toLowerCase(), user]));

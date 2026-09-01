@@ -5,7 +5,7 @@ import {
   CreateUserSessionInput,
 } from '../../app/ports/auth-session.repository';
 import type { UserSession } from '../../domain/models/user-session';
-import { CurrentUserEntity } from './entities/current-user.entity';
+import { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
 import { UserSessionEntity } from './entities/user-session.entity';
 
 @Injectable()
@@ -26,7 +26,7 @@ export class MikroOrmAuthSessionRepository implements AuthSessionRepository {
 
   async create(input: CreateUserSessionInput): Promise<UserSession> {
     const entityManager = this.entityManager.fork();
-    const userRepository = entityManager.getRepository(CurrentUserEntity);
+    const userRepository = entityManager.getRepository(UserEntity);
     const sessionRepository = entityManager.getRepository(UserSessionEntity);
     const user = await userRepository.findOneOrFail({ id: input.userId });
     const session = sessionRepository.create({

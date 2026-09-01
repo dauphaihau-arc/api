@@ -1,6 +1,6 @@
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
-import { CurrentUserEntity } from '~/domains/auth/infra/persistence/entities/current-user.entity';
+import { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
 import { ShopEntity } from '~/domains/shop/infra/persistence/entities/shop.entity';
 import {
   type CompleteProductImportInput,
@@ -23,7 +23,7 @@ export class MikroOrmProductImportCommandRepository implements ProductImportComm
     const productImport = new ProductImportEntity();
 
     productImport.shop = entityManager.getReference(ShopEntity, input.shopId);
-    productImport.requestedBy = entityManager.getReference(CurrentUserEntity, input.requestedByUserId);
+    productImport.requestedBy = entityManager.getReference(UserEntity, input.requestedByUserId);
     productImport.status = ProductImportStatus.QUEUED;
     productImport.templateVersion = input.templateVersion;
     productImport.filename = input.filename;

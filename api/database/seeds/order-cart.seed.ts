@@ -1,5 +1,5 @@
 import type { EntityManager } from '@mikro-orm/postgresql';
-import type { CurrentUserEntity } from '~/domains/auth/infra/persistence/entities/current-user.entity';
+import type { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
 import { CartKind } from '~/domains/cart/domain/enums/cart-kind.enum';
 import { CartEntity } from '~/domains/cart/infra/persistence/entities/cart.entity';
 import { CartItemEntity } from '~/domains/cart/infra/persistence/entities/cart-item.entity';
@@ -125,7 +125,7 @@ async function loadCoupons(em: EntityManager): Promise<Map<string, CouponEntity>
   return new Map(coupons.map((coupon) => [coupon.code, coupon]));
 }
 
-async function resetDemoCommerceData(em: EntityManager, user: CurrentUserEntity): Promise<void> {
+async function resetDemoCommerceData(em: EntityManager, user: UserEntity): Promise<void> {
   const orders = await em.find(OrderEntity, { user });
   const carts = await em.find(CartEntity, { user });
 
@@ -143,7 +143,7 @@ async function resetDemoCommerceData(em: EntityManager, user: CurrentUserEntity)
 
 export async function seedOrderCartDemo(
   em: EntityManager,
-  usersByEmail: Map<string, CurrentUserEntity>,
+  usersByEmail: Map<string, UserEntity>,
 ): Promise<void> {
   const startedAt = Date.now();
   const user = usersByEmail.get(DEMO_USER_EMAIL);

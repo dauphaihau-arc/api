@@ -5,19 +5,19 @@ import {
   Property,
 } from '@mikro-orm/core';
 import { AbstractBaseEntity } from '~/platform/database/abstract-base.entity';
-import { CurrentUserEntity } from '~/domains/auth/infra/persistence/entities/current-user.entity';
+import { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
 import type { NotificationChannel } from '../../../app/notification.types';
 
 @Entity({ tableName: 'notifications' })
 @Index({ properties: ['user', 'createdAt'] })
 @Index({ properties: ['user', 'readAt'] })
 export class NotificationEntity extends AbstractBaseEntity {
-  @ManyToOne(() => CurrentUserEntity, {
+  @ManyToOne(() => UserEntity, {
     fieldName: 'user_id',
     deleteRule: 'cascade',
     updateRule: 'cascade',
   })
-  user!: CurrentUserEntity;
+  user!: UserEntity;
 
   @Property({ length: 100 })
   type!: string;

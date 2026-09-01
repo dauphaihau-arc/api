@@ -34,8 +34,8 @@ import { AuthHttpExceptionFilter } from './api/rest/auth-http-exception.filter';
 import { JwtStrategy } from './infra/jwt.strategy';
 import { AuthCookieService } from './api/rest/auth-cookie.utils';
 import { OptionalJwtAuthGuard } from './api/guard/optional-jwt-auth.guard';
-import { CurrentUserEntity } from './infra/persistence/entities/current-user.entity';
-import { CurrentUserCredentialEntity } from './infra/persistence/entities/current-user-credential.entity';
+import { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
+import { UserCredentialEntity } from './infra/persistence/entities/user-credential.entity';
 import { EmailVerificationTokenEntity } from './infra/persistence/entities/email-verification-token.entity';
 import { MikroOrmAuthSessionRepository } from './infra/persistence/mikro-orm-auth-session.repository';
 import { MikroOrmAuthUserRepository } from './infra/persistence/mikro-orm-auth-user.repository';
@@ -56,8 +56,8 @@ import { QueueModule } from '~/integrations/queue/queue.module';
 import { ShopModule } from '../shop/shop.module';
 
 const authEntities = [
-  CurrentUserEntity,
-  CurrentUserCredentialEntity,
+  UserEntity,
+  UserCredentialEntity,
   UserSessionEntity,
   PasswordResetTokenEntity,
   EmailVerificationTokenEntity,

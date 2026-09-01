@@ -6,8 +6,8 @@ import { CategoryAttributeEntity } from '~/domains/category/infra/persistence/en
 import { CategoryEntity } from '~/domains/category/infra/persistence/entities/category.entity';
 import { CouponUsageEntity } from '~/domains/coupon/infra/persistence/entities/coupon-usage.entity';
 import { CouponEntity } from '~/domains/coupon/infra/persistence/entities/coupon.entity';
-import { CurrentUserCredentialEntity } from '~/domains/auth/infra/persistence/entities/current-user-credential.entity';
-import { CurrentUserEntity } from '~/domains/auth/infra/persistence/entities/current-user.entity';
+import { UserCredentialEntity } from '~/domains/auth/infra/persistence/entities/user-credential.entity';
+import { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
 import { CartEntity } from '~/domains/cart/infra/persistence/entities/cart.entity';
 import { CartItemEntity } from '~/domains/cart/infra/persistence/entities/cart-item.entity';
 import { ChatConversationEntity } from '~/domains/chat/infra/persistence/entities/chat-conversation.entity';
@@ -76,8 +76,8 @@ async function main() {
   const orm = await MikroORM.init({
     ...buildDatabaseConfig(process.env, { debug: false }),
     entities: [
-      CurrentUserEntity,
-      CurrentUserCredentialEntity,
+      UserEntity,
+      UserCredentialEntity,
       UserSessionEntity,
       PasswordResetTokenEntity,
       EmailVerificationTokenEntity,

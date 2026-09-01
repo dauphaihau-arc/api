@@ -15,7 +15,7 @@ import {
 } from '../../../product/app/events/product-inventory-sse.event';
 import { NotifyUserUseCase } from '../../../../domains/notification/app/use-cases/notify-user/notify-user.use-case';
 import type { CartSnapshot } from '../../../cart/app/cart.types';
-import { CurrentUserEntity } from '../../../auth/infra/persistence/entities/current-user.entity';
+import { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
 import { CouponPricingService } from '../../../coupon/app/services/coupon-pricing.service';
 import { CouponUsageEntity } from '../../../coupon/infra/persistence/entities/coupon-usage.entity';
 import { ProductEntity } from '../../../product/infra/persistence/mikro-orm/entities/product.entity';
@@ -172,7 +172,7 @@ export class OrderCheckoutService {
 
         const order = orderRepository.create({
           ...(actor.type === 'user'
-            ? { user: entityManager.getReference(CurrentUserEntity, actor.userId) }
+            ? { user: entityManager.getReference(UserEntity, actor.userId) }
             : {}),
           customerEmail: actor.email,
           shop: shopEntity,
@@ -311,7 +311,7 @@ export class OrderCheckoutService {
             const usage = usageRepository.create({
               coupon,
               ...(actor.type === 'user'
-                ? { user: entityManager.getReference(CurrentUserEntity, actor.userId) }
+                ? { user: entityManager.getReference(UserEntity, actor.userId) }
                 : {}),
               orderId: order.id,
               code: coupon.code,

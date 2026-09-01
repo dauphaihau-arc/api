@@ -7,7 +7,7 @@ import {
   type MarketplaceLanguage,
   type MarketplaceRegion,
 } from '~/platform/config/marketplace.config';
-import type { CurrentUserEntity } from '~/domains/auth/infra/persistence/entities/current-user.entity';
+import type { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
 import { UserPreferenceEntity } from '~/domains/auth/infra/persistence/entities/user-preference.entity';
 import { UserAddressEntity } from '~/domains/user/infra/persistence/entities/user-address.entity';
 import {
@@ -165,7 +165,7 @@ function formatDuration(ms: number): string {
 
 export async function seedUserProfiles(
   em: EntityManager,
-  usersByEmail: Map<string, CurrentUserEntity>,
+  usersByEmail: Map<string, UserEntity>,
 ): Promise<void> {
   const addressSeedsByUserEmail = new Map<string, UserAddressSeed[]>();
 
@@ -181,7 +181,7 @@ export async function seedUserProfiles(
   const addressesStartedAt = Date.now();
   const preferenceUsers = userPreferenceSeeds
     .map((seed) => usersByEmail.get(seed.userEmail))
-    .filter((user): user is CurrentUserEntity => Boolean(user));
+    .filter((user): user is UserEntity => Boolean(user));
   const existingPreferences = preferenceUsers.length > 0
     ? await em.find(UserPreferenceEntity, { user: { $in: preferenceUsers.map((user) => user.id) } }, { populate: ['user'] })
     : [];

@@ -1,6 +1,6 @@
 import { EntityManager, type FilterQuery } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
-import { CurrentUserEntity } from '../../auth/infra/persistence/entities/current-user.entity';
+import { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
 import { UserAddressCommandRepository } from '../app/ports/user-address-command.repository';
 import type {
   CreateMyAddressInput,
@@ -38,7 +38,7 @@ export class MikroOrmUserAddressCommandRepository implements UserAddressCommandR
     const entityManager = this.entityManager.fork();
     const repository = entityManager.getRepository(UserAddressEntity);
     const address = repository.create({
-      user: entityManager.getReference(CurrentUserEntity, input.userId),
+      user: entityManager.getReference(UserEntity, input.userId),
       fullName: input.fullName,
       address1: input.address1,
       address2: input.address2,

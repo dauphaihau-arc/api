@@ -1,6 +1,6 @@
 import type { EntityManager } from '@mikro-orm/postgresql';
 import type { MarketplaceCurrency } from '~/platform/config/marketplace.config';
-import type { CurrentUserEntity } from '~/domains/auth/infra/persistence/entities/current-user.entity';
+import type { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
 import { ShopEntity } from '~/domains/shop/infra/persistence/entities/shop.entity';
 import { SHOPS_LOCAL_TSV_PATH, SHOPS_TSV_PATH } from './product-seed-paths';
 import { readOptionalTsvRows, readTsvRows } from './shared/read-tsv-rows';
@@ -66,7 +66,7 @@ function formatDuration(ms: number): string {
 
 export async function seedShops(
   em: EntityManager,
-  usersByEmail: Map<string, CurrentUserEntity>,
+  usersByEmail: Map<string, UserEntity>,
 ): Promise<{ shopsBySlug: Map<string, ShopEntity>; shopsByName: Map<string, ShopEntity> }> {
   const shopsBySlug = new Map<string, ShopEntity>();
   const shopsByName = new Map<string, ShopEntity>();

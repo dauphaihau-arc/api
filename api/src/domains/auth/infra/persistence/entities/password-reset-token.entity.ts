@@ -2,16 +2,16 @@ import {
   Entity, Index, ManyToOne, Property, 
 } from '@mikro-orm/core';
 import { AbstractAuthEntity } from './abstract-auth.entity';
-import { CurrentUserEntity } from './current-user.entity';
+import { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
 
 @Entity({ tableName: 'password_reset_tokens' })
 export class PasswordResetTokenEntity extends AbstractAuthEntity {
-  @ManyToOne(() => CurrentUserEntity, {
+  @ManyToOne(() => UserEntity, {
     fieldName: 'user_id',
     deleteRule: 'cascade',
   })
   @Index()
-  user!: CurrentUserEntity;
+  user!: UserEntity;
 
   @Property({ fieldName: 'token_hash' })
   tokenHash!: string;

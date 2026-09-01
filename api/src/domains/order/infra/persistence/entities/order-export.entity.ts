@@ -6,7 +6,7 @@ import {
   Property,
 } from '@mikro-orm/core';
 import { AbstractBaseEntity } from '~/platform/database/abstract-base.entity';
-import { CurrentUserEntity } from '~/domains/auth/infra/persistence/entities/current-user.entity';
+import { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
 import { ShopEntity } from '~/domains/shop/infra/persistence/entities/shop.entity';
 import { OrderExportStatus } from '../../../domain/enums/order-export-status.enum';
 
@@ -21,12 +21,12 @@ export class OrderExportEntity extends AbstractBaseEntity {
   })
   shop!: ShopEntity;
 
-  @ManyToOne(() => CurrentUserEntity, {
+  @ManyToOne(() => UserEntity, {
     fieldName: 'requested_by_user_id',
     deleteRule: 'cascade',
     updateRule: 'cascade',
   })
-  requestedBy!: CurrentUserEntity;
+  requestedBy!: UserEntity;
 
   @Enum({ items: () => OrderExportStatus })
   status: OrderExportStatus = OrderExportStatus.QUEUED;

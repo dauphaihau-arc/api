@@ -1,7 +1,7 @@
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
 import ms from 'ms';
-import { CurrentUserEntity } from '~/domains/auth/infra/persistence/entities/current-user.entity';
+import { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
 import { PublicProductViewHistoryRepository } from '../../../../app/ports/public-product-view-history.repository';
 import { ProductState } from '../../../../domain/enums/product-state.enum';
 import { ProductEntity } from '../entities/product.entity';
@@ -44,7 +44,7 @@ implements PublicProductViewHistoryRepository {
     const history = repository.create({
       product: entityManager.getReference(ProductEntity, input.productId),
       ...(input.userId
-        ? { user: entityManager.getReference(CurrentUserEntity, input.userId) }
+        ? { user: entityManager.getReference(UserEntity, input.userId) }
         : { guestSessionId: input.guestSessionId }),
       viewedAt: new Date(),
     });

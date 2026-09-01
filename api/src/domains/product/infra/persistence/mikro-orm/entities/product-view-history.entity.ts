@@ -6,7 +6,7 @@ import {
   Unique,
 } from '@mikro-orm/core';
 import { AbstractBaseEntity } from '~/platform/database/abstract-base.entity';
-import { CurrentUserEntity } from '~/domains/auth/infra/persistence/entities/current-user.entity';
+import { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
 import { ProductEntity } from './product.entity';
 
 @Entity({ tableName: 'product_view_history' })
@@ -22,12 +22,12 @@ export class ProductViewHistoryEntity extends AbstractBaseEntity {
   })
   product!: ProductEntity;
 
-  @ManyToOne(() => CurrentUserEntity, {
+  @ManyToOne(() => UserEntity, {
     fieldName: 'user_id',
     nullable: true,
     deleteRule: 'cascade',
   })
-  user?: CurrentUserEntity;
+  user?: UserEntity;
 
   @Property({ fieldName: 'guest_session_id', length: 255, nullable: true })
   guestSessionId?: string;

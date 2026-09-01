@@ -2,7 +2,7 @@ import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
 import { ShopRepository } from '../app/ports/shop.repository';
 import type { CreateShopInput, ShopSummary } from '../app/shop.types';
-import { CurrentUserEntity } from '../../auth/infra/persistence/entities/current-user.entity';
+import { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
 import { ShopEntity } from './persistence/entities/shop.entity';
 
 @Injectable()
@@ -16,7 +16,7 @@ export class MikroOrmShopRepository implements ShopRepository {
     const em = entityManager ?? this.entityManager.fork();
     const repository = em.getRepository(ShopEntity);
     const shop = repository.create({
-      ownerUser: em.getReference(CurrentUserEntity, input.ownerUserId),
+      ownerUser: em.getReference(UserEntity, input.ownerUserId),
       shopName: input.shopName,
       slug: input.slug,
       status: 'active',

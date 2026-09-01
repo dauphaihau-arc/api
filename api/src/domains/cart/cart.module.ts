@@ -7,7 +7,7 @@ import { StorageModule } from '~/integrations/storage/storage.module';
 import { AuthModule } from '../auth/auth.module';
 import { CouponModule } from '../coupon/coupon.module';
 import { ProductModule } from '../product/product.module';
-import { CurrentUserEntity } from '../auth/infra/persistence/entities/current-user.entity';
+import { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
 import { ProductImageEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-image.entity';
 import { ProductInventoryEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-inventory.entity';
 import { ProductEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product.entity';
@@ -35,7 +35,7 @@ import { CartItemEntity } from './infra/persistence/entities/cart-item.entity';
     MikroOrmModule.forFeature([
       CartEntity,
       CartItemEntity,
-      CurrentUserEntity,
+      UserEntity,
       ShopEntity,
       ProductEntity,
       ProductImageEntity,

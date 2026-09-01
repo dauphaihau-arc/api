@@ -6,7 +6,7 @@ import { appJobDeduplicationKey } from '../../../../platform/jobs/app-job-dedupl
 import { appJobName } from '../../../../platform/jobs/app-job.names';
 import { toMinorUnits } from '../../../../platform/utils/money';
 import { MARKETPLACE_CURRENCIES } from '../../../../platform/config/marketplace.config';
-import { CurrentUserEntity } from '../../../auth/infra/persistence/entities/current-user.entity';
+import { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
 import type { CartSnapshot } from '../../../cart/app/cart.types';
 import { CouponPricingService } from '../../../coupon/app/services/coupon-pricing.service';
 import { StorefrontMarketContextService } from '../../../product/app/services/storefront-market-context.service';
@@ -131,7 +131,7 @@ export class CreateCheckoutQuoteService {
           ? CheckoutQuoteActorType.USER
           : CheckoutQuoteActorType.GUEST,
         ...(input.actor.type === 'user'
-          ? { user: entityManager.getReference(CurrentUserEntity, input.actor.userId) }
+          ? { user: entityManager.getReference(UserEntity, input.actor.userId) }
           : { guestSessionId: input.actor.guestSessionId }),
         cartId: input.cart.id,
         quoteFingerprint,
