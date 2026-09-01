@@ -177,6 +177,46 @@ describe('ProductController', () => {
     expect(response.setHeader).toHaveBeenCalledWith('Cache-Control', 'public, max-age=60');
   });
 
+  it('returns free shipping flags on public product list items', async () => {
+    const createdAt = new Date('2026-06-11T01:00:00.000Z');
+    listPublicProductsUseCase.execute.mockResolvedValue({
+      items: [{
+        id: 'product-1',
+        shop: {
+          id: 'shop-1',
+          publicId: 'shop-pub-1',
+          shopName: 'Olive Atelier',
+          slug: 'olive-atelier',
+        },
+        title: 'Linen Weekend Dress',
+        slug: 'linen-weekend-dress',
+        availability: {
+          inStock: true,
+          lowStock: false,
+          stockTotal: 12,
+        },
+        variantCount: 0,
+        hasFreeShipping: true,
+        createdAt,
+      }],
+      meta: {
+        page: 1,
+        limit: 16,
+        total: 1,
+        totalPages: 1,
+        hasNextPage: false,
+        hasPreviousPage: false,
+      },
+    });
+
+    const result = await controller.listProducts(guestRequest, response, {});
+
+    expect(result.items[0]).toMatchObject({
+      id: 'product-1',
+      has_free_shipping: true,
+    });
+  });
+
   it('returns suggested products for typeahead', async () => {
     suggestPublicProductsUseCase.execute.mockResolvedValue([
       {

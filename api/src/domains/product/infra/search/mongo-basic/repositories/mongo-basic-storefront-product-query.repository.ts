@@ -461,6 +461,7 @@ function toPublicProductListItemFromSearchDocument(
       stockTotal: document.inventory.totalStock,
     },
     variantCount: document.variantCount,
+    hasFreeShipping: document.flags?.hasFreeShipping ?? false,
     createdAt: document.ranking.createdAt,
   };
 }

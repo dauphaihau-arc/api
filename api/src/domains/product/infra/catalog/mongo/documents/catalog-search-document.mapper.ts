@@ -1,5 +1,6 @@
 import type { ProductState } from '../../../../domain/enums/product-state.enum';
 import { ProductImageVariant } from '../../../../domain/enums/product-image-variant.enum';
+import { ProductShippingCharge } from '../../../../domain/enums/product-shipping-charge.enum';
 import type { ProductVariantType } from '../../../../domain/enums/product-variant-type.enum';
 import type { ProductEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product.entity';
 import type { StorefrontIndexedPricingSummaryMatrix } from '../../../../app/storefront-indexed-pricing';
@@ -64,6 +65,7 @@ export interface CatalogSearchDocument {
   };
   flags: {
     hasImages: boolean;
+    hasFreeShipping: boolean;
   };
   sourceVersion: number;
   updatedAt: Date;
@@ -78,10 +80,12 @@ export function toCatalogSearchDocument(
     .getItems()
     .slice()
     .sort((left, right) => left.rank - right.rank);
+
   const sortedVariants = product.variants
     .getItems()
     .slice()
     .sort((left, right) => left.rank - right.rank);
+
   const sortedInventory = product.inventoryRecords
     .getItems()
     .slice()
@@ -95,18 +99,27 @@ export function toCatalogSearchDocument(
   const pricingSnapshots = sortedInventory
     .map((row) => getInventoryPricingSnapshot(row))
     .filter((snapshot): snapshot is NonNullable<typeof snapshot> => snapshot != null);
+
   const priceValues = pricingSnapshots
     .map((snapshot) => snapshot.amountMinor)
     .filter((value): value is number => value != null);
+
   const originalPriceValues = pricingSnapshots
     .map((snapshot) => snapshot.originalAmountMinor)
     .filter((value): value is number => value != null);
+
   const primaryImage = sortedImages[0];
+
   const primaryCardVariant = primaryImage?.variants
     .getItems()
     .find((variant) => variant.variant === ProductImageVariant.CARD_1X1);
+
   const listImageStorageKey = primaryCardVariant?.storageKey ?? primaryImage?.storageKey;
   const totalStock = sortedInventory.reduce((sum, row) => sum + row.stock, 0);
+
+  const hasFreeShipping = product.shippingProfiles[0]?.destinations
+    .getItems()
+    .some((destination) => destination.chargeType === ProductShippingCharge.FREE_SHIPPING) ?? false;
 
   return {
     _id: product.id,
@@ -198,6 +211,7 @@ export function toCatalogSearchDocument(
       publishedAt: product.publishedAt,
     },
     flags: {
+      hasFreeShipping,
       hasImages: sortedImages.length > 0,
     },
     sourceVersion: product.updatedAt.getTime(),

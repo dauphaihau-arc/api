@@ -3,6 +3,7 @@ import { ProductImageVariantStatus } from '../../../../domain/enums/product-imag
 import { ProductState } from '../../../../domain/enums/product-state.enum';
 import { ProductVariantType } from '../../../../domain/enums/product-variant-type.enum';
 import { ProductWhoMade } from '../../../../domain/enums/product-who-made.enum';
+import { ProductShippingCharge } from '../../../../domain/enums/product-shipping-charge.enum';
 import { toCatalogSearchDocument } from './catalog-search-document.mapper';
 
 describe('catalog-search-document.mapper', () => {
@@ -71,6 +72,13 @@ describe('catalog-search-document.mapper', () => {
           },
         }],
       },
+      shippingProfiles: [{
+        destinations: {
+          getItems: () => [{
+            chargeType: ProductShippingCharge.FREE_SHIPPING,
+          }],
+        },
+      }],
       attributeValues: {
         getItems: () => [{
           categoryAttribute: {
@@ -114,6 +122,7 @@ describe('catalog-search-document.mapper', () => {
       },
       flags: {
         hasImages: true,
+        hasFreeShipping: true,
       },
       attributes: [{
         categoryAttributeId: 'attribute-1',

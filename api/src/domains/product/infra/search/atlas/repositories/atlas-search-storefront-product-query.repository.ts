@@ -124,6 +124,7 @@ implements StorefrontProductQueryRepository {
     this.assertAtlasSearchEnabled();
 
     const searchCollection = await this.getSearchCollection();
+
     const documents = await searchCollection.aggregate<CatalogSearchDocument>([
       {
         $match: {
@@ -149,9 +150,11 @@ implements StorefrontProductQueryRepository {
           pricingByMarket: 1,
           inventory: 1,
           ranking: 1,
+          flags: 1,
         },
       },
     ]).toArray();
+
     const documentsById = new Map(
       documents.map((document) => [document.productId, document] as const),
     );
@@ -238,6 +241,7 @@ implements StorefrontProductQueryRepository {
           pricingByMarket: 1,
           inventory: 1,
           ranking: 1,
+          flags: 1,
         },
       },
     ]).toArray();
@@ -442,6 +446,7 @@ implements StorefrontProductQueryRepository {
           pricingByMarket: 1,
           inventory: 1,
           ranking: 1,
+          flags: 1,
           variantCount: 1,
         },
       })
@@ -939,6 +944,7 @@ function toPublicProductListItemFromSearchDocument(
       stockTotal: document.inventory.totalStock,
     },
     variantCount: document.variantCount,
+    hasFreeShipping: document.flags?.hasFreeShipping ?? false,
     createdAt: document.ranking.createdAt,
   };
 }
