@@ -162,21 +162,7 @@ export async function seedAuth(
     UserEntity,
     { email: { $in: userEmails } },
   );
-  const existingCredentials = await em.find(UserCredentialEntity, {
-    userId: { $in: existingUsers.map((user) => user.id) },
-  });
   const existingUsersByEmail = new Map(existingUsers.map((user) => [user.email, user]));
-  const existingCredentialByUserId = new Map(
-    existingCredentials.map((credential) => [credential.userId, credential]),
-  );
-  const existingUserRoles = await em.find(
-    UserRoleEntity,
-    { user: { email: { $in: userEmails } } },
-    { populate: ['user', 'role'] },
-  );
-  const existingUserRoleKeys = new Set(
-    existingUserRoles.map((userRole) => `${userRole.user.email}::${userRole.role.key}`),
-  );
   const progressInterval = resolveProgressInterval(userSeeds.length);
   const usersStartedAt = Date.now();
 
@@ -197,12 +183,46 @@ export async function seedAuth(
         emailVerifiedAt: userSeed.emailVerified ? new Date() : undefined,
       });
       existingUsersByEmail.set(user.email, user);
-      em.persist(user);
     }
     else {
       user.displayName = userSeed.displayName;
       user.status = UserStatus.ACTIVE;
       user.emailVerifiedAt = userSeed.emailVerified ? new Date() : undefined;
+    }
+
+    usersByEmail.set(user.email, user);
+    em.persist(user);
+
+    if ((index + 1) % progressInterval === 0 || index + 1 === userSeeds.length) {
+      console.log(
+        `[seed][auth] Processed ${index + 1}/${userSeeds.length} users in ${formatDuration(Date.now() - usersStartedAt)}`,
+      );
+    }
+  }
+
+  await em.flush();
+
+  const seededUsers = Array.from(usersByEmail.values());
+  const existingCredentials = await em.find(UserCredentialEntity, {
+    userId: { $in: seededUsers.map((user) => user.id) },
+  });
+  const existingCredentialByUserId = new Map(
+    existingCredentials.map((credential) => [credential.userId, credential]),
+  );
+  const existingUserRoles = await em.find(
+    UserRoleEntity,
+    { user: { email: { $in: userEmails } } },
+    { populate: ['user', 'role'] },
+  );
+  const existingUserRoleKeys = new Set(
+    existingUserRoles.map((userRole) => `${userRole.user.email}::${userRole.role.key}`),
+  );
+
+  for (const userSeed of userSeeds) {
+    const user = usersByEmail.get(userSeed.email);
+
+    if (!user) {
+      throw new Error(`Missing user for auth seed: ${userSeed.email}`);
     }
 
     let passwordHashPromise = passwordHashByRawPassword.get(userSeed.password);
@@ -243,15 +263,6 @@ export async function seedAuth(
         }),
       );
       existingUserRoleKeys.add(userRoleKey);
-    }
-
-    usersByEmail.set(user.email, user);
-    em.persist(user);
-
-    if ((index + 1) % progressInterval === 0 || index + 1 === userSeeds.length) {
-      console.log(
-        `[seed][auth] Processed ${index + 1}/${userSeeds.length} users in ${formatDuration(Date.now() - usersStartedAt)}`,
-      );
     }
   }
 

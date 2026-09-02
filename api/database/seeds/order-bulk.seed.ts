@@ -217,17 +217,22 @@ async function recreateSeedBuyers(em: EntityManager): Promise<SeedBuyer[]> {
     });
 
     em.persist(user);
+    buyers.push({ index, user });
+  }
+
+  await em.flush();
+
+  for (const buyer of buyers) {
     em.persist(em.create(UserCredentialEntity, {
-      userId: user.id,
+      userId: buyer.user.id,
       passwordHash,
       passwordUpdatedAt: verifiedAt,
     }));
     em.persist(em.create(UserRoleEntity, {
-      user,
+      user: buyer.user,
       role: customerRole,
       assignedAt: verifiedAt,
     }));
-    buyers.push({ index, user });
   }
 
   await em.flush();
