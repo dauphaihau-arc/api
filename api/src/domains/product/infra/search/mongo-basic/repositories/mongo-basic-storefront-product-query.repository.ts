@@ -453,6 +453,7 @@ function toPublicProductListItemFromSearchDocument(
       originalMinAmountMinor: indexedPricing?.originalMinAmountMinor ?? document.price.originalMinAmountMinor,
       originalMaxAmountMinor: indexedPricing?.originalMaxAmountMinor ?? document.price.originalMaxAmountMinor,
       currency: indexedPricing?.currency ?? document.price.currency,
+      autoSale: indexedPricing?.autoSale ?? document.price.autoSale,
     },
     availability: {
       inStock: document.inventory.inStock,
@@ -544,6 +545,7 @@ function toPublicProductDetail(
         stock: inventory.stock,
         amountMinor: resolvedPricing?.amountMinor,
         originalAmountMinor: resolvedPricing?.originalAmountMinor,
+        autoSale: resolvedPricing?.autoSale,
         currency: resolvedPricing?.currency,
       };
     }),

@@ -51,6 +51,10 @@ export interface AppJobPayloadMap {
   'catalog.project-product': {
     productId: string;
   };
+  'catalog.project-shop-products': {
+    shopId: string;
+    productIds?: string[];
+  };
   'product.cleanup-pending-review-image': {
     storageKey: string;
   };

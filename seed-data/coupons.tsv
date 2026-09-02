@@ -2,7 +2,7 @@ shop_slug	code	type	applies_to	amount_off	percent_off	max_uses	max_uses_per_user
 olive-atelier	OLIVE-FS	free_ship	all			150	2	number_of_products		2	true	false		2026-03-01T00:00:00.000Z	2026-03-31T23:59:59.000Z
 olive-atelier	OLIVE-FA	fixed_amount	specific	12		60	1	order_total	75		true	false		2026-04-10T00:00:00.000Z	2026-05-12T23:59:59.000Z
 olive-atelier	OLIVE-PC11	percentage	all		15	90	2	order_total	120		true	false		2026-06-01T00:00:00.000Z	2026-06-18T23:59:59.000Z
-olive-atelier	OLIVE-PC	percentage	all		18	240	3	none			true	true	now..4d		
+olive-atelier	OLIVE-PC	percentage	all		18	240	3	none			true	true	now..3mo		
 olive-atelier	OLIVE-PC-OIS	percentage	specific		22	120	2	none			true	true		2026-07-03T00:00:00.000Z	2026-07-07T23:59:59.000Z
 reed-workshop	REED-FS	free_ship	all			90	2	number_of_products		2	true	false		2026-02-06T00:00:00.000Z	2026-02-22T23:59:59.000Z
 reed-workshop	REED-FA	fixed_amount	specific	35		40	1	order_total	250		true	false		2026-05-08T00:00:00.000Z	2026-05-25T23:59:59.000Z
@@ -14,9 +14,9 @@ sage-studio	SAGE-FA	fixed_amount	specific	18		55	1	order_total	95		true	false		2
 sage-studio	SAGE-PC11	percentage	all		12	85	2	order_total	140		true	false		2026-09-01T00:00:00.000Z	2026-09-21T23:59:59.000Z
 sage-studio	SAGE-PC	percentage	all		16	140	2	none			true	true		2026-10-09T00:00:00.000Z	2026-10-13T23:59:59.000Z
 sage-studio	SAGE-PC-OIS	percentage	specific		20	45	1	none			true	true		2026-12-03T00:00:00.000Z	2026-12-07T23:59:59.000Z
-hazel-home	HAZEL-PC	percentage	all		13	120	2	none			true	true	now..5d		
+hazel-home	HAZEL-PC	percentage	all		13	120	2	none			true	true	now..6mo		
 hazel-home	HAZEL-FS	free_ship	all			80	2	number_of_products		2	true	false		2026-07-01T00:00:00.000Z	2026-07-20T23:59:59.000Z
-juno-console	JUNO-PC	percentage	all		15	150	2	none			true	true	now..3d		
+juno-console	JUNO-PC	percentage	all		15	150	2	none			true	true	now..1y		
 juno-console	JUNO-FA	fixed_amount	all	20		60	1	order_total	180		true	false		2026-09-10T00:00:00.000Z	2026-09-24T23:59:59.000Z
 bulk-catalog-lab	BCL-01	percentage	all		8	180	2	none			true	false		2026-01-05T00:00:00.000Z	2026-02-02T23:59:59.000Z
 bulk-catalog-lab	BCL-02	fixed_amount	all	10		140	2	order_total	45		true	false		2026-01-12T00:00:00.000Z	2026-02-16T23:59:59.000Z

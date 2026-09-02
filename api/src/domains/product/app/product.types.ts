@@ -250,6 +250,10 @@ export interface PublicProductListItem {
     originalMinAmountMinor?: number;
     originalMaxAmountMinor?: number;
     currency?: string;
+    autoSale?: {
+      couponId: string;
+      percentOff: number;
+    };
   };
   availability: {
     inStock: boolean;
@@ -283,6 +287,10 @@ export interface PublicProductInventorySummary {
   amountMinor?: number;
   originalAmountMinor?: number;
   currency?: string;
+  autoSale?: {
+    couponId: string;
+    percentOff: number;
+  };
 }
 
 export interface PublicProductShippingSummary {

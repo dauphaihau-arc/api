@@ -10,6 +10,7 @@ import { RefreshExchangeRatesJob } from '~/integrations/currency/jobs/refresh-ex
 import { GenerateProductImageVariantsJob } from '~/domains/product/jobs/generate-product-image-variants.job';
 import { GenerateReviewImageVariantsJob } from '~/domains/product/jobs/generate-review-image-variants.job';
 import { ProjectCatalogProductJob } from '~/domains/product/jobs/project-catalog-product.job';
+import { ProjectShopCatalogProductsJob } from '~/domains/product/jobs/project-shop-catalog-products.job';
 import { CleanupPendingReviewImageJob } from '~/domains/product/jobs/cleanup-pending-review-image.job';
 import { ProcessProductImportJob } from '~/domains/product/jobs/process-product-import.job';
 import { CleanupExpiredCheckoutQuoteReservationsJob } from '~/domains/checkout/jobs/cleanup-expired-checkout-quote-reservations.job';
@@ -44,6 +45,7 @@ export class AppJobRunner extends JobRunner {
     private readonly generateProductImageVariantsJob: GenerateProductImageVariantsJob,
     private readonly generateReviewImageVariantsJob: GenerateReviewImageVariantsJob,
     private readonly projectCatalogProductJob: ProjectCatalogProductJob,
+    private readonly projectShopCatalogProductsJob: ProjectShopCatalogProductsJob,
     private readonly cleanupPendingReviewImageJob: CleanupPendingReviewImageJob,
     private readonly cleanupExpiredCheckoutQuoteReservationsJob: CleanupExpiredCheckoutQuoteReservationsJob,
     private readonly refreshBestSellerRankingsJob: RefreshBestSellerRankingsJob,
@@ -130,6 +132,11 @@ export class AppJobRunner extends JobRunner {
           case appJobName.projectCatalogProduct:
             await this.projectCatalogProductJob.run(
               payload as AppJobPayloadMap[typeof appJobName.projectCatalogProduct],
+            );
+            return;
+          case appJobName.projectShopCatalogProducts:
+            await this.projectShopCatalogProductsJob.run(
+              payload as AppJobPayloadMap[typeof appJobName.projectShopCatalogProducts],
             );
             return;
           case appJobName.cleanupPendingReviewImage:

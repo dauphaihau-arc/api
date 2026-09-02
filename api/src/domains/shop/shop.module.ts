@@ -2,6 +2,7 @@ import { MikroOrmModule } from '@mikro-orm/nestjs';
 import { forwardRef, Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from '../auth/auth.module';
+import { QueueModule } from '~/integrations/queue/queue.module';
 import { CouponEntity } from '../coupon/infra/persistence/entities/coupon.entity';
 import { ShopRepository } from './app/ports/shop.repository';
 import { ShopAccessService } from './app/services/shop-access.service';
@@ -20,6 +21,7 @@ import { ShopEntity } from './infra/persistence/entities/shop.entity';
   imports: [
     ConfigModule,
     forwardRef(() => AuthModule),
+    QueueModule,
     MikroOrmModule.forFeature([ShopEntity, CouponEntity]),
   ],
   controllers: [ShopController, ShopCouponsController],

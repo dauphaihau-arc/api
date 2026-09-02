@@ -10,16 +10,22 @@ import { CouponAppliesTo } from '~/domains/coupon/domain/enums/coupon-applies-to
 import { CouponMinOrderType } from '~/domains/coupon/domain/enums/coupon-min-order-type.enum';
 import { CouponType } from '~/domains/coupon/domain/enums/coupon-type.enum';
 import { CouponEntity } from '~/domains/coupon/infra/persistence/entities/coupon.entity';
+import { JobDispatcher } from '~/integrations/queue/app/ports/job-dispatcher';
 import { ShopEntity } from '../../../infra/persistence/entities/shop.entity';
 import type { CreateShopCouponDto } from '../../../api/rest/dto/create-shop-coupon.dto';
 import type { ShopCouponSummary } from '../../shop.types';
+import { scheduleShopCouponCatalogProjection } from '../shop-coupon-catalog-projection';
 
 @Injectable()
 export class CreateShopCouponUseCase {
-  constructor(private readonly entityManager: EntityManager) {}
+  constructor(
+    private readonly entityManager: EntityManager,
+    private readonly jobDispatcher: JobDispatcher,
+  ) {}
 
   async execute(actor: AuthenticatedUser, shopId: string, body: CreateShopCouponDto) {
     const entityManager = this.entityManager.fork();
+
     const shop = await entityManager.getRepository(ShopEntity).findOne(
       { id: shopId },
       { populate: ['ownerUser'] },
@@ -79,7 +85,8 @@ export class CreateShopCouponUseCase {
       isAutoSale: body.isAutoSale ?? false,
     });
 
-    await entityManager.persistAndFlush(coupon);
+    await entityManager.persist(coupon).flush();
+    await scheduleShopCouponCatalogProjection(this.jobDispatcher, coupon);
     return toShopCouponSummary(coupon);
   }
 }

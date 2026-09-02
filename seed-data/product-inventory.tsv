@@ -1,18 +1,18 @@
 product_title	shop_slug	sku	stock	price	sale_price	option_value_1	option_value_2
-Linen Weekend Dress	olive-atelier	OA-DRESS-STD	23	82	74		
-Canvas Market Tote	olive-atelier	OA-TOTE-STD	22	64	58		
+Linen Weekend Dress	olive-atelier	OA-DRESS-STD	23	82			
+Canvas Market Tote	olive-atelier	OA-TOTE-STD	22	64			
 Yamaha HPH-MT7 Studio Monitor Headphones	reed-workshop	RW-HOOD-BLK-S	6	68		Black	S
 Yamaha HPH-MT7 Studio Monitor Headphones	reed-workshop	RW-HOOD-BLK-M	8	68		Black	M
-Yamaha HPH-MT7 Studio Monitor Headphones	reed-workshop	RW-HOOD-RED-S	4	68	61	Red	S
+Yamaha HPH-MT7 Studio Monitor Headphones	reed-workshop	RW-HOOD-RED-S	4	68		Red	S
 Yamaha HPH-MT7 Studio Monitor Headphones	reed-workshop	RW-HOOD-RED-M	7	68		Red	M
 Sony WH-1000XM6 Wireless Headphones	reed-workshop	RW-STAND-WAL	11	36			
 Minimal Horizon Print	sage-studio	SS-PRINT-HZN	17	54			
 Oak Side Table	sage-studio	SS-TABLE-OAK	3	140		Oak	
 Oak Side Table	sage-studio	SS-TABLE-WAL	2	155		Walnut	
-Solid Oak Console Table	hazel-home	HH-CONSOLE-OAK	7	185	169	Oak	
+Solid Oak Console Table	hazel-home	HH-CONSOLE-OAK	7	185		Oak	
 Walnut Accent Side Table	hazel-home	HH-SIDE-WAL	9	132		Walnut	
-Xbox Wireless Controller	juno-console	JC-XBOX-CTRL	18	59	55		
-PlayStation DualSense Wireless Controller	juno-console	JC-PS-CTRL	16	69	64		
+Xbox Wireless Controller	juno-console	JC-XBOX-CTRL	18	59			
+PlayStation DualSense Wireless Controller	juno-console	JC-PS-CTRL	16	69			
 Bulk Draft Product 01	bulk-catalog-lab	BCL-PROD-01	11	21			
 Bulk Draft Product 02	bulk-catalog-lab	BCL-PROD-02	12	22			
 Bulk Draft Product 03	bulk-catalog-lab	BCL-PROD-03	13	23			

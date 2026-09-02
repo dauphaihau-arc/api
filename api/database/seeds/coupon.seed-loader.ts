@@ -131,11 +131,27 @@ function buildCouponKey(shopSlug: string, code: string): string {
   return `${shopSlug}::${code}`;
 }
 
-function parsePeriodOffset(value: string, couponKey: string): number {
+function resolvePeriodDate(seededAt: Date, value: string, couponKey: string): Date {
   const normalized = value.trim().toLowerCase();
 
   if (normalized === 'now') {
-    return 0;
+    return new Date(seededAt);
+  }
+
+  const calendarMatch = /^(\d+)\s*(mo|month|months|y|year|years)$/.exec(normalized);
+
+  if (calendarMatch) {
+    const amount = Number(calendarMatch[1]);
+    const unit = calendarMatch[2];
+    const resolved = new Date(seededAt);
+
+    if (unit === 'mo' || unit === 'month' || unit === 'months') {
+      resolved.setMonth(resolved.getMonth() + amount);
+      return resolved;
+    }
+
+    resolved.setFullYear(resolved.getFullYear() + amount);
+    return resolved;
   }
 
   const parsed = ms(normalized as StringValue);
@@ -143,7 +159,7 @@ function parsePeriodOffset(value: string, couponKey: string): number {
     throw new Error(`Invalid period offset "${value}" for coupon seed ${couponKey}`);
   }
 
-  return parsed;
+  return new Date(seededAt.getTime() + parsed);
 }
 
 function toIsoDate(value: Date): string {
@@ -179,8 +195,8 @@ function resolveCouponWindow(row: CouponRow, couponKey: string): { startDate: st
   }
 
   const seededAt = new Date();
-  const resolvedStartDate = new Date(seededAt.getTime() + parsePeriodOffset(startOffsetRaw, couponKey));
-  const resolvedEndDate = new Date(seededAt.getTime() + parsePeriodOffset(endOffsetRaw, couponKey));
+  const resolvedStartDate = resolvePeriodDate(seededAt, startOffsetRaw, couponKey);
+  const resolvedEndDate = resolvePeriodDate(seededAt, endOffsetRaw, couponKey);
 
   if (resolvedEndDate <= resolvedStartDate) {
     throw new Error(`Coupon seed ${couponKey} must resolve to end_date after start_date`);

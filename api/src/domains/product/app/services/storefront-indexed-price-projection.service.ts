@@ -10,6 +10,10 @@ import type { ProductEntity } from '~/domains/product/infra/persistence/mikro-or
 import type { ProductInventoryEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-inventory.entity';
 import type { VariantPriceEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/variant-price.entity';
 import {
+  CouponAutoSaleProjectionReader,
+  type ProductAutoSaleProjection,
+} from '~/domains/coupon/app/ports/coupon-auto-sale-projection.reader';
+import {
   getActiveBasePrice,
   getActiveMarketPrice,
 } from '../../infra/persistence/mikro-orm/reads/variant-price-read';
@@ -20,6 +24,12 @@ import type {
   StorefrontIndexedPricingSummaryMatrix,
 } from '../storefront-indexed-pricing';
 
+interface ProductInventoryPricingProjection {
+  basePrice?: StorefrontIndexedInventoryPrice;
+  marketOverrides?: StorefrontIndexedInventoryPricingMatrix;
+  resolvedByMarket?: StorefrontIndexedInventoryPricingMatrix;
+}
+
 @Injectable()
 export class StorefrontIndexedPriceProjectionService {
   constructor(
@@ -27,32 +37,38 @@ export class StorefrontIndexedPriceProjectionService {
     private readonly storefrontPricingConfig: StorefrontPricingConfig,
     private readonly fxRateService: FxRateService,
     private readonly roundingPolicyService: RoundingPolicyService,
+    private readonly couponAutoSaleProjectionReader: CouponAutoSaleProjectionReader,
   ) {}
 
   async projectProduct(product: ProductEntity): Promise<{
+    baseSummary?: StorefrontIndexedPriceSummary;
     summaryByMarket?: StorefrontIndexedPricingSummaryMatrix;
-    inventoryPricingById: Map<string, {
-      marketOverrides?: StorefrontIndexedInventoryPricingMatrix;
-      resolvedByMarket?: StorefrontIndexedInventoryPricingMatrix;
-    }>;
+    inventoryPricingById: Map<string, ProductInventoryPricingProjection>;
   }> {
     const rateCache = new Map<string, ExchangeRateSnapshot | null>();
-    const inventoryPricingById = new Map<string, {
-      marketOverrides?: StorefrontIndexedInventoryPricingMatrix;
-      resolvedByMarket?: StorefrontIndexedInventoryPricingMatrix;
-    }>();
+    const inventoryPricingById = new Map<string, ProductInventoryPricingProjection>();
+
+    const autoSale = await this.couponAutoSaleProjectionReader.findBestAutoSaleForProduct({
+      shopId: product.shop.id,
+      productId: product.id,
+    });
 
     await Promise.all(
       product.inventoryRecords.getItems().map(async (inventory) => {
-        const pricingByMarket = await this.projectInventory(inventory, rateCache);
+        const pricingByMarket = await this.projectInventory(inventory, rateCache, autoSale);
 
-        if (pricingByMarket.marketOverrides || pricingByMarket.resolvedByMarket) {
+        if (pricingByMarket.basePrice || pricingByMarket.marketOverrides || pricingByMarket.resolvedByMarket) {
           inventoryPricingById.set(inventory.id, pricingByMarket);
         }
       }),
     );
 
     return {
+      baseSummary: summarizeInventoryPricing(
+        Array.from(inventoryPricingById.values())
+          .map((pricing) => pricing.basePrice)
+          .filter((pricing): pricing is StorefrontIndexedInventoryPrice => pricing != null),
+      ),
       summaryByMarket: summarizeProductPricing(
         Array.from(inventoryPricingById.values())
           .map((pricing) => pricing.resolvedByMarket)
@@ -65,12 +81,11 @@ export class StorefrontIndexedPriceProjectionService {
   private async projectInventory(
     inventory: ProductInventoryEntity,
     rateCache: Map<string, ExchangeRateSnapshot | null>,
-  ): Promise<{
-    marketOverrides?: StorefrontIndexedInventoryPricingMatrix;
-    resolvedByMarket?: StorefrontIndexedInventoryPricingMatrix;
-  }> {
+    autoSale?: ProductAutoSaleProjection,
+  ): Promise<ProductInventoryPricingProjection> {
     const resolvedByMarket: StorefrontIndexedInventoryPricingMatrix = {};
-    const marketOverrides = getMarketOverrides(inventory.prices.getItems());
+    const basePrice = applyAutoSale(toBaseInventoryPrice(inventory), autoSale);
+    const marketOverrides = getMarketOverrides(inventory.prices.getItems(), autoSale);
 
     for (const indexedPair of this.storefrontPricingConfig.indexedPricePairs) {
       const market = MARKETPLACE_MARKETS.find((entry) =>
@@ -82,18 +97,21 @@ export class StorefrontIndexedPriceProjectionService {
         continue;
       }
 
-      const resolvedPrice = await this.resolveInventoryPrice(
-        inventory,
-        market.code,
-        indexedPair.currency,
-        rateCache,
+      const resolvedPrice = applyAutoSale(
+        await this.resolveInventoryPrice(
+          inventory,
+          market.code,
+          indexedPair.currency,
+          rateCache,
+        ),
+        autoSale,
       );
 
       if (!resolvedPrice) {
         continue;
       }
 
-      if (isSameAsBasePrice(getActiveBasePrice(inventory), resolvedPrice)) {
+      if (basePrice && isSameInventoryPrice(basePrice, resolvedPrice)) {
         continue;
       }
 
@@ -103,6 +121,7 @@ export class StorefrontIndexedPriceProjectionService {
     }
 
     return {
+      ...(basePrice ? { basePrice } : {}),
       ...(Object.keys(marketOverrides).length > 0 ? { marketOverrides } : {}),
       ...(Object.keys(resolvedByMarket).length > 0 ? { resolvedByMarket } : {}),
     };
@@ -117,13 +136,7 @@ export class StorefrontIndexedPriceProjectionService {
     const exactMarketPrice = getActiveMarketPrice(inventory, marketCode, currency);
 
     if (exactMarketPrice) {
-      return {
-        amountMinor: exactMarketPrice.amountMinor,
-        ...(exactMarketPrice.originalAmountMinor != null
-          ? { originalAmountMinor: exactMarketPrice.originalAmountMinor }
-          : {}),
-        currency: exactMarketPrice.currency,
-      };
+      return toInventoryPrice(exactMarketPrice);
     }
 
     const basePrice = getActiveBasePrice(inventory);
@@ -133,13 +146,7 @@ export class StorefrontIndexedPriceProjectionService {
     }
 
     if (basePrice.currency === currency) {
-      return {
-        amountMinor: basePrice.amountMinor,
-        ...(basePrice.originalAmountMinor != null
-          ? { originalAmountMinor: basePrice.originalAmountMinor }
-          : {}),
-        currency: basePrice.currency,
-      };
+      return toInventoryPrice(basePrice);
     }
 
     const rate = await this.getCachedRate(
@@ -191,8 +198,53 @@ export class StorefrontIndexedPriceProjectionService {
   }
 }
 
+
+function toBaseInventoryPrice(
+  inventory: ProductInventoryEntity,
+): StorefrontIndexedInventoryPrice | undefined {
+  const basePrice = getActiveBasePrice(inventory);
+  return basePrice ? toInventoryPrice(basePrice) : undefined;
+}
+
+function toInventoryPrice(price: VariantPriceEntity): StorefrontIndexedInventoryPrice {
+  return {
+    amountMinor: price.amountMinor,
+    ...(price.originalAmountMinor != null
+      ? { originalAmountMinor: price.originalAmountMinor }
+      : {}),
+    currency: price.currency,
+  };
+}
+
+function applyAutoSale(
+  price: StorefrontIndexedInventoryPrice | undefined,
+  autoSale?: ProductAutoSaleProjection,
+): StorefrontIndexedInventoryPrice | undefined {
+  if (!price || !autoSale || price.amountMinor == null) {
+    return price;
+  }
+
+  const baseAmountMinor = price.originalAmountMinor ?? price.amountMinor;
+  const discountedAmountMinor = Math.round(baseAmountMinor * (100 - autoSale.percentOff) / 100);
+
+  if (discountedAmountMinor >= price.amountMinor) {
+    return price;
+  }
+
+  return {
+    ...price,
+    amountMinor: discountedAmountMinor,
+    originalAmountMinor: baseAmountMinor,
+    autoSale: {
+      couponId: autoSale.couponId,
+      percentOff: autoSale.percentOff,
+    },
+  };
+}
+
 function getMarketOverrides(
   prices: VariantPriceEntity[],
+  autoSale?: ProductAutoSaleProjection,
 ): StorefrontIndexedInventoryPricingMatrix {
   const marketOverrides: StorefrontIndexedInventoryPricingMatrix = {};
 
@@ -201,31 +253,27 @@ function getMarketOverrides(
     .forEach((price) => {
       const marketCode = price.marketCode as string;
       const pricingByCurrency = marketOverrides[marketCode] ?? {};
+      const resolvedPrice = applyAutoSale(toInventoryPrice(price), autoSale);
 
-      pricingByCurrency[price.currency] = {
-        amountMinor: price.amountMinor,
-        ...(price.originalAmountMinor != null
-          ? { originalAmountMinor: price.originalAmountMinor }
-          : {}),
-        currency: price.currency,
-      };
+      if (resolvedPrice) {
+        pricingByCurrency[price.currency] = resolvedPrice;
+      }
+
       marketOverrides[marketCode] = pricingByCurrency;
     });
 
   return marketOverrides;
 }
 
-function isSameAsBasePrice(
-  basePrice: VariantPriceEntity | undefined,
-  resolvedPrice: StorefrontIndexedInventoryPrice,
+function isSameInventoryPrice(
+  left: StorefrontIndexedInventoryPrice,
+  right: StorefrontIndexedInventoryPrice,
 ): boolean {
-  if (!basePrice) {
-    return false;
-  }
-
-  return basePrice.currency === resolvedPrice.currency
-    && basePrice.amountMinor === resolvedPrice.amountMinor
-    && basePrice.originalAmountMinor === resolvedPrice.originalAmountMinor;
+  return left.currency === right.currency
+    && left.amountMinor === right.amountMinor
+    && left.originalAmountMinor === right.originalAmountMinor
+    && left.autoSale?.couponId === right.autoSale?.couponId
+    && left.autoSale?.percentOff === right.autoSale?.percentOff;
 }
 
 function summarizeProductPricing(
@@ -251,6 +299,15 @@ function summarizeProductPricing(
   return Object.keys(pricingByMarket).length > 0
     ? pricingByMarket
     : undefined;
+}
+
+function summarizeInventoryPricing(
+  inventoryPrices: StorefrontIndexedInventoryPrice[],
+): StorefrontIndexedPriceSummary | undefined {
+  return inventoryPrices.reduce<StorefrontIndexedPriceSummary | undefined>(
+    (current, pricing) => mergeSummaryPricing(current, pricing),
+    undefined,
+  );
 }
 
 function mergeSummaryPricing(
@@ -279,6 +336,7 @@ function mergeSummaryPricing(
           : pricing.originalAmountMinor,
       }
       : {}),
+    ...(pricing.autoSale ? { autoSale: pricing.autoSale } : current?.autoSale ? { autoSale: current.autoSale } : {}),
   };
 }
 

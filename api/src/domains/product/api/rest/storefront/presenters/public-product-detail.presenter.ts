@@ -96,6 +96,14 @@ export const toPublicProductDetailResponse = (
         ? { original_amount_minor: inventory.originalAmountMinor }
         : {}),
       ...(inventory.currency ? { currency: inventory.currency } : {}),
+      ...(inventory.autoSale
+        ? {
+          auto_sale: {
+            coupon_id: inventory.autoSale.couponId,
+            percent_off: inventory.autoSale.percentOff,
+          },
+        }
+        : {}),
     })),
     shipping: product.shipping
       ? {

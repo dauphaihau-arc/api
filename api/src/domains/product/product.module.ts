@@ -14,6 +14,7 @@ import { SseModule } from '~/platform/sse/sse.module';
 import { AuthModule } from '../auth/auth.module';
 import { CategoryModule } from '../category/category.module';
 import { ShopModule } from '../shop/shop.module';
+import { CouponModule } from '../coupon/coupon.module';
 import { ProductImageService } from './app/services/product-image.service';
 import { ReviewImageService } from './app/services/review-image.service';
 import { PendingReviewImageUploadService } from './app/pending-review-image-upload.service';
@@ -143,6 +144,7 @@ import { STOREFRONT_PRICING_CONFIG, buildStorefrontPricingConfig } from '~/platf
     forwardRef(() => AuthModule),
     ShopModule,
     CategoryModule,
+    CouponModule,
     StorageModule,
     AiModule,
     ImageTransformModule,

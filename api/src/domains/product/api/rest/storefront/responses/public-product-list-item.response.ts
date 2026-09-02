@@ -25,6 +25,10 @@ export type PublicProductListItemResponse = {
     original_min_amount_minor?: number;
     original_max_amount_minor?: number;
     currency?: string;
+    auto_sale?: {
+      coupon_id: string;
+      percent_off: number;
+    };
   };
   availability: {
     in_stock: boolean;

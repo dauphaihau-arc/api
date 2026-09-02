@@ -48,6 +48,14 @@ export const toPublicProductListItemResponse = (
       ...(product.pricing.currency
         ? { currency: product.pricing.currency }
         : {}),
+      ...(product.pricing.autoSale
+        ? {
+          auto_sale: {
+            coupon_id: product.pricing.autoSale.couponId,
+            percent_off: product.pricing.autoSale.percentOff,
+          },
+        }
+        : {}),
     }
     : undefined,
   availability: {

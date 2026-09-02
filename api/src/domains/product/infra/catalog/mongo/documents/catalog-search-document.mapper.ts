@@ -3,7 +3,10 @@ import { ProductImageVariant } from '../../../../domain/enums/product-image-vari
 import { ProductShippingCharge } from '../../../../domain/enums/product-shipping-charge.enum';
 import type { ProductVariantType } from '../../../../domain/enums/product-variant-type.enum';
 import type { ProductEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product.entity';
-import type { StorefrontIndexedPricingSummaryMatrix } from '../../../../app/storefront-indexed-pricing';
+import type {
+  StorefrontIndexedPriceSummary,
+  StorefrontIndexedPricingSummaryMatrix,
+} from '../../../../app/storefront-indexed-pricing';
 import { inferFacetSignalsFromText } from '../../../inferred-facets';
 import { getInventoryPricingSnapshot } from '../../../persistence/mikro-orm/reads/variant-price-read';
 
@@ -49,6 +52,10 @@ export interface CatalogSearchDocument {
     currency?: string;
     originalMinAmountMinor?: number;
     originalMaxAmountMinor?: number;
+    autoSale?: {
+      couponId: string;
+      percentOff: number;
+    };
   };
   pricingByMarket?: StorefrontIndexedPricingSummaryMatrix;
   inventory: {
@@ -75,6 +82,7 @@ export function toCatalogSearchDocument(
   product: ProductEntity,
   getPublicUrl: (storageKey: string) => string | undefined,
   pricingByMarket?: StorefrontIndexedPricingSummaryMatrix,
+  basePriceSummary?: StorefrontIndexedPriceSummary,
 ): CatalogSearchDocument {
   const sortedImages = product.images
     .getItems()
@@ -180,7 +188,7 @@ export function toCatalogSearchDocument(
       }
       : undefined,
     variantCount: sortedVariants.length,
-    price: {
+    price: basePriceSummary ?? {
       ...(priceValues.length > 0
         ? { minAmountMinor: Math.min(...priceValues) }
         : {}),
@@ -218,6 +226,7 @@ export function toCatalogSearchDocument(
     updatedAt: product.updatedAt,
   };
 }
+
 
 function normalizeSearchText(value?: string | null): string {
   return value?.trim().toLowerCase().replace(/\s+/g, ' ') ?? '';

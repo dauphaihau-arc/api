@@ -66,6 +66,13 @@ export const appJobDeduplicationKey = {
       productId,
     );
   },
+  projectShopCatalogProducts(shopId: string, bucket: string): string {
+    return buildJobDeduplicationKey(
+      appJobName.projectShopCatalogProducts,
+      shopId,
+      bucket,
+    );
+  },
   cleanupPendingReviewImage(storageKey: string): string {
     return buildJobDeduplicationKey(
       appJobName.cleanupPendingReviewImage,

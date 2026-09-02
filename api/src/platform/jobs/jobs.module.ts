@@ -17,6 +17,7 @@ import { CleanupPendingReviewImageJob } from '~/domains/product/jobs/cleanup-pen
 import { GenerateProductImageVariantsJob } from '~/domains/product/jobs/generate-product-image-variants.job';
 import { GenerateReviewImageVariantsJob } from '~/domains/product/jobs/generate-review-image-variants.job';
 import { ProjectCatalogProductJob } from '~/domains/product/jobs/project-catalog-product.job';
+import { ProjectShopCatalogProductsJob } from '~/domains/product/jobs/project-shop-catalog-products.job';
 import { RefreshBestSellerRankingsJob } from '~/domains/product/jobs/refresh-best-seller-rankings.job';
 import { SendWelcomeEmailJob } from '~/domains/user/jobs/send-welcome-email.job';
 import { CurrencyModule } from '~/integrations/currency/currency.module';
@@ -56,6 +57,7 @@ import { JobRunner } from './job-runner';
     GenerateProductImageVariantsJob,
     GenerateReviewImageVariantsJob,
     ProjectCatalogProductJob,
+    ProjectShopCatalogProductsJob,
     CleanupPendingReviewImageJob,
     CleanupExpiredCheckoutQuoteReservationsJob,
     RefreshBestSellerRankingsJob,

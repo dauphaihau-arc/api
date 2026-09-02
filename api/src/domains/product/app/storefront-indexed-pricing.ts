@@ -1,17 +1,24 @@
 import { MARKETPLACE_MARKETS } from '~/platform/config/marketplace.config';
 
+export interface StorefrontIndexedAutoSale {
+  couponId: string;
+  percentOff: number;
+}
+
 export interface StorefrontIndexedPriceSummary {
   currency: string;
   minAmountMinor?: number;
   maxAmountMinor?: number;
   originalMinAmountMinor?: number;
   originalMaxAmountMinor?: number;
+  autoSale?: StorefrontIndexedAutoSale;
 }
 
 export interface StorefrontIndexedInventoryPrice {
   currency: string;
   amountMinor?: number;
   originalAmountMinor?: number;
+  autoSale?: StorefrontIndexedAutoSale;
 }
 
 export type StorefrontIndexedPricingSummaryMatrix = Record<

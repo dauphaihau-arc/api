@@ -49,6 +49,7 @@ export class CatalogProductProjectorService {
       product,
       (storageKey) => this.storageService.getPublicUrl(storageKey),
       indexedPricingProjection.summaryByMarket,
+      indexedPricingProjection.baseSummary,
     );
 
     const slugDocument = toCatalogProductSlugDocument(product);

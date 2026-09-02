@@ -59,6 +59,10 @@ export type PublicProductDetailResponse = {
     amount_minor?: number;
     original_amount_minor?: number;
     currency?: string;
+    auto_sale?: {
+      coupon_id: string;
+      percent_off: number;
+    };
   }>;
   shipping?: {
     origin_country: string;

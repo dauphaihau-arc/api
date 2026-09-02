@@ -12,6 +12,7 @@ export const appJobName = {
   generateProductImageVariants: 'product.generate-image-variants',
   generateReviewImageVariants: 'product-review.generate-image-variants',
   projectCatalogProduct: 'catalog.project-product',
+  projectShopCatalogProducts: 'catalog.project-shop-products',
   cleanupPendingReviewImage: 'product.cleanup-pending-review-image',
   processProductImport: 'product.process-import',
   cleanupExpiredCheckoutQuoteReservations: 'order.cleanup-expired-checkout-quote-reservations',

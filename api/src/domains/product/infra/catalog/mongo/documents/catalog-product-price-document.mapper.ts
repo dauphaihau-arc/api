@@ -1,10 +1,10 @@
 import type {
   StorefrontIndexedInventoryPrice,
   StorefrontIndexedInventoryPricingMatrix,
+  StorefrontIndexedPriceSummary,
   StorefrontIndexedPricingSummaryMatrix,
 } from '../../../../app/storefront-indexed-pricing';
 import type { ProductEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product.entity';
-import type { VariantPriceEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/variant-price.entity';
 
 export interface CatalogProductPriceDocument {
   _id: string;
@@ -22,8 +22,10 @@ export interface CatalogProductPriceDocument {
 export function toCatalogProductPriceDocument(
   product: ProductEntity,
   indexedPricingProjection: {
+    baseSummary?: StorefrontIndexedPriceSummary;
     summaryByMarket?: StorefrontIndexedPricingSummaryMatrix;
     inventoryPricingById: Map<string, {
+      basePrice?: StorefrontIndexedInventoryPrice;
       marketOverrides?: StorefrontIndexedInventoryPricingMatrix;
       resolvedByMarket?: StorefrontIndexedInventoryPricingMatrix;
     }>;
@@ -36,8 +38,8 @@ export function toCatalogProductPriceDocument(
       return [
         inventory.id,
         {
-          ...(toBasePriceDocument(inventory.prices.getItems())
-            ? { basePrice: toBasePriceDocument(inventory.prices.getItems()) }
+          ...(indexedPricing?.basePrice
+            ? { basePrice: indexedPricing.basePrice }
             : {}),
           ...(indexedPricing?.marketOverrides
             ? { marketOverrides: indexedPricing.marketOverrides }
@@ -57,23 +59,5 @@ export function toCatalogProductPriceDocument(
     inventoryPricingById,
     updatedAt: product.updatedAt,
     sourceVersion: product.updatedAt.getTime(),
-  };
-}
-
-function toBasePriceDocument(
-  prices: VariantPriceEntity[],
-): StorefrontIndexedInventoryPrice | undefined {
-  const basePrice = prices.find((price) => !price.marketCode && !price.activeTo);
-
-  if (!basePrice) {
-    return undefined;
-  }
-
-  return {
-    amountMinor: basePrice.amountMinor,
-    ...(basePrice.originalAmountMinor != null
-      ? { originalAmountMinor: basePrice.originalAmountMinor }
-      : {}),
-    currency: basePrice.currency,
   };
 }

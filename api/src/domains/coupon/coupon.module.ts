@@ -5,8 +5,10 @@ import { UserEntity } from '~/domains/user/infra/persistence/entities/user.entit
 import { ProductShippingDestinationEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-shipping-destination.entity';
 import { ProductShippingProfileEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-shipping-profile.entity';
 import { CouponPricingService } from './app/services/coupon-pricing.service';
+import { CouponAutoSaleProjectionReader } from './app/ports/coupon-auto-sale-projection.reader';
 import { CouponEntity } from './infra/persistence/entities/coupon.entity';
 import { CouponUsageEntity } from './infra/persistence/entities/coupon-usage.entity';
+import { MikroOrmCouponAutoSaleProjectionReader } from './infra/persistence/repositories/mikro-orm-coupon-auto-sale-projection.reader';
 
 @Module({
   imports: [
@@ -19,7 +21,14 @@ import { CouponUsageEntity } from './infra/persistence/entities/coupon-usage.ent
       ProductShippingDestinationEntity,
     ]),
   ],
-  providers: [CouponPricingService],
-  exports: [CouponPricingService],
+  providers: [
+    CouponPricingService,
+    MikroOrmCouponAutoSaleProjectionReader,
+    {
+      provide: CouponAutoSaleProjectionReader,
+      useExisting: MikroOrmCouponAutoSaleProjectionReader,
+    },
+  ],
+  exports: [CouponPricingService, CouponAutoSaleProjectionReader],
 })
 export class CouponModule {}

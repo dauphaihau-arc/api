@@ -20,6 +20,7 @@ import type { StorageService } from '~/integrations/storage/app/ports/storage.se
 import { FxRateService } from '~/integrations/currency/fx-rate.service';
 import { RoundingPolicyService } from '~/integrations/currency/rounding-policy.service';
 import { StorefrontIndexedPriceProjectionService } from '~/domains/product/app/services/storefront-indexed-price-projection.service';
+import { MikroOrmCouponAutoSaleProjectionReader } from '~/domains/coupon/infra/persistence/repositories/mikro-orm-coupon-auto-sale-projection.reader';
 import { ensureAtlasSearchIndexes } from './catalog/ensure-atlas-search-indexes';
 
 type MongoDeleteManyCollectionLike = {
@@ -100,6 +101,7 @@ async function main() {
     storefrontPricingConfig,
     new FxRateService(orm.em),
     new RoundingPolicyService(),
+    new MikroOrmCouponAutoSaleProjectionReader(orm.em),
   );
   const projector = new CatalogProductProjectorService(
     catalogProjectorSourceRepository,
