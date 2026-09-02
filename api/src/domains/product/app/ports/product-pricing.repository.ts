@@ -6,7 +6,6 @@ export abstract class ProductPricingRepository {
     pricing: Array<{
       inventoryId: string;
       amountMinor: number;
-      originalAmountMinor?: number;
       currency: string;
     }>;
   }): Promise<ProductDraftSummary | null>;

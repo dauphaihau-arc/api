@@ -259,14 +259,9 @@ export async function seedOrderCartDemo(
         variantGroupName: inventory.product.variantGroupName,
         variantSubGroupName: inventory.product.variantSubGroupName,
         variantName: inventory.productVariant?.name,
-        price: pricing?.originalAmountMinor != null
-          ? fromMinor(pricing.originalAmountMinor)
-          : unitPrice,
-        salePrice: pricing?.originalAmountMinor != null
-          ? fromMinor(pricing.amountMinor)
-          : undefined,
+        price: unitPrice,
+        salePrice: undefined,
         unitPriceMinor,
-        originalAmountMinor: pricing?.originalAmountMinor,
         quantity: orderSeed.quantity,
         lineTotalMinor: unitPriceMinor * orderSeed.quantity,
         currency: 'USD',

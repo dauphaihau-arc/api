@@ -8,7 +8,6 @@ describe('variant-price-read', () => {
     marketCode?: string;
     currency: string;
     amountMinor: number;
-    originalAmountMinor?: number;
     activeTo?: Date;
   }>) {
     return {
@@ -23,7 +22,6 @@ describe('variant-price-read', () => {
       {
         currency: 'USD',
         amountMinor: 1200,
-        originalAmountMinor: 1500,
       },
       {
         marketCode: 'VN',
@@ -35,7 +33,6 @@ describe('variant-price-read', () => {
     expect(getActiveBasePrice(inventory)?.currency).toBe('USD');
     expect(getInventoryPricingSnapshot(inventory)).toEqual({
       amountMinor: 1200,
-      originalAmountMinor: 1500,
       currency: 'USD',
     });
   });

@@ -250,9 +250,6 @@ export class MikroOrmChatQueryRepository implements ChatQueryRepository {
           return basePrice
             ? {
               amountMinor: basePrice.amountMinor,
-              ...(basePrice.originalAmountMinor !== undefined
-                ? { originalAmountMinor: basePrice.originalAmountMinor }
-                : {}),
               currency: basePrice.currency,
             }
             : undefined;
@@ -269,9 +266,6 @@ export class MikroOrmChatQueryRepository implements ChatQueryRepository {
       priceByProductId.set(product.id, {
         productId: product.id,
         amountMinor: lowestPrice.amountMinor,
-        ...(lowestPrice.originalAmountMinor !== undefined
-          ? { originalAmountMinor: lowestPrice.originalAmountMinor }
-          : {}),
         currency: lowestPrice.currency,
       });
     }

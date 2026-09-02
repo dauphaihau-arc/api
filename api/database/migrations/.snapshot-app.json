@@ -12605,22 +12605,6 @@
           "enumItems": [],
           "mappedType": "integer"
         },
-        "original_amount_minor": {
-          "name": "original_amount_minor",
-          "type": "int4",
-          "unsigned": false,
-          "autoincrement": false,
-          "primary": false,
-          "nullable": true,
-          "unique": false,
-          "length": null,
-          "precision": 32,
-          "scale": 0,
-          "default": null,
-          "comment": null,
-          "enumItems": [],
-          "mappedType": "integer"
-        },
         "active_from": {
           "name": "active_from",
           "type": "timestamptz(6)",

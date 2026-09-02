@@ -20,7 +20,6 @@ export interface SetProductPricingInput {
   pricing: Array<{
     inventoryId: string;
     amountMinor: number;
-    originalAmountMinor?: number;
     currency?: string;
   }>;
 }
@@ -76,7 +75,6 @@ export class SetProductPricingUseCase {
       pricing: input.pricing.map((row) => ({
         inventoryId: row.inventoryId,
         amountMinor: row.amountMinor,
-        originalAmountMinor: row.originalAmountMinor,
         currency: shop.currency,
       })),
     });
@@ -153,17 +151,6 @@ function validatePricingPayload(
       );
     }
 
-    if (row.originalAmountMinor !== undefined && row.originalAmountMinor < 0) {
-      return new InvalidProductVariantConfigurationError(
-        'Inventory original_amount_minor cannot be negative',
-      );
-    }
-
-    if (row.originalAmountMinor !== undefined && row.originalAmountMinor < row.amountMinor) {
-      return new InvalidProductVariantConfigurationError(
-        'Inventory original_amount_minor cannot be lower than amount_minor',
-      );
-    }
 
     seenInventoryIds.add(row.inventoryId);
   }

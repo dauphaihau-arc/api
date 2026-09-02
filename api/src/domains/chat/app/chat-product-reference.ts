@@ -62,9 +62,6 @@ export function buildChatProductReferenceMetadata(
         ...(lowestPrice
           ? {
             amount_minor: lowestPrice.amountMinor,
-            ...(lowestPrice.originalAmountMinor != null
-              ? { original_amount_minor: lowestPrice.originalAmountMinor }
-              : {}),
             currency: lowestPrice.currency,
           }
           : {}),

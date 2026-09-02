@@ -74,7 +74,6 @@ describe('catalog-product-document.mapper', () => {
           prices: {
             getItems: () => [{
               amountMinor: 7900,
-              originalAmountMinor: 9900,
               currency: 'USD',
             }],
           },

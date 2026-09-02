@@ -7,7 +7,6 @@ import type { VariantPriceEntity } from '~/domains/product/infra/persistence/mik
 
 export interface InventoryPricingSnapshot {
   amountMinor: number;
-  originalAmountMinor?: number;
   currency: string;
 }
 
@@ -59,9 +58,6 @@ export function getInventoryPricingSnapshot(
 
   return {
     amountMinor: activePrice.amountMinor,
-    ...(activePrice.originalAmountMinor != null
-      ? { originalAmountMinor: activePrice.originalAmountMinor }
-      : {}),
     currency: activePrice.currency,
   };
 }

@@ -116,7 +116,6 @@ type SeedProductCandidate = {
   inventory: ProductInventoryEntity;
   image: ProductImageEntity;
   amountMinor: number;
-  originalAmountMinor?: number;
   currency: string;
 };
 
@@ -321,7 +320,6 @@ function toSeedProductCandidate(product: ProductEntity): SeedProductCandidate | 
     inventory,
     image,
     amountMinor: pricing.amountMinor,
-    originalAmountMinor: pricing.originalAmountMinor,
     currency: pricing.currency,
   };
 }
@@ -424,14 +422,9 @@ async function createSeedOrder({
     variantGroupName: candidate.product.variantGroupName,
     variantSubGroupName: candidate.product.variantSubGroupName,
     variantName: candidate.inventory.productVariant?.name,
-    price: candidate.originalAmountMinor != null
-      ? fromMinor(candidate.originalAmountMinor, candidate.currency)
-      : fromMinor(candidate.amountMinor, candidate.currency),
+    price: fromMinor(candidate.amountMinor, candidate.currency),
     unitPriceMinor: candidate.amountMinor,
-    salePrice: candidate.originalAmountMinor != null
-      ? fromMinor(candidate.amountMinor, candidate.currency)
-      : undefined,
-    originalAmountMinor: candidate.originalAmountMinor,
+    salePrice: undefined,
     quantity,
     lineTotalMinor: subtotalMinor,
     currency: candidate.currency,

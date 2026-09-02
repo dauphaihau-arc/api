@@ -16,7 +16,6 @@ export const PRODUCT_IMPORT_REQUIRED_COLUMNS = [
 
 export const PRODUCT_IMPORT_OPTIONAL_COLUMNS = [
   'sku',
-  'original_price',
   'is_digital',
   'who_made',
   'non_taxable',

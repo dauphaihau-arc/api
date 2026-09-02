@@ -8,7 +8,6 @@ function buildProduct(prices: Array<{
   marketCode?: string;
   currency: string;
   amountMinor: number;
-  originalAmountMinor?: number;
   activeTo?: Date;
 }>) {
   return {
@@ -94,25 +93,24 @@ describe('StorefrontIndexedPriceProjectionService', () => {
     });
   });
 
-  it('keeps a better explicit sale price over an auto-sale coupon', async () => {
-    const { service } = buildService({
-      autoSale: { couponId: 'coupon-1', percentOff: 18 },
-    });
+  it('omits compare-at pricing when no auto-sale applies', async () => {
+    const { service } = buildService();
 
     const result = await service.projectProduct(buildProduct([
       {
         currency: 'USD',
-        amountMinor: 7000,
-        originalAmountMinor: 10_000,
+        amountMinor: 10_000,
       },
     ]));
 
     expect(result.baseSummary).toEqual({
       currency: 'USD',
-      minAmountMinor: 7000,
-      maxAmountMinor: 7000,
-      originalMinAmountMinor: 10_000,
-      originalMaxAmountMinor: 10_000,
+      minAmountMinor: 10_000,
+      maxAmountMinor: 10_000,
+    });
+    expect(result.inventoryPricingById.get('inventory-1')?.basePrice).toEqual({
+      amountMinor: 10_000,
+      currency: 'USD',
     });
   });
 

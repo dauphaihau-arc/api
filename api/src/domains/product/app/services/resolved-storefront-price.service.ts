@@ -20,7 +20,6 @@ import {
 
 export interface ResolvedStorefrontPrice {
   amountMinor: number;
-  originalAmountMinor?: number;
   currency: string;
   sourceCurrency: string;
   sourceUnitAmountMinor: number;
@@ -126,7 +125,6 @@ export class ResolvedStorefrontPriceService {
       if (exactMarketPrice) {
         resolvedPrice = {
           amountMinor: exactMarketPrice.amountMinor,
-          originalAmountMinor: exactMarketPrice.originalAmountMinor,
           currency: exactMarketPrice.currency,
           sourceCurrency: exactMarketPrice.currency,
           sourceUnitAmountMinor: exactMarketPrice.amountMinor,
@@ -143,7 +141,6 @@ export class ResolvedStorefrontPriceService {
       if (marketPrice) {
         resolvedPrice = {
           amountMinor: marketPrice.amountMinor,
-          originalAmountMinor: marketPrice.originalAmountMinor,
           currency: marketPrice.currency,
           sourceCurrency: marketPrice.currency,
           sourceUnitAmountMinor: marketPrice.amountMinor,
@@ -164,7 +161,6 @@ export class ResolvedStorefrontPriceService {
       if (basePrice && (!normalizedContext?.currency || normalizedContext.currency === basePrice.currency)) {
         resolvedPrice = {
           amountMinor: basePrice.amountMinor,
-          originalAmountMinor: basePrice.originalAmountMinor,
           currency: basePrice.currency,
           sourceCurrency: basePrice.currency,
           sourceUnitAmountMinor: basePrice.amountMinor,
@@ -183,7 +179,6 @@ export class ResolvedStorefrontPriceService {
         resolvedPrice = !rate
           ? {
             amountMinor: basePrice.amountMinor,
-            originalAmountMinor: basePrice.originalAmountMinor,
             currency: basePrice.currency,
             sourceCurrency: basePrice.currency,
             sourceUnitAmountMinor: basePrice.amountMinor,
@@ -192,7 +187,6 @@ export class ResolvedStorefrontPriceService {
           }
           : convertBasePrice({
             amountMinor: basePrice.amountMinor,
-            originalAmountMinor: basePrice.originalAmountMinor,
             sourcePriceId: basePrice.id,
             baseCurrency: basePrice.currency,
             targetCurrency: normalizedContext!.currency,
@@ -288,7 +282,6 @@ function normalizeContext(context?: {
 
 function convertBasePrice(input: {
   amountMinor: number;
-  originalAmountMinor?: number;
   sourcePriceId: string;
   baseCurrency: string;
   targetCurrency: string;
@@ -297,20 +290,9 @@ function convertBasePrice(input: {
 }): ResolvedStorefrontPrice {
   const numericRate = Number(input.rate.rate);
   const amountMajor = toMajorUnits(input.amountMinor, input.baseCurrency) * numericRate;
-  const compareAtMajor = input.originalAmountMinor != null
-    ? toMajorUnits(input.originalAmountMinor, input.baseCurrency) * numericRate
-    : undefined;
 
   return {
     amountMinor: input.roundingPolicyService.toMinorUnits(amountMajor, input.targetCurrency),
-    ...(compareAtMajor != null
-      ? {
-        originalAmountMinor: input.roundingPolicyService.toMinorUnits(
-          compareAtMajor,
-          input.targetCurrency,
-        ),
-      }
-      : {}),
     currency: input.targetCurrency,
     sourceCurrency: input.baseCurrency,
     sourceUnitAmountMinor: input.amountMinor,

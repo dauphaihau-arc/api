@@ -288,7 +288,6 @@ describe('CreateProductDraftFacadeUseCase', () => {
           {
             inventoryId: 'inventory-1',
             amountMinor: 2450,
-            originalAmountMinor: undefined,
             currency: 'USD',
           },
         ],

@@ -48,7 +48,6 @@ export interface CreateProductDraftFacadeInput
   pricing?: Array<{
     variantClientKey?: string;
     amountMinor: number;
-    originalAmountMinor?: number;
     currency?: string;
   }>;
   shipping?: {
@@ -241,7 +240,6 @@ export class CreateProductDraftFacadeUseCase {
               ? inventoryIdByVariantClientKey.get(row.variantClientKey) ?? ''
               : inventoryIdByVariantClientKey.get('__no_variant__') ?? '',
             amountMinor: row.amountMinor,
-            originalAmountMinor: row.originalAmountMinor,
             currency: row.currency,
           })),
         },

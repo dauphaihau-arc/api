@@ -33,7 +33,6 @@ type SeedProductCandidate = {
   inventory: ProductInventoryEntity;
   image?: ProductImageEntity;
   amountMinor: number;
-  originalAmountMinor?: number;
   currency: string;
 };
 
@@ -187,7 +186,6 @@ function toSeedProductCandidate(product: ProductEntity): SeedProductCandidate | 
     inventory,
     image,
     amountMinor: pricing.amountMinor,
-    originalAmountMinor: pricing.originalAmountMinor,
     currency: pricing.currency,
   };
 }
@@ -559,12 +557,8 @@ export async function seedLocalOrderScenarios(em: EntityManager): Promise<void> 
 
       items.forEach((item) => {
         const lineTotalMinor = item.candidate.amountMinor * item.quantity;
-        const salePrice = item.candidate.originalAmountMinor != null
-          ? fromMinor(item.candidate.amountMinor, bucket.currency)
-          : undefined;
-        const price = item.candidate.originalAmountMinor != null
-          ? fromMinor(item.candidate.originalAmountMinor, bucket.currency)
-          : fromMinor(item.candidate.amountMinor, bucket.currency);
+        const salePrice = undefined;
+        const price = fromMinor(item.candidate.amountMinor, bucket.currency);
 
         em.persist(em.create(OrderItemEntity, {
           order,
@@ -578,7 +572,6 @@ export async function seedLocalOrderScenarios(em: EntityManager): Promise<void> 
           price,
           unitPriceMinor: item.candidate.amountMinor,
           salePrice,
-          originalAmountMinor: item.candidate.originalAmountMinor,
           quantity: item.quantity,
           lineTotalMinor,
           currency: bucket.currency,

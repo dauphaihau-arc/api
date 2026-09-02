@@ -164,14 +164,6 @@ export class StorefrontIndexedPriceProjectionService {
         toMajorUnits(basePrice.amountMinor, basePrice.currency) * Number(rate.rate),
         currency,
       ),
-      ...(basePrice.originalAmountMinor != null
-        ? {
-          originalAmountMinor: this.roundingPolicyService.toMinorUnits(
-            toMajorUnits(basePrice.originalAmountMinor, basePrice.currency) * Number(rate.rate),
-            currency,
-          ),
-        }
-        : {}),
       currency,
     };
   }
@@ -209,9 +201,6 @@ function toBaseInventoryPrice(
 function toInventoryPrice(price: VariantPriceEntity): StorefrontIndexedInventoryPrice {
   return {
     amountMinor: price.amountMinor,
-    ...(price.originalAmountMinor != null
-      ? { originalAmountMinor: price.originalAmountMinor }
-      : {}),
     currency: price.currency,
   };
 }
@@ -224,7 +213,7 @@ function applyAutoSale(
     return price;
   }
 
-  const baseAmountMinor = price.originalAmountMinor ?? price.amountMinor;
+  const baseAmountMinor = price.amountMinor;
   const discountedAmountMinor = Math.round(baseAmountMinor * (100 - autoSale.percentOff) / 100);
 
   if (discountedAmountMinor >= price.amountMinor) {

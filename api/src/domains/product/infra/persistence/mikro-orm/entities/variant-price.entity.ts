@@ -36,9 +36,6 @@ export class VariantPriceEntity extends AbstractBaseEntity {
   @Property({ fieldName: 'amount_minor' })
   amountMinor!: number;
 
-  @Property({ fieldName: 'original_amount_minor', nullable: true })
-  originalAmountMinor?: number;
-
   @Property({ fieldName: 'active_from' })
   activeFrom = new Date();
 

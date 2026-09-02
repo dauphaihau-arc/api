@@ -55,7 +55,6 @@ describe('SetProductPricingUseCase', () => {
           {
             ...product.inventory[0],
             amountMinor: 1999,
-            originalAmountMinor: 2450,
             currency: 'USD',
           },
         ],
@@ -108,7 +107,6 @@ describe('SetProductPricingUseCase', () => {
         {
           inventoryId: 'inventory-1',
           amountMinor: 1999,
-          originalAmountMinor: 2450,
           currency: 'JPY',
         },
       ],
@@ -121,7 +119,6 @@ describe('SetProductPricingUseCase', () => {
         {
           inventoryId: 'inventory-1',
           amountMinor: 1999,
-          originalAmountMinor: 2450,
           currency: 'JPY',
         },
       ],

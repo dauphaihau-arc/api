@@ -162,13 +162,12 @@ implements ProductCommandRepository, ProductPricingRepository {
     );
     if (!product) return null;
 
-    const existingPriceByInventoryKey = new Map<string, { amountMinor: number; originalAmountMinor?: number; currency: string }>();
+    const existingPriceByInventoryKey = new Map<string, { amountMinor: number; currency: string }>();
     for (const inventoryRecord of product.inventoryRecords.getItems()) {
       const pricing = getInventoryPricingSnapshot(inventoryRecord);
       if (!pricing) continue;
       existingPriceByInventoryKey.set(buildInventoryKey(inventoryRecord.productVariant?.id), {
         amountMinor: pricing.amountMinor,
-        originalAmountMinor: pricing.originalAmountMinor,
         currency: pricing.currency,
       });
     }
@@ -196,7 +195,6 @@ implements ProductCommandRepository, ProductPricingRepository {
           priceType: VARIANT_PRICE_TYPES.BASE,
           activeFrom: new Date(),
           amountMinor: preservedPrice.amountMinor,
-          originalAmountMinor: preservedPrice.originalAmountMinor,
           currency: preservedPrice.currency,
         });
         inventoryEntity.prices.add(preservedPriceEntity);
@@ -212,7 +210,7 @@ implements ProductCommandRepository, ProductPricingRepository {
   async replacePricing(input: {
     productId: string;
     pricing: Array<{
-      inventoryId: string; amountMinor: number; originalAmountMinor?: number; currency: string 
+      inventoryId: string; amountMinor: number; currency: string
     }>;
   }): Promise<ProductDraftSummary | null> {
     const entityManager = this.entityManager.fork();
@@ -243,7 +241,6 @@ implements ProductCommandRepository, ProductPricingRepository {
         priceType: VARIANT_PRICE_TYPES.BASE,
         activeFrom: new Date(),
         amountMinor: nextPricing.amountMinor,
-        originalAmountMinor: nextPricing.originalAmountMinor,
         currency: nextPricing.currency,
       });
       inventoryRecord.prices.add(canonicalBasePrice);

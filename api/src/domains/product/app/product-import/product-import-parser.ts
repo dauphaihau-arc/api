@@ -15,7 +15,6 @@ export interface ParsedProductImportRow {
   description?: string;
   categoryPath?: string;
   price?: number;
-  originalPrice?: number;
   stock?: number;
   sku?: string;
   isDigital?: boolean;
@@ -214,7 +213,6 @@ function parseRow(
     description: toOptionalString(rawByHeader.get('description')),
     categoryPath: toOptionalString(rawByHeader.get('category_path')),
     price: toOptionalNumber(rawByHeader.get('price')),
-    originalPrice: toOptionalNumber(rawByHeader.get('original_price')),
     stock: toOptionalInteger(rawByHeader.get('stock')),
     sku: toOptionalString(rawByHeader.get('sku')),
     isDigital,
@@ -299,7 +297,6 @@ function hasAnyImportValue(row: ParsedProductImportRow): boolean {
     || row.description
     || row.categoryPath
     || row.price !== undefined
-    || row.originalPrice !== undefined
     || row.stock !== undefined
     || row.sku
     || row.isDigital !== undefined

@@ -337,17 +337,14 @@ async function syncProductInventory(
         productInventory: inventory,
         priceType: VARIANT_PRICE_TYPES.BASE,
         currency: shop.currency,
-        amountMinor: toMinorUnits(seed.salePrice ?? seed.price, shop.currency),
+        amountMinor: toMinorUnits(seed.price, shop.currency),
         activeFrom: new Date(),
       });
 
     price.productInventory = inventory;
     price.priceType = VARIANT_PRICE_TYPES.BASE;
     price.currency = shop.currency;
-    price.amountMinor = toMinorUnits(seed.salePrice ?? seed.price, shop.currency);
-    price.originalAmountMinor = seed.salePrice !== undefined
-      ? toMinorUnits(seed.price, shop.currency)
-      : undefined;
+    price.amountMinor = toMinorUnits(seed.price, shop.currency);
 
     em.persist(price);
   });

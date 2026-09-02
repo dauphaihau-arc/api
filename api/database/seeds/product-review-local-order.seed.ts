@@ -268,14 +268,9 @@ export async function seedLocalProductReviewOrders(em: EntityManager): Promise<v
       variantGroupName: inventory.product.variantGroupName,
       variantSubGroupName: inventory.product.variantSubGroupName,
       variantName: inventory.productVariant?.name,
-      price: pricing.originalAmountMinor != null
-        ? fromMinor(pricing.originalAmountMinor, pricing.currency)
-        : unitPrice,
+      price: unitPrice,
       unitPriceMinor: pricing.amountMinor,
-      salePrice: pricing.originalAmountMinor != null
-        ? unitPrice
-        : undefined,
-      originalAmountMinor: pricing.originalAmountMinor,
+      salePrice: undefined,
       quantity: 1,
       lineTotalMinor: pricing.amountMinor,
       currency: pricing.currency,

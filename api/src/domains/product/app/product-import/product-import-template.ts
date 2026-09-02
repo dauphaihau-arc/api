@@ -24,7 +24,6 @@ export function buildProductImportTemplateWorkbook(): Buffer {
       24.99,
       25,
       'TOTE-001',
-      29.99,
       'no',
       ProductWhoMade.I_DID,
       'no',

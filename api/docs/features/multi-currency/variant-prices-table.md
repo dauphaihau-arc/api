@@ -14,28 +14,26 @@ It is important to distinguish schema capability from the current seller-facing 
 - `price_type = 'base'` and `market_code = null`: base/default seller price
 - `price_type = 'market'` and non-null `market_code`: market-specific override for that market
 
-## Purpose of `amount_minor` and `original_amount_minor`
+## Purpose of `amount_minor`
 
-These two fields separate the actual sell price from the reference pre-discount price.
+`amount_minor` is the canonical base price for the inventory row or market override.
 
-- `amount_minor`: the current effective catalog price in minor units
-- `original_amount_minor`: the optional pre-discount or reference price in minor units
-- `original_amount_minor = null`: there is no separate reference price, so `amount_minor` is the only active price
+Promotion-derived sale display is computed outside `variant_prices`:
 
-This means:
-
-- buyers pay `amount_minor`
-- `original_amount_minor` is used for strike-through, “was X now Y”, and sale context
-- `original_amount_minor` should not be treated as the charged amount
+- persisted `amount_minor`: normal/base price
+- active promotion: discount source of truth
+- API/view-model `amountMinor`: effective buyer price after promotion
+- API/view-model `originalAmountMinor`: optional crossed-out base price when a promotion lowers the buyer price
 
 Example:
 
 1. regular price only
-   - `amount_minor = 2000`
-   - `original_amount_minor = null`
-2. on sale
-   - `amount_minor = 1500`
-   - `original_amount_minor = 2000`
+   - DB `amount_minor = 2000`
+   - API `amountMinor = 2000`
+2. 25% promotion
+   - DB `amount_minor = 2000`
+   - API `amountMinor = 1500`
+   - API `originalAmountMinor = 2000`
 
 ## Purpose of `active_from` and `active_to`
 

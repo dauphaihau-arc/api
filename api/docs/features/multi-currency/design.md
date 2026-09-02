@@ -26,7 +26,6 @@ variant_prices
 - market_code nullable
 - currency
 - amount_minor
-- original_amount_minor nullable
 - active_from
 - active_to nullable
 - created_at
@@ -38,8 +37,8 @@ Semantics:
 - `price_type = base | market` identifies base prices versus market overrides.
 - `market_code = null` identifies the base price row.
 - Non-null `market_code` identifies a market-specific canonical override.
-- `amount_minor` is the effective sell price in minor units.
-- `original_amount_minor` is an optional compare-at price in minor units.
+- `amount_minor` is the canonical base sell price in minor units for the price row.
+- Promotion-derived compare-at pricing is computed in catalog/API view models, not persisted on `variant_prices`.
 
 Current implementation notes:
 
@@ -206,8 +205,7 @@ Seller pricing APIs should keep catalog pricing explicit.
 
 Current behavior:
 
-- Supports base price updates.
-- Supports compare-at price updates through `original_amount_minor`.
+- Supports base price updates through `amount_minor`.
 - Does not expose market-specific price override input today.
 - Does not create or rotate market override rows through the normal seller pricing endpoint.
 

@@ -21,7 +21,6 @@ describe('product import XLSX parser', () => {
         description: 'A sturdy everyday cotton tote bag.',
         categoryPath: 'Fashion > Man Fashion > Tees',
         price: 24.99,
-        originalPrice: 29.99,
         stock: 25,
         sku: 'TOTE-001',
         isDigital: false,

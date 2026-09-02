@@ -125,12 +125,11 @@ function sortInventoryRecords(inventoryRecords: ProductInventoryEntity[]): Produ
 
 function getSummaryPricing(
   inventory: ProductInventoryEntity,
-): { amountMinor?: number; originalAmountMinor?: number; currency?: string } {
+): { amountMinor?: number; currency?: string } {
   const pricing = getInventoryPricingSnapshot(inventory);
 
   return {
     amountMinor: pricing?.amountMinor,
-    ...(pricing?.originalAmountMinor !== undefined ? { originalAmountMinor: pricing.originalAmountMinor } : {}),
     currency: pricing?.currency,
   };
 }

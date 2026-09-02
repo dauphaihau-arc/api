@@ -137,9 +137,6 @@ export class ProcessProductImportJob {
           }],
           pricing: [{
             amountMinor: toMinorUnits(parsedRow.price ?? 0, shop.currency),
-            originalAmountMinor: parsedRow.originalPrice !== undefined
-              ? toMinorUnits(parsedRow.originalPrice, shop.currency)
-              : undefined,
           }],
         });
 
@@ -245,21 +242,6 @@ export class ProcessProductImportJob {
       return invalidRow({ code: 'invalid_price', message: 'price is below the minimum amount' });
     }
 
-    if (row.originalPrice !== undefined) {
-      if (Number.isNaN(row.originalPrice) || row.originalPrice < 0) {
-        return invalidRow({
-          code: 'invalid_original_price',
-          message: 'original_price must be a non-negative numeric value',
-        });
-      }
-
-      if (row.originalPrice < row.price) {
-        return invalidRow({
-          code: 'invalid_original_price',
-          message: 'original_price cannot be lower than price',
-        });
-      }
-    }
 
     if (row.stock === undefined || Number.isNaN(row.stock) || row.stock < 0) {
       return invalidRow({ code: 'invalid_stock', message: 'stock must be a non-negative whole number' });

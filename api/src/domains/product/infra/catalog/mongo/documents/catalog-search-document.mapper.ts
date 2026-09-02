@@ -112,10 +112,6 @@ export function toCatalogSearchDocument(
     .map((snapshot) => snapshot.amountMinor)
     .filter((value): value is number => value != null);
 
-  const originalPriceValues = pricingSnapshots
-    .map((snapshot) => snapshot.originalAmountMinor)
-    .filter((value): value is number => value != null);
-
   const primaryImage = sortedImages[0];
 
   const primaryCardVariant = primaryImage?.variants
@@ -194,12 +190,6 @@ export function toCatalogSearchDocument(
         : {}),
       ...(priceValues.length > 0
         ? { maxAmountMinor: Math.max(...priceValues) }
-        : {}),
-      ...(originalPriceValues.length > 0
-        ? { originalMinAmountMinor: Math.min(...originalPriceValues) }
-        : {}),
-      ...(originalPriceValues.length > 0
-        ? { originalMaxAmountMinor: Math.max(...originalPriceValues) }
         : {}),
       currency: pricingSnapshots[0]?.currency,
     },
