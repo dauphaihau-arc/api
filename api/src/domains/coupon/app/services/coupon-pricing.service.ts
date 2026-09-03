@@ -19,6 +19,18 @@ import { CouponUsageEntity } from '../../infra/persistence/entities/coupon-usage
 import { CouponEntity } from '../../infra/persistence/entities/coupon.entity';
 import { ProductShippingProfileEntity } from '../../../product/infra/persistence/mikro-orm/entities/product-shipping-profile.entity';
 
+export class CouponCodeNotFoundError extends Error {
+  constructor(code: string) {
+    super(`Coupon code ${code} not found`);
+  }
+}
+
+export class CouponCodeNotApplicableError extends Error {
+  constructor(code: string) {
+    super(`Coupon code ${code} cannot be applied to this cart`);
+  }
+}
+
 @Injectable()
 export class CouponPricingService {
   constructor(private readonly entityManager: EntityManager) {}
@@ -28,6 +40,7 @@ export class CouponPricingService {
     cart: CartSnapshot;
     shopAdjustments?: ShopAdjustmentInput[];
     shippingAddress?: ShippingAddressInput;
+    validatePromoCodes?: boolean;
   }): Promise<PricedCartSummary> {
     const shopAdjustments = new Map(
       (input.shopAdjustments ?? []).map((entry) => [entry.shopId, entry]),
@@ -164,11 +177,24 @@ export class CouponPricingService {
       for (const code of promoCodes) {
         const coupon = coupons.find((entry) => entry.shop.id === shopId && entry.code === code);
 
-        if (!coupon || !isCouponActive(coupon) || coupon.isAutoSale) {
+        if (!coupon) {
+          if (input.validatePromoCodes) {
+            throw new CouponCodeNotFoundError(code);
+          }
+          continue;
+        }
+
+        if (!isCouponActive(coupon) || coupon.isAutoSale) {
+          if (input.validatePromoCodes) {
+            throw new CouponCodeNotApplicableError(code);
+          }
           continue;
         }
 
         if ((couponUsageCounts.get(coupon.id) ?? 0) >= coupon.maxUsesPerUser) {
+          if (input.validatePromoCodes) {
+            throw new CouponCodeNotApplicableError(code);
+          }
           continue;
         }
 
@@ -180,10 +206,16 @@ export class CouponPricingService {
           .reduce((sum, item) => sum + item.quantity, 0);
 
         if (!couponMeetsMinimum(coupon, eligibleSubtotal, eligibleQuantity)) {
+          if (input.validatePromoCodes) {
+            throw new CouponCodeNotApplicableError(code);
+          }
           continue;
         }
 
         if (coupon.usesCount >= coupon.maxUses) {
+          if (input.validatePromoCodes) {
+            throw new CouponCodeNotApplicableError(code);
+          }
           continue;
         }
 

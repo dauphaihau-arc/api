@@ -5,11 +5,13 @@ import {
   Delete,
   Get,
   Header,
+  NotFoundException,
   Patch,
   Post,
   Query,
   Req,
   Res,
+  UnprocessableEntityException,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -27,7 +29,12 @@ import {
 } from '~/platform/config/checkout.config';
 import { OptionalJwtAuthGuard } from '~/domains/auth/api/guard/optional-jwt-auth.guard';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
-import { CouponPricingService } from '~/domains/coupon/app/services/coupon-pricing.service';
+import {
+  CouponCodeNotApplicableError,
+  CouponCodeNotFoundError,
+} from '~/domains/coupon/app/services/coupon-pricing.service';
+import type { PricedCartSummary } from '~/domains/order/app/order.types';
+import { CartUpdatePricingService } from '../../app/services/cart-update-pricing.service';
 import { AddCartItemUseCase } from '../../app/use-cases/add-cart-item/add-cart-item.use-case';
 import { GetCartUseCase } from '../../app/use-cases/get-cart/get-cart.use-case';
 import { MergeGuestCartUseCase } from '../../app/use-cases/merge-guest-cart/merge-guest-cart.use-case';
@@ -37,6 +44,7 @@ import {
   buildCartResponse,
   type CartActor,
   type CartResponse,
+  type CartSnapshot,
 } from '../../app/cart.types';
 import { mapCartAppErrorToHttpException } from './cart-http-error-mapper';
 import { AddCartItemDto } from './dto/add-cart-item.dto';
@@ -55,7 +63,7 @@ export class CartController {
   constructor(
     @Inject(CHECKOUT_CONFIG)
     private readonly checkoutConfig: CheckoutConfig,
-    private readonly couponPricingService: CouponPricingService,
+    private readonly cartUpdatePricingService: CartUpdatePricingService,
     private readonly guestCartSessionService: GuestCartSessionService,
     private readonly getCartUseCase: GetCartUseCase,
     private readonly mergeGuestCartUseCase: MergeGuestCartUseCase,
@@ -168,12 +176,9 @@ export class CartController {
 
     if (!body.inventoryId) {
       const cart = await this.getCartUseCase.execute(actor, body.cartId);
+
       const priced = cart
-        ? await this.couponPricingService.buildPricedCartSummary({
-          userId: actor.type === 'user' ? actor.userId : undefined,
-          cart,
-          shopAdjustments: body.additionInfoShopCarts,
-        })
+        ? await this.buildPricedCartSummary(actor, cart, body)
         : null;
 
       return this.buildResponse(
@@ -210,11 +215,7 @@ export class CartController {
       });
     }
 
-    const priced = await this.couponPricingService.buildPricedCartSummary({
-      userId: actor.type === 'user' ? actor.userId : undefined,
-      cart,
-      shopAdjustments: body.additionInfoShopCarts,
-    });
+    const priced = await this.buildPricedCartSummary(actor, cart, body);
 
     return this.buildResponse(cart, {
       currency: priced.currency,
@@ -265,6 +266,37 @@ export class CartController {
       ...options,
       maxOrderTotalMinor: getMaxOrderTotalMinor(this.checkoutConfig, currency),
     });
+  }
+
+  private async buildPricedCartSummary(
+    actor: CartActor,
+    cart: CartSnapshot,
+    body: UpdateCartItemDto,
+  ): Promise<PricedCartSummary> {
+    try {
+      return await this.cartUpdatePricingService.buildPricedCartSummary({
+        actor,
+        cart,
+        additionInfoTempCart: body.additionInfoTempCart
+          ? {
+            promoCodes: body.additionInfoTempCart.promo_codes,
+            note: body.additionInfoTempCart.note,
+          }
+          : undefined,
+        additionInfoShopCarts: body.additionInfoShopCarts,
+      });
+    }
+    catch (error) {
+      if (error instanceof CouponCodeNotFoundError) {
+        throw new NotFoundException('Coupon code not found');
+      }
+
+      if (error instanceof CouponCodeNotApplicableError) {
+        throw new UnprocessableEntityException(error.message);
+      }
+
+      throw error;
+    }
   }
 
   private resolveReadActor(request: CartRequest): CartActor | null {

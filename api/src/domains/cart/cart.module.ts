@@ -14,6 +14,7 @@ import { ProductEntity } from '~/domains/product/infra/persistence/mikro-orm/ent
 import { ProductVariantEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-variant.entity';
 import { ShopEntity } from '../shop/infra/persistence/entities/shop.entity';
 import { CartRepository } from './app/ports/cart.repository';
+import { CartUpdatePricingService } from './app/services/cart-update-pricing.service';
 import { AddCartItemUseCase } from './app/use-cases/add-cart-item/add-cart-item.use-case';
 import { GetCartUseCase } from './app/use-cases/get-cart/get-cart.use-case';
 import { MergeGuestCartUseCase } from './app/use-cases/merge-guest-cart/merge-guest-cart.use-case';
@@ -59,6 +60,7 @@ import { CartItemEntity } from './infra/persistence/entities/cart-item.entity';
       provide: CartRepository,
       useClass: MikroOrmCartRepository,
     },
+    CartUpdatePricingService,
     GetCartUseCase,
     MergeGuestCartUseCase,
     AddCartItemUseCase,

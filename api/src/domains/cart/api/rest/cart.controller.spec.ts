@@ -1,6 +1,9 @@
+import { NotFoundException } from '@nestjs/common';
 import { CartController } from './cart.controller';
 import type { GuestCartSessionService } from './guest-cart-session.service';
-import type { CouponPricingService } from '~/domains/coupon/app/services/coupon-pricing.service';
+import { CouponCodeNotFoundError } from '~/domains/coupon/app/services/coupon-pricing.service';
+import type { CartUpdatePricingService } from '../../app/services/cart-update-pricing.service';
+import type { CartSnapshot } from '../../app/cart.types';
 import type { AddCartItemUseCase } from '../../app/use-cases/add-cart-item/add-cart-item.use-case';
 import type { GetCartUseCase } from '../../app/use-cases/get-cart/get-cart.use-case';
 import type { MergeGuestCartUseCase } from '../../app/use-cases/merge-guest-cart/merge-guest-cart.use-case';
@@ -15,9 +18,9 @@ describe('CartController', () => {
         USD: 99999999,
       },
     };
-    const couponPricingService = {
+    const cartUpdatePricingService = {
       buildPricedCartSummary: jest.fn(),
-    } as unknown as jest.Mocked<CouponPricingService>;
+    } as unknown as jest.Mocked<CartUpdatePricingService>;
     const guestCartSessionService = {
       extractSessionId: jest.fn(),
       ensureSessionId: jest.fn(),
@@ -41,7 +44,7 @@ describe('CartController', () => {
 
     const controller = new CartController(
       checkoutConfig as never,
-      couponPricingService,
+      cartUpdatePricingService,
       guestCartSessionService,
       getCartUseCase,
       mergeGuestCartUseCase,
@@ -52,6 +55,7 @@ describe('CartController', () => {
 
     return {
       controller,
+      cartUpdatePricingService,
       guestCartSessionService,
       addCartItemUseCase,
       getCartUseCase,
@@ -144,5 +148,128 @@ describe('CartController', () => {
     expect(guestCartSessionService.clearSession).toHaveBeenCalledWith(response);
     expect(result.cart_owner_type).toBe('user');
     expect(result.requires_sign_in_for_checkout).toBe(false);
+  });
+
+  it('prices buy-now coupon updates from temp cart promo codes', async () => {
+    const { controller, getCartUseCase, cartUpdatePricingService } = buildController();
+    const cart: CartSnapshot = {
+      id: 'cart-1',
+      userId: 'user-1',
+      guestSessionId: null,
+      kind: CartKind.BUY_NOW,
+      items: [
+        {
+          id: 'item-1',
+          quantity: 1,
+          isSelectOrder: true,
+          updatedAt: new Date('2026-05-14T10:00:00.000Z'),
+          inventory: {
+            inventoryId: 'inventory-1',
+            productId: 'product-1',
+            productSlug: 'mug',
+            shopId: 'shop-1',
+            shopName: 'Clay House',
+            shopSlug: 'clay-house',
+            title: 'Mug',
+            variantType: 'none',
+            stock: 9,
+            currency: 'USD',
+            pricing: {
+              amountMinor: 1500,
+              currency: 'USD',
+              sourceCurrency: 'USD',
+              sourceUnitAmountMinor: 1500,
+            },
+            productState: 'active',
+          },
+        },
+      ],
+    };
+    getCartUseCase.execute.mockResolvedValue(cart);
+    cartUpdatePricingService.buildPricedCartSummary.mockResolvedValue({
+      cart,
+      shops: [],
+      currency: 'USD',
+      subtotalPrice: 15,
+      totalDiscount: 0,
+      subtotalAfterDiscount: 15,
+      totalShippingFee: 0,
+      totalPrice: 15,
+      totalSelectedQuantity: 1,
+      totalQuantity: 1,
+    });
+
+    await controller.updateItem(
+      { user: { userId: 'user-1' } } as never,
+      {} as never,
+      {
+        cartId: 'cart-1',
+        additionInfoTempCart: {
+          promo_codes: [],
+        },
+      } as never,
+    );
+
+    expect(cartUpdatePricingService.buildPricedCartSummary).toHaveBeenCalledWith({
+      actor: { type: 'user', userId: 'user-1' },
+      cart,
+      additionInfoTempCart: {
+        promoCodes: [],
+        note: undefined,
+      },
+      additionInfoShopCarts: undefined,
+    });
+  });
+
+  it('maps rejected promo code pricing to a coupon response error', async () => {
+    const { controller, getCartUseCase, cartUpdatePricingService } = buildController();
+    const cart: CartSnapshot = {
+      id: 'cart-1',
+      userId: 'user-1',
+      guestSessionId: null,
+      kind: CartKind.BUY_NOW,
+      items: [
+        {
+          id: 'item-1',
+          quantity: 1,
+          isSelectOrder: true,
+          updatedAt: new Date('2026-05-14T10:00:00.000Z'),
+          inventory: {
+            inventoryId: 'inventory-1',
+            productId: 'product-1',
+            productSlug: 'mug',
+            shopId: 'shop-1',
+            shopName: 'Clay House',
+            shopSlug: 'clay-house',
+            title: 'Mug',
+            variantType: 'none',
+            stock: 9,
+            currency: 'USD',
+            pricing: {
+              amountMinor: 1500,
+              currency: 'USD',
+              sourceCurrency: 'USD',
+              sourceUnitAmountMinor: 1500,
+            },
+            productState: 'active',
+          },
+        },
+      ],
+    };
+    getCartUseCase.execute.mockResolvedValue(cart);
+    cartUpdatePricingService.buildPricedCartSummary.mockRejectedValue(
+      new CouponCodeNotFoundError('MISSING'),
+    );
+
+    await expect(controller.updateItem(
+      { user: { userId: 'user-1' } } as never,
+      {} as never,
+      {
+        cartId: 'cart-1',
+        additionInfoTempCart: {
+          promo_codes: ['MISSING'],
+        },
+      } as never,
+    )).rejects.toBeInstanceOf(NotFoundException);
   });
 });
