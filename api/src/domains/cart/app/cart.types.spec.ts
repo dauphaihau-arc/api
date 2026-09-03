@@ -324,4 +324,51 @@ describe('buildCartResponse', () => {
       'Color: Blue / Size: Large',
     );
   });
+
+  it('uses card images for cart rows and thumbnails for recent items', () => {
+    const cart: CartSnapshot = {
+      id: 'cart-5',
+      userId: 'user-5',
+      guestSessionId: null,
+      kind: CartKind.ACTIVE,
+      items: [
+        {
+          id: 'item-6',
+          quantity: 1,
+          isSelectOrder: true,
+          updatedAt: new Date('2026-05-15T11:00:00.000Z'),
+          inventory: {
+            inventoryId: 'inventory-6',
+            productId: 'product-6',
+            productSlug: 'canvas-tote',
+            shopId: 'shop-5',
+            shopName: 'West Studio',
+            shopSlug: 'west-studio',
+            title: 'Canvas Tote',
+            variantType: 'none',
+            stock: 3,
+            currency: 'USD',
+            pricing: {
+              amountMinor: 3200,
+              currency: 'USD',
+              sourceCurrency: 'USD',
+              sourceUnitAmountMinor: 3200,
+            },
+            productState: 'active',
+            imageUrl: 'https://cdn.example.com/products/canvas-tote/card_1x1.webp',
+            thumbnailImageUrl: 'https://cdn.example.com/products/canvas-tote/thumb_1x1.webp',
+          },
+        },
+      ],
+    };
+
+    const response = buildCartResponse(cart);
+
+    expect(response.cart?.shop_groups[0]?.items[0]?.product.image_url).toBe(
+      'https://cdn.example.com/products/canvas-tote/card_1x1.webp',
+    );
+    expect(response.cart?.recent_items[0]?.product.image_url).toBe(
+      'https://cdn.example.com/products/canvas-tote/thumb_1x1.webp',
+    );
+  });
 });

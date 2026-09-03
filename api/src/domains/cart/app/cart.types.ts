@@ -34,6 +34,7 @@ export interface CartInventoryCandidate {
   variantGroupName?: string;
   variantSubGroupName?: string;
   imageUrl?: string;
+  thumbnailImageUrl?: string;
   variantName?: string;
   stock: number;
   sku?: string;
@@ -350,7 +351,7 @@ export function buildCartResponse(
             slug: item.inventory.shopSlug,
           },
           title: item.inventory.title,
-          image_url: item.inventory.imageUrl,
+          image_url: item.inventory.thumbnailImageUrl ?? item.inventory.imageUrl,
         },
         inventory: {
           variant_name: formatVariantName(

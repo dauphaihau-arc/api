@@ -7,6 +7,7 @@ import { ResolvedStorefrontPriceService } from '~/domains/product/app/services/r
 import { ProductImageEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-image.entity';
 import { ProductInventoryEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-inventory.entity';
 import { ProductVariantType } from '~/domains/product/domain/enums/product-variant-type.enum';
+import { ProductImageVariant } from '~/domains/product/domain/enums/product-image-variant.enum';
 import { StorageService } from '~/integrations/storage/app/ports/storage.service';
 import {
   CartRepository,
@@ -30,6 +31,7 @@ export class MikroOrmCartRepository implements CartRepository {
     'items.shop',
     'items.product',
     'items.product.images',
+    'items.product.images.variants',
     'items.productInventory',
     'items.productInventory.prices',
     'items.productInventory.productVariant',
@@ -444,7 +446,10 @@ export class MikroOrmCartRepository implements CartRepository {
       updatedAt: item.updatedAt,
       inventory: await this.toInventoryCandidate(
         item.productInventory,
-        item.product.images.getItems()[0],
+        item.product.images
+          .getItems()
+          .slice()
+          .sort((left, right) => left.rank - right.rank)[0],
         item.product.title,
         item.product.variantType ?? ProductVariantType.NONE,
         item.product.variantGroupName,
@@ -475,6 +480,15 @@ export class MikroOrmCartRepository implements CartRepository {
       );
     }
 
+    const cardImageStorageKey = this.resolveImageStorageKey(
+      image,
+      ProductImageVariant.CARD_1X1,
+    );
+    const thumbnailImageStorageKey = this.resolveImageStorageKey(
+      image,
+      ProductImageVariant.THUMB_1X1,
+    );
+
     return {
       inventoryId: inventory.id,
       productId: inventory.product.id,
@@ -486,7 +500,12 @@ export class MikroOrmCartRepository implements CartRepository {
       variantType: variantType ?? inventory.product.variantType ?? ProductVariantType.NONE,
       variantGroupName: variantGroupName ?? inventory.product.variantGroupName,
       variantSubGroupName: variantSubGroupName ?? inventory.product.variantSubGroupName,
-      imageUrl: image ? this.storageService.getPublicUrl(image.storageKey) : undefined,
+      imageUrl: cardImageStorageKey
+        ? this.storageService.getPublicUrl(cardImageStorageKey)
+        : undefined,
+      thumbnailImageUrl: thumbnailImageStorageKey
+        ? this.storageService.getPublicUrl(thumbnailImageStorageKey)
+        : undefined,
       variantName: inventory.productVariant?.name,
       stock: inventory.stock,
       currency: pricing.currency,
@@ -506,6 +525,22 @@ export class MikroOrmCartRepository implements CartRepository {
       sku: inventory.sku,
       productState: inventory.product.state,
     };
+  }
+
+
+  private resolveImageStorageKey(
+    image: ProductImageEntity | undefined,
+    variant: ProductImageVariant,
+  ): string | undefined {
+    if (!image) {
+      return undefined;
+    }
+
+    const imageVariant = image.variants
+      .getItems()
+      .find((candidate) => candidate.variant === variant);
+
+    return imageVariant?.storageKey ?? image.storageKey;
   }
 
   private actorFilter(actor: CartActor) {
