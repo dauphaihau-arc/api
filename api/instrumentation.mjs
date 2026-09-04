@@ -7,8 +7,8 @@ import { ConsoleSpanExporter } from '@opentelemetry/sdk-trace-base';
 const otelEnabled = (process.env.OTEL_ENABLED ?? 'true') === 'true';
 
 if (otelEnabled) {
-  const shouldUseConsoleExporter
-    = (process.env.OTEL_TRACES_CONSOLE_EXPORTER ?? 'false') === 'true';
+  const shouldUseConsoleExporter = (process.env.OTEL_TRACES_CONSOLE_EXPORTER ?? 'false') === 'true';
+
   const traceExporter = shouldUseConsoleExporter
     ? new ConsoleSpanExporter()
     : hasOtlpTraceExportConfig()
