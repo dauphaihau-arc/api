@@ -34,6 +34,8 @@ export interface CheckoutSessionShippingAddressPayload {
   zip: string;
   phone: string;
 }
+const PROCESSING_LEASE_MS = 30_000;
+
 
 export interface CheckoutSessionRequestedPayload {
   userId?: string;
@@ -165,7 +167,7 @@ export class OrderCheckoutOutboxService {
       OutboxEventEntity,
       {
         eventName: CHECKOUT_OUTBOX_EVENT_NAME,
-        status: OutboxEventStatus.PENDING,
+        status: { $in: [OutboxEventStatus.PENDING, OutboxEventStatus.PROCESSING] },
         availableAt: { $lte: new Date() },
       },
       {
@@ -215,6 +217,7 @@ export class OrderCheckoutOutboxService {
 
       event.status = OutboxEventStatus.PROCESSING;
       event.attemptCount += 1;
+      event.availableAt = new Date(Date.now() + PROCESSING_LEASE_MS);
       event.lastError = undefined;
 
       await entityManager.flush();

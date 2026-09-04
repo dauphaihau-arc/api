@@ -250,7 +250,7 @@ describe('OrderCheckoutService', () => {
     };
   }
 
-  it('writes a checkout outbox event for card payments and returns checkout pending', async () => {
+  it('writes a checkout outbox event and returns the inline checkout session when ready', async () => {
     const {
       service,
       eventEmitter,
@@ -318,7 +318,7 @@ describe('OrderCheckoutService', () => {
     ).toHaveBeenCalled();
     expect(orderInventoryOutboxService.createOrderCreatedEvent).not.toHaveBeenCalled();
     expect(checkoutStockReservationService.consumeReservationsForQuote).not.toHaveBeenCalled();
-    expect(orderCheckoutOutboxService.processEventById).not.toHaveBeenCalled();
+    expect(orderCheckoutOutboxService.processEventById).toHaveBeenCalledWith('outbox-1');
 
     await waitForDeferredCheckoutSideEffects();
 
@@ -334,13 +334,13 @@ describe('OrderCheckoutService', () => {
         shopId: 'shop-1',
       }),
     }));
-    expect(result.checkoutSessionUrl).toBeUndefined();
-    expect(result.checkoutSessionId).toBeUndefined();
-    expect(result.checkoutPending).toBe(true);
+    expect(result.checkoutSessionUrl).toBe('https://stripe.test/session-1');
+    expect(result.checkoutSessionId).toBe('cs_test_1');
+    expect(result.checkoutPending).toBe(false);
   });
 
   it('returns checkout pending while checkout session is prepared by the worker', async () => {
-    const { service, orderTotalPolicyService } = buildService();
+    const { service, orderTotalPolicyService, orderCheckoutOutboxService } = buildService();
 
     const result = await service.createOrders(
       {
@@ -361,6 +361,7 @@ describe('OrderCheckoutService', () => {
       totalMinor: 1800,
       currency: 'USD',
     });
+    expect(orderCheckoutOutboxService.processEventById).toHaveBeenCalledWith('outbox-1');
     expect(result.checkoutSessionUrl).toBeUndefined();
     expect(result.checkoutPending).toBe(true);
   });

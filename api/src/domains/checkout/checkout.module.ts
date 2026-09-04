@@ -46,6 +46,7 @@ import { CreateGuestOrderFromCartUseCase } from './app/use-cases/create-guest-or
 import { CreateOrderForBuyNowUseCase } from './app/use-cases/create-order-for-buy-now/create-order-for-buy-now.use-case';
 import { CreateOrderFromCartUseCase } from './app/use-cases/create-order-from-cart/create-order-from-cart.use-case';
 import { GetOrdersByCheckoutSessionUseCase } from './app/use-cases/get-orders-by-checkout-session/get-orders-by-checkout-session.use-case';
+import { GetCheckoutSessionReadinessUseCase } from './app/use-cases/get-checkout-session-readiness/get-checkout-session-readiness.use-case';
 import { LookupGuestOrdersUseCase } from './app/use-cases/lookup-guest-orders/lookup-guest-orders.use-case';
 import { CheckoutQuoteEntity } from './infra/persistence/entities/checkout-quote.entity';
 import { CheckoutQuoteItemEntity } from './infra/persistence/entities/checkout-quote-item.entity';
@@ -138,6 +139,7 @@ import { OrderItemEntity } from '../order/infra/persistence/entities/order-item.
     CreateOrderFromCartUseCase,
     CreateOrderForBuyNowUseCase,
     GetOrdersByCheckoutSessionUseCase,
+    GetCheckoutSessionReadinessUseCase,
     LookupGuestOrdersUseCase,
   ],
   exports: [
@@ -156,6 +158,7 @@ import { OrderItemEntity } from '../order/infra/persistence/entities/order-item.
     CreateOrderFromCartUseCase,
     CreateOrderForBuyNowUseCase,
     GetOrdersByCheckoutSessionUseCase,
+    GetCheckoutSessionReadinessUseCase,
     LookupGuestOrdersUseCase,
   ],
 })

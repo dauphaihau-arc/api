@@ -49,6 +49,7 @@ import { OrderShopQueryRepository } from '../ports/order-shop-query.repository';
 import { OrderTotalPolicyService } from './order-total-policy.service';
 
 const SHIPPING_ESTIMATED_DELIVERY_MS = ms('7d');
+const CHECKOUT_SESSION_INLINE_TIMEOUT_MS = 1_500;
 
 @Injectable()
 export class OrderCheckoutService {
@@ -404,13 +405,37 @@ export class OrderCheckoutService {
       };
     });
 
+    const checkoutSession = result.checkoutOutboxEventId
+      ? await this.tryProcessCheckoutSessionRequest(result.checkoutOutboxEventId)
+      : undefined;
+
     this.emitInventoryEventsAfterCheckout(result.inventoryEvents);
     this.notifySellersAfterCheckout(result.orderShops);
 
     return {
-      checkoutPending: result.checkoutPending,
+      checkoutPending: result.checkoutPending && !checkoutSession?.url,
+      checkoutSessionId: checkoutSession?.id,
+      checkoutSessionUrl: checkoutSession?.url,
       orderShops: result.orderShops,
     };
+  }
+
+  private async tryProcessCheckoutSessionRequest(
+    checkoutOutboxEventId: string,
+  ): Promise<{ id: string; url: string } | undefined> {
+    let timeout: NodeJS.Timeout | number | undefined;
+
+    try {
+      return await Promise.race([
+        this.orderCheckoutOutboxService.processEventById(checkoutOutboxEventId),
+        new Promise<undefined>((resolve) => {
+          timeout = setTimeout(resolve, CHECKOUT_SESSION_INLINE_TIMEOUT_MS);
+        }),
+      ]);
+    }
+    finally {
+      clearTimeout(timeout);
+    }
   }
 
   private emitInventoryEventsAfterCheckout(

@@ -34,6 +34,7 @@ import { CreateCheckoutQuoteFromCartUseCase } from '../../app/use-cases/create-c
 import { CreateOrderForBuyNowUseCase } from '../../app/use-cases/create-order-for-buy-now/create-order-for-buy-now.use-case';
 import { CreateOrderFromCartUseCase } from '../../app/use-cases/create-order-from-cart/create-order-from-cart.use-case';
 import { GetOrdersByCheckoutSessionUseCase } from '../../app/use-cases/get-orders-by-checkout-session/get-orders-by-checkout-session.use-case';
+import { GetCheckoutSessionReadinessUseCase } from '../../app/use-cases/get-checkout-session-readiness/get-checkout-session-readiness.use-case';
 import { CreateCheckoutQuoteForBuyNowDto } from './dto/create-checkout-quote-for-buy-now.dto';
 import { CreateCheckoutQuoteFromCartDto } from './dto/create-checkout-quote-from-cart.dto';
 import { CreateOrderForBuyNowDto } from './dto/create-order-for-buy-now.dto';
@@ -52,6 +53,7 @@ export class MeCheckoutController {
     private readonly createOrderFromCartUseCase: CreateOrderFromCartUseCase,
     private readonly createOrderForBuyNowUseCase: CreateOrderForBuyNowUseCase,
     private readonly getOrdersByCheckoutSessionUseCase: GetOrdersByCheckoutSessionUseCase,
+    private readonly getCheckoutSessionReadinessUseCase: GetCheckoutSessionReadinessUseCase,
   ) {}
 
   @Post('quote')
@@ -134,6 +136,30 @@ export class MeCheckoutController {
     catch (error) {
       this.throwMappedCheckoutError(error);
     }
+  }
+
+  @Get('session/readiness')
+  @ApiOperation({ summary: 'Get checkout session readiness by order ids' })
+  @ApiQuery({ name: 'order_ids', required: true, type: String })
+  @ApiOkResponse({
+    description: 'Checkout session readiness.',
+    schema: { type: 'object' },
+  })
+  async getCheckoutSessionReadiness(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Query('order_ids') orderIds: string | undefined,
+  ) {
+    const parsedOrderIds = (orderIds ?? '')
+      .split(',')
+      .map((orderId) => orderId.trim())
+      .filter(Boolean);
+
+    return toCreateOrderResponse(
+      await this.getCheckoutSessionReadinessUseCase.execute(
+        currentUser,
+        parsedOrderIds,
+      ),
+    );
   }
 
   @Get('session')
