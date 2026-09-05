@@ -1,7 +1,11 @@
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { PRODUCT_INVENTORY_UPDATED_SSE_EVENT } from '~/domains/product/app/events/product-inventory-sse.event';
+import {
+  PRODUCT_INVENTORY_UPDATED_SSE_EVENT,
+  type ProductInventoryUpdatedSseEventPayload,
+} from '~/domains/product/app/events/product-inventory-sse.event';
+import { dispatchCatalogProductProjections } from '~/domains/product/app/catalog-product-projection-dispatch';
 import { NotifyUserUseCase } from '~/domains/notification/app/use-cases/notify-user/notify-user.use-case';
 import { JobDispatcher } from '~/integrations/queue/app/ports/job-dispatcher';
 import type { UpdateShopOrderStatusDto } from '../../../api/rest/dto/update-shop-order-status.dto';
@@ -106,6 +110,11 @@ export class UpdateShopOrderStatusUseCase {
     for (const inventoryEvent of result.inventoryEvents) {
       this.eventEmitter.emit(PRODUCT_INVENTORY_UPDATED_SSE_EVENT, inventoryEvent);
     }
+
+    await dispatchCatalogProductProjections(
+      this.jobDispatcher,
+      result.inventoryEvents.map((event: ProductInventoryUpdatedSseEventPayload) => event.productId),
+    );
 
     if (result.refundRequested) {
       try {

@@ -11,6 +11,7 @@ import type { CartSnapshot } from '../../../cart/app/cart.types';
 import { CouponPricingService } from '../../../coupon/app/services/coupon-pricing.service';
 import { StorefrontMarketContextService } from '../../../product/app/services/storefront-market-context.service';
 import { ProductInventoryEntity } from '../../../product/infra/persistence/mikro-orm/entities/product-inventory.entity';
+import { dispatchCatalogProductProjections } from '../../../product/app/catalog-product-projection-dispatch';
 import { JobDispatcher } from '../../../../integrations/queue/app/ports/job-dispatcher';
 import {
   CheckoutQuoteActorType,
@@ -328,13 +329,21 @@ export class CreateCheckoutQuoteService {
     if (createdNewQuote) {
       await this.jobDispatcher.dispatch(
         appJobName.cleanupExpiredCheckoutQuoteReservations,
-        { quoteId: persistedQuote.id },
+        {
+          quoteId: persistedQuote.id,
+          productIds: allItems.map((item) => item.productId),
+        },
         {
           deduplicationKey: appJobDeduplicationKey.cleanupExpiredCheckoutQuoteReservations(
             persistedQuote.id,
           ),
           delayMs: Math.max(persistedQuote.expiresAt.getTime() - Date.now(), 0),
         },
+      );
+
+      await dispatchCatalogProductProjections(
+        this.jobDispatcher,
+        allItems.map((item) => item.productId),
       );
     }
 

@@ -3,6 +3,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import { PRODUCT_INVENTORY_UPDATED_SSE_EVENT } from '~/domains/product/app/events/product-inventory-sse.event';
+import { dispatchCatalogProductProjections } from '~/domains/product/app/catalog-product-projection-dispatch';
 import { NotifyUserUseCase } from '~/domains/notification/app/use-cases/notify-user/notify-user.use-case';
 import { JobDispatcher } from '~/integrations/queue/app/ports/job-dispatcher';
 import { ORDER_UPDATED_SSE_EVENT } from '../../events/order-sse.event';
@@ -203,6 +204,11 @@ export class RequestOrderCancelUseCase {
     for (const inventoryEvent of result.inventoryEvents) {
       this.eventEmitter.emit(PRODUCT_INVENTORY_UPDATED_SSE_EVENT, inventoryEvent);
     }
+
+    await dispatchCatalogProductProjections(
+      this.jobDispatcher,
+      result.inventoryEvents.map((event) => event.productId),
+    );
 
     if (result.refundRequested) {
       try {

@@ -474,5 +474,20 @@ describe('CreateCheckoutQuoteService', () => {
         reservationId: 'reservation-remote-1',
       }),
     );
+    expect(jobDispatcher.dispatch).toHaveBeenCalledWith(
+      'order.cleanup-expired-checkout-quote-reservations',
+      {
+        quoteId: 'quote-2',
+        productIds: ['product-1'],
+      },
+      expect.objectContaining({
+        deduplicationKey: 'order-cleanup-expired-checkout-quote-reservations--quote-2',
+      }),
+    );
+    expect(jobDispatcher.dispatch).toHaveBeenCalledWith(
+      'catalog.project-product',
+      { productId: 'product-1' },
+      { deduplicationKey: 'catalog-project-product--product-1' },
+    );
   });
 });

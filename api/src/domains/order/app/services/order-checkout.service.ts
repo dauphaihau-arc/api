@@ -13,6 +13,8 @@ import {
   PRODUCT_INVENTORY_UPDATED_SSE_EVENT,
   type ProductInventoryUpdatedSseEventPayload,
 } from '../../../product/app/events/product-inventory-sse.event';
+import { dispatchCatalogProductProjections } from '../../../product/app/catalog-product-projection-dispatch';
+import { JobDispatcher } from '~/integrations/queue/app/ports/job-dispatcher';
 import { NotifyUserUseCase } from '../../../../domains/notification/app/use-cases/notify-user/notify-user.use-case';
 import type { CartSnapshot } from '../../../cart/app/cart.types';
 import { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
@@ -64,6 +66,7 @@ export class OrderCheckoutService {
     private readonly orderEventsService: OrderEventsService,
     private readonly notifyUserUseCase: NotifyUserUseCase,
     private readonly eventEmitter: EventEmitter2,
+    private readonly jobDispatcher: JobDispatcher,
     private readonly orderTotalPolicyService: OrderTotalPolicyService,
     private readonly orderCartCleanupRepository: OrderCartCleanupRepository,
     private readonly orderInventoryQueryRepository: OrderInventoryQueryRepository,
@@ -410,6 +413,12 @@ export class OrderCheckoutService {
       : undefined;
 
     this.emitInventoryEventsAfterCheckout(result.inventoryEvents);
+
+    await dispatchCatalogProductProjections(
+      this.jobDispatcher,
+      result.inventoryEvents.map((event) => event.productId),
+    );
+
     this.notifySellersAfterCheckout(result.orderShops);
 
     return {

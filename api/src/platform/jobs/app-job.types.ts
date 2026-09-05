@@ -63,6 +63,7 @@ export interface AppJobPayloadMap {
   };
   'order.cleanup-expired-checkout-quote-reservations': {
     quoteId: string;
+    productIds?: string[];
   };
   'product.refresh-best-seller-rankings': {
     windowDays: number;

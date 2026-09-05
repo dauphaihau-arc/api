@@ -196,6 +196,9 @@ describe('OrderCheckoutService', () => {
     const eventEmitter: Pick<jest.Mocked<EventEmitter2>, 'emit'> = {
       emit: jest.fn(),
     };
+    const jobDispatcher = {
+      dispatch: jest.fn().mockResolvedValue(undefined),
+    };
     const orderTotalPolicyService: Pick<
       jest.Mocked<OrderTotalPolicyService>,
       'assertWithinLimit'
@@ -227,6 +230,7 @@ describe('OrderCheckoutService', () => {
       orderEventsService as never,
       notifyUserUseCase,
       eventEmitter as unknown as EventEmitter2,
+      jobDispatcher as never,
       orderTotalPolicyService as unknown as OrderTotalPolicyService,
       orderCartCleanupRepository,
       orderInventoryQueryRepository,
@@ -236,6 +240,7 @@ describe('OrderCheckoutService', () => {
     return {
       service,
       eventEmitter,
+      jobDispatcher,
       notifyUserUseCase,
       orderTotalPolicyService,
       fakeEntityManager,
@@ -255,6 +260,7 @@ describe('OrderCheckoutService', () => {
       service,
       eventEmitter,
       notifyUserUseCase,
+      jobDispatcher,
       orderTotalPolicyService,
       orderRepository,
       orderItemRepository,
@@ -318,6 +324,11 @@ describe('OrderCheckoutService', () => {
     ).toHaveBeenCalled();
     expect(orderInventoryOutboxService.createOrderCreatedEvent).not.toHaveBeenCalled();
     expect(checkoutStockReservationService.consumeReservationsForQuote).not.toHaveBeenCalled();
+    expect(jobDispatcher.dispatch).toHaveBeenCalledWith(
+      'catalog.project-product',
+      { productId: 'product-1' },
+      { deduplicationKey: 'catalog-project-product--product-1' },
+    );
     expect(orderCheckoutOutboxService.processEventById).toHaveBeenCalledWith('outbox-1');
 
     await waitForDeferredCheckoutSideEffects();

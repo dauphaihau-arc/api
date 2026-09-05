@@ -23,6 +23,7 @@ import { SendWelcomeEmailJob } from '~/domains/user/jobs/send-welcome-email.job'
 import { CurrencyModule } from '~/integrations/currency/currency.module';
 import { RefreshExchangeRatesJob } from '~/integrations/currency/jobs/refresh-exchange-rates.job';
 import { MailModule } from '~/integrations/mail/mail.module';
+import { QueueModule } from '~/integrations/queue/queue.module';
 import { StorageModule } from '~/integrations/storage/storage.module';
 import { AppJobRunner } from './app-job-runner';
 import { JobRunner } from './job-runner';
@@ -37,6 +38,7 @@ import { JobRunner } from './job-runner';
     OrderModule,
     ProductModule,
     StorageModule,
+    QueueModule,
   ],
   providers: [
     AppJobRunner,
