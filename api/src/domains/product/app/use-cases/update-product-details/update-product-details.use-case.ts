@@ -5,11 +5,13 @@ import { appJobName } from '~/platform/jobs/app-job.names';
 import { toSlug } from '~/platform/utils/slugify';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import { ShopRepository } from '~/domains/shop/app/ports/shop.repository';
+import { CategoryRepository } from '~/domains/category/app/ports/category.repository';
 import { AuditLogService } from '~/integrations/audit/app/audit-log.service';
 import { JobDispatcher } from '~/integrations/queue/app/ports/job-dispatcher';
 import { ProductVariantType } from '../../../domain/enums/product-variant-type.enum';
 import {
   ActorCannotCreateProductDraftError,
+  CategoryNotFoundError,
   InvalidProductVariantConfigurationError,
   ProductNotFoundError,
   ProductSlugAlreadyExistsError,
@@ -26,12 +28,14 @@ export interface UpdateProductDetailsInput {
   nonTaxable?: boolean;
   variantGroupName?: string;
   variantSubGroupName?: string;
+  categoryId?: string;
 }
 
 type UpdateProductDetailsError =
   | ActorCannotCreateProductDraftError
   | InvalidProductVariantConfigurationError
   | ProductNotFoundError
+  | CategoryNotFoundError
   | ProductSlugAlreadyExistsError;
 
 @Injectable()
@@ -40,6 +44,7 @@ export class UpdateProductDetailsUseCase {
     private readonly sellerProductQueryRepository: SellerProductQueryRepository,
     private readonly productCommandRepository: ProductCommandRepository,
     private readonly shopRepository: ShopRepository,
+    private readonly categoryRepository: CategoryRepository,
     private readonly auditLogService: AuditLogService,
     private readonly jobDispatcher?: JobDispatcher,
   ) {}
@@ -77,8 +82,16 @@ export class UpdateProductDetailsUseCase {
       variantGroupName: input.variantGroupName?.trim() ?? existingProduct.variantGroupName,
       variantSubGroupName:
         input.variantSubGroupName?.trim() ?? existingProduct.variantSubGroupName,
+      categoryId: input.categoryId ?? existingProduct.categoryId,
     };
 
+    if (input.categoryId) {
+      const category = await this.categoryRepository.findById(input.categoryId);
+
+      if (!category) {
+        return err(new CategoryNotFoundError(input.categoryId));
+      }
+    }
     const variantValidationError = validateVariantLabels(
       existingProduct.variantType ?? ProductVariantType.NONE,
       nextProduct.variantGroupName,
@@ -109,6 +122,7 @@ export class UpdateProductDetailsUseCase {
       nonTaxable: nextProduct.nonTaxable,
       variantGroupName: nextProduct.variantGroupName,
       variantSubGroupName: nextProduct.variantSubGroupName,
+      categoryId: nextProduct.categoryId,
     });
 
     if (!product) {

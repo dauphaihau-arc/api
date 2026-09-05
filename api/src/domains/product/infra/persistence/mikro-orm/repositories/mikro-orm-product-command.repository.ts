@@ -311,6 +311,13 @@ implements ProductCommandRepository, ProductPricingRepository {
     product.nonTaxable = input.nonTaxable;
     product.variantGroupName = input.variantGroupName;
     product.variantSubGroupName = input.variantSubGroupName;
+    if (input.categoryId !== product.category?.id) {
+      for (const attributeValue of product.attributeValues.getItems()) entityManager.remove(attributeValue);
+      product.attributeValues.removeAll();
+    }
+    product.category = input.categoryId
+      ? entityManager.getReference(CategoryEntity, input.categoryId)
+      : undefined;
     await entityManager.persistAndFlush(product);
     return toProductDraftSummary(product, this.storageService);
   }

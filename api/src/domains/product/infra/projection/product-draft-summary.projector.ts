@@ -14,6 +14,7 @@ export function toProductDraftSummary(
     shopId: product.shop.id,
     shopPublicId: product.shop.publicId,
     categoryId: product.category?.id,
+    categoryName: product.category?.name,
     title: product.title,
     slug: product.slug,
     description: product.description,

@@ -3,6 +3,7 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsBoolean,
   IsEnum,
+  IsUUID,
   IsOptional,
   IsString,
   MinLength,
@@ -42,6 +43,13 @@ export class UpdateProductDto {
   @Transform(({ value, obj: source }) => value ?? source.non_taxable)
   @IsBoolean()
   nonTaxable?: boolean;
+
+  @IsOptional()
+  @ApiPropertyOptional({ name: 'category_id' })
+  @Expose({ name: 'category_id' })
+  @Transform(({ value, obj: source }) => value ?? source.category_id)
+  @IsUUID()
+  categoryId?: string;
 
   @IsOptional()
   @ApiPropertyOptional({ name: 'variant_group_name' })

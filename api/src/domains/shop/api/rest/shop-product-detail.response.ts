@@ -4,6 +4,10 @@ export type ShopProductDetailResponse = {
   shop_id: string;
   shop_public_id?: string;
   category_id?: string;
+  category?: {
+    id: string;
+    name: string;
+  };
   title: string;
   slug: string;
   description: string;

@@ -59,6 +59,7 @@ describe('ShopProductsController', () => {
       shopId: 'shop-1',
       shopPublicId: 'public-shop-1',
       categoryId: 'category-1',
+      categoryName: 'Sneakers',
       title: 'Handmade Bag',
       slug: 'handmade-bag',
       description: 'A detail page payload.',
@@ -144,6 +145,10 @@ describe('ShopProductsController', () => {
       shop_id: 'shop-1',
       shop_public_id: 'public-shop-1',
       category_id: 'category-1',
+      category: {
+        id: 'category-1',
+        name: 'Sneakers',
+      },
       title: 'Handmade Bag',
       slug: 'handmade-bag',
       description: 'A detail page payload.',

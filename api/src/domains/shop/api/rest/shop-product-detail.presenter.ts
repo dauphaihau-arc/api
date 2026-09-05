@@ -30,6 +30,12 @@ export const toShopProductDetailResponse = (
     shop_id: product.shopId,
     shop_public_id: product.shopPublicId,
     category_id: product.categoryId,
+    category: product.categoryId
+      ? {
+        id: product.categoryId,
+        name: product.categoryName ?? '',
+      }
+      : undefined,
     title: product.title,
     slug: product.slug,
     description: product.description,

@@ -1,6 +1,7 @@
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import { UserStatus } from '~/domains/auth/domain/enums/user-status.enum';
 import type { ShopRepository } from '~/domains/shop/app/ports/shop.repository';
+import type { CategoryRepository } from '~/domains/category/app/ports/category.repository';
 import type { AuditLogService } from '~/integrations/audit/app/audit-log.service';
 import { ProductVariantType } from '../../../domain/enums/product-variant-type.enum';
 import type { ProductCommandRepository } from '../../ports/product-command.repository';
@@ -50,6 +51,7 @@ describe('UpdateProductDetailsUseCase', () => {
         nonTaxable: input.nonTaxable,
         variantGroupName: input.variantGroupName,
         variantSubGroupName: input.variantSubGroupName,
+        categoryId: input.categoryId,
       })),
       findByShopIdAndSlug: jest.fn().mockResolvedValue(null),
     } as unknown as jest.Mocked<
@@ -71,8 +73,20 @@ describe('UpdateProductDetailsUseCase', () => {
       }),
     };
 
+    const categoryRepository: jest.Mocked<CategoryRepository> = {
+      create: jest.fn(),
+      createAttribute: jest.fn(),
+      findAllByParentId: jest.fn(),
+      findById: jest.fn().mockResolvedValue({
+        id: 'category-1',
+        name: 'Sneakers',
+        attributes: [],
+      }),
+    } as unknown as jest.Mocked<CategoryRepository>;
+
     return {
       productRepository,
+      categoryRepository,
       shopRepository,
       auditLogService: {
         record: jest.fn().mockResolvedValue(undefined),
@@ -81,11 +95,14 @@ describe('UpdateProductDetailsUseCase', () => {
   }
 
   it('updates base fields and regenerates the slug from title', async () => {
-    const { productRepository, shopRepository, auditLogService } = buildDeps();
+    const {
+      productRepository, shopRepository, categoryRepository, auditLogService,
+    } = buildDeps();
     const useCase = new UpdateProductDetailsUseCase(
       productRepository,
       productRepository,
       shopRepository,
+      categoryRepository,
       auditLogService,
     );
 
@@ -112,6 +129,7 @@ describe('UpdateProductDetailsUseCase', () => {
       nonTaxable: true,
       variantGroupName: 'Finish',
       variantSubGroupName: undefined,
+      categoryId: product.categoryId,
     });
     expect(auditLogService.record).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -121,8 +139,36 @@ describe('UpdateProductDetailsUseCase', () => {
     );
   });
 
+  it('updates the product category', async () => {
+    const {
+      productRepository, shopRepository, categoryRepository, auditLogService,
+    } = buildDeps();
+    const useCase = new UpdateProductDetailsUseCase(
+      productRepository,
+      productRepository,
+      shopRepository,
+      categoryRepository,
+      auditLogService,
+    );
+
+    const result = await useCase.execute(actor, product.id, {
+      categoryId: 'category-2',
+    });
+
+    expect(result.isOk).toBe(true);
+    expect(categoryRepository.findById).toHaveBeenCalledWith('category-2');
+    expect(productRepository.updateDetails).toHaveBeenCalledWith(
+      expect.objectContaining({
+        productId: product.id,
+        categoryId: 'category-2',
+      }),
+    );
+  });
+
   it('rejects variant labels for products without variants', async () => {
-    const { productRepository, shopRepository, auditLogService } = buildDeps({
+    const {
+      productRepository, shopRepository, categoryRepository, auditLogService,
+    } = buildDeps({
       ...product,
       variantType: ProductVariantType.NONE,
       variantGroupName: undefined,
@@ -131,6 +177,7 @@ describe('UpdateProductDetailsUseCase', () => {
       productRepository,
       productRepository,
       shopRepository,
+      categoryRepository,
       auditLogService,
     );
 

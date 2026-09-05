@@ -11,6 +11,7 @@ export interface ProductDraftSummary {
   shopId: string;
   shopPublicId?: string;
   categoryId?: string;
+  categoryName?: string;
   title: string;
   slug: string;
   description: string;
@@ -190,6 +191,7 @@ export interface UpdateProductDetailsRepositoryInput {
   description: string;
   whoMade: ProductWhoMade;
   isDigital: boolean;
+  categoryId?: string;
   nonTaxable: boolean;
   variantGroupName?: string;
   variantSubGroupName?: string;
