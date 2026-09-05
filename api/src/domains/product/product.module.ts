@@ -25,6 +25,7 @@ import { CatalogProductProjectorService } from './app/services/catalog-product-p
 import { StorefrontIndexedPriceProjectionService } from './app/services/storefront-indexed-price-projection.service';
 import { PublicProductOrderHistoryService } from './app/services/public-product-order-history.service';
 import { PublicProductBestSellerRankingService } from './app/services/public-product-best-seller-ranking.service';
+import { LiveProductInventoryStockOverlayService } from './app/services/live-product-inventory-stock-overlay.service';
 import { CreateProductDraftFacadeUseCase } from './app/use-cases/create-product-draft-facade/create-product-draft-facade.use-case';
 import { ConsumeProductImageUploadTicketUseCase } from './app/use-cases/consume-product-image-upload-ticket/consume-product-image-upload-ticket.use-case';
 import { CreateProductDraftUseCase } from './app/use-cases/create-product-draft/create-product-draft.use-case';
@@ -79,6 +80,7 @@ import { ProductImportCommandRepository } from './app/ports/product-import-comma
 import { ProductImportQueryRepository } from './app/ports/product-import-query.repository';
 import { ProductImportValidationQueryRepository } from './app/ports/product-import-validation-query.repository';
 import { StorefrontProductQueryRepository } from './app/ports/storefront-product-query.repository';
+import { LiveProductInventoryStockRepository } from './app/ports/live-product-inventory-stock.repository';
 import { InternalCatalogController } from './api/rest/internal/internal-catalog.controller';
 import { ProductActivityController } from './api/rest/activity/product-activity.controller';
 import { ProductController } from './api/rest/storefront/product.controller';
@@ -115,6 +117,7 @@ import { MongoCatalogProductSlugRepository } from './infra/catalog/mongo/reposit
 import { AtlasSearchStorefrontProductQueryRepository } from './infra/search/atlas/repositories/atlas-search-storefront-product-query.repository';
 import { MongoBasicProductRecommendationQueryRepository } from './infra/search/mongo-basic/repositories/mongo-basic-product-recommendation-query.repository';
 import { MongoBasicStorefrontProductQueryRepository } from './infra/search/mongo-basic/repositories/mongo-basic-storefront-product-query.repository';
+import { MikroOrmLiveProductInventoryStockRepository } from './infra/persistence/mikro-orm/repositories/mikro-orm-live-product-inventory-stock.repository';
 import { CatalogMongoAccess } from './infra/catalog/mongo/access/catalog-mongo.access';
 import { ProductAttributeValueEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-attribute-value.entity';
 import { ProductImageEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-image.entity';
@@ -300,6 +303,10 @@ import { STOREFRONT_PRICING_CONFIG, buildStorefrontPricingConfig } from '~/platf
       provide: ProductReviewAggregateRepository,
       useExisting: MikroOrmProductReviewAggregateRepository,
     },
+    {
+      provide: LiveProductInventoryStockRepository,
+      useExisting: MikroOrmLiveProductInventoryStockRepository,
+    },
     AtlasProductRecommendationQueryRepository,
     MongoBasicProductRecommendationQueryRepository,
     ProductImageService,
@@ -324,6 +331,7 @@ import { STOREFRONT_PRICING_CONFIG, buildStorefrontPricingConfig } from '~/platf
     MikroOrmProductImportCommandRepository,
     MikroOrmProductImportQueryRepository,
     MikroOrmProductImportValidationQueryRepository,
+    MikroOrmLiveProductInventoryStockRepository,
 
     CatalogStatusService,
     CatalogProductProjectorService,
@@ -333,6 +341,7 @@ import { STOREFRONT_PRICING_CONFIG, buildStorefrontPricingConfig } from '~/platf
     PublicProductOrderHistoryService,
     PublicProductBestSellerRankingService,
     PublicProductViewHistoryService,
+    LiveProductInventoryStockOverlayService,
     ProductActivitySessionService,
     PendingReviewImageUploadService,
 

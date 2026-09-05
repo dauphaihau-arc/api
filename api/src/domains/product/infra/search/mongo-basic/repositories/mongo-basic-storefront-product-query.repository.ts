@@ -17,6 +17,7 @@ import {
   type StorefrontIndexedPricingSelection,
 } from '../../../../app/storefront-indexed-pricing';
 import { StorefrontMarketContextService } from '../../../../app/services/storefront-market-context.service';
+import { LiveProductInventoryStockOverlayService } from '../../../../app/services/live-product-inventory-stock-overlay.service';
 import type {
   ListPublicProductsInput,
   PublicProductDetail,
@@ -71,6 +72,7 @@ implements StorefrontProductQueryRepository {
     private readonly catalogProductPriceDocumentRepository: CatalogProductPriceDocumentRepository,
     private readonly catalogMongoAccess: CatalogMongoAccess,
     private readonly storefrontMarketContextService: StorefrontMarketContextService,
+    private readonly liveStockOverlayService: LiveProductInventoryStockOverlayService,
   ) {}
 
   async findPublicByShopSlugAndProductSlug(
@@ -96,7 +98,11 @@ implements StorefrontProductQueryRepository {
       await this.storefrontMarketContextService.resolveCurrentRequest(),
     );
 
-    return document ? toPublicProductDetail(document, priceDocument, pricingSelection) : null;
+    return document
+      ? this.liveStockOverlayService.overlayDetail(
+        toPublicProductDetail(document, priceDocument, pricingSelection),
+      )
+      : null;
   }
 
   async findPublicByIds(productIds: string[]): Promise<PublicProductListItem[]> {
