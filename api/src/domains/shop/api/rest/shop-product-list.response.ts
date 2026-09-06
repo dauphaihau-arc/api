@@ -13,6 +13,7 @@ export type ShopProductListResponse = {
     who_made: string;
     is_digital: boolean;
     non_taxable: boolean;
+    tags: string[];
     variant_type?: string;
     variant_group_name?: string;
     variant_sub_group_name?: string;

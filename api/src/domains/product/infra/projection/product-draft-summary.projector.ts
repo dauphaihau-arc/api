@@ -22,6 +22,7 @@ export function toProductDraftSummary(
     whoMade: product.whoMade,
     isDigital: product.isDigital,
     nonTaxable: product.nonTaxable,
+    tags: product.tags ?? [],
     variantType: product.variantType,
     variantGroupName: product.variantGroupName,
     variantSubGroupName: product.variantSubGroupName,

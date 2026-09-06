@@ -19,6 +19,7 @@ export interface ProductDraftSummary {
   whoMade: ProductWhoMade;
   isDigital: boolean;
   nonTaxable: boolean;
+  tags?: string[];
   variantType?: ProductVariantType;
   variantGroupName?: string;
   variantSubGroupName?: string;
@@ -41,6 +42,7 @@ export interface CreateProductDraftRepositoryInput {
   variantType?: ProductVariantType;
   variantGroupName?: string;
   variantSubGroupName?: string;
+  tags?: string[];
 }
 
 export interface ProductImageSummary {
@@ -195,6 +197,7 @@ export interface UpdateProductDetailsRepositoryInput {
   nonTaxable: boolean;
   variantGroupName?: string;
   variantSubGroupName?: string;
+  tags: string[];
 }
 
 export const SHOP_PRODUCT_LIST_DEFAULT_PAGE = 1;

@@ -29,6 +29,7 @@ export interface UpdateProductDetailsInput {
   variantGroupName?: string;
   variantSubGroupName?: string;
   categoryId?: string;
+  tags?: string[];
 }
 
 type UpdateProductDetailsError =
@@ -82,6 +83,7 @@ export class UpdateProductDetailsUseCase {
       variantGroupName: input.variantGroupName?.trim() ?? existingProduct.variantGroupName,
       variantSubGroupName:
         input.variantSubGroupName?.trim() ?? existingProduct.variantSubGroupName,
+      tags: sanitizeTags(input.tags) ?? existingProduct.tags ?? [],
       categoryId: input.categoryId ?? existingProduct.categoryId,
     };
 
@@ -123,6 +125,7 @@ export class UpdateProductDetailsUseCase {
       variantGroupName: nextProduct.variantGroupName,
       variantSubGroupName: nextProduct.variantSubGroupName,
       categoryId: nextProduct.categoryId,
+      tags: nextProduct.tags,
     });
 
     if (!product) {
@@ -197,4 +200,8 @@ function validateVariantLabels(
   }
 
   return null;
+}
+
+function sanitizeTags(tags?: string[]): string[] | undefined {
+  return tags?.map((tag) => tag.trim()).filter(Boolean);
 }

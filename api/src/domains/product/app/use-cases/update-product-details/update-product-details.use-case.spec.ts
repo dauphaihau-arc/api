@@ -30,6 +30,7 @@ describe('UpdateProductDetailsUseCase', () => {
     whoMade: 'i_did' as ProductDraftSummary['whoMade'],
     isDigital: false,
     nonTaxable: false,
+    tags: [],
     variantType: ProductVariantType.SINGLE,
     variantGroupName: 'Color',
     images: [],
@@ -52,6 +53,7 @@ describe('UpdateProductDetailsUseCase', () => {
         variantGroupName: input.variantGroupName,
         variantSubGroupName: input.variantSubGroupName,
         categoryId: input.categoryId,
+        tags: input.tags,
       })),
       findByShopIdAndSlug: jest.fn().mockResolvedValue(null),
     } as unknown as jest.Mocked<
@@ -112,6 +114,7 @@ describe('UpdateProductDetailsUseCase', () => {
       isDigital: true,
       nonTaxable: true,
       variantGroupName: 'Finish',
+      tags: ['sneaker', 'black'],
     });
 
     expect(result.isOk).toBe(true);
@@ -130,6 +133,7 @@ describe('UpdateProductDetailsUseCase', () => {
       variantGroupName: 'Finish',
       variantSubGroupName: undefined,
       categoryId: product.categoryId,
+      tags: ['sneaker', 'black'],
     });
     expect(auditLogService.record).toHaveBeenCalledWith(
       expect.objectContaining({

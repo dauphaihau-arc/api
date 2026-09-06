@@ -98,6 +98,7 @@ export class CreateProductDraftFacadeUseCase {
       variantType: input.variantType,
       variantGroupName: input.variantGroupName,
       variantSubGroupName: input.variantSubGroupName,
+      tags: input.tags,
     });
 
     if (!createdDraft.isOk) {

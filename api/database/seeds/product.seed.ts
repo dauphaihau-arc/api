@@ -518,6 +518,7 @@ export async function seedProducts(
         whoMade: productSeed.whoMade,
         isDigital: productSeed.isDigital,
         nonTaxable: false,
+        tags: [],
         views: 0,
         ratingAverage: 0,
         reviewCount: 0,
@@ -533,6 +534,7 @@ export async function seedProducts(
     product.variantType = productSeed.variantType;
     product.variantGroupName = productSeed.variantGroupName;
     product.variantSubGroupName = productSeed.variantSubGroupName;
+    product.tags = [];
     product.publishedAt =
       product.state === ProductState.ACTIVE ? new Date() : undefined;
     product.views = 0;

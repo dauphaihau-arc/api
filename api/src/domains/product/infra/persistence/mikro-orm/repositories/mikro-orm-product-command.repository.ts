@@ -311,6 +311,7 @@ implements ProductCommandRepository, ProductPricingRepository {
     product.nonTaxable = input.nonTaxable;
     product.variantGroupName = input.variantGroupName;
     product.variantSubGroupName = input.variantSubGroupName;
+    product.tags = input.tags;
     if (input.categoryId !== product.category?.id) {
       for (const attributeValue of product.attributeValues.getItems()) entityManager.remove(attributeValue);
       product.attributeValues.removeAll();
@@ -365,6 +366,7 @@ implements ProductCommandRepository, ProductPricingRepository {
       variantType: input.variantType,
       variantGroupName: input.variantGroupName,
       variantSubGroupName: input.variantSubGroupName,
+      tags: input.tags ?? [],
       publicSortPrices: {},
       views: 0,
       ratingAverage: 0,

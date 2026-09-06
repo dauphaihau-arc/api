@@ -26,6 +26,7 @@ export interface CreateProductDraftInput {
   variantType?: ProductVariantType;
   variantGroupName?: string;
   variantSubGroupName?: string;
+  tags?: string[];
 }
 
 type CreateProductDraftError =
@@ -87,6 +88,7 @@ export class CreateProductDraftUseCase {
       variantType: input.variantType,
       variantGroupName: input.variantGroupName?.trim() || undefined,
       variantSubGroupName: input.variantSubGroupName?.trim() || undefined,
+      tags: sanitizeTags(input.tags) ?? [],
     });
 
     return ok(product);
@@ -166,4 +168,8 @@ function isNumericSlugSuffix(baseSlug: string, slug: string): boolean {
   const suffix = slug.slice(baseSlug.length + 1);
 
   return slug.startsWith(`${baseSlug}-`) && /^[2-9]\d*$/.test(suffix);
+}
+
+function sanitizeTags(tags?: string[]): string[] | undefined {
+  return tags?.map((tag) => tag.trim()).filter(Boolean);
 }

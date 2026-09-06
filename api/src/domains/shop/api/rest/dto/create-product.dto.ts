@@ -4,11 +4,14 @@ import {
 } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  ArrayMaxSize,
+  IsArray,
   IsBoolean,
   IsEnum,
   IsOptional,
   IsString,
   IsUUID,
+  MaxLength,
   MinLength,
 } from 'class-validator';
 import { ProductVariantType } from '~/domains/product/domain/enums/product-variant-type.enum';
@@ -49,6 +52,15 @@ export class CreateProductDto {
   @Transform(({ value, obj: source }) => value ?? source.non_taxable)
   @IsBoolean()
   nonTaxable?: boolean;
+
+  @IsOptional()
+  @ApiPropertyOptional({ type: [String] })
+  @IsArray()
+  @ArrayMaxSize(11)
+  @IsString({ each: true })
+  @MinLength(2, { each: true })
+  @MaxLength(21, { each: true })
+  tags?: string[];
 
   @IsOptional()
   @ApiPropertyOptional({ name: 'variant_type', enum: ProductVariantType })

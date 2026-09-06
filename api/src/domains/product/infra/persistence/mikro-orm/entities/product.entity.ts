@@ -68,6 +68,9 @@ export class ProductEntity extends AbstractBaseEntity {
   @Property({ fieldName: 'non_taxable' })
   nonTaxable = false;
 
+  @Property({ fieldName: 'tags', type: 'json' })
+  tags: string[] = [];
+
   @Enum({
     items: () => ProductVariantType,
     fieldName: 'variant_type',

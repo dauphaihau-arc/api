@@ -246,6 +246,15 @@ export class CreateProductDraftFacadeDto {
   nonTaxable?: boolean;
 
   @IsOptional()
+  @ApiPropertyOptional({ type: [String] })
+  @IsArray()
+  @ArrayMaxSize(11)
+  @IsString({ each: true })
+  @MinLength(2, { each: true })
+  @MaxLength(21, { each: true })
+  tags?: string[];
+
+  @IsOptional()
   @ApiPropertyOptional({ name: 'variant_type' })
   @Expose({ name: 'variant_type' })
   @Transform(({ value, obj: source }) => value ?? source.variant_type)

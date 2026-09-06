@@ -1,11 +1,14 @@
 import { Expose, Transform } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  ArrayMaxSize,
+  IsArray,
   IsBoolean,
   IsEnum,
   IsUUID,
   IsOptional,
   IsString,
+  MaxLength,
   MinLength,
 } from 'class-validator';
 import { ProductWhoMade } from '~/domains/product/domain/enums/product-who-made.enum';
@@ -43,6 +46,15 @@ export class UpdateProductDto {
   @Transform(({ value, obj: source }) => value ?? source.non_taxable)
   @IsBoolean()
   nonTaxable?: boolean;
+
+  @IsOptional()
+  @ApiPropertyOptional({ type: [String] })
+  @IsArray()
+  @ArrayMaxSize(11)
+  @IsString({ each: true })
+  @MinLength(2, { each: true })
+  @MaxLength(21, { each: true })
+  tags?: string[];
 
   @IsOptional()
   @ApiPropertyOptional({ name: 'category_id' })

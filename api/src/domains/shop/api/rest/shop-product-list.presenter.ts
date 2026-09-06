@@ -34,6 +34,7 @@ export const toShopProductListResponse = (
       who_made: product.whoMade,
       is_digital: product.isDigital,
       non_taxable: product.nonTaxable,
+      tags: product.tags ?? [],
       variant_type: product.variantType,
       variant_group_name: product.variantGroupName,
       variant_sub_group_name: product.variantSubGroupName,
