@@ -43,6 +43,12 @@ describe('ListShopProductsUseCase', () => {
             hasNextPage: input.page < Math.ceil(total / input.limit),
             hasPreviousPage: input.page > 1,
           },
+          stateCounts: {
+            all: 3,
+            active: 1,
+            inactive: 1,
+            draft: 1,
+          },
         };
       }),
     };
@@ -69,6 +75,7 @@ describe('ListShopProductsUseCase', () => {
       categoryId: 'category-1',
       search: 'mug',
     });
+    expect(repository.listByShop).toHaveBeenCalledTimes(1);
     expect(result.items).toEqual([draftProduct]);
     expect(result.meta).toEqual({
       page: 2,
