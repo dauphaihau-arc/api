@@ -37,6 +37,9 @@ export class OutboxEventEntity extends AbstractBaseEntity {
   @Property({ fieldName: 'available_at' })
   availableAt = new Date();
 
+  @Property({ fieldName: 'occurred_at', defaultRaw: 'now()' })
+  occurredAt = new Date();
+
   @Property({ fieldName: 'processed_at', nullable: true })
   processedAt?: Date;
 

@@ -6,6 +6,7 @@ import { CreateCheckoutQuoteService } from './create-checkout-quote.service';
 import type { CouponPricingService } from '../../../coupon/app/services/coupon-pricing.service';
 import type { StorefrontMarketContextService } from '../../../product/app/services/storefront-market-context.service';
 import type { OrderTotalPolicyService } from '../../../order/app/services/order-total-policy.service';
+import type { PurchaseEligibilityService } from '../../../product/app/services/purchase-eligibility.service';
 import type { JobDispatcher } from '../../../../integrations/queue/app/ports/job-dispatcher';
 
 describe('CreateCheckoutQuoteService', () => {
@@ -92,6 +93,9 @@ describe('CreateCheckoutQuoteService', () => {
         reservationId: 'reservation-remote-1',
       }),
     } as unknown as jest.Mocked<CheckoutStockReservationPort>;
+    const purchaseEligibilityService = {
+      evaluate: jest.fn().mockResolvedValue({ eligible: true, failures: [] }),
+    } as unknown as jest.Mocked<PurchaseEligibilityService>;
     const checkoutQuoteRepository = {
       findReusable: jest.fn(),
     } as unknown as jest.Mocked<CheckoutQuoteRepository>;
@@ -106,6 +110,7 @@ describe('CreateCheckoutQuoteService', () => {
       storefrontMarketContextService,
       orderTotalPolicyService,
       checkoutStockReservationService,
+      purchaseEligibilityService,
       jobDispatcher,
     );
 
@@ -269,6 +274,9 @@ describe('CreateCheckoutQuoteService', () => {
         reservationId: 'reservation-remote-1',
       }),
     } as unknown as jest.Mocked<CheckoutStockReservationPort>;
+    const purchaseEligibilityService = {
+      evaluate: jest.fn().mockResolvedValue({ eligible: true, failures: [] }),
+    } as unknown as jest.Mocked<PurchaseEligibilityService>;
     const jobDispatcher = {
       dispatch: jest.fn(),
     } as unknown as jest.Mocked<JobDispatcher>;
@@ -280,6 +288,7 @@ describe('CreateCheckoutQuoteService', () => {
       storefrontMarketContextService,
       orderTotalPolicyService,
       checkoutStockReservationService,
+      purchaseEligibilityService,
       jobDispatcher,
     );
 
@@ -423,6 +432,9 @@ describe('CreateCheckoutQuoteService', () => {
         reservationId: 'reservation-remote-1',
       }),
     } as unknown as jest.Mocked<CheckoutStockReservationPort>;
+    const purchaseEligibilityService = {
+      evaluate: jest.fn().mockResolvedValue({ eligible: true, failures: [] }),
+    } as unknown as jest.Mocked<PurchaseEligibilityService>;
     const checkoutQuoteRepository = {
       findReusable: jest.fn().mockResolvedValue(null),
     } as unknown as jest.Mocked<CheckoutQuoteRepository>;
@@ -437,6 +449,7 @@ describe('CreateCheckoutQuoteService', () => {
       storefrontMarketContextService,
       orderTotalPolicyService,
       checkoutStockReservationService,
+      purchaseEligibilityService,
       jobDispatcher,
     );
 
@@ -484,10 +497,103 @@ describe('CreateCheckoutQuoteService', () => {
         deduplicationKey: 'order-cleanup-expired-checkout-quote-reservations--quote-2',
       }),
     );
-    expect(jobDispatcher.dispatch).toHaveBeenCalledWith(
-      'catalog.project-product',
-      { productId: 'product-1' },
-      { deduplicationKey: 'catalog-project-product--product-1' },
+  });
+
+  it('rejects quote creation when stale cart data is no longer purchase eligible', async () => {
+    const entityManager = {
+      transactional: jest.fn(),
+    } as unknown as EntityManager;
+    const checkoutQuoteRepository = {
+      findReusable: jest.fn(),
+    } as unknown as jest.Mocked<CheckoutQuoteRepository>;
+    const couponPricingService = {
+      buildPricedCartSummary: jest.fn().mockResolvedValue({
+        subtotalPrice: 10,
+        totalShippingFee: 0,
+        totalDiscount: 0,
+        totalPrice: 10,
+        shops: [{
+          shopId: 'shop-1',
+          shopName: 'Shop 1',
+          items: [{
+            cartItemId: 'cart-item-1',
+            inventoryId: 'inventory-1',
+            productId: 'product-1',
+            shopId: 'shop-1',
+            shopName: 'Shop 1',
+            shopSlug: 'shop-1',
+            title: 'Stale Mug',
+            imageUrl: 'https://example.com/mug.png',
+            quantity: 1,
+            currency: 'USD',
+            price: 10,
+            baseUnitPrice: 10,
+            effectiveUnitPrice: 10,
+            unitPriceMinor: 1000,
+          }],
+          subtotal: 10,
+          totalDiscount: 0,
+          totalShippingFee: 0,
+          total: 10,
+          promoCoupons: [],
+          originCountries: ['US'],
+        }],
+      }),
+    } as unknown as jest.Mocked<CouponPricingService>;
+    const storefrontMarketContextService = {
+      resolveCurrentRequest: jest.fn().mockResolvedValue({ currency: 'USD' }),
+    } as unknown as jest.Mocked<StorefrontMarketContextService>;
+    const orderTotalPolicyService = {
+      assertWithinLimit: jest.fn(),
+    } as unknown as jest.Mocked<OrderTotalPolicyService>;
+    const checkoutStockReservationService = {
+      reserveForQuote: jest.fn(),
+    } as unknown as jest.Mocked<CheckoutStockReservationPort>;
+    const purchaseEligibilityService = {
+      evaluate: jest.fn().mockResolvedValue({
+        eligible: false,
+        failures: [{
+          inventoryId: 'inventory-1',
+          quantity: 1,
+          title: 'Stale Mug',
+          reason: 'product_inactive',
+        }],
+      }),
+    } as unknown as jest.Mocked<PurchaseEligibilityService>;
+    const service = new CreateCheckoutQuoteService(
+      entityManager,
+      checkoutQuoteRepository,
+      couponPricingService,
+      storefrontMarketContextService,
+      orderTotalPolicyService,
+      checkoutStockReservationService,
+      purchaseEligibilityService,
+      { dispatch: jest.fn() } as unknown as JobDispatcher,
     );
+
+    await expect(
+      service.createFromCart({
+        actor: { type: 'user', userId: 'user-1' },
+        cart: {
+          id: 'cart-1',
+          userId: 'user-1',
+          guestSessionId: null,
+          kind: 'active' as never,
+          items: [],
+        },
+        shippingAddress: {
+          fullName: 'Jane Doe',
+          address1: '123 Main',
+          city: 'HCMC',
+          country: 'VN',
+          state: 'HCM',
+          zip: '700000',
+          phone: '0123',
+        },
+      }),
+    ).rejects.toThrow('reservation is no longer available');
+
+    expect(entityManager.transactional).not.toHaveBeenCalled();
+    expect(checkoutStockReservationService.reserveForQuote).not.toHaveBeenCalled();
   });
 });

@@ -88,6 +88,7 @@ export class PublishProductUseCase {
         deduplicationKey: appJobDeduplicationKey.projectCatalogProduct(
           publishedProduct.id,
         ),
+        deduplicationMode: 'coalesce-latest',
       },
     );
 

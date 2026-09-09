@@ -90,7 +90,7 @@ describe('IdempotencyKeyInterceptor', () => {
     expect(cacheManager.get).not.toHaveBeenCalled();
   });
 
-  it('passes through when the idempotency key header is missing', async () => {
+  it('rejects requests with idempotency metadata when the key is missing', async () => {
     const cacheManager: Pick<jest.Mocked<Cache>, 'get' | 'set'> = {
       get: jest.fn(),
       set: jest.fn(),
@@ -105,11 +105,40 @@ describe('IdempotencyKeyInterceptor', () => {
       handle: jest.fn(() => of({ accessToken: 'access-token' })),
     };
 
+    expect(() => interceptor.intercept(context, next)).toThrow(ConflictException);
+    expect(next.handle).not.toHaveBeenCalled();
+    expect(cacheManager.get).not.toHaveBeenCalled();
+  });
+
+  it('accepts an idempotency key from the snake_case request body', async () => {
+    const cacheManager: Pick<jest.Mocked<Cache>, 'get' | 'set'> = {
+      get: jest.fn().mockResolvedValue(undefined),
+      set: jest.fn().mockResolvedValue(undefined),
+    };
+    const interceptor = new IdempotencyKeyInterceptor(
+      createReflector() as Reflector,
+      cacheManager as unknown as Cache,
+      null,
+    );
+    const { context } = createHttpContext(undefined, {
+      ...payload,
+      idempotency_key: 'body-key-1',
+    });
+    const next: CallHandler = {
+      handle: jest.fn(() => of({ accessToken: 'fresh-token' })),
+    };
+
     const result = await lastValueFrom(interceptor.intercept(context, next));
 
-    expect(result).toEqual({ accessToken: 'access-token' });
-    expect(next.handle).toHaveBeenCalledTimes(1);
-    expect(cacheManager.get).not.toHaveBeenCalled();
+    expect(result).toEqual({ accessToken: 'fresh-token' });
+    expect(cacheManager.set).toHaveBeenCalledWith(
+      expect.stringMatching(/^[a-f0-9]{64}:idempotency:response$/),
+      expect.objectContaining({
+        responseBody: { accessToken: 'fresh-token' },
+        statusCode: 201,
+      }),
+      86400000,
+    );
   });
 
   it('replays a cached response for the same idempotency key and payload', async () => {
@@ -199,12 +228,12 @@ describe('IdempotencyKeyInterceptor', () => {
 
     expect(result).toEqual({ accessToken: 'fresh-token' });
     expect(redisClient.set).toHaveBeenCalledWith(
-      'auth:register:idempotency:lock:register-1',
+      expect.stringMatching(/^[a-f0-9]{64}:idempotency:lock$/),
       '{"displayName":"Member User","email":"member@example.com","password":"password123"}',
       { PX: 30000, NX: true },
     );
     expect(cacheManager.set).toHaveBeenCalledWith(
-      'auth:register:idempotency:response:register-1',
+      expect.stringMatching(/^[a-f0-9]{64}:idempotency:response$/),
       expect.objectContaining({
         responseBody: { accessToken: 'fresh-token' },
         statusCode: 201,
@@ -216,7 +245,7 @@ describe('IdempotencyKeyInterceptor', () => {
       'created',
     );
     expect(redisClient.del).toHaveBeenCalledWith(
-      'auth:register:idempotency:lock:register-1',
+      expect.stringMatching(/^[a-f0-9]{64}:idempotency:lock$/),
     );
   });
 

@@ -37,11 +37,28 @@ export class ProductInventoryRowDto {
   @MinLength(1)
   sku?: string;
 
-  @ApiProperty()
+  @IsOptional()
+  @ApiPropertyOptional({ description: 'Legacy read compatibility only; new writes should use on_hand_quantity.' })
   @IsNumber()
   @Min(0)
   @Max(999)
-  stock!: number;
+  stock?: number;
+
+  @ApiProperty({ name: 'on_hand_quantity' })
+  @Expose({ name: 'on_hand_quantity' })
+  @Transform(({ value, obj: source }) => value ?? source.on_hand_quantity)
+  @IsNumber()
+  @Min(0)
+  @Max(999)
+  onHandQuantity!: number;
+
+  @IsOptional()
+  @ApiPropertyOptional({ name: 'expected_on_hand_version' })
+  @Expose({ name: 'expected_on_hand_version' })
+  @Transform(({ value, obj: source }) => value ?? source.expected_on_hand_version)
+  @IsNumber()
+  @Min(1)
+  expectedOnHandVersion?: number;
 }
 
 export class SetProductInventoryDto {
@@ -52,4 +69,11 @@ export class SetProductInventoryDto {
   @ValidateNested({ each: true })
   @Type(() => ProductInventoryRowDto)
   inventory!: ProductInventoryRowDto[];
+
+  @ApiProperty({ name: 'product_version' })
+  @Expose({ name: 'product_version' })
+  @Transform(({ value, obj: source }) => value ?? source.product_version)
+  @IsNumber()
+  @Min(1)
+  productVersion!: number;
 }

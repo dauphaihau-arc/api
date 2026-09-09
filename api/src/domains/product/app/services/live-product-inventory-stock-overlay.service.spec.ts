@@ -1,5 +1,4 @@
 import type { LiveProductInventoryStockRepository } from '../ports/live-product-inventory-stock.repository';
-import { ProductVariantType } from '../../domain/enums/product-variant-type.enum';
 import { ProductWhoMade } from '../../domain/enums/product-who-made.enum';
 import type { PublicProductDetail } from '../product.types';
 import { LiveProductInventoryStockOverlayService } from './live-product-inventory-stock-overlay.service';
@@ -16,8 +15,12 @@ describe('LiveProductInventoryStockOverlayService', () => {
     const service = new LiveProductInventoryStockOverlayService(liveStockRepository);
     const product = buildProductDetail({
       inventory: [
-        { id: 'inventory-1', stock: 1, sku: 'SKU-1' },
-        { id: 'inventory-2', stock: 1, sku: 'SKU-2' },
+        {
+          id: 'inventory-1', productVariantId: 'variant-1', stock: 1, sku: 'SKU-1', 
+        },
+        {
+          id: 'inventory-2', productVariantId: 'variant-2', stock: 1, sku: 'SKU-2', 
+        },
       ],
     });
 
@@ -44,8 +47,8 @@ describe('LiveProductInventoryStockOverlayService', () => {
     const service = new LiveProductInventoryStockOverlayService(liveStockRepository);
     const product = buildProductDetail({
       inventory: [
-        { id: 'inventory-1', stock: 1 },
-        { id: 'inventory-missing', stock: 7 },
+        { id: 'inventory-1', productVariantId: 'variant-1', stock: 1 },
+        { id: 'inventory-missing', productVariantId: 'variant-missing', stock: 7 },
       ],
     });
 
@@ -76,7 +79,6 @@ function buildProductDetail(
     description: 'Product description',
     whoMade: ProductWhoMade.I_DID,
     isDigital: false,
-    variantType: ProductVariantType.SINGLE,
     stockNoticeThreshold: 10,
     reviewSummary: {
       average: 0,

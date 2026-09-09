@@ -3,6 +3,7 @@ import { UserStatus } from '~/domains/auth/domain/enums/user-status.enum';
 import type { ShopRepository } from '~/domains/shop/app/ports/shop.repository';
 import type { AuditLogService } from '~/integrations/audit/app/audit-log.service';
 import { ProductState } from '../../../domain/enums/product-state.enum';
+import { ProductVariantLifecycleState } from '../../../domain/enums/product-variant-lifecycle-state.enum';
 import { ProductShippingCharge } from '../../../domain/enums/product-shipping-charge.enum';
 import type { ProductCommandRepository } from '../../ports/product-command.repository';
 import type { SellerProductQueryRepository } from '../../ports/seller-product-query.repository';
@@ -30,10 +31,10 @@ describe('BulkMutateShopProductsUseCase', () => {
     slug: 'handmade-mug',
     description: 'Wheel-thrown ceramic mug',
     state: ProductState.DRAFT,
+    productVersion: 1,
     whoMade: 'i_did' as ProductDraftSummary['whoMade'],
     isDigital: false,
     nonTaxable: false,
-    variantType: 'none' as ProductDraftSummary['variantType'],
     images: [
       {
         id: 'img-1',
@@ -43,10 +44,18 @@ describe('BulkMutateShopProductsUseCase', () => {
       },
     ],
     attributes: [],
-    variants: [],
+    variants: [
+      {
+        id: 'variant-1',
+        rank: 1,
+        selections: [],
+        lifecycleState: ProductVariantLifecycleState.ACTIVE,
+      },
+    ],
     inventory: [
       {
         id: 'inv-1',
+        productVariantId: 'variant-1',
         sku: 'MUG-001',
         stock: 10,
         amountMinor: 1999,
@@ -86,7 +95,19 @@ describe('BulkMutateShopProductsUseCase', () => {
           return null;
         }
 
-        const updatedProduct = { ...product, state };
+        const updatedProduct = {
+          ...product,
+          state,
+          productVersion: (product.productVersion ?? 1) + 1,
+          removedAt: state === ProductState.REMOVED ? new Date('2026-03-01T00:00:00.000Z') : product.removedAt,
+          variants: state === ProductState.REMOVED
+            ? product.variants.map((variant) => ({
+              ...variant,
+              lifecycleState: ProductVariantLifecycleState.REMOVED,
+              removedAt: new Date('2026-03-01T00:00:00.000Z'),
+            }))
+            : product.variants,
+        };
         products.set(id, updatedProduct);
         return updatedProduct;
       }),
@@ -97,7 +118,12 @@ describe('BulkMutateShopProductsUseCase', () => {
           return null;
         }
 
-        const updatedProduct = { ...product, state: ProductState.ACTIVE };
+        const updatedProduct = {
+          ...product,
+          state: ProductState.ACTIVE,
+          productVersion: (product.productVersion ?? 1) + 1,
+          publishedAt: product.publishedAt ?? new Date('2026-01-01T00:00:00.000Z'),
+        };
         products.set(id, updatedProduct);
         return updatedProduct;
       }),
@@ -260,5 +286,42 @@ describe('BulkMutateShopProductsUseCase', () => {
       ],
     });
     expect(productRepository.updateState).not.toHaveBeenCalled();
+  });
+
+  it('removes a Product as a retained tombstone and cascades removed state to variants', async () => {
+    const { productRepository, shopRepository, auditLogService } = buildDeps({
+      'product-1': {
+        ...readyProduct,
+        state: ProductState.ACTIVE,
+        publishedAt: new Date('2026-01-01T00:00:00.000Z'),
+      },
+    });
+    const useCase = new BulkMutateShopProductsUseCase(
+      productRepository,
+      productRepository,
+      shopRepository,
+      auditLogService,
+    );
+
+    const result = await useCase.execute(actor, {
+      shopId: 'shop-1',
+      productIds: ['product-1'],
+      action: BulkMutateShopProductsAction.REMOVE,
+    });
+
+    expect(result).toEqual({
+      succeededIds: ['product-1'],
+      failed: [],
+    });
+    expect(productRepository.updateState).toHaveBeenCalledWith(
+      'product-1',
+      ProductState.REMOVED,
+    );
+    expect(auditLogService.record).toHaveBeenCalledWith(expect.objectContaining({
+      action: 'product.removed',
+      summary: expect.objectContaining({
+        state: ProductState.REMOVED,
+      }),
+    }));
   });
 });

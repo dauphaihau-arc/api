@@ -171,7 +171,6 @@ describe('CartController', () => {
             shopName: 'Clay House',
             shopSlug: 'clay-house',
             title: 'Mug',
-            variantType: 'none',
             stock: 9,
             currency: 'USD',
             pricing: {
@@ -242,7 +241,6 @@ describe('CartController', () => {
             shopName: 'Clay House',
             shopSlug: 'clay-house',
             title: 'Mug',
-            variantType: 'none',
             stock: 9,
             currency: 'USD',
             pricing: {

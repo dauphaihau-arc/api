@@ -20,6 +20,11 @@ export const toShopProductListResponse = (
     const primaryImage = product.images[0]
       ? resolveShopListImage(product.images[0])
       : undefined;
+    const visibleVariants = product.variants.filter((variant) => variant.lifecycleState !== 'removed');
+    const visibleVariantIds = new Set(visibleVariants.map((variant) => variant.id));
+    const visibleInventory = product.inventory.filter((inventory) =>
+      inventory.lifecycleState !== 'removed'
+      && (!inventory.productVariantId || visibleVariantIds.has(inventory.productVariantId)));
 
     return {
       id: product.id,
@@ -35,9 +40,6 @@ export const toShopProductListResponse = (
       is_digital: product.isDigital,
       non_taxable: product.nonTaxable,
       tags: product.tags ?? [],
-      variant_type: product.variantType,
-      variant_group_name: product.variantGroupName,
-      variant_sub_group_name: product.variantSubGroupName,
       image_url: primaryImage?.url,
       images: product.images.map((image) => {
         const listImage = resolveShopListImage(image);
@@ -68,18 +70,34 @@ export const toShopProductListResponse = (
         selected_option_value: attribute.selectedOptionValue,
         selected_text: attribute.selectedText,
       })),
-      variants: product.variants.map((variant) => ({
+      options: (product.options ?? []).map((option) => ({
+        id: option.id,
+        name: option.name,
+        position: option.position,
+        values: option.values.map((value) => ({
+          id: value.id,
+          value: value.value,
+          position: value.position,
+        })),
+      })),
+      variants: visibleVariants.map((variant) => ({
         id: variant.id,
-        name: variant.name,
-        option_value_1: variant.optionValue1,
-        option_value_2: variant.optionValue2,
+        selections: (variant.selections ?? []).map((selection) => ({
+          option_id: selection.optionId,
+          value_id: selection.valueId,
+        })),
         rank: variant.rank,
       })),
-      inventory: product.inventory.map((inventory) => ({
+      inventory: visibleInventory.map((inventory) => ({
         id: inventory.id,
         product_variant_id: inventory.productVariantId,
         sku: inventory.sku,
         stock: inventory.stock,
+        on_hand_quantity: inventory.onHandQuantity ?? inventory.stock,
+        reserved_quantity: inventory.reservedQuantity ?? 0,
+        available_quantity: inventory.availableQuantity ?? inventory.stock,
+        on_hand_version: inventory.onHandVersion ?? 1,
+        shortage: inventory.shortage ?? 0,
         ...(inventory.amountMinor !== undefined
           ? { amount_minor: inventory.amountMinor }
           : {}),

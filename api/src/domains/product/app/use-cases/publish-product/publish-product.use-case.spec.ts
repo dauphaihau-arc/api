@@ -3,6 +3,7 @@ import { UserStatus } from '~/domains/auth/domain/enums/user-status.enum';
 import type { AuditLogService } from '~/integrations/audit/app/audit-log.service';
 import { ProductState } from '../../../domain/enums/product-state.enum';
 import { ProductShippingCharge } from '../../../domain/enums/product-shipping-charge.enum';
+import { ProductVariantLifecycleState } from '../../../domain/enums/product-variant-lifecycle-state.enum';
 import type { ShopRepository } from '~/domains/shop/app/ports/shop.repository';
 import type { ProductCommandRepository } from '../../ports/product-command.repository';
 import type { SellerProductQueryRepository } from '../../ports/seller-product-query.repository';
@@ -30,7 +31,6 @@ describe('PublishProductUseCase', () => {
     whoMade: 'i_did' as ProductDraftSummary['whoMade'],
     isDigital: false,
     nonTaxable: false,
-    variantType: 'none' as ProductDraftSummary['variantType'],
     images: [
       {
         id: 'img-1',
@@ -40,16 +40,25 @@ describe('PublishProductUseCase', () => {
       },
     ],
     attributes: [],
-    variants: [],
+    variants: [
+      {
+        id: 'variant-1',
+        rank: 1,
+        lifecycleState: ProductVariantLifecycleState.ACTIVE,
+        selections: [],
+      },
+    ],
     inventory: [
       {
         id: 'inv-1',
+        productVariantId: 'variant-1',
         sku: 'MUG-001',
         stock: 10,
         amountMinor: 1999,
         currency: 'USD',
       },
     ],
+    options: [],
     shipping: {
       id: 'shipping-1',
       originCountry: 'US',
@@ -150,6 +159,7 @@ describe('PublishProductUseCase', () => {
       inventory: [
         {
           id: 'inv-1',
+          productVariantId: 'variant-1',
           sku: 'MUG-001',
           stock: 10,
         },

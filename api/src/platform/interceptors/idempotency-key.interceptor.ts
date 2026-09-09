@@ -74,10 +74,17 @@ export class IdempotencyKeyInterceptor implements NestInterceptor {
       return next.handle();
     }
 
-    const idempotencyKey = request.header(IDEMPOTENCY_KEY_HEADER)?.trim();
+    const headerKey = request.header(IDEMPOTENCY_KEY_HEADER)?.trim();
+    const bodyKey = typeof request.body === 'object'
+      && request.body !== null
+      && 'idempotency_key' in request.body
+      && typeof request.body.idempotency_key === 'string'
+      ? request.body.idempotency_key.trim()
+      : undefined;
+    const idempotencyKey = headerKey || bodyKey;
 
     if (!idempotencyKey) {
-      return next.handle();
+      throw new ConflictException('An idempotency key is required for this request.');
     }
 
     return from(
@@ -92,8 +99,9 @@ export class IdempotencyKeyInterceptor implements NestInterceptor {
     idempotencyKey: string,
     options: IdempotencyOptions,
   ): Promise<unknown> {
-    const cacheKey = this.buildResponseCacheKey(options.scope, idempotencyKey);
-    const lockKey = this.buildLockKey(options.scope, idempotencyKey);
+    const scopeKey = this.buildScopedKey(request, options.scope, idempotencyKey);
+    const cacheKey = this.buildResponseCacheKey(scopeKey);
+    const lockKey = this.buildLockKey(scopeKey);
     const fingerprint = this.buildFingerprint(this.buildFingerprintPayload(request));
 
     const cachedResponse = await this.cacheManager.get<CachedIdempotencyResponse>(cacheKey);
@@ -195,23 +203,34 @@ export class IdempotencyKeyInterceptor implements NestInterceptor {
     }
   }
 
-  private buildResponseCacheKey(scope: string, idempotencyKey: string): string {
-    return `${scope}:idempotency:response:${idempotencyKey}`;
+  private buildResponseCacheKey(scopeKey: string): string {
+    return `${scopeKey}:idempotency:response`;
   }
 
-  private buildLockKey(scope: string, idempotencyKey: string): string {
-    return `${scope}:idempotency:lock:${idempotencyKey}`;
+  private buildLockKey(scopeKey: string): string {
+    return `${scopeKey}:idempotency:lock`;
+  }
+
+  private buildScopedKey(request: Request, scope: string, idempotencyKey: string): string {
+    const requestWithUser = request as Request & { user?: { userId?: string; sub?: string } };
+    const actorId = requestWithUser.user?.userId ?? requestWithUser.user?.sub ?? 'anonymous';
+    const method = (request.method ?? 'UNKNOWN').toUpperCase();
+    const target = request.originalUrl ?? request.url ?? 'unknown-target';
+    const raw = `${scope}:${actorId}:${method}:${target}:${idempotencyKey}`;
+
+    return createHash('sha256').update(raw).digest('hex');
   }
 
   private buildFingerprintPayload(request: Request): unknown {
     const uploadedFile = (request as RequestWithUploadedFile).file;
+    const body = this.stripBodyIdempotencyKey(request.body);
 
     if (!uploadedFile) {
-      return request.body;
+      return body;
     }
 
     return {
-      body: request.body,
+      body,
       file: {
         originalname: uploadedFile.originalname,
         mimetype: uploadedFile.mimetype,
@@ -219,6 +238,15 @@ export class IdempotencyKeyInterceptor implements NestInterceptor {
         sha256: uploadedFile.buffer ? createHash('sha256').update(uploadedFile.buffer).digest('hex') : undefined,
       },
     };
+  }
+
+  private stripBodyIdempotencyKey(body: unknown): unknown {
+    if (!body || typeof body !== 'object' || !('idempotency_key' in body)) {
+      return body;
+    }
+
+    const { idempotency_key: _idempotencyKey, ...rest } = body as Record<string, unknown>;
+    return rest;
   }
 
   private buildFingerprint(payload: unknown): string {

@@ -187,9 +187,12 @@ export function toCheckoutQuoteResponse(
       fx_rate: item.fxRate,
       fx_source: item.fxSource,
       fx_effective_at: item.fxEffectiveAt,
-      variant_name: item.variantName,
-      variant_group_name: item.variantGroupName,
-      variant_sub_group_name: item.variantSubGroupName,
+      selected_options: (item.selectedOptions ?? []).map((selection) => ({
+        option_id: selection.optionId,
+        option_name: selection.optionName,
+        value_id: selection.valueId,
+        value: selection.value,
+      })),
     })),
   };
 }
@@ -225,12 +228,16 @@ export function toOrderListResponse(result: OrderListResult) {
           shop: {
             slug: product.shopSlug,
           },
-          variant_group_name: product.variantGroupName,
-          variant_sub_group_name: product.variantSubGroupName,
+          selected_options: (product.selectedOptions ?? []).map((selection) => ({
+            option_id: selection.optionId,
+            option_name: selection.optionName,
+            value_id: selection.valueId,
+            value: selection.value,
+          })),
           shipping: {},
         },
         inventory: {
-          variant: product.variantName,
+          sku: product.sku,
         },
         percent_coupon: product.percentCouponPercent
           ? { percent_off: product.percentCouponPercent }
@@ -238,6 +245,7 @@ export function toOrderListResponse(result: OrderListResult) {
         id: product.id,
         title: product.title,
         image_url: product.imageUrl,
+        image_reference: product.imageReference,
         quantity: product.quantity,
         amount_minor: product.amountMinor,
         original_amount_minor: product.originalAmountMinor,
@@ -276,12 +284,13 @@ function toShopOrderProductResponse(orderShop: ShopOrderSummary) {
     id: product.id,
     title: product.title,
     image_url: product.imageUrl,
+    image_reference: product.imageReference,
     quantity: product.quantity,
     amount_minor: product.amountMinor,
     original_amount_minor: product.originalAmountMinor,
     currency: product.currency,
     inventory: {
-      variant: product.variantName,
+      sku: product.sku,
     },
     product: {
       id: product.productId,
@@ -289,8 +298,12 @@ function toShopOrderProductResponse(orderShop: ShopOrderSummary) {
       shop: {
         slug: product.shopSlug,
       },
-      variant_group_name: product.variantGroupName,
-      variant_sub_group_name: product.variantSubGroupName,
+      selected_options: (product.selectedOptions ?? []).map((selection) => ({
+        option_id: selection.optionId,
+        option_name: selection.optionName,
+        value_id: selection.valueId,
+        value: selection.value,
+      })),
     },
     percent_coupon: product.percentCouponPercent
       ? { percent_off: product.percentCouponPercent }
@@ -394,12 +407,13 @@ export function toShopOrderDetailResponse(order: ShopOrderDetail) {
         id: product.id,
         title: product.title,
         image_url: product.imageUrl,
+        image_reference: product.imageReference,
         quantity: product.quantity,
         amount_minor: product.amountMinor,
         original_amount_minor: product.originalAmountMinor,
         currency: product.currency,
         inventory: {
-          variant: product.variantName,
+          sku: product.sku,
         },
         product: {
           id: product.productId,
@@ -407,8 +421,12 @@ export function toShopOrderDetailResponse(order: ShopOrderDetail) {
           shop: {
             slug: product.shopSlug,
           },
-          variant_group_name: product.variantGroupName,
-          variant_sub_group_name: product.variantSubGroupName,
+          selected_options: (product.selectedOptions ?? []).map((selection) => ({
+            option_id: selection.optionId,
+            option_name: selection.optionName,
+            value_id: selection.valueId,
+            value: selection.value,
+          })),
         },
         percent_coupon: product.percentCouponPercent
           ? { percent_off: product.percentCouponPercent }
@@ -459,12 +477,16 @@ export function toMyOrderDetailResponse(order: MyOrderDetail) {
           shop: {
             slug: product.shopSlug,
           },
-          variant_group_name: product.variantGroupName,
-          variant_sub_group_name: product.variantSubGroupName,
+          selected_options: (product.selectedOptions ?? []).map((selection) => ({
+            option_id: selection.optionId,
+            option_name: selection.optionName,
+            value_id: selection.valueId,
+            value: selection.value,
+          })),
           shipping: {},
         },
         inventory: {
-          variant: product.variantName,
+          sku: product.sku,
         },
         percent_coupon: product.percentCouponPercent
           ? { percent_off: product.percentCouponPercent }
@@ -472,6 +494,7 @@ export function toMyOrderDetailResponse(order: MyOrderDetail) {
         id: product.id,
         title: product.title,
         image_url: product.imageUrl,
+        image_reference: product.imageReference,
         quantity: product.quantity,
         amount_minor: product.amountMinor,
         original_amount_minor: product.originalAmountMinor,
@@ -540,12 +563,16 @@ export function toAdminOrderDetailResponse(order: AdminOrderDetail) {
           shop: {
             slug: product.shopSlug,
           },
-          variant_group_name: product.variantGroupName,
-          variant_sub_group_name: product.variantSubGroupName,
+          selected_options: (product.selectedOptions ?? []).map((selection) => ({
+            option_id: selection.optionId,
+            option_name: selection.optionName,
+            value_id: selection.valueId,
+            value: selection.value,
+          })),
           shipping: {},
         },
         inventory: {
-          variant: product.variantName,
+          sku: product.sku,
         },
         percent_coupon: product.percentCouponPercent
           ? { percent_off: product.percentCouponPercent }

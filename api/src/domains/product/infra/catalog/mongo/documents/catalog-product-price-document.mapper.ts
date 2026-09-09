@@ -32,24 +32,26 @@ export function toCatalogProductPriceDocument(
   },
 ): CatalogProductPriceDocument {
   const inventoryPricingById = Object.fromEntries(
-    product.inventoryRecords.getItems().map((inventory) => {
-      const indexedPricing = indexedPricingProjection.inventoryPricingById.get(inventory.id);
+    product.inventoryRecords.getItems()
+      .filter((inventory) => inventory.lifecycleState !== 'removed')
+      .map((inventory) => {
+        const indexedPricing = indexedPricingProjection.inventoryPricingById.get(inventory.id);
 
-      return [
-        inventory.id,
-        {
-          ...(indexedPricing?.basePrice
-            ? { basePrice: indexedPricing.basePrice }
-            : {}),
-          ...(indexedPricing?.marketOverrides
-            ? { marketOverrides: indexedPricing.marketOverrides }
-            : {}),
-          ...(indexedPricing?.resolvedByMarket
-            ? { resolvedByMarket: indexedPricing.resolvedByMarket }
-            : {}),
-        },
-      ];
-    }),
+        return [
+          inventory.id,
+          {
+            ...(indexedPricing?.basePrice
+              ? { basePrice: indexedPricing.basePrice }
+              : {}),
+            ...(indexedPricing?.marketOverrides
+              ? { marketOverrides: indexedPricing.marketOverrides }
+              : {}),
+            ...(indexedPricing?.resolvedByMarket
+              ? { resolvedByMarket: indexedPricing.resolvedByMarket }
+              : {}),
+          },
+        ];
+      }),
   );
 
   return {

@@ -1,7 +1,7 @@
 import type { ProductShippingCharge } from '../domain/enums/product-shipping-charge.enum';
 import type { ProductReviewStatus } from '../domain/enums/product-review-status.enum';
 import type { ProductState } from '../domain/enums/product-state.enum';
-import type { ProductVariantType } from '../domain/enums/product-variant-type.enum';
+import type { ProductVariantLifecycleState } from '../domain/enums/product-variant-lifecycle-state.enum';
 import type { ProductWhoMade } from '../domain/enums/product-who-made.enum';
 import type { PaginatedResult } from '~/platform/application/pagination';
 
@@ -16,18 +16,25 @@ export interface ProductDraftSummary {
   slug: string;
   description: string;
   state: ProductState;
+  productVersion?: number;
+  publishedAt?: Date;
+  removedAt?: Date;
   whoMade: ProductWhoMade;
   isDigital: boolean;
   nonTaxable: boolean;
   tags?: string[];
-  variantType?: ProductVariantType;
-  variantGroupName?: string;
-  variantSubGroupName?: string;
   images: ProductImageSummary[];
   attributes: ProductAttributeValueSummary[];
   variants: ProductVariantSummary[];
   inventory: ProductInventorySummary[];
+  options?: ProductOptionSummary[];
   shipping?: ProductShippingProfileSummary;
+}
+
+export interface ProductMutationTarget {
+  id: string;
+  shopId: string;
+  productVersion?: number;
 }
 
 export interface CreateProductDraftRepositoryInput {
@@ -39,9 +46,6 @@ export interface CreateProductDraftRepositoryInput {
   whoMade: ProductWhoMade;
   isDigital: boolean;
   nonTaxable: boolean;
-  variantType?: ProductVariantType;
-  variantGroupName?: string;
-  variantSubGroupName?: string;
   tags?: string[];
 }
 
@@ -112,45 +116,92 @@ export interface ReplaceProductAttributeValuesRepositoryInput {
   }>;
 }
 
-export interface ProductVariantSummary {
+export interface ProductOptionValueSummary {
+  id: string;
+  value: string;
+  position: number;
+}
+
+export interface ProductOptionSummary {
   id: string;
   name: string;
-  optionValue1?: string;
-  optionValue2?: string;
+  position: number;
+  values: ProductOptionValueSummary[];
+}
+
+export interface ProductVariantSummary {
+  id: string;
   imageStorageKey?: string;
   imageUrl?: string;
   rank: number;
+  lifecycleState?: ProductVariantLifecycleState;
+  selections: ProductVariantSelectionSummary[];
+  removedAt?: Date;
 }
 
-export interface ReplaceProductVariantsRepositoryInput {
+
+export interface ProductVariantSelectionSummary {
+  optionId: string;
+  valueId: string;
+}
+
+export interface ConfigureProductVariantConfigurationRepositoryInput {
   productId: string;
-  variants: Array<{
+  shopId: string;
+  expectedProductVersion: number;
+  commandId?: string;
+  actorId?: string;
+  options: Array<{
+    id?: string;
+    clientRef?: string;
     name: string;
-    optionValue1?: string;
-    optionValue2?: string;
-    rank: number;
+    position: number;
+    values: Array<{
+      id?: string;
+      clientRef?: string;
+      value: string;
+      position: number;
+    }>;
   }>;
+  variants: Array<{
+    id?: string;
+    clientRef?: string;
+    selections: Array<{
+      optionId?: string;
+      optionRef?: string;
+      valueId?: string;
+      valueRef?: string;
+    }>;
+    lifecycleState: ProductVariantLifecycleState;
+    inventory?: {
+      sku?: string | null;
+      onHandQuantity?: number;
+      expectedOnHandVersion?: number;
+      amountMinor?: number;
+      currency?: string;
+    };
+  }>;
+  removedVariantIds: string[];
+  restoreVariantIds?: string[];
 }
 
 export interface ProductInventorySummary {
   id: string;
-  productVariantId?: string;
+  productVariantId: string;
   sku?: string;
   stock: number;
+  onHandQuantity?: number;
+  reservedQuantity?: number;
+  availableQuantity?: number;
+  onHandVersion?: number;
+  shortage?: number;
+  lifecycleState?: 'active' | 'inactive' | 'removed';
+  removedAt?: Date;
   amountMinor?: number;
   originalAmountMinor?: number;
   currency?: string;
 }
 
-export interface ReplaceProductInventoryRepositoryInput {
-  productId: string;
-  shopId: string;
-  inventory: Array<{
-    productVariantId?: string;
-    sku?: string;
-    stock: number;
-  }>;
-}
 
 export interface ProductShippingDestinationSummary {
   id: string;
@@ -188,6 +239,7 @@ export interface ReplaceProductShippingRepositoryInput {
 
 export interface UpdateProductDetailsRepositoryInput {
   productId: string;
+  expectedProductVersion: number;
   title: string;
   slug: string;
   description: string;
@@ -195,8 +247,6 @@ export interface UpdateProductDetailsRepositoryInput {
   isDigital: boolean;
   categoryId?: string;
   nonTaxable: boolean;
-  variantGroupName?: string;
-  variantSubGroupName?: string;
   tags: string[];
 }
 
@@ -248,7 +298,6 @@ export interface PublicProductListItem {
       url?: string;
     }>;
   };
-  variantType?: ProductVariantType;
   pricing?: {
     minAmountMinor?: number;
     maxAmountMinor?: number;
@@ -284,11 +333,14 @@ export interface PublicProductSuggestion {
 
 export interface PublicProductInventorySummary {
   id: string;
-  productVariantId?: string;
-  optionValue1?: string;
-  optionValue2?: string;
+  productVariantId: string;
   sku?: string;
   stock: number;
+  onHandQuantity?: number;
+  reservedQuantity?: number;
+  availableQuantity?: number;
+  onHandVersion?: number;
+  shortage?: number;
   amountMinor?: number;
   originalAmountMinor?: number;
   currency?: string;
@@ -323,9 +375,6 @@ export interface PublicProductDetail {
   description: string;
   whoMade: ProductWhoMade;
   isDigital: boolean;
-  variantType?: ProductVariantType;
-  variantGroupName?: string;
-  variantSubGroupName?: string;
   stockNoticeThreshold: number;
   reviewSummary: {
     average: number;
@@ -333,6 +382,7 @@ export interface PublicProductDetail {
   };
   images: ProductImageSummary[];
   variants: ProductVariantSummary[];
+  options?: ProductOptionSummary[];
   inventory: PublicProductInventorySummary[];
   shipping?: PublicProductShippingSummary;
 }

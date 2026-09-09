@@ -4,6 +4,7 @@ import {
   Controller,
   Get,
   Header,
+  Headers,
   HttpCode,
   HttpStatus,
   NotFoundException,
@@ -51,16 +52,15 @@ import {
 } from '~/domains/product/app/use-cases/set-product-images/set-product-images.use-case';
 import { SetProductAttributesUseCase } from '~/domains/product/app/use-cases/set-product-attributes/set-product-attributes.use-case';
 import { SetProductImagesByKeysUseCase } from '~/domains/product/app/use-cases/set-product-images-by-keys/set-product-images-by-keys.use-case';
-import { SetProductInventoryUseCase } from '~/domains/product/app/use-cases/set-product-inventory/set-product-inventory.use-case';
-import { SetProductPricingUseCase } from '~/domains/product/app/use-cases/set-product-pricing/set-product-pricing.use-case';
 import { SetProductShippingUseCase } from '~/domains/product/app/use-cases/set-product-shipping/set-product-shipping.use-case';
-import { SetProductVariantsUseCase } from '~/domains/product/app/use-cases/set-product-variants/set-product-variants.use-case';
+import { ConfigureProductVariantConfigurationUseCase } from '~/domains/product/app/use-cases/configure-product-variant-configuration/configure-product-variant-configuration.use-case';
 import { UpdateProductDetailsUseCase } from '~/domains/product/app/use-cases/update-product-details/update-product-details.use-case';
 import { BulkMutateShopProductsUseCase } from '~/domains/product/app/use-cases/bulk-mutate-shop-products/bulk-mutate-shop-products.use-case';
 import type {
   ProductDraftSummary,
 } from '~/domains/product/app/product.types';
 import { BulkMutateShopProductsDto } from '~/domains/shop/api/rest/dto/bulk-mutate-shop-products.dto';
+import { ConfigureProductVariantConfigurationDto } from '~/domains/shop/api/rest/dto/configure-product-variant-configuration.dto';
 import { ShopAccessService } from '~/domains/shop/app/services/shop-access.service';
 import { CreateProductDraftFacadeDto } from '~/domains/shop/api/rest/dto/create-product-draft-facade.dto';
 import { CreateProductDto } from '~/domains/shop/api/rest/dto/create-product.dto';
@@ -71,10 +71,7 @@ import {
 import { ListShopProductsQueryDto } from '~/domains/shop/api/rest/dto/list-shop-products.query.dto';
 import { SetProductAttributesDto } from '~/domains/shop/api/rest/dto/set-product-attributes.dto';
 import { SetProductImagesByKeysDto } from '~/domains/shop/api/rest/dto/set-product-images-by-keys.dto';
-import { SetProductInventoryDto } from '~/domains/shop/api/rest/dto/set-product-inventory.dto';
-import { SetProductPricingDto } from '~/domains/shop/api/rest/dto/set-product-pricing.dto';
 import { SetProductShippingDto } from '~/domains/shop/api/rest/dto/set-product-shipping.dto';
-import { SetProductVariantsDto } from '~/domains/shop/api/rest/dto/set-product-variants.dto';
 import { UpdateProductDto } from '~/domains/shop/api/rest/dto/update-product.dto';
 import { mapProductAppErrorToHttpException } from '~/domains/shop/api/rest/product-http-error-mapper';
 import { toShopProductDetailResponse } from './shop-product-detail.presenter';
@@ -107,9 +104,7 @@ export class ShopProductsController {
     private readonly setProductImagesByKeysUseCase: SetProductImagesByKeysUseCase,
     private readonly setProductImagesUseCase: SetProductImagesUseCase,
     private readonly setProductAttributesUseCase: SetProductAttributesUseCase,
-    private readonly setProductVariantsUseCase: SetProductVariantsUseCase,
-    private readonly setProductInventoryUseCase: SetProductInventoryUseCase,
-    private readonly setProductPricingUseCase: SetProductPricingUseCase,
+    private readonly configureProductVariantConfigurationUseCase: ConfigureProductVariantConfigurationUseCase,
     private readonly setProductShippingUseCase: SetProductShippingUseCase,
     private readonly updateProductDetailsUseCase: UpdateProductDetailsUseCase,
     private readonly bulkMutateShopProductsUseCase: BulkMutateShopProductsUseCase,
@@ -237,6 +232,8 @@ export class ShopProductsController {
   }
 
   @Post('bulk-mutate')
+  @UseInterceptors(IdempotencyKeyInterceptor)
+  @Idempotent({ scope: 'product:bulk-mutate' })
   @Header('Cache-Control', 'private, no-store')
   @ApiOperation({ summary: 'Bulk mutate shop products' })
   @ApiParam({ name: 'shop_id', type: String })
@@ -258,6 +255,7 @@ export class ShopProductsController {
       shopId,
       productIds: body.ids,
       action: body.action,
+      idempotencyKey: body.idempotencyKey,
     });
 
     return {
@@ -266,26 +264,30 @@ export class ShopProductsController {
     };
   }
 
-  @Patch(':id')
-  @HttpCode(HttpStatus.NO_CONTENT)
+  @Patch(':id/details')
   @Header('Cache-Control', 'private, no-store')
+  @UseInterceptors(IdempotencyKeyInterceptor)
+  @Idempotent({ scope: 'product:update-details' })
   @ApiOperation({ summary: 'Update shop product details' })
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'id', type: String })
-  @ApiNoContentResponse({ description: 'Product updated.' })
-  async updateProduct(
+  @ApiOkResponse({ description: 'Product details updated.', schema: { type: 'object' } })
+  async updateProductDetails(
     @Param('shop_id') shopId: string,
     @Param('id') id: string,
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() body: UpdateProductDto,
-  ): Promise<void> {
+  ): Promise<ShopProductDetailResponse> {
     await this.assertActorCanManageProductShop(currentUser, shopId, id);
 
-    const result = await this.updateProductDetailsUseCase.execute(currentUser, id, body);
-    resolveOrThrow(result, mapProductAppErrorToHttpException);
+    return this.updateProductDetailsUseCase.execute(currentUser, id, body)
+      .then((result) => resolveOrThrow(result, mapProductAppErrorToHttpException))
+      .then(toShopProductDetailResponse);
   }
 
   @Post(':id/publish')
+  @UseInterceptors(IdempotencyKeyInterceptor)
+  @Idempotent({ scope: 'product:publish' })
   @Header('Cache-Control', 'private, no-store')
   @ApiOperation({ summary: 'Publish a shop product' })
   @ApiParam({ name: 'shop_id', type: String })
@@ -334,101 +336,78 @@ export class ShopProductsController {
   }
 
   @Put(':id/images-by-keys')
-  @HttpCode(HttpStatus.NO_CONTENT)
+  @UseInterceptors(IdempotencyKeyInterceptor)
+  @Idempotent({ scope: 'product:set-images-by-keys' })
   @Header('Cache-Control', 'private, no-store')
   @ApiOperation({ summary: 'Assign shop product images by storage keys' })
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'id', type: String })
-  @ApiNoContentResponse({ description: 'Product images updated.' })
+  @ApiOkResponse({ description: 'Product images updated.', schema: { type: 'object' } })
   async setProductImagesByKeys(
     @Param('shop_id') shopId: string,
     @Param('id') id: string,
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() body: SetProductImagesByKeysDto,
-  ): Promise<void> {
+  ): Promise<ShopProductDetailResponse> {
     await this.assertActorCanManageProductShop(currentUser, shopId, id);
 
-    const result = await this.setProductImagesByKeysUseCase.execute(currentUser, id, body);
-    resolveOrThrow(result, mapProductAppErrorToHttpException);
+    return this.setProductImagesByKeysUseCase.execute(currentUser, id, body)
+      .then((result) => resolveOrThrow(result, mapProductAppErrorToHttpException))
+      .then(toShopProductDetailResponse);
   }
 
   @Put(':id/attributes')
-  @HttpCode(HttpStatus.NO_CONTENT)
+  @UseInterceptors(IdempotencyKeyInterceptor)
+  @Idempotent({ scope: 'product:set-attributes' })
   @Header('Cache-Control', 'private, no-store')
   @ApiOperation({ summary: 'Set shop product attributes' })
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'id', type: String })
-  @ApiNoContentResponse({ description: 'Product attributes updated.' })
+  @ApiOkResponse({ description: 'Product attributes updated.', schema: { type: 'object' } })
   async setProductAttributes(
     @Param('shop_id') shopId: string,
     @Param('id') id: string,
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() body: SetProductAttributesDto,
-  ): Promise<void> {
+  ): Promise<ShopProductDetailResponse> {
     await this.assertActorCanManageProductShop(currentUser, shopId, id);
 
-    const result = await this.setProductAttributesUseCase.execute(currentUser, id, body);
-    resolveOrThrow(result, mapProductAppErrorToHttpException);
+    return this.setProductAttributesUseCase.execute(currentUser, id, body)
+      .then((result) => resolveOrThrow(result, mapProductAppErrorToHttpException))
+      .then(toShopProductDetailResponse);
   }
 
-  @Put(':id/variants')
-  @HttpCode(HttpStatus.NO_CONTENT)
+  @Put(':product_id/variant-configuration')
+  @UseInterceptors(IdempotencyKeyInterceptor)
+  @Idempotent({ scope: 'product:variant-configuration' })
   @Header('Cache-Control', 'private, no-store')
-  @ApiOperation({ summary: 'Set shop product variants' })
+  @ApiOperation({ summary: 'Configure normalized Product Options and Variants atomically' })
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'id', type: String })
-  @ApiNoContentResponse({ description: 'Product variants updated.' })
-  async setProductVariants(
+  @ApiOkResponse({ description: 'Product Variant configuration updated.', schema: { type: 'object' } })
+  async configureProductVariantConfiguration(
     @Param('shop_id') shopId: string,
-    @Param('id') id: string,
+    @Param('product_id') id: string,
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Body() body: SetProductVariantsDto,
-  ): Promise<void> {
-    await this.assertActorCanManageProductShop(currentUser, shopId, id);
-
-    const result = await this.setProductVariantsUseCase.execute(currentUser, id, body);
-    resolveOrThrow(result, mapProductAppErrorToHttpException);
-  }
-
-  @Put(':id/inventory')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  @Header('Cache-Control', 'private, no-store')
-  @ApiOperation({ summary: 'Set shop product inventory' })
-  @ApiParam({ name: 'shop_id', type: String })
-  @ApiParam({ name: 'id', type: String })
-  @ApiNoContentResponse({ description: 'Product inventory updated.' })
-  async setProductInventory(
-    @Param('shop_id') shopId: string,
-    @Param('id') id: string,
-    @CurrentUser() currentUser: AuthenticatedUser,
-    @Body() body: SetProductInventoryDto,
-  ): Promise<void> {
-    await this.assertActorCanManageProductShop(currentUser, shopId, id);
-
-    const result = await this.setProductInventoryUseCase.execute(currentUser, id, body);
-    resolveOrThrow(result, mapProductAppErrorToHttpException);
-  }
-
-  @Put(':id/pricing')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  @Header('Cache-Control', 'private, no-store')
-  @ApiOperation({ summary: 'Set shop product pricing' })
-  @ApiParam({ name: 'shop_id', type: String })
-  @ApiParam({ name: 'id', type: String })
-  @ApiNoContentResponse({ description: 'Product pricing updated.' })
-  async setProductPricing(
-    @Param('shop_id') shopId: string,
-    @Param('id') id: string,
-    @CurrentUser() currentUser: AuthenticatedUser,
-    @Body() body: SetProductPricingDto,
-  ): Promise<void> {
-    await this.assertActorCanManageProductShop(currentUser, shopId, id);
-
-    const result = await this.setProductPricingUseCase.execute(currentUser, id, body);
-    resolveOrThrow(result, mapProductAppErrorToHttpException);
+    @Body() body: ConfigureProductVariantConfigurationDto,
+    @Headers('idempotency-key') idempotencyKey?: string,
+  ): Promise<ShopProductDetailResponse> {
+    return this.configureProductVariantConfigurationUseCase.execute(currentUser, id, {
+      options: body.options,
+      variants: body.variants,
+      removedVariantIds: body.removedVariantIds,
+      restoreVariantIds: body.restoreVariantIds,
+      productVersion: body.productVersion,
+      shopId,
+      idempotencyKey,
+    })
+      .then((result) => resolveOrThrow(result, mapProductAppErrorToHttpException))
+      .then(toShopProductDetailResponse);
   }
 
   @Put(':id/shipping')
+  @UseInterceptors(IdempotencyKeyInterceptor)
+  @Idempotent({ scope: 'product:set-shipping' })
   @HttpCode(HttpStatus.NO_CONTENT)
   @Header('Cache-Control', 'private, no-store')
   @ApiOperation({ summary: 'Set shop product shipping settings' })

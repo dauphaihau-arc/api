@@ -1,7 +1,6 @@
 import type { ProductState } from '../../../../domain/enums/product-state.enum';
 import { ProductImageVariant } from '../../../../domain/enums/product-image-variant.enum';
 import { ProductShippingCharge } from '../../../../domain/enums/product-shipping-charge.enum';
-import type { ProductVariantType } from '../../../../domain/enums/product-variant-type.enum';
 import type { ProductEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product.entity';
 import type {
   StorefrontIndexedPriceSummary,
@@ -24,7 +23,6 @@ export interface CatalogSearchDocument {
   categoryId?: string;
   isDigital: boolean;
   whoMade: ProductEntity['whoMade'];
-  variantType?: ProductVariantType;
   attributes: Array<{
     categoryAttributeId: string;
     categoryAttributeKey: string;
@@ -91,11 +89,16 @@ export function toCatalogSearchDocument(
 
   const sortedVariants = product.variants
     .getItems()
+    .filter((variant) => variant.lifecycleState !== 'removed')
     .slice()
     .sort((left, right) => left.rank - right.rank);
+  const visibleVariantIds = new Set(sortedVariants.map((variant) => variant.id));
 
   const sortedInventory = product.inventoryRecords
     .getItems()
+    .filter((inventory) =>
+      inventory.lifecycleState !== 'removed'
+      && (!inventory.productVariant || visibleVariantIds.has(inventory.productVariant.id)))
     .slice()
     .sort((left, right) => {
       if (!left.productVariant && !right.productVariant) return 0;
@@ -139,7 +142,6 @@ export function toCatalogSearchDocument(
     categoryId: product.category?.id,
     isDigital: product.isDigital,
     whoMade: product.whoMade,
-    variantType: product.variantType,
     attributes: product.attributeValues
       .getItems()
       .slice()
@@ -164,18 +166,17 @@ export function toCatalogSearchDocument(
     suggest: uniqueStrings([
       product.title,
       product.slug.replaceAll('-', ' '),
-      ...sortedVariants.map((variant) => variant.name),
+      ...sortedVariants.map((variant) => variant.selections.getItems().map((selection) => selection.productOptionValue.value).join(' / ')),
     ].map(normalizeSearchText).filter(Boolean)),
     keywords: uniqueStrings([
       product.title,
       product.description,
       product.shop.shopName,
       product.slug.replaceAll('-', ' '),
-      ...sortedVariants.flatMap((variant) => [
-        variant.name,
-        variant.optionValue1,
-        variant.optionValue2,
-      ]),
+      ...sortedVariants.flatMap((variant) => variant.selections.getItems().flatMap((selection) => [
+        selection.productOption.name,
+        selection.productOptionValue.value,
+      ])),
     ].map(normalizeSearchText).filter(Boolean)),
     image: listImageStorageKey
       ? {

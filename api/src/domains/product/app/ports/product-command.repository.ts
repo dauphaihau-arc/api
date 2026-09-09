@@ -1,12 +1,11 @@
 import type {
   CreateProductDraftRepositoryInput,
+  ConfigureProductVariantConfigurationRepositoryInput,
   ProductDraftSummary,
   ReplaceProductAttributeValuesRepositoryInput,
   ReplaceProductImagesRepositoryInput,
   ReplaceProductImagesRepositoryResult,
-  ReplaceProductInventoryRepositoryInput,
   ReplaceProductShippingRepositoryInput,
-  ReplaceProductVariantsRepositoryInput,
   UpdateProductDetailsRepositoryInput,
 } from '../product.types';
 
@@ -23,13 +22,10 @@ export abstract class ProductCommandRepository {
     input: ReplaceProductAttributeValuesRepositoryInput
   ): Promise<ProductDraftSummary | null>;
 
-  abstract replaceVariants(
-    input: ReplaceProductVariantsRepositoryInput
+  abstract configureVariantConfiguration(
+    input: ConfigureProductVariantConfigurationRepositoryInput
   ): Promise<ProductDraftSummary | null>;
 
-  abstract replaceInventory(
-    input: ReplaceProductInventoryRepositoryInput
-  ): Promise<ProductDraftSummary | null>;
 
   abstract replaceShipping(
     input: ReplaceProductShippingRepositoryInput
@@ -38,6 +34,7 @@ export abstract class ProductCommandRepository {
   abstract updateDetails(
     input: UpdateProductDetailsRepositoryInput
   ): Promise<ProductDraftSummary | null>;
+
 
   abstract updateState(
     productId: string,

@@ -23,6 +23,7 @@ export async function dispatchCatalogProductProjections(
       { productId },
       {
         deduplicationKey: appJobDeduplicationKey.projectCatalogProduct(productId),
+        deduplicationMode: 'coalesce-latest',
       },
     )));
 }

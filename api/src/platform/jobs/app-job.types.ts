@@ -75,5 +75,6 @@ export type AppJobName = keyof AppJobPayloadMap;
 
 export interface DispatchJobOptions {
   deduplicationKey?: string;
+  deduplicationMode?: 'once' | 'coalesce-latest';
   delayMs?: number;
 }

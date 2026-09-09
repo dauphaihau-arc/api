@@ -83,6 +83,7 @@ export class SetProductImagesByKeysUseCase {
         deduplicationKey: appJobDeduplicationKey.projectCatalogProduct(
           replacedImages.product.id,
         ),
+        deduplicationMode: 'coalesce-latest',
       },
     );
 

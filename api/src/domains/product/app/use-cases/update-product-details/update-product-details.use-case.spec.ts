@@ -3,7 +3,6 @@ import { UserStatus } from '~/domains/auth/domain/enums/user-status.enum';
 import type { ShopRepository } from '~/domains/shop/app/ports/shop.repository';
 import type { CategoryRepository } from '~/domains/category/app/ports/category.repository';
 import type { AuditLogService } from '~/integrations/audit/app/audit-log.service';
-import { ProductVariantType } from '../../../domain/enums/product-variant-type.enum';
 import type { ProductCommandRepository } from '../../ports/product-command.repository';
 import type { SellerProductQueryRepository } from '../../ports/seller-product-query.repository';
 import type { ProductDraftSummary } from '../../product.types';
@@ -31,12 +30,11 @@ describe('UpdateProductDetailsUseCase', () => {
     isDigital: false,
     nonTaxable: false,
     tags: [],
-    variantType: ProductVariantType.SINGLE,
-    variantGroupName: 'Color',
     images: [],
     attributes: [],
     variants: [],
     inventory: [],
+    productVersion: 4,
   };
 
   function buildDeps(currentProduct = product) {
@@ -50,8 +48,6 @@ describe('UpdateProductDetailsUseCase', () => {
         whoMade: input.whoMade,
         isDigital: input.isDigital,
         nonTaxable: input.nonTaxable,
-        variantGroupName: input.variantGroupName,
-        variantSubGroupName: input.variantSubGroupName,
         categoryId: input.categoryId,
         tags: input.tags,
       })),
@@ -113,8 +109,8 @@ describe('UpdateProductDetailsUseCase', () => {
       description: '  Better description  ',
       isDigital: true,
       nonTaxable: true,
-      variantGroupName: 'Finish',
       tags: ['sneaker', 'black'],
+      productVersion: 4,
     });
 
     expect(result.isOk).toBe(true);
@@ -124,14 +120,13 @@ describe('UpdateProductDetailsUseCase', () => {
     );
     expect(productRepository.updateDetails).toHaveBeenCalledWith({
       productId: product.id,
+      expectedProductVersion: 4,
       title: 'Better Mug',
       slug: 'better-mug',
       description: 'Better description',
       whoMade: product.whoMade,
       isDigital: true,
       nonTaxable: true,
-      variantGroupName: 'Finish',
-      variantSubGroupName: undefined,
       categoryId: product.categoryId,
       tags: ['sneaker', 'black'],
     });
@@ -157,6 +152,7 @@ describe('UpdateProductDetailsUseCase', () => {
 
     const result = await useCase.execute(actor, product.id, {
       categoryId: 'category-2',
+      productVersion: 4,
     });
 
     expect(result.isOk).toBe(true);
@@ -169,13 +165,12 @@ describe('UpdateProductDetailsUseCase', () => {
     );
   });
 
-  it('rejects variant labels for products without variants', async () => {
+  it('rejects stale product versions before applying detail edits', async () => {
     const {
       productRepository, shopRepository, categoryRepository, auditLogService,
     } = buildDeps({
       ...product,
-      variantType: ProductVariantType.NONE,
-      variantGroupName: undefined,
+      productVersion: 6,
     });
     const useCase = new UpdateProductDetailsUseCase(
       productRepository,
@@ -186,11 +181,13 @@ describe('UpdateProductDetailsUseCase', () => {
     );
 
     const result = await useCase.execute(actor, product.id, {
-      variantGroupName: 'Color',
+      title: 'Lost update',
+      productVersion: 5,
     });
 
     expect(result.isOk).toBe(false);
+    expect(result.isOk ? undefined : result.error.code).toBe('ProductVersionConflictError');
     expect(productRepository.updateDetails).not.toHaveBeenCalled();
-    expect(auditLogService.record).not.toHaveBeenCalled();
   });
+
 });

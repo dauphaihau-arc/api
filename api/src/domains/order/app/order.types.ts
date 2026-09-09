@@ -41,6 +41,13 @@ export interface CreateOrderResult {
   checkoutPending?: boolean;
 }
 
+export interface SelectedOptionSnapshot {
+  optionId?: string;
+  optionName: string;
+  valueId?: string;
+  value: string;
+}
+
 export interface CheckoutQuoteItemSummary {
   inventoryId: string;
   productId: string;
@@ -49,7 +56,9 @@ export interface CheckoutQuoteItemSummary {
   shopSlug: string;
   title: string;
   imageUrl?: string;
+  imageReference?: string;
   quantity: number;
+  sku?: string;
   sourceCurrency: string;
   unitPriceSourceMinor: number;
   lineTotalSourceMinor: number;
@@ -67,9 +76,7 @@ export interface CheckoutQuoteItemSummary {
   fxSource?: string;
   fxEffectiveAt?: Date;
   fxSourceTimestamp?: Date;
-  variantName?: string;
-  variantGroupName?: string;
-  variantSubGroupName?: string;
+  selectedOptions?: SelectedOptionSnapshot[];
 }
 
 export interface CheckoutQuoteShopSummary {
@@ -104,14 +111,14 @@ export interface OrderListProduct {
   title: string;
   slug: string;
   imageUrl?: string;
+  imageReference?: string;
   imageStorageKey?: string;
   quantity: number;
   amountMinor: number;
   originalAmountMinor: number | null;
   currency: string;
-  variantName?: string;
-  variantGroupName?: string;
-  variantSubGroupName?: string;
+  sku?: string;
+  selectedOptions?: SelectedOptionSnapshot[];
   productId: string;
   shopSlug: string;
   percentCouponPercent: number | null;
@@ -376,10 +383,10 @@ export interface PricedCartItem {
   shopSlug: string;
   title: string;
   imageUrl?: string;
+  imageReference?: string;
   quantity: number;
-  variantGroupName?: string;
-  variantSubGroupName?: string;
-  variantName?: string;
+  sku?: string;
+  selectedOptions?: SelectedOptionSnapshot[];
   currency: string;
   sourceCurrency?: string;
   sourceUnitPriceMinor?: number;

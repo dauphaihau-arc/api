@@ -452,7 +452,6 @@ function toPublicProductListItemFromSearchDocument(
         url: document.image.url,
       }
       : undefined,
-    variantType: document.variantType,
     pricing: {
       minAmountMinor: indexedPricing?.minAmountMinor ?? document.price.minAmountMinor,
       maxAmountMinor: indexedPricing?.maxAmountMinor ?? document.price.maxAmountMinor,
@@ -473,14 +472,38 @@ function toPublicProductListItemFromSearchDocument(
   };
 }
 
-function toPublicProductDetail(
+function buildOptionsFromVariantSelections(
+  variants: CatalogProductDocument['variants'],
+): NonNullable<PublicProductDetail['options']> {
+  const options = new Map<string, NonNullable<PublicProductDetail['options']>[number]>();
+
+  variants.forEach((variant) => {
+    variant.selections.forEach((selection, index) => {
+      const option = options.get(selection.optionId) ?? {
+        id: selection.optionId,
+        name: selection.optionName,
+        position: index + 1,
+        values: [],
+      };
+      if (!option.values.some((value) => value.id === selection.valueId)) {
+        option.values.push({
+          id: selection.valueId,
+          value: selection.value,
+          position: option.values.length + 1,
+        });
+      }
+      options.set(option.id, option);
+    });
+  });
+
+  return Array.from(options.values()).sort((left, right) => left.position - right.position);
+}
+
+export function toPublicProductDetail(
   document: CatalogProductDocument,
   priceDocument?: CatalogProductPriceDocument | null,
   pricingSelection?: StorefrontIndexedPricingSelection,
 ): PublicProductDetail {
-  const variantsById = new Map(
-    document.variants.map((variant) => [variant.id, variant] as const),
-  );
 
   return {
     id: document.productId,
@@ -496,9 +519,6 @@ function toPublicProductDetail(
     description: document.description,
     whoMade: document.whoMade,
     isDigital: document.isDigital,
-    variantType: document.variantType,
-    variantGroupName: document.variantGroupName,
-    variantSubGroupName: document.variantSubGroupName,
     stockNoticeThreshold: PRODUCT_STOCK_NOTICE_THRESHOLD,
     reviewSummary: {
       average: document.ratingAverage,
@@ -524,11 +544,10 @@ function toPublicProductDetail(
         }))
         : undefined,
     })),
+    options: document.options ?? buildOptionsFromVariantSelections(document.variants),
     variants: document.variants.map((variant) => ({
       id: variant.id,
-      name: variant.name,
-      optionValue1: variant.optionValue1,
-      optionValue2: variant.optionValue2,
+      selections: variant.selections,
       imageStorageKey: variant.imageStorageKey,
       rank: variant.rank,
     })),
@@ -541,12 +560,6 @@ function toPublicProductDetail(
       return {
         id: inventory.id,
         productVariantId: inventory.productVariantId,
-        optionValue1: inventory.productVariantId
-          ? variantsById.get(inventory.productVariantId)?.optionValue1
-          : undefined,
-        optionValue2: inventory.productVariantId
-          ? variantsById.get(inventory.productVariantId)?.optionValue2
-          : undefined,
         sku: inventory.sku,
         stock: inventory.stock,
         amountMinor: resolvedPricing?.amountMinor,

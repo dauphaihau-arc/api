@@ -1,6 +1,5 @@
 import type { OrderEntity } from '../infra/persistence/entities/order.entity';
 import type { OrderItemEntity } from '../infra/persistence/entities/order-item.entity';
-import { ProductImageVariant } from '../../product/domain/enums/product-image-variant.enum';
 import { getRequiredOrderNumber } from './order-number';
 import type {
   OrderListProduct,
@@ -22,21 +21,6 @@ import {
   getOrderTotalMajor,
 } from './order-money';
 
-function resolveOrderItemImageStorageKey(item: OrderItemEntity): string | undefined {
-  const primaryImage = item.product.images
-    .getItems()
-    .sort((left, right) => left.rank - right.rank)[0];
-
-  if (!primaryImage) {
-    return undefined;
-  }
-
-  const thumbVariant = primaryImage.variants
-    .getItems()
-    .find((variant) => variant.variant === ProductImageVariant.THUMB_1X1);
-
-  return thumbVariant?.storageKey ?? primaryImage.storageKey;
-}
 
 function toOrderProducts(
   items: OrderItemEntity[],
@@ -48,16 +32,16 @@ function toOrderProducts(
     title: item.title,
     slug: item.product.slug,
     imageUrl: item.imageUrl,
+    imageReference: item.imageReference,
     ...(options?.includeImageStorageKey
-      ? { imageStorageKey: resolveOrderItemImageStorageKey(item) }
+      ? { imageStorageKey: item.imageReference }
       : {}),
     quantity: item.quantity,
     amountMinor: getOrderItemAmountMinor(item, currency),
     originalAmountMinor: getOrderItemOriginalAmountMinor(item),
     currency,
-    variantName: item.variantName,
-    variantGroupName: item.variantGroupName,
-    variantSubGroupName: item.variantSubGroupName,
+    sku: item.sku,
+    selectedOptions: item.selectedOptions ?? [],
     productId: item.product.id,
     shopSlug: item.product.shop.slug,
     percentCouponPercent: item.percentCouponPercent ?? null,

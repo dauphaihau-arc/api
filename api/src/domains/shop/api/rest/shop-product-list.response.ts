@@ -14,9 +14,6 @@ export type ShopProductListResponse = {
     is_digital: boolean;
     non_taxable: boolean;
     tags: string[];
-    variant_type?: string;
-    variant_group_name?: string;
-    variant_sub_group_name?: string;
     images: Array<{
       id: string;
       image_url?: string;
@@ -42,11 +39,22 @@ export type ShopProductListResponse = {
       selected_option_value?: string;
       selected_text?: string;
     }>;
-    variants: Array<{
+    options: Array<{
       id: string;
       name: string;
-      option_value_1?: string;
-      option_value_2?: string;
+      position: number;
+      values: Array<{
+        id: string;
+        value: string;
+        position: number;
+      }>;
+    }>;
+    variants: Array<{
+      id: string;
+      selections: Array<{
+        option_id: string;
+        value_id: string;
+      }>;
       rank: number;
     }>;
     inventory: Array<{
@@ -54,6 +62,11 @@ export type ShopProductListResponse = {
       product_variant_id?: string;
       sku?: string;
       stock: number;
+      on_hand_quantity: number;
+      reserved_quantity: number;
+      available_quantity: number;
+      on_hand_version: number;
+      shortage: number;
       amount_minor?: number;
       original_amount_minor?: number;
       currency?: string;

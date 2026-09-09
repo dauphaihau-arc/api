@@ -91,9 +91,6 @@ describe('CatalogProductProjectorService', () => {
       state: ProductState.ACTIVE,
       isDigital: false,
       whoMade: 'i_did',
-      variantType: 'single',
-      variantGroupName: 'Size',
-      variantSubGroupName: undefined,
       views: 18,
       shop: {
         id: 'shop-1',

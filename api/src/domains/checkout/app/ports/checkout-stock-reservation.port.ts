@@ -50,5 +50,11 @@ export abstract class CheckoutStockReservationPort {
     expiredAt?: Date,
   ): Promise<number>;
 
+  abstract releaseReservationsForQuote(
+    entityManager: EntityManager,
+    quoteId: string,
+    releasedAt?: Date,
+  ): Promise<number>;
+
   abstract cleanupExpiredForQuote(quoteId: string, now?: Date): Promise<number>;
 }

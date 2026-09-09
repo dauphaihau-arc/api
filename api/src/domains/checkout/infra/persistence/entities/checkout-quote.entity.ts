@@ -67,4 +67,10 @@ export class CheckoutQuoteEntity extends AbstractBaseEntity {
 
   @Property({ fieldName: 'expires_at' })
   expiresAt!: Date;
+
+  @Property({ fieldName: 'invalidated_at', nullable: true })
+  invalidatedAt?: Date;
+
+  @Property({ fieldName: 'invalidated_reason', length: 100, nullable: true })
+  invalidatedReason?: string;
 }

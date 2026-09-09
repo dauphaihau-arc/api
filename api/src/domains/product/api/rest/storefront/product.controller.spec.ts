@@ -8,7 +8,6 @@ import type { ListPublicProductReviewImagesUseCase } from '../../../app/use-case
 import type { ListPublicProductReviewsUseCase } from '../../../app/use-cases/list-public-product-reviews/list-public-product-reviews.use-case';
 import type { ListPublicProductsUseCase } from '../../../app/use-cases/list-public-products/list-public-products.use-case';
 import type { SuggestPublicProductsUseCase } from '../../../app/use-cases/suggest-public-products/suggest-public-products.use-case';
-import { ProductVariantType } from '../../../domain/enums/product-variant-type.enum';
 import { ProductWhoMade } from '../../../domain/enums/product-who-made.enum';
 import { ProductController } from './product.controller';
 
@@ -280,9 +279,6 @@ describe('ProductController', () => {
       description: 'A detail page payload.',
       whoMade: ProductWhoMade.I_DID,
       isDigital: false,
-      variantType: ProductVariantType.SINGLE,
-      variantGroupName: 'Color',
-      variantSubGroupName: 'Size',
       stockNoticeThreshold: 10,
       reviewSummary: {
         average: 4.5,
@@ -324,9 +320,6 @@ describe('ProductController', () => {
       description: 'A detail page payload.',
       who_made: 'i_did',
       is_digital: false,
-      variant_type: 'single',
-      variant_group_name: 'Color',
-      variant_sub_group_name: 'Size',
       stock_notice_threshold: 10,
       review_summary: {
         average: 4.5,
@@ -335,6 +328,7 @@ describe('ProductController', () => {
       images: [],
       variants: [],
       inventory: [],
+      options: [],
       shipping: undefined,
     });
     expect(getPublicProductBySlugsUseCase.execute).toHaveBeenCalledWith(

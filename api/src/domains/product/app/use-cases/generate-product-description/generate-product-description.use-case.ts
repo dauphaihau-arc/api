@@ -5,7 +5,6 @@ import {
   OPENAI_CONFIG,
   type OpenAiConfig,
 } from '~/platform/config/openai.config';
-import { ProductVariantType } from '../../../domain/enums/product-variant-type.enum';
 import { ProductWhoMade } from '../../../domain/enums/product-who-made.enum';
 import type { ProductDescriptionAttributeFact } from './generate-product-description.types';
 
@@ -14,7 +13,6 @@ export interface GenerateProductDescriptionInput {
   categoryId?: string;
   whoMade?: ProductWhoMade;
   isDigital?: boolean;
-  variantType?: ProductVariantType;
   tags?: string[];
   attributes?: Array<{
     categoryAttributeId: string;
@@ -52,9 +50,6 @@ export class GenerateProductDescriptionUseCase {
       categoryName: category?.name,
       whoMade: input.whoMade ? humanizeWhoMade(input.whoMade) : undefined,
       isDigital: input.isDigital,
-      variantType: input.variantType
-        ? humanizeVariantType(input.variantType)
-        : undefined,
       tags: sanitizeTags(input.tags),
       attributes: resolveAttributeFacts(category, input.attributes),
     };
@@ -124,18 +119,6 @@ function humanizeWhoMade(whoMade: ProductWhoMade): string {
   }
 }
 
-function humanizeVariantType(variantType: ProductVariantType): string {
-  switch (variantType) {
-    case ProductVariantType.NONE:
-      return 'single offering';
-    case ProductVariantType.SINGLE:
-      return 'one variant group';
-    case ProductVariantType.COMBINE:
-      return 'multiple variant groups';
-    default:
-      return variantType;
-  }
-}
 
 function buildInstructions(): string {
   return [

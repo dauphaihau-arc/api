@@ -27,7 +27,6 @@ describe('CartUpdatePricingService', () => {
             shopName: 'Clay House',
             shopSlug: 'clay-house',
             title: 'Mug',
-            variantType: 'none',
             stock: 9,
             currency: 'USD',
             pricing: {

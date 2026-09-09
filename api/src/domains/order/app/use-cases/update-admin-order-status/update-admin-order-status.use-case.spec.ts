@@ -66,9 +66,6 @@ describe('UpdateAdminOrderStatusUseCase', () => {
       price: 25,
       unitPriceMinor: 2500,
       salePrice: undefined,
-      variantName: 'Blue',
-      variantGroupName: 'Color',
-      variantSubGroupName: undefined,
       percentCouponPercent: null,
     };
     const fakeEntityManager = {

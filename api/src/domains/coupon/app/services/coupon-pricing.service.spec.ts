@@ -63,7 +63,6 @@ describe('CouponPricingService', () => {
             shopName: 'Clay House',
             shopSlug: 'clay-house',
             title: 'Mug',
-            variantType: 'single',
             stock: 4,
             currency: 'USD',
             pricing: {
@@ -115,7 +114,6 @@ describe('CouponPricingService', () => {
             shopName: 'Clay House',
             shopSlug: 'clay-house',
             title: 'Mug',
-            variantType: 'single',
             stock: 4,
             currency: 'USD',
             pricing: {
@@ -158,7 +156,6 @@ describe('CouponPricingService', () => {
             shopName: 'Clay House',
             shopSlug: 'clay-house',
             title: 'Mug',
-            variantType: 'single',
             stock: 4,
             currency: 'USD',
             pricing: {

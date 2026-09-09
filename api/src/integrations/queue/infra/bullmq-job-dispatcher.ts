@@ -43,8 +43,19 @@ implements JobDispatcher, OnApplicationShutdown {
     payload: AppJobPayloadMap[TName],
     options?: DispatchJobOptions,
   ): Promise<void> {
+    const deduplicationKey = options?.deduplicationKey;
+
+    const coalesceLatest = deduplicationKey
+      && options?.deduplicationMode === 'coalesce-latest';
+
     const job = await this.queue.add(name, payload, {
-      jobId: options?.deduplicationKey,
+      jobId: coalesceLatest ? undefined : deduplicationKey,
+      deduplication: coalesceLatest
+        ? {
+          id: deduplicationKey,
+          keepLastIfActive: true,
+        }
+        : undefined,
       delay: options?.delayMs,
     });
 

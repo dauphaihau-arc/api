@@ -26,13 +26,16 @@ export async function toPublicProductDetail(
   deps: StorefrontProjectionDeps,
 ): Promise<PublicProductDetail> {
   const inventory = await Promise.all(
-    sortInventoryRecords(product.inventoryRecords.getItems()).map(async (inventoryRecord) => ({
+    sortInventoryRecords(visibleInventoryRecords(product)).map(async (inventoryRecord) => ({
       id: inventoryRecord.id,
       productVariantId: inventoryRecord.productVariant?.id,
-      optionValue1: inventoryRecord.productVariant?.optionValue1,
-      optionValue2: inventoryRecord.productVariant?.optionValue2,
       sku: inventoryRecord.sku,
       stock: inventoryRecord.stock,
+      onHandQuantity: inventoryRecord.onHandQuantity,
+      reservedQuantity: inventoryRecord.reservedQuantity,
+      availableQuantity: inventoryRecord.availableQuantity,
+      onHandVersion: inventoryRecord.onHandVersion,
+      shortage: inventoryRecord.shortage,
       ...(await deps.resolvePricing(inventoryRecord)),
     })),
   );
@@ -51,9 +54,6 @@ export async function toPublicProductDetail(
     description: product.description,
     whoMade: product.whoMade,
     isDigital: product.isDigital,
-    variantType: product.variantType,
-    variantGroupName: product.variantGroupName,
-    variantSubGroupName: product.variantSubGroupName,
     stockNoticeThreshold: PRODUCT_STOCK_NOTICE_THRESHOLD,
     reviewSummary: {
       average: product.ratingAverage,
@@ -82,14 +82,35 @@ export async function toPublicProductDetail(
             format: variant.format,
           })),
       })),
-    variants: product.variants
+    options: product.options
       .getItems()
+      .filter((option) => !option.removedAt)
+      .sort((left, right) => left.position - right.position)
+      .map((option) => ({
+        id: option.id,
+        name: option.name,
+        position: option.position,
+        values: option.values
+          .getItems()
+          .filter((value) => !value.removedAt)
+          .sort((left, right) => left.position - right.position)
+          .map((value) => ({
+            id: value.id,
+            value: value.value,
+            position: value.position,
+          })),
+      })),
+    variants: visibleVariants(product)
       .sort((left, right) => left.rank - right.rank)
       .map((variant) => ({
         id: variant.id,
-        name: variant.name,
-        optionValue1: variant.optionValue1,
-        optionValue2: variant.optionValue2,
+        selections: variant.selections
+          .getItems()
+          .sort((left, right) => left.productOption.position - right.productOption.position)
+          .map((selection) => ({
+            optionId: selection.productOption.id,
+            valueId: selection.productOptionValue.id,
+          })),
         imageStorageKey: variant.imageStorageKey,
         rank: variant.rank,
       })),
@@ -122,12 +143,12 @@ export async function toPublicProductListItem(
     .getItems()
     .slice()
     .sort((left, right) => left.rank - right.rank)[0];
-  const sortedInventoryRecords = sortInventoryRecords(product.inventoryRecords.getItems());
+  const sortedInventoryRecords = sortInventoryRecords(visibleInventoryRecords(product));
   const resolvedPricing = await Promise.all(
     sortedInventoryRecords.map((inventory) => deps.resolvePricing(inventory)),
   );
   const priceSummary = summarizeResolvedPricing(resolvedPricing);
-  const totalStock = sortedInventoryRecords.reduce((sum, inventory) => sum + inventory.stock, 0);
+  const totalStock = sortedInventoryRecords.reduce((sum, inventory) => sum + inventory.availableQuantity, 0);
 
   return {
     id: product.id,
@@ -141,14 +162,13 @@ export async function toPublicProductListItem(
     title: product.title,
     slug: product.slug,
     image: primaryImage ? toPublicListImage(primaryImage) : undefined,
-    variantType: product.variantType,
     pricing: priceSummary,
     availability: {
       inStock: totalStock > 0,
       lowStock: totalStock > 0 && totalStock < PRODUCT_STOCK_NOTICE_THRESHOLD,
       stockTotal: totalStock,
     },
-    variantCount: product.variants.getItems().length,
+    variantCount: visibleVariants(product).length,
     hasFreeShipping: product.shippingProfiles[0]?.destinations
       .getItems()
       .some((destination) => destination.chargeType === ProductShippingCharge.FREE_SHIPPING),
@@ -159,7 +179,23 @@ export async function toPublicProductListItem(
 export function getPrimaryInventory(
   product: ProductEntity,
 ): ProductInventoryEntity | undefined {
-  return sortInventoryRecords(product.inventoryRecords.getItems())[0];
+  return sortInventoryRecords(visibleInventoryRecords(product))[0];
+}
+
+function visibleVariants(product: ProductEntity) {
+  return product.variants
+    .getItems()
+    .filter((variant) => variant.lifecycleState !== 'removed');
+}
+
+function visibleInventoryRecords(product: ProductEntity): ProductInventoryEntity[] {
+  const variantIds = new Set(visibleVariants(product).map((variant) => variant.id));
+
+  return product.inventoryRecords
+    .getItems()
+    .filter((inventory) =>
+      inventory.lifecycleState !== 'removed'
+      && (!inventory.productVariant || variantIds.has(inventory.productVariant.id)));
 }
 
 function sortInventoryRecords(inventoryRecords: ProductInventoryEntity[]): ProductInventoryEntity[] {

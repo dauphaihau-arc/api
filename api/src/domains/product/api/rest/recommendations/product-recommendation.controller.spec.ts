@@ -201,7 +201,6 @@ describe('ProductRecommendationController', () => {
               title: 'Handmade Bag 2',
               slug: 'handmade-bag-2',
               image: undefined,
-              variant_type: undefined,
               pricing: undefined,
               availability: {
                 in_stock: true,

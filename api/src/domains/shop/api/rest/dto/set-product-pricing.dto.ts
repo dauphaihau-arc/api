@@ -56,4 +56,11 @@ export class SetProductPricingDto {
   @ValidateNested({ each: true })
   @Type(() => ProductPricingRowDto)
   pricing!: ProductPricingRowDto[];
+
+  @ApiProperty({ name: 'product_version' })
+  @Expose({ name: 'product_version' })
+  @Transform(({ value, obj: source }) => value ?? source.product_version)
+  @IsNumber()
+  @Min(1)
+  productVersion!: number;
 }

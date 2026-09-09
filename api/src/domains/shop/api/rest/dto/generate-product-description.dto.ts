@@ -12,7 +12,6 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { ProductVariantType } from '~/domains/product/domain/enums/product-variant-type.enum';
 import { ProductWhoMade } from '~/domains/product/domain/enums/product-who-made.enum';
 
 export class GenerateProductDescriptionAttributeDto {
@@ -66,12 +65,6 @@ export class GenerateProductDescriptionDto {
   @IsBoolean()
   isDigital?: boolean;
 
-  @IsOptional()
-  @ApiPropertyOptional({ name: 'variant_type' })
-  @Expose({ name: 'variant_type' })
-  @Transform(({ value, obj: source }) => value ?? source.variant_type)
-  @IsEnum(ProductVariantType)
-  variantType?: ProductVariantType;
 
   @IsOptional()
   @ApiPropertyOptional({ type: [String] })

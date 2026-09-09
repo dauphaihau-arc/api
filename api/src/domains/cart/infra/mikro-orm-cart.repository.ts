@@ -6,7 +6,6 @@ import { UserEntity } from '~/domains/user/infra/persistence/entities/user.entit
 import { ResolvedStorefrontPriceService } from '~/domains/product/app/services/resolved-storefront-price.service';
 import { ProductImageEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-image.entity';
 import { ProductInventoryEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-inventory.entity';
-import { ProductVariantType } from '~/domains/product/domain/enums/product-variant-type.enum';
 import { ProductImageVariant } from '~/domains/product/domain/enums/product-image-variant.enum';
 import { StorageService } from '~/integrations/storage/app/ports/storage.service';
 import {
@@ -35,6 +34,9 @@ export class MikroOrmCartRepository implements CartRepository {
     'items.productInventory',
     'items.productInventory.prices',
     'items.productInventory.productVariant',
+    'items.productInventory.productVariant.selections',
+    'items.productInventory.productVariant.selections.productOption',
+    'items.productInventory.productVariant.selections.productOptionValue',
   ] as const;
 
   constructor(
@@ -51,7 +53,7 @@ export class MikroOrmCartRepository implements CartRepository {
     const inventory = await repository.findOne(
       { id: inventoryId },
       {
-        populate: ['shop', 'product', 'product.images', 'productVariant', 'prices'],
+        populate: ['shop', 'product', 'product.images', 'productVariant', 'productVariant.selections', 'productVariant.selections.productOption', 'productVariant.selections.productOptionValue', 'prices'],
       },
     );
 
@@ -368,7 +370,15 @@ export class MikroOrmCartRepository implements CartRepository {
         guestItem.productInventory.stock,
       );
 
-      if (cappedQuantity <= 0 || guestItem.product.state !== 'active') {
+      const variantState = guestItem.productInventory.productVariant?.lifecycleState ?? 'active';
+      const inventoryState = guestItem.productInventory.lifecycleState ?? 'active';
+
+      if (
+        cappedQuantity <= 0
+        || guestItem.product.state !== 'active'
+        || variantState !== 'active'
+        || inventoryState !== 'active'
+      ) {
         continue;
       }
 
@@ -451,9 +461,6 @@ export class MikroOrmCartRepository implements CartRepository {
           .slice()
           .sort((left, right) => left.rank - right.rank)[0],
         item.product.title,
-        item.product.variantType ?? ProductVariantType.NONE,
-        item.product.variantGroupName,
-        item.product.variantSubGroupName,
         item.shop.shopName,
         item.product.slug,
         item.shop.slug,
@@ -465,9 +472,6 @@ export class MikroOrmCartRepository implements CartRepository {
     inventory: ProductInventoryEntity,
     image?: ProductImageEntity,
     title?: string,
-    variantType?: string,
-    variantGroupName?: string,
-    variantSubGroupName?: string,
     shopName?: string,
     productSlug?: string,
     shopSlug?: string,
@@ -497,16 +501,23 @@ export class MikroOrmCartRepository implements CartRepository {
       shopName: shopName ?? inventory.shop.shopName,
       shopSlug: shopSlug ?? inventory.shop.slug,
       title: title ?? inventory.product.title,
-      variantType: variantType ?? inventory.product.variantType ?? ProductVariantType.NONE,
-      variantGroupName: variantGroupName ?? inventory.product.variantGroupName,
-      variantSubGroupName: variantSubGroupName ?? inventory.product.variantSubGroupName,
+      selectedOptions: inventory.productVariant.selections
+        .getItems()
+        .slice()
+        .sort((left, right) => left.productOption.position - right.productOption.position)
+        .map((selection) => ({
+          optionId: selection.productOption.id,
+          optionName: selection.productOption.name,
+          valueId: selection.productOptionValue.id,
+          value: selection.productOptionValue.value,
+        })),
       imageUrl: cardImageStorageKey
         ? this.storageService.getPublicUrl(cardImageStorageKey)
         : undefined,
+      imageReference: cardImageStorageKey,
       thumbnailImageUrl: thumbnailImageStorageKey
         ? this.storageService.getPublicUrl(thumbnailImageStorageKey)
         : undefined,
-      variantName: inventory.productVariant?.name,
       stock: inventory.stock,
       currency: pricing.currency,
       pricing: {

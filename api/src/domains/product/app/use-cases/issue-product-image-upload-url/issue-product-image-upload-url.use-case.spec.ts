@@ -65,7 +65,6 @@ describe('IssueProductImageUploadUrlUseCase', () => {
         whoMade: 'i_did',
         isDigital: false,
         nonTaxable: false,
-        variantType: 'none',
         images: [],
         attributes: [],
         variants: [],

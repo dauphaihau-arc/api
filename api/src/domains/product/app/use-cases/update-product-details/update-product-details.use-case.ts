@@ -8,13 +8,12 @@ import { ShopRepository } from '~/domains/shop/app/ports/shop.repository';
 import { CategoryRepository } from '~/domains/category/app/ports/category.repository';
 import { AuditLogService } from '~/integrations/audit/app/audit-log.service';
 import { JobDispatcher } from '~/integrations/queue/app/ports/job-dispatcher';
-import { ProductVariantType } from '../../../domain/enums/product-variant-type.enum';
 import {
   ActorCannotCreateProductDraftError,
   CategoryNotFoundError,
-  InvalidProductVariantConfigurationError,
   ProductNotFoundError,
   ProductSlugAlreadyExistsError,
+  ProductVersionConflictError,
 } from '../../errors/product-app.error';
 import { ProductCommandRepository } from '../../ports/product-command.repository';
 import { SellerProductQueryRepository } from '../../ports/seller-product-query.repository';
@@ -26,18 +25,17 @@ export interface UpdateProductDetailsInput {
   whoMade?: ProductDraftSummary['whoMade'];
   isDigital?: boolean;
   nonTaxable?: boolean;
-  variantGroupName?: string;
-  variantSubGroupName?: string;
   categoryId?: string;
   tags?: string[];
+  productVersion: number;
 }
 
 type UpdateProductDetailsError =
   | ActorCannotCreateProductDraftError
-  | InvalidProductVariantConfigurationError
   | ProductNotFoundError
   | CategoryNotFoundError
-  | ProductSlugAlreadyExistsError;
+  | ProductSlugAlreadyExistsError
+  | ProductVersionConflictError;
 
 @Injectable()
 export class UpdateProductDetailsUseCase {
@@ -74,15 +72,16 @@ export class UpdateProductDetailsUseCase {
       }
     }
 
+    if (existingProduct.productVersion !== input.productVersion) {
+      return err(new ProductVersionConflictError(existingProduct));
+    }
+
     const nextProduct = {
       title: input.title?.trim() ?? existingProduct.title,
       description: input.description?.trim() ?? existingProduct.description,
       whoMade: input.whoMade ?? existingProduct.whoMade,
       isDigital: input.isDigital ?? existingProduct.isDigital,
       nonTaxable: input.nonTaxable ?? existingProduct.nonTaxable,
-      variantGroupName: input.variantGroupName?.trim() ?? existingProduct.variantGroupName,
-      variantSubGroupName:
-        input.variantSubGroupName?.trim() ?? existingProduct.variantSubGroupName,
       tags: sanitizeTags(input.tags) ?? existingProduct.tags ?? [],
       categoryId: input.categoryId ?? existingProduct.categoryId,
     };
@@ -93,15 +92,6 @@ export class UpdateProductDetailsUseCase {
       if (!category) {
         return err(new CategoryNotFoundError(input.categoryId));
       }
-    }
-    const variantValidationError = validateVariantLabels(
-      existingProduct.variantType ?? ProductVariantType.NONE,
-      nextProduct.variantGroupName,
-      nextProduct.variantSubGroupName,
-    );
-
-    if (variantValidationError) {
-      return err(variantValidationError);
     }
 
     const slug = toSlug(nextProduct.title);
@@ -116,20 +106,22 @@ export class UpdateProductDetailsUseCase {
 
     const product = await this.productCommandRepository.updateDetails({
       productId,
+      expectedProductVersion: input.productVersion,
       title: nextProduct.title,
       slug,
       description: nextProduct.description,
       whoMade: nextProduct.whoMade,
       isDigital: nextProduct.isDigital,
       nonTaxable: nextProduct.nonTaxable,
-      variantGroupName: nextProduct.variantGroupName,
-      variantSubGroupName: nextProduct.variantSubGroupName,
       categoryId: nextProduct.categoryId,
       tags: nextProduct.tags,
     });
 
     if (!product) {
-      return err(new ProductNotFoundError(productId));
+      const currentProduct = await this.sellerProductQueryRepository.findById(productId);
+      return currentProduct
+        ? err(new ProductVersionConflictError(currentProduct))
+        : err(new ProductNotFoundError(productId));
     }
 
     await this.auditLogService.record({
@@ -156,6 +148,7 @@ export class UpdateProductDetailsUseCase {
         deduplicationKey: appJobDeduplicationKey.projectCatalogProduct(
           product.id,
         ),
+        deduplicationMode: 'coalesce-latest',
       },
     );
 
@@ -163,44 +156,6 @@ export class UpdateProductDetailsUseCase {
   }
 }
 
-function validateVariantLabels(
-  variantType: ProductVariantType,
-  variantGroupName?: string,
-  variantSubGroupName?: string,
-): InvalidProductVariantConfigurationError | null {
-  const hasGroupName = Boolean(variantGroupName?.trim());
-  const hasSubGroupName = Boolean(variantSubGroupName?.trim());
-
-  if (variantType === ProductVariantType.NONE) {
-    if (hasGroupName || hasSubGroupName) {
-      return new InvalidProductVariantConfigurationError(
-        'Products without variants cannot define variant group names',
-      );
-    }
-
-    return null;
-  }
-
-  if (!hasGroupName) {
-    return new InvalidProductVariantConfigurationError(
-      'Variant group name is required when variants are enabled',
-    );
-  }
-
-  if (variantType === ProductVariantType.SINGLE && hasSubGroupName) {
-    return new InvalidProductVariantConfigurationError(
-      'Single-variant products cannot define a variant sub-group name',
-    );
-  }
-
-  if (variantType === ProductVariantType.COMBINE && !hasSubGroupName) {
-    return new InvalidProductVariantConfigurationError(
-      'Combined variants require a variant sub-group name',
-    );
-  }
-
-  return null;
-}
 
 function sanitizeTags(tags?: string[]): string[] | undefined {
   return tags?.map((tag) => tag.trim()).filter(Boolean);

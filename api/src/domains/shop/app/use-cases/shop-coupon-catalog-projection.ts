@@ -73,6 +73,7 @@ export async function dispatchShopProjection(
     },
     {
       deduplicationKey: appJobDeduplicationKey.projectShopCatalogProducts(shopId, bucket),
+      deduplicationMode: 'coalesce-latest',
       ...(delayMs && delayMs > 0 ? { delayMs } : {}),
     },
   );

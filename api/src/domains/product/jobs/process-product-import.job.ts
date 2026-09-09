@@ -8,7 +8,7 @@ import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import { UserStatus } from '~/domains/auth/domain/enums/user-status.enum';
 import { ShopRepository } from '~/domains/shop/app/ports/shop.repository';
 import { ProductWhoMade } from '../domain/enums/product-who-made.enum';
-import { ProductVariantType } from '../domain/enums/product-variant-type.enum';
+import { ProductVariantLifecycleState } from '../domain/enums/product-variant-lifecycle-state.enum';
 import { ProductImportRowStatus } from '../domain/enums/product-import-row-status.enum';
 import { ProductImportStatus } from '../domain/enums/product-import-status.enum';
 import {
@@ -130,13 +130,16 @@ export class ProcessProductImportJob {
           whoMade: parsedRow.whoMade ?? ProductWhoMade.I_DID,
           isDigital: parsedRow.isDigital ?? false,
           nonTaxable: parsedRow.nonTaxable ?? false,
-          variantType: ProductVariantType.NONE,
-          inventory: [{
-            sku: parsedRow.sku,
-            stock: parsedRow.stock ?? 0,
-          }],
-          pricing: [{
-            amountMinor: toMinorUnits(parsedRow.price ?? 0, shop.currency),
+          variants: [{
+            clientRef: 'default',
+            selections: [],
+            lifecycleState: ProductVariantLifecycleState.ACTIVE,
+            inventory: {
+              sku: parsedRow.sku,
+              onHandQuantity: parsedRow.stock ?? 0,
+              amountMinor: toMinorUnits(parsedRow.price ?? 0, shop.currency),
+              currency: shop.currency,
+            },
           }],
         });
 

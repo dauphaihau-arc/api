@@ -15,6 +15,7 @@ import type { OrderTotalPolicyService } from './order-total-policy.service';
 import type { OrderCartCleanupRepository } from '../ports/order-cart-cleanup.repository';
 import type { OrderInventoryQueryRepository } from '../ports/order-inventory-query.repository';
 import type { OrderShopQueryRepository } from '../ports/order-shop-query.repository';
+import type { PurchaseEligibilityService } from '../../../product/app/services/purchase-eligibility.service';
 import { OrderTotalLimitExceededError } from '../errors/order-app.error';
 
 function waitForDeferredCheckoutSideEffects(): Promise<void> {
@@ -52,9 +53,6 @@ describe('OrderCheckoutService', () => {
             title: 'Product 1',
             imageUrl: 'https://example.com/product-1.png',
             quantity: 2,
-            variantName: 'Blue',
-            variantGroupName: 'Color',
-            variantSubGroupName: 'Primary',
             currency: 'USD',
             price: 10,
             salePrice: 9,
@@ -91,6 +89,7 @@ describe('OrderCheckoutService', () => {
 
   function buildService(options?: {
     processResult?: { id: string; url: string } | undefined;
+    purchaseEligibilityResult?: { eligible: boolean; failures: Array<Record<string, unknown>> };
   }) {
     const orders: Array<Record<string, unknown>> = [];
     const inventory = {
@@ -220,6 +219,11 @@ describe('OrderCheckoutService', () => {
     const orderShopQueryRepository = {
       findByIdWithOwner: jest.fn().mockResolvedValue(shop),
     } as unknown as jest.Mocked<OrderShopQueryRepository>;
+    const purchaseEligibilityService = {
+      evaluate: jest.fn().mockResolvedValue(
+        options?.purchaseEligibilityResult ?? { eligible: true, failures: [] },
+      ),
+    } as unknown as jest.Mocked<PurchaseEligibilityService>;
 
     const service = new OrderCheckoutService(
       entityManager,
@@ -235,6 +239,7 @@ describe('OrderCheckoutService', () => {
       orderCartCleanupRepository,
       orderInventoryQueryRepository,
       orderShopQueryRepository,
+      purchaseEligibilityService,
     );
 
     return {
@@ -252,6 +257,7 @@ describe('OrderCheckoutService', () => {
       orderCartCleanupRepository,
       orderInventoryQueryRepository,
       orderShopQueryRepository,
+      purchaseEligibilityService,
     };
   }
 
@@ -260,7 +266,6 @@ describe('OrderCheckoutService', () => {
       service,
       eventEmitter,
       notifyUserUseCase,
-      jobDispatcher,
       orderTotalPolicyService,
       orderRepository,
       orderItemRepository,
@@ -324,11 +329,6 @@ describe('OrderCheckoutService', () => {
     ).toHaveBeenCalled();
     expect(orderInventoryOutboxService.createOrderCreatedEvent).not.toHaveBeenCalled();
     expect(checkoutStockReservationService.consumeReservationsForQuote).not.toHaveBeenCalled();
-    expect(jobDispatcher.dispatch).toHaveBeenCalledWith(
-      'catalog.project-product',
-      { productId: 'product-1' },
-      { deduplicationKey: 'catalog-project-product--product-1' },
-    );
     expect(orderCheckoutOutboxService.processEventById).toHaveBeenCalledWith('outbox-1');
 
     await waitForDeferredCheckoutSideEffects();
@@ -452,7 +452,7 @@ describe('OrderCheckoutService', () => {
     );
   });
 
-  it('copies quote minor-unit amounts and provenance into persisted orders', async () => {
+  it('keeps quoted card inventory reserved until payment completes', async () => {
     const {
       service,
       checkoutStockReservationService,
@@ -513,7 +513,9 @@ describe('OrderCheckoutService', () => {
                   shopSlug: 'shop-1',
                   title: 'Product 1',
                   imageUrl: 'https://example.com/product-1.png',
+                  imageReference: 'dev/public/products/product-1/card.webp',
                   quantity: 2,
+                  sku: 'SKU-BLUE',
                   sourceCurrency: 'USD',
                   unitPriceSourceMinor: 1000,
                   lineTotalSourceMinor: 2000,
@@ -531,9 +533,6 @@ describe('OrderCheckoutService', () => {
                   fxSource: 'seed',
                   fxEffectiveAt: new Date('2026-05-20T00:00:00.000Z'),
                   fxSourceTimestamp: new Date('2026-05-20T00:00:00.000Z'),
-                  variantName: 'Blue',
-                  variantGroupName: 'Color',
-                  variantSubGroupName: 'Primary',
                 },
               ],
             },
@@ -547,7 +546,9 @@ describe('OrderCheckoutService', () => {
               shopSlug: 'shop-1',
               title: 'Product 1',
               imageUrl: 'https://example.com/product-1.png',
+              imageReference: 'dev/public/products/product-1/card.webp',
               quantity: 2,
+              sku: 'SKU-BLUE',
               sourceCurrency: 'USD',
               unitPriceSourceMinor: 1000,
               lineTotalSourceMinor: 2000,
@@ -565,9 +566,6 @@ describe('OrderCheckoutService', () => {
               fxSource: 'seed',
               fxEffectiveAt: new Date('2026-05-20T00:00:00.000Z'),
               fxSourceTimestamp: new Date('2026-05-20T00:00:00.000Z'),
-              variantName: 'Blue',
-              variantGroupName: 'Color',
-              variantSubGroupName: 'Primary',
             },
           ],
         },
@@ -588,16 +586,14 @@ describe('OrderCheckoutService', () => {
       totalMinor: 1800,
       currency: 'USD',
     });
-    expect(checkoutStockReservationService.consumeReservationsForQuote).toHaveBeenCalledWith(
-      expect.anything(),
-      {
-        quoteId: 'quote-1',
-        items: [{ inventoryId: 'inventory-1', quantity: 2 }],
-      },
-    );
+    expect(checkoutStockReservationService.consumeReservationsForQuote).not.toHaveBeenCalled();
     expect(checkoutStockReservationService.allocateInventoryForOrderItems).not.toHaveBeenCalled();
     expect(orderItemRepository.create).toHaveBeenCalledWith(
       expect.objectContaining({
+        title: 'Product 1',
+        imageUrl: 'https://example.com/product-1.png',
+        imageReference: 'dev/public/products/product-1/card.webp',
+        sku: 'SKU-BLUE',
         unitPriceMinor: 900,
         originalAmountMinor: 1000,
         lineTotalMinor: 1800,
@@ -609,15 +605,59 @@ describe('OrderCheckoutService', () => {
         fxSource: 'seed',
       }),
     );
-    expect(orderInventoryOutboxService.createOrderCreatedEvent).toHaveBeenCalledWith(
-      expect.anything(),
-      {
-        orderIds: ['order-1'],
-        quoteId: 'quote-1',
-        reservationId: 'reservation-remote-1',
-        items: [{ inventoryId: 'inventory-1', quantity: 2 }],
+    expect(orderInventoryOutboxService.createOrderCreatedEvent).not.toHaveBeenCalled();
+  });
+
+  it('rechecks purchase eligibility before final order creation', async () => {
+    const {
+      service,
+      checkoutStockReservationService,
+      orderRepository,
+      purchaseEligibilityService,
+    } = buildService({
+      purchaseEligibilityResult: {
+        eligible: false,
+        failures: [{
+          inventoryId: 'inventory-1',
+          quantity: 2,
+          title: 'Product 1',
+          reason: 'variant_inactive',
+        }],
       },
+    });
+
+    await expect(
+      service.createOrders(
+        {
+          type: 'user',
+          userId: 'user-1',
+          email: 'member@example.com',
+        },
+        'cart-1',
+        cart,
+        {
+          paymentType: PaymentType.CARD,
+          shippingAddress,
+          isTempCart: false,
+        },
+      ),
+    ).rejects.toThrow('reservation is no longer available');
+
+    expect(purchaseEligibilityService.evaluate).toHaveBeenCalledWith(
+      {
+        items: [{
+          inventoryId: 'inventory-1',
+          productId: 'product-1',
+          quantity: 2,
+          title: 'Product 1',
+        }],
+        requireAvailableQuantity: true,
+      },
+      expect.anything(),
     );
+    expect(checkoutStockReservationService.allocateInventoryForOrderItems).not.toHaveBeenCalled();
+    expect(checkoutStockReservationService.consumeReservationsForQuote).not.toHaveBeenCalled();
+    expect(orderRepository.create).not.toHaveBeenCalled();
   });
 
   it('rejects orders above the configured order-total limit before persistence', async () => {

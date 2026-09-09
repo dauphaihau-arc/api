@@ -23,6 +23,11 @@ export const toShopProductDetailResponse = (
   product: ProductDraftSummary,
 ): ShopProductDetailResponse => {
   const imageUrlsByStorageKey = buildImageUrlsByStorageKey(product);
+  const visibleVariants = product.variants.filter((variant) => variant.lifecycleState !== 'removed');
+  const visibleVariantIds = new Set(visibleVariants.map((variant) => variant.id));
+  const visibleInventory = product.inventory.filter((inventory) =>
+    inventory.lifecycleState !== 'removed'
+    && (!inventory.productVariantId || visibleVariantIds.has(inventory.productVariantId)));
 
   return {
     id: product.id,
@@ -40,13 +45,13 @@ export const toShopProductDetailResponse = (
     slug: product.slug,
     description: product.description,
     state: product.state,
+    product_version: product.productVersion ?? 1,
+    published_at: product.publishedAt,
+    removed_at: product.removedAt,
     who_made: product.whoMade,
     is_digital: product.isDigital,
     non_taxable: product.nonTaxable,
     tags: product.tags ?? [],
-    variant_type: product.variantType,
-    variant_group_name: product.variantGroupName,
-    variant_sub_group_name: product.variantSubGroupName,
     images: product.images.map((image) => ({
       id: image.id,
       url: image.url ?? '',
@@ -72,21 +77,41 @@ export const toShopProductDetailResponse = (
       selected_option_value: attribute.selectedOptionValue,
       selected_text: attribute.selectedText,
     })),
-    variants: product.variants.map((variant) => ({
+    options: (product.options ?? []).map((option) => ({
+      id: option.id,
+      name: option.name,
+      position: option.position,
+      values: option.values.map((value) => ({
+        id: value.id,
+        value: value.value,
+        position: value.position,
+      })),
+    })),
+    variants: visibleVariants.map((variant) => ({
       id: variant.id,
-      name: variant.name,
-      option_value_1: variant.optionValue1,
-      option_value_2: variant.optionValue2,
+      selections: (variant.selections ?? []).map((selection) => ({
+        option_id: selection.optionId,
+        value_id: selection.valueId,
+      })),
       image_url: variant.imageStorageKey
         ? imageUrlsByStorageKey.get(variant.imageStorageKey)
         : undefined,
       rank: variant.rank,
+      lifecycle_state: variant.lifecycleState,
+      removed_at: variant.removedAt,
     })),
-    inventory: product.inventory.map((inventory) => ({
+    inventory: visibleInventory.map((inventory) => ({
       id: inventory.id,
       product_variant_id: inventory.productVariantId,
       sku: inventory.sku,
       stock: inventory.stock,
+      on_hand_quantity: inventory.onHandQuantity ?? inventory.stock,
+      reserved_quantity: inventory.reservedQuantity ?? 0,
+      available_quantity: inventory.availableQuantity ?? inventory.stock,
+      on_hand_version: inventory.onHandVersion ?? 1,
+      shortage: inventory.shortage ?? 0,
+      lifecycle_state: inventory.lifecycleState,
+      removed_at: inventory.removedAt,
       ...(inventory.amountMinor !== undefined
         ? { amount_minor: inventory.amountMinor }
         : {}),

@@ -4,32 +4,23 @@ import {
   IsArray,
   IsBoolean,
   IsEnum,
-  IsIn,
   IsNumber,
   IsOptional,
   IsString,
   IsUUID,
   Length,
-  Max,
   MaxLength,
-  Min,
   MinLength,
   ValidateNested,
 } from 'class-validator';
 import { Expose, Transform, Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { MARKETPLACE_CURRENCIES } from '~/platform/config/marketplace.config';
 import { ProductShippingCharge } from '~/domains/product/domain/enums/product-shipping-charge.enum';
-import { ProductVariantType } from '~/domains/product/domain/enums/product-variant-type.enum';
 import { ProductWhoMade } from '~/domains/product/domain/enums/product-who-made.enum';
-
-function optionalBlankStringToUndefined(value: unknown): unknown {
-  if (typeof value === 'string' && value.trim().length === 0) {
-    return undefined;
-  }
-
-  return value;
-}
+import {
+  ProductOptionConfigurationDto,
+  ProductVariantConfigurationDto,
+} from './configure-product-variant-configuration.dto';
 
 export class CreateProductDraftFacadeImageDto {
   @ApiProperty({ name: 'storage_key' })
@@ -40,8 +31,6 @@ export class CreateProductDraftFacadeImageDto {
   storageKey!: string;
 
   @ApiProperty()
-  @IsNumber()
-  @Min(1)
   rank!: number;
 }
 
@@ -66,87 +55,6 @@ export class CreateProductDraftFacadeAttributeDto {
   @IsString()
   @MaxLength(255)
   selectedText?: string;
-}
-
-export class CreateProductDraftFacadeVariantDto {
-  @ApiProperty({ name: 'client_key' })
-  @Expose({ name: 'client_key' })
-  @Transform(({ value, obj: source }) => value ?? source.client_key)
-  @IsString()
-  @MinLength(1)
-  clientKey!: string;
-
-  @ApiProperty({ name: 'option_value_1' })
-  @Expose({ name: 'option_value_1' })
-  @Transform(({ value, obj: source }) => value ?? source.option_value_1)
-  @IsString()
-  @MinLength(1)
-  optionValue1!: string;
-
-  @IsOptional()
-  @ApiPropertyOptional({ name: 'option_value_2' })
-  @Expose({ name: 'option_value_2' })
-  @Transform(({ value, obj: source }) => value ?? source.option_value_2)
-  @IsString()
-  @MinLength(1)
-  optionValue2?: string;
-}
-
-export class CreateProductDraftFacadeInventoryDto {
-  @IsOptional()
-  @ApiPropertyOptional({ name: 'variant_client_key' })
-  @Expose({ name: 'variant_client_key' })
-  @Transform(({ value, obj: source }) => value ?? source.variant_client_key)
-  @IsString()
-  @MinLength(1)
-  variantClientKey?: string;
-
-  @IsOptional()
-  @ApiPropertyOptional()
-  @Transform(({ value }) => optionalBlankStringToUndefined(value))
-  @IsString()
-  @MinLength(1)
-  sku?: string;
-
-  @ApiProperty()
-  @IsNumber()
-  @Min(0)
-  @Max(999)
-  stock!: number;
-}
-
-export class CreateProductDraftFacadePricingDto {
-  @IsOptional()
-  @ApiPropertyOptional({ name: 'variant_client_key' })
-  @Expose({ name: 'variant_client_key' })
-  @Transform(({ value, obj: source }) => value ?? source.variant_client_key)
-  @IsString()
-  @MinLength(1)
-  variantClientKey?: string;
-
-  @ApiProperty({ name: 'amount_minor' })
-  @Expose({ name: 'amount_minor' })
-  @Transform(({ value, obj: source }) => value ?? source.amount_minor)
-  @IsNumber()
-  @Min(50)
-  @Max(5_000_000)
-  amountMinor!: number;
-
-  @IsOptional()
-  @ApiPropertyOptional({ name: 'original_amount_minor' })
-  @Expose({ name: 'original_amount_minor' })
-  @Transform(({ value, obj: source }) => value ?? source.original_amount_minor)
-  @IsNumber()
-  @Min(0)
-  @Max(5_000_000)
-  originalAmountMinor?: number;
-
-  @IsOptional()
-  @ApiPropertyOptional({ enum: MARKETPLACE_CURRENCIES })
-  @IsString()
-  @Length(3, 3)
-  @IsIn(MARKETPLACE_CURRENCIES)
-  currency?: string;
 }
 
 export class CreateProductDraftFacadeShippingDestinationDto {
@@ -206,6 +114,75 @@ export class CreateProductDraftFacadeShippingDto {
   @Type(() => CreateProductDraftFacadeShippingDestinationDto)
   destinations!: CreateProductDraftFacadeShippingDestinationDto[];
 }
+export class CreateProductDraftFacadeInventoryDto {
+  @IsOptional()
+  @ApiPropertyOptional({ name: 'variant_client_key' })
+  @Expose({ name: 'variant_client_key' })
+  @Transform(({ value, obj: source }) => value ?? source.variant_client_key)
+  @IsString()
+  @MinLength(1)
+  variantClientKey?: string;
+
+  @IsOptional()
+  @ApiPropertyOptional({ name: 'variant_id' })
+  @Expose({ name: 'variant_id' })
+  @Transform(({ value, obj: source }) => value ?? source.variant_id)
+  @IsUUID()
+  variantId?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  sku?: string | null;
+
+  @IsOptional()
+  @ApiPropertyOptional({ name: 'stock' })
+  @IsNumber()
+  stock?: number;
+
+  @IsOptional()
+  @ApiPropertyOptional({ name: 'on_hand_quantity' })
+  @Expose({ name: 'on_hand_quantity' })
+  @Transform(({ value, obj: source }) => value ?? source.on_hand_quantity)
+  @IsNumber()
+  onHandQuantity?: number;
+
+  @IsOptional()
+  @ApiPropertyOptional({ name: 'expected_on_hand_version' })
+  @Expose({ name: 'expected_on_hand_version' })
+  @Transform(({ value, obj: source }) => value ?? source.expected_on_hand_version)
+  @IsNumber()
+  expectedOnHandVersion?: number;
+}
+
+export class CreateProductDraftFacadePricingDto {
+  @IsOptional()
+  @ApiPropertyOptional({ name: 'variant_client_key' })
+  @Expose({ name: 'variant_client_key' })
+  @Transform(({ value, obj: source }) => value ?? source.variant_client_key)
+  @IsString()
+  @MinLength(1)
+  variantClientKey?: string;
+
+  @IsOptional()
+  @ApiPropertyOptional({ name: 'variant_id' })
+  @Expose({ name: 'variant_id' })
+  @Transform(({ value, obj: source }) => value ?? source.variant_id)
+  @IsUUID()
+  variantId?: string;
+
+  @ApiProperty({ name: 'amount_minor' })
+  @Expose({ name: 'amount_minor' })
+  @Transform(({ value, obj: source }) => value ?? source.amount_minor)
+  @IsNumber()
+  amountMinor!: number;
+
+  @IsOptional()
+  @IsString()
+  @Length(3, 3)
+  currency?: string;
+}
+
 
 export class CreateProductDraftFacadeDto {
   @IsOptional()
@@ -255,29 +232,6 @@ export class CreateProductDraftFacadeDto {
   tags?: string[];
 
   @IsOptional()
-  @ApiPropertyOptional({ name: 'variant_type' })
-  @Expose({ name: 'variant_type' })
-  @Transform(({ value, obj: source }) => value ?? source.variant_type)
-  @IsEnum(ProductVariantType)
-  variantType?: ProductVariantType;
-
-  @IsOptional()
-  @ApiPropertyOptional({ name: 'variant_group_name' })
-  @Expose({ name: 'variant_group_name' })
-  @Transform(({ value, obj: source }) => value ?? source.variant_group_name)
-  @IsString()
-  @MinLength(1)
-  variantGroupName?: string;
-
-  @IsOptional()
-  @ApiPropertyOptional({ name: 'variant_sub_group_name' })
-  @Expose({ name: 'variant_sub_group_name' })
-  @Transform(({ value, obj: source }) => value ?? source.variant_sub_group_name)
-  @IsString()
-  @MinLength(1)
-  variantSubGroupName?: string;
-
-  @IsOptional()
   @ApiPropertyOptional({ type: [CreateProductDraftFacadeImageDto] })
   @IsArray()
   @ArrayMaxSize(10)
@@ -293,17 +247,24 @@ export class CreateProductDraftFacadeDto {
   attributes?: CreateProductDraftFacadeAttributeDto[];
 
   @IsOptional()
-  @ApiPropertyOptional({ type: [CreateProductDraftFacadeVariantDto] })
+  @ApiPropertyOptional({ type: [ProductOptionConfigurationDto] })
+  @IsArray()
+  @ArrayMaxSize(2)
+  @ValidateNested({ each: true })
+  @Type(() => ProductOptionConfigurationDto)
+  options?: ProductOptionConfigurationDto[];
+
+  @IsOptional()
+  @ApiPropertyOptional({ type: [ProductVariantConfigurationDto] })
   @IsArray()
   @ArrayMaxSize(100)
   @ValidateNested({ each: true })
-  @Type(() => CreateProductDraftFacadeVariantDto)
-  variants?: CreateProductDraftFacadeVariantDto[];
+  @Type(() => ProductVariantConfigurationDto)
+  variants?: ProductVariantConfigurationDto[];
 
   @IsOptional()
   @ApiPropertyOptional({ type: [CreateProductDraftFacadeInventoryDto] })
   @IsArray()
-  @ArrayMaxSize(100)
   @ValidateNested({ each: true })
   @Type(() => CreateProductDraftFacadeInventoryDto)
   inventory?: CreateProductDraftFacadeInventoryDto[];
@@ -311,7 +272,6 @@ export class CreateProductDraftFacadeDto {
   @IsOptional()
   @ApiPropertyOptional({ type: [CreateProductDraftFacadePricingDto] })
   @IsArray()
-  @ArrayMaxSize(100)
   @ValidateNested({ each: true })
   @Type(() => CreateProductDraftFacadePricingDto)
   pricing?: CreateProductDraftFacadePricingDto[];

@@ -66,6 +66,27 @@ func (s *Service) ReserveQuote(request ReserveQuoteRequest) (ReserveQuoteRespons
 	return response, nil
 }
 
+func (s *Service) SetOnHandQuantity(request SetOnHandQuantityRequest) (SetOnHandQuantityResponse, error) {
+	if request.InventoryID == "" || request.IdempotencyKey == "" || request.OnHandQuantity < 0 {
+		return SetOnHandQuantityResponse{}, ErrInvalidRequest
+	}
+
+	balance, err := s.store.SetOnHandQuantity(request)
+	if err != nil {
+		return SetOnHandQuantityResponse{}, err
+	}
+
+	return SetOnHandQuantityResponse{
+		InventoryID:       request.InventoryID,
+		OnHandQuantity:    balance.OnHandQuantity,
+		ReservedQuantity:  balance.ReservedQuantity,
+		AvailableQuantity: balance.AvailableQuantity(),
+		OnHandVersion:     balance.OnHandVersion,
+		Shortage:          balance.Shortage(),
+	}, nil
+}
+
+
 func (s *Service) ValidateReservation(request ValidateReservationRequest) (ValidateReservationResponse, error) {
 	reservation, ok := s.store.FindByID(request.ReservationID)
 

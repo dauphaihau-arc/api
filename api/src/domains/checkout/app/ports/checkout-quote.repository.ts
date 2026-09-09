@@ -15,6 +15,14 @@ export interface FindReusableCheckoutQuoteInput {
   now: Date;
 }
 
+
+export interface InvalidateQuotesForProductLifecycleInput {
+  productId: string;
+  productVariantId?: string;
+  reason: string;
+  invalidatedAt: Date;
+}
+
 export abstract class CheckoutQuoteRepository {
   abstract findById(
     quoteId: string,
@@ -35,4 +43,9 @@ export abstract class CheckoutQuoteRepository {
     input: FindReusableCheckoutQuoteInput,
     context?: CheckoutRepositoryContext
   ): Promise<CheckoutQuoteEntity | null>;
+
+  abstract invalidateUnpaidForProductLifecycle(
+    input: InvalidateQuotesForProductLifecycleInput,
+    context?: CheckoutRepositoryContext
+  ): Promise<string[]>;
 }

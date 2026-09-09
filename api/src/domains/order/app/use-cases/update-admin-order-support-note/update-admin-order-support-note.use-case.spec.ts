@@ -68,9 +68,6 @@ describe('UpdateAdminOrderSupportNoteUseCase', () => {
       currency: 'USD',
       price: 25,
       salePrice: undefined,
-      variantName: 'Blue',
-      variantGroupName: 'Color',
-      variantSubGroupName: undefined,
       percentCouponPercent: null,
     };
     const fakeEntityManager = {

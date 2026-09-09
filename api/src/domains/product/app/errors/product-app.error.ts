@@ -1,3 +1,5 @@
+import type { ProductDraftSummary } from '../product.types';
+
 import { DomainError } from '~/platform/errors/domain.error';
 
 export abstract class ProductAppError extends DomainError {
@@ -24,6 +26,24 @@ export class InvalidProductVariantConfigurationError extends ProductAppError {
   }
 }
 
+export type ProductSkuConflictDetail = {
+  sku: string;
+  inventoryId?: string;
+  variantId?: string;
+  clientRef?: string;
+};
+
+export class ProductConfigurationConflictError extends ProductAppError {
+  constructor(
+    public readonly code: 'ProductSkuConflict' | 'ProductReservationConflict' | 'ProductOnHandVersionConflict',
+    public readonly affectedIds: string[],
+    public readonly currentProduct: ProductDraftSummary,
+    public readonly skuConflicts: ProductSkuConflictDetail[] = [],
+  ) {
+    super(code);
+  }
+}
+
 export class InvalidProductAttributeSelectionError extends ProductAppError {
   constructor(message: string) {
     super(message);
@@ -45,6 +65,31 @@ export class ProductNotFoundError extends ProductAppError {
 export class ProductNotReadyToPublishError extends ProductAppError {
   constructor(message: string) {
     super(message);
+  }
+}
+
+export class PublishedProductReplacementRejectedError extends ProductAppError {
+  constructor() {
+    super('Published Products cannot replace Product Variants or Inventory as a complete collection');
+  }
+}
+
+export class ProductVersionConflictError extends ProductAppError {
+  constructor(public readonly currentProduct: ProductDraftSummary) {
+    super('Product Version conflict');
+  }
+}
+
+export class ProductOnHandVersionConflictError extends ProductAppError {
+  constructor(
+    public readonly currentInventory: {
+      id: string;
+      onHandQuantity?: number;
+      reservedQuantity?: number;
+      onHandVersion?: number;
+    },
+  ) {
+    super('On-hand Version conflict');
   }
 }
 

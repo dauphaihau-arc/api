@@ -99,6 +99,7 @@ export class SetProductShippingUseCase {
         deduplicationKey: appJobDeduplicationKey.projectCatalogProduct(
           product.id,
         ),
+        deduplicationMode: 'coalesce-latest',
       },
     );
 

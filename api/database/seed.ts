@@ -23,6 +23,9 @@ import { UserSessionEntity } from '~/domains/auth/infra/persistence/entities/use
 import { ProductAttributeValueEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-attribute-value.entity';
 import { ProductImageEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-image.entity';
 import { ProductInventoryReservationEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-inventory-reservation.entity';
+import { ProductOptionEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-option.entity';
+import { ProductOptionValueEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-option-value.entity';
+import { ProductVariantOptionValueEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-variant-option-value.entity';
 import { ProductInventoryEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-inventory.entity';
 import { ProductReviewEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-review.entity';
 import { ProductReviewImageEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-review-image.entity';
@@ -34,8 +37,10 @@ import { ProductEntity } from '~/domains/product/infra/persistence/mikro-orm/ent
 import { ExchangeRateEntity } from '~/integrations/currency/infra/persistence/entities/exchange-rate.entity';
 import { OrderEntity } from '~/domains/order/infra/persistence/entities/order.entity';
 import { OrderItemEntity } from '~/domains/order/infra/persistence/entities/order-item.entity';
+import { OutboxEventEntity } from '~/domains/order/infra/persistence/entities/outbox-event.entity';
 import { ShopEntity } from '~/domains/shop/infra/persistence/entities/shop.entity';
 import { UserAddressEntity } from '~/domains/user/infra/persistence/entities/user-address.entity';
+import { VariantPriceEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/variant-price.entity';
 import { seedAuth } from './seeds/auth.seed';
 import { seedCategories } from './seeds/category.seed';
 import { seedChat } from './seeds/chat.seed';
@@ -102,9 +107,14 @@ async function main() {
       ProductImageEntity,
       ProductAttributeValueEntity,
       ProductVariantEntity,
+      ProductOptionEntity,
+      ProductOptionValueEntity,
+      ProductVariantOptionValueEntity,
       ProductInventoryEntity,
+      VariantPriceEntity,
       ProductInventoryReservationEntity,
       ProductReviewEntity,
+      OutboxEventEntity,
       ProductReviewImageEntity,
       ProductShippingProfileEntity,
       ProductShippingDestinationEntity,

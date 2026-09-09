@@ -20,6 +20,7 @@ import { ReviewImageService } from './app/services/review-image.service';
 import { PendingReviewImageUploadService } from './app/pending-review-image-upload.service';
 import { ResolvedStorefrontPriceService } from './app/services/resolved-storefront-price.service';
 import { StorefrontMarketContextService } from './app/services/storefront-market-context.service';
+import { PurchaseEligibilityService } from './app/services/purchase-eligibility.service';
 import { CatalogStatusService } from './app/services/catalog-status.service';
 import { CatalogProductProjectorService } from './app/services/catalog-product-projector.service';
 import { StorefrontIndexedPriceProjectionService } from './app/services/storefront-indexed-price-projection.service';
@@ -50,10 +51,8 @@ import { PublishProductUseCase } from './app/use-cases/publish-product/publish-p
 import { SetProductImagesByKeysUseCase } from './app/use-cases/set-product-images-by-keys/set-product-images-by-keys.use-case';
 import { SetProductImagesUseCase } from './app/use-cases/set-product-images/set-product-images.use-case';
 import { SetProductAttributesUseCase } from './app/use-cases/set-product-attributes/set-product-attributes.use-case';
-import { SetProductInventoryUseCase } from './app/use-cases/set-product-inventory/set-product-inventory.use-case';
-import { SetProductPricingUseCase } from './app/use-cases/set-product-pricing/set-product-pricing.use-case';
 import { SetProductShippingUseCase } from './app/use-cases/set-product-shipping/set-product-shipping.use-case';
-import { SetProductVariantsUseCase } from './app/use-cases/set-product-variants/set-product-variants.use-case';
+import { ConfigureProductVariantConfigurationUseCase } from './app/use-cases/configure-product-variant-configuration/configure-product-variant-configuration.use-case';
 import { UpsertMyProductReviewUseCase } from './app/use-cases/upsert-my-product-review/upsert-my-product-review.use-case';
 import { UpdateProductDetailsUseCase } from './app/use-cases/update-product-details/update-product-details.use-case';
 import { DownloadProductImportReportUseCase } from './app/use-cases/download-product-import-report/download-product-import-report.use-case';
@@ -130,6 +129,9 @@ import { ProductReviewImageVariantEntity } from '~/domains/product/infra/persist
 import { ProductShippingDestinationEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-shipping-destination.entity';
 import { ProductShippingProfileEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-shipping-profile.entity';
 import { ProductVariantEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-variant.entity';
+import { ProductOptionEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-option.entity';
+import { ProductOptionValueEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-option-value.entity';
+import { ProductVariantOptionValueEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-variant-option-value.entity';
 import { ProductViewHistoryEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-view-history.entity';
 import { ProductBestSellerRankingEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-best-seller-ranking.entity';
 import { ProductEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product.entity';
@@ -161,6 +163,9 @@ import { STOREFRONT_PRICING_CONFIG, buildStorefrontPricingConfig } from '~/platf
       ProductImageVariantEntity,
       ProductAttributeValueEntity,
       ProductVariantEntity,
+      ProductOptionEntity,
+      ProductOptionValueEntity,
+      ProductVariantOptionValueEntity,
       ProductViewHistoryEntity,
       ProductBestSellerRankingEntity,
       ProductInventoryEntity,
@@ -338,6 +343,7 @@ import { STOREFRONT_PRICING_CONFIG, buildStorefrontPricingConfig } from '~/platf
     StorefrontMarketContextService,
     StorefrontIndexedPriceProjectionService,
     ResolvedStorefrontPriceService,
+    PurchaseEligibilityService,
     PublicProductOrderHistoryService,
     PublicProductBestSellerRankingService,
     PublicProductViewHistoryService,
@@ -362,16 +368,14 @@ import { STOREFRONT_PRICING_CONFIG, buildStorefrontPricingConfig } from '~/platf
     ListShopProductReviewsUseCase,
     ListShopProductsUseCase,
     RecommendPublicProductsUseCase,
+    ConfigureProductVariantConfigurationUseCase,
     SuggestPublicProductsUseCase,
     BulkMutateShopProductsUseCase,
     PublishProductUseCase,
     SetProductImagesByKeysUseCase,
     SetProductImagesUseCase,
     SetProductAttributesUseCase,
-    SetProductInventoryUseCase,
-    SetProductPricingUseCase,
     SetProductShippingUseCase,
-    SetProductVariantsUseCase,
     DownloadProductImportReportUseCase,
     DownloadProductImportTemplateUseCase,
     GetProductImportUseCase,
@@ -399,6 +403,7 @@ import { STOREFRONT_PRICING_CONFIG, buildStorefrontPricingConfig } from '~/platf
     CatalogProductProjectorService,
     StorefrontMarketContextService,
     ResolvedStorefrontPriceService,
+    PurchaseEligibilityService,
     PublicProductOrderHistoryService,
     PublicProductBestSellerRankingService,
     PendingReviewImageUploadService,
@@ -419,16 +424,14 @@ import { STOREFRONT_PRICING_CONFIG, buildStorefrontPricingConfig } from '~/platf
     ListShopProductReviewsUseCase,
     ListShopProductsUseCase,
     RecommendPublicProductsUseCase,
+    ConfigureProductVariantConfigurationUseCase,
     SuggestPublicProductsUseCase,
     BulkMutateShopProductsUseCase,
     PublishProductUseCase,
     SetProductImagesByKeysUseCase,
     SetProductImagesUseCase,
     SetProductAttributesUseCase,
-    SetProductInventoryUseCase,
-    SetProductPricingUseCase,
     SetProductShippingUseCase,
-    SetProductVariantsUseCase,
     UpsertMyProductReviewUseCase,
     UpdateProductDetailsUseCase,
     ProcessProductImportJob,

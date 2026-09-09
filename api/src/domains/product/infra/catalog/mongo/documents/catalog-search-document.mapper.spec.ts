@@ -1,7 +1,6 @@
 import { ProductImageVariant } from '../../../../domain/enums/product-image-variant.enum';
 import { ProductImageVariantStatus } from '../../../../domain/enums/product-image-variant-status.enum';
 import { ProductState } from '../../../../domain/enums/product-state.enum';
-import { ProductVariantType } from '../../../../domain/enums/product-variant-type.enum';
 import { ProductWhoMade } from '../../../../domain/enums/product-who-made.enum';
 import { ProductShippingCharge } from '../../../../domain/enums/product-shipping-charge.enum';
 import { toCatalogSearchDocument } from './catalog-search-document.mapper';
@@ -19,7 +18,6 @@ describe('catalog-search-document.mapper', () => {
       state: ProductState.ACTIVE,
       isDigital: false,
       whoMade: ProductWhoMade.I_DID,
-      variantType: ProductVariantType.SINGLE,
       views: 18,
       shop: {
         id: 'shop-1',
@@ -48,10 +46,19 @@ describe('catalog-search-document.mapper', () => {
       variants: {
         getItems: () => [{
           id: 'variant-1',
-          name: 'Small',
-          optionValue1: 'Small',
-          optionValue2: undefined,
           rank: 1,
+          selections: {
+            getItems: () => [{
+              productOption: {
+                id: 'option-size',
+                name: 'Size',
+              },
+              productOptionValue: {
+                id: 'value-small',
+                value: 'Small',
+              },
+            }],
+          },
         }],
       },
       inventoryRecords: {

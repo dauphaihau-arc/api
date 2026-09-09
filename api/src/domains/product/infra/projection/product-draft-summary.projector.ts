@@ -19,13 +19,13 @@ export function toProductDraftSummary(
     slug: product.slug,
     description: product.description,
     state: product.state,
+    productVersion: product.productVersion,
+    publishedAt: product.publishedAt,
+    removedAt: product.removedAt,
     whoMade: product.whoMade,
     isDigital: product.isDigital,
     nonTaxable: product.nonTaxable,
     tags: product.tags ?? [],
-    variantType: product.variantType,
-    variantGroupName: product.variantGroupName,
-    variantSubGroupName: product.variantSubGroupName,
     images: product.images
       .getItems()
       .sort((left, right) => left.rank - right.rank)
@@ -67,22 +67,53 @@ export function toProductDraftSummary(
         selectedOptionValue: attributeValue.selectedOption?.value,
         selectedText: attributeValue.selectedText,
       })),
+    options: product.options
+      .getItems()
+      .filter((option) => !option.removedAt)
+      .sort((left, right) => left.position - right.position)
+      .map((option) => ({
+        id: option.id,
+        name: option.name,
+        position: option.position,
+        values: option.values
+          .getItems()
+          .filter((value) => !value.removedAt)
+          .sort((left, right) => left.position - right.position)
+          .map((value) => ({
+            id: value.id,
+            value: value.value,
+            position: value.position,
+          })),
+      })),
     variants: product.variants
       .getItems()
       .sort((left, right) => left.rank - right.rank)
       .map((variant) => ({
         id: variant.id,
-        name: variant.name,
-        optionValue1: variant.optionValue1,
-        optionValue2: variant.optionValue2,
         imageStorageKey: variant.imageStorageKey,
         rank: variant.rank,
+        lifecycleState: variant.lifecycleState,
+        selections: variant.selections
+          .getItems()
+          .sort((left, right) => left.productOption.position - right.productOption.position)
+          .map((selection) => ({
+            optionId: selection.productOption.id,
+            valueId: selection.productOptionValue.id,
+          })),
+        removedAt: variant.removedAt,
       })),
     inventory: sortInventoryRecords(product.inventoryRecords.getItems()).map((inventoryRecord) => ({
       id: inventoryRecord.id,
-      productVariantId: inventoryRecord.productVariant?.id,
+      productVariantId: inventoryRecord.productVariant.id,
       sku: inventoryRecord.sku,
       stock: inventoryRecord.stock,
+      onHandQuantity: inventoryRecord.onHandQuantity,
+      reservedQuantity: inventoryRecord.reservedQuantity,
+      availableQuantity: inventoryRecord.availableQuantity,
+      onHandVersion: inventoryRecord.onHandVersion,
+      shortage: inventoryRecord.shortage,
+      lifecycleState: inventoryRecord.lifecycleState,
+      removedAt: inventoryRecord.removedAt,
       ...getSummaryPricing(inventoryRecord),
     })),
     shipping: product.shippingProfiles.length > 0

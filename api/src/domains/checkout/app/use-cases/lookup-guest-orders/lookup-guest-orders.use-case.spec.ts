@@ -70,9 +70,6 @@ describe('LookupGuestOrdersUseCase', () => {
       currency: 'USD',
       price: 10,
       salePrice: null,
-      variantName: 'Blue',
-      variantGroupName: 'Color',
-      variantSubGroupName: undefined,
       percentCouponPercent: null,
       inventory: {},
     }];

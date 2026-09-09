@@ -83,9 +83,6 @@ describe('RequestOrderCancelUseCase', () => {
       currency: 'USD',
       price: 25,
       salePrice: undefined,
-      variantName: undefined,
-      variantGroupName: undefined,
-      variantSubGroupName: undefined,
       percentCouponPercent: null,
     }];
     const fakeEntityManager = {

@@ -20,6 +20,7 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("POST /inventory/reservations/quote", h.reserveQuote)
 	mux.HandleFunc("POST /inventory/reservations/validate", h.validateReservation)
 	mux.HandleFunc("POST /inventory/reservations/release", h.releaseReservation)
+	mux.HandleFunc("POST /inventory/items/on-hand", h.setOnHandQuantity)
 	return mux
 }
 
@@ -61,6 +62,35 @@ func (h *Handler) validateReservation(writer http.ResponseWriter, request *http.
 
 	if err != nil {
 		writeError(writer, http.StatusBadRequest, "VALIDATION_FAILED", err.Error())
+		return
+	}
+
+	writeJSON(writer, http.StatusOK, response)
+}
+
+func (h *Handler) setOnHandQuantity(writer http.ResponseWriter, request *http.Request) {
+	var body SetOnHandQuantityRequest
+
+	if err := json.NewDecoder(request.Body).Decode(&body); err != nil {
+		writeError(writer, http.StatusBadRequest, "INVALID_JSON", err.Error())
+		return
+	}
+	if key := request.Header.Get("Idempotency-Key"); body.IdempotencyKey == "" && key != "" {
+		body.IdempotencyKey = key
+	}
+
+	response, err := h.service.SetOnHandQuantity(body)
+	if err != nil {
+		status := http.StatusBadRequest
+		code := "ON_HAND_COUNT_FAILED"
+		if errors.Is(err, ErrOnHandVersionConflict) || errors.Is(err, ErrIdempotencyConflict) {
+			status = http.StatusConflict
+		}
+		if errors.Is(err, ErrInventoryNotFound) {
+			status = http.StatusNotFound
+			code = "INVENTORY_NOT_FOUND"
+		}
+		writeError(writer, status, code, err.Error())
 		return
 	}
 

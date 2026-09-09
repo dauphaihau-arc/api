@@ -14,7 +14,6 @@ import {
   MaxLength,
   MinLength,
 } from 'class-validator';
-import { ProductVariantType } from '~/domains/product/domain/enums/product-variant-type.enum';
 import { ProductWhoMade } from '~/domains/product/domain/enums/product-who-made.enum';
 
 export class CreateProductDto {
@@ -62,26 +61,4 @@ export class CreateProductDto {
   @MaxLength(21, { each: true })
   tags?: string[];
 
-  @IsOptional()
-  @ApiPropertyOptional({ name: 'variant_type', enum: ProductVariantType })
-  @Expose({ name: 'variant_type' })
-  @Transform(({ value, obj: source }) => value ?? source.variant_type)
-  @IsEnum(ProductVariantType)
-  variantType?: ProductVariantType;
-
-  @IsOptional()
-  @ApiPropertyOptional({ name: 'variant_group_name' })
-  @Expose({ name: 'variant_group_name' })
-  @Transform(({ value, obj: source }) => value ?? source.variant_group_name)
-  @IsString()
-  @MinLength(1)
-  variantGroupName?: string;
-
-  @IsOptional()
-  @ApiPropertyOptional({ name: 'variant_sub_group_name' })
-  @Expose({ name: 'variant_sub_group_name' })
-  @Transform(({ value, obj: source }) => value ?? source.variant_sub_group_name)
-  @IsString()
-  @MinLength(1)
-  variantSubGroupName?: string;
 }

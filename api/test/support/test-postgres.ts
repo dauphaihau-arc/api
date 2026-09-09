@@ -3,7 +3,7 @@ import { randomUUID } from 'crypto';
 import { Client } from 'pg';
 import { buildDatabaseConfig } from '~/platform/config/database.config';
 
-type TestDatabaseContext = {
+export type TestDatabaseContext = {
   dbName: string;
   rootConfig: {
     host: string;

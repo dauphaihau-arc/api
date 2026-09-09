@@ -14,9 +14,7 @@ describe('ShopProductsController', () => {
   const setProductImagesByKeysUseCase = { execute: jest.fn() };
   const setProductImagesUseCase = { execute: jest.fn() };
   const setProductAttributesUseCase = { execute: jest.fn() };
-  const setProductVariantsUseCase = { execute: jest.fn() };
-  const setProductInventoryUseCase = { execute: jest.fn() };
-  const setProductPricingUseCase = { execute: jest.fn() };
+  const configureProductVariantConfigurationUseCase = { execute: jest.fn() };
   const setProductShippingUseCase = { execute: jest.fn() };
   const updateProductDetailsUseCase = { execute: jest.fn() };
   const bulkMutateShopProductsUseCase = { execute: jest.fn() };
@@ -32,9 +30,7 @@ describe('ShopProductsController', () => {
     setProductImagesByKeysUseCase as never,
     setProductImagesUseCase as never,
     setProductAttributesUseCase as never,
-    setProductVariantsUseCase as never,
-    setProductInventoryUseCase as never,
-    setProductPricingUseCase as never,
+    configureProductVariantConfigurationUseCase as never,
     setProductShippingUseCase as never,
     updateProductDetailsUseCase as never,
     bulkMutateShopProductsUseCase as never,
@@ -52,6 +48,78 @@ describe('ShopProductsController', () => {
     expect(Reflect.getMetadata(METHOD_METADATA, handler)).toBe(RequestMethod.GET);
   });
 
+
+  it('delegates normalized variant configuration with route ids and idempotency', async () => {
+    const product = {
+      id: 'product-1',
+      shopId: 'shop-1',
+      title: 'Mug',
+      slug: 'mug',
+      description: 'Mug',
+      state: 'active',
+      productVersion: 8,
+      whoMade: 'i_did',
+      isDigital: false,
+      nonTaxable: false,
+      images: [],
+      attributes: [],
+      variants: [],
+      inventory: [],
+      options: [],
+    };
+    const actor = {
+      userId: 'user-1',
+      email: 'seller@example.com',
+      status: 'active',
+      sessionId: 'session-1',
+      roles: [],
+      permissions: [],
+    } as never;
+
+    getProductByIdUseCase.execute.mockResolvedValue(product);
+    configureProductVariantConfigurationUseCase.execute.mockResolvedValue(ok(product));
+
+    await controller.configureProductVariantConfiguration('shop-1', 'product-1', actor, {
+      productVersion: 7,
+      options: [{
+        clientRef: 'option-size',
+        name: 'Size',
+        position: 1,
+        values: [{
+          clientRef: 'value-m',
+          value: 'M',
+          position: 1,
+        }],
+      }],
+      variants: [{
+        clientRef: 'variant-m',
+        lifecycleState: 'active' as never,
+        selections: [{
+          optionRef: 'option-size',
+          valueRef: 'value-m',
+        }],
+        inventory: {
+          sku: 'MUG-M',
+          onHandQuantity: 4,
+          amountMinor: 2000,
+          currency: 'USD',
+        },
+      }],
+      removedVariantIds: ['variant-old'],
+      restoreVariantIds: [],
+    }, 'configuration-command-1');
+
+    expect(configureProductVariantConfigurationUseCase.execute).toHaveBeenCalledWith(
+      actor,
+      'product-1',
+      expect.objectContaining({
+        productVersion: 7,
+        idempotencyKey: 'configuration-command-1',
+        removedVariantIds: ['variant-old'],
+      }),
+    );
+  });
+
   it('returns product detail in snake_case for the HTTP boundary', async () => {
     getProductByIdUseCase.execute.mockResolvedValue({
       id: 'product-1',
@@ -64,13 +132,12 @@ describe('ShopProductsController', () => {
       slug: 'handmade-bag',
       description: 'A detail page payload.',
       state: 'draft',
+      productVersion: 4,
+      publishedAt: new Date('2026-01-01T00:00:00.000Z'),
       whoMade: 'i_did',
       isDigital: false,
       nonTaxable: true,
       tags: ['sneaker'],
-      variantType: 'single',
-      variantGroupName: 'Color',
-      variantSubGroupName: 'Size',
       images: [
         {
           id: 'image-1',
@@ -98,10 +165,34 @@ describe('ShopProductsController', () => {
         {
           id: 'variant-1',
           name: 'Brown / Large',
-          optionValue1: 'Brown',
-          optionValue2: 'Large',
           imageStorageKey: 'products/variant-1.jpg',
           rank: 1,
+          lifecycleState: 'active',
+          removedAt: undefined,
+          selections: [
+            {
+              optionId: 'option-color',
+              valueId: 'value-brown',
+            },
+            {
+              optionId: 'option-size',
+              valueId: 'value-large',
+            },
+          ],
+        },
+      ],
+      options: [
+        {
+          id: 'option-color',
+          name: 'Color',
+          position: 1,
+          values: [{ id: 'value-brown', value: 'Brown', position: 1 }],
+        },
+        {
+          id: 'option-size',
+          name: 'Size',
+          position: 2,
+          values: [{ id: 'value-large', value: 'Large', position: 1 }],
         },
       ],
       inventory: [
@@ -154,13 +245,13 @@ describe('ShopProductsController', () => {
       slug: 'handmade-bag',
       description: 'A detail page payload.',
       state: 'draft',
+      product_version: 4,
+      published_at: new Date('2026-01-01T00:00:00.000Z'),
+      removed_at: undefined,
       who_made: 'i_did',
       is_digital: false,
       non_taxable: true,
       tags: ['sneaker'],
-      variant_type: 'single',
-      variant_group_name: 'Color',
-      variant_sub_group_name: 'Size',
       images: [
         {
           id: 'image-1',
@@ -183,14 +274,37 @@ describe('ShopProductsController', () => {
           selected_text: undefined,
         },
       ],
+      options: [
+        {
+          id: 'option-color',
+          name: 'Color',
+          position: 1,
+          values: [{ id: 'value-brown', value: 'Brown', position: 1 }],
+        },
+        {
+          id: 'option-size',
+          name: 'Size',
+          position: 2,
+          values: [{ id: 'value-large', value: 'Large', position: 1 }],
+        },
+      ],
       variants: [
         {
           id: 'variant-1',
-          name: 'Brown / Large',
-          option_value_1: 'Brown',
-          option_value_2: 'Large',
+          selections: [
+            {
+              option_id: 'option-color',
+              value_id: 'value-brown',
+            },
+            {
+              option_id: 'option-size',
+              value_id: 'value-large',
+            },
+          ],
           image_url: undefined,
           rank: 1,
+          lifecycle_state: 'active',
+          removed_at: undefined,
         },
       ],
       inventory: [
@@ -199,6 +313,11 @@ describe('ShopProductsController', () => {
           product_variant_id: 'variant-1',
           sku: 'HB-001',
           stock: 5,
+          on_hand_quantity: 5,
+          reserved_quantity: 0,
+          available_quantity: 5,
+          on_hand_version: 1,
+          shortage: 0,
           amount_minor: 2500,
           original_amount_minor: 3000,
           currency: 'USD',
@@ -242,13 +361,11 @@ describe('ShopProductsController', () => {
       whoMade: 'i_did',
       isDigital: false,
       nonTaxable: true,
-      variantType: 'single',
-      variantGroupName: 'Color',
-      variantSubGroupName: 'Size',
       images: [],
       attributes: [],
       variants: [],
       inventory: [],
+      options: [],
       shipping: undefined,
     }));
 
@@ -276,9 +393,7 @@ describe('ShopProductsController', () => {
       who_made: 'i_did',
       is_digital: false,
       non_taxable: true,
-      variant_type: 'single',
-      variant_group_name: 'Color',
-      variant_sub_group_name: 'Size',
+      options: [],
     });
   });
 
@@ -298,9 +413,6 @@ describe('ShopProductsController', () => {
           whoMade: 'i_did',
           isDigital: false,
           nonTaxable: true,
-          variantType: 'single',
-          variantGroupName: 'Color',
-          variantSubGroupName: 'Size',
           images: [
             {
               id: 'image-1',
@@ -326,6 +438,7 @@ describe('ShopProductsController', () => {
           attributes: [],
           variants: [],
           inventory: [],
+          options: [],
         },
       ],
       meta: {

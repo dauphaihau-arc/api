@@ -114,6 +114,7 @@ export class SetProductImagesUseCase {
           deduplicationKey: appJobDeduplicationKey.projectCatalogProduct(
             replacedImages.product.id,
           ),
+          deduplicationMode: 'coalesce-latest',
         },
       );
       await this.deleteObjects(replacedImages.removedStorageKeys);

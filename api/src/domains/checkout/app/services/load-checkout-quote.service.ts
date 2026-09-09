@@ -4,6 +4,7 @@ import type { CheckoutQuoteEntity } from '../../infra/persistence/entities/check
 import {
   CheckoutQuoteExpiredError,
   CheckoutQuoteNotFoundError,
+  CheckoutQuoteReservationUnavailableError,
 } from '../../../order/app/errors/order-app.error';
 import { CheckoutStockReservationPort } from '../ports/checkout-stock-reservation.port';
 import { CheckoutQuoteRepository } from '../ports/checkout-quote.repository';
@@ -68,6 +69,10 @@ export class LoadCheckoutQuoteService {
       throw new CheckoutQuoteNotFoundError();
     }
 
+
+    if (quote.invalidatedAt) {
+      throw new CheckoutQuoteReservationUnavailableError();
+    }
     if (quote.expiresAt.getTime() < Date.now()) {
       await this.entityManager.transactional(async (entityManager) => {
         await this.checkoutStockReservationService.expireReservationsForQuote(
@@ -156,6 +161,7 @@ function parsePricedShops(
       title: string;
       image_url?: string;
       quantity: number;
+      image_reference?: string;
       source_currency?: string;
       unit_price_source_minor?: number;
       line_total_source_minor?: number;
@@ -173,9 +179,13 @@ function parsePricedShops(
       fx_source?: string;
       fx_effective_at?: Date;
       fx_source_timestamp?: Date;
-      variant_name?: string;
-      variant_group_name?: string;
-      variant_sub_group_name?: string;
+      selected_options?: Array<{
+        optionId?: string;
+        optionName: string;
+        valueId?: string;
+        value: string;
+      }>;
+      sku?: string;
     }>;
   }>).map((shop) => ({
     shopId: shop.shop_id,
@@ -196,7 +206,9 @@ function parsePricedShops(
       shopSlug: item.shop_slug,
       title: item.title,
       imageUrl: item.image_url,
+      imageReference: item.image_reference,
       quantity: item.quantity,
+      sku: item.sku,
       sourceCurrency: item.source_currency ?? item.currency,
       unitPriceSourceMinor: item.unit_price_source_minor ?? item.original_amount_minor ?? item.unit_price_minor,
       lineTotalSourceMinor: item.line_total_source_minor ??
@@ -215,9 +227,7 @@ function parsePricedShops(
       fxSource: item.fx_source,
       fxEffectiveAt: item.fx_effective_at,
       fxSourceTimestamp: item.fx_source_timestamp,
-      variantName: item.variant_name,
-      variantGroupName: item.variant_group_name,
-      variantSubGroupName: item.variant_sub_group_name,
+      selectedOptions: item.selected_options ?? [],
     })),
   }));
 }

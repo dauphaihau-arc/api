@@ -1,7 +1,6 @@
 import { MikroORM, type EntityManager } from '@mikro-orm/postgresql';
 import { buildDatabaseConfig } from '~/platform/config/database.config';
 import { ProductState } from '~/domains/product/domain/enums/product-state.enum';
-import { ProductVariantType } from '~/domains/product/domain/enums/product-variant-type.enum';
 import { ProductWhoMade } from '~/domains/product/domain/enums/product-who-made.enum';
 import { ProductImageVariant } from '~/domains/product/domain/enums/product-image-variant.enum';
 import { ProductShippingCharge } from '~/domains/product/domain/enums/product-shipping-charge.enum';
@@ -12,9 +11,13 @@ import { ProductEntity } from '~/domains/product/infra/persistence/mikro-orm/ent
 import { ProductImageEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-image.entity';
 import { ProductImageVariantEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-image-variant.entity';
 import { ProductVariantEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-variant.entity';
+import { ProductOptionEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-option.entity';
+import { ProductOptionValueEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-option-value.entity';
+import { ProductVariantOptionValueEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-variant-option-value.entity';
 import { ProductInventoryEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-inventory.entity';
 import { VariantPriceEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/variant-price.entity';
 import { ProductShippingProfileEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-shipping-profile.entity';
+import type { TestDatabaseContext } from '../support/test-postgres';
 import { ProductShippingDestinationEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-shipping-destination.entity';
 import { MikroOrmSellerProductQueryRepository } from '~/domains/product/infra/persistence/mikro-orm/repositories/mikro-orm-seller-product-query.repository';
 import { createTestDatabase, dropTestDatabase } from '../support/test-postgres';
@@ -24,7 +27,7 @@ jest.setTimeout(30_000);
 describe('MikroOrmSellerProductQueryRepository (integration)', () => {
   let orm: MikroORM;
   let entityManager: EntityManager;
-  let testDb: Awaited<ReturnType<typeof createTestDatabase>>;
+  let testDb: TestDatabaseContext;
   let repository: MikroOrmSellerProductQueryRepository;
   let shop: ShopEntity;
   let category: CategoryEntity;
@@ -282,7 +285,6 @@ describe('MikroOrmSellerProductQueryRepository (integration)', () => {
       whoMade: ProductWhoMade.I_DID,
       isDigital: false,
       nonTaxable: false,
-      variantType: ProductVariantType.SINGLE,
       tags: [],
       createdAt: input.updatedAt,
       updatedAt: input.updatedAt,
@@ -311,18 +313,50 @@ describe('MikroOrmSellerProductQueryRepository (integration)', () => {
       height: 600,
       format: 'webp',
     });
+    const option = em.create(ProductOptionEntity, {
+      product,
+      name: 'Size',
+      normalizedName: 'size',
+      position: 1,
+    });
+    const smallValue = em.create(ProductOptionValueEntity, {
+      productOption: option,
+      value: 'Small',
+      normalizedValue: 'small',
+      position: 1,
+    });
+    const largeValue = em.create(ProductOptionValueEntity, {
+      productOption: option,
+      value: 'Large',
+      normalizedValue: 'large',
+      position: 2,
+    });
     const smallVariant = em.create(ProductVariantEntity, {
       product,
-      name: 'Small',
-      optionValue1: 'Small',
+      combinationKey: smallValue.id,
       rank: 1,
     });
     const largeVariant = em.create(ProductVariantEntity, {
       product,
-      name: 'Large',
-      optionValue1: 'Large',
+      combinationKey: largeValue.id,
       rank: 2,
     });
+    const smallSelection = em.create(ProductVariantOptionValueEntity, {
+      product,
+      productVariant: smallVariant,
+      productOption: option,
+      productOptionValue: smallValue,
+    });
+    const largeSelection = em.create(ProductVariantOptionValueEntity, {
+      product,
+      productVariant: largeVariant,
+      productOption: option,
+      productOptionValue: largeValue,
+    });
+    product.options.add(option);
+    option.values.add(smallValue, largeValue);
+    smallVariant.selections.add(smallSelection);
+    largeVariant.selections.add(largeSelection);
     const smallInventory = em.create(ProductInventoryEntity, {
       shop,
       product,
@@ -379,6 +413,11 @@ describe('MikroOrmSellerProductQueryRepository (integration)', () => {
       firstImage,
       secondImage,
       imageVariant,
+      option,
+      smallValue,
+      largeValue,
+      smallSelection,
+      largeSelection,
       smallVariant,
       largeVariant,
       smallInventory,

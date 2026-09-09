@@ -1,7 +1,7 @@
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import { UserStatus } from '~/domains/auth/domain/enums/user-status.enum';
+import { ProductVariantLifecycleState } from '../../../domain/enums/product-variant-lifecycle-state.enum';
 import { ProductShippingCharge } from '../../../domain/enums/product-shipping-charge.enum';
-import { ProductVariantType } from '../../../domain/enums/product-variant-type.enum';
 import type { ProductAppError } from '../../errors/product-app.error';
 import {
   InvalidProductVariantConfigurationError,
@@ -31,8 +31,6 @@ describe('CreateProductDraftFacadeUseCase', () => {
     whoMade: 'i_did' as ProductDraftSummary['whoMade'],
     isDigital: false,
     nonTaxable: false,
-    variantType: ProductVariantType.SINGLE,
-    variantGroupName: 'Color',
     images: [],
     attributes: [],
     variants: [],
@@ -79,7 +77,7 @@ describe('CreateProductDraftFacadeUseCase', () => {
         },
       }),
     };
-    const setProductVariantsUseCase = {
+    const configureProductVariantConfigurationUseCase = {
       execute: jest.fn().mockResolvedValue({
         isOk: true,
         value: {
@@ -87,61 +85,7 @@ describe('CreateProductDraftFacadeUseCase', () => {
           variants: [
             {
               id: 'variant-1',
-              name: 'Black',
-              optionValue1: 'Black',
               rank: 1,
-            },
-          ],
-        },
-      }),
-    };
-    const setProductInventoryUseCase = {
-      execute: jest.fn().mockResolvedValue({
-        isOk: true,
-        value: {
-          ...draft,
-          variants: [
-            {
-              id: 'variant-1',
-              name: 'Black',
-              optionValue1: 'Black',
-              rank: 1,
-            },
-          ],
-          inventory: [
-            {
-              id: 'inventory-1',
-              productVariantId: 'variant-1',
-              sku: 'MUG-BLK',
-              stock: 5,
-              amountMinor: 2450,
-              currency: 'USD',
-            },
-          ],
-        },
-      }),
-    };
-    const setProductPricingUseCase = {
-      execute: jest.fn().mockResolvedValue({
-        isOk: true,
-        value: {
-          ...draft,
-          variants: [
-            {
-              id: 'variant-1',
-              name: 'Black',
-              optionValue1: 'Black',
-              rank: 1,
-            },
-          ],
-          inventory: [
-            {
-              id: 'inventory-1',
-              productVariantId: 'variant-1',
-              sku: 'MUG-BLK',
-              stock: 5,
-              amountMinor: 2450,
-              currency: 'USD',
             },
           ],
         },
@@ -176,9 +120,7 @@ describe('CreateProductDraftFacadeUseCase', () => {
       createProductDraftUseCase as never,
       setProductImagesByKeysUseCase as never,
       setProductAttributesUseCase as never,
-      setProductVariantsUseCase as never,
-      setProductInventoryUseCase as never,
-      setProductPricingUseCase as never,
+      configureProductVariantConfigurationUseCase as never,
       setProductShippingUseCase as never,
     );
 
@@ -187,9 +129,7 @@ describe('CreateProductDraftFacadeUseCase', () => {
       createProductDraftUseCase,
       setProductImagesByKeysUseCase,
       setProductAttributesUseCase,
-      setProductVariantsUseCase,
-      setProductInventoryUseCase,
-      setProductPricingUseCase,
+      configureProductVariantConfigurationUseCase,
       setProductShippingUseCase,
     };
   }
@@ -199,9 +139,7 @@ describe('CreateProductDraftFacadeUseCase', () => {
       useCase,
       setProductImagesByKeysUseCase,
       setProductAttributesUseCase,
-      setProductVariantsUseCase,
-      setProductInventoryUseCase,
-      setProductPricingUseCase,
+      configureProductVariantConfigurationUseCase,
       setProductShippingUseCase,
     } = buildUseCase();
 
@@ -213,8 +151,6 @@ describe('CreateProductDraftFacadeUseCase', () => {
       whoMade: draft.whoMade,
       isDigital: false,
       nonTaxable: false,
-      variantType: ProductVariantType.SINGLE,
-      variantGroupName: 'Color',
       images: [
         {
           storageKey: 'products/tmp/1.jpg',
@@ -230,7 +166,8 @@ describe('CreateProductDraftFacadeUseCase', () => {
       variants: [
         {
           clientKey: 'black',
-          optionValue1: 'Black',
+          selections: [],
+          lifecycleState: ProductVariantLifecycleState.ACTIVE,
         },
       ],
       inventory: [
@@ -265,50 +202,23 @@ describe('CreateProductDraftFacadeUseCase', () => {
     expect(result.isOk).toBe(true);
     expect(setProductImagesByKeysUseCase.execute).toHaveBeenCalledTimes(1);
     expect(setProductAttributesUseCase.execute).toHaveBeenCalledTimes(1);
-    expect(setProductVariantsUseCase.execute).toHaveBeenCalledTimes(1);
+    expect(configureProductVariantConfigurationUseCase.execute).toHaveBeenCalledTimes(1);
     expect(setProductShippingUseCase.execute).toHaveBeenCalledTimes(1);
-    expect(setProductInventoryUseCase.execute).toHaveBeenCalledWith(
-      actor,
-      draft.id,
-      {
-        inventory: [
-          {
-            productVariantId: 'variant-1',
-            sku: 'MUG-BLK',
-            stock: 5,
-          },
-        ],
-      },
-    );
-    expect(setProductPricingUseCase.execute).toHaveBeenCalledWith(
-      actor,
-      draft.id,
-      {
-        pricing: [
-          {
-            inventoryId: 'inventory-1',
-            amountMinor: 2450,
-            currency: 'USD',
-          },
-        ],
-      },
-    );
   });
 
   it('returns an incomplete-draft error when inventory references an unknown variant client key', async () => {
-    const { useCase, setProductInventoryUseCase } = buildUseCase();
+    const { useCase } = buildUseCase();
 
     const result = await useCase.execute(actor, {
       shopId: 'shop-1',
       title: 'Handmade Mug',
       description: 'Wheel-thrown ceramic mug',
       whoMade: draft.whoMade,
-      variantType: ProductVariantType.SINGLE,
-      variantGroupName: 'Color',
       variants: [
         {
           clientKey: 'black',
-          optionValue1: 'Black',
+          selections: [],
+          lifecycleState: ProductVariantLifecycleState.ACTIVE,
         },
       ],
       inventory: [
@@ -326,7 +236,6 @@ describe('CreateProductDraftFacadeUseCase', () => {
       expect(error.failedStep).toBe('inventory');
       expect(error.message).toContain('unknown variant client key');
     }
-    expect(setProductInventoryUseCase.execute).not.toHaveBeenCalled();
   });
 
   it('wraps downstream section failures as incomplete-draft errors', async () => {

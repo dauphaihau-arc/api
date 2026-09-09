@@ -18,6 +18,7 @@ export interface BulkMutateShopProductsInput {
   shopId: string;
   productIds: string[];
   action: BulkMutateShopProductsAction;
+  idempotencyKey?: string;
 }
 
 export interface BulkMutateShopProductsFailure {

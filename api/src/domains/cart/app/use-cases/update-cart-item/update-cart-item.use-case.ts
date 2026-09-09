@@ -10,6 +10,7 @@ import {
 } from '../../errors/cart-app.error';
 import { CartRepository } from '../../ports/cart.repository';
 import type { CartActor, CartSnapshot } from '../../cart.types';
+import { PurchaseEligibilityService } from '~/domains/product/app/services/purchase-eligibility.service';
 
 export interface UpdateCartItemInput {
   cartId?: string;
@@ -20,7 +21,10 @@ export interface UpdateCartItemInput {
 
 @Injectable()
 export class UpdateCartItemUseCase {
-  constructor(private readonly cartRepository: CartRepository) {}
+  constructor(
+    private readonly cartRepository: CartRepository,
+    private readonly purchaseEligibilityService: PurchaseEligibilityService,
+  ) {}
 
   async execute(
     actor: CartActor,
@@ -32,18 +36,6 @@ export class UpdateCartItemUseCase {
 
     if (!inventory) {
       return err(new ProductInventoryNotFoundError(input.inventoryId));
-    }
-
-    if (inventory.productState !== 'active') {
-      return err(new ProductUnavailableForCartError());
-    }
-
-    if (
-      input.quantity !== undefined
-      && input.quantity > 0
-      && input.quantity > inventory.stock
-    ) {
-      return err(new CartQuantityExceedsStockError());
     }
 
     const existingCart = input.cartId
@@ -60,6 +52,24 @@ export class UpdateCartItemUseCase {
 
     if (!existingItem) {
       return err(new CartItemNotFoundError());
+    }
+
+    const eligibility = await this.purchaseEligibilityService.evaluate({
+      items: [{
+        inventoryId: input.inventoryId,
+        quantity: input.quantity && input.quantity > 0
+          ? input.quantity
+          : existingItem.quantity,
+        title: inventory.title,
+      }],
+    });
+
+    if (!eligibility.eligible) {
+      const reason = eligibility.failures[0]?.reason;
+
+      return err(reason === 'insufficient_available_quantity'
+        ? new CartQuantityExceedsStockError()
+        : new ProductUnavailableForCartError());
     }
 
     const cart = await this.cartRepository.updateCartItem({

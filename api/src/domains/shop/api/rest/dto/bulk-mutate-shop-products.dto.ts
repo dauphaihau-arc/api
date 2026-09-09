@@ -1,8 +1,9 @@
-import { Transform } from 'class-transformer';
+import { Expose, Transform } from 'class-transformer';
 import {
   ArrayNotEmpty,
   IsArray,
   IsEnum,
+  IsOptional,
   IsString,
 } from 'class-validator';
 import { BulkMutateShopProductsAction } from '../../../../product/app/use-cases/bulk-mutate-shop-products/bulk-mutate-shop-products.use-case';
@@ -18,4 +19,10 @@ export class BulkMutateShopProductsDto {
 
   @IsEnum(BulkMutateShopProductsAction)
   action!: BulkMutateShopProductsAction;
+
+  @IsOptional()
+  @Expose({ name: 'idempotency_key' })
+  @Transform(({ value, obj: source }) => value ?? source.idempotency_key)
+  @IsString()
+  idempotencyKey?: string;
 }

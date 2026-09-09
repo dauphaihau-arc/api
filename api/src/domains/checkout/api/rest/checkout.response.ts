@@ -49,7 +49,15 @@ export function toCheckoutQuoteResponse(
       inventory_id: item.inventoryId,
       title: item.title,
       image_url: item.imageUrl,
+      image_reference: item.imageReference,
       quantity: item.quantity,
+      sku: item.sku,
+      selected_options: (item.selectedOptions ?? []).map((selection) => ({
+        option_id: selection.optionId,
+        option_name: selection.optionName,
+        value_id: selection.valueId,
+        value: selection.value,
+      })),
       source_currency: item.sourceCurrency,
       unit_price_source_minor: item.unitPriceSourceMinor,
       line_total_source_minor: item.lineTotalSourceMinor,
@@ -62,9 +70,6 @@ export function toCheckoutQuoteResponse(
       fx_rate: item.fxRate,
       fx_source: item.fxSource,
       fx_effective_at: item.fxEffectiveAt,
-      variant_name: item.variantName,
-      variant_group_name: item.variantGroupName,
-      variant_sub_group_name: item.variantSubGroupName,
     })),
   };
 }
@@ -109,12 +114,16 @@ export function toCheckoutOrderListResponse(result: OrderListResult) {
           shop: {
             slug: product.shopSlug,
           },
-          variant_group_name: product.variantGroupName,
-          variant_sub_group_name: product.variantSubGroupName,
+          selected_options: (product.selectedOptions ?? []).map((selection) => ({
+            option_id: selection.optionId,
+            option_name: selection.optionName,
+            value_id: selection.valueId,
+            value: selection.value,
+          })),
           shipping: {},
         },
         inventory: {
-          variant: product.variantName,
+          sku: product.sku,
         },
         percent_coupon: product.percentCouponPercent
           ? { percent_off: product.percentCouponPercent }

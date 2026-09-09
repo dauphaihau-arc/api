@@ -53,8 +53,11 @@ Rules:
 - Optional local-only shops can live in `seed-data/shops.local.tsv`.
 - Product metadata lives in `seed-data/products.tsv`.
 - `seed-data/products.tsv` may include a `state` column; blank defaults to `active`.
+- Product rows use `options_json`, a JSON array of `{ "key", "name", "values": [{ "key", "value" }] }` objects. Product option and value keys are stable seed identities; do not rename them for display-only label changes.
 - Optional local-only product rows can live in `seed-data/products.local.tsv`.
 - Product inventory and variant rows live in `seed-data/product-inventory.tsv`.
+- Each inventory row uses `selections_json`, a JSON object mapping option keys to selected value keys. Products with no options use `{}`.
+- `variant_state` is optional and defaults to `active`; use `inactive` for intentionally unavailable matrix combinations that still need stable Product Variant and Inventory identities.
 - Optional local-only inventory rows can live in `seed-data/product-inventory.local.tsv`.
 - Product view-history rows live in `seed-data/product-view-history.tsv`.
 - Optional local-only product view-history rows can live in `seed-data/product-view-history.local.tsv`.
@@ -88,6 +91,7 @@ Rules:
 - `metadata_json` is optional and must be a JSON object when provided.
 - Seeded chat conversation state is derived from the message timeline plus `buyer_last_read_at` and `seller_last_read_at`.
 - Inventory TSV money columns are seed inputs only. Canonical sell prices are stored in `variant_prices`, not on `product_inventory`.
+- Seeders fail malformed, duplicate, or incomplete product option matrices. If a product defines two options, inventory rows must cover the full cartesian matrix; intentionally unavailable combinations should be present with `variant_state=inactive` and reviewed quantity/price values.
 - Exchange-rate seed rows live in `seed-data/exchange-rates.tsv`.
 - Optional local-only exchange rates can live in `seed-data/exchange-rates.local.tsv`.
 - Exchange-rate TSV should contain direct currency pairs because current FX lookup reads `from_currency -> to_currency` rows directly.
@@ -110,7 +114,7 @@ Rules:
 - Local-only review images can live under `seed-data/images/reviews-local/` with the same shop/product/reviewer structure. The local folder is checked before the tracked folder.
 - Supported review image extensions are `.jpg`, `.jpeg`, `.png`, and `.webp`.
 - Supported product image extensions are `.jpg`, `.jpeg`, `.png`, and `.webp`.
-- `product-inventory.tsv` should contain one row per SKU. Non-variant products still need one inventory row.
+- `product-inventory.tsv` should contain one row per SKU. Non-option products still need one default inventory row with mandatory quantity and price.
 - Keep filenames aligned with the relative keys referenced in [category.data.ts](../api/database/seeds/category.data.ts:62).
 - Hidden files like `.DS_Store` are ignored.
 

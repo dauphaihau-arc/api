@@ -19,9 +19,6 @@ export type PublicProductDetailResponse = {
   description: string;
   who_made: PublicProductDetail['whoMade'];
   is_digital: boolean;
-  variant_type?: PublicProductDetail['variantType'];
-  variant_group_name?: string;
-  variant_sub_group_name?: string;
   stock_notice_threshold: number;
   review_summary: {
     average: number;
@@ -41,21 +38,35 @@ export type PublicProductDetailResponse = {
       format?: string;
     }>;
   }>;
-  variants: Array<{
+  options: Array<{
     id: string;
     name: string;
-    option_value_1?: string;
-    option_value_2?: string;
+    position: number;
+    values: Array<{
+      id: string;
+      value: string;
+      position: number;
+    }>;
+  }>;
+  variants: Array<{
+    id: string;
+    selections: Array<{
+      option_id: string;
+      value_id: string;
+    }>;
     image_url?: string;
     rank: number;
   }>;
   inventory: Array<{
     id: string;
     product_variant_id?: string;
-    option_value_1?: string;
-    option_value_2?: string;
     sku?: string;
     stock: number;
+    on_hand_quantity: number;
+    reserved_quantity: number;
+    available_quantity: number;
+    on_hand_version: number;
+    shortage: number;
     amount_minor?: number;
     original_amount_minor?: number;
     currency?: string;

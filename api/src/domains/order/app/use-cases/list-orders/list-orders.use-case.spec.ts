@@ -60,9 +60,6 @@ function buildOrderItem(input: {
     quantity: 1,
     unitPriceMinor: 1200,
     originalAmountMinor: null,
-    variantName: undefined,
-    variantGroupName: undefined,
-    variantSubGroupName: undefined,
     percentCouponPercent: null,
     product: {
       id: `${input.id}-product`,

@@ -4,12 +4,10 @@ import { toSlug } from '~/platform/utils/slugify';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import { CategoryRepository } from '~/domains/category/app/ports/category.repository';
 import { ShopRepository } from '~/domains/shop/app/ports/shop.repository';
-import { ProductVariantType } from '../../../domain/enums/product-variant-type.enum';
 import { ProductWhoMade } from '../../../domain/enums/product-who-made.enum';
 import {
   ActorCannotCreateProductDraftError,
   CategoryNotFoundError,
-  InvalidProductVariantConfigurationError,
 } from '../../errors/product-app.error';
 import { ProductCommandRepository } from '../../ports/product-command.repository';
 import { SellerProductQueryRepository } from '../../ports/seller-product-query.repository';
@@ -23,16 +21,12 @@ export interface CreateProductDraftInput {
   whoMade: ProductWhoMade;
   isDigital?: boolean;
   nonTaxable?: boolean;
-  variantType?: ProductVariantType;
-  variantGroupName?: string;
-  variantSubGroupName?: string;
   tags?: string[];
 }
 
 type CreateProductDraftError =
   | ActorCannotCreateProductDraftError
-  | CategoryNotFoundError
-  | InvalidProductVariantConfigurationError;
+  | CategoryNotFoundError;
 
 @Injectable()
 export class CreateProductDraftUseCase {
@@ -65,11 +59,6 @@ export class CreateProductDraftUseCase {
       }
     }
 
-    const variantValidationError = this.validateVariantConfiguration(input);
-
-    if (variantValidationError) {
-      return err(variantValidationError);
-    }
 
     const slug = await this.createAvailableSlug(
       input.shopId,
@@ -85,9 +74,6 @@ export class CreateProductDraftUseCase {
       whoMade: input.whoMade,
       isDigital: input.isDigital ?? false,
       nonTaxable: input.nonTaxable ?? false,
-      variantType: input.variantType,
-      variantGroupName: input.variantGroupName?.trim() || undefined,
-      variantSubGroupName: input.variantSubGroupName?.trim() || undefined,
       tags: sanitizeTags(input.tags) ?? [],
     });
 
@@ -104,43 +90,6 @@ export class CreateProductDraftUseCase {
     return chooseAvailableProductSlug(baseSlug, existingSlugs);
   }
 
-  private validateVariantConfiguration(
-    input: CreateProductDraftInput,
-  ): InvalidProductVariantConfigurationError | null {
-    const variantType = input.variantType ?? ProductVariantType.NONE;
-    const hasGroupName = Boolean(input.variantGroupName?.trim());
-    const hasSubGroupName = Boolean(input.variantSubGroupName?.trim());
-
-    if (variantType === ProductVariantType.NONE) {
-      if (hasGroupName || hasSubGroupName) {
-        return new InvalidProductVariantConfigurationError(
-          'Products without variants cannot define variant group names',
-        );
-      }
-
-      return null;
-    }
-
-    if (!hasGroupName) {
-      return new InvalidProductVariantConfigurationError(
-        'Variant group name is required when variants are enabled',
-      );
-    }
-
-    if (variantType === ProductVariantType.SINGLE && hasSubGroupName) {
-      return new InvalidProductVariantConfigurationError(
-        'Single-variant products cannot define a variant sub-group name',
-      );
-    }
-
-    if (variantType === ProductVariantType.COMBINE && !hasSubGroupName) {
-      return new InvalidProductVariantConfigurationError(
-        'Combined variants require a variant sub-group name',
-      );
-    }
-
-    return null;
-  }
 }
 
 function chooseAvailableProductSlug(

@@ -89,9 +89,6 @@ describe('UpdateShopOrderRefundUseCase', () => {
       quantity: 1,
       price: 25,
       salePrice: undefined,
-      variantName: 'Blue',
-      variantGroupName: 'Color',
-      variantSubGroupName: undefined,
       percentCouponPercent: null,
     };
     const fakeEntityManager = {

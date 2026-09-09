@@ -22,6 +22,13 @@ export type CartActor =
   | { type: 'user'; userId: string }
   | { type: 'guest'; guestSessionId: string };
 
+export interface CartSelectedOptionSnapshot {
+  optionId: string;
+  optionName: string;
+  valueId: string;
+  value: string;
+}
+
 export interface CartInventoryCandidate {
   inventoryId: string;
   productId: string;
@@ -30,12 +37,10 @@ export interface CartInventoryCandidate {
   shopName: string;
   shopSlug: string;
   title: string;
-  variantType: string;
-  variantGroupName?: string;
-  variantSubGroupName?: string;
   imageUrl?: string;
+  imageReference?: string;
   thumbnailImageUrl?: string;
-  variantName?: string;
+  selectedOptions?: CartSelectedOptionSnapshot[];
   stock: number;
   sku?: string;
   productState: string;
@@ -74,9 +79,6 @@ export interface CartProductItemResponse {
       slug: string;
     };
     title: string;
-    variant_type: string;
-    variant_group_name?: string;
-    variant_sub_group_name?: string;
     image_url?: string;
   };
   inventory: {
@@ -86,7 +88,12 @@ export interface CartProductItemResponse {
     currency: string;
     stock: number;
     sku?: string;
-    variant_name?: string;
+    selected_options: Array<{
+      option_id: string;
+      option_name: string;
+      value_id: string;
+      value: string;
+    }>;
   };
 }
 
@@ -119,7 +126,12 @@ export interface CartResponse {
         image_url?: string;
       };
       inventory: {
-        variant_name?: string;
+        selected_options: Array<{
+          option_id: string;
+          option_name: string;
+          value_id: string;
+          value: string;
+        }>;
       };
       quantity: number;
     }>;
@@ -196,34 +208,6 @@ function minorUnitDivisor(currency: string): number {
   return currency === 'JPY' || currency === 'KRW' || currency === 'VND' ? 1 : 100;
 }
 
-function formatVariantName(
-  variantName?: string,
-  variantGroupName?: string,
-  variantSubGroupName?: string,
-): string | undefined {
-  if (!variantName) {
-    return undefined;
-  }
-
-  const labels = [variantGroupName, variantSubGroupName].filter(
-    (label): label is string => Boolean(label?.trim()),
-  );
-
-  if (labels.length === 0) {
-    return variantName;
-  }
-
-  const values = variantName
-    .split('/')
-    .map((value) => value.trim())
-    .filter(Boolean);
-
-  if (values.length !== labels.length) {
-    return labels.length === 1 ? `${labels[0]}: ${variantName}` : variantName;
-  }
-
-  return values.map((value, index) => `${labels[index]}: ${value}`).join(' / ');
-}
 
 export function buildCartResponse(
   cart: CartSnapshot | null,
@@ -307,9 +291,6 @@ export function buildCartResponse(
           slug: item.inventory.shopSlug,
         },
         title: item.inventory.title,
-        variant_type: item.inventory.variantType,
-        variant_group_name: item.inventory.variantGroupName,
-        variant_sub_group_name: item.inventory.variantSubGroupName,
         image_url: item.inventory.imageUrl,
       },
       inventory: {
@@ -321,11 +302,12 @@ export function buildCartResponse(
         currency: resolvedPricing.currency,
         stock: item.inventory.stock,
         sku: item.inventory.sku,
-        variant_name: formatVariantName(
-          item.inventory.variantName,
-          item.inventory.variantGroupName,
-          item.inventory.variantSubGroupName,
-        ),
+        selected_options: (item.inventory.selectedOptions ?? []).map((selection) => ({
+          option_id: selection.optionId,
+          option_name: selection.optionName,
+          value_id: selection.valueId,
+          value: selection.value,
+        })),
       },
     });
 
@@ -354,11 +336,12 @@ export function buildCartResponse(
           image_url: item.inventory.thumbnailImageUrl ?? item.inventory.imageUrl,
         },
         inventory: {
-          variant_name: formatVariantName(
-            item.inventory.variantName,
-            item.inventory.variantGroupName,
-            item.inventory.variantSubGroupName,
-          ),
+          selected_options: (item.inventory.selectedOptions ?? []).map((selection) => ({
+            option_id: selection.optionId,
+            option_name: selection.optionName,
+            value_id: selection.valueId,
+            value: selection.value,
+          })),
         },
         quantity: item.quantity,
       })),

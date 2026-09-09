@@ -68,9 +68,6 @@ describe('GetMyOrderByIdUseCase', () => {
         currency: 'USD',
         price: 50,
         salePrice: 47.5,
-        variantName: 'Blue',
-        variantGroupName: 'Color',
-        variantSubGroupName: undefined,
         percentCouponPercent: 5,
       },
     ];

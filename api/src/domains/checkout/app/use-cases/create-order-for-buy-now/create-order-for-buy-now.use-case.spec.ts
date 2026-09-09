@@ -37,7 +37,6 @@ describe('CreateOrderForBuyNowUseCase', () => {
             shopName: 'Shop 1',
             shopSlug: 'shop-1',
             title: 'Product 1',
-            variantType: 'single',
             stock: 10,
             currency: 'USD',
             pricing: {

@@ -25,15 +25,22 @@ export class CheckoutQuoteItemEntity extends AbstractBaseEntity {
 
   @Property({ fieldName: 'image_url', type: 'text', nullable: true })
   imageUrl?: string;
+  @Property({ fieldName: 'image_reference', type: 'text', nullable: true })
+  imageReference?: string;
 
-  @Property({ fieldName: 'variant_group_name', length: 100, nullable: true })
-  variantGroupName?: string;
 
-  @Property({ fieldName: 'variant_sub_group_name', length: 100, nullable: true })
-  variantSubGroupName?: string;
+  @Property({ fieldName: 'sku', length: 255, nullable: true })
+  sku?: string;
 
-  @Property({ fieldName: 'variant_name', length: 255, nullable: true })
-  variantName?: string;
+
+  @Property({ fieldName: 'selected_options', type: 'json', nullable: true })
+  selectedOptions?: Array<{
+    optionId?: string;
+    optionName: string;
+    valueId?: string;
+    value: string;
+  }>;
+
 
   @Property()
   quantity!: number;

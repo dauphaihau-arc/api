@@ -30,7 +30,6 @@ export const toPublicProductListItemResponse = (
         : undefined,
     }
     : undefined,
-  variant_type: product.variantType,
   pricing: product.pricing
     ? {
       ...(product.pricing.minAmountMinor !== undefined

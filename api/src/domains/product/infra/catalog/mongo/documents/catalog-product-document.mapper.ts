@@ -19,9 +19,6 @@ export interface CatalogProductDocument {
   state: ProductState;
   isDigital: boolean;
   whoMade: ProductEntity['whoMade'];
-  variantType?: ProductEntity['variantType'];
-  variantGroupName?: string;
-  variantSubGroupName?: string;
   ratingAverage: number;
   reviewCount: number;
   images: Array<{
@@ -47,24 +44,37 @@ export interface CatalogProductDocument {
       storageKey: string;
     }>;
   };
-  variants: Array<{
+  options?: Array<{
     id: string;
     name: string;
-    optionValue1?: string;
-    optionValue2?: string;
+    position: number;
+    values: Array<{
+      id: string;
+      value: string;
+      position: number;
+    }>;
+  }>;
+  variants: Array<{
+    id: string;
+    selections: Array<{
+      optionId: string;
+      optionName: string;
+      valueId: string;
+      value: string;
+    }>;
     imageStorageKey?: string;
     rank: number;
   }>;
   variantCount: number;
   inventory: Array<{
     id: string;
-    productVariantId?: string;
+    productVariantId: string;
     sku?: string;
     stock: number;
   }>;
   primaryInventory?: {
     id: string;
-    productVariantId?: string;
+    productVariantId: string;
     sku?: string;
     stock: number;
   };
@@ -118,10 +128,15 @@ export function toCatalogProductDocument(
     .sort((left, right) => left.rank - right.rank);
   const sortedVariants = product.variants
     .getItems()
+    .filter((variant) => variant.lifecycleState !== 'removed')
     .slice()
     .sort((left, right) => left.rank - right.rank);
+  const visibleVariantIds = new Set(sortedVariants.map((variant) => variant.id));
   const sortedInventory = product.inventoryRecords
     .getItems()
+    .filter((inventory) =>
+      inventory.lifecycleState !== 'removed'
+      && (!inventory.productVariant || visibleVariantIds.has(inventory.productVariant.id)))
     .slice()
     .sort((left, right) => {
       if (!left.productVariant && !right.productVariant) return 0;
@@ -138,6 +153,26 @@ export function toCatalogProductDocument(
       stock: row.stock,
     };
   });
+  const options = (product.options?.getItems() ?? [])
+    .filter((option) => !option.removedAt)
+    .slice()
+    .sort((left, right) => left.position - right.position)
+    .map((option) => ({
+      id: option.id,
+      name: option.name,
+      position: option.position,
+      values: option.values
+        .getItems()
+        .filter((value) => !value.removedAt)
+        .slice()
+        .sort((left, right) => left.position - right.position)
+        .map((value) => ({
+          id: value.id,
+          value: value.value,
+          position: value.position,
+        })),
+    }));
+
 
   const imageDocuments = sortedImages.map((image) => ({
     id: image.id,
@@ -200,18 +235,19 @@ export function toCatalogProductDocument(
     state: product.state,
     isDigital: product.isDigital,
     whoMade: product.whoMade,
-    variantType: product.variantType,
-    variantGroupName: product.variantGroupName,
-    variantSubGroupName: product.variantSubGroupName,
     ratingAverage: product.ratingAverage,
     reviewCount: product.reviewCount,
     images: imageDocuments,
     primaryImage: primaryImageDocument,
+    options,
     variants: sortedVariants.map((variant) => ({
       id: variant.id,
-      name: variant.name,
-      optionValue1: variant.optionValue1,
-      optionValue2: variant.optionValue2,
+      selections: variant.selections.getItems().map((selection) => ({
+        optionId: selection.productOption.id,
+        optionName: selection.productOption.name,
+        valueId: selection.productOptionValue.id,
+        value: selection.productOptionValue.value,
+      })),
       imageStorageKey: variant.imageStorageKey,
       rank: variant.rank,
     })),
@@ -260,16 +296,16 @@ export function toCatalogProductDocument(
     search: {
       suggest: uniqueStrings([
         product.title,
-        ...sortedVariants.map((variant) => variant.name),
+        ...sortedVariants.map((variant) => variant.selections.getItems().map((selection) => selection.productOptionValue.value).join(' / ')),
       ].map(normalizeSearchText).filter(Boolean)),
       keywords: uniqueStrings([
         product.title,
         product.shop.shopName,
         product.slug.replaceAll('-', ' '),
-        ...sortedVariants.flatMap((variant) => [
-          variant.optionValue1,
-          variant.optionValue2,
-        ]),
+        ...sortedVariants.flatMap((variant) => variant.selections.getItems().flatMap((selection) => [
+          selection.productOption.name,
+          selection.productOptionValue.value,
+        ])),
       ].map((value) => normalizeSearchText(value)).filter(Boolean)),
     },
     sort: {

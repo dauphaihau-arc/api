@@ -13,13 +13,13 @@ import { createPublicId } from '~/platform/ids/public-id';
 import { CategoryEntity } from '~/domains/category/infra/persistence/entities/category.entity';
 import { ShopEntity } from '~/domains/shop/infra/persistence/entities/shop.entity';
 import { ProductState } from '~/domains/product/domain/enums/product-state.enum';
-import { ProductVariantType } from '~/domains/product/domain/enums/product-variant-type.enum';
 import { ProductWhoMade } from '~/domains/product/domain/enums/product-who-made.enum';
 import { ProductAttributeValueEntity } from './product-attribute-value.entity';
 import { ProductImageEntity } from './product-image.entity';
 import { ProductInventoryEntity } from './product-inventory.entity';
 import { ProductShippingProfileEntity } from './product-shipping-profile.entity';
 import { ProductVariantEntity } from './product-variant.entity';
+import { ProductOptionEntity } from './product-option.entity';
 
 @Entity({ tableName: 'products' })
 @Index({ properties: ['category'] })
@@ -56,6 +56,9 @@ export class ProductEntity extends AbstractBaseEntity {
   @Enum({ items: () => ProductState, fieldName: 'state' })
   state = ProductState.DRAFT;
 
+  @Property({ fieldName: 'product_version' })
+  productVersion = 1;
+
   @Enum({
     items: () => ProductWhoMade,
     fieldName: 'who_made',
@@ -70,27 +73,6 @@ export class ProductEntity extends AbstractBaseEntity {
 
   @Property({ fieldName: 'tags', type: 'json' })
   tags: string[] = [];
-
-  @Enum({
-    items: () => ProductVariantType,
-    fieldName: 'variant_type',
-    nullable: true,
-  })
-  variantType?: ProductVariantType;
-
-  @Property({
-    fieldName: 'variant_group_name',
-    length: 255,
-    nullable: true,
-  })
-  variantGroupName?: string;
-
-  @Property({
-    fieldName: 'variant_sub_group_name',
-    length: 255,
-    nullable: true,
-  })
-  variantSubGroupName?: string;
 
   @Property({ fieldName: 'views' })
   views = 0;
@@ -109,6 +91,9 @@ export class ProductEntity extends AbstractBaseEntity {
   @Property({ fieldName: 'published_at', nullable: true })
   publishedAt?: Date;
 
+  @Property({ fieldName: 'removed_at', nullable: true })
+  removedAt?: Date;
+
   @Property({ fieldName: 'public_sort_prices', type: 'json', nullable: true })
   publicSortPrices?: Record<string, number>;
 
@@ -123,6 +108,9 @@ export class ProductEntity extends AbstractBaseEntity {
 
   @OneToMany(() => ProductVariantEntity, (variant) => variant.product)
   variants = new Collection<ProductVariantEntity>(this);
+
+  @OneToMany(() => ProductOptionEntity, (option) => option.product)
+  options = new Collection<ProductOptionEntity>(this);
 
   @OneToMany(() => ProductInventoryEntity, (inventory) => inventory.product)
   inventoryRecords = new Collection<ProductInventoryEntity>(this);

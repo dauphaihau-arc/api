@@ -17,7 +17,6 @@ describe('GetPublicProductBySlugsUseCase', () => {
     description: 'Wheel-thrown ceramic mug',
     whoMade: 'i_did' as PublicProductDetail['whoMade'],
     isDigital: false,
-    variantType: 'none' as PublicProductDetail['variantType'],
     stockNoticeThreshold: 10,
     reviewSummary: {
       average: 0,

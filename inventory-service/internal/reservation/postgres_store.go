@@ -57,18 +57,20 @@ func (s *PostgresStore) CreateReservation(reservation Reservation) (Reservation,
 	availableAfterReservationByInventoryID := map[string]int{}
 
 	for _, item := range sortItemsByInventoryID(reservation.Items) {
-		var stock int
+		var onHandQuantity int
+		var reservedQuantity int
+		var lifecycleState string
 
 		err := tx.QueryRow(
 			ctx,
 			`
-				select stock
+				select on_hand_quantity, reserved_quantity, lifecycle_state
 				from product_inventory
 				where id = $1
 				for update
 			`,
 			item.InventoryID,
-		).Scan(&stock)
+		).Scan(&onHandQuantity, &reservedQuantity, &lifecycleState)
 
 		if errors.Is(err, pgx.ErrNoRows) {
 			return Reservation{}, ErrReservationUnavailable
@@ -76,22 +78,50 @@ func (s *PostgresStore) CreateReservation(reservation Reservation) (Reservation,
 		if err != nil {
 			return Reservation{}, err
 		}
-		if stock < item.Quantity {
+		if lifecycleState == string(LifecycleRemoved) || onHandQuantity-reservedQuantity < item.Quantity {
 			return Reservation{}, ErrReservationUnavailable
 		}
 
-		availableAfterReservation := stock - item.Quantity
+		beforeReservedQuantity := reservedQuantity
+		reservedQuantity += item.Quantity
+		availableAfterReservation := onHandQuantity - reservedQuantity
+		if availableAfterReservation < 0 {
+			availableAfterReservation = 0
+		}
 		_, err = tx.Exec(
 			ctx,
 			`
 				update product_inventory
-				set stock = $1, updated_at = now()
+				set reserved_quantity = $1,
+				    stock = greatest(on_hand_quantity - $1, 0),
+				    updated_at = now()
 				where id = $2
 			`,
-			availableAfterReservation,
+			reservedQuantity,
 			item.InventoryID,
 		)
 
+		if err != nil {
+			return Reservation{}, err
+		}
+
+		_, err = tx.Exec(
+			ctx,
+			`
+				insert into inventory_movements (
+					id, created_at, updated_at, inventory_id, movement_kind, quantity_delta,
+					on_hand_before, reserved_before, on_hand_after, reserved_after, cause, command_id
+				)
+				values (gen_random_uuid(), now(), now(), $1, 'reserve', $2, $3, $4, $3, $5, 'checkout_quote', $6)
+				on conflict (command_id, inventory_id, movement_kind) do nothing
+			`,
+			item.InventoryID,
+			item.Quantity,
+			onHandQuantity,
+			beforeReservedQuantity,
+			reservedQuantity,
+			reservation.IdempotencyKey,
+		)
 		if err != nil {
 			return Reservation{}, err
 		}
@@ -197,21 +227,11 @@ func (s *PostgresStore) Save(reservation Reservation) error {
 	}
 
 	shouldUpdateStatus := true
-	if reservation.Status == StatusReleased {
+	if reservation.Status == StatusReleased || reservation.Status == StatusExpired {
 		switch current.Status {
 		case StatusActive:
 			for _, item := range current.Items {
-				_, err = tx.Exec(
-					ctx,
-					`
-						update product_inventory
-						set stock = stock + $1, updated_at = now()
-						where id = $2
-					`,
-					item.Quantity,
-					item.InventoryID,
-				)
-				if err != nil {
+				if err := releaseReservedQuantity(ctx, tx, item, reservation); err != nil {
 					return err
 				}
 			}
@@ -221,8 +241,21 @@ func (s *PostgresStore) Save(reservation Reservation) error {
 			return ErrReservationUnavailable
 		}
 	}
-	if reservation.Status == StatusSold && current.Status != StatusActive && current.Status != StatusSold {
-		return ErrReservationUnavailable
+	if reservation.Status == StatusSold {
+		if current.Status == StatusSold {
+			shouldUpdateStatus = false
+		} else if current.Status != StatusActive {
+			return ErrReservationUnavailable
+		} else {
+			if err := validateConsumeReservedQuantities(ctx, tx, current.Items); err != nil {
+				return err
+			}
+			for _, item := range current.Items {
+				if err := consumeReservedQuantity(ctx, tx, item, reservation); err != nil {
+					return err
+				}
+			}
+		}
 	}
 
 	if shouldUpdateStatus {
@@ -259,6 +292,195 @@ func (s *PostgresStore) Save(reservation Reservation) error {
 	}
 
 	return tx.Commit(ctx)
+}
+
+func (s *PostgresStore) SetOnHandQuantity(request SetOnHandQuantityRequest) (InventoryBalance, error) {
+	ctx := context.Background()
+	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted})
+	if err != nil {
+		return InventoryBalance{}, err
+	}
+	defer tx.Rollback(ctx)
+
+	var before InventoryBalance
+	err = tx.QueryRow(
+		ctx,
+		`
+			select on_hand_quantity, reserved_quantity, on_hand_version, lifecycle_state
+			from product_inventory
+			where id = $1
+			for update
+		`,
+		request.InventoryID,
+	).Scan(
+		&before.OnHandQuantity,
+		&before.ReservedQuantity,
+		&before.OnHandVersion,
+		&before.LifecycleState,
+	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return InventoryBalance{}, ErrInventoryNotFound
+	}
+	if err != nil {
+		return InventoryBalance{}, err
+	}
+	if before.OnHandVersion != request.ExpectedOnHandVersion {
+		return before.withDerivedQuantities(), ErrOnHandVersionConflict
+	}
+
+	after := before
+	after.OnHandQuantity = request.OnHandQuantity
+	after.OnHandVersion++
+	_, err = tx.Exec(
+		ctx,
+		`
+			update product_inventory
+			set on_hand_quantity = $1,
+			    on_hand_version = $2,
+			    stock = greatest($1 - reserved_quantity, 0),
+			    updated_at = now()
+			where id = $3
+		`,
+		after.OnHandQuantity,
+		after.OnHandVersion,
+		request.InventoryID,
+	)
+	if err != nil {
+		return InventoryBalance{}, err
+	}
+	_, err = tx.Exec(
+		ctx,
+		`
+			insert into inventory_movements (
+				id, created_at, updated_at, inventory_id, movement_kind, quantity_delta,
+				on_hand_before, reserved_before, on_hand_after, reserved_after,
+				cause, actor_id, command_id, note
+			)
+			values (gen_random_uuid(), now(), now(), $1, 'count', $2, $3, $4, $5, $4, 'seller_count', $6, $7, nullif($8, ''))
+			on conflict (command_id, inventory_id, movement_kind) do nothing
+		`,
+		request.InventoryID,
+		after.OnHandQuantity-before.OnHandQuantity,
+		before.OnHandQuantity,
+		before.ReservedQuantity,
+		after.OnHandQuantity,
+		request.ActorID,
+		request.IdempotencyKey,
+		request.Note,
+	)
+	if err != nil {
+		return InventoryBalance{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return InventoryBalance{}, err
+	}
+
+	return after.withDerivedQuantities(), nil
+}
+
+func releaseReservedQuantity(ctx context.Context, tx pgx.Tx, item Item, reservation Reservation) error {
+	var onHandQuantity int
+	var reservedQuantity int
+	err := tx.QueryRow(
+		ctx,
+		`
+			update product_inventory
+			set reserved_quantity = greatest(reserved_quantity - $1, 0),
+			    stock = greatest(on_hand_quantity - greatest(reserved_quantity - $1, 0), 0),
+			    updated_at = now()
+			where id = $2
+			returning on_hand_quantity, reserved_quantity
+		`,
+		item.Quantity,
+		item.InventoryID,
+	).Scan(&onHandQuantity, &reservedQuantity)
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec(
+		ctx,
+		`
+			insert into inventory_movements (
+				id, created_at, updated_at, inventory_id, movement_kind, quantity_delta,
+				on_hand_before, reserved_before, on_hand_after, reserved_after, cause, command_id
+			)
+			values (gen_random_uuid(), now(), now(), $1, 'release', $2, $3, $4, $3, $5, $6, $7)
+			on conflict (command_id, inventory_id, movement_kind) do nothing
+		`,
+		item.InventoryID,
+		item.Quantity,
+		onHandQuantity,
+		reservedQuantity+item.Quantity,
+		reservedQuantity,
+		string(reservation.Status),
+		reservation.IdempotencyKey,
+	)
+	return err
+}
+
+func validateConsumeReservedQuantities(ctx context.Context, tx pgx.Tx, items []Item) error {
+	for _, item := range sortItemsByInventoryID(items) {
+		var onHandQuantity int
+		var reservedQuantity int
+		err := tx.QueryRow(
+			ctx,
+			`
+				select on_hand_quantity, reserved_quantity
+				from product_inventory
+				where id = $1
+				for update
+			`,
+			item.InventoryID,
+		).Scan(&onHandQuantity, &reservedQuantity)
+		if err != nil {
+			return err
+		}
+		if onHandQuantity < item.Quantity || reservedQuantity < item.Quantity {
+			return ErrReservationUnavailable
+		}
+	}
+	return nil
+}
+
+func consumeReservedQuantity(ctx context.Context, tx pgx.Tx, item Item, reservation Reservation) error {
+	var onHandQuantity int
+	var reservedQuantity int
+	err := tx.QueryRow(
+		ctx,
+		`
+			update product_inventory
+			set on_hand_quantity = on_hand_quantity - $1,
+			    reserved_quantity = reserved_quantity - $1,
+			    stock = greatest((on_hand_quantity - $1) - (reserved_quantity - $1), 0),
+			    updated_at = now()
+			where id = $2
+			returning on_hand_quantity, reserved_quantity
+		`,
+		item.Quantity,
+		item.InventoryID,
+	).Scan(&onHandQuantity, &reservedQuantity)
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec(
+		ctx,
+		`
+			insert into inventory_movements (
+				id, created_at, updated_at, inventory_id, movement_kind, quantity_delta,
+				on_hand_before, reserved_before, on_hand_after, reserved_after, cause, command_id
+			)
+			values (gen_random_uuid(), now(), now(), $1, 'sale', $2, $3, $4, $5, $6, 'order_created', $7)
+			on conflict (command_id, inventory_id, movement_kind) do nothing
+		`,
+		item.InventoryID,
+		-item.Quantity,
+		onHandQuantity+item.Quantity,
+		reservedQuantity+item.Quantity,
+		onHandQuantity,
+		reservedQuantity,
+		reservation.IdempotencyKey,
+	)
+	return err
 }
 
 func findByID(ctx context.Context, querier pgxQuerier, id string) (Reservation, bool, error) {

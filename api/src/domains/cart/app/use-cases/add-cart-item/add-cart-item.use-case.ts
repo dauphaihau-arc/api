@@ -8,6 +8,7 @@ import {
 } from '../../errors/cart-app.error';
 import { CartRepository } from '../../ports/cart.repository';
 import type { CartActor, CartSnapshot } from '../../cart.types';
+import { PurchaseEligibilityService } from '~/domains/product/app/services/purchase-eligibility.service';
 
 export interface AddCartItemInput {
   inventoryId: string;
@@ -17,7 +18,10 @@ export interface AddCartItemInput {
 
 @Injectable()
 export class AddCartItemUseCase {
-  constructor(private readonly cartRepository: CartRepository) {}
+  constructor(
+    private readonly cartRepository: CartRepository,
+    private readonly purchaseEligibilityService: PurchaseEligibilityService,
+  ) {}
 
   async execute(
     actor: CartActor,
@@ -31,12 +35,20 @@ export class AddCartItemUseCase {
       return err(new ProductInventoryNotFoundError(input.inventoryId));
     }
 
-    if (inventory.productState !== 'active' || inventory.stock <= 0) {
-      return err(new ProductUnavailableForCartError());
-    }
+    const eligibility = await this.purchaseEligibilityService.evaluate({
+      items: [{
+        inventoryId: input.inventoryId,
+        quantity: input.quantity,
+        title: inventory.title,
+      }],
+    });
 
-    if (input.quantity > inventory.stock) {
-      return err(new CartQuantityExceedsStockError());
+    if (!eligibility.eligible) {
+      const reason = eligibility.failures[0]?.reason;
+
+      return err(reason === 'insufficient_available_quantity'
+        ? new CartQuantityExceedsStockError()
+        : new ProductUnavailableForCartError());
     }
 
     const cart = input.isTemp

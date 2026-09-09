@@ -1,5 +1,3 @@
-import type { PublicProductListItem } from '../../../../app/product.types';
-
 export type PublicProductListItemResponse = {
   id: string;
   shop: {
@@ -18,7 +16,6 @@ export type PublicProductListItemResponse = {
       url?: string;
     }>;
   };
-  variant_type?: PublicProductListItem['variantType'];
   pricing?: {
     min_amount_minor?: number;
     max_amount_minor?: number;

@@ -12,6 +12,7 @@ import { CouponPricingService } from '../../../coupon/app/services/coupon-pricin
 import { StorefrontMarketContextService } from '../../../product/app/services/storefront-market-context.service';
 import { ProductInventoryEntity } from '../../../product/infra/persistence/mikro-orm/entities/product-inventory.entity';
 import { dispatchCatalogProductProjections } from '../../../product/app/catalog-product-projection-dispatch';
+import { PurchaseEligibilityService } from '../../../product/app/services/purchase-eligibility.service';
 import { JobDispatcher } from '../../../../integrations/queue/app/ports/job-dispatcher';
 import {
   CheckoutQuoteActorType,
@@ -20,7 +21,11 @@ import {
 import { CheckoutQuoteItemEntity } from '../../infra/persistence/entities/checkout-quote-item.entity';
 import { CheckoutStockReservationPort } from '../ports/checkout-stock-reservation.port';
 import { CheckoutQuoteRepository } from '../ports/checkout-quote.repository';
-import { CheckoutQuoteNoItemsError } from '../../../order/app/errors/order-app.error';
+import {
+  CheckoutQuoteNoItemsError,
+  CheckoutQuoteReservationOutOfStockError,
+  CheckoutQuoteReservationUnavailableError,
+} from '../../../order/app/errors/order-app.error';
 import type {
   CheckoutQuoteResult,
   CheckoutQuoteShopSummary,
@@ -41,6 +46,7 @@ export class CreateCheckoutQuoteService {
     private readonly storefrontMarketContextService: StorefrontMarketContextService,
     private readonly orderTotalPolicyService: OrderTotalPolicyService,
     private readonly checkoutStockReservationService: CheckoutStockReservationPort,
+    private readonly purchaseEligibilityService: PurchaseEligibilityService,
     private readonly jobDispatcher: JobDispatcher,
   ) {}
 
@@ -99,6 +105,24 @@ export class CreateCheckoutQuoteService {
       totalMinor,
       currency: checkoutCurrency,
     });
+
+    const eligibility = await this.purchaseEligibilityService.evaluate({
+      items: allItems.map((item) => ({
+        inventoryId: item.inventoryId,
+        quantity: item.quantity,
+        title: item.title,
+      })),
+    });
+
+    if (!eligibility.eligible) {
+      const failure = eligibility.failures[0];
+
+      if (failure?.reason === 'insufficient_available_quantity') {
+        throw new CheckoutQuoteReservationOutOfStockError(failure.title);
+      }
+
+      throw new CheckoutQuoteReservationUnavailableError();
+    }
 
     const {
       createdNewQuote,
@@ -205,9 +229,9 @@ export class CreateCheckoutQuoteService {
           inventory: entityManager.getReference(ProductInventoryEntity, item.inventoryId),
           title: item.title,
           imageUrl: item.imageUrl,
-          variantGroupName: item.variantGroupName,
-          variantSubGroupName: item.variantSubGroupName,
-          variantName: item.variantName,
+          imageReference: item.imageReference,
+          sku: item.sku,
+          selectedOptions: item.selectedOptions,
           quantity: item.quantity,
           sourceCurrency,
           unitPriceSourceMinor,
@@ -238,7 +262,10 @@ export class CreateCheckoutQuoteService {
           shopSlug: item.shopSlug,
           title: item.title,
           imageUrl: item.imageUrl,
+          imageReference: quoteItem.imageReference,
           quantity: item.quantity,
+          sku: quoteItem.sku,
+          selectedOptions: quoteItem.selectedOptions ?? [],
           sourceCurrency: quoteItem.sourceCurrency,
           unitPriceSourceMinor: quoteItem.unitPriceSourceMinor,
           lineTotalSourceMinor: quoteItem.lineTotalSourceMinor,
@@ -256,9 +283,6 @@ export class CreateCheckoutQuoteService {
           fxSource: quoteItem.fxSource,
           fxEffectiveAt: quoteItem.fxEffectiveAt,
           fxSourceTimestamp: quoteItem.fxSourceTimestamp,
-          variantName: item.variantName,
-          variantGroupName: item.variantGroupName,
-          variantSubGroupName: item.variantSubGroupName,
         };
       });
 
@@ -295,7 +319,9 @@ export class CreateCheckoutQuoteService {
           shop_slug: item.shopSlug,
           title: item.title,
           image_url: item.imageUrl,
+          image_reference: item.imageReference,
           quantity: item.quantity,
+          sku: item.sku,
           source_currency: item.sourceCurrency,
           unit_price_source_minor: item.unitPriceSourceMinor,
           line_total_source_minor: item.lineTotalSourceMinor,
@@ -313,9 +339,7 @@ export class CreateCheckoutQuoteService {
           fx_source: item.fxSource,
           fx_effective_at: item.fxEffectiveAt,
           fx_source_timestamp: item.fxSourceTimestamp,
-          variant_name: item.variantName,
-          variant_group_name: item.variantGroupName,
-          variant_sub_group_name: item.variantSubGroupName,
+          selected_options: item.selectedOptions,
         })),
       }));
 
@@ -384,7 +408,9 @@ function parsePricedShops(
       shop_slug: string;
       title: string;
       image_url?: string;
+      image_reference?: string;
       quantity: number;
+      sku?: string;
       source_currency: string;
       unit_price_source_minor: number;
       line_total_source_minor: number;
@@ -402,9 +428,12 @@ function parsePricedShops(
       fx_source?: string;
       fx_effective_at?: Date;
       fx_source_timestamp?: Date;
-      variant_name?: string;
-      variant_group_name?: string;
-      variant_sub_group_name?: string;
+      selected_options?: Array<{
+        optionId?: string;
+        optionName: string;
+        valueId?: string;
+        value: string;
+      }>;
     }>;
   }>).map((shop) => ({
     shopId: shop.shop_id,
@@ -425,7 +454,10 @@ function parsePricedShops(
       shopSlug: item.shop_slug,
       title: item.title,
       imageUrl: item.image_url,
+      imageReference: item.image_reference,
       quantity: item.quantity,
+      sku: item.sku,
+      selectedOptions: item.selected_options ?? [],
       sourceCurrency: item.source_currency,
       unitPriceSourceMinor: item.unit_price_source_minor,
       lineTotalSourceMinor: item.line_total_source_minor,
@@ -443,9 +475,6 @@ function parsePricedShops(
       fxSource: item.fx_source,
       fxEffectiveAt: item.fx_effective_at,
       fxSourceTimestamp: item.fx_source_timestamp,
-      variantName: item.variant_name,
-      variantGroupName: item.variant_group_name,
-      variantSubGroupName: item.variant_sub_group_name,
     })),
   }));
 }

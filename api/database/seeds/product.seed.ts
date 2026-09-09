@@ -1,4 +1,5 @@
 import type { EntityManager } from '@mikro-orm/postgresql';
+import { createHash } from 'node:crypto';
 import { basename, extname } from 'node:path';
 import * as path from 'node:path';
 import { CategoryAttributeEntity } from '~/domains/category/infra/persistence/entities/category-attribute.entity';
@@ -6,7 +7,7 @@ import { CategoryEntity } from '~/domains/category/infra/persistence/entities/ca
 import { ProductState } from '~/domains/product/domain/enums/product-state.enum';
 import { ProductImageVariantStatus } from '~/domains/product/domain/enums/product-image-variant-status.enum';
 import { ProductShippingCharge } from '~/domains/product/domain/enums/product-shipping-charge.enum';
-import { ProductVariantType } from '~/domains/product/domain/enums/product-variant-type.enum';
+import { ProductVariantLifecycleState } from '~/domains/product/domain/enums/product-variant-lifecycle-state.enum';
 import type { MarketplaceCurrency } from '~/platform/config/marketplace.config';
 import {
   buildStorageObjectKey,
@@ -14,7 +15,10 @@ import {
 } from '~/integrations/storage/app/storage-key-builder';
 import { ProductAttributeValueEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-attribute-value.entity';
 import { ProductImageEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-image.entity';
-import { ProductInventoryEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-inventory.entity';
+import { ProductOptionEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-option.entity';
+import { ProductOptionValueEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-option-value.entity';
+import { ProductVariantOptionValueEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-variant-option-value.entity';
+import { ProductInventoryEntity, ProductInventoryLifecycleState } from '~/domains/product/infra/persistence/mikro-orm/entities/product-inventory.entity';
 import { ProductShippingDestinationEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-shipping-destination.entity';
 import { ProductShippingProfileEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-shipping-profile.entity';
 import { VariantPriceEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/variant-price.entity';
@@ -95,17 +99,31 @@ function formatDuration(ms: number): string {
   return `${(ms / 1_000).toFixed(1)}s`;
 }
 
-function buildVariantKey(
-  variantType: ProductVariantType,
-  inventorySeed: ProductSeed['inventory'][number],
-): string | undefined {
-  if (variantType === ProductVariantType.NONE) {
-    return undefined;
-  }
+function deterministicSeedUuid(seed: string): string {
+  const hex = createHash('sha256').update(seed).digest('hex');
 
-  return variantType === ProductVariantType.COMBINE
-    ? `${inventorySeed.optionValue1 ?? ''}::${inventorySeed.optionValue2 ?? ''}`
-    : `${inventorySeed.optionValue1 ?? ''}`;
+  return [
+    hex.slice(0, 8),
+    hex.slice(8, 12),
+    `5${hex.slice(13, 16)}`,
+    `${((Number.parseInt(hex.slice(16, 18), 16) & 0x3f) | 0x80).toString(16).padStart(2, '0')}${hex.slice(18, 20)}`,
+    hex.slice(20, 32),
+  ].join('-');
+}
+
+function buildSeedSelectionKey(selections: Record<string, string>): string {
+  return Object.keys(selections)
+    .sort()
+    .map((optionKey) => `${optionKey}:${selections[optionKey]}`)
+    .join('|') || '__default__';
+}
+
+function buildProductOptionCombinationKey(valueIds: string[]): string {
+  return valueIds.slice().sort().join('|') || '__default__';
+}
+
+function normalizeProductOptionLabel(value: string): string {
+  return value.trim().toLocaleLowerCase().replace(/\s+/g, ' ');
 }
 
 async function findCategoryByPath(
@@ -226,63 +244,202 @@ async function syncProductAttributes(
   }
 }
 
+async function syncProductOptions(
+  em: EntityManager,
+  product: ProductEntity,
+  productSeed: ProductSeed,
+): Promise<{
+  valuesBySelectionKey: Map<string, ProductOptionValueEntity>;
+  optionsBySeedKey: Map<string, ProductOptionEntity>;
+}> {
+  const existingOptions = await em.find(
+    ProductOptionEntity,
+    { product },
+    { populate: ['values'], orderBy: { position: 'asc' } },
+  );
+  const existingOptionsBySeedId = new Map(
+    existingOptions.map((option) => [option.id, option]),
+  );
+  const existingOptionsByPosition = new Map(
+    existingOptions.map((option) => [option.position, option]),
+  );
+  const valuesBySelectionKey = new Map<string, ProductOptionValueEntity>();
+  const optionsBySeedKey = new Map<string, ProductOptionEntity>();
+
+  for (const [optionIndex, optionSeed] of productSeed.options.entries()) {
+    const position = optionIndex + 1;
+    const optionSeedId = deterministicSeedUuid(`product-option:${product.id}:${optionSeed.key}`);
+    const option = existingOptionsBySeedId.get(optionSeedId) ?? existingOptionsByPosition.get(position) ?? em.create(ProductOptionEntity, {
+      id: optionSeedId,
+      product,
+      name: optionSeed.name,
+      normalizedName: normalizeProductOptionLabel(optionSeed.name),
+      position,
+    });
+    if (option.id !== optionSeedId && option.normalizedName !== normalizeProductOptionLabel(optionSeed.name)) {
+      throw new Error(`Seed option identity does not match existing product ${product.id}; refusing positional reassignment`);
+    }
+
+    option.product = product;
+    option.name = optionSeed.name;
+    option.normalizedName = normalizeProductOptionLabel(optionSeed.name);
+    option.position = position;
+    option.removedAt = undefined;
+    optionsBySeedKey.set(optionSeed.key, option);
+    em.persist(option);
+
+    const existingValuesBySeedId = new Map(
+      option.values.getItems().map((value) => [value.id, value]),
+    );
+    const existingValuesByLabel = new Map(
+      option.values.getItems().map((value) => [value.normalizedValue, value]),
+    );
+
+    for (const [valueIndex, valueSeed] of optionSeed.values.entries()) {
+      const valuePosition = valueIndex + 1;
+      const valueSeedId = deterministicSeedUuid(`product-option-value:${product.id}:${optionSeed.key}:${valueSeed.key}`);
+      const value = existingValuesBySeedId.get(valueSeedId) ?? existingValuesByLabel.get(normalizeProductOptionLabel(valueSeed.value)) ?? em.create(ProductOptionValueEntity, {
+        id: valueSeedId,
+        productOption: option,
+        value: valueSeed.value,
+        normalizedValue: normalizeProductOptionLabel(valueSeed.value),
+        position: valuePosition,
+      });
+
+      value.productOption = option;
+      value.value = valueSeed.value;
+      value.normalizedValue = normalizeProductOptionLabel(valueSeed.value);
+      value.position = valuePosition;
+      value.removedAt = undefined;
+      option.values.add(value);
+      em.persist(value);
+      valuesBySelectionKey.set(`${optionSeed.key}:${valueSeed.key}`, value);
+    }
+  }
+
+  await em.flush();
+  return { valuesBySelectionKey, optionsBySeedKey };
+}
+
+function resolveVariantValueIds(
+  productSeed: ProductSeed,
+  inventorySeed: ProductSeed['inventory'][number],
+  valuesBySelectionKey: Map<string, ProductOptionValueEntity>,
+): string[] {
+  const valueIds: string[] = [];
+
+  for (const optionSeed of productSeed.options) {
+    const valueKey = inventorySeed.selections[optionSeed.key];
+    const value = valuesBySelectionKey.get(`${optionSeed.key}:${valueKey}`);
+    if (!value) {
+      throw new Error(`Missing option value "${optionSeed.key}:${valueKey}" for product seed ${productSeed.shopSlug}::${productSeed.title}`);
+    }
+    valueIds.push(value.id);
+  }
+
+  return valueIds;
+}
+
+async function syncProductVariantSelections(
+  em: EntityManager,
+  product: ProductEntity,
+  productSeed: ProductSeed,
+  variant: ProductVariantEntity,
+  inventorySeed: ProductSeed['inventory'][number],
+  valuesBySelectionKey: Map<string, ProductOptionValueEntity>,
+  optionsBySeedKey: Map<string, ProductOptionEntity>,
+): Promise<void> {
+  const existingSelections = await em.find(ProductVariantOptionValueEntity, { productVariant: variant.id });
+  const existingByOption = new Map(existingSelections.map(selection => [selection.productOption.id, selection]));
+  const intendedOptionIds = new Set([...optionsBySeedKey.values()].map(option => option.id));
+  if (existingSelections.some(selection => !intendedOptionIds.has(selection.productOption.id))) {
+    throw new Error(`Seed variant ${variant.id} has different existing selections; refusing history reassignment`);
+  }
+
+  for (const optionSeed of productSeed.options) {
+    const option = optionsBySeedKey.get(optionSeed.key);
+    const valueKey = inventorySeed.selections[optionSeed.key];
+    const value = valuesBySelectionKey.get(`${optionSeed.key}:${valueKey}`);
+    if (!option || !value) {
+      throw new Error(`Missing persisted selection "${optionSeed.key}:${valueKey}" for product seed ${productSeed.shopSlug}::${productSeed.title}`);
+    }
+
+    const existing = existingByOption.get(option.id);
+    if (existing) {
+      if (existing.productOptionValue.id !== value.id) {
+        throw new Error(`Seed variant ${variant.id} selects a different value; refusing history reassignment`);
+      }
+      continue;
+    }
+    em.persist(em.create(ProductVariantOptionValueEntity, {
+      product,
+      productVariant: variant,
+      productOption: option,
+      productOptionValue: value,
+    }));
+  }
+}
+
 async function syncProductVariants(
   em: EntityManager,
   product: ProductEntity,
-  variantType: ProductVariantType,
-  inventorySeeds: ProductSeed['inventory'],
+  shop: ShopEntity,
+  productSeed: ProductSeed,
+  valuesBySelectionKey: Map<string, ProductOptionValueEntity>,
+  optionsBySeedKey: Map<string, ProductOptionEntity>,
 ): Promise<Map<string, ProductVariantEntity>> {
-  const variantsByKey = new Map<string, ProductVariantEntity>();
-  if (variantType === ProductVariantType.NONE) {
-    return variantsByKey;
-  }
-
+  const inventorySeedSkus = productSeed.inventory.map((inventorySeed) => inventorySeed.sku);
+  const existingInventories = await em.find(
+    ProductInventoryEntity,
+    { shop, sku: { $in: inventorySeedSkus } },
+    { populate: ['productVariant'] },
+  );
+  const existingInventoriesBySku = new Map(
+    existingInventories
+      .filter((inventory) => inventory.sku)
+      .map((inventory) => [inventory.sku as string, inventory]),
+  );
   const existingVariants = await em.find(ProductVariantEntity, { product });
-  const existingVariantsByKey = new Map(
-    existingVariants.map((variant) => [
-      variantType === ProductVariantType.COMBINE
-        ? `${variant.optionValue1 ?? ''}::${variant.optionValue2 ?? ''}`
-        : `${variant.optionValue1 ?? ''}`,
-      variant,
-    ]),
+  const existingVariantsByCombinationKey = new Map(
+    existingVariants.map((variant) => [variant.combinationKey, variant]),
   );
 
-  const seenKeys = new Set<string>();
-  inventorySeeds.forEach((inventorySeed, index) => {
-    const key = buildVariantKey(variantType, inventorySeed);
-
-    if (!key || seenKeys.has(key)) {
-      return;
+  const variantsBySelectionKey = new Map<string, ProductVariantEntity>();
+  for (const [index, inventorySeed] of productSeed.inventory.entries()) {
+    const selectionKey = buildSeedSelectionKey(inventorySeed.selections);
+    const combinationKey = buildProductOptionCombinationKey(
+      resolveVariantValueIds(productSeed, inventorySeed, valuesBySelectionKey),
+    );
+    const inventoryVariant = existingInventoriesBySku.get(inventorySeed.sku)?.productVariant;
+    if (inventoryVariant && (inventoryVariant.product.id !== product.id || inventoryVariant.combinationKey !== combinationKey)) {
+      throw new Error(`Seed SKU ${inventorySeed.sku} belongs to a different product or selection; refusing to reassign inventory history`);
     }
-
-    seenKeys.add(key);
-    const variantName =
-      variantType === ProductVariantType.COMBINE
-        ? `${inventorySeed.optionValue1} / ${inventorySeed.optionValue2}`
-        : (inventorySeed.optionValue1 ?? 'Default');
-    const variant = existingVariantsByKey.get(key) ??
-      em.create(ProductVariantEntity, { product, name: variantName, rank: index + 1 });
+    const variant = inventoryVariant ?? existingVariantsByCombinationKey.get(combinationKey) ?? em.create(ProductVariantEntity, {
+      id: deterministicSeedUuid(`product-variant:${product.id}:${selectionKey}`),
+      product,
+      combinationKey,
+      rank: index + 1,
+    });
 
     variant.product = product;
-    variant.name = variantName;
-    variant.optionValue1 = inventorySeed.optionValue1;
-    variant.optionValue2 = inventorySeed.optionValue2;
+    variant.combinationKey = combinationKey;
     variant.rank = index + 1;
-
-    variantsByKey.set(key, variant);
+    variant.lifecycleState = inventorySeed.variantState;
+    variant.removedAt = inventorySeed.variantState === ProductVariantLifecycleState.REMOVED ? new Date() : undefined;
     em.persist(variant);
-  });
+    variantsBySelectionKey.set(selectionKey, variant);
+    await syncProductVariantSelections(em, product, productSeed, variant, inventorySeed, valuesBySelectionKey, optionsBySeedKey);
+  }
 
-  return variantsByKey;
+  return variantsBySelectionKey;
 }
 
 async function syncProductInventory(
   em: EntityManager,
   product: ProductEntity,
   shop: ShopEntity,
-  variantType: ProductVariantType,
   inventorySeeds: ProductSeed['inventory'],
-  variantsByKey: Map<string, ProductVariantEntity>,
+  variantsBySelectionKey: Map<string, ProductVariantEntity>,
 ): Promise<void> {
   const inventorySeedSkus = inventorySeeds
     .map((inventorySeed) => inventorySeed.sku.trim())
@@ -306,20 +463,33 @@ async function syncProductInventory(
     seed: ProductSeed['inventory'][number];
   }> = [];
   inventorySeeds.forEach((inventorySeed) => {
-    const variantKey = buildVariantKey(variantType, inventorySeed);
+    const selectionKey = buildSeedSelectionKey(inventorySeed.selections);
     const inventory = existingInventoriesBySku.get(inventorySeed.sku) ??
       em.create(ProductInventoryEntity, {
+        id: deterministicSeedUuid(`product-inventory:${product.id}:${selectionKey}`),
         shop,
         product,
         sku: inventorySeed.sku,
         stock: inventorySeed.stock,
+        onHandQuantity: inventorySeed.stock,
       });
+    const variant = variantsBySelectionKey.get(selectionKey);
+    if (!variant) {
+      throw new Error(`Missing variant for inventory seed ${productSeedKey(product)}::${inventorySeed.sku}`);
+    }
 
     inventory.shop = shop;
     inventory.product = product;
-    inventory.productVariant = variantKey ? variantsByKey.get(variantKey) : undefined;
+    inventory.productVariant = variant;
     inventory.sku = inventorySeed.sku;
-    inventory.stock = inventorySeed.stock;
+    inventory.onHandQuantity = inventorySeed.stock;
+    inventory.stock = Math.max(0, inventory.onHandQuantity - inventory.reservedQuantity);
+    inventory.lifecycleState = inventorySeed.variantState === ProductVariantLifecycleState.REMOVED
+      ? ProductInventoryLifecycleState.REMOVED
+      : inventorySeed.variantState === ProductVariantLifecycleState.INACTIVE
+        ? ProductInventoryLifecycleState.INACTIVE
+        : ProductInventoryLifecycleState.ACTIVE;
+    inventory.removedAt = inventorySeed.variantState === ProductVariantLifecycleState.REMOVED ? new Date() : undefined;
 
     createdInventories.push({
       inventory,
@@ -332,24 +502,29 @@ async function syncProductInventory(
     const activeBasePrice = inventory.prices
       .getItems()
       .find((price) => !price.marketCode && !price.activeTo);
+    const amountMinor = toMinorUnits(seed.salePrice ?? seed.price, shop.currency);
     const price = activeBasePrice ??
       em.create(VariantPriceEntity, {
+        id: deterministicSeedUuid(`variant-price:${inventory.id}:base`),
         productInventory: inventory,
         priceType: VARIANT_PRICE_TYPES.BASE,
         currency: shop.currency,
-        amountMinor: toMinorUnits(seed.price, shop.currency),
+        amountMinor,
         activeFrom: new Date(),
       });
 
     price.productInventory = inventory;
     price.priceType = VARIANT_PRICE_TYPES.BASE;
     price.currency = shop.currency;
-    price.amountMinor = toMinorUnits(seed.price, shop.currency);
+    price.amountMinor = amountMinor;
 
     em.persist(price);
   });
 }
 
+function productSeedKey(product: ProductEntity): string {
+  return `${product.shop.id}::${product.slug}`;
+}
 async function syncProductShipping(
   em: EntityManager,
   product: ProductEntity,
@@ -531,9 +706,6 @@ export async function seedProducts(
     product.state = productSeed.state as ProductState;
     product.whoMade = productSeed.whoMade;
     product.isDigital = productSeed.isDigital;
-    product.variantType = productSeed.variantType;
-    product.variantGroupName = productSeed.variantGroupName;
-    product.variantSubGroupName = productSeed.variantSubGroupName;
     product.tags = [];
     product.publishedAt =
       product.state === ProductState.ACTIVE ? new Date() : undefined;
@@ -560,19 +732,21 @@ export async function seedProducts(
 
     await syncProductImages(em, shop, product, imageFilenames);
     await syncProductAttributes(em, product, category, productSeed);
-    const variantsByKey = await syncProductVariants(
+    const { valuesBySelectionKey, optionsBySeedKey } = await syncProductOptions(em, product, productSeed);
+    const variantsBySelectionKey = await syncProductVariants(
       em,
       product,
-      productSeed.variantType,
-      productSeed.inventory,
+      shop,
+      productSeed,
+      valuesBySelectionKey,
+      optionsBySeedKey,
     );
     await syncProductInventory(
       em,
       product,
       shop,
-      productSeed.variantType,
       productSeed.inventory,
-      variantsByKey,
+      variantsBySelectionKey,
     );
     if (productSeed.isDigital) {
       await clearProductShipping(em, product);

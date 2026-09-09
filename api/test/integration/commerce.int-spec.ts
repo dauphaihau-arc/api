@@ -15,7 +15,6 @@ import { parseCorsAllowedOrigins } from '~/platform/config/cors.config';
 import { AppModule } from '~/bootstrap/app.module';
 import type { AuthUserResponse } from '~/domains/auth/app/auth.types';
 import { ProductShippingCharge } from '~/domains/product/domain/enums/product-shipping-charge.enum';
-import { ProductVariantType } from '~/domains/product/domain/enums/product-variant-type.enum';
 import { ProductWhoMade } from '~/domains/product/domain/enums/product-who-made.enum';
 import { StorageService } from '~/integrations/storage/app/ports/storage.service';
 import { LocalFileStorageService } from '~/integrations/storage/infra/local-file-storage.service';
@@ -284,7 +283,6 @@ describe('Commerce flow (integration)', () => {
         title: 'Handmade Mug',
         description: 'Wheel-thrown ceramic mug',
         who_made: ProductWhoMade.I_DID,
-        variant_type: ProductVariantType.NONE,
       })
       .expect(201);
     const productBody = createProductResponse.body as {
@@ -430,7 +428,6 @@ describe('Commerce flow (integration)', () => {
         title: 'Stoneware Mug',
         description: 'Published stoneware mug',
         who_made: ProductWhoMade.I_DID,
-        variant_type: ProductVariantType.NONE,
       })
       .expect(201);
 
@@ -492,7 +489,6 @@ describe('Commerce flow (integration)', () => {
         title: 'Other Shop Mug',
         description: 'Different shop product',
         whoMade: ProductWhoMade.I_DID,
-        variantType: ProductVariantType.NONE,
       })
       .expect(201);
 
@@ -565,7 +561,6 @@ describe('Commerce flow (integration)', () => {
         title: 'Soup Bowl',
         description: 'Stoneware bowl',
         whoMade: ProductWhoMade.I_DID,
-        variantType: ProductVariantType.NONE,
       })
       .expect(201);
     const productId = productResponse.body.id as string;
@@ -652,7 +647,6 @@ describe('Commerce flow (integration)', () => {
       product: {
         id: productId,
         title: 'Soup Bowl',
-        variant_type: ProductVariantType.NONE,
       },
       inventory: {
         id: inventoryId,

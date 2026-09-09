@@ -158,6 +158,34 @@ implements CheckoutStockReservationPort {
     return 1;
   }
 
+  async releaseReservationsForQuote(
+    entityManager: EntityManager,
+    quoteId: string,
+    releasedAt?: Date,
+  ): Promise<number> {
+    if (this.isLocal()) {
+      return this.localReservationService.releaseReservationsForQuote(
+        entityManager,
+        quoteId,
+        releasedAt,
+      );
+    }
+
+    const quote = await this.loadQuote(entityManager, quoteId);
+    if (!quote?.reservationId) {
+      return 0;
+    }
+
+    await this.remoteReservationClient.releaseReservation({
+      quoteId,
+      reservationId: quote.reservationId,
+      reason: 'checkout_abandoned',
+      idempotencyKey: buildReleaseIdempotencyKey(quoteId, 'checkout_abandoned'),
+    });
+
+    return 1;
+  }
+
   async cleanupExpiredForQuote(quoteId: string, now = new Date()): Promise<number> {
     if (this.isLocal()) {
       return this.localReservationService.cleanupExpiredForQuote(quoteId, now);

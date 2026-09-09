@@ -1,19 +1,28 @@
 import { Expose, Transform } from 'class-transformer';
-import { ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   ArrayMaxSize,
   IsArray,
   IsBoolean,
   IsEnum,
-  IsUUID,
+  IsNumber,
   IsOptional,
   IsString,
+  IsUUID,
   MaxLength,
+  Min,
   MinLength,
 } from 'class-validator';
 import { ProductWhoMade } from '~/domains/product/domain/enums/product-who-made.enum';
 
 export class UpdateProductDto {
+  @ApiProperty({ name: 'product_version' })
+  @Expose({ name: 'product_version' })
+  @Transform(({ value, obj: source }) => value ?? source.product_version)
+  @IsNumber()
+  @Min(1)
+  productVersion!: number;
+
   @IsOptional()
   @ApiPropertyOptional()
   @IsString()
@@ -63,19 +72,4 @@ export class UpdateProductDto {
   @IsUUID()
   categoryId?: string;
 
-  @IsOptional()
-  @ApiPropertyOptional({ name: 'variant_group_name' })
-  @Expose({ name: 'variant_group_name' })
-  @Transform(({ value, obj: source }) => value ?? source.variant_group_name)
-  @IsString()
-  @MinLength(1)
-  variantGroupName?: string;
-
-  @IsOptional()
-  @ApiPropertyOptional({ name: 'variant_sub_group_name' })
-  @Expose({ name: 'variant_sub_group_name' })
-  @Transform(({ value, obj: source }) => value ?? source.variant_sub_group_name)
-  @IsString()
-  @MinLength(1)
-  variantSubGroupName?: string;
 }

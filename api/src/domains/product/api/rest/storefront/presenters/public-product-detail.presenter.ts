@@ -43,9 +43,6 @@ export const toPublicProductDetailResponse = (
     description: product.description,
     who_made: product.whoMade,
     is_digital: product.isDigital,
-    variant_type: product.variantType,
-    variant_group_name: product.variantGroupName,
-    variant_sub_group_name: product.variantSubGroupName,
     stock_notice_threshold: product.stockNoticeThreshold,
     review_summary: {
       average: product.reviewSummary.average,
@@ -72,11 +69,22 @@ export const toPublicProductDetailResponse = (
         )
         : undefined,
     })),
+    options: (product.options ?? []).map((option) => ({
+      id: option.id,
+      name: option.name,
+      position: option.position,
+      values: option.values.map((value) => ({
+        id: value.id,
+        value: value.value,
+        position: value.position,
+      })),
+    })),
     variants: product.variants.map((variant) => ({
       id: variant.id,
-      name: variant.name,
-      option_value_1: variant.optionValue1,
-      option_value_2: variant.optionValue2,
+      selections: (variant.selections ?? []).map((selection) => ({
+        option_id: selection.optionId,
+        value_id: selection.valueId,
+      })),
       image_url: variant.imageStorageKey
         ? imageUrlsByStorageKey.get(variant.imageStorageKey)
         : undefined,
@@ -85,10 +93,13 @@ export const toPublicProductDetailResponse = (
     inventory: product.inventory.map((inventory) => ({
       id: inventory.id,
       product_variant_id: inventory.productVariantId,
-      option_value_1: inventory.optionValue1,
-      option_value_2: inventory.optionValue2,
       sku: inventory.sku,
       stock: inventory.stock,
+      on_hand_quantity: inventory.onHandQuantity ?? inventory.stock,
+      reserved_quantity: inventory.reservedQuantity ?? 0,
+      available_quantity: inventory.availableQuantity ?? inventory.stock,
+      on_hand_version: inventory.onHandVersion ?? 1,
+      shortage: inventory.shortage ?? 0,
       ...(inventory.amountMinor !== undefined
         ? { amount_minor: inventory.amountMinor }
         : {}),

@@ -17,6 +17,7 @@ import { getRequiredOrderNumber } from '../order-number';
 import type { CreateOrderResult } from '../order.types';
 import { OrderCartCleanupRepository } from '../ports/order-cart-cleanup.repository';
 import { OrderCheckoutSessionRepository } from '../ports/order-checkout-session.repository';
+import { OrderInventoryOutboxService } from './order-inventory-outbox.service';
 
 @Injectable()
 export class OrderPaymentService {
@@ -25,6 +26,7 @@ export class OrderPaymentService {
     private readonly eventEmitter: EventEmitter2,
     private readonly jobDispatcher: JobDispatcher,
     private readonly checkoutStockReservationService: CheckoutStockReservationPort,
+    private readonly orderInventoryOutboxService: OrderInventoryOutboxService,
     private readonly orderEventsService: OrderEventsService,
     private readonly orderCheckoutSessionRepository: OrderCheckoutSessionRepository,
     private readonly orderCartCleanupRepository: OrderCartCleanupRepository,
@@ -63,6 +65,37 @@ export class OrderPaymentService {
 
       if (actionableOrders.length === 0) {
         return;
+      }
+
+      const orderIds = actionableOrders.map((order) => order.id);
+      const firstPaymentDetails = actionableOrders[0]?.paymentDetails ?? {};
+      const quoteId = typeof firstPaymentDetails.quote_id === 'string'
+        ? firstPaymentDetails.quote_id
+        : undefined;
+      const reservationId = typeof firstPaymentDetails.reservation_id === 'string'
+        ? firstPaymentDetails.reservation_id
+        : undefined;
+
+      if (quoteId) {
+        const orderItems = await entityManager.getRepository(OrderItemEntity).find(
+          { order: { $in: orderIds } },
+          { populate: ['inventory', 'product'] },
+        );
+        const reservedItems = orderItems.map((item) => ({
+          inventoryId: item.inventory.id,
+          quantity: item.quantity,
+        }));
+
+        await this.checkoutStockReservationService.consumeReservationsForQuote(entityManager, {
+          quoteId,
+          items: reservedItems,
+        });
+        await this.orderInventoryOutboxService.createOrderCreatedEvent(entityManager, {
+          orderIds,
+          quoteId,
+          reservationId,
+          items: reservedItems,
+        });
       }
 
       for (const order of actionableOrders) {
@@ -127,6 +160,10 @@ export class OrderPaymentService {
       }
 
       const orderIds = actionableOrders.map((order) => order.id);
+      const firstPaymentDetails = actionableOrders[0]?.paymentDetails ?? {};
+      const quoteId = typeof firstPaymentDetails.quote_id === 'string'
+        ? firstPaymentDetails.quote_id
+        : undefined;
       const orderItems = await entityManager.getRepository(OrderItemEntity).find(
         { order: { $in: orderIds } },
         { populate: ['inventory', 'product'] },
@@ -136,8 +173,9 @@ export class OrderPaymentService {
         { populate: ['coupon'] },
       );
 
-      const restockedInventoryEvents =
-        await this.checkoutStockReservationService.restoreInventoryForOrderItems(
+      const restockedInventoryEvents = quoteId
+        ? []
+        : await this.checkoutStockReservationService.restoreInventoryForOrderItems(
           entityManager,
           orderItems.map((item) => ({
             inventoryId: item.inventory.id,
@@ -145,6 +183,14 @@ export class OrderPaymentService {
             quantity: item.quantity,
           })),
         );
+
+      if (quoteId) {
+        await this.checkoutStockReservationService.releaseReservationsForQuote(
+          entityManager,
+          quoteId,
+          expiredAt,
+        );
+      }
 
       for (const usage of couponUsages) {
         usage.coupon.usesCount = Math.max(0, usage.coupon.usesCount - 1);

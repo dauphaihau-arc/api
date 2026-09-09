@@ -14,6 +14,7 @@ import {
   type ProductInventoryUpdatedSseEventPayload,
 } from '../../../product/app/events/product-inventory-sse.event';
 import { dispatchCatalogProductProjections } from '../../../product/app/catalog-product-projection-dispatch';
+import { PurchaseEligibilityService } from '../../../product/app/services/purchase-eligibility.service';
 import { JobDispatcher } from '~/integrations/queue/app/ports/job-dispatcher';
 import { NotifyUserUseCase } from '../../../../domains/notification/app/use-cases/notify-user/notify-user.use-case';
 import type { CartSnapshot } from '../../../cart/app/cart.types';
@@ -32,6 +33,10 @@ import { OrderItemEntity } from '../../infra/persistence/entities/order-item.ent
 import type { LoadedCheckoutQuote } from './load-checkout-quote.service';
 import { OrderCheckoutOutboxService } from './order-checkout-outbox.service';
 import { CheckoutStockReservationPort } from '../../../checkout/app/ports/checkout-stock-reservation.port';
+import {
+  CheckoutQuoteReservationOutOfStockError,
+  CheckoutQuoteReservationUnavailableError,
+} from '../errors/order-app.error';
 import { OrderInventoryOutboxService } from './order-inventory-outbox.service';
 import { OrderEventsService } from './order-events.service';
 import {
@@ -71,6 +76,7 @@ export class OrderCheckoutService {
     private readonly orderCartCleanupRepository: OrderCartCleanupRepository,
     private readonly orderInventoryQueryRepository: OrderInventoryQueryRepository,
     private readonly orderShopQueryRepository: OrderShopQueryRepository,
+    private readonly purchaseEligibilityService: PurchaseEligibilityService,
   ) {}
 
   async createOrders(
@@ -136,7 +142,25 @@ export class OrderCheckoutService {
           title: item.title,
         })));
 
-      if (quote) {
+      const eligibility = await this.purchaseEligibilityService.evaluate(
+        {
+          items: inventoryReservationItems,
+          requireAvailableQuantity: !quote,
+        },
+        { entityManager },
+      );
+
+      if (!eligibility.eligible) {
+        const failure = eligibility.failures[0];
+
+        if (failure?.reason === 'insufficient_available_quantity') {
+          throw new CheckoutQuoteReservationOutOfStockError(failure.title);
+        }
+
+        throw new CheckoutQuoteReservationUnavailableError();
+      }
+
+      if (quote && input.paymentType === PaymentType.CASH) {
         await this.checkoutStockReservationService.consumeReservationsForQuote(entityManager, {
           quoteId: quote.id,
           items: quote.items.map((item) => ({
@@ -219,6 +243,7 @@ export class OrderCheckoutService {
               ? {
                 quote_id: quote.id,
                 quoted_inventory_ids: quote.items.map((item) => item.inventoryId),
+                reservation_id: quote.reservationId,
               }
               : {}),
           },
@@ -267,9 +292,9 @@ export class OrderCheckoutService {
             inventory,
             title: item.title,
             imageUrl: item.imageUrl,
-            variantGroupName: item.variantGroupName,
-            variantSubGroupName: item.variantSubGroupName,
-            variantName: item.variantName,
+            imageReference: item.imageReference,
+            sku: item.sku,
+            selectedOptions: item.selectedOptions,
             quantity: item.quantity,
             price: quoteItem
               ? fromMinorUnits(
@@ -376,7 +401,7 @@ export class OrderCheckoutService {
         checkoutOutboxEventId = outboxEvent.id;
       }
 
-      if (quote) {
+      if (quote && input.paymentType === PaymentType.CASH) {
         await this.orderInventoryOutboxService.createOrderCreatedEvent(
           entityManager,
           {

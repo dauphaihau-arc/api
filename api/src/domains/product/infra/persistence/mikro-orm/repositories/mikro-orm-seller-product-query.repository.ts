@@ -7,6 +7,7 @@ import { SellerProductQueryRepository } from '../../../../app/ports/seller-produ
 import type {
   ListShopProductsInput,
   ProductDraftSummary,
+  ProductMutationTarget,
   ShopProductListResult,
 } from '../../../../app/product.types';
 import { ProductState } from '../../../../domain/enums/product-state.enum';
@@ -34,6 +35,11 @@ implements SellerProductQueryRepository {
     'attributeValues.categoryAttribute',
     'attributeValues.selectedOption',
     'variants',
+    'options',
+    'options.values',
+    'variants.selections',
+    'variants.selections.productOption',
+    'variants.selections.productOptionValue',
     'inventoryRecords',
     'inventoryRecords.productVariant',
     'inventoryRecords.prices',
@@ -52,10 +58,34 @@ implements SellerProductQueryRepository {
       { id },
       {
         populate: [...MikroOrmSellerProductQueryRepository.summaryPopulate],
+        strategy: LoadStrategy.SELECT_IN,
       },
     );
 
     return product ? toProductDraftSummary(product, this.storageService) : null;
+  }
+
+  async findMutationTargetById(id: string): Promise<ProductMutationTarget | null> {
+    const [row] = await this.entityManager.fork().getConnection().execute<Array<{
+      id: string
+      shop_id: string
+      product_version: number
+    }>>(
+      `
+        select id, shop_id, product_version
+        from products
+        where id = ?
+      `,
+      [id],
+    );
+
+    return row
+      ? {
+        id: row.id,
+        shopId: row.shop_id,
+        productVersion: row.product_version,
+      }
+      : null;
   }
 
   async listByShop(
@@ -143,6 +173,7 @@ implements SellerProductQueryRepository {
       { shop: shopId, slug },
       {
         populate: [...MikroOrmSellerProductQueryRepository.summaryPopulate],
+        strategy: LoadStrategy.SELECT_IN,
       },
     );
 

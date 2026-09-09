@@ -22,7 +22,6 @@ describe('buildCartResponse', () => {
             shopName: 'Clay House',
             shopSlug: 'clay-house',
             title: 'Mug',
-            variantType: 'none',
             stock: 9,
             currency: 'USD',
             pricing: {
@@ -49,9 +48,6 @@ describe('buildCartResponse', () => {
             shopName: 'Clay House',
             shopSlug: 'clay-house',
             title: 'Bowl',
-            variantType: 'single',
-            variantGroupName: 'Size',
-            variantName: 'Large',
             stock: 4,
             currency: 'USD',
             pricing: {
@@ -90,9 +86,6 @@ describe('buildCartResponse', () => {
                     slug: 'clay-house',
                   },
                   title: 'Mug',
-                  variant_type: 'none',
-                  variant_group_name: undefined,
-                  variant_sub_group_name: undefined,
                   image_url: 'https://cdn.example.com/dev/public/mug.jpg',
                 },
                 inventory: {
@@ -102,7 +95,7 @@ describe('buildCartResponse', () => {
                   currency: 'USD',
                   stock: 9,
                   sku: undefined,
-                  variant_name: undefined,
+                  selected_options: [],
                 },
               },
               {
@@ -117,9 +110,6 @@ describe('buildCartResponse', () => {
                     slug: 'clay-house',
                   },
                   title: 'Bowl',
-                  variant_type: 'single',
-                  variant_group_name: 'Size',
-                  variant_sub_group_name: undefined,
                   image_url: undefined,
                 },
                 inventory: {
@@ -128,7 +118,7 @@ describe('buildCartResponse', () => {
                   currency: 'USD',
                   stock: 4,
                   sku: undefined,
-                  variant_name: 'Size: Large',
+                  selected_options: [],
                 },
               },
             ],
@@ -150,7 +140,7 @@ describe('buildCartResponse', () => {
               image_url: 'https://cdn.example.com/dev/public/mug.jpg',
             },
             inventory: {
-              variant_name: undefined,
+              selected_options: [],
             },
             quantity: 2,
           },
@@ -166,7 +156,7 @@ describe('buildCartResponse', () => {
               image_url: undefined,
             },
             inventory: {
-              variant_name: 'Size: Large',
+              selected_options: [],
             },
             quantity: 1,
           },
@@ -208,7 +198,6 @@ describe('buildCartResponse', () => {
             shopName: 'Reed Workshop',
             shopSlug: 'reed-workshop',
             title: 'Studio Pullover Hoodie',
-            variantType: 'single',
             stock: 2,
             currency: 'USD',
             pricing: {
@@ -250,7 +239,6 @@ describe('buildCartResponse', () => {
             shopName: 'North Studio',
             shopSlug: 'north-studio',
             title: 'Travel Mug',
-            variantType: 'single',
             stock: 7,
             currency: 'USD',
             pricing: {
@@ -277,7 +265,7 @@ describe('buildCartResponse', () => {
     expect(response.summary.total_minor).toBe(3750);
   });
 
-  it('formats multi-attribute variant names with their attribute titles', () => {
+  it('serializes multi-attribute selected options with their attribute titles', () => {
     const cart: CartSnapshot = {
       id: 'cart-4',
       userId: 'user-4',
@@ -297,10 +285,20 @@ describe('buildCartResponse', () => {
             shopName: 'South Studio',
             shopSlug: 'south-studio',
             title: 'Linen Shirt',
-            variantType: 'double',
-            variantGroupName: 'Color',
-            variantSubGroupName: 'Size',
-            variantName: 'Blue / Large',
+            selectedOptions: [
+              {
+                optionId: 'option-color',
+                optionName: 'Color',
+                valueId: 'value-blue',
+                value: 'Blue',
+              },
+              {
+                optionId: 'option-size',
+                optionName: 'Size',
+                valueId: 'value-large',
+                value: 'Large',
+              },
+            ],
             stock: 5,
             currency: 'USD',
             pricing: {
@@ -317,12 +315,22 @@ describe('buildCartResponse', () => {
 
     const response = buildCartResponse(cart);
 
-    expect(response.cart?.shop_groups[0]?.items[0]?.inventory.variant_name).toBe(
-      'Color: Blue / Size: Large',
-    );
-    expect(response.cart?.recent_items[0]?.inventory.variant_name).toBe(
-      'Color: Blue / Size: Large',
-    );
+    expect(response.cart?.shop_groups[0]?.items[0]?.inventory.selected_options).toEqual([
+      {
+        option_id: 'option-color', option_name: 'Color', value_id: 'value-blue', value: 'Blue', 
+      },
+      {
+        option_id: 'option-size', option_name: 'Size', value_id: 'value-large', value: 'Large', 
+      },
+    ]);
+    expect(response.cart?.recent_items[0]?.inventory.selected_options).toEqual([
+      {
+        option_id: 'option-color', option_name: 'Color', value_id: 'value-blue', value: 'Blue', 
+      },
+      {
+        option_id: 'option-size', option_name: 'Size', value_id: 'value-large', value: 'Large', 
+      },
+    ]);
   });
 
   it('uses card images for cart rows and thumbnails for recent items', () => {
@@ -345,7 +353,6 @@ describe('buildCartResponse', () => {
             shopName: 'West Studio',
             shopSlug: 'west-studio',
             title: 'Canvas Tote',
-            variantType: 'none',
             stock: 3,
             currency: 'USD',
             pricing: {

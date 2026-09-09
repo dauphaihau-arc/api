@@ -252,7 +252,6 @@ function toPublicProductListItemFromSearchDocument(
         url: document.image.url,
       }
       : undefined,
-    variantType: document.variantType,
     pricing: {
       minAmountMinor: indexedPricing?.minAmountMinor ?? document.price.minAmountMinor,
       maxAmountMinor: indexedPricing?.maxAmountMinor ?? document.price.maxAmountMinor,
@@ -282,7 +281,6 @@ function toRecommendationScorableSearchProduct(
     categoryId: document.categoryId,
     whoMade: document.whoMade,
     isDigital: document.isDigital,
-    variantType: document.variantType,
     attributeOptionKeys: (document.attributes ?? [])
       .map((attribute) => {
         const optionKey = attribute.selectedOptionKey ?? toFacetKey(attribute.selectedOptionValue ?? '');

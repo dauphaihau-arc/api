@@ -246,9 +246,6 @@ describe('ListShopOrdersUseCase', () => {
           quantity: 1,
           unitPriceMinor: 1000,
           originalAmountMinor: null,
-          variantName: undefined,
-          variantGroupName: undefined,
-          variantSubGroupName: undefined,
           percentCouponPercent: null,
           product: {
             id: 'product-1',

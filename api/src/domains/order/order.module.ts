@@ -76,6 +76,7 @@ import { QueueModule } from '~/integrations/queue/queue.module';
 import { SseModule } from '~/platform/sse/sse.module';
 import { StorageModule } from '~/integrations/storage/storage.module';
 import { ShopModule } from '../shop/shop.module';
+import { ProductModule } from '../product/product.module';
 import { ForwardOrderUpdatedToSseListener } from './listeners/forward-order-updated-to-sse.listener';
 import { ForwardOrderExportToSseListener } from './listeners/forward-order-export-to-sse.listener';
 import { UpdateShopOrderShipmentUseCase } from './app/use-cases/update-shop-order-shipment/update-shop-order-shipment.use-case';
@@ -88,6 +89,7 @@ import { UpdateShopOrderRefundUseCase } from './app/use-cases/update-shop-order-
     forwardRef(() => AuthModule),
     forwardRef(() => CheckoutModule),
     CouponModule,
+    ProductModule,
     PaymentModule,
     NotificationModule,
     forwardRef(() => QueueModule),

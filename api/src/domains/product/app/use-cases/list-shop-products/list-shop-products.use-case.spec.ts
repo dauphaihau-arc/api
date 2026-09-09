@@ -15,7 +15,6 @@ describe('ListShopProductsUseCase', () => {
     whoMade: 'i_did' as ProductDraftSummary['whoMade'],
     isDigital: false,
     nonTaxable: false,
-    variantType: 'none' as ProductDraftSummary['variantType'],
     images: [],
     attributes: [],
     variants: [],
