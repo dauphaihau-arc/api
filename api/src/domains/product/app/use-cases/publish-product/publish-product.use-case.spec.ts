@@ -2,7 +2,8 @@ import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import { UserStatus } from '~/domains/auth/domain/enums/user-status.enum';
 import type { AuditLogService } from '~/integrations/audit/app/audit-log.service';
 import { ProductState } from '../../../domain/enums/product-state.enum';
-import { ProductShippingCharge } from '../../../domain/enums/product-shipping-charge.enum';
+import { ShippingDestinationScope } from '~/domains/shipping/domain/enums/shipping-destination-scope.enum';
+import { ShippingProfileStatus } from '~/domains/shipping/domain/enums/shipping-profile-status.enum';
 import { ProductVariantLifecycleState } from '../../../domain/enums/product-variant-lifecycle-state.enum';
 import type { ShopRepository } from '~/domains/shop/app/ports/shop.repository';
 import type { ProductCommandRepository } from '../../ports/product-command.repository';
@@ -60,18 +61,23 @@ describe('PublishProductUseCase', () => {
     ],
     options: [],
     shipping: {
-      id: 'shipping-1',
-      originCountry: 'US',
-      originZip: '10001',
-      processTimeLabel: '1-3 business days',
-      destinations: [
+      id: 'profile-1',
+      name: 'Standard shipping',
+      status: ShippingProfileStatus.ACTIVE,
+      version: 1,
+      shopCurrency: 'USD',
+      shipFromCountry: 'US',
+      shipFromPostal: '10001',
+      checkoutReady: true,
+      readinessIssues: [],
+      rates: [
         {
-          id: 'destination-1',
-          countryCode: 'US',
-          deliveryTimeLabel: '3-5 business days',
-          service: 'USPS',
-          chargeType: ProductShippingCharge.FREE_SHIPPING,
-          rank: 1,
+          id: 'rate-1',
+          position: 1,
+          destinationScope: ShippingDestinationScope.COUNTRY,
+          destinationCountry: 'US',
+          oneItemFeeMinor: 599,
+          additionalItemFeeMinor: 199,
         },
       ],
     },
@@ -81,8 +87,11 @@ describe('PublishProductUseCase', () => {
     const productRepository = {
       findById: jest.fn().mockResolvedValue(product),
       publish: jest.fn().mockResolvedValue({
-        ...product,
-        state: ProductState.ACTIVE,
+        status: 'ok',
+        product: {
+          ...product,
+          state: ProductState.ACTIVE,
+        },
       }),
     } as unknown as jest.Mocked<
       SellerProductQueryRepository & ProductCommandRepository
@@ -134,7 +143,31 @@ describe('PublishProductUseCase', () => {
     );
   });
 
-  it('rejects publishing when shipping is missing', async () => {
+  it('rejects publishing when the shipping profile is not checkout-ready', async () => {
+    const { productRepository, shopRepository, auditLogService } = buildDeps({
+      ...readyProduct,
+      shipping: {
+        ...readyProduct.shipping!,
+        status: ShippingProfileStatus.DRAFT,
+        checkoutReady: false,
+        readinessIssues: ['draft'],
+      },
+    });
+    const useCase = new PublishProductUseCase(
+      productRepository,
+      productRepository,
+      shopRepository,
+      auditLogService,
+    );
+
+    const result = await useCase.execute(actor, readyProduct.id);
+
+    expect(result.isOk).toBe(false);
+    expect(productRepository.publish).not.toHaveBeenCalled();
+    expect(auditLogService.record).not.toHaveBeenCalled();
+  });
+
+  it('rejects publishing a shippable product with no shipping profile', async () => {
     const { productRepository, shopRepository, auditLogService } = buildDeps({
       ...readyProduct,
       shipping: undefined,
@@ -151,6 +184,47 @@ describe('PublishProductUseCase', () => {
     expect(result.isOk).toBe(false);
     expect(productRepository.publish).not.toHaveBeenCalled();
     expect(auditLogService.record).not.toHaveBeenCalled();
+  });
+
+  it('publishes a digital product without a shipping profile', async () => {
+    const { productRepository, shopRepository, auditLogService } = buildDeps({
+      ...readyProduct,
+      isDigital: true,
+      shipping: undefined,
+    });
+    const useCase = new PublishProductUseCase(
+      productRepository,
+      productRepository,
+      shopRepository,
+      auditLogService,
+    );
+
+    const result = await useCase.execute(actor, readyProduct.id);
+
+    expect(result.isOk).toBe(true);
+    expect(productRepository.publish).toHaveBeenCalledWith(readyProduct.id);
+  });
+
+  it('publishes a digital product even when its shipping profile is not checkout-ready', async () => {
+    const { productRepository, shopRepository, auditLogService } = buildDeps({
+      ...readyProduct,
+      isDigital: true,
+      shipping: {
+        ...readyProduct.shipping!,
+        readinessIssues: ['draft'],
+        checkoutReady: false,
+      },
+    });
+    const useCase = new PublishProductUseCase(
+      productRepository,
+      productRepository,
+      shopRepository,
+      auditLogService,
+    );
+
+    const result = await useCase.execute(actor, readyProduct.id);
+
+    expect(result.isOk).toBe(true);
   });
 
   it('rejects publishing when an inventory row has no price yet', async () => {

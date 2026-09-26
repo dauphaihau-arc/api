@@ -119,9 +119,9 @@ export class BulkMutateShopProductsUseCase {
         };
       }
 
-      const publishedProduct = await this.productCommandRepository.publish(product.id);
+      const outcome = await this.productCommandRepository.publish(product.id);
 
-      if (!publishedProduct) {
+      if (outcome.status === 'product_not_found') {
         return {
           ok: false,
           code: 'ProductNotFoundError',
@@ -129,7 +129,15 @@ export class BulkMutateShopProductsUseCase {
         };
       }
 
-      await this.recordAudit(actor, publishedProduct, 'product.published');
+      if (outcome.status === 'shipping_profile_unavailable') {
+        return {
+          ok: false,
+          code: 'ProductNotReadyToPublishError',
+          reason: `Product "${product.id}" lost its checkout-ready shipping profile before publishing`,
+        };
+      }
+
+      await this.recordAudit(actor, outcome.product, 'product.published');
       return { ok: true };
     }
 

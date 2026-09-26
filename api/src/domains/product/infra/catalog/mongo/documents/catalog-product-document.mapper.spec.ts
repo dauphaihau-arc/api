@@ -2,8 +2,9 @@ import { ProductState } from '../../../../domain/enums/product-state.enum';
 import { ProductWhoMade } from '../../../../domain/enums/product-who-made.enum';
 import { ProductImageVariant } from '../../../../domain/enums/product-image-variant.enum';
 import { ProductImageVariantStatus } from '../../../../domain/enums/product-image-variant-status.enum';
-import { ProductShippingCharge } from '../../../../domain/enums/product-shipping-charge.enum';
 import { toCatalogProductDocument } from './catalog-product-document.mapper';
+import { ShippingDestinationScope } from '~/domains/shipping/domain/enums/shipping-destination-scope.enum';
+import { ShippingProfileStatus } from '~/domains/shipping/domain/enums/shipping-profile-status.enum';
 
 describe('catalog-product-document.mapper', () => {
   it('maps a loaded product aggregate into a denormalized catalog document', () => {
@@ -84,20 +85,25 @@ describe('catalog-product-document.mapper', () => {
           },
         }],
       },
-      shippingProfiles: [{
-        originCountry: 'US',
-        processTimeLabel: '1-3 business days',
-        destinations: {
+      shippingProfile: {
+        id: 'profile-1',
+        name: 'Standard shipping',
+        status: ShippingProfileStatus.ACTIVE,
+        version: 1,
+        currency: 'USD',
+        shipFromCountry: 'US',
+        shipFromPostal: '10001',
+        rates: {
           getItems: () => [{
-            id: 'dest-1',
-            countryCode: 'US',
-            deliveryTimeLabel: '3-5 business days',
-            service: 'Standard',
-            chargeType: ProductShippingCharge.FIXED_PRICE,
-            rank: 1,
+            id: 'rate-1',
+            position: 1,
+            destinationScope: ShippingDestinationScope.COUNTRY,
+            destinationCountry: 'US',
+            oneItemFeeMinor: 599,
+            additionalItemFeeMinor: 199,
           }],
         },
-      }],
+      },
       attributeValues: {
         getItems: () => [{
           categoryAttribute: {
@@ -137,7 +143,10 @@ describe('catalog-product-document.mapper', () => {
         popularityScore: 18,
       },
       shipping: {
-        originCountry: 'US',
+        destinations: [{
+          destinationScope: ShippingDestinationScope.COUNTRY,
+          destinationCountry: 'US',
+        }],
       },
       attributes: [{
         categoryAttributeId: 'attribute-1',

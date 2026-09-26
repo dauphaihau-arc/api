@@ -29,8 +29,9 @@ implements CatalogProductProjectorSourceRepository {
           'inventoryRecords',
           'inventoryRecords.productVariant',
           'inventoryRecords.prices',
-          'shippingProfiles',
-          'shippingProfiles.destinations',
+          'shippingProfile',
+          'shippingProfile.shop',
+          'shippingProfile.rates',
         ],
       },
     );

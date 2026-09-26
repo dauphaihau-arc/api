@@ -121,9 +121,6 @@ describe('CatalogProductProjectorService', () => {
       inventoryRecords: {
         getItems: () => [],
       },
-      shippingProfiles: {
-        getItems: () => [],
-      },
       attributeValues: {
         getItems: () => [],
       },

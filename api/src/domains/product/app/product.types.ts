@@ -1,4 +1,6 @@
-import type { ProductShippingCharge } from '../domain/enums/product-shipping-charge.enum';
+import type { ShippingDestinationScope } from '~/domains/shipping/domain/enums/shipping-destination-scope.enum';
+import type { ShippingProfileStatus } from '~/domains/shipping/domain/enums/shipping-profile-status.enum';
+import type { ShippingProfileReadinessIssue } from '~/domains/shipping/domain/shipping-profile-readiness';
 import type { ProductReviewStatus } from '../domain/enums/product-review-status.enum';
 import type { ProductState } from '../domain/enums/product-state.enum';
 import type { ProductVariantLifecycleState } from '../domain/enums/product-variant-lifecycle-state.enum';
@@ -28,7 +30,7 @@ export interface ProductDraftSummary {
   variants: ProductVariantSummary[];
   inventory: ProductInventorySummary[];
   options?: ProductOptionSummary[];
-  shipping?: ProductShippingProfileSummary;
+  shipping?: ProductShippingSummary;
 }
 
 export interface ProductMutationTarget {
@@ -203,39 +205,71 @@ export interface ProductInventorySummary {
 }
 
 
-export interface ProductShippingDestinationSummary {
+/**
+ * The reusable Shipping Profile a Product is assigned to. Rates live on the
+ * profile, so Products never copy shipping configuration.
+ */
+export interface ProductShippingRateSummary {
   id: string;
-  countryCode: string;
-  deliveryTimeLabel: string;
-  service: string;
-  chargeType: ProductShippingCharge;
-  rank: number;
+  position: number;
+  destinationScope: ShippingDestinationScope;
+  destinationCountry?: string;
+  oneItemFeeMinor: number;
+  additionalItemFeeMinor: number;
+  /** Elapsed calendar-day transit range after dispatch, when configured. */
+  deliveryTimeMinDays?: number;
+  deliveryTimeMaxDays?: number;
 }
 
-export interface ProductShippingProfileSummary {
+export interface ProductShippingSummary {
   id: string;
-  originCountry: string;
-  originZip: string;
-  processTimeLabel: string;
-  destinations: ProductShippingDestinationSummary[];
+  name: string;
+  status: ShippingProfileStatus;
+  version: number;
+  /** Shop currency the minor-unit rate amounts are denominated in. */
+  shopCurrency: string;
+  shipFromCountry?: string;
+  shipFromPostal?: string;
+  /** Elapsed calendar-day handling range before dispatch, when configured. */
+  processingTimeMinDays?: number;
+  processingTimeMaxDays?: number;
+  checkoutReady: boolean;
+  readinessIssues: ShippingProfileReadinessIssue[];
+  rates: ProductShippingRateSummary[];
 }
 
-export interface ReplaceProductShippingRepositoryInput {
+export interface AssignProductShippingProfileRepositoryInput {
   productId: string;
-  shopId: string;
-  shipping: {
-    originCountry: string;
-    originZip: string;
-    processTimeLabel: string;
-    destinations: Array<{
-      countryCode: string;
-      deliveryTimeLabel: string;
-      service: string;
-      chargeType: ProductShippingCharge;
-      rank: number;
-    }>;
-  };
+  shippingProfileId?: string;
 }
+
+export type AssignProductShippingProfileFailureReason =
+  | 'missing'
+  | 'archived'
+  | 'not_checkout_ready';
+
+/**
+ * Assignment takes the same Shipping Profile row lock that profile
+ * transitions take, so a concurrent archive or readiness-degrading edit either
+ * happens before this call (and is rejected here) or waits until it commits.
+ */
+export type AssignProductShippingProfileRepositoryResult =
+  | { status: 'ok'; product: ProductDraftSummary }
+  | { status: 'product_not_found' }
+  | {
+    status: 'shipping_profile_unavailable';
+    reason: AssignProductShippingProfileFailureReason;
+  };
+
+/**
+ * Publication takes the same Shipping Profile row lock that profile
+ * transitions take, so a published Product can never end on a profile that was
+ * archived (or stopped pricing checkouts) concurrently.
+ */
+export type PublishProductRepositoryResult =
+  | { status: 'ok'; product: ProductDraftSummary }
+  | { status: 'product_not_found' }
+  | { status: 'shipping_profile_unavailable' };
 
 export interface UpdateProductDetailsRepositoryInput {
   productId: string;
@@ -315,7 +349,6 @@ export interface PublicProductListItem {
     stockTotal: number;
   };
   variantCount: number;
-  hasFreeShipping?: boolean;
   createdAt: Date;
 }
 
@@ -350,10 +383,13 @@ export interface PublicProductInventorySummary {
   };
 }
 
+export interface PublicProductShippingDestinationSummary {
+  destinationScope: ShippingDestinationScope;
+  destinationCountry?: string;
+}
+
 export interface PublicProductShippingSummary {
-  originCountry: string;
-  processTimeLabel: string;
-  destinations: ProductShippingDestinationSummary[];
+  destinations: PublicProductShippingDestinationSummary[];
 }
 
 export interface PublicProductDetail {

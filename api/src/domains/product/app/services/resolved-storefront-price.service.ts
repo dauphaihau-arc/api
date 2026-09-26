@@ -5,8 +5,11 @@ import {
   type StorefrontPricingConfig,
 } from '~/platform/config/storefront-pricing.config';
 import { MARKETPLACE_MARKETS } from '~/platform/config/marketplace.config';
-import { FxRateService, type ExchangeRateSnapshot } from '~/integrations/currency/fx-rate.service';
-import { RoundingPolicyService } from '~/integrations/currency/rounding-policy.service';
+import type { FxRateCache } from '~/integrations/currency/fx-rate.service';
+import {
+  MoneyConversionService,
+  type ConvertedMinorUnits,
+} from '~/integrations/currency/money-conversion.service';
 import type { ProductInventoryEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-inventory.entity';
 import {
   getActiveBasePrice,
@@ -39,8 +42,7 @@ export class ResolvedStorefrontPriceService {
     private readonly storefrontPricingConfig: StorefrontPricingConfig,
     private readonly optionalCacheService: OptionalCacheService,
     private readonly storefrontMarketContextService: StorefrontMarketContextService,
-    private readonly fxRateService: FxRateService,
-    private readonly roundingPolicyService: RoundingPolicyService,
+    private readonly moneyConversionService: MoneyConversionService,
   ) {}
 
   async resolveForCurrentRequest(
@@ -80,7 +82,7 @@ export class ResolvedStorefrontPriceService {
     context?: StorefrontMarketContext,
   ): Promise<Map<string, ResolvedStorefrontPrice | undefined>> {
     const normalizedContext = normalizeContext(context);
-    const rateCache = new Map<string, Promise<ExchangeRateSnapshot | null>>();
+    const rateCache: FxRateCache = new Map();
     const resolvedEntries = await Promise.all(
       inventories.map(async (inventory) => [
         inventory.id,
@@ -94,7 +96,7 @@ export class ResolvedStorefrontPriceService {
   private async resolveNormalized(
     inventory: ProductInventoryEntity,
     normalizedContext?: ReturnType<typeof normalizeContext>,
-    rateCache?: Map<string, Promise<ExchangeRateSnapshot | null>>,
+    rateCache?: FxRateCache,
   ): Promise<ResolvedStorefrontPrice | undefined> {
     const shouldCache = normalizedContext
       && !isIndexedPricingSelection(this.storefrontPricingConfig, normalizedContext);
@@ -170,13 +172,15 @@ export class ResolvedStorefrontPriceService {
       }
 
       if (basePrice && !resolvedPrice) {
-        const rate = await this.getRateWithCache({
+        const converted = await this.moneyConversionService.convert({
+          amountMinor: basePrice.amountMinor,
           fromCurrency: basePrice.currency,
           toCurrency: normalizedContext!.currency,
           at: normalizedContext?.at,
-        }, rateCache);
+          rateCache,
+        });
 
-        resolvedPrice = !rate
+        resolvedPrice = !converted
           ? {
             amountMinor: basePrice.amountMinor,
             currency: basePrice.currency,
@@ -185,13 +189,12 @@ export class ResolvedStorefrontPriceService {
             sourceType: 'base_native',
             sourcePriceId: basePrice.id,
           }
-          : convertBasePrice({
+          : toResolvedBaseFxPrice({
             amountMinor: basePrice.amountMinor,
             sourcePriceId: basePrice.id,
             baseCurrency: basePrice.currency,
             targetCurrency: normalizedContext!.currency,
-            roundingPolicyService: this.roundingPolicyService,
-            rate,
+            converted,
           });
       }
     }
@@ -206,33 +209,6 @@ export class ResolvedStorefrontPriceService {
     }
 
     return resolvedPrice;
-  }
-
-  private async getRateWithCache(
-    input: {
-      fromCurrency: string;
-      toCurrency: string;
-      at?: Date;
-    },
-    rateCache?: Map<string, Promise<ExchangeRateSnapshot | null>>,
-  ): Promise<ExchangeRateSnapshot | null> {
-    if (!rateCache) {
-      return this.fxRateService.getLatestRate(input);
-    }
-
-    const cacheKey = [
-      input.fromCurrency,
-      input.toCurrency,
-      input.at?.toISOString() ?? '',
-    ].join(':');
-    let ratePromise = rateCache.get(cacheKey);
-
-    if (!ratePromise) {
-      ratePromise = this.fxRateService.getLatestRate(input);
-      rateCache.set(cacheKey, ratePromise);
-    }
-
-    return ratePromise;
   }
 }
 
@@ -280,31 +256,23 @@ function normalizeContext(context?: {
   };
 }
 
-function convertBasePrice(input: {
+function toResolvedBaseFxPrice(input: {
   amountMinor: number;
   sourcePriceId: string;
   baseCurrency: string;
   targetCurrency: string;
-  roundingPolicyService: RoundingPolicyService;
-  rate: ExchangeRateSnapshot;
+  converted: ConvertedMinorUnits;
 }): ResolvedStorefrontPrice {
-  const numericRate = Number(input.rate.rate);
-  const amountMajor = toMajorUnits(input.amountMinor, input.baseCurrency) * numericRate;
-
   return {
-    amountMinor: input.roundingPolicyService.toMinorUnits(amountMajor, input.targetCurrency),
+    amountMinor: input.converted.amountMinor,
     currency: input.targetCurrency,
     sourceCurrency: input.baseCurrency,
     sourceUnitAmountMinor: input.amountMinor,
     sourceType: 'base_fx',
     sourcePriceId: input.sourcePriceId,
-    fxRate: input.rate.rate,
-    fxSource: input.rate.source,
-    fxEffectiveAt: input.rate.effectiveAt,
-    fxSourceTimestamp: input.rate.sourceTimestamp,
+    fxRate: input.converted.fx?.rate,
+    fxSource: input.converted.fx?.source,
+    fxEffectiveAt: input.converted.fx?.effectiveAt,
+    fxSourceTimestamp: input.converted.fx?.sourceTimestamp,
   };
-}
-
-function toMajorUnits(amountMinor: number, currency: string): number {
-  return amountMinor / (currency === 'JPY' || currency === 'KRW' || currency === 'VND' ? 1 : 100);
 }

@@ -1,9 +1,14 @@
-import { OrderShippingStatus } from '~/domains/order/domain/enums/order-shipping-status.enum';
+import { FulfillmentAggregateStatus } from '~/domains/fulfillment/domain/enums/fulfillment-aggregate-status.enum';
 import { OrderStatus } from '~/domains/order/domain/enums/order-status.enum';
 
+/**
+ * Whole-order review eligibility. Delivery of a single consignment must not
+ * unlock review while required quantities remain outstanding, so eligibility
+ * reads the aggregate fulfillment status rather than one Shipment's journey.
+ */
 export function isEligibleForProductReview(order: {
   status: OrderStatus;
-  shippingStatus: OrderShippingStatus;
+  fulfillmentStatus: FulfillmentAggregateStatus;
   refundedAt?: Date;
 }): boolean {
   if (order.status === OrderStatus.CANCELED || order.status === OrderStatus.REFUNDED || order.refundedAt) {
@@ -11,7 +16,7 @@ export function isEligibleForProductReview(order: {
   }
 
   return order.status === OrderStatus.COMPLETED
-    || order.shippingStatus === OrderShippingStatus.DELIVERED;
+    || order.fulfillmentStatus === FulfillmentAggregateStatus.DELIVERED;
 }
 
 export function trimOptionalReviewText(value?: string): string | undefined {

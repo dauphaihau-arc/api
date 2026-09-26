@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { err, ok, type Result } from '~/platform/application/result';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
-import { ProductShippingCharge } from '../../../domain/enums/product-shipping-charge.enum';
 import { ProductVariantLifecycleState } from '../../../domain/enums/product-variant-lifecycle-state.enum';
 import {
   ActorCannotCreateProductDraftError,
@@ -20,7 +19,7 @@ import {
 import { ConfigureProductVariantConfigurationUseCase } from '../configure-product-variant-configuration/configure-product-variant-configuration.use-case';
 import { SetProductAttributesUseCase } from '../set-product-attributes/set-product-attributes.use-case';
 import { SetProductImagesByKeysUseCase } from '../set-product-images-by-keys/set-product-images-by-keys.use-case';
-import { SetProductShippingUseCase } from '../set-product-shipping/set-product-shipping.use-case';
+import { AssignProductShippingProfileUseCase } from '../assign-product-shipping-profile/assign-product-shipping-profile.use-case';
 
 export interface CreateProductDraftFacadeInput extends Omit<CreateProductDraftInput, 'shopId'> {
   shopId: string;
@@ -75,17 +74,7 @@ export interface CreateProductDraftFacadeInput extends Omit<CreateProductDraftIn
     amountMinor: number;
     currency?: string;
   }>;
-  shipping?: {
-    originCountry: string;
-    originZip: string;
-    processTimeLabel: string;
-    destinations: Array<{
-      countryCode: string;
-      deliveryTimeLabel: string;
-      service: string;
-      chargeType: ProductShippingCharge;
-    }>;
-  };
+  shippingProfileId?: string;
 }
 
 type CreateProductDraftFacadeError =
@@ -104,7 +93,7 @@ export class CreateProductDraftFacadeUseCase {
     private readonly setProductImagesByKeysUseCase: SetProductImagesByKeysUseCase,
     private readonly setProductAttributesUseCase: SetProductAttributesUseCase,
     private readonly configureProductVariantConfigurationUseCase: ConfigureProductVariantConfigurationUseCase,
-    private readonly setProductShippingUseCase: SetProductShippingUseCase,
+    private readonly assignProductShippingProfileUseCase: AssignProductShippingProfileUseCase,
   ) {}
 
   async execute(
@@ -225,8 +214,12 @@ export class CreateProductDraftFacadeUseCase {
     currentProduct = configurationResult.value;
     
 
-    if (input.shipping) {
-      const shippingResult = await this.setProductShippingUseCase.execute(actor, currentProduct.id, input.shipping);
+    if (input.shippingProfileId) {
+      const shippingResult = await this.assignProductShippingProfileUseCase.execute(
+        actor,
+        currentProduct.id,
+        { shippingProfileId: input.shippingProfileId },
+      );
       if (!shippingResult.isOk) return this.incomplete(currentProduct.id, 'shipping', shippingResult.error);
       currentProduct = shippingResult.value;
     }

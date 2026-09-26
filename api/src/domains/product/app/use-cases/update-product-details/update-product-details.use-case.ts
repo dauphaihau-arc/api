@@ -8,10 +8,12 @@ import { ShopRepository } from '~/domains/shop/app/ports/shop.repository';
 import { CategoryRepository } from '~/domains/category/app/ports/category.repository';
 import { AuditLogService } from '~/integrations/audit/app/audit-log.service';
 import { JobDispatcher } from '~/integrations/queue/app/ports/job-dispatcher';
+import { ProductState } from '../../../domain/enums/product-state.enum';
 import {
   ActorCannotCreateProductDraftError,
   CategoryNotFoundError,
   ProductNotFoundError,
+  ProductNotReadyToPublishError,
   ProductSlugAlreadyExistsError,
   ProductVersionConflictError,
 } from '../../errors/product-app.error';
@@ -35,6 +37,7 @@ type UpdateProductDetailsError =
   | ProductNotFoundError
   | CategoryNotFoundError
   | ProductSlugAlreadyExistsError
+  | ProductNotReadyToPublishError
   | ProductVersionConflictError;
 
 @Injectable()
@@ -85,6 +88,25 @@ export class UpdateProductDetailsUseCase {
       tags: sanitizeTags(input.tags) ?? existingProduct.tags ?? [],
       categoryId: input.categoryId ?? existingProduct.categoryId,
     };
+
+    // A published Product that becomes physical starts being delivered, so it
+    // must already hold a checkout-ready Shipping Profile. Readiness is the
+    // same gate that publication uses; nothing is silently published here.
+    const becomesShippable = existingProduct.isDigital && nextProduct.isDigital === false;
+
+    if (becomesShippable && existingProduct.state === ProductState.ACTIVE) {
+      if (!existingProduct.shipping) {
+        return err(new ProductNotReadyToPublishError(
+          'Assign a checkout-ready shipping profile before making this product physical',
+        ));
+      }
+
+      if (existingProduct.shipping.readinessIssues.length > 0) {
+        return err(new ProductNotReadyToPublishError(
+          `Shipping profile "${existingProduct.shipping.name}" cannot price a checkout yet: ${existingProduct.shipping.readinessIssues.join(', ')}`,
+        ));
+      }
+    }
 
     if (input.categoryId) {
       const category = await this.categoryRepository.findById(input.categoryId);

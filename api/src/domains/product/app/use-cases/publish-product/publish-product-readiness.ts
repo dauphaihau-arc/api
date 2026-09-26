@@ -41,16 +41,20 @@ export function validatePublishReadiness(
     );
   }
 
-  if (!product.shipping) {
-    return new ProductNotReadyToPublishError(
-      'Shipping configuration is required before publishing',
-    );
-  }
+  // Only shippable Products need a checkout-ready Shipping Profile. Digital
+  // Products are not delivered by a carrier, so they never require one.
+  if (!product.isDigital) {
+    if (!product.shipping) {
+      return new ProductNotReadyToPublishError(
+        'A shipping profile is required before publishing',
+      );
+    }
 
-  if (product.shipping.destinations.length === 0) {
-    return new ProductNotReadyToPublishError(
-      'At least one shipping destination is required before publishing',
-    );
+    if (product.shipping.readinessIssues.length > 0) {
+      return new ProductNotReadyToPublishError(
+        `Shipping profile "${product.shipping.name}" cannot price a checkout yet: ${product.shipping.readinessIssues.join(', ')}`,
+      );
+    }
   }
 
   if (visibleInventory.length === 0) {

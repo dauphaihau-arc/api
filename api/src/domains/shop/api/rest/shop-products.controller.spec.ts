@@ -15,7 +15,8 @@ describe('ShopProductsController', () => {
   const setProductImagesUseCase = { execute: jest.fn() };
   const setProductAttributesUseCase = { execute: jest.fn() };
   const configureProductVariantConfigurationUseCase = { execute: jest.fn() };
-  const setProductShippingUseCase = { execute: jest.fn() };
+  const assignProductShippingProfileUseCase = { execute: jest.fn() };
+
   const updateProductDetailsUseCase = { execute: jest.fn() };
   const bulkMutateShopProductsUseCase = { execute: jest.fn() };
 
@@ -31,7 +32,7 @@ describe('ShopProductsController', () => {
     setProductImagesUseCase as never,
     setProductAttributesUseCase as never,
     configureProductVariantConfigurationUseCase as never,
-    setProductShippingUseCase as never,
+    assignProductShippingProfileUseCase as never,
     updateProductDetailsUseCase as never,
     bulkMutateShopProductsUseCase as never,
   );
@@ -207,18 +208,23 @@ describe('ShopProductsController', () => {
         },
       ],
       shipping: {
-        id: 'shipping-1',
-        originCountry: 'US',
-        originZip: '10001',
-        processTimeLabel: '1-3 business days',
-        destinations: [
+        id: 'profile-1',
+        name: 'Standard shipping',
+        status: 'active',
+        version: 2,
+        shopCurrency: 'USD',
+        shipFromCountry: 'US',
+        shipFromPostal: '10001',
+        checkoutReady: true,
+        readinessIssues: [],
+        rates: [
           {
-            id: 'destination-1',
-            countryCode: 'US',
-            deliveryTimeLabel: '3-5 business days',
-            service: 'standard',
-            chargeType: 'free_shipping',
-            rank: 1,
+            id: 'rate-1',
+            position: 1,
+            destinationScope: 'country',
+            destinationCountry: 'US',
+            oneItemFeeMinor: 599,
+            additionalItemFeeMinor: 199,
           },
         ],
       },
@@ -324,18 +330,23 @@ describe('ShopProductsController', () => {
         },
       ],
       shipping: {
-        id: 'shipping-1',
-        origin_country: 'US',
-        origin_zip: '10001',
-        process_time_label: '1-3 business days',
-        destinations: [
+        profile_id: 'profile-1',
+        profile_name: 'Standard shipping',
+        profile_status: 'active',
+        profile_version: 2,
+        currency: 'USD',
+        ship_from_country: 'US',
+        ship_from_postal: '10001',
+        checkout_ready: true,
+        readiness_issues: [],
+        rates: [
           {
-            id: 'destination-1',
-            country_code: 'US',
-            delivery_time_label: '3-5 business days',
-            service: 'standard',
-            charge_type: 'free_shipping',
-            rank: 1,
+            id: 'rate-1',
+            position: 1,
+            destination_scope: 'country',
+            destination_country: 'US',
+            one_item_fee_minor: 599,
+            additional_item_fee_minor: 199,
           },
         ],
       },

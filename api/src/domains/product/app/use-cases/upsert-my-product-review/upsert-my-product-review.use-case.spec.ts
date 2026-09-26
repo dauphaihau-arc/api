@@ -5,7 +5,7 @@ import {
   ProductReviewNotEligibleError,
 } from '../../errors/product-app.error';
 import { UpsertMyProductReviewUseCase } from './upsert-my-product-review.use-case';
-import { OrderShippingStatus } from '~/domains/order/domain/enums/order-shipping-status.enum';
+import { FulfillmentAggregateStatus } from '~/domains/fulfillment/domain/enums/fulfillment-aggregate-status.enum';
 import { OrderStatus } from '~/domains/order/domain/enums/order-status.enum';
 import { UserStatus } from '~/domains/auth/domain/enums/user-status.enum';
 
@@ -34,7 +34,7 @@ describe('UpsertMyProductReviewUseCase', () => {
       order: {
         id: 'order-1',
         status: OrderStatus.COMPLETED,
-        shippingStatus: OrderShippingStatus.DELIVERED,
+        fulfillmentStatus: FulfillmentAggregateStatus.DELIVERED,
       },
     };
 
@@ -169,7 +169,7 @@ describe('UpsertMyProductReviewUseCase', () => {
               order: {
                 id: 'order-1',
                 status: OrderStatus.PAID,
-                shippingStatus: OrderShippingStatus.PRE_TRANSIT,
+                fulfillmentStatus: FulfillmentAggregateStatus.UNFULFILLED,
               },
             }),
           };
@@ -228,7 +228,7 @@ describe('UpsertMyProductReviewUseCase', () => {
               order: {
                 id: 'order-1',
                 status: OrderStatus.COMPLETED,
-                shippingStatus: OrderShippingStatus.DELIVERED,
+                fulfillmentStatus: FulfillmentAggregateStatus.DELIVERED,
               },
             }),
           };
@@ -318,7 +318,7 @@ describe('UpsertMyProductReviewUseCase', () => {
       order: {
         id: 'order-2',
         status: OrderStatus.COMPLETED,
-        shippingStatus: OrderShippingStatus.DELIVERED,
+        fulfillmentStatus: FulfillmentAggregateStatus.DELIVERED,
       },
     };
 
@@ -431,7 +431,7 @@ describe('UpsertMyProductReviewUseCase', () => {
       order: {
         id: 'order-2',
         status: OrderStatus.COMPLETED,
-        shippingStatus: OrderShippingStatus.DELIVERED,
+        fulfillmentStatus: FulfillmentAggregateStatus.DELIVERED,
       },
     };
 
@@ -529,7 +529,7 @@ describe('UpsertMyProductReviewUseCase', () => {
       order: {
         id: 'order-2',
         status: OrderStatus.COMPLETED,
-        shippingStatus: OrderShippingStatus.DELIVERED,
+        fulfillmentStatus: FulfillmentAggregateStatus.DELIVERED,
       },
     };
 

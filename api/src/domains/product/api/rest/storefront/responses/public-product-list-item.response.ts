@@ -33,6 +33,5 @@ export type PublicProductListItemResponse = {
     stock_total: number;
   };
   variant_count: number;
-  has_free_shipping?: boolean;
   created_at: Date;
 };

@@ -2,6 +2,8 @@ import { MikroOrmModule } from '@mikro-orm/nestjs';
 import { forwardRef, Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from '../auth/auth.module';
+import { CacheModule } from '~/integrations/cache/cache.module';
+import { IdempotencyModule } from '~/platform/idempotency/idempotency.module';
 import { QueueModule } from '~/integrations/queue/queue.module';
 import { CouponEntity } from '../coupon/infra/persistence/entities/coupon.entity';
 import { ShopRepository } from './app/ports/shop.repository';
@@ -21,6 +23,8 @@ import { ShopEntity } from './infra/persistence/entities/shop.entity';
   imports: [
     ConfigModule,
     forwardRef(() => AuthModule),
+    CacheModule,
+    IdempotencyModule,
     QueueModule,
     MikroOrmModule.forFeature([ShopEntity, CouponEntity]),
   ],
@@ -38,6 +42,11 @@ import { ShopEntity } from './infra/persistence/entities/shop.entity';
     BulkDeleteShopCouponsUseCase,
     DeleteShopCouponUseCase,
   ],
-  exports: [ShopRepository, ShopAccessService, CreateShopUseCase, GetMyShopUseCase],
+  exports: [
+    ShopRepository,
+    ShopAccessService,
+    CreateShopUseCase,
+    GetMyShopUseCase,
+  ],
 })
 export class ShopModule {}

@@ -7,13 +7,15 @@ import { ProductCommandRepository } from '../../../../app/ports/product-command.
 import { ProductPricingRepository } from '../../../../app/ports/product-pricing.repository';
 import { ResolvedStorefrontPriceService } from '../../../../app/services/resolved-storefront-price.service';
 import type {
+  AssignProductShippingProfileRepositoryResult,
   CreateProductDraftRepositoryInput,
   ConfigureProductVariantConfigurationRepositoryInput,
   ProductDraftSummary,
   ReplaceProductAttributeValuesRepositoryInput,
   ReplaceProductImagesRepositoryInput,
   ReplaceProductImagesRepositoryResult,
-  ReplaceProductShippingRepositoryInput,
+  AssignProductShippingProfileRepositoryInput,
+  PublishProductRepositoryResult,
   UpdateProductDetailsRepositoryInput,
 } from '../../../../app/product.types';
 import { ProductImageVariantStatus } from '../../../../domain/enums/product-image-variant-status.enum';
@@ -30,8 +32,9 @@ import { ProductOptionEntity } from '~/domains/product/infra/persistence/mikro-o
 import { ProductOptionValueEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-option-value.entity';
 import { ProductVariantOptionValueEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-variant-option-value.entity';
 import { ProductEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product.entity';
-import { ProductShippingDestinationEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-shipping-destination.entity';
-import { ProductShippingProfileEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-shipping-profile.entity';
+import { ShippingProfileStatus } from '~/domains/shipping/domain/enums/shipping-profile-status.enum';
+import { isShippingProfileCheckoutReady } from '~/domains/shipping/domain/shipping-profile-readiness';
+import { ShippingProfileEntity } from '~/domains/shipping/infra/persistence/entities/shipping-profile.entity';
 import { ProductVariantEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-variant.entity';
 import { VARIANT_PRICE_TYPES, VariantPriceEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/variant-price.entity';
 import { OutboxEventEntity, OutboxEventStatus } from '~/domains/order/infra/persistence/entities/outbox-event.entity';
@@ -40,8 +43,15 @@ import { toProductDraftSummary } from '../../../projection/product-draft-summary
 import {
   InvalidProductVariantConfigurationError,
   ProductConfigurationConflictError,
+  StockPoolNotFoundError,
+  StockPoolVersionConflictError,
 } from '../../../../app/errors/product-app.error';
 import type { ProductSkuConflictDetail } from '../../../../app/errors/product-app.error';
+import {
+  InventoryStockPoolPort,
+  type CountSellerPoolInput,
+  type StockPoolBalance,
+} from '../../../../app/ports/inventory-stock-pool.port';
 
 @Injectable()
 export class MikroOrmProductCommandRepository
@@ -65,14 +75,16 @@ implements ProductCommandRepository, ProductPricingRepository {
     'variants.selections.productOptionValue',
     'inventoryRecords.productVariant',
     'inventoryRecords.prices',
-    'shippingProfiles',
-    'shippingProfiles.destinations',
+    'shippingProfile',
+    'shippingProfile.shop',
+    'shippingProfile.rates',
   ] as const;
 
   constructor(
     private readonly entityManager: EntityManager,
     private readonly storageService: StorageService,
     private readonly resolvedStorefrontPriceService: ResolvedStorefrontPriceService,
+    private readonly inventoryStockPoolPort: InventoryStockPoolPort,
   ) {}
 
   async replaceImages(
@@ -174,6 +186,7 @@ implements ProductCommandRepository, ProductPricingRepository {
           throw new InvalidProductVariantConfigurationError('Each option must be selected exactly once');
         }
       }
+
       if (input.removedVariantIds.length > 0) {
         const reservedRemovedInventory = await entityManager.findOne(ProductInventoryEntity, {
           productVariant: { id: { $in: input.removedVariantIds } },
@@ -351,15 +364,21 @@ implements ProductCommandRepository, ProductPricingRepository {
 
         let inventory = variant.inventoryRecords.getItems()[0];
         if (!inventory) {
-          if (!requestedVariant.inventory || requestedVariant.inventory.onHandQuantity === undefined) throw new InvalidProductVariantConfigurationError('New variants require reviewed inventory');
+          if (!requestedVariant.inventory) throw new InvalidProductVariantConfigurationError('New variants require reviewed inventory');
+
+          if (requestedVariant.inventory.onHandQuantity === undefined) {
+            throw new InvalidProductVariantConfigurationError('New variants require reviewed inventory');
+          }
+
+          const initialOnHandQuantity = requestedVariant.inventory.onHandQuantity ?? 0;
 
           inventory = entityManager.create(ProductInventoryEntity, {
             shop: entityManager.getReference(ShopEntity, input.shopId),
             product,
             productVariant: variant,
             sku: requestedVariant.inventory.sku ?? undefined,
-            stock: requestedVariant.inventory.onHandQuantity,
-            onHandQuantity: requestedVariant.inventory.onHandQuantity,
+            stock: initialOnHandQuantity,
+            onHandQuantity: initialOnHandQuantity,
             reservedQuantity: 0,
             onHandVersion: 1,
             lifecycleState: requestedVariant.lifecycleState === ProductVariantLifecycleState.INACTIVE
@@ -371,18 +390,12 @@ implements ProductCommandRepository, ProductPricingRepository {
           entityManager.persist(inventory);
           await entityManager.flush();
 
-          await this.persistInventoryMovement(entityManager, {
+          await this.inventoryStockPoolPort.openSellerPool(entityManager, {
             inventoryId: inventory.id,
-            movementKind: 'seller_count',
-            quantityDelta: requestedVariant.inventory.onHandQuantity,
-            onHandBefore: 0,
-            onHandAfter: requestedVariant.inventory.onHandQuantity,
-            reservedBefore: 0,
-            reservedAfter: 0,
-            cause: 'product_variant_configuration',
-            actorType: input.actorId ? 'user' : undefined,
-            actorId: input.actorId,
+            shopId: input.shopId,
+            onHandQuantity: initialOnHandQuantity,
             commandId: input.commandId,
+            actorId: input.actorId,
           });
         }
         else {
@@ -392,34 +405,29 @@ implements ProductCommandRepository, ProductPricingRepository {
           inventory.removedAt = undefined;
 
           if (requestedVariant.inventory) {
-            if (
-              requestedVariant.inventory.onHandQuantity !== undefined
-              && requestedVariant.inventory.expectedOnHandVersion !== inventory.onHandVersion
-            ) {
-              throw new ProductConfigurationConflictError('ProductOnHandVersionConflict', [inventory.id], currentProduct);
-            }
-            if (requestedVariant.inventory.sku !== undefined) inventory.sku = requestedVariant.inventory.sku ?? undefined;
             if (requestedVariant.inventory.onHandQuantity !== undefined) {
-              const onHandBefore = inventory.onHandQuantity;
-              const reservedBefore = inventory.reservedQuantity;
-              inventory.applyOnHandCount({
-                onHandQuantity: requestedVariant.inventory.onHandQuantity,
-                expectedOnHandVersion: requestedVariant.inventory.expectedOnHandVersion!,
-              });
-              await this.persistInventoryMovement(entityManager, {
-                inventoryId: inventory.id,
-                movementKind: 'seller_count',
-                quantityDelta: inventory.onHandQuantity - onHandBefore,
-                onHandBefore,
-                onHandAfter: inventory.onHandQuantity,
-                reservedBefore,
-                reservedAfter: inventory.reservedQuantity,
-                cause: 'product_variant_configuration',
-                actorType: input.actorId ? 'user' : undefined,
-                actorId: input.actorId,
-                commandId: input.commandId,
-              });
+              if (requestedVariant.inventory.expectedOnHandVersion !== inventory.onHandVersion) {
+                throw new ProductConfigurationConflictError('ProductOnHandVersionConflict', [inventory.id], currentProduct);
+              }
+
+              const balance = await this.countSellerPoolOrThrow(
+                entityManager,
+                currentProduct,
+                {
+                  inventoryId: inventory.id,
+                  onHandQuantity: requestedVariant.inventory.onHandQuantity,
+                  expectedOnHandVersion: requestedVariant.inventory.expectedOnHandVersion!,
+                  commandId: input.commandId,
+                  actorId: input.actorId,
+                },
+              );
+              inventory.onHandQuantity = balance.onHandQuantity;
+              inventory.reservedQuantity = balance.reservedQuantity;
+              inventory.onHandVersion = balance.onHandVersion;
+              inventory.stock = Math.max(0, balance.onHandQuantity - balance.reservedQuantity);
             }
+
+            if (requestedVariant.inventory.sku !== undefined) inventory.sku = requestedVariant.inventory.sku ?? undefined;
           }
         }
 
@@ -460,7 +468,6 @@ implements ProductCommandRepository, ProductPricingRepository {
       return toProductDraftSummary(product, this.storageService);
     });
   }
-
 
   async replacePricing(input: {
     productId: string;
@@ -513,48 +520,71 @@ implements ProductCommandRepository, ProductPricingRepository {
   }
 
 
-  async replaceShipping(input: ReplaceProductShippingRepositoryInput): Promise<ProductDraftSummary | null> {
-    const entityManager = this.entityManager.fork();
-    const repository = entityManager.getRepository(ProductEntity);
+  async assignShippingProfile(
+    input: AssignProductShippingProfileRepositoryInput,
+  ): Promise<AssignProductShippingProfileRepositoryResult> {
+    return this.entityManager.fork().transactional(async (entityManager) => {
+      // Lock order: profile row first, then the Product row — the same order the
+      // Shipping Profile transitions use, so nothing here deadlocks on those rows.
+      let shippingProfile: ShippingProfileEntity | null = null;
 
-    const product = await repository.findOne(
-      { id: input.productId },
-      { populate: [...MikroOrmProductCommandRepository.summaryPopulate] },
-    );
-    if (!product) return null;
+      if (input.shippingProfileId) {
+        // Taking this lock is what makes the archive's published-reference count
+        // trustworthy: an assignment either committed before that count was
+        // taken, or it waits here and then sees the profile already archived.
+        shippingProfile = await entityManager.getRepository(ShippingProfileEntity).findOne(
+          { id: input.shippingProfileId },
+          {
+            populate: ['rates'],
+            lockMode: LockMode.PESSIMISTIC_WRITE,
+          },
+        );
 
-    for (const shippingProfile of product.shippingProfiles.getItems()) {
-      for (const destination of shippingProfile.destinations.getItems()) entityManager.remove(destination);
-      entityManager.remove(shippingProfile);
-    }
-    product.shippingProfiles.removeAll();
+        if (!shippingProfile) {
+          return { status: 'shipping_profile_unavailable', reason: 'missing' } as const;
+        }
 
-    const shippingProfile = entityManager.create(ProductShippingProfileEntity, {
-      product,
-      shop: entityManager.getReference(ShopEntity, input.shopId),
-      originCountry: input.shipping.originCountry,
-      originZip: input.shipping.originZip,
-      processTimeLabel: input.shipping.processTimeLabel,
+        if (shippingProfile.status === ShippingProfileStatus.ARCHIVED) {
+          return { status: 'shipping_profile_unavailable', reason: 'archived' } as const;
+        }
+      }
+
+      const product = await entityManager.getRepository(ProductEntity).findOne(
+        { id: input.productId },
+        { lockMode: LockMode.PESSIMISTIC_WRITE },
+      );
+
+      if (!product) {
+        return { status: 'product_not_found' } as const;
+      }
+
+      // Re-checked under the lock: a published Product must keep a profile that
+      // can price a checkout right now.
+      if (
+        shippingProfile
+        && product.state === ProductState.ACTIVE
+        && !isShippingProfileCheckoutReady(toShippingProfileReadinessInput(shippingProfile))
+      ) {
+        return { status: 'shipping_profile_unavailable', reason: 'not_checkout_ready' } as const;
+      }
+
+      product.shippingProfile = shippingProfile ?? undefined;
+      product.productVersion += 1;
+      await entityManager.persist(product).flush();
+
+      // The lock above cannot populate through joins, so the response relations —
+      // including the profile just assigned — are re-read from the saved row.
+      await entityManager.populate(
+        product,
+        [...MikroOrmProductCommandRepository.summaryPopulate],
+        { refresh: true },
+      );
+
+      return {
+        status: 'ok',
+        product: toProductDraftSummary(product, this.storageService),
+      } as const;
     });
-
-    for (const destination of input.shipping.destinations) {
-      const destinationEntity = entityManager.create(ProductShippingDestinationEntity, {
-        shippingProfile,
-        countryCode: destination.countryCode,
-        deliveryTimeLabel: destination.deliveryTimeLabel,
-        service: destination.service,
-        chargeType: destination.chargeType,
-        rank: destination.rank,
-      });
-      shippingProfile.destinations.add(destinationEntity);
-      entityManager.persist(destinationEntity);
-
-    }
-    product.productVersion += 1;
-    product.shippingProfiles.add(shippingProfile);
-    entityManager.persist(shippingProfile);
-    await entityManager.persist(product).flush();
-    return toProductDraftSummary(product, this.storageService);
   }
 
   async updateDetails(input: UpdateProductDetailsRepositoryInput): Promise<ProductDraftSummary | null> {
@@ -623,22 +653,85 @@ implements ProductCommandRepository, ProductPricingRepository {
     return toProductDraftSummary(product, this.storageService);
   }
 
-  async publish(productId: string): Promise<ProductDraftSummary | null> {
-    const entityManager = this.entityManager.fork();
-    const repository = entityManager.getRepository(ProductEntity);
-    const product = await repository.findOne(
-      { id: productId },
-      { populate: [...MikroOrmProductCommandRepository.summaryPopulate] },
-    );
-    if (!product) return null;
-    product.state = ProductState.ACTIVE;
-    product.publishedAt = product.publishedAt ?? new Date();
-    product.productVersion += 1;
-    this.persistLifecycleOutboxEvent(entityManager, product, 'product.published', {
-      state: product.state,
+  async publish(productId: string): Promise<PublishProductRepositoryResult> {
+    return this.entityManager.fork().transactional(async (entityManager) => {
+      const repository = entityManager.getRepository(ProductEntity);
+
+      // Read the assignment without a lock only to learn which Shipping
+      // Profile row to lock first. The Product row lock below re-reads and
+      // re-checks the assignment, so this hint is never trusted alone.
+      const assignment = await repository.findOne(
+        { id: productId },
+        { populate: ['shippingProfile'] },
+      );
+
+      if (!assignment) {
+        return { status: 'product_not_found' } as const;
+      }
+
+      const shippingProfileId = assignment.shippingProfile?.id;
+
+      // Lock order matches the Shipping Profile transitions: profile row
+      // first, then Product row. Archive and readiness-degrading edits hold the
+      // profile lock while they re-check published references, so publication
+      // cannot commit against a profile archived in between.
+      const shippingProfile = shippingProfileId
+        ? await entityManager.getRepository(ShippingProfileEntity).findOne(
+          { id: shippingProfileId },
+          {
+            populate: ['rates'],
+            lockMode: LockMode.PESSIMISTIC_WRITE,
+          },
+        )
+        : null;
+
+      // The Product row is locked on its own: the summary populate adds an
+      // outer join to Shipping Profile/Shop, and PostgreSQL refuses to take a
+      // row lock on the nullable side of an outer join. The unlocked read below
+      // runs inside the same transaction, after the lock is held.
+      const lockedProduct = await repository.findOne(
+        { id: productId },
+        { fields: ['id'], lockMode: LockMode.PESSIMISTIC_WRITE },
+      );
+
+      if (!lockedProduct) {
+        return { status: 'product_not_found' } as const;
+      }
+
+      const product = await repository.findOne(
+        { id: productId },
+        { populate: [...MikroOrmProductCommandRepository.summaryPopulate] },
+      );
+
+      if (!product) {
+        return { status: 'product_not_found' } as const;
+      }
+
+      if (!product.isDigital) {
+        // The assignment can only change under the Product lock held here; a
+        // moved or unusable assignment is rejected instead of published.
+        if (
+          !shippingProfile
+          || product.shippingProfile?.id !== shippingProfileId
+          || !isShippingProfileCheckoutReady(toShippingProfileReadinessInput(shippingProfile))
+        ) {
+          return { status: 'shipping_profile_unavailable' } as const;
+        }
+      }
+
+      product.state = ProductState.ACTIVE;
+      product.publishedAt = product.publishedAt ?? new Date();
+      product.productVersion += 1;
+      this.persistLifecycleOutboxEvent(entityManager, product, 'product.published', {
+        state: product.state,
+      });
+      await entityManager.persist(product).flush();
+
+      return {
+        status: 'ok',
+        product: toProductDraftSummary(product, this.storageService),
+      } as const;
     });
-    await entityManager.persist(product).flush();
-    return toProductDraftSummary(product, this.storageService);
   }
 
   async createDraft(input: CreateProductDraftRepositoryInput): Promise<ProductDraftSummary> {
@@ -663,6 +756,7 @@ implements ProductCommandRepository, ProductPricingRepository {
       productVersion: 1,
     });
     const defaultVariant = this.getOrCreateDefaultVariant(entityManager, product);
+
     const inventoryEntity = entityManager.create(ProductInventoryEntity, {
       shop: entityManager.getReference(ShopEntity, input.shopId),
       product,
@@ -676,6 +770,14 @@ implements ProductCommandRepository, ProductPricingRepository {
     product.inventoryRecords.add(inventoryEntity);
     entityManager.persist(inventoryEntity);
     await entityManager.persist(product).flush();
+
+    await this.inventoryStockPoolPort.openSellerPool(entityManager, {
+      inventoryId: inventoryEntity.id,
+      shopId: product.shop.id,
+      onHandQuantity: 0,
+      commandId: `${product.id}:draft`,
+    });
+
     return toProductDraftSummary(product, this.storageService);
   }
 
@@ -801,57 +903,29 @@ implements ProductCommandRepository, ProductPricingRepository {
     }));
   }
 
-  private async persistInventoryMovement(
+  private async countSellerPoolOrThrow(
     entityManager: EntityManager,
-    input: {
-      inventoryId: string;
-      movementKind: string;
-      quantityDelta: number;
-      onHandBefore: number;
-      onHandAfter: number;
-      reservedBefore: number;
-      reservedAfter: number;
-      cause: string;
-      actorType?: string;
-      actorId?: string;
-      commandId?: string;
-      note?: string;
-    },
-  ): Promise<void> {
-    await entityManager.execute(
-      `
-        insert into inventory_movements (
-          inventory_id,
-          movement_kind,
-          quantity_delta,
-          on_hand_before,
-          on_hand_after,
-          reserved_before,
-          reserved_after,
-          cause,
-          actor_type,
-          actor_id,
-          command_id,
-          note
-        )
-        values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        on conflict (command_id, inventory_id, movement_kind) where command_id is not null do nothing
-      `,
-      [
-        input.inventoryId,
-        input.movementKind,
-        input.quantityDelta,
-        input.onHandBefore,
-        input.onHandAfter,
-        input.reservedBefore,
-        input.reservedAfter,
-        input.cause,
-        input.actorType,
-        input.actorId,
-        input.commandId,
-        input.note,
-      ],
-    );
+    currentProduct: ProductDraftSummary,
+    input: CountSellerPoolInput,
+  ): Promise<StockPoolBalance> {
+    try {
+      return await this.inventoryStockPoolPort.countSellerPool(entityManager, input);
+    }
+    catch (error) {
+      if (error instanceof StockPoolVersionConflictError) {
+        throw new ProductConfigurationConflictError(
+          'ProductOnHandVersionConflict',
+          [input.inventoryId],
+          currentProduct,
+        );
+      }
+      if (error instanceof StockPoolNotFoundError) {
+        throw new InvalidProductVariantConfigurationError(
+          `No Stock Pool exists for inventory "${input.inventoryId}"`,
+        );
+      }
+      throw error;
+    }
   }
 
   private getOrCreateDefaultVariant(
@@ -896,4 +970,24 @@ function buildProductOptionCombinationKey(valueIds: string[]): string {
 
 function nextConfigurationRank(product: ProductEntity): number {
   return product.variants.length + 1;
+}
+
+/**
+ * Assignment re-checks readiness under the profile row lock. Only the fields
+ * readiness reads are projected, so no Shipping Profile entity leaves this
+ * adapter's transaction.
+ */
+function toShippingProfileReadinessInput(
+  profile: ShippingProfileEntity,
+): Parameters<typeof isShippingProfileCheckoutReady>[0] {
+  return {
+    status: profile.status,
+    name: profile.name,
+    processingTimeMinDays: profile.processingTimeMinDays ?? undefined,
+    processingTimeMaxDays: profile.processingTimeMaxDays ?? undefined,
+    rates: profile.rates.getItems().map((rate) => ({
+      deliveryTimeMinDays: rate.deliveryTimeMinDays ?? undefined,
+      deliveryTimeMaxDays: rate.deliveryTimeMaxDays ?? undefined,
+    })),
+  };
 }

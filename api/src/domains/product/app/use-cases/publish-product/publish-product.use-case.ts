@@ -60,11 +60,19 @@ export class PublishProductUseCase {
       return err(readinessError);
     }
 
-    const publishedProduct = await this.productCommandRepository.publish(productId);
+    const outcome = await this.productCommandRepository.publish(productId);
 
-    if (!publishedProduct) {
+    if (outcome.status === 'product_not_found') {
       return err(new ProductNotFoundError(productId));
     }
+
+    if (outcome.status === 'shipping_profile_unavailable') {
+      return err(new ProductNotReadyToPublishError(
+        'A checkout-ready shipping profile is required before publishing',
+      ));
+    }
+
+    const publishedProduct = outcome.product;
 
     await this.auditLogService.record({
       action: 'product.published',

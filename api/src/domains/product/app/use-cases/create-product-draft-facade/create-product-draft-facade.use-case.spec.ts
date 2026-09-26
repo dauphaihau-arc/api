@@ -1,7 +1,7 @@
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import { UserStatus } from '~/domains/auth/domain/enums/user-status.enum';
 import { ProductVariantLifecycleState } from '../../../domain/enums/product-variant-lifecycle-state.enum';
-import { ProductShippingCharge } from '../../../domain/enums/product-shipping-charge.enum';
+import { ShippingProfileStatus } from '~/domains/shipping/domain/enums/shipping-profile-status.enum';
 import type { ProductAppError } from '../../errors/product-app.error';
 import {
   InvalidProductVariantConfigurationError,
@@ -91,26 +91,22 @@ describe('CreateProductDraftFacadeUseCase', () => {
         },
       }),
     };
-    const setProductShippingUseCase = {
+    const assignProductShippingProfileUseCase = {
       execute: jest.fn().mockResolvedValue({
         isOk: true,
         value: {
           ...draft,
           shipping: {
-            id: 'shipping-1',
-            originCountry: 'US',
-            originZip: '10001',
-            processTimeLabel: '1-3 business days',
-            destinations: [
-              {
-                id: 'destination-1',
-                countryCode: 'US',
-                deliveryTimeLabel: '3-5 business days',
-                service: 'Standard',
-                chargeType: ProductShippingCharge.FIXED_PRICE,
-                rank: 1,
-              },
-            ],
+            id: 'profile-1',
+            name: 'Standard shipping',
+            status: ShippingProfileStatus.ACTIVE,
+            version: 1,
+            currency: 'USD',
+            shipFromCountry: 'US',
+            shipFromPostal: '10001',
+            checkoutReady: true,
+            readinessIssues: [],
+            rates: [],
           },
         },
       }),
@@ -121,7 +117,7 @@ describe('CreateProductDraftFacadeUseCase', () => {
       setProductImagesByKeysUseCase as never,
       setProductAttributesUseCase as never,
       configureProductVariantConfigurationUseCase as never,
-      setProductShippingUseCase as never,
+      assignProductShippingProfileUseCase as never,
     );
 
     return {
@@ -130,7 +126,7 @@ describe('CreateProductDraftFacadeUseCase', () => {
       setProductImagesByKeysUseCase,
       setProductAttributesUseCase,
       configureProductVariantConfigurationUseCase,
-      setProductShippingUseCase,
+      assignProductShippingProfileUseCase,
     };
   }
 
@@ -140,7 +136,7 @@ describe('CreateProductDraftFacadeUseCase', () => {
       setProductImagesByKeysUseCase,
       setProductAttributesUseCase,
       configureProductVariantConfigurationUseCase,
-      setProductShippingUseCase,
+      assignProductShippingProfileUseCase,
     } = buildUseCase();
 
     const result = await useCase.execute(actor, {
@@ -184,26 +180,14 @@ describe('CreateProductDraftFacadeUseCase', () => {
           currency: 'USD',
         },
       ],
-      shipping: {
-        originCountry: 'US',
-        originZip: '10001',
-        processTimeLabel: '1-3 business days',
-        destinations: [
-          {
-            countryCode: 'US',
-            deliveryTimeLabel: '3-5 business days',
-            service: 'Standard',
-            chargeType: ProductShippingCharge.FIXED_PRICE,
-          },
-        ],
-      },
+      shippingProfileId: 'profile-1',
     });
 
     expect(result.isOk).toBe(true);
     expect(setProductImagesByKeysUseCase.execute).toHaveBeenCalledTimes(1);
     expect(setProductAttributesUseCase.execute).toHaveBeenCalledTimes(1);
     expect(configureProductVariantConfigurationUseCase.execute).toHaveBeenCalledTimes(1);
-    expect(setProductShippingUseCase.execute).toHaveBeenCalledTimes(1);
+    expect(assignProductShippingProfileUseCase.execute).toHaveBeenCalledTimes(1);
   });
 
   it('returns an incomplete-draft error when inventory references an unknown variant client key', async () => {
@@ -239,10 +223,10 @@ describe('CreateProductDraftFacadeUseCase', () => {
   });
 
   it('wraps downstream section failures as incomplete-draft errors', async () => {
-    const { useCase, setProductShippingUseCase } = buildUseCase();
-    setProductShippingUseCase.execute.mockResolvedValueOnce({
+    const { useCase, assignProductShippingProfileUseCase } = buildUseCase();
+    assignProductShippingProfileUseCase.execute.mockResolvedValueOnce({
       isOk: false,
-      error: new InvalidProductVariantConfigurationError('Origin zip is required'),
+      error: new InvalidProductVariantConfigurationError('The selected shipping profile does not belong to this shop'),
     });
 
     const result = await useCase.execute(actor, {
@@ -250,19 +234,7 @@ describe('CreateProductDraftFacadeUseCase', () => {
       title: 'Handmade Mug',
       description: 'Wheel-thrown ceramic mug',
       whoMade: draft.whoMade,
-      shipping: {
-        originCountry: 'US',
-        originZip: '',
-        processTimeLabel: '1-3 business days',
-        destinations: [
-          {
-            countryCode: 'US',
-            deliveryTimeLabel: '3-5 business days',
-            service: 'Standard',
-            chargeType: ProductShippingCharge.FIXED_PRICE,
-          },
-        ],
-      },
+      shippingProfileId: 'profile-other-shop',
     });
 
     expect(result.isOk).toBe(false);

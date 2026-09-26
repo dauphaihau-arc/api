@@ -1,6 +1,5 @@
 import {
   ArrayMaxSize,
-  ArrayMinSize,
   IsArray,
   IsBoolean,
   IsEnum,
@@ -15,7 +14,6 @@ import {
 } from 'class-validator';
 import { Expose, Transform, Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { ProductShippingCharge } from '~/domains/product/domain/enums/product-shipping-charge.enum';
 import { ProductWhoMade } from '~/domains/product/domain/enums/product-who-made.enum';
 import {
   ProductOptionConfigurationDto,
@@ -57,63 +55,6 @@ export class CreateProductDraftFacadeAttributeDto {
   selectedText?: string;
 }
 
-export class CreateProductDraftFacadeShippingDestinationDto {
-  @ApiProperty({ name: 'country_code' })
-  @Expose({ name: 'country_code' })
-  @Transform(({ value, obj: source }) => value ?? source.country_code)
-  @IsString()
-  @Length(2, 2)
-  countryCode!: string;
-
-  @ApiProperty({ name: 'delivery_time_label' })
-  @Expose({ name: 'delivery_time_label' })
-  @Transform(({ value, obj: source }) => value ?? source.delivery_time_label)
-  @IsString()
-  @MinLength(1)
-  deliveryTimeLabel!: string;
-
-  @ApiProperty()
-  @IsString()
-  @MinLength(1)
-  service!: string;
-
-  @ApiProperty({ name: 'charge_type' })
-  @Expose({ name: 'charge_type' })
-  @Transform(({ value, obj: source }) => value ?? source.charge_type)
-  @IsEnum(ProductShippingCharge)
-  chargeType!: ProductShippingCharge;
-}
-
-export class CreateProductDraftFacadeShippingDto {
-  @ApiProperty({ name: 'origin_country' })
-  @Expose({ name: 'origin_country' })
-  @Transform(({ value, obj: source }) => value ?? source.origin_country)
-  @IsString()
-  @Length(2, 2)
-  originCountry!: string;
-
-  @ApiProperty({ name: 'origin_zip' })
-  @Expose({ name: 'origin_zip' })
-  @Transform(({ value, obj: source }) => value ?? source.origin_zip)
-  @IsString()
-  @MinLength(1)
-  originZip!: string;
-
-  @ApiProperty({ name: 'process_time_label' })
-  @Expose({ name: 'process_time_label' })
-  @Transform(({ value, obj: source }) => value ?? source.process_time_label)
-  @IsString()
-  @MinLength(1)
-  processTimeLabel!: string;
-
-  @ApiProperty({ type: [CreateProductDraftFacadeShippingDestinationDto] })
-  @IsArray()
-  @ArrayMinSize(1)
-  @ArrayMaxSize(100)
-  @ValidateNested({ each: true })
-  @Type(() => CreateProductDraftFacadeShippingDestinationDto)
-  destinations!: CreateProductDraftFacadeShippingDestinationDto[];
-}
 export class CreateProductDraftFacadeInventoryDto {
   @IsOptional()
   @ApiPropertyOptional({ name: 'variant_client_key' })
@@ -277,8 +218,10 @@ export class CreateProductDraftFacadeDto {
   pricing?: CreateProductDraftFacadePricingDto[];
 
   @IsOptional()
-  @ApiPropertyOptional({ type: CreateProductDraftFacadeShippingDto })
-  @ValidateNested()
-  @Type(() => CreateProductDraftFacadeShippingDto)
-  shipping?: CreateProductDraftFacadeShippingDto;
+  @ApiPropertyOptional({ name: 'shipping_profile_id' })
+  @Expose({ name: 'shipping_profile_id' })
+  @Transform(({ value, obj: source }) => value ?? source.shipping_profile_id)
+  @IsString()
+  @MinLength(1)
+  shippingProfileId?: string;
 }

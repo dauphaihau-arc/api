@@ -76,17 +76,12 @@ export type PublicProductDetailResponse = {
     };
   }>;
   shipping?: {
-    origin_country: string;
-    process_time_label: string;
     destinations: Array<{
-      id: string;
-      country_code: string;
-      delivery_time_label: string;
-      service: string;
-      charge_type: PublicProductDetail['shipping'] extends undefined
+      destination_scope:
+      PublicProductDetail['shipping'] extends undefined
         ? never
-        : NonNullable<PublicProductDetail['shipping']>['destinations'][number]['chargeType'];
-      rank: number;
+        : NonNullable<PublicProductDetail['shipping']>['destinations'][number]['destinationScope'];
+      destination_country?: string;
     }>;
   };
 };

@@ -118,15 +118,9 @@ export const toPublicProductDetailResponse = (
     })),
     shipping: product.shipping
       ? {
-        origin_country: product.shipping.originCountry,
-        process_time_label: product.shipping.processTimeLabel,
         destinations: product.shipping.destinations.map((destination) => ({
-          id: destination.id,
-          country_code: destination.countryCode,
-          delivery_time_label: destination.deliveryTimeLabel,
-          service: destination.service,
-          charge_type: destination.chargeType,
-          rank: destination.rank,
+          destination_scope: destination.destinationScope,
+          destination_country: destination.destinationCountry,
         })),
       }
       : undefined,

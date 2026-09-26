@@ -63,8 +63,5 @@ export const toPublicProductListItemResponse = (
     stock_total: product.availability.stockTotal,
   },
   variant_count: product.variantCount,
-  ...(product.hasFreeShipping !== undefined
-    ? { has_free_shipping: product.hasFreeShipping }
-    : {}),
   created_at: product.createdAt,
 });

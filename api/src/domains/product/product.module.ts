@@ -14,6 +14,7 @@ import { SseModule } from '~/platform/sse/sse.module';
 import { AuthModule } from '../auth/auth.module';
 import { CategoryModule } from '../category/category.module';
 import { ShopModule } from '../shop/shop.module';
+import { ShippingModule } from '../shipping/shipping.module';
 import { CouponModule } from '../coupon/coupon.module';
 import { ProductImageService } from './app/services/product-image.service';
 import { ReviewImageService } from './app/services/review-image.service';
@@ -51,7 +52,7 @@ import { PublishProductUseCase } from './app/use-cases/publish-product/publish-p
 import { SetProductImagesByKeysUseCase } from './app/use-cases/set-product-images-by-keys/set-product-images-by-keys.use-case';
 import { SetProductImagesUseCase } from './app/use-cases/set-product-images/set-product-images.use-case';
 import { SetProductAttributesUseCase } from './app/use-cases/set-product-attributes/set-product-attributes.use-case';
-import { SetProductShippingUseCase } from './app/use-cases/set-product-shipping/set-product-shipping.use-case';
+import { AssignProductShippingProfileUseCase } from './app/use-cases/assign-product-shipping-profile/assign-product-shipping-profile.use-case';
 import { ConfigureProductVariantConfigurationUseCase } from './app/use-cases/configure-product-variant-configuration/configure-product-variant-configuration.use-case';
 import { UpsertMyProductReviewUseCase } from './app/use-cases/upsert-my-product-review/upsert-my-product-review.use-case';
 import { UpdateProductDetailsUseCase } from './app/use-cases/update-product-details/update-product-details.use-case';
@@ -80,6 +81,8 @@ import { ProductImportQueryRepository } from './app/ports/product-import-query.r
 import { ProductImportValidationQueryRepository } from './app/ports/product-import-validation-query.repository';
 import { StorefrontProductQueryRepository } from './app/ports/storefront-product-query.repository';
 import { LiveProductInventoryStockRepository } from './app/ports/live-product-inventory-stock.repository';
+import { InventoryStockPoolPort } from './app/ports/inventory-stock-pool.port';
+import { MikroOrmInventoryStockPoolRepository } from './infra/persistence/mikro-orm/repositories/mikro-orm-inventory-stock-pool.repository';
 import { InternalCatalogController } from './api/rest/internal/internal-catalog.controller';
 import { ProductActivityController } from './api/rest/activity/product-activity.controller';
 import { ProductController } from './api/rest/storefront/product.controller';
@@ -123,11 +126,10 @@ import { ProductImageEntity } from '~/domains/product/infra/persistence/mikro-or
 import { ProductImageVariantEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-image-variant.entity';
 import { ProductInventoryReservationEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-inventory-reservation.entity';
 import { ProductInventoryEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-inventory.entity';
+import { ProductStockPoolEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-stock-pool.entity';
 import { ProductReviewEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-review.entity';
 import { ProductReviewImageEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-review-image.entity';
 import { ProductReviewImageVariantEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-review-image-variant.entity';
-import { ProductShippingDestinationEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-shipping-destination.entity';
-import { ProductShippingProfileEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-shipping-profile.entity';
 import { ProductVariantEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-variant.entity';
 import { ProductOptionEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-option.entity';
 import { ProductOptionValueEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-option-value.entity';
@@ -148,6 +150,7 @@ import { STOREFRONT_PRICING_CONFIG, buildStorefrontPricingConfig } from '~/platf
     IdempotencyModule,
     forwardRef(() => AuthModule),
     ShopModule,
+    ShippingModule,
     CategoryModule,
     CouponModule,
     StorageModule,
@@ -169,6 +172,7 @@ import { STOREFRONT_PRICING_CONFIG, buildStorefrontPricingConfig } from '~/platf
       ProductViewHistoryEntity,
       ProductBestSellerRankingEntity,
       ProductInventoryEntity,
+      ProductStockPoolEntity,
       ProductImportEntity,
       ProductImportRowEntity,
       ProductReviewEntity,
@@ -176,8 +180,6 @@ import { STOREFRONT_PRICING_CONFIG, buildStorefrontPricingConfig } from '~/platf
       ProductReviewImageVariantEntity,
       VariantPriceEntity,
       ProductInventoryReservationEntity,
-      ProductShippingProfileEntity,
-      ProductShippingDestinationEntity,
     ]),
   ],
   controllers: [
@@ -312,6 +314,11 @@ import { STOREFRONT_PRICING_CONFIG, buildStorefrontPricingConfig } from '~/platf
       provide: LiveProductInventoryStockRepository,
       useExisting: MikroOrmLiveProductInventoryStockRepository,
     },
+    MikroOrmInventoryStockPoolRepository,
+    {
+      provide: InventoryStockPoolPort,
+      useExisting: MikroOrmInventoryStockPoolRepository,
+    },
     AtlasProductRecommendationQueryRepository,
     MongoBasicProductRecommendationQueryRepository,
     ProductImageService,
@@ -375,7 +382,7 @@ import { STOREFRONT_PRICING_CONFIG, buildStorefrontPricingConfig } from '~/platf
     SetProductImagesByKeysUseCase,
     SetProductImagesUseCase,
     SetProductAttributesUseCase,
-    SetProductShippingUseCase,
+    AssignProductShippingProfileUseCase,
     DownloadProductImportReportUseCase,
     DownloadProductImportTemplateUseCase,
     GetProductImportUseCase,
@@ -404,6 +411,7 @@ import { STOREFRONT_PRICING_CONFIG, buildStorefrontPricingConfig } from '~/platf
     StorefrontMarketContextService,
     ResolvedStorefrontPriceService,
     PurchaseEligibilityService,
+    InventoryStockPoolPort,
     PublicProductOrderHistoryService,
     PublicProductBestSellerRankingService,
     PendingReviewImageUploadService,
@@ -431,7 +439,7 @@ import { STOREFRONT_PRICING_CONFIG, buildStorefrontPricingConfig } from '~/platf
     SetProductImagesByKeysUseCase,
     SetProductImagesUseCase,
     SetProductAttributesUseCase,
-    SetProductShippingUseCase,
+    AssignProductShippingProfileUseCase,
     UpsertMyProductReviewUseCase,
     UpdateProductDetailsUseCase,
     ProcessProductImportJob,

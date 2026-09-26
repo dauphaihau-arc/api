@@ -3,6 +3,7 @@ import type { ProductDraftSummary } from '../../app/product.types';
 import type { ProductInventoryEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-inventory.entity';
 import type { ProductEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product.entity';
 import { getInventoryPricingSnapshot } from '../persistence/mikro-orm/reads/variant-price-read';
+import { toProductShippingSummary } from './assigned-shipping-profile.projector';
 
 export function toProductDraftSummary(
   product: ProductEntity,
@@ -102,38 +103,24 @@ export function toProductDraftSummary(
           })),
         removedAt: variant.removedAt,
       })),
-    inventory: sortInventoryRecords(product.inventoryRecords.getItems()).map((inventoryRecord) => ({
-      id: inventoryRecord.id,
-      productVariantId: inventoryRecord.productVariant.id,
-      sku: inventoryRecord.sku,
-      stock: inventoryRecord.stock,
-      onHandQuantity: inventoryRecord.onHandQuantity,
-      reservedQuantity: inventoryRecord.reservedQuantity,
-      availableQuantity: inventoryRecord.availableQuantity,
-      onHandVersion: inventoryRecord.onHandVersion,
-      shortage: inventoryRecord.shortage,
-      lifecycleState: inventoryRecord.lifecycleState,
-      removedAt: inventoryRecord.removedAt,
-      ...getSummaryPricing(inventoryRecord),
-    })),
-    shipping: product.shippingProfiles.length > 0
-      ? {
-        id: product.shippingProfiles[0].id,
-        originCountry: product.shippingProfiles[0].originCountry,
-        originZip: product.shippingProfiles[0].originZip,
-        processTimeLabel: product.shippingProfiles[0].processTimeLabel,
-        destinations: product.shippingProfiles[0].destinations
-          .getItems()
-          .sort((left, right) => left.rank - right.rank)
-          .map((destination) => ({
-            id: destination.id,
-            countryCode: destination.countryCode,
-            deliveryTimeLabel: destination.deliveryTimeLabel,
-            service: destination.service,
-            chargeType: destination.chargeType,
-            rank: destination.rank,
-          })),
-      }
+    inventory: sortInventoryRecords(product.inventoryRecords.getItems()).map((inventoryRecord) => {
+      return {
+        id: inventoryRecord.id,
+        productVariantId: inventoryRecord.productVariant.id,
+        sku: inventoryRecord.sku,
+        stock: inventoryRecord.stock,
+        onHandQuantity: inventoryRecord.onHandQuantity,
+        reservedQuantity: inventoryRecord.reservedQuantity,
+        availableQuantity: inventoryRecord.availableQuantity,
+        onHandVersion: inventoryRecord.onHandVersion,
+        shortage: inventoryRecord.shortage,
+        lifecycleState: inventoryRecord.lifecycleState,
+        removedAt: inventoryRecord.removedAt,
+        ...getSummaryPricing(inventoryRecord),
+      };
+    }),
+    shipping: product.shippingProfile
+      ? toProductShippingSummary(product.shippingProfile)
       : undefined,
   };
 }

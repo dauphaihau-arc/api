@@ -2,6 +2,8 @@ import { ProductImageVariant } from '../../../../domain/enums/product-image-vari
 import type { ProductState } from '../../../../domain/enums/product-state.enum';
 import type { ProductEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product.entity';
 import { inferFacetSignalsFromText } from '../../../inferred-facets';
+import { toPublicShippingDestinations } from '../../../projection/assigned-shipping-profile.projector';
+import type { PublicProductShippingDestinationSummary } from '../../../../app/product.types';
 
 export interface CatalogProductDocument {
   _id: string;
@@ -79,16 +81,7 @@ export interface CatalogProductDocument {
     stock: number;
   };
   shipping?: {
-    originCountry: string;
-    processTimeLabel: string;
-    destinations: Array<{
-      id: string;
-      countryCode: string;
-      deliveryTimeLabel: string;
-      service: string;
-      chargeType: string;
-      rank: number;
-    }>;
+    destinations: PublicProductShippingDestinationSummary[];
   };
   attributes: Array<{
     categoryAttributeId: string;
@@ -254,23 +247,8 @@ export function toCatalogProductDocument(
     variantCount: sortedVariants.length,
     inventory,
     primaryInventory: inventory[0],
-    shipping: product.shippingProfiles.length > 0
-      ? {
-        originCountry: product.shippingProfiles[0].originCountry,
-        processTimeLabel: product.shippingProfiles[0].processTimeLabel,
-        destinations: product.shippingProfiles[0].destinations
-          .getItems()
-          .slice()
-          .sort((left, right) => left.rank - right.rank)
-          .map((destination) => ({
-            id: destination.id,
-            countryCode: destination.countryCode,
-            deliveryTimeLabel: destination.deliveryTimeLabel,
-            service: destination.service,
-            chargeType: destination.chargeType,
-            rank: destination.rank,
-          })),
-      }
+    shipping: product.shippingProfile
+      ? { destinations: toPublicShippingDestinations(product.shippingProfile) }
       : undefined,
     attributes: product.attributeValues
       .getItems()

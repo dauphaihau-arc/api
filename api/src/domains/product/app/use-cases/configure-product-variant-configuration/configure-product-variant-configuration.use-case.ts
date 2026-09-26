@@ -184,7 +184,9 @@ function validateConfiguration(input: ConfigureProductVariantConfigurationInput)
     seenCombinations.add(combinationKey);
 
     if (!variant.id) {
-      if (variant.inventory?.onHandQuantity === undefined || variant.inventory.amountMinor === undefined || !variant.inventory.currency) {
+      const hasReviewedQuantity = variant.inventory?.onHandQuantity !== undefined;
+
+      if (!hasReviewedQuantity || variant.inventory?.amountMinor === undefined || !variant.inventory.currency) {
         return new InvalidProductVariantConfigurationError('New variants require reviewed inventory on_hand_quantity, amount_minor and currency');
       }
     }

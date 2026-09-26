@@ -4,7 +4,8 @@ import type { ShopRepository } from '~/domains/shop/app/ports/shop.repository';
 import type { AuditLogService } from '~/integrations/audit/app/audit-log.service';
 import { ProductState } from '../../../domain/enums/product-state.enum';
 import { ProductVariantLifecycleState } from '../../../domain/enums/product-variant-lifecycle-state.enum';
-import { ProductShippingCharge } from '../../../domain/enums/product-shipping-charge.enum';
+import { ShippingDestinationScope } from '~/domains/shipping/domain/enums/shipping-destination-scope.enum';
+import { ShippingProfileStatus } from '~/domains/shipping/domain/enums/shipping-profile-status.enum';
 import type { ProductCommandRepository } from '../../ports/product-command.repository';
 import type { SellerProductQueryRepository } from '../../ports/seller-product-query.repository';
 import type { ProductDraftSummary } from '../../product.types';
@@ -63,18 +64,23 @@ describe('BulkMutateShopProductsUseCase', () => {
       },
     ],
     shipping: {
-      id: 'shipping-1',
-      originCountry: 'US',
-      originZip: '10001',
-      processTimeLabel: '1-3 business days',
-      destinations: [
+      id: 'profile-1',
+      name: 'Standard shipping',
+      status: ShippingProfileStatus.ACTIVE,
+      version: 1,
+      shopCurrency: 'USD',
+      shipFromCountry: 'US',
+      shipFromPostal: '10001',
+      checkoutReady: true,
+      readinessIssues: [],
+      rates: [
         {
-          id: 'destination-1',
-          countryCode: 'US',
-          deliveryTimeLabel: '3-5 business days',
-          service: 'USPS',
-          chargeType: ProductShippingCharge.FREE_SHIPPING,
-          rank: 1,
+          id: 'rate-1',
+          position: 1,
+          destinationScope: ShippingDestinationScope.COUNTRY,
+          destinationCountry: 'US',
+          oneItemFeeMinor: 599,
+          additionalItemFeeMinor: 199,
         },
       ],
     },
@@ -115,7 +121,7 @@ describe('BulkMutateShopProductsUseCase', () => {
         const product = products.get(id);
 
         if (!product) {
-          return null;
+          return { status: 'product_not_found' } as const;
         }
 
         const updatedProduct = {
@@ -125,7 +131,7 @@ describe('BulkMutateShopProductsUseCase', () => {
           publishedAt: product.publishedAt ?? new Date('2026-01-01T00:00:00.000Z'),
         };
         products.set(id, updatedProduct);
-        return updatedProduct;
+        return { status: 'ok', product: updatedProduct } as const;
       }),
     } as unknown as jest.Mocked<
       SellerProductQueryRepository & ProductCommandRepository
@@ -210,7 +216,7 @@ describe('BulkMutateShopProductsUseCase', () => {
       {
         id: 'product-2',
         code: 'ProductNotReadyToPublishError',
-        reason: 'Shipping configuration is required before publishing',
+        reason: 'A shipping profile is required before publishing',
       },
       {
         id: 'missing-product',

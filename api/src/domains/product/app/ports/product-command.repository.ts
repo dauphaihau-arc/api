@@ -1,11 +1,13 @@
 import type {
+  AssignProductShippingProfileRepositoryResult,
   CreateProductDraftRepositoryInput,
   ConfigureProductVariantConfigurationRepositoryInput,
   ProductDraftSummary,
   ReplaceProductAttributeValuesRepositoryInput,
   ReplaceProductImagesRepositoryInput,
   ReplaceProductImagesRepositoryResult,
-  ReplaceProductShippingRepositoryInput,
+  AssignProductShippingProfileRepositoryInput,
+  PublishProductRepositoryResult,
   UpdateProductDetailsRepositoryInput,
 } from '../product.types';
 
@@ -27,9 +29,9 @@ export abstract class ProductCommandRepository {
   ): Promise<ProductDraftSummary | null>;
 
 
-  abstract replaceShipping(
-    input: ReplaceProductShippingRepositoryInput
-  ): Promise<ProductDraftSummary | null>;
+  abstract assignShippingProfile(
+    input: AssignProductShippingProfileRepositoryInput
+  ): Promise<AssignProductShippingProfileRepositoryResult>;
 
   abstract updateDetails(
     input: UpdateProductDetailsRepositoryInput
@@ -41,5 +43,5 @@ export abstract class ProductCommandRepository {
     state: ProductDraftSummary['state']
   ): Promise<ProductDraftSummary | null>;
 
-  abstract publish(productId: string): Promise<ProductDraftSummary | null>;
+  abstract publish(productId: string): Promise<PublishProductRepositoryResult>;
 }

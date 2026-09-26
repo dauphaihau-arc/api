@@ -1,3 +1,7 @@
+import type { ProductShippingSummary } from '~/domains/product/app/product.types';
+
+type ShipProductShipping = NonNullable<ProductShippingSummary>;
+
 export type ShopProductDetailResponse = {
   id: string;
   public_id?: string;
@@ -82,17 +86,27 @@ export type ShopProductDetailResponse = {
     currency?: string;
   }>;
   shipping?: {
-    id: string;
-    origin_country: string;
-    origin_zip: string;
-    process_time_label: string;
-    destinations: Array<{
+    profile_id: string;
+    profile_name: string;
+    profile_status: ShipProductShipping['status'];
+    profile_version: number;
+    /** Shop currency the minor-unit rate amounts are denominated in. */
+    currency: string;
+    ship_from_country?: string;
+    ship_from_postal?: string;
+    processing_time_min_days?: number;
+    processing_time_max_days?: number;
+    checkout_ready: boolean;
+    readiness_issues: ShipProductShipping['readinessIssues'];
+    rates: Array<{
       id: string;
-      country_code: string;
-      delivery_time_label: string;
-      service: string;
-      charge_type: string;
-      rank: number;
+      position: number;
+      destination_scope: ShipProductShipping['rates'][number]['destinationScope'];
+      destination_country?: string;
+      one_item_fee_minor: number;
+      additional_item_fee_minor: number;
+      delivery_time_min_days?: number;
+      delivery_time_max_days?: number;
     }>;
   };
 };

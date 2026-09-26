@@ -12,12 +12,12 @@ import { AbstractBaseEntity } from '~/platform/database/abstract-base.entity';
 import { createPublicId } from '~/platform/ids/public-id';
 import { CategoryEntity } from '~/domains/category/infra/persistence/entities/category.entity';
 import { ShopEntity } from '~/domains/shop/infra/persistence/entities/shop.entity';
+import { ShippingProfileEntity } from '~/domains/shipping/infra/persistence/entities/shipping-profile.entity';
 import { ProductState } from '~/domains/product/domain/enums/product-state.enum';
 import { ProductWhoMade } from '~/domains/product/domain/enums/product-who-made.enum';
 import { ProductAttributeValueEntity } from './product-attribute-value.entity';
 import { ProductImageEntity } from './product-image.entity';
 import { ProductInventoryEntity } from './product-inventory.entity';
-import { ProductShippingProfileEntity } from './product-shipping-profile.entity';
 import { ProductVariantEntity } from './product-variant.entity';
 import { ProductOptionEntity } from './product-option.entity';
 
@@ -115,9 +115,15 @@ export class ProductEntity extends AbstractBaseEntity {
   @OneToMany(() => ProductInventoryEntity, (inventory) => inventory.product)
   inventoryRecords = new Collection<ProductInventoryEntity>(this);
 
-  @OneToMany(
-    () => ProductShippingProfileEntity,
-    (shippingProfile) => shippingProfile.product,
-  )
-  shippingProfiles = new Collection<ProductShippingProfileEntity>(this);
+  /**
+   * Exactly one Shipping Profile assignment per shippable Product. Rates live
+   * on the profile so two Products can reuse one profile without copying
+   * shipping configuration.
+   */
+  @ManyToOne(() => ShippingProfileEntity, {
+    fieldName: 'shipping_profile_id',
+    nullable: true,
+    deleteRule: 'restrict',
+  })
+  shippingProfile?: ShippingProfileEntity;
 }

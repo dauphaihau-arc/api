@@ -467,7 +467,6 @@ function toPublicProductListItemFromSearchDocument(
       stockTotal: document.inventory.totalStock,
     },
     variantCount: document.variantCount,
-    hasFreeShipping: document.flags?.hasFreeShipping ?? false,
     createdAt: document.ranking.createdAt,
   };
 }
@@ -570,17 +569,9 @@ export function toPublicProductDetail(
     }),
     shipping: document.shipping
       ? {
-        originCountry: document.shipping.originCountry,
-        processTimeLabel: document.shipping.processTimeLabel,
         destinations: document.shipping.destinations.map((destination) => ({
-          id: destination.id,
-          countryCode: destination.countryCode,
-          deliveryTimeLabel: destination.deliveryTimeLabel,
-          service: destination.service,
-          chargeType: destination.chargeType as PublicProductDetail['shipping'] extends undefined
-            ? never
-            : NonNullable<PublicProductDetail['shipping']>['destinations'][number]['chargeType'],
-          rank: destination.rank,
+          destinationScope: destination.destinationScope,
+          destinationCountry: destination.destinationCountry,
         })),
       }
       : undefined,

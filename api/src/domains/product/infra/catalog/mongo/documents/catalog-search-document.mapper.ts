@@ -1,6 +1,5 @@
 import type { ProductState } from '../../../../domain/enums/product-state.enum';
 import { ProductImageVariant } from '../../../../domain/enums/product-image-variant.enum';
-import { ProductShippingCharge } from '../../../../domain/enums/product-shipping-charge.enum';
 import type { ProductEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product.entity';
 import type {
   StorefrontIndexedPriceSummary,
@@ -70,7 +69,6 @@ export interface CatalogSearchDocument {
   };
   flags: {
     hasImages: boolean;
-    hasFreeShipping: boolean;
   };
   sourceVersion: number;
   updatedAt: Date;
@@ -123,10 +121,6 @@ export function toCatalogSearchDocument(
 
   const listImageStorageKey = primaryCardVariant?.storageKey ?? primaryImage?.storageKey;
   const totalStock = sortedInventory.reduce((sum, row) => sum + row.stock, 0);
-
-  const hasFreeShipping = product.shippingProfiles[0]?.destinations
-    .getItems()
-    .some((destination) => destination.chargeType === ProductShippingCharge.FREE_SHIPPING) ?? false;
 
   return {
     _id: product.id,
@@ -210,7 +204,6 @@ export function toCatalogSearchDocument(
       publishedAt: product.publishedAt,
     },
     flags: {
-      hasFreeShipping,
       hasImages: sortedImages.length > 0,
     },
     sourceVersion: product.updatedAt.getTime(),

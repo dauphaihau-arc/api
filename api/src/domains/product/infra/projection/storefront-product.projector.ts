@@ -7,8 +7,8 @@ import { ProductImageVariant } from '../../domain/enums/product-image-variant.en
 import type { ProductInventoryEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-inventory.entity';
 import type { ProductImageEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-image.entity';
 import type { ProductEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product.entity';
-import { ProductShippingCharge } from '../../domain/enums/product-shipping-charge.enum';
 import { PRODUCT_STOCK_NOTICE_THRESHOLD } from '../../app/product-stock.constants';
+import { toPublicShippingDestinations } from './assigned-shipping-profile.projector';
 
 type PublicPricing = {
   amountMinor?: number;
@@ -115,22 +115,8 @@ export async function toPublicProductDetail(
         rank: variant.rank,
       })),
     inventory,
-    shipping: product.shippingProfiles.length > 0
-      ? {
-        originCountry: product.shippingProfiles[0].originCountry,
-        processTimeLabel: product.shippingProfiles[0].processTimeLabel,
-        destinations: product.shippingProfiles[0].destinations
-          .getItems()
-          .sort((left, right) => left.rank - right.rank)
-          .map((destination) => ({
-            id: destination.id,
-            countryCode: destination.countryCode,
-            deliveryTimeLabel: destination.deliveryTimeLabel,
-            service: destination.service,
-            chargeType: destination.chargeType,
-            rank: destination.rank,
-          })),
-      }
+    shipping: product.shippingProfile
+      ? { destinations: toPublicShippingDestinations(product.shippingProfile) }
       : undefined,
   };
 }
@@ -169,9 +155,6 @@ export async function toPublicProductListItem(
       stockTotal: totalStock,
     },
     variantCount: visibleVariants(product).length,
-    hasFreeShipping: product.shippingProfiles[0]?.destinations
-      .getItems()
-      .some((destination) => destination.chargeType === ProductShippingCharge.FREE_SHIPPING),
     createdAt: product.createdAt,
   };
 }

@@ -1,4 +1,5 @@
 import type { ProductDraftSummary } from '../product.types';
+import type { StockPoolBalance } from '../ports/inventory-stock-pool.port';
 
 import { DomainError } from '~/platform/errors/domain.error';
 
@@ -129,5 +130,20 @@ export class ProductReviewEditLimitExceededError extends ProductAppError {
 export class InvalidProductReviewImageError extends ProductAppError {
   constructor(message: string) {
     super(message);
+  }
+}
+
+export class StockPoolVersionConflictError extends ProductAppError {
+  constructor(
+    public readonly current: StockPoolBalance,
+    public readonly inventoryId: string,
+  ) {
+    super('On-hand Version conflict');
+  }
+}
+
+export class StockPoolNotFoundError extends ProductAppError {
+  constructor(public readonly inventoryId: string) {
+    super(`No Stock Pool exists for inventory "${inventoryId}"`);
   }
 }
