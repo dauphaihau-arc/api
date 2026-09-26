@@ -5,6 +5,7 @@ import { AbstractBaseEntity } from '~/platform/database/abstract-base.entity';
 import { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
 import { ShopEntity } from '~/domains/shop/infra/persistence/entities/shop.entity';
 import { OrderShippingStatus } from '../../../domain/enums/order-shipping-status.enum';
+import { FulfillmentAggregateStatus } from '../../../../fulfillment/domain/enums/fulfillment-aggregate-status.enum';
 import { OrderStatus } from '../../../domain/enums/order-status.enum';
 import { PaymentType } from '../../../domain/enums/payment-type.enum';
 
@@ -40,6 +41,17 @@ export class OrderEntity extends AbstractBaseEntity {
 
   @Enum({ items: () => OrderShippingStatus, fieldName: 'shipping_status' })
   shippingStatus = OrderShippingStatus.PRE_TRANSIT;
+
+  /**
+   * Derived projection of the order's fulfillment collection, maintained by the
+   * fulfillment cutover. It powers list/filter/aggregate reads; per-Shipment
+   * detail remains authoritative in the fulfillment tables.
+   */
+  @Enum({
+    items: () => FulfillmentAggregateStatus,
+    fieldName: 'fulfillment_status',
+  })
+  fulfillmentStatus = FulfillmentAggregateStatus.UNFULFILLED;
 
   @Property({ length: 3 })
   currency!: string;
@@ -90,8 +102,22 @@ export class OrderEntity extends AbstractBaseEntity {
   @Property({ fieldName: 'shipping_to_country', length: 255 })
   shippingToCountry!: string;
 
-  @Property({ fieldName: 'shipping_estimated_delivery' })
-  shippingEstimatedDelivery!: Date;
+  /**
+   * Accepted per-shop shipping facts frozen at confirmation: the Shipping
+   * Charge calculation, matched profile/rate identities and versions,
+   * Processing/Delivery ranges, combined estimate, and any shipping waiver.
+   * Later Product or Shipping Profile edits never rewrite it.
+   */
+  @Property({ fieldName: 'shipping_quote_snapshot', type: 'json', nullable: true })
+  shippingQuoteSnapshot?: Record<string, unknown>;
+
+  /**
+   * The accepted seller estimate's latest delivery date, taken from the frozen
+   * quote estimate. Null when the Order has no accepted shipping estimate; it is
+   * never fabricated.
+   */
+  @Property({ fieldName: 'shipping_estimated_delivery', nullable: true })
+  shippingEstimatedDelivery?: Date;
 
   @Property({ fieldName: 'tracking_number', length: 255, nullable: true })
   trackingNumber?: string;

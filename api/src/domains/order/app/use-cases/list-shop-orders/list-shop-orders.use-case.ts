@@ -4,6 +4,8 @@ import { OrderStatus } from '../../../domain/enums/order-status.enum';
 import { OrderEntity } from '../../../infra/persistence/entities/order.entity';
 import { OrderItemEntity } from '../../../infra/persistence/entities/order-item.entity';
 import type { ListShopOrdersQueryDto } from '../../../api/rest/dto/list-shop-orders.query.dto';
+import { OrderFulfillmentViewPort } from '../../../../fulfillment/app/ports/order-fulfillment-view.port';
+import { canceledFulfillmentOrderIds } from '../../order-fulfillment';
 import { toShopOrderSummary } from '../../shop-order-read-model';
 import type { ShopOrderListResult } from '../../order.types';
 import { buildShopOrderWhere, mergeShopOrderWhere } from './shop-order-query-filter';
@@ -21,7 +23,10 @@ const SELLER_STATUS_COUNTS = [
 
 @Injectable()
 export class ListShopOrdersUseCase {
-  constructor(private readonly entityManager: EntityManager) {}
+  constructor(
+    private readonly entityManager: EntityManager,
+    private readonly orderFulfillmentViewPort: OrderFulfillmentViewPort,
+  ) {}
 
   async execute(
     shopId: string,
@@ -65,6 +70,12 @@ export class ListShopOrdersUseCase {
       itemsByOrderId.set(item.order.id, existing);
     }
 
+    const fulfillmentViews = await this.orderFulfillmentViewPort.load(
+      entityManager,
+      orders.map((order) => order.id),
+      { canceledOrderIds: canceledFulfillmentOrderIds(orders) },
+    );
+
     const statusCounts = SELLER_STATUS_COUNTS.reduce<ShopOrderListResult['statusCounts']>((accumulator, status, index) => {
       accumulator[status] = statusCountValues[index] ?? 0;
       return accumulator;
@@ -82,7 +93,11 @@ export class ListShopOrdersUseCase {
 
     return {
       results: orders.map((order) =>
-        toShopOrderSummary(order, itemsByOrderId.get(order.id) ?? []),
+        toShopOrderSummary(
+          order,
+          itemsByOrderId.get(order.id) ?? [],
+          fulfillmentViews.get(order.id),
+        ),
       ),
       page: query.page,
       limit: query.limit,

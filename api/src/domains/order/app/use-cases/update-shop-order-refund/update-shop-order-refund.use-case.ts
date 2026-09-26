@@ -20,6 +20,8 @@ import {
 } from '../../errors/order-app.error';
 import { OrderEventsService } from '../../services/order-events.service';
 import { buildScopedOrderIdentifierWhere } from '../../order-identifier';
+import { FulfillmentService } from '../../../../fulfillment/app/services/fulfillment.service';
+import { OrderFulfillmentViewPort } from '../../../../fulfillment/app/ports/order-fulfillment-view.port';
 import { buildShopOrderDetail } from '../../shop-order-detail.loader';
 import type { ShopOrderDetail } from '../../order.types';
 
@@ -34,6 +36,8 @@ export class UpdateShopOrderRefundUseCase {
     private readonly jobDispatcher: JobDispatcher,
     private readonly eventEmitter: EventEmitter2,
     private readonly orderEventsService: OrderEventsService,
+    private readonly fulfillmentService: FulfillmentService,
+    private readonly orderFulfillmentViewPort: OrderFulfillmentViewPort,
   ) {}
 
   async execute(
@@ -58,7 +62,18 @@ export class UpdateShopOrderRefundUseCase {
       }
 
       const refundStatus = this.getRefundStatus(order.paymentDetails);
-      this.assertRefundActionAllowed(order.status, order.shippingStatus, refundStatus, input.action);
+      const dispatchState = await this.fulfillmentService.getDispatchState(
+        transactionalEntityManager,
+        order.id,
+      );
+      const legacyDispatched = !dispatchState.hasGroups
+        && order.shippingStatus !== OrderShippingStatus.PRE_TRANSIT;
+      this.assertRefundActionAllowed(
+        order.status,
+        dispatchState.hasDispatched || legacyDispatched,
+        refundStatus,
+        input.action,
+      );
 
       const now = new Date();
 
@@ -88,7 +103,7 @@ export class UpdateShopOrderRefundUseCase {
 
       return {
         customerUserId: order.user?.id,
-        detail: await buildShopOrderDetail(transactionalEntityManager, order),
+        detail: await buildShopOrderDetail(transactionalEntityManager, order, this.orderFulfillmentViewPort),
       };
     });
 
@@ -98,7 +113,6 @@ export class UpdateShopOrderRefundUseCase {
         orderId: result.detail.id,
         changed: ['refundStatus'],
         status: result.detail.status,
-        shippingStatus: result.detail.shippingStatus,
       });
     }
 
@@ -136,7 +150,7 @@ export class UpdateShopOrderRefundUseCase {
 
   private assertRefundActionAllowed(
     orderStatus: OrderStatus,
-    shippingStatus: OrderShippingStatus,
+    hasDispatchedQuantities: boolean,
     refundStatus: RefundStatus | undefined,
     action: ShopOrderRefundAction,
   ): void {
@@ -160,7 +174,7 @@ export class UpdateShopOrderRefundUseCase {
     }
 
     if (orderStatus === OrderStatus.PAID) {
-      if (shippingStatus === OrderShippingStatus.PRE_TRANSIT) {
+      if (!hasDispatchedQuantities) {
         throw new SellerRefundNotAllowedError();
       }
 

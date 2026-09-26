@@ -84,4 +84,47 @@ describe('ExportShopOrdersUseCase', () => {
       '"order-1","2026-08-04T01:02:03.000Z","Buyer One","pending","seller ""note""","\'=Formula Shop"',
     ].join('\r\n'));
   });
+
+  it('exports the accepted seller shipping estimate from the frozen order snapshot', async () => {
+    const row = {
+      id: 'order-1',
+      orderNumber: 'ORD-1',
+      customerEmail: 'buyer@example.com',
+      status: OrderStatus.PAID,
+      paymentType: PaymentType.CARD,
+      currency: 'USD',
+      subtotalMinor: 1000,
+      shippingMinor: 200,
+      discountMinor: 0,
+      totalMinor: 1200,
+      promoCodes: [],
+      fulfillmentStatus: 'unfulfilled',
+      shipmentsSummary: '',
+      shippingToCountry: 'US',
+      shippingFromCountries: ['US'],
+      shippingEstimateMinDays: 4,
+      shippingEstimateMaxDays: 8,
+      shippingEstimatedLatestDate: new Date('2026-09-30T00:00:00.000Z'),
+      shopId: 'shop-1',
+      shopName: 'Shop',
+      createdAt: new Date('2026-09-22T10:00:00.000Z'),
+    };
+    const exportQueryRepository = {
+      listForExport: jest.fn().mockResolvedValue([row]),
+    } as unknown as jest.Mocked<ShopOrderExportQueryRepository>;
+    const useCase = new ExportShopOrdersUseCase(exportQueryRepository);
+
+    const result = await useCase.execute('shop-1', {
+      page: 1,
+      limit: 20,
+      timezone: 'UTC',
+      columnPreset: ShopOrderExportColumnPreset.CUSTOM,
+      columns: ['shipping_minor', 'shipping_estimate_days', 'shipping_estimated_delivery'],
+    });
+
+    expect(result.csv).toBe([
+      '"Shipping minor","Shipping estimate (days)","Estimated delivery (UTC)"',
+      '"200","4-8","2026-09-30T00:00:00.000Z"',
+    ].join('\r\n'));
+  });
 });

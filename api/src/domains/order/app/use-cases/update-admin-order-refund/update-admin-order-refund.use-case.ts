@@ -12,6 +12,8 @@ import { OrderStatus } from '../../../domain/enums/order-status.enum';
 import { OrderEntity } from '../../../infra/persistence/entities/order.entity';
 import { OrderItemEntity } from '../../../infra/persistence/entities/order-item.entity';
 import { OrderEventsService } from '../../services/order-events.service';
+import { OrderFulfillmentViewPort } from '../../../../fulfillment/app/ports/order-fulfillment-view.port';
+import { canceledFulfillmentOrderIds } from '../../order-fulfillment';
 import { toAdminOrderDetail } from '../../admin-order-read-model';
 import { buildOrderIdentifierWhere } from '../../order-identifier';
 import {
@@ -34,6 +36,7 @@ export class UpdateAdminOrderRefundUseCase {
     private readonly jobDispatcher: JobDispatcher,
     private readonly eventEmitter: EventEmitter2,
     private readonly orderEventsService: OrderEventsService,
+    private readonly orderFulfillmentViewPort: OrderFulfillmentViewPort,
   ) {}
 
   async execute(
@@ -147,7 +150,13 @@ export class UpdateAdminOrderRefundUseCase {
             : input.action === AdminOrderRefundAction.MARK_FAILED
               ? 'refund_failed'
               : undefined,
-        detail: toAdminOrderDetail(order, items),
+        detail: toAdminOrderDetail(
+          order,
+          items,
+          (await this.orderFulfillmentViewPort.load(transactionalEntityManager, [order.id], {
+            canceledOrderIds: canceledFulfillmentOrderIds([order]),
+          })).get(order.id),
+        ),
       };
     });
 
@@ -157,7 +166,6 @@ export class UpdateAdminOrderRefundUseCase {
         orderId: result.detail.id,
         changed: ['status', 'refundStatus'],
         status: result.detail.status,
-        shippingStatus: result.detail.shippingStatus,
       });
     }
 

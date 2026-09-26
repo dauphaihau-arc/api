@@ -2,8 +2,7 @@ export const ORDER_UPDATED_SSE_EVENT = 'sse.order.updated';
 
 export const ORDER_SSE_CHANGED_FIELDS = [
   'status',
-  'shippingStatus',
-  'trackingNumber',
+  'fulfillment',
   'supportNote',
   'refundStatus',
 ] as const;
@@ -15,6 +14,6 @@ export type OrderUpdatedSseEventPayload = {
   orderId: string;
   changed: OrderSseChangedField[];
   status?: string;
-  shippingStatus?: string;
+  fulfillmentStatus?: string;
   occurredAt?: string;
 };

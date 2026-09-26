@@ -3,6 +3,8 @@ import { Injectable } from '@nestjs/common';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import { NotifyUserUseCase } from '~/domains/notification/app/use-cases/notify-user/notify-user.use-case';
 import type { RequestOrderSupportDto } from '../../../api/rest/dto/request-order-support.dto';
+import { OrderFulfillmentViewPort } from '../../../../fulfillment/app/ports/order-fulfillment-view.port';
+import { buildOrderFulfillmentSummary, canceledFulfillmentOrderIds } from '../../order-fulfillment';
 import { OrderEntity } from '../../../infra/persistence/entities/order.entity';
 import { OrderItemEntity } from '../../../infra/persistence/entities/order-item.entity';
 import { OrderNotFoundError } from '../../errors/order-app.error';
@@ -31,6 +33,7 @@ export class RequestOrderSupportUseCase {
   constructor(
     private readonly entityManager: EntityManager,
     private readonly notifyUserUseCase: NotifyUserUseCase,
+    private readonly orderFulfillmentViewPort: OrderFulfillmentViewPort,
   ) {}
 
   async execute(
@@ -67,6 +70,9 @@ export class RequestOrderSupportUseCase {
       { order: order.id },
       { populate: ['product', 'product.shop', 'inventory'] },
     );
+    const fulfillmentView = (await this.orderFulfillmentViewPort.load(entityManager, [order.id], {
+      canceledOrderIds: canceledFulfillmentOrderIds([order]),
+    })).get(order.id);
 
     return {
       id: order.id,
@@ -93,16 +99,7 @@ export class RequestOrderSupportUseCase {
         percentCouponPercent: item.percentCouponPercent ?? null,
       })),
       promoCodes: order.promoCodes,
-      shippingStatus: order.shippingStatus,
-      shippingUpdatedAt: order.updatedAt,
-      shippingToCountry: order.shippingToCountry,
-      shippingFromCountries: order.shippingOriginCountries,
-      shippingEstimatedDelivery: order.shippingEstimatedDelivery,
-      trackingNumber: order.trackingNumber,
-      shippingCarrier: order.shippingCarrier,
-      shipmentNote: order.shipmentNote,
-      shippedAt: order.shippedAt,
-      deliveredAt: order.deliveredAt,
+      fulfillment: buildOrderFulfillmentSummary(order, fulfillmentView),
       canceledAt: order.canceledAt,
       cancelReason: order.cancelReason,
       customerSupportNote: order.customerSupportNote,

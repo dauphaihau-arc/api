@@ -6,12 +6,21 @@ import {
   type ShopOrderExportRow,
 } from '../../../app/ports/shop-order-export-query.repository';
 import { buildShopOrderWhere, mergeShopOrderWhere } from '../../../app/use-cases/list-shop-orders/shop-order-query-filter';
+import { canceledFulfillmentOrderIds } from '../../../app/order-fulfillment';
+import { OrderFulfillmentViewPort } from '../../../../fulfillment/app/ports/order-fulfillment-view.port';
+import type { FulfillmentOrderView } from '../../../../fulfillment/app/fulfillment.types';
 import { OrderEntity } from '../entities/order.entity';
+import {
+  parsePersistedOrderShippingSnapshot,
+} from '../../../../checkout/app/checkout-shipping-snapshot.contract';
 
 @Injectable()
 export class MikroOrmShopOrderExportQueryRepository
 implements ShopOrderExportQueryRepository {
-  constructor(private readonly entityManager: EntityManager) {}
+  constructor(
+    private readonly entityManager: EntityManager,
+    private readonly orderFulfillmentViewPort: OrderFulfillmentViewPort,
+  ) {}
 
   async countForExport(
     shopId: string,
@@ -49,7 +58,15 @@ implements ShopOrderExportQueryRepository {
       limit,
     });
 
-    return orders.map(toShopOrderExportRow);
+    const fulfillmentViews = await this.orderFulfillmentViewPort.load(
+      entityManager,
+      orders.map((order) => order.id),
+      { canceledOrderIds: canceledFulfillmentOrderIds(orders) },
+    );
+
+    return orders.map((order) =>
+      toShopOrderExportRow(order, fulfillmentViews.get(order.id)),
+    );
   }
 
   private buildWhere(
@@ -64,7 +81,12 @@ implements ShopOrderExportQueryRepository {
   }
 }
 
-function toShopOrderExportRow(order: OrderEntity): ShopOrderExportRow {
+function toShopOrderExportRow(
+  order: OrderEntity,
+  view?: FulfillmentOrderView,
+): ShopOrderExportRow {
+  const shippingQuote = parsePersistedOrderShippingSnapshot(order.shippingQuoteSnapshot);
+
   return {
     id: order.id,
     orderNumber: order.orderNumber,
@@ -81,16 +103,20 @@ function toShopOrderExportRow(order: OrderEntity): ShopOrderExportRow {
     discountMinor: order.discountMinor,
     totalMinor: order.totalMinor,
     promoCodes: order.promoCodes,
-    shippingStatus: order.shippingStatus,
+    fulfillmentStatus: order.fulfillmentStatus,
+    shipmentsSummary: serializeShipmentsSummary(view),
+    legacyTrackingNumber: order.trackingNumber,
+    legacyShippingCarrier: order.shippingCarrier,
+    legacyShipmentNote: order.shipmentNote,
     shippingToCountry: order.shippingToCountry,
     shippingFromCountries: order.shippingOriginCountries,
-    trackingNumber: order.trackingNumber,
-    shippingCarrier: order.shippingCarrier,
+    shippingEstimateMinDays: shippingQuote?.shipping.estimate.combinedMinDays,
+    shippingEstimateMaxDays: shippingQuote?.shipping.estimate.combinedMaxDays,
+    shippingEstimatedLatestDate: shippingQuote?.shipping.estimate.latestDeliveryDate,
     canceledAt: order.canceledAt,
     cancelReason: order.cancelReason,
     note: order.note,
     customerSupportNote: order.customerSupportNote,
-    shipmentNote: order.shipmentNote,
     shopId: order.shop.id,
     shopName: order.shop.shopName,
   };
@@ -104,4 +130,31 @@ function readRecordValue(
   return typeof value === 'string' || typeof value === 'number'
     ? String(value)
     : undefined;
+}
+
+/**
+ * Serializes every Shipment so exports retain shipment identity and quantities
+ * instead of silently selecting one tracking number.
+ */
+function serializeShipmentsSummary(view?: FulfillmentOrderView): string {
+  if (!view) {
+    return '';
+  }
+
+  return view.groups
+    .flatMap((group) => group.shipments)
+    .map((shipment) => {
+      const parts = [
+        shipment.id,
+        shipment.status,
+        shipment.carrier ?? '',
+        shipment.trackingNumber ?? '',
+        shipment.items
+          .map((item) => `${item.orderItemId}:${item.quantity}`)
+          .join('|'),
+      ];
+
+      return parts.join('; ');
+    })
+    .join(' || ');
 }

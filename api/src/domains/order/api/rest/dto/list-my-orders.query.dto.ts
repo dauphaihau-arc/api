@@ -8,7 +8,7 @@ import {
   Max,
   Min,
 } from 'class-validator';
-import { OrderShippingStatus } from '../../../domain/enums/order-shipping-status.enum';
+import { FulfillmentAggregateStatus } from '../../../../fulfillment/domain/enums/fulfillment-aggregate-status.enum';
 import { OrderStatus } from '../../../domain/enums/order-status.enum';
 
 const MY_ORDER_LIST_DEFAULT_PAGE = 1;
@@ -45,11 +45,11 @@ export class ListMyOrdersQueryDto {
   status?: OrderStatus;
 
   @IsOptional()
-  @ApiPropertyOptional({ name: 'shipping_status' })
-  @Expose({ name: 'shipping_status' })
-  @Transform(({ value, obj: source }) => value ?? source.shipping_status)
-  @IsEnum(OrderShippingStatus)
-  shippingStatus?: OrderShippingStatus;
+  @ApiPropertyOptional({ name: 'fulfillment_status' })
+  @Expose({ name: 'fulfillment_status' })
+  @Transform(({ value, obj: source }) => value ?? source.fulfillment_status)
+  @IsEnum(FulfillmentAggregateStatus)
+  fulfillmentStatus?: FulfillmentAggregateStatus;
 
   @IsOptional()
   @ApiPropertyOptional()

@@ -1,8 +1,12 @@
 import type { CartSnapshot } from '../../cart/app/cart.types';
 import type { CouponEntity } from '../../coupon/infra/persistence/entities/coupon.entity';
+import type { FulfillmentAggregateStatus } from '../../fulfillment/domain/enums/fulfillment-aggregate-status.enum';
+import type { FulfillmentProgressSnapshot } from '../../fulfillment/domain/fulfillment-progress';
+import type { FulfillmentGroupView } from '../../fulfillment/app/fulfillment.types';
 import { CouponAppliesTo } from '../../coupon/domain/enums/coupon-applies-to.enum';
 import { CouponMinOrderType } from '../../coupon/domain/enums/coupon-min-order-type.enum';
 import { CouponType } from '../../coupon/domain/enums/coupon-type.enum';
+import type { CheckoutShippingShopQuote } from '../../shipping/app/shipping.types';
 
 export interface ShippingAddressInput {
   fullName: string;
@@ -86,10 +90,14 @@ export interface CheckoutQuoteShopSummary {
   subtotalMinor: number;
   discountMinor: number;
   shippingMinor: number;
+  shippingDiscountMinor: number;
   totalMinor: number;
   note?: string;
   promoCodes: string[];
   originCountries: string[];
+  /** Immutable per-shop shipping quote: charge, calculation, and estimate. */
+  shipping?: CheckoutShippingShopQuote;
+  shippingDiscounts: ShippingDiscountProvenance[];
   items: CheckoutQuoteItemSummary[];
 }
 
@@ -101,6 +109,8 @@ export interface CheckoutQuoteResult {
   shippingMinor: number;
   discountMinor: number;
   totalMinor: number;
+  /** UTC instant the accepted delivery estimate is anchored to. */
+  shippingAnchorAt?: Date;
   expiresAt: Date;
   shops: CheckoutQuoteShopSummary[];
   items: CheckoutQuoteItemSummary[];
@@ -152,6 +162,18 @@ export interface OrderListProduct {
   };
 }
 
+/**
+ * The accepted shipping facts of a confirmed Order: the frozen per-shop
+ * Shipping Charge calculation, the matched Shipping Profile/rate identities and
+ * versions, the Processing/Delivery ranges, the combined seller estimate, and
+ * any shipping waiver. These are purchase-time facts, never recomputed.
+ */
+export interface OrderShippingQuote {
+  shipping: CheckoutShippingShopQuote;
+  shippingDiscountMinor: number;
+  shippingDiscounts: ShippingDiscountProvenance[];
+}
+
 export interface OrderListShop {
   id: string;
   orderNumber: string;
@@ -163,16 +185,7 @@ export interface OrderListShop {
   status: string;
   products: OrderListProduct[];
   promoCodes: string[];
-  shippingStatus: string;
-  shippingUpdatedAt: Date;
-  shippingToCountry: string;
-  shippingFromCountries: string[];
-  shippingEstimatedDelivery: Date;
-  trackingNumber?: string;
-  shippingCarrier?: string;
-  shipmentNote?: string;
-  shippedAt?: Date;
-  deliveredAt?: Date;
+  fulfillment: OrderFulfillmentSummary;
   canceledAt?: Date;
   cancelReason?: string;
   customerSupportNote?: string;
@@ -187,6 +200,7 @@ export interface OrderListShop {
   discountMinor?: number;
   total: number;
   totalMinor?: number;
+  shippingQuote?: OrderShippingQuote;
   note?: string;
   createdAt: Date;
 }
@@ -216,7 +230,7 @@ export interface AdminOrderSummary {
   currency: string;
   paymentType: string;
   status: string;
-  shippingStatus: string;
+  fulfillmentStatus: string;
   total: number;
   totalMinor?: number;
   supportNote?: string;
@@ -244,6 +258,32 @@ export interface OrderShippingAddressSummary {
   phone?: string;
 }
 
+/**
+ * Immutable order-level shipping facts retained as legacy evidence. These are
+ * read-only history: they never prove which quantities were in a parcel and are
+ * not a mutable shipping authority.
+ */
+export interface LegacyOrderShippingEvidence {
+  status: string;
+  updatedAt: Date;
+  toCountry: string;
+  fromCountries: string[];
+  estimatedDelivery?: Date;
+  trackingNumber?: string;
+  carrier?: string;
+  note?: string;
+  shippedAt?: Date;
+  deliveredAt?: Date;
+}
+
+export interface OrderFulfillmentSummary {
+  status: FulfillmentAggregateStatus;
+  requiresReconciliation: boolean;
+  progress: FulfillmentProgressSnapshot;
+  groups: FulfillmentGroupView[];
+  legacyShipping: LegacyOrderShippingEvidence;
+}
+
 export interface OrderTimelineEvent {
   id: string;
   type: string;
@@ -267,16 +307,7 @@ export interface ShopOrderSummary {
   status: string;
   products: OrderListProduct[];
   promoCodes: string[];
-  shippingStatus: string;
-  shippingUpdatedAt: Date;
-  shippingToCountry: string;
-  shippingFromCountries: string[];
-  shippingEstimatedDelivery: Date;
-  trackingNumber?: string;
-  shippingCarrier?: string;
-  shipmentNote?: string;
-  shippedAt?: Date;
-  deliveredAt?: Date;
+  fulfillment: OrderFulfillmentSummary;
   canceledAt?: Date;
   cancelReason?: string;
   customerSupportNote?: string;
@@ -291,6 +322,7 @@ export interface ShopOrderSummary {
   discountMinor?: number;
   total: number;
   totalMinor?: number;
+  shippingQuote?: OrderShippingQuote;
   note?: string;
   createdAt: Date;
 }
@@ -406,6 +438,23 @@ export interface PricedCartItem {
   autoSaleCoupon?: CouponEntity;
 }
 
+export interface ShippingDiscountProvenance {
+  couponId: string;
+  code: string;
+  type: 'free_ship';
+  appliesTo: CouponAppliesTo;
+  appliesProductIds: string[];
+  minOrderType: CouponMinOrderType;
+  minOrderValue: number;
+  minProducts: number;
+  maxUses: number;
+  maxUsesPerUser: number;
+  usesCount: number;
+  /** Shipping money waived by this coupon; never negative, never merchandise. */
+  waivedMinor: number;
+  currency: string;
+}
+
 export interface PricedShopCart {
   shopId: string;
   shopName: string;
@@ -417,6 +466,10 @@ export interface PricedShopCart {
   note?: string;
   promoCoupons: CouponEntity[];
   originCountries: string[];
+  /** Per-shop shipping quote: charge, base-unit calculation, and estimate. */
+  shipping?: CheckoutShippingShopQuote;
+  shippingDiscountMinor?: number;
+  shippingDiscounts?: ShippingDiscountProvenance[];
 }
 
 export interface PricedCartSummary {
@@ -430,6 +483,8 @@ export interface PricedCartSummary {
   totalPrice: number;
   totalSelectedQuantity: number;
   totalQuantity: number;
+  /** UTC instant the per-shop delivery estimates are anchored to. */
+  shippingAnchorAt?: Date;
 }
 
 export function isCouponActive(coupon: CouponEntity, now = new Date()): boolean {

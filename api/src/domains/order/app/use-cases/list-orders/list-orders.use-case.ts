@@ -3,10 +3,11 @@ import { Injectable } from '@nestjs/common';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import { StorageService } from '~/integrations/storage/app/ports/storage.service';
 import { ProductReviewEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-review.entity';
+import { OrderFulfillmentViewPort } from '../../../../fulfillment/app/ports/order-fulfillment-view.port';
+import { FulfillmentAggregateStatus } from '../../../../fulfillment/domain/enums/fulfillment-aggregate-status.enum';
 import type { ListMyOrdersQueryDto } from '../../../api/rest/dto/list-my-orders.query.dto';
 import { OrderEntity } from '../../../infra/persistence/entities/order.entity';
 import { OrderItemEntity } from '../../../infra/persistence/entities/order-item.entity';
-import { OrderShippingStatus } from '../../../domain/enums/order-shipping-status.enum';
 import { OrderStatus } from '../../../domain/enums/order-status.enum';
 import {
   getOrderDiscountMajor,
@@ -20,7 +21,11 @@ import {
   getOrderTotalMinor,
   getOrderTotalMajor,
 } from '../../order-money';
+import { buildOrderFulfillmentSummary, canceledFulfillmentOrderIds } from '../../order-fulfillment';
 import { getRequiredOrderNumber } from '../../order-number';
+import {
+  parsePersistedOrderShippingSnapshot,
+} from '../../../../checkout/app/checkout-shipping-snapshot.contract';
 import type { OrderListResult } from '../../order.types';
 
 @Injectable()
@@ -28,6 +33,7 @@ export class ListOrdersUseCase {
   constructor(
     private readonly entityManager: EntityManager,
     private readonly storageService: StorageService,
+    private readonly orderFulfillmentViewPort: OrderFulfillmentViewPort,
   ) {}
 
   async execute(
@@ -50,6 +56,11 @@ export class ListOrdersUseCase {
         { populate: ['product', 'product.shop', 'inventory'] },
       )
       : [];
+    const fulfillmentViews = await this.orderFulfillmentViewPort.load(
+      entityManager,
+      orders.map((order) => order.id),
+      { canceledOrderIds: canceledFulfillmentOrderIds(orders) },
+    );
     const reviewMap = await loadProductReviewMap(
       entityManager,
       actor.userId,
@@ -78,7 +89,7 @@ export class ListOrdersUseCase {
         return false;
       }
 
-      if (query.shippingStatus && order.shippingStatus !== query.shippingStatus) {
+      if (query.fulfillmentStatus && order.fulfillmentStatus !== query.fulfillmentStatus) {
         return false;
       }
 
@@ -134,16 +145,7 @@ export class ListOrdersUseCase {
           myReview: reviewMap.get(item.product.id),
         })),
         promoCodes: order.promoCodes,
-        shippingStatus: order.shippingStatus,
-        shippingUpdatedAt: order.updatedAt,
-        shippingToCountry: order.shippingToCountry,
-        shippingFromCountries: order.shippingOriginCountries,
-        shippingEstimatedDelivery: order.shippingEstimatedDelivery,
-        trackingNumber: order.trackingNumber,
-        shippingCarrier: order.shippingCarrier,
-        shipmentNote: order.shipmentNote,
-        shippedAt: order.shippedAt,
-        deliveredAt: order.deliveredAt,
+        fulfillment: buildOrderFulfillmentSummary(order, fulfillmentViews.get(order.id)),
         canceledAt: order.canceledAt,
         cancelReason: order.cancelReason,
         customerSupportNote: order.customerSupportNote,
@@ -158,6 +160,7 @@ export class ListOrdersUseCase {
         discountMinor: getOrderDiscountMinor(order),
         total: getOrderTotalMajor(order),
         totalMinor: getOrderTotalMinor(order),
+        shippingQuote: parsePersistedOrderShippingSnapshot(order.shippingQuoteSnapshot),
         note: order.note,
         createdAt: order.createdAt,
       })),
@@ -213,7 +216,7 @@ async function loadProductReviewMap(
 }
 
 function matchesCustomerState(
-  order: Pick<OrderEntity, 'status' | 'shippingStatus'>,
+  order: Pick<OrderEntity, 'status' | 'fulfillmentStatus'>,
   state: NonNullable<ListMyOrdersQueryDto['state']>,
 ): boolean {
   switch (state) {
@@ -225,12 +228,20 @@ function matchesCustomerState(
       ].includes(order.status);
     case 'processing':
       return order.status === OrderStatus.PAID
-        && order.shippingStatus === OrderShippingStatus.PRE_TRANSIT;
+        && [
+          FulfillmentAggregateStatus.UNFULFILLED,
+          FulfillmentAggregateStatus.PREPARED,
+        ].includes(order.fulfillmentStatus);
     case 'shipped':
-      return [OrderShippingStatus.IN_TRANSIT, OrderShippingStatus.SHIPPED]
-        .includes(order.shippingStatus);
+      return [
+        FulfillmentAggregateStatus.PARTIALLY_SHIPPED,
+        FulfillmentAggregateStatus.SHIPPED,
+        FulfillmentAggregateStatus.PARTIALLY_DELIVERED,
+        FulfillmentAggregateStatus.DISPATCHED,
+        FulfillmentAggregateStatus.IN_TRANSIT,
+      ].includes(order.fulfillmentStatus);
     case 'delivered':
-      return order.shippingStatus === OrderShippingStatus.DELIVERED;
+      return order.fulfillmentStatus === FulfillmentAggregateStatus.DELIVERED;
     case 'canceled':
       return order.status === OrderStatus.CANCELED;
     case 'refunded':

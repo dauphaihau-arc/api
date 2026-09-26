@@ -6,7 +6,6 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import ms from 'ms';
 import { fromMinorUnits, toMinorUnits } from '../../../../platform/money/money';
 import { MARKETPLACE_CURRENCIES } from '../../../../platform/config/marketplace.config';
 import {
@@ -18,9 +17,10 @@ import { PurchaseEligibilityService } from '../../../product/app/services/purcha
 import { JobDispatcher } from '~/integrations/queue/app/ports/job-dispatcher';
 import { NotifyUserUseCase } from '../../../../domains/notification/app/use-cases/notify-user/notify-user.use-case';
 import type { CartSnapshot } from '../../../cart/app/cart.types';
+import { CartPricingService } from '../../../cart/app/services/cart-pricing.service';
 import { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
-import { CouponPricingService } from '../../../coupon/app/services/coupon-pricing.service';
 import { CouponUsageEntity } from '../../../coupon/infra/persistence/entities/coupon-usage.entity';
+import { CouponEntity } from '../../../coupon/infra/persistence/entities/coupon.entity';
 import { ProductEntity } from '../../../product/infra/persistence/mikro-orm/entities/product.entity';
 import { ProductInventoryEntity } from '../../../product/infra/persistence/mikro-orm/entities/product-inventory.entity';
 import { OrderEventActorType } from '../../domain/enums/order-event-actor-type.enum';
@@ -30,13 +30,22 @@ import { OrderShippingStatus } from '../../domain/enums/order-shipping-status.en
 import { OrderStatus } from '../../domain/enums/order-status.enum';
 import { OrderEntity } from '../../infra/persistence/entities/order.entity';
 import { OrderItemEntity } from '../../infra/persistence/entities/order-item.entity';
+import { FulfillmentService } from '../../../fulfillment/app/services/fulfillment.service';
+import { ShipmentUpdateActorType } from '../../../fulfillment/domain/enums/shipment-update-actor-type.enum';
+import { ShipmentUpdateSource } from '../../../fulfillment/domain/enums/shipment-update-source.enum';
 import type { LoadedCheckoutQuote } from './load-checkout-quote.service';
 import { OrderCheckoutOutboxService } from './order-checkout-outbox.service';
 import { CheckoutStockReservationPort } from '../../../checkout/app/ports/checkout-stock-reservation.port';
 import {
   CheckoutQuoteReservationOutOfStockError,
   CheckoutQuoteReservationUnavailableError,
+  CheckoutShippingUnavailableError,
 } from '../errors/order-app.error';
+import {
+  toPersistedOrderShippingSnapshot,
+} from '../../../checkout/app/checkout-shipping-snapshot.contract';
+import { ShippingQuoteService } from '../../../shipping/app/services/shipping-quote.service';
+import type { ShippingQuoteUnavailableProduct } from '../../../shipping/app/shipping.types';
 import { OrderInventoryOutboxService } from './order-inventory-outbox.service';
 import { OrderEventsService } from './order-events.service';
 import {
@@ -55,7 +64,6 @@ import { OrderInventoryQueryRepository } from '../ports/order-inventory-query.re
 import { OrderShopQueryRepository } from '../ports/order-shop-query.repository';
 import { OrderTotalPolicyService } from './order-total-policy.service';
 
-const SHIPPING_ESTIMATED_DELIVERY_MS = ms('7d');
 const CHECKOUT_SESSION_INLINE_TIMEOUT_MS = 1_500;
 
 @Injectable()
@@ -64,7 +72,7 @@ export class OrderCheckoutService {
 
   constructor(
     private readonly entityManager: EntityManager,
-    private readonly couponPricingService: CouponPricingService,
+    private readonly cartPricingService: CartPricingService,
     private readonly checkoutStockReservationService: CheckoutStockReservationPort,
     private readonly orderCheckoutOutboxService: OrderCheckoutOutboxService,
     private readonly orderInventoryOutboxService: OrderInventoryOutboxService,
@@ -77,6 +85,8 @@ export class OrderCheckoutService {
     private readonly orderInventoryQueryRepository: OrderInventoryQueryRepository,
     private readonly orderShopQueryRepository: OrderShopQueryRepository,
     private readonly purchaseEligibilityService: PurchaseEligibilityService,
+    private readonly fulfillmentService: FulfillmentService,
+    private readonly shippingQuoteService: ShippingQuoteService,
   ) {}
 
   async createOrders(
@@ -100,7 +110,7 @@ export class OrderCheckoutService {
 
     const pricedCartSummary = quote
       ? undefined
-      : await this.couponPricingService.buildPricedCartSummary({
+      : await this.cartPricingService.buildPricedCartSummary({
         userId: actor.type === 'user' ? actor.userId : undefined,
         cart,
         shippingAddress: input.shippingAddress,
@@ -108,6 +118,10 @@ export class OrderCheckoutService {
       });
 
     const pricedShops = quote?.shops ?? pricedCartSummary?.shops ?? [];
+
+    if (quote) {
+      await this.assertQuoteShippingStillAvailable(quote, input.shippingAddress);
+    }
 
     const totalMinor = quote
       ? quote.totalMinor
@@ -127,6 +141,7 @@ export class OrderCheckoutService {
       const orderItemRepository = entityManager.getRepository(OrderItemEntity);
       const usageRepository = entityManager.getRepository(CouponUsageEntity);
       const createdOrders: OrderEntity[] = [];
+      const orderItemsByOrderId = new Map<string, OrderItemEntity[]>();
       let checkoutOutboxEventId: string | undefined;
 
       const inventoryReservationItems: Array<{
@@ -178,6 +193,7 @@ export class OrderCheckoutService {
         : await this.checkoutStockReservationService.allocateInventoryForOrderItems(
           entityManager,
           inventoryReservationItems,
+          { commandId: `${cartId}:allocate` },
         );
 
       for (const shop of pricedShops) {
@@ -198,6 +214,32 @@ export class OrderCheckoutService {
           throw new NotFoundException('Shop not found');
         }
 
+        const subtotalMinor = quoteShop
+          ? quoteShop.subtotalMinor
+          : toMinorUnits(pricedShop!.subtotal, currency);
+        const shippingMinor = quoteShop
+          ? quoteShop.shippingMinor
+          : toMinorUnits(pricedShop!.totalShippingFee, currency);
+        const discountMinor = quoteShop
+          ? quoteShop.discountMinor
+          : toMinorUnits(pricedShop!.totalDiscount, currency);
+        // Order money is owned in minor units: the persisted row, the
+        // payment-provider charge, and the accepted quote then agree exactly.
+        const orderTotalMinor = subtotalMinor - discountMinor + shippingMinor;
+        const acceptedShipping = quoteShop?.shipping
+          ? {
+            shipping: quoteShop.shipping,
+            shippingDiscountMinor: quoteShop.shippingDiscountMinor,
+            shippingDiscounts: quoteShop.shippingDiscounts,
+          }
+          : pricedShop?.shipping
+            ? {
+              shipping: pricedShop.shipping,
+              shippingDiscountMinor: pricedShop.shippingDiscountMinor ?? 0,
+              shippingDiscounts: pricedShop.shippingDiscounts ?? [],
+            }
+            : undefined;
+
         const order = orderRepository.create({
           ...(actor.type === 'user'
             ? { user: entityManager.getReference(UserEntity, actor.userId) }
@@ -211,22 +253,14 @@ export class OrderCheckoutService {
           shippingStatus: OrderShippingStatus.PRE_TRANSIT,
           currency,
           marketCode: quote?.marketCode ?? shop.items[0]?.marketCode,
-          subtotal: quoteShop ? fromMinorUnits(quoteShop.subtotalMinor, currency) : pricedShop!.subtotal,
-          subtotalMinor: quoteShop
-            ? quoteShop.subtotalMinor
-            : toMinorUnits(pricedShop!.subtotal, currency),
-          totalShippingFee: quoteShop ? fromMinorUnits(quoteShop.shippingMinor, currency) : pricedShop!.totalShippingFee,
-          shippingMinor: quoteShop
-            ? quoteShop.shippingMinor
-            : toMinorUnits(pricedShop!.totalShippingFee, currency),
-          totalDiscount: quoteShop ? fromMinorUnits(quoteShop.discountMinor, currency) : pricedShop!.totalDiscount,
-          discountMinor: quoteShop
-            ? quoteShop.discountMinor
-            : toMinorUnits(pricedShop!.totalDiscount, currency),
-          total: quoteShop ? fromMinorUnits(quoteShop.totalMinor, currency) : pricedShop!.total,
-          totalMinor: quoteShop
-            ? quoteShop.totalMinor
-            : toMinorUnits(pricedShop!.total, currency),
+          subtotal: fromMinorUnits(subtotalMinor, currency),
+          subtotalMinor,
+          totalShippingFee: fromMinorUnits(shippingMinor, currency),
+          shippingMinor,
+          totalDiscount: fromMinorUnits(discountMinor, currency),
+          discountMinor,
+          total: fromMinorUnits(orderTotalMinor, currency),
+          totalMinor: orderTotalMinor,
           note: shop.note,
           promoCodes: quoteShop
             ? quoteShop.promoCodes
@@ -234,7 +268,15 @@ export class OrderCheckoutService {
           shippingAddress: toPersistedShippingAddress(input.shippingAddress),
           shippingOriginCountries: shop.originCountries,
           shippingToCountry: input.shippingAddress.country,
-          shippingEstimatedDelivery: new Date(Date.now() + SHIPPING_ESTIMATED_DELIVERY_MS),
+          // The accepted seller estimate, never a fabricated date.
+          shippingEstimatedDelivery: acceptedShipping?.shipping.estimate.latestDeliveryDate,
+          ...(acceptedShipping
+            ? {
+              shippingQuoteSnapshot: toPersistedOrderShippingSnapshot(
+                acceptedShipping,
+              ) as unknown as Record<string, unknown>,
+            }
+            : {}),
           paymentDetails: {
             type: input.paymentType,
             cart_id: cartId,
@@ -270,6 +312,8 @@ export class OrderCheckoutService {
             payment_type: order.paymentType,
           },
         });
+
+        const createdOrderItems: OrderItemEntity[] = [];
 
         for (const item of shop.items) {
           const quoteItem = quote
@@ -332,23 +376,53 @@ export class OrderCheckoutService {
             percentCouponPercent: pricedItem?.autoSaleCoupon?.percentOff,
           });
           entityManager.persist(orderItem);
+          createdOrderItems.push(orderItem);
         }
 
-        if (pricedShop) {
-          for (const coupon of pricedShop.promoCoupons) {
-            coupon.usesCount += 1;
-            const usage = usageRepository.create({
-              coupon,
-              ...(actor.type === 'user'
-                ? { user: entityManager.getReference(UserEntity, actor.userId) }
-                : {}),
-              orderId: order.id,
-              code: coupon.code,
-            });
-            entityManager.persist(usage);
-          }
+        if (input.paymentType === PaymentType.CASH) {
+          await this.fulfillmentService.assignSellerGroupToOrder(entityManager, {
+            orderId: order.id,
+            shopId: shopEntity.id,
+            items: createdOrderItems.map((orderItem) => ({
+              orderItemId: orderItem.id,
+              quantity: orderItem.quantity,
+            })),
+            actor: {
+              actorType: actor.type === 'user'
+                ? ShipmentUpdateActorType.BUYER
+                : ShipmentUpdateActorType.SYSTEM,
+              actorId: actor.type === 'user' ? actor.userId : undefined,
+              source: ShipmentUpdateSource.CHECKOUT,
+            },
+          });
         }
 
+        // Coupon usage and provenance are preserved for both the quoted and the
+        // directly-priced path: every accepted code increments its usage and
+        // records an order-scoped usage row.
+        const appliedCoupons = pricedShop
+          ? pricedShop.promoCoupons
+          : quoteShop && quoteShop.promoCodes.length > 0
+            ? await entityManager.getRepository(CouponEntity).find({
+              shop: shopEntity.id,
+              code: { $in: quoteShop.promoCodes },
+            })
+            : [];
+
+        for (const coupon of appliedCoupons) {
+          coupon.usesCount += 1;
+          const usage = usageRepository.create({
+            coupon,
+            ...(actor.type === 'user'
+              ? { user: entityManager.getReference(UserEntity, actor.userId) }
+              : {}),
+            orderId: order.id,
+            code: coupon.code,
+          });
+          entityManager.persist(usage);
+        }
+
+        orderItemsByOrderId.set(order.id, createdOrderItems);
         createdOrders.push(order);
       }
 
@@ -361,6 +435,46 @@ export class OrderCheckoutService {
       }
 
       if (input.paymentType === PaymentType.CARD) {
+        // The provider is charged from the persisted Order rows, not from a
+        // re-derivation of current configuration, so the payment session, the
+        // confirmed Orders, and the accepted quote agree exactly in minor units.
+        const lineItems = createdOrders.flatMap((order) =>
+          (orderItemsByOrderId.get(order.id) ?? []).map((item) => ({
+            name: item.title,
+            imageUrl: item.imageUrl,
+            unitAmountMinor: item.unitPriceMinor,
+            quantity: item.quantity,
+          })));
+
+        const shippingAmountMinor = createdOrders.reduce(
+          (total, order) => total + order.shippingMinor,
+          0,
+        );
+        const discountAmountMinor = createdOrders.reduce(
+          (total, order) => total + order.discountMinor,
+          0,
+        );
+        const orderTotalMinor = createdOrders.reduce(
+          (total, order) => total + order.totalMinor,
+          0,
+        );
+        const chargedTotalMinor = lineItems.reduce(
+          (total, item) => total + (item.unitAmountMinor * item.quantity),
+          0,
+        ) + shippingAmountMinor - discountAmountMinor;
+
+        if (chargedTotalMinor !== orderTotalMinor) {
+          throw new Error(
+            `Checkout amounts disagree: provider charge ${chargedTotalMinor} does not match persisted order total ${orderTotalMinor}`,
+          );
+        }
+
+        if (quote && orderTotalMinor !== quote.totalMinor) {
+          throw new Error(
+            `Checkout amounts disagree: persisted order total ${orderTotalMinor} does not match accepted quote total ${quote.totalMinor}`,
+          );
+        }
+
         const outboxEvent = await this.orderCheckoutOutboxService.createCheckoutSessionRequestedEvent(
           entityManager,
           {
@@ -369,31 +483,9 @@ export class OrderCheckoutService {
             cartId,
             orderIds: createdOrders.map((order) => order.id),
             currency,
-            lineItems: pricedShops.flatMap((shop) =>
-              shop.items.map((item) => {
-                const quoteItem = quote
-                  ? item as LoadedCheckoutQuote['items'][number]
-                  : undefined;
-                const pricedItem = quote
-                  ? undefined
-                  : item as NonNullable<typeof pricedCartSummary>['shops'][number]['items'][number];
-
-                return {
-                  name: item.title,
-                  imageUrl: item.imageUrl,
-                  unitAmountMinor: quoteItem
-                    ? quoteItem.unitPriceCheckoutMinor
-                    : toMinorUnits(pricedItem!.effectiveUnitPrice, currency),
-                  quantity: item.quantity,
-                };
-              }),
-            ),
-            shippingAmountMinor: quote
-              ? quote.shippingMinor
-              : toMinorUnits(pricedCartSummary?.totalShippingFee ?? 0, currency),
-            discountAmountMinor: quote
-              ? quote.discountMinor
-              : toMinorUnits(pricedCartSummary?.totalDiscount ?? 0, currency),
+            lineItems,
+            shippingAmountMinor,
+            discountAmountMinor,
             shippingAddress: input.shippingAddress,
           },
         );
@@ -509,6 +601,55 @@ export class OrderCheckoutService {
           );
         });
       });
+    }
+  }
+
+  /**
+   * Confirming an accepted quote revalidates that every quoted Product can
+   * still be delivered to the quoted destination: its assignment, profile
+   * lifecycle and readiness, and the matched destination rate. It never
+   * reprices the accepted quote from current configuration; a Product that
+   * became undeliverable fails the confirmation instead.
+   */
+  private async assertQuoteShippingStillAvailable(
+    quote: LoadedCheckoutQuote,
+    shippingAddress: ShippingAddressInput,
+  ): Promise<void> {
+    const units = quote.items.map((item) => ({
+      productId: item.productId,
+      inventoryId: item.inventoryId,
+      quantity: item.quantity,
+    }));
+    const resolutions = await this.shippingQuoteService.resolveForProducts({
+      productIds: [...new Set(units.map((unit) => unit.productId))],
+      destination: {
+        countryCode: shippingAddress.country,
+      },
+    });
+    const resolutionByProductId = new Map(
+      resolutions.map((resolution) => [resolution.productId, resolution]),
+    );
+
+    const unavailable: ShippingQuoteUnavailableProduct[] = [];
+
+    for (const unit of units) {
+      const resolution = resolutionByProductId.get(unit.productId);
+
+      if (resolution?.available) {
+        continue;
+      }
+
+      unavailable.push({
+        productId: unit.productId,
+        inventoryId: unit.inventoryId,
+        quantity: unit.quantity,
+        reason: resolution?.reason ?? 'missing_assignment',
+        readinessIssues: resolution?.readinessIssues ?? [],
+      });
+    }
+
+    if (unavailable.length > 0) {
+      throw new CheckoutShippingUnavailableError(unavailable);
     }
   }
 

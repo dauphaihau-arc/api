@@ -70,16 +70,19 @@ import {
 } from './infra/messaging/rabbitmq-order-inventory-event.publisher';
 import { connect } from 'amqplib';
 import { CheckoutModule } from '../checkout/checkout.module';
+import { CartModule } from '../cart/cart.module';
 import { PaymentModule } from '~/integrations/payment/payment.module';
 import { NotificationModule } from '~/domains/notification/notification.module';
 import { QueueModule } from '~/integrations/queue/queue.module';
 import { SseModule } from '~/platform/sse/sse.module';
 import { StorageModule } from '~/integrations/storage/storage.module';
+import { FulfillmentModule } from '../fulfillment/fulfillment.module';
 import { ShopModule } from '../shop/shop.module';
+import { ShippingModule } from '../shipping/shipping.module';
 import { ProductModule } from '../product/product.module';
+import { ApplyOrderFulfillmentListener } from './listeners/apply-order-fulfillment.listener';
 import { ForwardOrderUpdatedToSseListener } from './listeners/forward-order-updated-to-sse.listener';
 import { ForwardOrderExportToSseListener } from './listeners/forward-order-export-to-sse.listener';
-import { UpdateShopOrderShipmentUseCase } from './app/use-cases/update-shop-order-shipment/update-shop-order-shipment.use-case';
 import { UpdateShopOrderStatusUseCase } from './app/use-cases/update-shop-order-status/update-shop-order-status.use-case';
 import { UpdateShopOrderRefundUseCase } from './app/use-cases/update-shop-order-refund/update-shop-order-refund.use-case';
 
@@ -87,6 +90,7 @@ import { UpdateShopOrderRefundUseCase } from './app/use-cases/update-shop-order-
   imports: [
     ConfigModule,
     forwardRef(() => AuthModule),
+    CartModule,
     forwardRef(() => CheckoutModule),
     CouponModule,
     ProductModule,
@@ -96,6 +100,8 @@ import { UpdateShopOrderRefundUseCase } from './app/use-cases/update-shop-order-
     SseModule,
     StorageModule,
     ShopModule,
+    ShippingModule,
+    FulfillmentModule,
     MikroOrmModule.forFeature([
       OutboxEventEntity,
       OrderEventEntity,
@@ -187,8 +193,8 @@ import { UpdateShopOrderRefundUseCase } from './app/use-cases/update-shop-order-
     UpdateAdminOrderRefundUseCase,
     UpdateAdminOrderSupportNoteUseCase,
     UpdateShopOrderStatusUseCase,
-    UpdateShopOrderShipmentUseCase,
     UpdateShopOrderRefundUseCase,
+    ApplyOrderFulfillmentListener,
     ForwardOrderUpdatedToSseListener,
     ForwardOrderExportToSseListener,
     ProcessOrderRefundJob,

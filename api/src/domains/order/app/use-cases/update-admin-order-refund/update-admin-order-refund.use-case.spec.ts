@@ -93,6 +93,8 @@ describe('UpdateAdminOrderRefundUseCase', () => {
             return {
               find: jest.fn().mockResolvedValue([item]),
             };
+          case 'FulfillmentGroupEntity':
+            return { find: jest.fn().mockResolvedValue([]) };
           default:
             return {};
         }
@@ -124,6 +126,7 @@ describe('UpdateAdminOrderRefundUseCase', () => {
         jobDispatcher,
         eventEmitter as unknown as EventEmitter2,
         orderEventsService as never,
+        { load: jest.fn(async () => new Map()) } as never,
       ),
     };
   }

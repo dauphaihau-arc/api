@@ -83,6 +83,8 @@ describe('RequestOrderSupportUseCase', () => {
             return { findOne: jest.fn().mockResolvedValue(order) };
           case 'OrderItemEntity':
             return { find: jest.fn().mockResolvedValue(items) };
+          case 'FulfillmentGroupEntity':
+            return { find: jest.fn().mockResolvedValue([]) };
           default:
             return {};
         }
@@ -95,7 +97,7 @@ describe('RequestOrderSupportUseCase', () => {
 
     const useCase = new RequestOrderSupportUseCase({
       fork: jest.fn(() => fakeEntityManager),
-    } as unknown as EntityManager, notifyUserUseCase);
+    } as unknown as EntityManager, notifyUserUseCase, { load: jest.fn(async () => new Map()) } as never);
 
     const result = await useCase.execute(actor, 'order-1', {
       supportNote: 'Need help changing the address',

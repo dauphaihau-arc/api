@@ -57,7 +57,7 @@ export function toExportFilterSnapshot(
 ): Record<string, unknown> {
   return {
     status: query.status,
-    shippingStatus: query.shippingStatus,
+    fulfillmentStatus: query.fulfillmentStatus,
     createdFrom: query.createdFrom?.toISOString(),
     createdTo: query.createdTo?.toISOString(),
     amountMin: query.amountMin,

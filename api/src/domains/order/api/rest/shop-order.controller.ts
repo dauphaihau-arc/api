@@ -23,12 +23,10 @@ import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import { ShopAccessService } from '~/domains/shop/app/services/shop-access.service';
 import { GetShopOrderByIdUseCase } from '../../app/use-cases/get-shop-order-by-id/get-shop-order-by-id.use-case';
 import { ListShopOrdersUseCase } from '../../app/use-cases/list-shop-orders/list-shop-orders.use-case';
-import { UpdateShopOrderShipmentUseCase } from '../../app/use-cases/update-shop-order-shipment/update-shop-order-shipment.use-case';
 import { UpdateShopOrderStatusUseCase } from '../../app/use-cases/update-shop-order-status/update-shop-order-status.use-case';
 import { UpdateShopOrderRefundUseCase } from '../../app/use-cases/update-shop-order-refund/update-shop-order-refund.use-case';
 import { ListShopOrdersQueryDto } from './dto/list-shop-orders.query.dto';
 import { UpdateShopOrderRefundDto } from './dto/update-shop-order-refund.dto';
-import { UpdateShopOrderShipmentDto } from './dto/update-shop-order-shipment.dto';
 import { UpdateShopOrderStatusDto } from './dto/update-shop-order-status.dto';
 import {
   toShopOrderDetailResponse,
@@ -50,7 +48,6 @@ export class ShopOrderController {
     private readonly listShopOrdersUseCase: ListShopOrdersUseCase,
     private readonly getShopOrderByIdUseCase: GetShopOrderByIdUseCase,
     private readonly updateShopOrderStatusUseCase: UpdateShopOrderStatusUseCase,
-    private readonly updateShopOrderShipmentUseCase: UpdateShopOrderShipmentUseCase,
     private readonly updateShopOrderRefundUseCase: UpdateShopOrderRefundUseCase,
   ) {}
 
@@ -119,33 +116,6 @@ export class ShopOrderController {
     try {
       return toShopOrderDetailResponse(
         await this.updateShopOrderStatusUseCase.execute(shopId, orderId, body),
-      );
-    }
-    catch (error) {
-      this.throwMappedOrderError(error);
-    }
-  }
-
-  @Patch(':order_id/shipment')
-  @Header('Cache-Control', 'private, no-store')
-  @ApiOperation({ summary: 'Update shop order shipment' })
-  @ApiParam({ name: 'shop_id', type: String })
-  @ApiParam({ name: 'order_id', type: String })
-  @ApiOkResponse({
-    description: 'Updated shop order detail.',
-    schema: { type: 'object' },
-  })
-  async updateShipment(
-    @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('shop_id') shopId: string,
-    @Param('order_id') orderId: string,
-    @Body() body: UpdateShopOrderShipmentDto,
-  ) {
-    await this.shopAccessService.assertCanManageShop(currentUser, shopId);
-
-    try {
-      return toShopOrderDetailResponse(
-        await this.updateShopOrderShipmentUseCase.execute(shopId, orderId, body),
       );
     }
     catch (error) {

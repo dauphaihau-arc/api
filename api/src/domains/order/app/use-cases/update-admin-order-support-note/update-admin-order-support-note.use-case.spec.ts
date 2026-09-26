@@ -81,6 +81,8 @@ describe('UpdateAdminOrderSupportNoteUseCase', () => {
             return {
               find: jest.fn().mockResolvedValue([item]),
             };
+          case 'FulfillmentGroupEntity':
+            return { find: jest.fn().mockResolvedValue([]) };
           default:
             return {};
         }
@@ -92,7 +94,7 @@ describe('UpdateAdminOrderSupportNoteUseCase', () => {
       fork: jest.fn(() => fakeEntityManager),
     } as unknown as EntityManager;
 
-    const useCase = new UpdateAdminOrderSupportNoteUseCase(entityManager);
+    const useCase = new UpdateAdminOrderSupportNoteUseCase(entityManager, { load: jest.fn(async () => new Map()) } as never);
     const result = await useCase.execute('order-1', {
       supportNote: '  Manual refund requested by support  ',
     });

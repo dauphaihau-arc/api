@@ -4,7 +4,9 @@ import { DateTime } from 'luxon';
 import { OrderStatus } from '../../../domain/enums/order-status.enum';
 import { OrderEntity } from '../entities/order.entity';
 import { OrderItemEntity } from '../entities/order-item.entity';
+import { OrderFulfillmentViewPort } from '../../../../fulfillment/app/ports/order-fulfillment-view.port';
 import { toShopOrderSummary } from '../../../app/shop-order-read-model';
+import { canceledFulfillmentOrderIds } from '../../../app/order-fulfillment';
 import type {
   ShopDashboardPeriod,
   ShopDashboardRevenuePoint,
@@ -50,6 +52,7 @@ implements ShopDashboardQueryRepository {
   constructor(
     private readonly entityManager: EntityManager,
     private readonly storageService: StorageService,
+    private readonly orderFulfillmentViewPort: OrderFulfillmentViewPort,
   ) {}
 
   async getOverview(
@@ -78,6 +81,11 @@ implements ShopDashboardQueryRepository {
       entityManager,
       recentOrders.map((order) => order.id),
     );
+    const recentFulfillmentViews = await this.orderFulfillmentViewPort.load(
+      entityManager,
+      recentOrders.map((order) => order.id),
+      { canceledOrderIds: canceledFulfillmentOrderIds(recentOrders) },
+    );
 
     return {
       ...(input.period.range === 'all_time'
@@ -92,7 +100,11 @@ implements ShopDashboardQueryRepository {
       },
       revenueSeries: buildRevenueSeries(input.period, revenueRows),
       recentOrders: recentOrders.map((order) =>
-        toShopOrderSummary(order, recentOrderItems.get(order.id) ?? []),
+        toShopOrderSummary(
+          order,
+          recentOrderItems.get(order.id) ?? [],
+          recentFulfillmentViews.get(order.id),
+        ),
       ),
       topSellingProducts: topProductRows.map((row): ShopDashboardTopProduct => {
         const imageUrl = resolveImageUrl(this.storageService, row.image_url);

@@ -12,6 +12,9 @@ import { OrderStatus } from '../../domain/enums/order-status.enum';
 import { OrderItemEntity } from '../../infra/persistence/entities/order-item.entity';
 import { dispatchBestSellerRankingRefresh } from '../best-seller-ranking-refresh';
 import { CheckoutStockReservationPort } from '../../../checkout/app/ports/checkout-stock-reservation.port';
+import { FulfillmentService } from '../../../fulfillment/app/services/fulfillment.service';
+import { ShipmentUpdateActorType } from '../../../fulfillment/domain/enums/shipment-update-actor-type.enum';
+import { ShipmentUpdateSource } from '../../../fulfillment/domain/enums/shipment-update-source.enum';
 import { OrderEventsService } from './order-events.service';
 import { getRequiredOrderNumber } from '../order-number';
 import type { CreateOrderResult } from '../order.types';
@@ -30,6 +33,7 @@ export class OrderPaymentService {
     private readonly orderEventsService: OrderEventsService,
     private readonly orderCheckoutSessionRepository: OrderCheckoutSessionRepository,
     private readonly orderCartCleanupRepository: OrderCartCleanupRepository,
+    private readonly fulfillmentService: FulfillmentService,
   ) {}
 
   async getOrdersByCheckoutSession(sessionId: string): Promise<CreateOrderResult> {
@@ -68,6 +72,10 @@ export class OrderPaymentService {
       }
 
       const orderIds = actionableOrders.map((order) => order.id);
+      const orderItems = await entityManager.getRepository(OrderItemEntity).find(
+        { order: { $in: orderIds } },
+        { populate: ['inventory', 'product', 'order'] },
+      );
       const firstPaymentDetails = actionableOrders[0]?.paymentDetails ?? {};
       const quoteId = typeof firstPaymentDetails.quote_id === 'string'
         ? firstPaymentDetails.quote_id
@@ -77,10 +85,6 @@ export class OrderPaymentService {
         : undefined;
 
       if (quoteId) {
-        const orderItems = await entityManager.getRepository(OrderItemEntity).find(
-          { order: { $in: orderIds } },
-          { populate: ['inventory', 'product'] },
-        );
         const reservedItems = orderItems.map((item) => ({
           inventoryId: item.inventory.id,
           quantity: item.quantity,
@@ -120,6 +124,21 @@ export class OrderPaymentService {
             payment_intent_id: input.paymentIntentId ?? undefined,
             payment_status: input.paymentStatus ?? 'paid',
             checkout_session_id: sessionId,
+          },
+        });
+        const fulfillmentItems = orderItems
+          .filter((item) => item.order.id === order.id)
+          .map((item) => ({
+            orderItemId: item.id,
+            quantity: item.quantity,
+          }));
+        await this.fulfillmentService.assignSellerGroupToOrder(entityManager, {
+          orderId: order.id,
+          shopId: order.shop.id,
+          items: fulfillmentItems,
+          actor: {
+            actorType: ShipmentUpdateActorType.SYSTEM,
+            source: ShipmentUpdateSource.CHECKOUT,
           },
         });
       }
@@ -182,6 +201,10 @@ export class OrderPaymentService {
             productId: item.product.id,
             quantity: item.quantity,
           })),
+          {
+            commandId: `${orderIds.join(',')}:expiry-restore`,
+            cause: 'payment_expired',
+          },
         );
 
       if (quoteId) {

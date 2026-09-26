@@ -1,6 +1,11 @@
+import type { FulfillmentOrderView } from '../../fulfillment/app/fulfillment.types';
 import type { OrderEntity } from '../infra/persistence/entities/order.entity';
 import type { OrderItemEntity } from '../infra/persistence/entities/order-item.entity';
+import { buildOrderFulfillmentSummary } from './order-fulfillment';
 import { getRequiredOrderNumber } from './order-number';
+import {
+  parsePersistedOrderShippingSnapshot,
+} from '../../checkout/app/checkout-shipping-snapshot.contract';
 import type {
   OrderListProduct,
   OrderShippingAddressSummary,
@@ -66,6 +71,7 @@ function toShippingAddress(
 export function toShopOrderSummary(
   order: OrderEntity,
   items: OrderItemEntity[],
+  fulfillmentView?: FulfillmentOrderView,
 ): ShopOrderSummary {
   const shippingAddress = toShippingAddress(order.shippingAddress);
 
@@ -82,16 +88,7 @@ export function toShopOrderSummary(
     status: order.status,
     products: toOrderProducts(items, order.currency),
     promoCodes: order.promoCodes,
-    shippingStatus: order.shippingStatus,
-    shippingUpdatedAt: order.updatedAt,
-    shippingToCountry: order.shippingToCountry,
-    shippingFromCountries: order.shippingOriginCountries,
-    shippingEstimatedDelivery: order.shippingEstimatedDelivery,
-    trackingNumber: order.trackingNumber,
-    shippingCarrier: order.shippingCarrier,
-    shipmentNote: order.shipmentNote,
-    shippedAt: order.shippedAt,
-    deliveredAt: order.deliveredAt,
+    fulfillment: buildOrderFulfillmentSummary(order, fulfillmentView),
     canceledAt: order.canceledAt,
     cancelReason: order.cancelReason,
     customerSupportNote: order.customerSupportNote,
@@ -106,6 +103,7 @@ export function toShopOrderSummary(
     discountMinor: getOrderDiscountMinor(order),
     total: getOrderTotalMajor(order),
     totalMinor: getOrderTotalMinor(order),
+    shippingQuote: parsePersistedOrderShippingSnapshot(order.shippingQuoteSnapshot),
     note: order.note,
     createdAt: order.createdAt,
   };
@@ -115,9 +113,10 @@ export function toShopOrderDetail(
   order: OrderEntity,
   items: OrderItemEntity[],
   timeline: OrderTimelineEvent[],
+  fulfillmentView?: FulfillmentOrderView,
 ): ShopOrderDetail {
   return {
-    ...toShopOrderSummary(order, []),
+    ...toShopOrderSummary(order, [], fulfillmentView),
     products: toOrderProducts(items, order.currency, { includeImageStorageKey: true }),
     shippingAddress: toShippingAddress(order.shippingAddress),
     timeline,

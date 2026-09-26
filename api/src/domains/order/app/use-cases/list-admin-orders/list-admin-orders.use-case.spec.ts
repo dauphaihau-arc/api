@@ -1,5 +1,5 @@
 import type { EntityManager } from '@mikro-orm/postgresql';
-import { OrderShippingStatus } from '../../../domain/enums/order-shipping-status.enum';
+import { FulfillmentAggregateStatus } from '../../../../fulfillment/domain/enums/fulfillment-aggregate-status.enum';
 import { OrderStatus } from '../../../domain/enums/order-status.enum';
 import { ListAdminOrdersUseCase } from './list-admin-orders.use-case';
 
@@ -17,7 +17,7 @@ describe('ListAdminOrdersUseCase', () => {
         customerEmail: 'buyer@example.com',
         paymentType: 'card',
         status: OrderStatus.PAID,
-        shippingStatus: OrderShippingStatus.PRE_TRANSIT,
+        fulfillmentStatus: FulfillmentAggregateStatus.UNFULFILLED,
         total: 42,
         supportNote: 'Investigating',
         cancelReason: undefined,
@@ -48,7 +48,7 @@ describe('ListAdminOrdersUseCase', () => {
         id: 'order-1',
         customerEmail: 'buyer@example.com',
         status: OrderStatus.PAID,
-        shippingStatus: OrderShippingStatus.PRE_TRANSIT,
+        fulfillmentStatus: FulfillmentAggregateStatus.UNFULFILLED,
       }),
     );
   });

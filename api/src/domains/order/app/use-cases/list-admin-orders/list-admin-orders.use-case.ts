@@ -56,7 +56,7 @@ export class ListAdminOrdersUseCase {
         currency: order.currency,
         paymentType: order.paymentType,
         status: order.status,
-        shippingStatus: order.shippingStatus,
+        fulfillmentStatus: order.fulfillmentStatus,
         total: getOrderTotalMajor(order),
         totalMinor: getOrderTotalMinor(order),
         supportNote: order.supportNote,

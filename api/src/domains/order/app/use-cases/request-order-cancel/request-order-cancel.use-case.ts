@@ -1,4 +1,4 @@
-import { EntityManager } from '@mikro-orm/postgresql';
+import { EntityManager, LockMode } from '@mikro-orm/postgresql';
 import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
@@ -6,7 +6,10 @@ import { PRODUCT_INVENTORY_UPDATED_SSE_EVENT } from '~/domains/product/app/event
 import { dispatchCatalogProductProjections } from '~/domains/product/app/catalog-product-projection-dispatch';
 import { NotifyUserUseCase } from '~/domains/notification/app/use-cases/notify-user/notify-user.use-case';
 import { JobDispatcher } from '~/integrations/queue/app/ports/job-dispatcher';
+import { OrderFulfillmentViewPort } from '../../../../fulfillment/app/ports/order-fulfillment-view.port';
+import { FulfillmentService } from '../../../../fulfillment/app/services/fulfillment.service';
 import { ORDER_UPDATED_SSE_EVENT } from '../../events/order-sse.event';
+import { buildOrderFulfillmentSummary, canceledFulfillmentOrderIds } from '../../order-fulfillment';
 import type { RequestOrderCancelDto } from '../../../api/rest/dto/request-order-cancel.dto';
 import { OrderEventActorType } from '../../../domain/enums/order-event-actor-type.enum';
 import { OrderEventType } from '../../../domain/enums/order-event-type.enum';
@@ -49,10 +52,12 @@ export class RequestOrderCancelUseCase {
   constructor(
     private readonly entityManager: EntityManager,
     private readonly orderCancellationService: OrderCancellationService,
+    private readonly fulfillmentService: FulfillmentService,
     private readonly jobDispatcher: JobDispatcher,
     private readonly notifyUserUseCase: NotifyUserUseCase,
     private readonly eventEmitter: EventEmitter2,
     private readonly orderEventsService: OrderEventsService,
+    private readonly orderFulfillmentViewPort: OrderFulfillmentViewPort,
   ) {}
 
   async execute(
@@ -65,7 +70,7 @@ export class RequestOrderCancelUseCase {
     const result = await entityManager.transactional(async (transactionalEntityManager) => {
       const order = await transactionalEntityManager.getRepository(OrderEntity).findOne(
         buildScopedOrderIdentifierWhere(orderId, { user: actor.userId }),
-        { populate: ['shop.ownerUser'] },
+        { populate: ['shop.ownerUser'], lockMode: LockMode.PESSIMISTIC_WRITE },
       );
 
       if (!order) {
@@ -76,7 +81,14 @@ export class RequestOrderCancelUseCase {
         throw new BuyerOrderCancelNotAllowedError();
       }
 
-      if (order.shippingStatus !== OrderShippingStatus.PRE_TRANSIT) {
+      const dispatchState = await this.fulfillmentService.getDispatchState(
+        transactionalEntityManager,
+        order.id,
+      );
+      const legacyDispatched = !dispatchState.hasGroups
+        && order.shippingStatus !== OrderShippingStatus.PRE_TRANSIT;
+
+      if (dispatchState.hasDispatched || legacyDispatched) {
         throw new BuyerShippedOrderCancelNotAllowedError();
       }
 
@@ -119,6 +131,11 @@ export class RequestOrderCancelUseCase {
         { order: order.id },
         { populate: ['product', 'product.shop', 'inventory'] },
       );
+      const fulfillmentView = (await this.orderFulfillmentViewPort.load(
+        transactionalEntityManager,
+        [order.id],
+        { canceledOrderIds: canceledFulfillmentOrderIds([order]) },
+      )).get(order.id);
 
       return {
         refundRequested,
@@ -148,16 +165,7 @@ export class RequestOrderCancelUseCase {
           percentCouponPercent: item.percentCouponPercent ?? null,
         })),
         promoCodes: order.promoCodes,
-        shippingStatus: order.shippingStatus,
-        shippingUpdatedAt: order.updatedAt,
-        shippingToCountry: order.shippingToCountry,
-        shippingFromCountries: order.shippingOriginCountries,
-        shippingEstimatedDelivery: order.shippingEstimatedDelivery,
-        trackingNumber: order.trackingNumber,
-        shippingCarrier: order.shippingCarrier,
-        shipmentNote: order.shipmentNote,
-        shippedAt: order.shippedAt,
-        deliveredAt: order.deliveredAt,
+        fulfillment: buildOrderFulfillmentSummary(order, fulfillmentView),
         canceledAt: order.canceledAt,
         cancelReason: order.cancelReason,
         customerSupportNote: order.customerSupportNote,
@@ -194,19 +202,28 @@ export class RequestOrderCancelUseCase {
     this.eventEmitter.emit(ORDER_UPDATED_SSE_EVENT, {
       userId: actor.userId,
       orderId: result.id,
-      changed: ['status'],
+      changed: ['status', 'fulfillment'],
       status: result.status,
-      shippingStatus: result.shippingStatus,
     });
 
     for (const inventoryEvent of result.inventoryEvents) {
       this.eventEmitter.emit(PRODUCT_INVENTORY_UPDATED_SSE_EVENT, inventoryEvent);
     }
 
-    await dispatchCatalogProductProjections(
-      this.jobDispatcher,
-      result.inventoryEvents.map((event) => event.productId),
-    );
+    try {
+      await dispatchCatalogProductProjections(
+        this.jobDispatcher,
+        result.inventoryEvents.map((event) => event.productId),
+      );
+    }
+    catch (error) {
+      // Catalog projection is a derived read model: a failed enqueue must not fail
+      // the committed cancellation, which would invite a confusing retry.
+      this.logger.error(
+        `Failed to schedule catalog projections for canceled order ${result.id}`,
+        error instanceof Error ? error.stack : undefined,
+      );
+    }
 
     if (result.refundRequested) {
       try {

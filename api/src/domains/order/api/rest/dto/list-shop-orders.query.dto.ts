@@ -10,7 +10,7 @@ import {
   Min,
 } from 'class-validator';
 import { PaymentType } from '../../../domain/enums/payment-type.enum';
-import { OrderShippingStatus } from '../../../domain/enums/order-shipping-status.enum';
+import { FulfillmentAggregateStatus } from '../../../../fulfillment/domain/enums/fulfillment-aggregate-status.enum';
 import { OrderStatus } from '../../../domain/enums/order-status.enum';
 
 const SHOP_ORDER_LIST_DEFAULT_PAGE = 1;
@@ -50,11 +50,11 @@ export class ListShopOrdersQueryDto {
   status?: OrderStatus[];
 
   @IsOptional()
-  @Expose({ name: 'shipping_status' })
-  @Transform(({ value, obj: source }) => toOptionalStringArray(value ?? source.shipping_status))
+  @Expose({ name: 'fulfillment_status' })
+  @Transform(({ value, obj: source }) => toOptionalStringArray(value ?? source.fulfillment_status))
   @IsArray()
-  @IsEnum(OrderShippingStatus, { each: true })
-  shippingStatus?: OrderShippingStatus[];
+  @IsEnum(FulfillmentAggregateStatus, { each: true })
+  fulfillmentStatus?: FulfillmentAggregateStatus[];
 
   @IsOptional()
   @Expose({ name: 'created_from' })

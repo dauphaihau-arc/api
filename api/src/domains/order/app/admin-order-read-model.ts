@@ -1,6 +1,11 @@
+import type { FulfillmentOrderView } from '../../fulfillment/app/fulfillment.types';
 import type { OrderEntity } from '../infra/persistence/entities/order.entity';
 import type { OrderItemEntity } from '../infra/persistence/entities/order-item.entity';
+import { buildOrderFulfillmentSummary } from './order-fulfillment';
 import { getRequiredOrderNumber } from './order-number';
+import {
+  parsePersistedOrderShippingSnapshot,
+} from '../../checkout/app/checkout-shipping-snapshot.contract';
 import type { AdminOrderDetail } from './order.types';
 import {
   getOrderDiscountMajor,
@@ -18,6 +23,7 @@ import {
 export function toAdminOrderDetail(
   order: OrderEntity,
   items: OrderItemEntity[],
+  fulfillmentView?: FulfillmentOrderView,
 ): AdminOrderDetail {
   return {
     id: order.id,
@@ -46,16 +52,7 @@ export function toAdminOrderDetail(
       percentCouponPercent: item.percentCouponPercent ?? null,
     })),
     promoCodes: order.promoCodes,
-    shippingStatus: order.shippingStatus,
-    shippingUpdatedAt: order.updatedAt,
-    shippingToCountry: order.shippingToCountry,
-    shippingFromCountries: order.shippingOriginCountries,
-    shippingEstimatedDelivery: order.shippingEstimatedDelivery,
-    trackingNumber: order.trackingNumber,
-    shippingCarrier: order.shippingCarrier,
-    shipmentNote: order.shipmentNote,
-    shippedAt: order.shippedAt,
-    deliveredAt: order.deliveredAt,
+    fulfillment: buildOrderFulfillmentSummary(order, fulfillmentView),
     canceledAt: order.canceledAt,
     cancelReason: order.cancelReason,
     refundedAt: order.refundedAt,
@@ -67,6 +64,7 @@ export function toAdminOrderDetail(
     discountMinor: getOrderDiscountMinor(order),
     total: getOrderTotalMajor(order),
     totalMinor: getOrderTotalMinor(order),
+    shippingQuote: parsePersistedOrderShippingSnapshot(order.shippingQuoteSnapshot),
     note: order.note,
     createdAt: order.createdAt,
     shippingAddress: {

@@ -8,7 +8,7 @@ const UUID_V4_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{
 export function buildShopOrderWhere(
   shopId: string,
   query: Pick<ListShopOrdersQueryDto,
-    | 'shippingStatus'
+    | 'fulfillmentStatus'
     | 'createdFrom'
     | 'createdTo'
     | 'amountMin'
@@ -21,8 +21,8 @@ export function buildShopOrderWhere(
   const where: FilterQuery<OrderEntity> = { shop: shopId };
   const andConditions: FilterQuery<OrderEntity>[] = [];
 
-  if (query.shippingStatus?.length) {
-    where.shippingStatus = { $in: query.shippingStatus };
+  if (query.fulfillmentStatus?.length) {
+    where.fulfillmentStatus = { $in: query.fulfillmentStatus };
   }
 
   if (query.createdFrom || query.createdTo) {

@@ -1,4 +1,4 @@
-import { EntityManager } from '@mikro-orm/postgresql';
+import { EntityManager, LockMode } from '@mikro-orm/postgresql';
 import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import {
@@ -23,8 +23,10 @@ import {
 import { dispatchBestSellerRankingRefresh } from '../../best-seller-ranking-refresh';
 import { ORDER_UPDATED_SSE_EVENT } from '../../events/order-sse.event';
 import { buildScopedOrderIdentifierWhere } from '../../order-identifier';
+import { FulfillmentService } from '../../../../fulfillment/app/services/fulfillment.service';
 import { OrderCancellationService } from '../../services/order-cancellation.service';
 import { OrderEventsService } from '../../services/order-events.service';
+import { OrderFulfillmentViewPort } from '../../../../fulfillment/app/ports/order-fulfillment-view.port';
 import { buildShopOrderDetail } from '../../shop-order-detail.loader';
 import type { ShopOrderDetail } from '../../order.types';
 
@@ -35,10 +37,12 @@ export class UpdateShopOrderStatusUseCase {
   constructor(
     private readonly entityManager: EntityManager,
     private readonly orderCancellationService: OrderCancellationService,
+    private readonly fulfillmentService: FulfillmentService,
     private readonly jobDispatcher: JobDispatcher,
     private readonly notifyUserUseCase: NotifyUserUseCase,
     private readonly eventEmitter: EventEmitter2,
     private readonly orderEventsService: OrderEventsService,
+    private readonly orderFulfillmentViewPort: OrderFulfillmentViewPort,
   ) {}
 
   async execute(
@@ -51,7 +55,7 @@ export class UpdateShopOrderStatusUseCase {
     const result = await entityManager.transactional(async (transactionalEntityManager) => {
       const order = await transactionalEntityManager.getRepository(OrderEntity).findOne(
         buildScopedOrderIdentifierWhere(orderId, { shop: shopId }),
-        { populate: ['shop', 'user'] },
+        { populate: ['shop', 'user'], lockMode: LockMode.PESSIMISTIC_WRITE },
       );
 
       if (!order) {
@@ -74,7 +78,14 @@ export class UpdateShopOrderStatusUseCase {
         throw new SellerOrderCancelNotAllowedError();
       }
 
-      if (order.shippingStatus !== OrderShippingStatus.PRE_TRANSIT) {
+      const dispatchState = await this.fulfillmentService.getDispatchState(
+        transactionalEntityManager,
+        order.id,
+      );
+      const legacyDispatched = !dispatchState.hasGroups
+        && order.shippingStatus !== OrderShippingStatus.PRE_TRANSIT;
+
+      if (dispatchState.hasDispatched || legacyDispatched) {
         throw new SellerShippedOrderCancelNotAllowedError();
       }
 
@@ -111,10 +122,20 @@ export class UpdateShopOrderStatusUseCase {
       this.eventEmitter.emit(PRODUCT_INVENTORY_UPDATED_SSE_EVENT, inventoryEvent);
     }
 
-    await dispatchCatalogProductProjections(
-      this.jobDispatcher,
-      result.inventoryEvents.map((event: ProductInventoryUpdatedSseEventPayload) => event.productId),
-    );
+    try {
+      await dispatchCatalogProductProjections(
+        this.jobDispatcher,
+        result.inventoryEvents.map((event: ProductInventoryUpdatedSseEventPayload) => event.productId),
+      );
+    }
+    catch (error) {
+      // Catalog projection is a derived read model: a failed enqueue must not fail
+      // the committed cancellation, which would invite a confusing retry.
+      this.logger.error(
+        `Failed to schedule catalog projections for canceled shop order ${result.detail.id}`,
+        error instanceof Error ? error.stack : undefined,
+      );
+    }
 
     if (result.refundRequested) {
       try {
@@ -142,7 +163,7 @@ export class UpdateShopOrderStatusUseCase {
       this.eventEmitter.emit(ORDER_UPDATED_SSE_EVENT, {
         userId: result.customerUserId,
         orderId: result.detail.id,
-        changed: ['status'],
+        changed: ['status', 'fulfillment'],
         status: OrderStatus.CANCELED,
       });
 
@@ -168,6 +189,6 @@ export class UpdateShopOrderStatusUseCase {
     entityManager: EntityManager,
     order: OrderEntity,
   ): Promise<ShopOrderDetail> {
-    return buildShopOrderDetail(entityManager, order);
+    return buildShopOrderDetail(entityManager, order, this.orderFulfillmentViewPort);
   }
 }

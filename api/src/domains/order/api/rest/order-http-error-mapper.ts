@@ -22,7 +22,6 @@ import {
   CheckoutSessionExpiredError,
   CheckoutSessionIdRequiredError,
   CheckoutSessionNotFoundError,
-  InvalidShippingStatusTransitionError,
   OrderAppError,
   OrderExportNotFoundError,
   OrderExportNotReadyError,
@@ -34,8 +33,6 @@ import {
   SellerOrderCancelNotAllowedError,
   SellerOrderStatusUpdateNotAllowedError,
   SellerShippedOrderCancelNotAllowedError,
-  ShipmentUpdateNotAllowedError,
-  ShipmentUpdatePayloadRequiredError,
   TemporaryCartNotFoundError,
 } from '../../app/errors/order-app.error';
 
@@ -68,9 +65,6 @@ type OrderHttpErrorCode =
   | 'SELLER_REFUND_ACTION_NOT_ALLOWED'
   | 'BUYER_ORDER_CANCEL_NOT_ALLOWED'
   | 'BUYER_SHIPPED_ORDER_CANCEL_NOT_ALLOWED'
-  | 'SHIPMENT_UPDATE_PAYLOAD_REQUIRED'
-  | 'SHIPMENT_UPDATE_NOT_ALLOWED'
-  | 'INVALID_SHIPPING_STATUS_TRANSITION'
   | 'ADMIN_ORDER_STATUS_OVERRIDE_NOT_ALLOWED'
   | 'ADMIN_REFUND_NOT_ALLOWED'
   | 'ADMIN_REFUND_REQUIRES_CARD_PAYMENT'
@@ -106,9 +100,6 @@ export function mapOrderAppErrorToHttpException(
     || error instanceof SellerRefundRequiresCardPaymentError
     || error instanceof BuyerOrderCancelNotAllowedError
     || error instanceof BuyerShippedOrderCancelNotAllowedError
-    || error instanceof ShipmentUpdatePayloadRequiredError
-    || error instanceof ShipmentUpdateNotAllowedError
-    || error instanceof InvalidShippingStatusTransitionError
     || error instanceof AdminOrderStatusOverrideNotAllowedError
     || error instanceof AdminRefundActionNotAllowedError
     || error instanceof AdminRefundNotAllowedError
@@ -208,15 +199,6 @@ function getOrderErrorCode(error: OrderAppError): OrderHttpErrorCode {
   }
   if (error instanceof BuyerShippedOrderCancelNotAllowedError) {
     return 'BUYER_SHIPPED_ORDER_CANCEL_NOT_ALLOWED';
-  }
-  if (error instanceof ShipmentUpdatePayloadRequiredError) {
-    return 'SHIPMENT_UPDATE_PAYLOAD_REQUIRED';
-  }
-  if (error instanceof ShipmentUpdateNotAllowedError) {
-    return 'SHIPMENT_UPDATE_NOT_ALLOWED';
-  }
-  if (error instanceof InvalidShippingStatusTransitionError) {
-    return 'INVALID_SHIPPING_STATUS_TRANSITION';
   }
   if (error instanceof AdminOrderStatusOverrideNotAllowedError) {
     return 'ADMIN_ORDER_STATUS_OVERRIDE_NOT_ALLOWED';

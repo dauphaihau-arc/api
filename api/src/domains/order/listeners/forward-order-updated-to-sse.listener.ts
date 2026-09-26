@@ -22,7 +22,7 @@ export class ForwardOrderUpdatedToSseListener {
         orderId: payload.orderId,
         changed: payload.changed,
         ...(payload.status ? { status: payload.status } : {}),
-        ...(payload.shippingStatus ? { shippingStatus: payload.shippingStatus } : {}),
+        ...(payload.fulfillmentStatus ? { fulfillmentStatus: payload.fulfillmentStatus } : {}),
         occurredAt: payload.occurredAt ?? new Date().toISOString(),
       },
     });

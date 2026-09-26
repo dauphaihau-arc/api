@@ -3,12 +3,14 @@ import type { EventEmitter2 } from '@nestjs/event-emitter';
 import type { JobDispatcher } from '~/integrations/queue/app/ports/job-dispatcher';
 import { ShopOrderRefundAction } from '../../../api/rest/dto/update-shop-order-refund.dto';
 import { PaymentType } from '../../../domain/enums/payment-type.enum';
+import { FulfillmentGroupEntity } from '~/domains/fulfillment/infra/persistence/entities/fulfillment-group.entity';
 import { OrderShippingStatus } from '../../../domain/enums/order-shipping-status.enum';
 import { OrderStatus } from '../../../domain/enums/order-status.enum';
 import {
   SellerRefundActionNotAllowedError,
   SellerRefundNotAllowedError,
 } from '../../errors/order-app.error';
+import type { FulfillmentService } from '../../../../fulfillment/app/services/fulfillment.service';
 import { UpdateShopOrderRefundUseCase } from './update-shop-order-refund.use-case';
 
 describe('UpdateShopOrderRefundUseCase', () => {
@@ -106,6 +108,10 @@ describe('UpdateShopOrderRefundUseCase', () => {
             return {
               find: jest.fn().mockResolvedValue([]),
             };
+          case FulfillmentGroupEntity.name:
+            return {
+              find: jest.fn().mockResolvedValue([]),
+            };
           default:
             return {};
         }
@@ -127,6 +133,14 @@ describe('UpdateShopOrderRefundUseCase', () => {
     const orderEventsService = {
       record: jest.fn().mockResolvedValue(undefined),
     };
+    const fulfillmentService = {
+      getDispatchState: jest.fn().mockImplementation(async () => ({
+        hasGroups: true,
+        hasDispatched: order.shippingStatus !== OrderShippingStatus.PRE_TRANSIT,
+      })),
+      voidUndispatchedShipments: jest.fn().mockResolvedValue(undefined),
+      assignSellerGroupToOrder: jest.fn().mockResolvedValue(undefined),
+    } as unknown as FulfillmentService;
 
     return {
       order,
@@ -137,6 +151,8 @@ describe('UpdateShopOrderRefundUseCase', () => {
         jobDispatcher,
         eventEmitter as unknown as EventEmitter2,
         orderEventsService as never,
+        fulfillmentService,
+        { load: jest.fn(async () => new Map()) } as never,
       ),
     };
   }

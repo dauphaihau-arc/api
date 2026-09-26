@@ -1,4 +1,5 @@
 import { DomainError } from '~/platform/errors/domain.error';
+import type { ShippingQuoteUnavailableProduct } from '../../../shipping/app/shipping.types';
 
 export abstract class OrderAppError extends DomainError {
   protected constructor(message: string) {
@@ -59,6 +60,19 @@ export class CheckoutQuoteReservationOutOfStockError extends OrderAppError {
 export class CheckoutQuoteCartChangedError extends OrderAppError {
   constructor() {
     super('Checkout quote no longer matches the selected cart items');
+  }
+}
+
+/**
+ * Raised when a purchased Product cannot be delivered to the buyer destination.
+ * The quote never falls back to zero shipping, another Product's profile, or a
+ * shop-wide rule.
+ */
+export class CheckoutShippingUnavailableError extends OrderAppError {
+  constructor(
+    readonly products: ShippingQuoteUnavailableProduct[],
+  ) {
+    super('Selected items cannot be shipped to the provided address');
   }
 }
 
@@ -149,24 +163,6 @@ export class BuyerOrderCancelNotAllowedError extends OrderAppError {
 export class BuyerShippedOrderCancelNotAllowedError extends OrderAppError {
   constructor() {
     super('Shipped orders cannot be canceled');
-  }
-}
-
-export class ShipmentUpdatePayloadRequiredError extends OrderAppError {
-  constructor() {
-    super('At least one shipment field must be provided');
-  }
-}
-
-export class ShipmentUpdateNotAllowedError extends OrderAppError {
-  constructor() {
-    super('This order cannot be updated for shipment');
-  }
-}
-
-export class InvalidShippingStatusTransitionError extends OrderAppError {
-  constructor() {
-    super('Invalid shipping status transition');
   }
 }
 

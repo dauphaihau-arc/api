@@ -1,9 +1,10 @@
 import type { EntityManager } from '@mikro-orm/postgresql';
 import { PaymentType } from '../../../domain/enums/payment-type.enum';
-import { OrderShippingStatus } from '../../../domain/enums/order-shipping-status.enum';
+import { FulfillmentAggregateStatus } from '../../../../fulfillment/domain/enums/fulfillment-aggregate-status.enum';
 import { OrderStatus } from '../../../domain/enums/order-status.enum';
 import { OrderEntity } from '../../../infra/persistence/entities/order.entity';
 import { OrderItemEntity } from '../../../infra/persistence/entities/order-item.entity';
+import { FulfillmentGroupEntity } from '~/domains/fulfillment/infra/persistence/entities/fulfillment-group.entity';
 import { ListShopOrdersUseCase } from './list-shop-orders.use-case';
 
 describe('ListShopOrdersUseCase', () => {
@@ -25,18 +26,24 @@ describe('ListShopOrdersUseCase', () => {
           return orderItemRepository;
         }
 
+        if (entity === FulfillmentGroupEntity) {
+          return {
+            find: jest.fn().mockResolvedValue([]),
+          };
+        }
+
         throw new Error(`Unexpected repository ${entity.name}`);
       }),
     } as unknown as EntityManager;
     const useCase = new ListShopOrdersUseCase({
       fork: jest.fn(() => fakeEntityManager),
-    } as unknown as EntityManager);
+    } as unknown as EntityManager, { load: jest.fn(async () => new Map()) } as never);
 
     await useCase.execute('shop-1', {
       page: 2,
       limit: 10,
       status: [OrderStatus.PAID, OrderStatus.CANCELED],
-      shippingStatus: [OrderShippingStatus.PRE_TRANSIT],
+      fulfillmentStatus: [FulfillmentAggregateStatus.UNFULFILLED],
       createdFrom: new Date('2026-06-01T00:00:00.000Z'),
       createdTo: new Date('2026-06-05T23:59:59.999Z'),
       amountMin: 1000,
@@ -50,7 +57,7 @@ describe('ListShopOrdersUseCase', () => {
       {
         shop: 'shop-1',
         status: { $in: [OrderStatus.PAID, OrderStatus.CANCELED] },
-        shippingStatus: { $in: [OrderShippingStatus.PRE_TRANSIT] },
+        fulfillmentStatus: { $in: [FulfillmentAggregateStatus.UNFULFILLED] },
         createdAt: {
           $gte: new Date('2026-06-01T00:00:00.000Z'),
           $lte: new Date('2026-06-05T23:59:59.999Z'),
@@ -79,7 +86,7 @@ describe('ListShopOrdersUseCase', () => {
     );
     expect(orderRepository.count).toHaveBeenCalledWith({
       shop: 'shop-1',
-      shippingStatus: { $in: [OrderShippingStatus.PRE_TRANSIT] },
+      fulfillmentStatus: { $in: [FulfillmentAggregateStatus.UNFULFILLED] },
       createdAt: {
         $gte: new Date('2026-06-01T00:00:00.000Z'),
         $lte: new Date('2026-06-05T23:59:59.999Z'),
@@ -101,7 +108,7 @@ describe('ListShopOrdersUseCase', () => {
     });
     expect(orderRepository.count).toHaveBeenCalledWith({
       shop: 'shop-1',
-      shippingStatus: { $in: [OrderShippingStatus.PRE_TRANSIT] },
+      fulfillmentStatus: { $in: [FulfillmentAggregateStatus.UNFULFILLED] },
       createdAt: {
         $gte: new Date('2026-06-01T00:00:00.000Z'),
         $lte: new Date('2026-06-05T23:59:59.999Z'),
@@ -143,12 +150,18 @@ describe('ListShopOrdersUseCase', () => {
           return orderItemRepository;
         }
 
+        if (entity === FulfillmentGroupEntity) {
+          return {
+            find: jest.fn().mockResolvedValue([]),
+          };
+        }
+
         throw new Error(`Unexpected repository ${entity.name}`);
       }),
     } as unknown as EntityManager;
     const useCase = new ListShopOrdersUseCase({
       fork: jest.fn(() => fakeEntityManager),
-    } as unknown as EntityManager);
+    } as unknown as EntityManager, { load: jest.fn(async () => new Map()) } as never);
 
     await useCase.execute('shop-1', {
       page: 1,
@@ -199,7 +212,7 @@ describe('ListShopOrdersUseCase', () => {
             paymentType: 'card',
             status: 'paid',
             promoCodes: [],
-            shippingStatus: 'pre_transit',
+            fulfillmentStatus: FulfillmentAggregateStatus.UNFULFILLED,
             updatedAt: new Date('2026-06-05T00:00:00.000Z'),
             shippingToCountry: 'US',
             shippingOriginCountries: ['US'],
@@ -266,12 +279,18 @@ describe('ListShopOrdersUseCase', () => {
           return orderItemRepository;
         }
 
+        if (entity === FulfillmentGroupEntity) {
+          return {
+            find: jest.fn().mockResolvedValue([]),
+          };
+        }
+
         throw new Error(`Unexpected repository ${entity.name}`);
       }),
     } as unknown as EntityManager;
     const useCase = new ListShopOrdersUseCase({
       fork: jest.fn(() => fakeEntityManager),
-    } as unknown as EntityManager);
+    } as unknown as EntityManager, { load: jest.fn(async () => new Map()) } as never);
 
     const result = await useCase.execute('shop-1', {
       page: 1,

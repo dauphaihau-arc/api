@@ -176,7 +176,7 @@ function restoreExportQuery(orderExport: ShopOrderExportSummary): ExportShopOrde
   query.page = 1;
   query.limit = EXPORT_BATCH_SIZE;
   query.status = snapshot.status as ExportShopOrdersQueryDto['status'];
-  query.shippingStatus = snapshot.shippingStatus as ExportShopOrdersQueryDto['shippingStatus'];
+  query.fulfillmentStatus = snapshot.fulfillmentStatus as ExportShopOrdersQueryDto['fulfillmentStatus'];
   query.createdFrom = parseOptionalDate(snapshot.createdFrom);
   query.createdTo = parseOptionalDate(snapshot.createdTo);
   query.amountMin = typeof snapshot.amountMin === 'number' ? snapshot.amountMin : undefined;

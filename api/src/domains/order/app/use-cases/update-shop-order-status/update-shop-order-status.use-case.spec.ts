@@ -1,8 +1,10 @@
 import type { EntityManager } from '@mikro-orm/postgresql';
 import type { EventEmitter2 } from '@nestjs/event-emitter';
+import { FulfillmentGroupEntity } from '~/domains/fulfillment/infra/persistence/entities/fulfillment-group.entity';
 import { OrderShippingStatus } from '../../../domain/enums/order-shipping-status.enum';
 import { OrderStatus } from '../../../domain/enums/order-status.enum';
 import { SellerShippedOrderCancelNotAllowedError } from '../../errors/order-app.error';
+import type { FulfillmentService } from '../../../../fulfillment/app/services/fulfillment.service';
 import type { OrderCancellationService } from '../../services/order-cancellation.service';
 import { UpdateShopOrderStatusUseCase } from './update-shop-order-status.use-case';
 
@@ -86,6 +88,10 @@ describe('UpdateShopOrderStatusUseCase', () => {
             return {
               find: jest.fn().mockResolvedValue([]),
             };
+          case FulfillmentGroupEntity.name:
+            return {
+              find: jest.fn().mockResolvedValue([]),
+            };
           default:
             return {};
         }
@@ -117,6 +123,14 @@ describe('UpdateShopOrderStatusUseCase', () => {
     const orderEventsService = {
       record: jest.fn().mockResolvedValue(undefined),
     };
+    const fulfillmentService = {
+      getDispatchState: jest.fn().mockImplementation(async () => ({
+        hasGroups: true,
+        hasDispatched: order.shippingStatus !== OrderShippingStatus.PRE_TRANSIT,
+      })),
+      voidUndispatchedShipments: jest.fn().mockResolvedValue(undefined),
+      assignSellerGroupToOrder: jest.fn().mockResolvedValue(undefined),
+    } as unknown as FulfillmentService;
 
     return {
       order,
@@ -127,10 +141,12 @@ describe('UpdateShopOrderStatusUseCase', () => {
       useCase: new UpdateShopOrderStatusUseCase(
         entityManager,
         cancellationService,
+        fulfillmentService,
         jobDispatcher as never,
         notifyUserUseCase as never,
         eventEmitter as unknown as EventEmitter2,
         orderEventsService as never,
+        { load: jest.fn(async () => new Map()) } as never,
       ),
     };
   }

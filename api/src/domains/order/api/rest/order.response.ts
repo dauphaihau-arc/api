@@ -1,15 +1,21 @@
 import type {
+  OrderFulfillmentSummary,
   AdminOrderListResult,
   CheckoutQuoteResult,
   AdminOrderDetail,
   CreateOrderResult,
   MyOrderDetail,
   OrderListResult,
+  OrderShippingQuote,
   ShopDashboardResult,
   ShopOrderDetail,
   ShopOrderListResult,
   ShopOrderSummary,
 } from '../../app/order.types';
+import {
+  toPersistedShippingDiscount,
+  toPersistedShippingQuote,
+} from '../../../checkout/app/checkout-shipping-snapshot.contract';
 import { toMinorUnits } from '~/platform/money/money';
 import type { CheckoutConfig } from '~/platform/config/checkout.config';
 import { getMaxOrderTotalMinor } from '~/platform/config/checkout.config';
@@ -256,19 +262,9 @@ export function toOrderListResponse(result: OrderListResult) {
         id: code,
         code,
       })),
-      shipping: {
-        shipping_status: orderShop.shippingStatus,
-        updated_at: orderShop.shippingUpdatedAt,
-        to_country: orderShop.shippingToCountry,
-        from_countries: orderShop.shippingFromCountries,
-        estimated_delivery: orderShop.shippingEstimatedDelivery,
-        tracking_number: orderShop.trackingNumber,
-        shipping_carrier: orderShop.shippingCarrier,
-        shipment_note: orderShop.shipmentNote,
-        shipped_at: orderShop.shippedAt,
-        delivered_at: orderShop.deliveredAt,
-      },
+      fulfillment: toFulfillmentSummaryResponse(orderShop.fulfillment),
       ...toMinorTotals(orderShop),
+      ...toOrderShippingResponse(orderShop.shippingQuote),
       note: orderShop.note,
       canceled_at: orderShop.canceledAt,
       cancel_reason: orderShop.cancelReason,
@@ -312,6 +308,97 @@ function toShopOrderProductResponse(orderShop: ShopOrderSummary) {
   }));
 }
 
+
+export function toFulfillmentSummaryResponse(
+  fulfillment: OrderFulfillmentSummary,
+) {
+  return {
+    status: fulfillment.status,
+    requires_reconciliation: fulfillment.requiresReconciliation,
+    progress: toFulfillmentProgressResponse(fulfillment.progress),
+    groups: fulfillment.groups.map((group) => ({
+      id: group.id,
+      method: group.method,
+      operator: group.operator,
+      provenance: group.provenance,
+      items: group.items.map((item) => ({
+        order_item_id: item.orderItemId,
+        quantity: item.quantity,
+      })),
+      progress: toFulfillmentProgressResponse(group.progress),
+      shipments: group.shipments.map((shipment) => ({
+        id: shipment.id,
+        group_id: shipment.groupId,
+        status: shipment.status,
+        carrier: shipment.carrier,
+        tracking_number: shipment.trackingNumber,
+        shipment_note: shipment.note,
+        origin_countries: shipment.originCountries,
+        prepared_at: shipment.preparedAt,
+        dispatched_at: shipment.dispatchedAt,
+        delivered_at: shipment.deliveredAt,
+        voided_at: shipment.voidedAt,
+        created_at: shipment.createdAt,
+        updated_at: shipment.updatedAt,
+        items: shipment.items.map((item) => ({
+          order_item_id: item.orderItemId,
+          quantity: item.quantity,
+        })),
+        updates: shipment.updates.map((update) => ({
+          id: update.id,
+          status: update.status,
+          actor_type: update.actorType,
+          actor_id: update.actorId,
+          source: update.source,
+          occurred_at: update.occurredAt,
+          note: update.note,
+        })),
+      })),
+    })),
+    legacy_shipping: {
+      status: fulfillment.legacyShipping.status,
+      updated_at: fulfillment.legacyShipping.updatedAt,
+      to_country: fulfillment.legacyShipping.toCountry,
+      from_countries: fulfillment.legacyShipping.fromCountries,
+      estimated_delivery: fulfillment.legacyShipping.estimatedDelivery,
+      tracking_number: fulfillment.legacyShipping.trackingNumber,
+      carrier: fulfillment.legacyShipping.carrier,
+      note: fulfillment.legacyShipping.note,
+      shipped_at: fulfillment.legacyShipping.shippedAt,
+      delivered_at: fulfillment.legacyShipping.deliveredAt,
+    },
+  };
+}
+
+export function toFulfillmentProgressResponse(progress: OrderFulfillmentSummary['progress']) {
+  return {
+    ordered: progress.ordered,
+    prepared: progress.prepared,
+    dispatched: progress.dispatched,
+    delivered: progress.delivered,
+    canceled: progress.canceled,
+    outstanding: progress.outstanding,
+  };
+}
+
+/**
+ * The accepted shipping facts of a confirmed Order, in transport shape, beside
+ * `shipping_minor`. It is the purchase-time snapshot in the same snake_case
+ * shape a checkout quote shop returns, so a buyer, guest, seller, or admin view
+ * never re-derives shipping from current configuration.
+ */
+export function toOrderShippingResponse(shippingQuote?: OrderShippingQuote) {
+  if (!shippingQuote) {
+    return {};
+  }
+
+  return {
+    shipping: toPersistedShippingQuote(shippingQuote.shipping),
+    shipping_discount_minor: shippingQuote.shippingDiscountMinor,
+    shipping_discounts: shippingQuote.shippingDiscounts.map(toPersistedShippingDiscount),
+  };
+}
+
 export function toShopOrderSummaryResponse(orderShop: ShopOrderSummary) {
   return {
     id: orderShop.id,
@@ -332,19 +419,9 @@ export function toShopOrderSummaryResponse(orderShop: ShopOrderSummary) {
       id: code,
       code,
     })),
-    shipping: {
-      shipping_status: orderShop.shippingStatus,
-      updated_at: orderShop.shippingUpdatedAt,
-      to_country: orderShop.shippingToCountry,
-      from_countries: orderShop.shippingFromCountries,
-      estimated_delivery: orderShop.shippingEstimatedDelivery,
-      tracking_number: orderShop.trackingNumber,
-      shipping_carrier: orderShop.shippingCarrier,
-      shipment_note: orderShop.shipmentNote,
-      shipped_at: orderShop.shippedAt,
-      delivered_at: orderShop.deliveredAt,
-    },
+    fulfillment: toFulfillmentSummaryResponse(orderShop.fulfillment),
     ...toMinorTotals(orderShop),
+    ...toOrderShippingResponse(orderShop.shippingQuote),
     note: orderShop.note,
     canceled_at: orderShop.canceledAt,
     cancel_reason: orderShop.cancelReason,
@@ -505,18 +582,7 @@ export function toMyOrderDetailResponse(order: MyOrderDetail) {
         id: code,
         code,
       })),
-      shipping: {
-        shipping_status: order.shippingStatus,
-        updated_at: order.shippingUpdatedAt,
-        to_country: order.shippingToCountry,
-        from_countries: order.shippingFromCountries,
-        estimated_delivery: order.shippingEstimatedDelivery,
-        tracking_number: order.trackingNumber,
-        shipping_carrier: order.shippingCarrier,
-        shipment_note: order.shipmentNote,
-        shipped_at: order.shippedAt,
-        delivered_at: order.deliveredAt,
-      },
+      fulfillment: toFulfillmentSummaryResponse(order.fulfillment),
       shipping_address: {
         full_name: order.shippingAddress.fullName,
         address1: order.shippingAddress.address1,
@@ -528,6 +594,7 @@ export function toMyOrderDetailResponse(order: MyOrderDetail) {
         phone: order.shippingAddress.phone,
       },
       ...toMinorTotals(order),
+      ...toOrderShippingResponse(order.shippingQuote),
       note: order.note,
       canceled_at: order.canceledAt,
       cancel_reason: order.cancelReason,
@@ -589,18 +656,7 @@ export function toAdminOrderDetailResponse(order: AdminOrderDetail) {
         id: code,
         code,
       })),
-      shipping: {
-        shipping_status: order.shippingStatus,
-        updated_at: order.shippingUpdatedAt,
-        to_country: order.shippingToCountry,
-        from_countries: order.shippingFromCountries,
-        estimated_delivery: order.shippingEstimatedDelivery,
-        tracking_number: order.trackingNumber,
-        shipping_carrier: order.shippingCarrier,
-        shipment_note: order.shipmentNote,
-        shipped_at: order.shippedAt,
-        delivered_at: order.deliveredAt,
-      },
+      fulfillment: toFulfillmentSummaryResponse(order.fulfillment),
       shipping_address: {
         full_name: order.shippingAddress.fullName,
         address1: order.shippingAddress.address1,
@@ -612,6 +668,7 @@ export function toAdminOrderDetailResponse(order: AdminOrderDetail) {
         phone: order.shippingAddress.phone,
       },
       ...toMinorTotals(order),
+      ...toOrderShippingResponse(order.shippingQuote),
       note: order.note,
       support_note: order.supportNote,
       canceled_at: order.canceledAt,
@@ -639,8 +696,8 @@ export function toAdminOrderListResponse(result: AdminOrderListResult) {
         type: order.paymentType,
       },
       status: order.status,
-      shipping: {
-        shipping_status: order.shippingStatus,
+      fulfillment: {
+        status: order.fulfillmentStatus,
       },
       currency: order.currency,
       total_minor: order.totalMinor ?? toMinorUnits(order.total, order.currency),

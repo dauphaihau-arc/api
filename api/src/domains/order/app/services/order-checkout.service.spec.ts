@@ -1,10 +1,11 @@
 import type { EventEmitter2 } from '@nestjs/event-emitter';
 import type { EntityManager } from '@mikro-orm/postgresql';
-import type { CouponPricingService } from '../../../coupon/app/services/coupon-pricing.service';
 import type { NotifyUserUseCase } from '../../../../domains/notification/app/use-cases/notify-user/notify-user.use-case';
+import type { CartPricingService } from '../../../cart/app/services/cart-pricing.service';
 import { CartKind } from '../../../cart/domain/enums/cart-kind.enum';
 import type { OrderCheckoutOutboxService } from './order-checkout-outbox.service';
 import type { CheckoutStockReservationPort } from '../../../checkout/app/ports/checkout-stock-reservation.port';
+import type { FulfillmentService } from '../../../fulfillment/app/services/fulfillment.service';
 import type { OrderInventoryOutboxService } from './order-inventory-outbox.service';
 import { OrderCheckoutService } from './order-checkout.service';
 import type { CartSnapshot } from '../../../cart/app/cart.types';
@@ -16,7 +17,11 @@ import type { OrderCartCleanupRepository } from '../ports/order-cart-cleanup.rep
 import type { OrderInventoryQueryRepository } from '../ports/order-inventory-query.repository';
 import type { OrderShopQueryRepository } from '../ports/order-shop-query.repository';
 import type { PurchaseEligibilityService } from '../../../product/app/services/purchase-eligibility.service';
-import { OrderTotalLimitExceededError } from '../errors/order-app.error';
+import type { ShippingQuoteService } from '../../../shipping/app/services/shipping-quote.service';
+import {
+  CheckoutShippingUnavailableError,
+  OrderTotalLimitExceededError,
+} from '../errors/order-app.error';
 
 function waitForDeferredCheckoutSideEffects(): Promise<void> {
   return new Promise((resolve) => {
@@ -63,7 +68,7 @@ describe('OrderCheckoutService', () => {
         subtotal: 18,
         totalDiscount: 2,
         totalShippingFee: 0,
-        total: 18,
+        total: 16,
         note: 'Leave at door',
         promoCoupons: [],
         originCountries: ['US'],
@@ -73,7 +78,7 @@ describe('OrderCheckoutService', () => {
     totalDiscount: 2,
     subtotalAfterDiscount: 16,
     totalShippingFee: 0,
-    totalPrice: 18,
+    totalPrice: 16,
     totalSelectedQuantity: 2,
     totalQuantity: 2,
   };
@@ -90,6 +95,8 @@ describe('OrderCheckoutService', () => {
   function buildService(options?: {
     processResult?: { id: string; url: string } | undefined;
     purchaseEligibilityResult?: { eligible: boolean; failures: Array<Record<string, unknown>> };
+    shippingResolutions?: Array<Record<string, unknown>>;
+    coupons?: Array<Record<string, unknown>>;
   }) {
     const orders: Array<Record<string, unknown>> = [];
     const inventory = {
@@ -122,6 +129,9 @@ describe('OrderCheckoutService', () => {
     const usageRepository = {
       create: jest.fn((input: Record<string, unknown>) => input),
     };
+    const couponRepository = {
+      find: jest.fn().mockResolvedValue(options?.coupons ?? []),
+    };
 
     const fakeEntityManager = {
       getRepository: jest.fn((entity: { name?: string }) => {
@@ -137,6 +147,8 @@ describe('OrderCheckoutService', () => {
             return orderItemRepository;
           case 'CouponUsageEntity':
             return usageRepository;
+          case 'CouponEntity':
+            return couponRepository;
           default:
             return {
               findOne: jest.fn(),
@@ -155,10 +167,10 @@ describe('OrderCheckoutService', () => {
       transactional: jest.fn(async (callback: (em: EntityManager) => Promise<unknown>) =>
         callback(fakeEntityManager as unknown as EntityManager)),
     } as unknown as EntityManager;
-
-    const couponPricingService: jest.Mocked<CouponPricingService> = {
+    const couponPricingService: jest.Mocked<CartPricingService> = {
       buildPricedCartSummary: jest.fn().mockResolvedValue(pricedCartSummary),
-    } as unknown as jest.Mocked<CouponPricingService>;
+    } as unknown as jest.Mocked<CartPricingService>;
+
 
     const orderCheckoutOutboxService: jest.Mocked<OrderCheckoutOutboxService> = {
       createCheckoutSessionRequestedEvent: jest.fn().mockResolvedValue({
@@ -224,6 +236,23 @@ describe('OrderCheckoutService', () => {
         options?.purchaseEligibilityResult ?? { eligible: true, failures: [] },
       ),
     } as unknown as jest.Mocked<PurchaseEligibilityService>;
+    const fulfillmentService = {
+      getDispatchState: jest.fn().mockResolvedValue({ hasGroups: true, hasDispatched: false }),
+      voidUndispatchedShipments: jest.fn().mockResolvedValue(undefined),
+      assignSellerGroupToOrder: jest.fn().mockResolvedValue(undefined),
+    } as unknown as FulfillmentService;
+    const shippingQuoteService = {
+      resolveForProducts: jest.fn(
+        async ({ productIds }: { productIds: string[] }) => options?.shippingResolutions ??
+          productIds.map((productId) => ({
+            productId,
+            available: true,
+            readinessIssues: [],
+          })),
+      ),
+      quoteForCheckout: jest.fn(),
+      listOriginCountries: jest.fn().mockResolvedValue([]),
+    } as unknown as ShippingQuoteService;
 
     const service = new OrderCheckoutService(
       entityManager,
@@ -240,6 +269,8 @@ describe('OrderCheckoutService', () => {
       orderInventoryQueryRepository,
       orderShopQueryRepository,
       purchaseEligibilityService,
+      fulfillmentService,
+      shippingQuoteService,
     );
 
     return {
@@ -252,12 +283,16 @@ describe('OrderCheckoutService', () => {
       orderRepository,
       orderItemRepository,
       orderCheckoutOutboxService,
+      shippingQuoteService,
       orderInventoryOutboxService,
       checkoutStockReservationService,
       orderCartCleanupRepository,
       orderInventoryQueryRepository,
       orderShopQueryRepository,
       purchaseEligibilityService,
+      fulfillmentService,
+      couponRepository,
+      usageRepository,
     };
   }
 
@@ -272,6 +307,7 @@ describe('OrderCheckoutService', () => {
       orderCheckoutOutboxService,
       orderInventoryOutboxService,
       checkoutStockReservationService,
+      fulfillmentService,
     } = buildService({
       processResult: {
         id: 'cs_test_1',
@@ -301,11 +337,11 @@ describe('OrderCheckoutService', () => {
         subtotalMinor: 1800,
         shippingMinor: 0,
         discountMinor: 200,
-        totalMinor: 1800,
+        totalMinor: 1600,
       }),
     );
     expect(orderTotalPolicyService.assertWithinLimit).toHaveBeenCalledWith({
-      totalMinor: 1800,
+      totalMinor: 1600,
       currency: 'USD',
     });
     expect(orderItemRepository.create).toHaveBeenCalledWith(
@@ -323,6 +359,7 @@ describe('OrderCheckoutService', () => {
         quantity: 2,
         title: 'Product 1',
       }],
+      { commandId: 'cart-1:allocate' },
     );
     expect(
       orderCheckoutOutboxService.createCheckoutSessionRequestedEvent,
@@ -330,6 +367,7 @@ describe('OrderCheckoutService', () => {
     expect(orderInventoryOutboxService.createOrderCreatedEvent).not.toHaveBeenCalled();
     expect(checkoutStockReservationService.consumeReservationsForQuote).not.toHaveBeenCalled();
     expect(orderCheckoutOutboxService.processEventById).toHaveBeenCalledWith('outbox-1');
+    expect(fulfillmentService.assignSellerGroupToOrder).not.toHaveBeenCalled();
 
     await waitForDeferredCheckoutSideEffects();
 
@@ -369,7 +407,7 @@ describe('OrderCheckoutService', () => {
     );
 
     expect(orderTotalPolicyService.assertWithinLimit).toHaveBeenCalledWith({
-      totalMinor: 1800,
+      totalMinor: 1600,
       currency: 'USD',
     });
     expect(orderCheckoutOutboxService.processEventById).toHaveBeenCalledWith('outbox-1');
@@ -383,6 +421,7 @@ describe('OrderCheckoutService', () => {
       orderRepository,
       orderCheckoutOutboxService,
       orderInventoryOutboxService,
+      fulfillmentService,
     } = buildService();
 
     const result = await service.createOrders(
@@ -410,6 +449,13 @@ describe('OrderCheckoutService', () => {
     ).not.toHaveBeenCalled();
     expect(orderInventoryOutboxService.createOrderCreatedEvent).not.toHaveBeenCalled();
     expect(orderCheckoutOutboxService.processEventById).not.toHaveBeenCalled();
+    expect(fulfillmentService.assignSellerGroupToOrder).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        orderId: 'order-1',
+        shopId: 'shop-1',
+      }),
+    );
     expect(result.checkoutPending).toBe(false);
   });
 
@@ -501,9 +547,11 @@ describe('OrderCheckoutService', () => {
               subtotalMinor: 1800,
               shippingMinor: 0,
               discountMinor: 0,
+              shippingDiscountMinor: 0,
               totalMinor: 1800,
               promoCodes: [],
               originCountries: ['US'],
+              shippingDiscounts: [],
               items: [
                 {
                   inventoryId: 'inventory-1',
@@ -688,5 +736,334 @@ describe('OrderCheckoutService', () => {
     ).rejects.toThrow(OrderTotalLimitExceededError);
 
     expect(orderRepository.create).not.toHaveBeenCalled();
+  });
+
+  function buildAcceptedShipping() {
+    const anchorAt = new Date('2026-09-22T10:00:00.000Z');
+
+    return {
+      shopId: 'shop-1',
+      currency: 'USD',
+      charge: {
+        currency: 'USD',
+        quantity: 2,
+        baseUnit: {
+          productId: 'product-1',
+          inventoryId: 'inventory-1',
+          oneItemFeeMinor: 900,
+        },
+        baseItemFeeMinor: 900,
+        baseItemTotalMinor: 900,
+        additionalItemsQuantity: 1,
+        additionalComponents: [
+          {
+            productId: 'product-1',
+            inventoryId: 'inventory-1',
+            quantity: 1,
+            additionalItemFeeMinor: 250,
+          },
+        ],
+        additionalItemFeeMinorTotal: 250,
+        totalMinor: 1150,
+      },
+      estimate: {
+        processingTimeMinDays: 1,
+        processingTimeMaxDays: 3,
+        deliveryTimeMinDays: 3,
+        deliveryTimeMaxDays: 5,
+        combinedMinDays: 4,
+        combinedMaxDays: 8,
+        anchorAt,
+        earliestDeliveryDate: new Date('2026-09-26T00:00:00.000Z'),
+        latestDeliveryDate: new Date('2026-09-30T00:00:00.000Z'),
+      },
+      units: [
+        {
+          productId: 'product-1',
+          inventoryId: 'inventory-1',
+          quantity: 2,
+          profileId: 'profile-1',
+          profileVersion: 3,
+          profileShopId: 'shop-1',
+          rateId: 'rate-1',
+          rateDestinationScope: 'country',
+          rateDestinationCountry: 'US',
+          rateDestinationRegion: undefined,
+          currency: 'USD',
+          oneItemFeeMinor: 900,
+          additionalItemFeeMinor: 250,
+          processingTimeMinDays: 1,
+          processingTimeMaxDays: 3,
+          deliveryTimeMinDays: 3,
+          deliveryTimeMaxDays: 5,
+        },
+      ],
+    };
+  }
+
+  function buildQuotedCheckout(totalMinorOverride?: number) {
+    const shipping = buildAcceptedShipping();
+
+    return {
+      id: 'quote-1',
+      cartId: 'cart-1',
+      reservationId: 'reservation-remote-1',
+      marketCode: 'US',
+      presentmentCurrency: 'USD',
+      checkoutCurrency: 'USD',
+      subtotalMinor: 1800,
+      shippingMinor: 1150,
+      discountMinor: 0,
+      totalMinor: totalMinorOverride ?? 2950,
+      shippingAddress,
+      shippingAnchorAt: shipping.estimate.anchorAt,
+      shops: [
+        {
+          shopId: 'shop-1',
+          shopName: 'Shop 1',
+          shopSlug: 'shop-1',
+          subtotalMinor: 1800,
+          shippingMinor: 1150,
+          discountMinor: 0,
+          shippingDiscountMinor: 0,
+          totalMinor: 2950,
+          promoCodes: [] as string[],
+          originCountries: ['US'],
+          shipping,
+          shippingDiscounts: [] as unknown[],
+          items: [
+            {
+              inventoryId: 'inventory-1',
+              productId: 'product-1',
+              shopId: 'shop-1',
+              shopName: 'Shop 1',
+              shopSlug: 'shop-1',
+              title: 'Product 1',
+              imageUrl: 'https://example.com/product-1.png',
+              imageReference: 'dev/public/products/product-1/card.webp',
+              quantity: 2,
+              sku: 'SKU-BLUE',
+              sourceCurrency: 'USD',
+              unitPriceSourceMinor: 1000,
+              lineTotalSourceMinor: 2000,
+              checkoutCurrency: 'USD',
+              unitPriceCheckoutMinor: 900,
+              lineTotalCheckoutMinor: 1800,
+              unitPriceMinor: 900,
+              originalAmountMinor: 1000,
+              lineTotalMinor: 1800,
+              currency: 'USD',
+              selectedOptions: [],
+            },
+          ],
+        },
+      ],
+      items: [
+        {
+          inventoryId: 'inventory-1',
+          productId: 'product-1',
+          shopId: 'shop-1',
+          shopName: 'Shop 1',
+          shopSlug: 'shop-1',
+          title: 'Product 1',
+          imageUrl: 'https://example.com/product-1.png',
+          imageReference: 'dev/public/products/product-1/card.webp',
+          quantity: 2,
+          sku: 'SKU-BLUE',
+          sourceCurrency: 'USD',
+          unitPriceSourceMinor: 1000,
+          lineTotalSourceMinor: 2000,
+          checkoutCurrency: 'USD',
+          unitPriceCheckoutMinor: 900,
+          lineTotalCheckoutMinor: 1800,
+          unitPriceMinor: 900,
+          originalAmountMinor: 1000,
+          lineTotalMinor: 1800,
+          currency: 'USD',
+          selectedOptions: [],
+        },
+      ],
+    };
+  }
+
+  describe('OrderCheckoutService accepted shipping facts', () => {
+    it('persists the accepted per-shop shipping snapshot and estimate instead of a fabricated date', async () => {
+      const { service, orderRepository } = buildService();
+      const quote = buildQuotedCheckout();
+
+      await service.createOrders(
+        { type: 'user', userId: 'user-1', email: 'member@example.com' },
+        'cart-1',
+        cart,
+        {
+          paymentType: PaymentType.CASH,
+          shippingAddress,
+          quote: quote as never,
+          isTempCart: false,
+        },
+      );
+
+      const createdOrder = orderRepository.create.mock.results[0]?.value as Record<string, unknown>;
+
+      expect(createdOrder.shippingMinor).toBe(1150);
+      expect(createdOrder.totalMinor).toBe(2950);
+      expect(createdOrder.shippingEstimatedDelivery).toEqual(
+        new Date('2026-09-30T00:00:00.000Z'),
+      );
+      expect(createdOrder.shippingQuoteSnapshot).toMatchObject({
+        shipping: {
+          shop_id: 'shop-1',
+          charge: expect.objectContaining({ total_minor: 1150 }),
+          estimate: expect.objectContaining({
+            combined_min_days: 4,
+            combined_max_days: 8,
+            latest_delivery_date: '2026-09-30T00:00:00.000Z',
+          }),
+          units: [
+            expect.objectContaining({
+              profile_id: 'profile-1',
+              profile_version: 3,
+              rate_id: 'rate-1',
+            }),
+          ],
+        },
+        shipping_discount_minor: 0,
+        shipping_discounts: [],
+      });
+    });
+
+    it('refuses to confirm a quote whose Product can no longer be shipped', async () => {
+      const { service, orderRepository, shippingQuoteService } = buildService({
+        shippingResolutions: [
+          {
+            productId: 'product-1',
+            available: false,
+            reason: 'profile_not_ready',
+            readinessIssues: ['archived'],
+          },
+        ],
+      });
+
+      await expect(service.createOrders(
+        { type: 'user', userId: 'user-1', email: 'member@example.com' },
+        'cart-1',
+        cart,
+        {
+          paymentType: PaymentType.CASH,
+          shippingAddress,
+          quote: buildQuotedCheckout() as never,
+          isTempCart: false,
+        },
+      )).rejects.toMatchObject({
+        constructor: CheckoutShippingUnavailableError,
+        products: [
+          {
+            productId: 'product-1',
+            inventoryId: 'inventory-1',
+            quantity: 2,
+            reason: 'profile_not_ready',
+            readinessIssues: ['archived'],
+          },
+        ],
+      });
+
+      expect(shippingQuoteService.resolveForProducts).toHaveBeenCalledWith({
+        productIds: ['product-1'],
+        destination: { countryCode: 'US' },
+      });
+      expect(orderRepository.create).not.toHaveBeenCalled();
+    });
+
+    it('records coupon usage for a quoted checkout', async () => {
+      const coupon = {
+        id: 'coupon-free',
+        code: 'FREESHIP',
+        usesCount: 4,
+      };
+      const { service, usageRepository, couponRepository } = buildService({
+        coupons: [coupon],
+      });
+      const quote = buildQuotedCheckout();
+      quote.shops[0]!.promoCodes = ['FREESHIP'];
+
+      await service.createOrders(
+        { type: 'user', userId: 'user-1', email: 'member@example.com' },
+        'cart-1',
+        cart,
+        {
+          paymentType: PaymentType.CASH,
+          shippingAddress,
+          quote: quote as never,
+          isTempCart: false,
+        },
+      );
+
+      expect(couponRepository.find).toHaveBeenCalledWith({
+        shop: 'shop-1',
+        code: { $in: ['FREESHIP'] },
+      });
+      expect(coupon.usesCount).toBe(5);
+      expect(usageRepository.create).toHaveBeenCalledWith(expect.objectContaining({
+        coupon,
+        orderId: 'order-1',
+        code: 'FREESHIP',
+      }));
+    });
+
+    it('charges the provider exactly the persisted order money', async () => {
+      const { service, orderCheckoutOutboxService } = buildService({
+        processResult: undefined,
+      });
+
+      await service.createOrders(
+        { type: 'user', userId: 'user-1', email: 'member@example.com' },
+        'cart-1',
+        cart,
+        {
+          paymentType: PaymentType.CARD,
+          shippingAddress,
+          quote: buildQuotedCheckout() as never,
+          isTempCart: false,
+        },
+      );
+
+      expect(
+        orderCheckoutOutboxService.createCheckoutSessionRequestedEvent,
+      ).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          lineItems: [
+            expect.objectContaining({
+              name: 'Product 1',
+              unitAmountMinor: 900,
+              quantity: 2,
+            }),
+          ],
+          shippingAmountMinor: 1150,
+          discountAmountMinor: 0,
+        }),
+      );
+    });
+
+    it('refuses to charge an amount that disagrees with the accepted quote total', async () => {
+      const { service, orderRepository, orderCheckoutOutboxService } = buildService();
+
+      await expect(service.createOrders(
+        { type: 'user', userId: 'user-1', email: 'member@example.com' },
+        'cart-1',
+        cart,
+        {
+          paymentType: PaymentType.CARD,
+          shippingAddress,
+          quote: buildQuotedCheckout(3000) as never,
+          isTempCart: false,
+        },
+      )).rejects.toThrow('does not match accepted quote total');
+
+      expect(orderRepository.create).toHaveBeenCalled();
+      expect(
+        orderCheckoutOutboxService.createCheckoutSessionRequestedEvent,
+      ).not.toHaveBeenCalled();
+    });
   });
 });

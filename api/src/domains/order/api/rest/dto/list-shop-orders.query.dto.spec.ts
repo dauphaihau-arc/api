@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import { plainToInstance } from 'class-transformer';
 import { validateSync } from 'class-validator';
 import { PaymentType } from '../../../domain/enums/payment-type.enum';
-import { OrderShippingStatus } from '../../../domain/enums/order-shipping-status.enum';
+import { FulfillmentAggregateStatus } from '../../../../fulfillment/domain/enums/fulfillment-aggregate-status.enum';
 import { OrderStatus } from '../../../domain/enums/order-status.enum';
 import { ListShopOrdersQueryDto } from './list-shop-orders.query.dto';
 
@@ -10,7 +10,7 @@ describe('ListShopOrdersQueryDto', () => {
   it('maps repeated and snake_case query params into the DTO shape', () => {
     const dto = plainToInstance(ListShopOrdersQueryDto, {
       status: ['paid', 'canceled'],
-      shipping_status: 'pre_transit,delivered',
+      fulfillment_status: 'unfulfilled,delivered',
       created_from: '2026-06-01T00:00:00.000Z',
       created_to: '2026-06-05T23:59:59.999Z',
       amount_min: '1000',
@@ -21,9 +21,9 @@ describe('ListShopOrdersQueryDto', () => {
     });
 
     expect(dto.status).toEqual([OrderStatus.PAID, OrderStatus.CANCELED]);
-    expect(dto.shippingStatus).toEqual([
-      OrderShippingStatus.PRE_TRANSIT,
-      OrderShippingStatus.DELIVERED,
+    expect(dto.fulfillmentStatus).toEqual([
+      FulfillmentAggregateStatus.UNFULFILLED,
+      FulfillmentAggregateStatus.DELIVERED,
     ]);
     expect(dto.createdFrom).toEqual(new Date('2026-06-01T00:00:00.000Z'));
     expect(dto.createdTo).toEqual(new Date('2026-06-05T23:59:59.999Z'));

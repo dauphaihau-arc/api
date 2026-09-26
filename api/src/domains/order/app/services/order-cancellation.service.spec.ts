@@ -3,6 +3,7 @@ import type { PaymentGateway } from '../../../../integrations/payment/app/ports/
 import type { ModuleRef } from '@nestjs/core';
 import { OrderStatus } from '../../domain/enums/order-status.enum';
 import type { CheckoutStockReservationPort } from '../../../checkout/app/ports/checkout-stock-reservation.port';
+import type { FulfillmentService } from '../../../fulfillment/app/services/fulfillment.service';
 import type { OrderRefundQueryRepository } from '../ports/order-refund-query.repository';
 import { OrderCancellationService } from './order-cancellation.service';
 import { OrderRefundService } from './order-refund.service';
@@ -62,9 +63,15 @@ describe('OrderCancellationService', () => {
         findByIdWithShopOwner: jest.fn(),
       } as unknown as OrderRefundQueryRepository,
     );
+    const fulfillmentService = {
+      getDispatchState: jest.fn().mockResolvedValue({ hasGroups: true, hasDispatched: false }),
+      voidUndispatchedShipments: jest.fn().mockResolvedValue(undefined),
+      assignSellerGroupToOrder: jest.fn().mockResolvedValue(undefined),
+    } as unknown as FulfillmentService;
     const service = new OrderCancellationService(
       refundService,
       checkoutStockReservationService,
+      fulfillmentService,
     );
     const canceledAt = new Date('2026-05-24T00:00:00.000Z');
 
@@ -94,6 +101,11 @@ describe('OrderCancellationService', () => {
         productId: 'product-1',
         quantity: 3,
       }],
+      {
+        commandId: 'order-1:restore',
+        cause: 'order_canceled',
+        reservationId: undefined,
+      },
     );
     expect(couponUsage.coupon.usesCount).toBe(3);
     expect(remove).toHaveBeenCalledWith(couponUsage);
@@ -103,7 +115,7 @@ describe('OrderCancellationService', () => {
         canceled_at: canceledAt.toISOString(),
         reason: 'Changed my mind',
         source: 'buyer',
-        allocations_reverted: true,
+        inventory_restored: true,
       },
       refund_status: 'pending',
       refund_requested_at: canceledAt.toISOString(),

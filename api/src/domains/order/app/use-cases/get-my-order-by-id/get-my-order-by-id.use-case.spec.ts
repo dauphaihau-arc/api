@@ -3,6 +3,7 @@ import { GetMyOrderByIdUseCase } from './get-my-order-by-id.use-case';
 import { OrderShippingStatus } from '../../../domain/enums/order-shipping-status.enum';
 import { OrderStatus } from '../../../domain/enums/order-status.enum';
 import { UserStatus } from '../../../../auth/domain/enums/user-status.enum';
+import { FulfillmentGroupEntity } from '~/domains/fulfillment/infra/persistence/entities/fulfillment-group.entity';
 import { ProductReviewEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-review.entity';
 
 describe('GetMyOrderByIdUseCase', () => {
@@ -87,6 +88,10 @@ describe('GetMyOrderByIdUseCase', () => {
             return {
               find: jest.fn().mockResolvedValue([]),
             };
+          case FulfillmentGroupEntity.name:
+            return {
+              find: jest.fn().mockResolvedValue([]),
+            };
           default:
             return {};
         }
@@ -99,7 +104,7 @@ describe('GetMyOrderByIdUseCase', () => {
 
     const useCase = new GetMyOrderByIdUseCase(entityManager, {
       getPublicUrl: jest.fn(),
-    } as never);
+    } as never, { load: jest.fn(async () => new Map()) } as never);
 
     const result = await useCase.execute(
       {
@@ -115,8 +120,8 @@ describe('GetMyOrderByIdUseCase', () => {
 
     expect(result.id).toBe('order-1');
     expect(result.status).toBe(OrderStatus.PAID);
-    expect(result.shippingStatus).toBe(OrderShippingStatus.SHIPPED);
-    expect(result.trackingNumber).toBe('1Z999');
+    expect(result.fulfillment.legacyShipping.status).toBe(OrderShippingStatus.SHIPPED);
+    expect(result.fulfillment.legacyShipping.trackingNumber).toBe('1Z999');
     expect(result.shippingAddress.fullName).toBe('Buyer One');
     expect(result.products).toHaveLength(1);
   });

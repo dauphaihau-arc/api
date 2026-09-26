@@ -3,6 +3,8 @@ import { Injectable } from '@nestjs/common';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import { StorageService } from '~/integrations/storage/app/ports/storage.service';
 import { ProductReviewEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-review.entity';
+import { OrderFulfillmentViewPort } from '../../../../fulfillment/app/ports/order-fulfillment-view.port';
+import { buildOrderFulfillmentSummary, canceledFulfillmentOrderIds } from '../../order-fulfillment';
 import { OrderEntity } from '../../../infra/persistence/entities/order.entity';
 import { OrderItemEntity } from '../../../infra/persistence/entities/order-item.entity';
 import { OrderNotFoundError } from '../../errors/order-app.error';
@@ -21,12 +23,16 @@ import {
   getOrderTotalMajor,
 } from '../../order-money';
 import type { MyOrderDetail } from '../../order.types';
+import {
+  parsePersistedOrderShippingSnapshot,
+} from '../../../../checkout/app/checkout-shipping-snapshot.contract';
 
 @Injectable()
 export class GetMyOrderByIdUseCase {
   constructor(
     private readonly entityManager: EntityManager,
     private readonly storageService: StorageService,
+    private readonly orderFulfillmentViewPort: OrderFulfillmentViewPort,
   ) {}
 
   async execute(actor: AuthenticatedUser, orderId: string): Promise<MyOrderDetail> {
@@ -44,6 +50,9 @@ export class GetMyOrderByIdUseCase {
       { order: order.id },
       { populate: ['product', 'product.shop', 'inventory'] },
     );
+    const fulfillmentView = (await this.orderFulfillmentViewPort.load(entityManager, [order.id], {
+      canceledOrderIds: canceledFulfillmentOrderIds([order]),
+    })).get(order.id);
     const reviewMap = await loadProductReviewMap(
       entityManager,
       actor.userId,
@@ -79,16 +88,7 @@ export class GetMyOrderByIdUseCase {
         myReview: reviewMap.get(item.product.id),
       })),
       promoCodes: order.promoCodes,
-      shippingStatus: order.shippingStatus,
-      shippingUpdatedAt: order.updatedAt,
-      shippingToCountry: order.shippingToCountry,
-      shippingFromCountries: order.shippingOriginCountries,
-      shippingEstimatedDelivery: order.shippingEstimatedDelivery,
-      trackingNumber: order.trackingNumber,
-      shippingCarrier: order.shippingCarrier,
-      shipmentNote: order.shipmentNote,
-      shippedAt: order.shippedAt,
-      deliveredAt: order.deliveredAt,
+      fulfillment: buildOrderFulfillmentSummary(order, fulfillmentView),
       canceledAt: order.canceledAt,
       cancelReason: order.cancelReason,
       customerSupportNote: order.customerSupportNote,
@@ -103,6 +103,7 @@ export class GetMyOrderByIdUseCase {
       discountMinor: getOrderDiscountMinor(order),
       total: getOrderTotalMajor(order),
       totalMinor: getOrderTotalMinor(order),
+      shippingQuote: parsePersistedOrderShippingSnapshot(order.shippingQuoteSnapshot),
       note: order.note,
       createdAt: order.createdAt,
       shippingAddress: {

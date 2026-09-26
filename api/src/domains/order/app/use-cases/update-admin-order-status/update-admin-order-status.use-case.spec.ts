@@ -1,11 +1,18 @@
 import type { EntityManager } from '@mikro-orm/postgresql';
 import type { EventEmitter2 } from '@nestjs/event-emitter';
 import { OrderStatus } from '../../../domain/enums/order-status.enum';
-import { AdminRefundNotAllowedError } from '../../errors/order-app.error';
+import {
+  AdminOrderStatusOverrideNotAllowedError,
+  AdminRefundNotAllowedError,
+} from '../../errors/order-app.error';
 import { UpdateAdminOrderStatusUseCase } from './update-admin-order-status.use-case';
 
 describe('UpdateAdminOrderStatusUseCase', () => {
-  function buildUseCase(status = OrderStatus.PAID) {
+  function buildUseCase(input: {
+    status?: OrderStatus;
+    hasGroups?: boolean;
+    hasDispatched?: boolean;
+  } = {}) {
     const order = {
       id: 'order-1',
       orderNumber: 'ORD-20260604-000001',
@@ -25,7 +32,7 @@ describe('UpdateAdminOrderStatusUseCase', () => {
         zip: '90001',
       },
       paymentType: 'card',
-      status,
+      status: input.status ?? OrderStatus.PAID,
       promoCodes: [],
       shippingStatus: 'pre_transit',
       shippingOriginCountries: ['US'],
@@ -79,11 +86,14 @@ describe('UpdateAdminOrderStatusUseCase', () => {
             return {
               find: jest.fn().mockResolvedValue([item]),
             };
+          case 'FulfillmentGroupEntity':
+            return { find: jest.fn().mockResolvedValue([]) };
           default:
             return {};
         }
       }),
       flush: jest.fn().mockResolvedValue(undefined),
+      transactional: jest.fn((callback: (em: EntityManager) => unknown) => callback(fakeEntityManager as unknown as EntityManager)),
     } as unknown as EntityManager;
 
     const entityManager = {
@@ -98,23 +108,37 @@ describe('UpdateAdminOrderStatusUseCase', () => {
     const orderEventsService = {
       record: jest.fn().mockResolvedValue(undefined),
     };
+    const orderCancellationService = {
+      cancelOrder: jest.fn().mockResolvedValue({ refundRequested: false, inventoryEvents: [] }),
+    };
+    const fulfillmentService = {
+      getDispatchState: jest.fn().mockResolvedValue({
+        hasGroups: input.hasGroups ?? false,
+        hasDispatched: input.hasDispatched ?? false,
+      }),
+    };
 
     return {
       order,
       fakeEntityManager,
       jobDispatcher,
+      orderCancellationService,
+      fulfillmentService,
       useCase: new UpdateAdminOrderStatusUseCase(
         entityManager,
         eventEmitter as unknown as EventEmitter2,
         jobDispatcher as never,
         orderEventsService as never,
+        orderCancellationService as never,
+        fulfillmentService as never,
+        { load: jest.fn(async () => new Map()) } as never,
       ),
     };
   }
 
   it('marks a paid order as refunded', async () => {
     const {
-      useCase, order, fakeEntityManager, jobDispatcher, 
+      useCase, order, fakeEntityManager, jobDispatcher,
     } = buildUseCase();
 
     const result = await useCase.execute('order-1', {
@@ -136,12 +160,49 @@ describe('UpdateAdminOrderStatusUseCase', () => {
   });
 
   it('rejects refunding an unpaid order', async () => {
-    const { useCase } = buildUseCase(OrderStatus.AWAITING_PAYMENT);
+    const { useCase } = buildUseCase({ status: OrderStatus.AWAITING_PAYMENT });
 
     await expect(
       useCase.execute('order-1', {
         status: OrderStatus.REFUNDED,
       }),
     ).rejects.toThrow(AdminRefundNotAllowedError);
+  });
+
+  it('cancels undispatched quantities through the shared cancellation path', async () => {
+    const {
+      useCase, orderCancellationService, fulfillmentService,
+    } = buildUseCase({ hasGroups: true, hasDispatched: false });
+
+    await useCase.execute('order-1', {
+      status: OrderStatus.CANCELED,
+      cancelReason: 'Admin cleanup',
+    });
+
+    expect(fulfillmentService.getDispatchState).toHaveBeenCalled();
+    expect(orderCancellationService.cancelOrder).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.objectContaining({
+        source: 'admin',
+        requestRefund: false,
+        cancelReason: 'Admin cleanup',
+      }),
+    );
+  });
+
+  it('refuses to cancel once a quantity is dispatched', async () => {
+    const { useCase, orderCancellationService } = buildUseCase({
+      hasGroups: true,
+      hasDispatched: true,
+    });
+
+    await expect(
+      useCase.execute('order-1', {
+        status: OrderStatus.CANCELED,
+      }),
+    ).rejects.toThrow(AdminOrderStatusOverrideNotAllowedError);
+
+    expect(orderCancellationService.cancelOrder).not.toHaveBeenCalled();
   });
 });

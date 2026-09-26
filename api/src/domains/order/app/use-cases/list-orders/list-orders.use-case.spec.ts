@@ -1,8 +1,9 @@
 import type { EntityManager } from '@mikro-orm/postgresql';
-import { OrderShippingStatus } from '../../../domain/enums/order-shipping-status.enum';
+import { FulfillmentAggregateStatus } from '../../../../fulfillment/domain/enums/fulfillment-aggregate-status.enum';
 import { OrderStatus } from '../../../domain/enums/order-status.enum';
 import { OrderEntity } from '../../../infra/persistence/entities/order.entity';
 import { OrderItemEntity } from '../../../infra/persistence/entities/order-item.entity';
+import { FulfillmentGroupEntity } from '~/domains/fulfillment/infra/persistence/entities/fulfillment-group.entity';
 import { ProductReviewEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-review.entity';
 import { ListOrdersUseCase } from './list-orders.use-case';
 
@@ -10,7 +11,7 @@ function buildOrder(input: {
   id: string;
   shopName: string;
   status: OrderStatus;
-  shippingStatus: OrderShippingStatus;
+  fulfillmentStatus: FulfillmentAggregateStatus;
 }) {
   return {
     id: input.id,
@@ -23,7 +24,7 @@ function buildOrder(input: {
     currency: 'USD',
     paymentType: 'card',
     status: input.status,
-    shippingStatus: input.shippingStatus,
+    fulfillmentStatus: input.fulfillmentStatus,
     shippingToCountry: 'US',
     shippingOriginCountries: ['US'],
     shippingEstimatedDelivery: new Date('2026-05-30T00:00:00.000Z'),
@@ -78,37 +79,37 @@ describe('ListOrdersUseCase', () => {
       id: 'order-blue-123',
       shopName: 'Blue Mart',
       status: OrderStatus.PAID,
-      shippingStatus: OrderShippingStatus.PRE_TRANSIT,
+      fulfillmentStatus: FulfillmentAggregateStatus.UNFULFILLED,
     });
     const redOrder = buildOrder({
       id: 'order-red-456',
       shopName: 'Red Mart',
       status: OrderStatus.CANCELED,
-      shippingStatus: OrderShippingStatus.DELIVERED,
+      fulfillmentStatus: FulfillmentAggregateStatus.DELIVERED,
     });
     const shippedOrder = buildOrder({
       id: 'order-green-789',
       shopName: 'Green Mart',
       status: OrderStatus.PAID,
-      shippingStatus: OrderShippingStatus.SHIPPED,
+      fulfillmentStatus: FulfillmentAggregateStatus.DISPATCHED,
     });
     const deliveredOrder = buildOrder({
       id: 'order-gold-999',
       shopName: 'Gold Mart',
       status: OrderStatus.COMPLETED,
-      shippingStatus: OrderShippingStatus.DELIVERED,
+      fulfillmentStatus: FulfillmentAggregateStatus.DELIVERED,
     });
     const refundedOrder = buildOrder({
       id: 'order-silver-555',
       shopName: 'Silver Mart',
       status: OrderStatus.REFUNDED,
-      shippingStatus: OrderShippingStatus.DELIVERED,
+      fulfillmentStatus: FulfillmentAggregateStatus.DELIVERED,
     });
     const paymentOrder = buildOrder({
       id: 'order-pay-111',
       shopName: 'Pay Mart',
       status: OrderStatus.AWAITING_PAYMENT,
-      shippingStatus: OrderShippingStatus.PRE_TRANSIT,
+      fulfillmentStatus: FulfillmentAggregateStatus.UNFULFILLED,
     });
     const orders = [blueOrder, redOrder, shippedOrder, deliveredOrder, refundedOrder, paymentOrder];
     const orderItems = [
@@ -163,6 +164,12 @@ describe('ListOrdersUseCase', () => {
           };
         }
 
+        if (entity === FulfillmentGroupEntity) {
+          return {
+            find: jest.fn().mockResolvedValue([]),
+          };
+        }
+
         throw new Error(`Unexpected repository ${entity.name}`);
       }),
     } as unknown as EntityManager;
@@ -170,14 +177,14 @@ describe('ListOrdersUseCase', () => {
       fork: jest.fn(() => fakeEntityManager),
     } as unknown as EntityManager, {
       getPublicUrl: jest.fn(),
-    } as never);
+    } as never, { load: jest.fn(async () => new Map()) } as never);
 
     const notShipped = await useCase.execute(
       { userId: 'user-1' } as never,
       {
         page: 1,
         limit: 20,
-        shippingStatus: OrderShippingStatus.PRE_TRANSIT,
+        fulfillmentStatus: FulfillmentAggregateStatus.UNFULFILLED,
       },
     );
     const canceled = await useCase.execute(

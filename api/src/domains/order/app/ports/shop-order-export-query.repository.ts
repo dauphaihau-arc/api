@@ -16,16 +16,21 @@ export interface ShopOrderExportRow {
   discountMinor: number;
   totalMinor: number;
   promoCodes: string[];
-  shippingStatus: string;
+  fulfillmentStatus: string;
+  shipmentsSummary: string;
+  legacyTrackingNumber?: string;
+  legacyShippingCarrier?: string;
+  legacyShipmentNote?: string;
   shippingToCountry: string;
   shippingFromCountries: string[];
-  trackingNumber?: string;
-  shippingCarrier?: string;
+  /** Accepted seller estimate from the frozen order shipping snapshot. */
+  shippingEstimateMinDays?: number;
+  shippingEstimateMaxDays?: number;
+  shippingEstimatedLatestDate?: Date;
   canceledAt?: Date;
   cancelReason?: string;
   note?: string;
   customerSupportNote?: string;
-  shipmentNote?: string;
   shopId: string;
   shopName: string;
 }

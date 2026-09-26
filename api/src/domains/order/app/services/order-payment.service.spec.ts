@@ -2,6 +2,7 @@ import type { EntityManager } from '@mikro-orm/postgresql';
 import type { EventEmitter2 } from '@nestjs/event-emitter';
 import type { JobDispatcher } from '~/integrations/queue/app/ports/job-dispatcher';
 import type { CheckoutStockReservationPort } from '../../../checkout/app/ports/checkout-stock-reservation.port';
+import type { FulfillmentService } from '../../../fulfillment/app/services/fulfillment.service';
 import { OrderStatus } from '../../domain/enums/order-status.enum';
 import { CouponUsageEntity } from '../../../coupon/infra/persistence/entities/coupon-usage.entity';
 import { OrderItemEntity } from '../../infra/persistence/entities/order-item.entity';
@@ -19,6 +20,7 @@ describe('OrderPaymentService', () => {
       checkoutStockReservationService,
       orderInventoryOutboxService,
       orderCartCleanupRepository,
+      fulfillmentService,
     } = buildService();
 
     await service.markCheckoutSessionCompleted('cs_123', {
@@ -43,6 +45,18 @@ describe('OrderPaymentService', () => {
         items: [{ inventoryId: 'inventory-1', quantity: 2 }],
       },
     );
+    expect(fulfillmentService.assignSellerGroupToOrder).toHaveBeenCalledWith(
+      expect.anything(),
+      {
+        orderId: 'order-1',
+        shopId: 'shop-1',
+        items: [{ orderItemId: 'order-item-1', quantity: 2 }],
+        actor: {
+          actorType: 'system',
+          source: 'checkout',
+        },
+      },
+    );
     expect(order.status).toBe(OrderStatus.PAID);
     expect(order.paymentDetails).toEqual(expect.objectContaining({
       checkout_session_id: 'cs_123',
@@ -57,6 +71,25 @@ describe('OrderPaymentService', () => {
       },
       { entityManager: expect.anything() },
     );
+  });
+
+  it('does not reprice the accepted shipping charge or estimate when payment is replayed', async () => {
+    const { service, order, checkoutStockReservationService } = buildService();
+
+    await service.markCheckoutSessionCompleted('cs_123', {
+      paymentIntentId: 'pi_123',
+      paymentStatus: 'paid',
+    });
+    await service.markCheckoutSessionCompleted('cs_123', {
+      paymentIntentId: 'pi_123',
+      paymentStatus: 'paid',
+    });
+
+    expect(order.shippingMinor).toBe(1150);
+    expect(order.totalMinor).toBe(2950);
+    expect(order.shippingEstimatedDelivery).toEqual(new Date('2026-09-30T00:00:00.000Z'));
+    expect(order.shippingQuoteSnapshot.shipping.charge.total_minor).toBe(1150);
+    expect(checkoutStockReservationService.consumeReservationsForQuote).toHaveBeenCalledTimes(1);
   });
 
   it('releases quoted reservations without restoring already-held stock', async () => {
@@ -82,6 +115,55 @@ function buildService() {
   const order = {
     id: 'order-1',
     status: OrderStatus.AWAITING_PAYMENT,
+    shop: { id: 'shop-1' },
+    currency: 'USD',
+    subtotalMinor: 1800,
+    shippingMinor: 1150,
+    discountMinor: 0,
+    totalMinor: 2950,
+    shippingEstimatedDelivery: new Date('2026-09-30T00:00:00.000Z'),
+    shippingQuoteSnapshot: {
+      shipping: {
+        shop_id: 'shop-1',
+        currency: 'USD',
+        charge: {
+          currency: 'USD',
+          quantity: 2,
+          base_unit: {
+            product_id: 'product-1',
+            inventory_id: 'inventory-1',
+            one_item_fee_minor: 900,
+          },
+          base_item_fee_minor: 900,
+          base_item_total_minor: 900,
+          additional_items_quantity: 1,
+          additional_components: [
+            {
+              product_id: 'product-1',
+              inventory_id: 'inventory-1',
+              quantity: 1,
+              additional_item_fee_minor: 250,
+            },
+          ],
+          additional_item_fee_minor_total: 250,
+          total_minor: 1150,
+        },
+        estimate: {
+          processing_time_min_days: 1,
+          processing_time_max_days: 3,
+          delivery_time_min_days: 3,
+          delivery_time_max_days: 5,
+          combined_min_days: 4,
+          combined_max_days: 8,
+          anchor_at: '2026-09-22T10:00:00.000Z',
+          earliest_delivery_date: '2026-09-26T00:00:00.000Z',
+          latest_delivery_date: '2026-09-30T00:00:00.000Z',
+        },
+        units: [],
+      },
+      shipping_discount_minor: 0,
+      shipping_discounts: [],
+    },
     paymentDetails: {
       cart_id: 'cart-1',
       is_temp_cart: true,
@@ -91,6 +173,8 @@ function buildService() {
     },
   };
   const orderItem = {
+    id: 'order-item-1',
+    order: { id: 'order-1' },
     inventory: { id: 'inventory-1' },
     product: { id: 'product-1' },
     quantity: 2,
@@ -142,6 +226,9 @@ function buildService() {
   const orderCartCleanupRepository = {
     clearCheckoutCart: jest.fn().mockResolvedValue(undefined),
   } as unknown as jest.Mocked<OrderCartCleanupRepository>;
+  const fulfillmentService = {
+    assignSellerGroupToOrder: jest.fn().mockResolvedValue(undefined),
+  } as unknown as jest.Mocked<FulfillmentService>;
 
   const service = new OrderPaymentService(
     entityManager,
@@ -152,6 +239,7 @@ function buildService() {
     orderEventsService,
     orderCheckoutSessionRepository,
     orderCartCleanupRepository,
+    fulfillmentService,
   );
 
   return {
@@ -161,5 +249,6 @@ function buildService() {
     checkoutStockReservationService,
     orderInventoryOutboxService,
     orderCartCleanupRepository,
+    fulfillmentService,
   };
 }
