@@ -28,17 +28,18 @@ describe('IdempotencyKeyInterceptor', () => {
     idempotencyKey?: string,
     body: unknown = payload,
     statusCode = 201,
+    omitBody = false,
   ): {
     context: ExecutionContext;
     request: Pick<Request, 'body' | 'header'>;
     response: Pick<Response, 'statusCode' | 'status' | 'setHeader'>;
   } {
-    const request: Pick<Request, 'body' | 'header'> = {
-      body,
+    const request = {
+      ...(omitBody ? {} : { body }),
       header: ((name: string) =>
         name.toLowerCase() === 'idempotency-key' ? idempotencyKey : undefined) as
         Request['header'],
-    };
+    } as unknown as Pick<Request, 'body' | 'header'>;
     const response: Pick<Response, 'statusCode' | 'status' | 'setHeader'> = {
       statusCode,
       status: jest.fn().mockReturnThis(),
@@ -64,6 +65,35 @@ describe('IdempotencyKeyInterceptor', () => {
       get: jest.fn().mockReturnValue(options),
     };
   }
+
+  it('claims a bodyless request with a string fingerprint instead of an undefined value', async () => {
+    const cacheManager: Pick<jest.Mocked<Cache>, 'get' | 'set'> = {
+      get: jest.fn().mockResolvedValue(undefined),
+      set: jest.fn().mockResolvedValue(undefined),
+    };
+    const redisClient: RedisClientMock = {
+      set: jest.fn().mockResolvedValue('OK'),
+      del: jest.fn().mockResolvedValue(1),
+    };
+    const interceptor = new IdempotencyKeyInterceptor(
+      createReflector() as Reflector,
+      cacheManager as unknown as Cache,
+      redisClient as never,
+    );
+    // A request with no parsed body must still produce a string fingerprint:
+    // handing `undefined` to the cache would fail inside a Redis client.
+    const { context } = createHttpContext('bodyless-1', undefined, 200, true);
+    const next: CallHandler = {
+      handle: jest.fn(() => of({ status: 'archived' })),
+    };
+
+    await lastValueFrom(interceptor.intercept(context, next));
+
+    expect(redisClient.set).toHaveBeenCalledTimes(1);
+    const [, fingerprint] = redisClient.set.mock.calls[0];
+    expect(typeof fingerprint).toBe('string');
+    expect(fingerprint.length).toBeGreaterThan(0);
+  });
 
   it('passes through when idempotency metadata is missing', async () => {
     const cacheManager: Pick<jest.Mocked<Cache>, 'get' | 'set'> = {

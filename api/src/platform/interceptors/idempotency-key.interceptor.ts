@@ -272,6 +272,12 @@ export class IdempotencyKeyInterceptor implements NestInterceptor {
         .join(',')}}`;
     }
 
-    return JSON.stringify(value);
+    const serialized = JSON.stringify(value);
+
+    // `JSON.stringify` returns undefined for values it cannot represent
+    // (undefined, functions, symbols). Fingerprints must always be strings:
+    // an undefined fingerprint would be handed to the cache as an undefined
+    // value, which a Redis client rejects.
+    return serialized === undefined ? 'null' : serialized;
   }
 }
