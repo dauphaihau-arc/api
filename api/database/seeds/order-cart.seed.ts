@@ -13,7 +13,7 @@ import { OrderEntity } from '~/domains/order/infra/persistence/entities/order.en
 import { OrderItemEntity } from '~/domains/order/infra/persistence/entities/order-item.entity';
 import { ProductInventoryEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-inventory.entity';
 import { getInventoryPricingSnapshot } from '~/domains/product/infra/persistence/mikro-orm/reads/variant-price-read';
-import { toMinorUnits } from '~/platform/utils/money';
+import { toMinorUnits } from '~/platform/money/money';
 
 type OrderSeed = {
   inventoryId: string;

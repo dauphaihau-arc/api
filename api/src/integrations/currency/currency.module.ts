@@ -5,11 +5,16 @@ import {
   buildFxRateSyncConfig,
   FX_RATE_SYNC_CONFIG,
 } from '~/platform/config/fx-rate-sync.config';
+import {
+  DEFAULT_ROUNDING_POLICY_CONFIG,
+  ROUNDING_POLICY_CONFIG,
+} from '~/platform/config/rounding.config';
 import { EXCHANGE_RATE_PROVIDER } from './exchange-rate-provider';
 import { ExchangeRateEntity } from './infra/persistence/entities/exchange-rate.entity';
 import { ExchangeRateSyncService } from './exchange-rate-sync.service';
 import { FxRateService } from './fx-rate.service';
 import { InternalJobsController } from './internal-jobs.controller';
+import { MoneyConversionService } from './money-conversion.service';
 import { OpenExchangeRatesProvider } from './open-exchange-rates.provider';
 import { RoundingPolicyService } from './rounding-policy.service';
 
@@ -42,7 +47,12 @@ import { RoundingPolicyService } from './rounding-policy.service';
       },
     },
     FxRateService,
+    {
+      provide: ROUNDING_POLICY_CONFIG,
+      useValue: DEFAULT_ROUNDING_POLICY_CONFIG,
+    },
     RoundingPolicyService,
+    MoneyConversionService,
     OpenExchangeRatesProvider,
     ExchangeRateSyncService,
   ],
@@ -50,6 +60,7 @@ import { RoundingPolicyService } from './rounding-policy.service';
     FX_RATE_SYNC_CONFIG,
     FxRateService,
     RoundingPolicyService,
+    MoneyConversionService,
     ExchangeRateSyncService,
   ],
 })

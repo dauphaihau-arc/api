@@ -18,6 +18,7 @@ import { MinioStorageService } from '~/integrations/storage/infra/minio-storage.
 import { ProductState } from '~/domains/product/domain/enums/product-state.enum';
 import type { StorageService } from '~/integrations/storage/app/ports/storage.service';
 import { FxRateService } from '~/integrations/currency/fx-rate.service';
+import { MoneyConversionService } from '~/integrations/currency/money-conversion.service';
 import { RoundingPolicyService } from '~/integrations/currency/rounding-policy.service';
 import { StorefrontIndexedPriceProjectionService } from '~/domains/product/app/services/storefront-indexed-price-projection.service';
 import { MikroOrmCouponAutoSaleProjectionReader } from '~/domains/coupon/infra/persistence/repositories/mikro-orm-coupon-auto-sale-projection.reader';
@@ -99,8 +100,7 @@ async function main() {
   );
   const storefrontIndexedPriceProjectionService = new StorefrontIndexedPriceProjectionService(
     storefrontPricingConfig,
-    new FxRateService(orm.em),
-    new RoundingPolicyService(),
+    new MoneyConversionService(new FxRateService(orm.em), new RoundingPolicyService()),
     new MikroOrmCouponAutoSaleProjectionReader(orm.em),
   );
   const projector = new CatalogProductProjectorService(

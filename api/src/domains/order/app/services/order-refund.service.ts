@@ -1,7 +1,7 @@
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable, Logger } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
-import { fromMinorUnits } from '../../../../platform/utils/money';
+import { fromMinorUnits } from '../../../../platform/money/money';
 import { PaymentGateway } from '../../../../integrations/payment/app/ports/payment-gateway';
 import { NotifyUserUseCase } from '../../../../domains/notification/app/use-cases/notify-user/notify-user.use-case';
 import { JobDispatcher } from '../../../../integrations/queue/app/ports/job-dispatcher';

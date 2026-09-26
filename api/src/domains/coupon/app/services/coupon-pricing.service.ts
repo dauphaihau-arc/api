@@ -1,6 +1,6 @@
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
-import { fromMinorUnits, toMinorUnits } from '../../../../platform/utils/money';
+import { fromMinorUnits, toMinorUnits } from '../../../../platform/money/money';
 import type { CartSnapshot } from '../../../cart/app/cart.types';
 import type {
   PricedCartItem,

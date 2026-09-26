@@ -1,5 +1,5 @@
 import type { FilterQuery } from '@mikro-orm/core';
-import { fromMinorUnits } from '~/platform/utils/money';
+import { fromMinorUnits } from '~/platform/money/money';
 import type { ListShopOrdersQueryDto } from '../../../api/rest/dto/list-shop-orders.query.dto';
 import type { OrderEntity } from '../../../infra/persistence/entities/order.entity';
 

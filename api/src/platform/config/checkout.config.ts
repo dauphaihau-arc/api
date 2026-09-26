@@ -1,5 +1,5 @@
 import type { ConfigService } from '@nestjs/config';
-import { toMinorUnits } from '~/platform/utils/money';
+import { toMinorUnits } from '~/platform/money/money';
 import {
   MARKETPLACE_CURRENCIES,
   type MarketplaceCurrency,

@@ -4,8 +4,9 @@ import {
   STOREFRONT_PRICING_CONFIG,
   type StorefrontPricingConfig,
 } from '~/platform/config/storefront-pricing.config';
-import { FxRateService, type ExchangeRateSnapshot } from '~/integrations/currency/fx-rate.service';
-import { RoundingPolicyService } from '~/integrations/currency/rounding-policy.service';
+import type { FxRateCache } from '~/integrations/currency/fx-rate.service';
+import { MoneyConversionService } from '~/integrations/currency/money-conversion.service';
+import { fromMinorUnitsExact, toMinorUnits } from '~/platform/money/money';
 import type { ProductEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product.entity';
 import type { ProductInventoryEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-inventory.entity';
 import type { VariantPriceEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/variant-price.entity';
@@ -35,8 +36,7 @@ export class StorefrontIndexedPriceProjectionService {
   constructor(
     @Inject(STOREFRONT_PRICING_CONFIG)
     private readonly storefrontPricingConfig: StorefrontPricingConfig,
-    private readonly fxRateService: FxRateService,
-    private readonly roundingPolicyService: RoundingPolicyService,
+    private readonly moneyConversionService: MoneyConversionService,
     private readonly couponAutoSaleProjectionReader: CouponAutoSaleProjectionReader,
   ) {}
 
@@ -45,7 +45,7 @@ export class StorefrontIndexedPriceProjectionService {
     summaryByMarket?: StorefrontIndexedPricingSummaryMatrix;
     inventoryPricingById: Map<string, ProductInventoryPricingProjection>;
   }> {
-    const rateCache = new Map<string, ExchangeRateSnapshot | null>();
+    const rateCache: FxRateCache = new Map();
     const inventoryPricingById = new Map<string, ProductInventoryPricingProjection>();
 
     const autoSale = await this.couponAutoSaleProjectionReader.findBestAutoSaleForProduct({
@@ -80,7 +80,7 @@ export class StorefrontIndexedPriceProjectionService {
 
   private async projectInventory(
     inventory: ProductInventoryEntity,
-    rateCache: Map<string, ExchangeRateSnapshot | null>,
+    rateCache: FxRateCache,
     autoSale?: ProductAutoSaleProjection,
   ): Promise<ProductInventoryPricingProjection> {
     const resolvedByMarket: StorefrontIndexedInventoryPricingMatrix = {};
@@ -131,7 +131,7 @@ export class StorefrontIndexedPriceProjectionService {
     inventory: ProductInventoryEntity,
     marketCode: string,
     currency: string,
-    rateCache: Map<string, ExchangeRateSnapshot | null>,
+    rateCache: FxRateCache,
   ): Promise<StorefrontIndexedInventoryPrice | undefined> {
     const exactMarketPrice = getActiveMarketPrice(inventory, marketCode, currency);
 
@@ -149,44 +149,21 @@ export class StorefrontIndexedPriceProjectionService {
       return toInventoryPrice(basePrice);
     }
 
-    const rate = await this.getCachedRate(
-      basePrice.currency,
-      currency,
+    const converted = await this.moneyConversionService.convert({
+      amountMinor: basePrice.amountMinor,
+      fromCurrency: basePrice.currency,
+      toCurrency: currency,
       rateCache,
-    );
+    });
 
-    if (!rate) {
+    if (!converted) {
       return undefined;
     }
 
     return {
-      amountMinor: this.roundingPolicyService.toMinorUnits(
-        toMajorUnits(basePrice.amountMinor, basePrice.currency) * Number(rate.rate),
-        currency,
-      ),
+      amountMinor: converted.amountMinor,
       currency,
     };
-  }
-
-  private async getCachedRate(
-    fromCurrency: string,
-    toCurrency: string,
-    rateCache: Map<string, ExchangeRateSnapshot | null>,
-  ): Promise<ExchangeRateSnapshot | null> {
-    const cacheKey = `${fromCurrency}:${toCurrency}`;
-
-    if (rateCache.has(cacheKey)) {
-      return rateCache.get(cacheKey) ?? null;
-    }
-
-    const rate = await this.fxRateService.getLatestRate({
-      fromCurrency,
-      toCurrency,
-    });
-
-    rateCache.set(cacheKey, rate);
-
-    return rate;
   }
 }
 
@@ -214,7 +191,13 @@ function applyAutoSale(
   }
 
   const baseAmountMinor = price.amountMinor;
-  const discountedAmountMinor = Math.round(baseAmountMinor * (100 - autoSale.percentOff) / 100);
+
+  const discountedAmountMinor = toMinorUnits(
+    fromMinorUnitsExact(baseAmountMinor, price.currency)
+      .times(100 - autoSale.percentOff)
+      .div(100),
+    price.currency,
+  );
 
   if (discountedAmountMinor >= price.amountMinor) {
     return price;
@@ -327,8 +310,4 @@ function mergeSummaryPricing(
       : {}),
     ...(pricing.autoSale ? { autoSale: pricing.autoSale } : current?.autoSale ? { autoSale: current.autoSale } : {}),
   };
-}
-
-function toMajorUnits(amountMinor: number, currency: string): number {
-  return amountMinor / (currency === 'JPY' || currency === 'KRW' || currency === 'VND' ? 1 : 100);
 }

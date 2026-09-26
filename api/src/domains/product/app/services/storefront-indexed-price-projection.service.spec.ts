@@ -1,6 +1,7 @@
 import type { CouponAutoSaleProjectionReader } from '~/domains/coupon/app/ports/coupon-auto-sale-projection.reader';
 import type { FxRateService } from '~/integrations/currency/fx-rate.service';
-import type { RoundingPolicyService } from '~/integrations/currency/rounding-policy.service';
+import { MoneyConversionService } from '~/integrations/currency/money-conversion.service';
+import { RoundingPolicyService } from '~/integrations/currency/rounding-policy.service';
 import { StorefrontIndexedPriceProjectionService } from './storefront-indexed-price-projection.service';
 
 function buildProduct(prices: Array<{
@@ -37,9 +38,7 @@ describe('StorefrontIndexedPriceProjectionService', () => {
     const fxRateService: Pick<jest.Mocked<FxRateService>, 'getLatestRate'> = {
       getLatestRate: jest.fn(),
     };
-    const roundingPolicyService: Pick<jest.Mocked<RoundingPolicyService>, 'toMinorUnits'> = {
-      toMinorUnits: jest.fn((amount: number, _currency: string) => Math.round(amount * 100)),
-    };
+    const roundingPolicyService = new RoundingPolicyService();
 
     return {
       service: new StorefrontIndexedPriceProjectionService(
@@ -47,8 +46,7 @@ describe('StorefrontIndexedPriceProjectionService', () => {
           indexedPricePairs: input?.indexedPricePairs ?? [{ marketCode: 'US', currency: 'USD' }],
           rarePriceCacheTtlMs: 300_000,
         },
-        fxRateService as never,
-        roundingPolicyService as never,
+        new MoneyConversionService(fxRateService as never, roundingPolicyService),
         couponAutoSaleProjectionReader as never,
       ),
       couponAutoSaleProjectionReader,

@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import ms from 'ms';
-import { fromMinorUnits, toMinorUnits } from '../../../../platform/utils/money';
+import { fromMinorUnits, toMinorUnits } from '../../../../platform/money/money';
 import { MARKETPLACE_CURRENCIES } from '../../../../platform/config/marketplace.config';
 import {
   PRODUCT_INVENTORY_UPDATED_SSE_EVENT,

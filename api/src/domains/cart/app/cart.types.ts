@@ -1,5 +1,5 @@
 import { CartKind } from '../domain/enums/cart-kind.enum';
-import { toMinorUnits } from '~/platform/utils/money';
+import { fromMinorUnits, toMinorUnits } from '~/platform/money/money';
 
 export interface CartPricingSnapshot {
   amountMinor: number;
@@ -200,12 +200,8 @@ function resolveCartItemPricing(item: CartItemSnapshot): {
     currency: snapshotPricing.currency,
     unitPriceMinor: snapshotPricing.amountMinor,
     originalAmountMinor: snapshotPricing.originalAmountMinor,
-    unitPriceMajor: snapshotPricing.amountMinor / minorUnitDivisor(snapshotPricing.currency),
+    unitPriceMajor: fromMinorUnits(snapshotPricing.amountMinor, snapshotPricing.currency),
   };
-}
-
-function minorUnitDivisor(currency: string): number {
-  return currency === 'JPY' || currency === 'KRW' || currency === 'VND' ? 1 : 100;
 }
 
 

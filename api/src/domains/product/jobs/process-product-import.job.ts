@@ -3,7 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { StorageService } from '~/integrations/storage/app/ports/storage.service';
 import type { AppJobPayloadMap } from '~/platform/jobs/app-job.types';
-import { toMinorUnits } from '~/platform/utils/money';
+import { toMinorUnits } from '~/platform/money/money';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import { UserStatus } from '~/domains/auth/domain/enums/user-status.enum';
 import { ShopRepository } from '~/domains/shop/app/ports/shop.repository';

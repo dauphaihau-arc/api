@@ -10,8 +10,6 @@ import type {
   PaymentWebhookEvent,
 } from '../app/ports/payment-gateway';
 
-const ZERO_DECIMAL_CURRENCIES = ['JPY', 'KRW', 'VND'] as const;
-
 @Injectable()
 export class StripePaymentGateway extends PaymentGateway {
   private readonly stripe: Stripe | null;
@@ -50,7 +48,7 @@ export class StripePaymentGateway extends PaymentGateway {
           shipping_rate_data: {
             type: 'fixed_amount',
             fixed_amount: {
-              amount: this.toStripeAmount(input.shippingAmountMinor, input.currency),
+              amount: input.shippingAmountMinor,
               currency: input.currency,
             },
             display_name: 'Total shops',
@@ -85,10 +83,7 @@ export class StripePaymentGateway extends PaymentGateway {
         name: 'DISCOUNT',
         duration: 'once',
         currency: input.currency,
-        amount_off: this.toStripeAmount(
-          input.discountAmountMinor ?? 0,
-          input.currency,
-        ),
+        amount_off: input.discountAmountMinor ?? 0,
         metadata: input.metadata,
       });
       params.discounts = [{ coupon: coupon.id }];
@@ -166,18 +161,10 @@ export class StripePaymentGateway extends PaymentGateway {
           name: item.name,
           ...(item.imageUrl ? { images: [item.imageUrl] } : {}),
         },
-        unit_amount: this.toStripeAmount(item.unitAmountMinor, currency),
+        unit_amount: item.unitAmountMinor,
       },
       quantity: item.quantity,
     };
-  }
-
-  private toStripeAmount(amountMinor: number, currency: string): number {
-    if (ZERO_DECIMAL_CURRENCIES.includes(currency as (typeof ZERO_DECIMAL_CURRENCIES)[number])) {
-      return Math.round(amountMinor);
-    }
-
-    return Math.round(amountMinor);
   }
 
   private toWebhookEvent(event: Stripe.Event): PaymentWebhookEvent {

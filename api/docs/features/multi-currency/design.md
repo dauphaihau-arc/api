@@ -197,6 +197,19 @@ Operational knobs:
 - `STOREFRONT_INDEXED_PRICE_PAIRS` controls which market/currency pairs are indexed.
 - `STOREFRONT_RARE_PRICE_CACHE_TTL_MS` controls fallback cache TTL.
 
+## Rounding and Currency Precision
+
+Money invariants for every currency path (rationale in [ADR-013](../../adrs/013-money-precision-model.md)):
+
+- Stored money is an integer count of minor units. `Decimal` is used inside calculations only and never appears in a DTO, entity, response, or port.
+- Currency precision comes from the explicit table in `platform/money/currency-precision.ts`, cross-checked against CLDR for every accepted currency. Enabling a currency requires declaring its exponent.
+- `platform/money/money.toMinorUnits` is the only place a decimal becomes minor units, and `RoundingPolicyService` owns the mode and granularity decision.
+- The default rounding mode is `half_up`, which is symmetric on negative amounts.
+- Rounding is per calculated amount, not per displayed total: line amounts are rounded to minor units and totals are summed from those minor units.
+- Same-currency conversion is the exact identity: no rate lookup, no rounding, and no `fx` provenance. `fx` provenance exists only when an exchange happened.
+- Rates are stored and carried verbatim at full precision; a rate is never rounded for display and reused for calculation.
+- FX lookups are cached per request through `FxRateService.getLatestRate(input, cache)`; the caller owns the cache and the key includes the point in time.
+
 ## API Semantics
 
 ### Seller Pricing Input
@@ -309,3 +322,20 @@ Non-responsibilities:
 - Fetching FX rates for repricing.
 - Recalculating totals from cart state.
 - Choosing a different charged amount than the quote.
+
+### Currency Conversion
+
+`integrations/currency` owns conversion, rate lookup, and the rounding decision.
+
+Responsibilities:
+
+- `CurrencyModule` provides `FxRateService`, `RoundingPolicyService`, and the rounding policy config; consumers inject them instead of importing a currency list.
+- `FxRateService.getLatestRate(input, cache)` resolves the latest rate at or before a point in time, owns the per-request cache key format, and returns `null` when no rate is available.
+- `RoundingPolicyService.toMinorUnits(amount, currency, context)` resolves the mode and granularity for a calculation type and delegates the single rounding implementation.
+- `MoneyConversionService.convert(input)` is the one implementation of currency conversion: it looks up the rate, reports no conversion when none exists, applies the rounding policy, and returns the rate provenance. It is the only place a conversion happens.
+
+Non-responsibilities:
+
+- Deciding which currency a buyer sees; market context and pricing config own that.
+- Formatting or displaying money.
+- Persisting provenance; the pricing snapshot, quote item, and order item contracts carry it.

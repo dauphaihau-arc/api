@@ -4,7 +4,7 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import ms from 'ms';
 import { appJobDeduplicationKey } from '../../../../platform/jobs/app-job-deduplication';
 import { appJobName } from '../../../../platform/jobs/app-job.names';
-import { toMinorUnits } from '../../../../platform/utils/money';
+import { toMinorUnits } from '../../../../platform/money/money';
 import { MARKETPLACE_CURRENCIES } from '../../../../platform/config/marketplace.config';
 import { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
 import type { CartSnapshot } from '../../../cart/app/cart.types';

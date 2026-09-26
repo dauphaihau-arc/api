@@ -10,7 +10,7 @@ import type {
   ShopOrderListResult,
   ShopOrderSummary,
 } from '../../app/order.types';
-import { toMinorUnits } from '~/platform/utils/money';
+import { toMinorUnits } from '~/platform/money/money';
 import type { CheckoutConfig } from '~/platform/config/checkout.config';
 import { getMaxOrderTotalMinor } from '~/platform/config/checkout.config';
 
