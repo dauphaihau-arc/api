@@ -15,6 +15,8 @@ import { ProductVariantEntity } from '~/domains/product/infra/persistence/mikro-
 import { ShopEntity } from '../shop/infra/persistence/entities/shop.entity';
 import { CartRepository } from './app/ports/cart.repository';
 import { CartUpdatePricingService } from './app/services/cart-update-pricing.service';
+import { CartPricingService } from './app/services/cart-pricing.service';
+import { ShippingModule } from '../shipping/shipping.module';
 import { AddCartItemUseCase } from './app/use-cases/add-cart-item/add-cart-item.use-case';
 import { GetCartUseCase } from './app/use-cases/get-cart/get-cart.use-case';
 import { MergeGuestCartUseCase } from './app/use-cases/merge-guest-cart/merge-guest-cart.use-case';
@@ -31,6 +33,7 @@ import { CartItemEntity } from './infra/persistence/entities/cart-item.entity';
     ConfigModule,
     forwardRef(() => AuthModule),
     CouponModule,
+    ShippingModule,
     ProductModule,
     StorageModule,
     MikroOrmModule.forFeature([
@@ -61,6 +64,7 @@ import { CartItemEntity } from './infra/persistence/entities/cart-item.entity';
       useClass: MikroOrmCartRepository,
     },
     CartUpdatePricingService,
+    CartPricingService,
     GetCartUseCase,
     MergeGuestCartUseCase,
     AddCartItemUseCase,
@@ -76,6 +80,7 @@ import { CartItemEntity } from './infra/persistence/entities/cart-item.entity';
     UpdateCartItemUseCase,
     RemoveCartItemUseCase,
     GuestCartSessionService,
+    CartPricingService,
   ],
 })
 export class CartModule {}

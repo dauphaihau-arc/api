@@ -4,8 +4,7 @@ import { fromMinorUnits, toMinorUnits } from '../../../../platform/money/money';
 import type { CartSnapshot } from '../../../cart/app/cart.types';
 import type {
   PricedCartItem,
-  PricedCartSummary,
-  ShippingAddressInput,
+  ShippingDiscountProvenance,
   ShopAdjustmentInput,
 } from '../../../order/app/order.types';
 import {
@@ -14,10 +13,10 @@ import {
   couponMeetsMinimum,
   isCouponActive,
 } from '../../../order/app/order.types';
+import { CheckoutShippingShopQuote } from '../../../shipping/app/shipping.types';
 import { CouponType } from '../../domain/enums/coupon-type.enum';
 import { CouponUsageEntity } from '../../infra/persistence/entities/coupon-usage.entity';
 import { CouponEntity } from '../../infra/persistence/entities/coupon.entity';
-import { ProductShippingProfileEntity } from '../../../product/infra/persistence/mikro-orm/entities/product-shipping-profile.entity';
 
 export class CouponCodeNotFoundError extends Error {
   constructor(code: string) {
@@ -31,35 +30,48 @@ export class CouponCodeNotApplicableError extends Error {
   }
 }
 
+export interface CouponPricedShop {
+  shopId: string;
+  items: PricedCartItem[];
+  subtotal: number;
+  totalDiscount: number;
+  promoCoupons: CouponEntity[];
+  shippingDiscountMinor: number;
+  shippingDiscounts: ShippingDiscountProvenance[];
+}
+
 @Injectable()
 export class CouponPricingService {
   constructor(private readonly entityManager: EntityManager) {}
 
-  async buildPricedCartSummary(input: {
+  async applyToCart(input: {
     userId?: string;
     cart: CartSnapshot;
     shopAdjustments?: ShopAdjustmentInput[];
-    shippingAddress?: ShippingAddressInput;
     validatePromoCodes?: boolean;
-  }): Promise<PricedCartSummary> {
+    checkoutCurrency: string;
+    shippingShops?: CheckoutShippingShopQuote[];
+  }): Promise<CouponPricedShop[]> {
     const shopAdjustments = new Map(
       (input.shopAdjustments ?? []).map((entry) => [entry.shopId, entry]),
     );
+
     const selectedItems = input.cart.items.filter((item) => item.isSelectOrder);
     const shopIds = [...new Set(selectedItems.map((item) => item.inventory.shopId))];
-    const productIds = [...new Set(selectedItems.map((item) => item.inventory.productId))];
-
     const couponRepository = this.entityManager.fork().getRepository(CouponEntity);
     const usageRepository = this.entityManager.fork().getRepository(CouponUsageEntity);
-    const shippingRepository = this.entityManager.fork().getRepository(ProductShippingProfileEntity);
 
     const coupons = shopIds.length > 0
       ? await couponRepository.find({ shop: { $in: shopIds } })
       : [];
+
     const couponUsageCounts = new Map<string, number>();
 
     if (coupons.length > 0 && input.userId) {
-      const usages = await usageRepository.find({ coupon: { $in: coupons.map((coupon) => coupon.id) }, user: input.userId });
+      const usages = await usageRepository.find({
+        coupon: { $in: coupons.map((coupon) => coupon.id) },
+        user: input.userId,
+      });
       for (const usage of usages) {
         couponUsageCounts.set(
           usage.coupon.id,
@@ -68,19 +80,7 @@ export class CouponPricingService {
       }
     }
 
-    const shippingProfiles = productIds.length > 0
-      ? await shippingRepository.find(
-        { product: { $in: productIds } },
-        { populate: ['destinations'] },
-      )
-      : [];
-    const shippingByProductId = new Map(
-      shippingProfiles.map((profile) => [profile.product.id, profile]),
-    );
-
-    const pricedItemsByShop = new Map<string, PricedCartItem[]>();
     const autoCouponsByShop = new Map<string, CouponEntity[]>();
-
     for (const coupon of coupons) {
       if (coupon.isAutoSale) {
         const existing = autoCouponsByShop.get(coupon.shop.id) ?? [];
@@ -89,6 +89,7 @@ export class CouponPricingService {
       }
     }
 
+    const pricedItemsByShop = new Map<string, PricedCartItem[]>();
     for (const item of selectedItems) {
       const snapshotPrice = item.inventory.pricing;
       const pricingCurrency = snapshotPrice.currency;
@@ -110,11 +111,9 @@ export class CouponPricingService {
       let effectiveUnitPriceMinor = snapshotPrice.amountMinor;
 
       for (const coupon of activeAutoCoupons) {
-        if (coupon.type !== CouponType.PERCENTAGE) {
-          continue;
-        }
-
+        if (coupon.type !== CouponType.PERCENTAGE) continue;
         const discounted = baseUnitPrice * (1 - (coupon.percentOff / 100));
+
         if (discounted < bestPrice) {
           bestPrice = discounted;
           autoSaleCoupon = coupon;
@@ -143,132 +142,99 @@ export class CouponPricingService {
         salePrice: bestPrice < baseUnitPrice ? bestPrice : saleUnitPrice,
         baseUnitPrice,
         effectiveUnitPrice: bestPrice,
-        sourcePriceId: snapshotPrice?.sourcePriceId,
-        sourceType: snapshotPrice?.sourceType,
-        marketCode: snapshotPrice?.marketCode,
-        fxRate: snapshotPrice?.fxRate,
-        fxSource: snapshotPrice?.fxSource,
-        fxEffectiveAt: snapshotPrice?.fxEffectiveAt,
-        fxSourceTimestamp: snapshotPrice?.fxSourceTimestamp,
+        sourcePriceId: snapshotPrice.sourcePriceId,
+        sourceType: snapshotPrice.sourceType,
+        marketCode: snapshotPrice.marketCode,
+        fxRate: snapshotPrice.fxRate,
+        fxSource: snapshotPrice.fxSource,
+        fxEffectiveAt: snapshotPrice.fxEffectiveAt,
+        fxSourceTimestamp: snapshotPrice.fxSourceTimestamp,
         autoSaleCoupon,
       };
-
-      const existing = pricedItemsByShop.get(pricedItem.shopId) ?? [];
-      existing.push(pricedItem);
-      pricedItemsByShop.set(pricedItem.shopId, existing);
+      const shopItems = pricedItemsByShop.get(pricedItem.shopId) ?? [];
+      shopItems.push(pricedItem);
+      pricedItemsByShop.set(pricedItem.shopId, shopItems);
     }
 
-    const shops: PricedCartSummary['shops'] = [];
-    let subtotalPrice = 0;
-    let totalDiscount = 0;
-    let totalShippingFee = 0;
-
+    const result: CouponPricedShop[] = [];
     for (const [shopId, items] of pricedItemsByShop.entries()) {
       const subtotal = items.reduce(
         (sum, item) => sum + (item.effectiveUnitPrice * item.quantity),
         0,
       );
-      const adjustment = shopAdjustments.get(shopId);
-      const promoCodes = adjustment?.promoCodes ?? [];
+      const promoCodes = shopAdjustments.get(shopId)?.promoCodes ?? [];
       const promoCoupons: CouponEntity[] = [];
-      let shopDiscount = 0;
+      let totalDiscount = 0;
 
       for (const code of promoCodes) {
         const coupon = coupons.find((entry) => entry.shop.id === shopId && entry.code === code);
-
         if (!coupon) {
-          if (input.validatePromoCodes) {
-            throw new CouponCodeNotFoundError(code);
-          }
+          if (input.validatePromoCodes) throw new CouponCodeNotFoundError(code);
           continue;
         }
-
         if (!isCouponActive(coupon) || coupon.isAutoSale) {
-          if (input.validatePromoCodes) {
-            throw new CouponCodeNotApplicableError(code);
-          }
+          if (input.validatePromoCodes) throw new CouponCodeNotApplicableError(code);
           continue;
         }
-
         if ((couponUsageCounts.get(coupon.id) ?? 0) >= coupon.maxUsesPerUser) {
-          if (input.validatePromoCodes) {
-            throw new CouponCodeNotApplicableError(code);
-          }
+          if (input.validatePromoCodes) throw new CouponCodeNotApplicableError(code);
           continue;
         }
 
-        const eligibleSubtotal = items
-          .filter((item) => couponAppliesToProduct(coupon, item.productId))
-          .reduce((sum, item) => sum + (item.effectiveUnitPrice * item.quantity), 0);
-        const eligibleQuantity = items
-          .filter((item) => couponAppliesToProduct(coupon, item.productId))
-          .reduce((sum, item) => sum + item.quantity, 0);
-
+        const eligibleItems = items.filter((item) => couponAppliesToProduct(coupon, item.productId));
+        const eligibleSubtotal = eligibleItems.reduce(
+          (sum, item) => sum + (item.effectiveUnitPrice * item.quantity),
+          0,
+        );
+        const eligibleQuantity = eligibleItems.reduce((sum, item) => sum + item.quantity, 0);
         if (!couponMeetsMinimum(coupon, eligibleSubtotal, eligibleQuantity)) {
-          if (input.validatePromoCodes) {
-            throw new CouponCodeNotApplicableError(code);
-          }
+          if (input.validatePromoCodes) throw new CouponCodeNotApplicableError(code);
           continue;
         }
-
         if (coupon.usesCount >= coupon.maxUses) {
-          if (input.validatePromoCodes) {
-            throw new CouponCodeNotApplicableError(code);
-          }
+          if (input.validatePromoCodes) throw new CouponCodeNotApplicableError(code);
           continue;
         }
 
         promoCoupons.push(coupon);
-        if (coupon.type === CouponType.FREE_SHIP) {
-          continue;
+        if (coupon.type !== CouponType.FREE_SHIP) {
+          totalDiscount += Math.min(eligibleSubtotal, computeCouponDiscount(coupon, eligibleSubtotal));
         }
-
-        shopDiscount += Math.min(
-          eligibleSubtotal,
-          computeCouponDiscount(coupon, eligibleSubtotal),
-        );
       }
 
-      const uniqueOriginCountries = [
-        ...new Set(
-          items
-            .map((item) => shippingByProductId.get(item.productId)?.originCountry)
-            .filter((value): value is string => Boolean(value)),
-        ),
-      ];
+      const shipping = input.shippingShops?.find((entry) => entry.shopId === shopId);
+      const freeShipCoupon = promoCoupons.find((coupon) => coupon.type === CouponType.FREE_SHIP);
+      const shippingDiscountMinor = shipping && freeShipCoupon
+        ? shipping.charge.totalMinor
+        : 0;
+      const shippingDiscounts: ShippingDiscountProvenance[] = shippingDiscountMinor > 0 && freeShipCoupon
+        ? [{
+          couponId: freeShipCoupon.id,
+          code: freeShipCoupon.code,
+          type: 'free_ship',
+          appliesTo: freeShipCoupon.appliesTo,
+          appliesProductIds: [...freeShipCoupon.appliesProductIds],
+          minOrderType: freeShipCoupon.minOrderType,
+          minOrderValue: freeShipCoupon.minOrderValue,
+          minProducts: freeShipCoupon.minProducts,
+          maxUses: freeShipCoupon.maxUses,
+          maxUsesPerUser: freeShipCoupon.maxUsesPerUser,
+          usesCount: freeShipCoupon.usesCount,
+          waivedMinor: shippingDiscountMinor,
+          currency: input.checkoutCurrency,
+        }]
+        : [];
 
-      const shopShippingFee = 0;
-      const total = Math.max(0, subtotal - shopDiscount + shopShippingFee);
-
-      subtotalPrice += subtotal;
-      totalDiscount += shopDiscount;
-      totalShippingFee += shopShippingFee;
-
-      shops.push({
+      result.push({
         shopId,
-        shopName: items[0]?.shopName ?? '',
         items,
         subtotal,
-        totalDiscount: shopDiscount,
-        totalShippingFee: shopShippingFee,
-        total,
-        note: adjustment?.note,
+        totalDiscount,
         promoCoupons,
-        originCountries: uniqueOriginCountries,
+        shippingDiscountMinor,
+        shippingDiscounts,
       });
     }
-
-    return {
-      cart: input.cart,
-      shops,
-      currency: selectedItems[0]?.inventory.currency ?? 'USD',
-      subtotalPrice,
-      totalDiscount,
-      subtotalAfterDiscount: Math.max(0, subtotalPrice - totalDiscount),
-      totalShippingFee,
-      totalPrice: Math.max(0, subtotalPrice - totalDiscount + totalShippingFee),
-      totalSelectedQuantity: selectedItems.reduce((sum, item) => sum + item.quantity, 0),
-      totalQuantity: input.cart.items.reduce((sum, item) => sum + item.quantity, 0),
-    };
+    return result;
   }
 }

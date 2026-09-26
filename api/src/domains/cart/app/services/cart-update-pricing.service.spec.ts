@@ -1,13 +1,13 @@
-import type { CouponPricingService } from '~/domains/coupon/app/services/coupon-pricing.service';
 import type { CartSnapshot } from '../cart.types';
 import { CartKind } from '../../domain/enums/cart-kind.enum';
+import type { CartPricingService } from './cart-pricing.service';
 import { CartUpdatePricingService } from './cart-update-pricing.service';
 
 describe('CartUpdatePricingService', () => {
   it('maps buy-now temp cart promo codes to selected shop pricing adjustments', async () => {
     const couponPricingService = {
       buildPricedCartSummary: jest.fn().mockResolvedValue({}),
-    } as unknown as jest.Mocked<CouponPricingService>;
+    } as unknown as jest.Mocked<CartPricingService>;
     const cart: CartSnapshot = {
       id: 'cart-1',
       userId: 'user-1',

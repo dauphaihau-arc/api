@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { CouponPricingService } from '~/domains/coupon/app/services/coupon-pricing.service';
+import { CartPricingService } from './cart-pricing.service';
 import type {
   PricedCartSummary,
   ShopAdjustmentInput,
-} from '~/domains/order/app/order.types';
+} from '../../../order/app/order.types';
 import type {
   CartActor,
   CartSnapshot,
@@ -21,12 +21,12 @@ export interface CartUpdatePricingInput {
 
 @Injectable()
 export class CartUpdatePricingService {
-  constructor(private readonly couponPricingService: CouponPricingService) {}
+  constructor(private readonly cartPricingService: CartPricingService) {}
 
   buildPricedCartSummary(
     input: CartUpdatePricingInput,
   ): Promise<PricedCartSummary> {
-    return this.couponPricingService.buildPricedCartSummary({
+    return this.cartPricingService.buildPricedCartSummary({
       userId: input.actor.type === 'user' ? input.actor.userId : undefined,
       cart: input.cart,
       shopAdjustments: resolvePricingAdjustments(input),
