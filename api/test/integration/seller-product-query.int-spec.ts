@@ -3,10 +3,13 @@ import { buildDatabaseConfig } from '~/platform/config/database.config';
 import { ProductState } from '~/domains/product/domain/enums/product-state.enum';
 import { ProductWhoMade } from '~/domains/product/domain/enums/product-who-made.enum';
 import { ProductImageVariant } from '~/domains/product/domain/enums/product-image-variant.enum';
-import { ProductShippingCharge } from '~/domains/product/domain/enums/product-shipping-charge.enum';
 import { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
 import { CategoryEntity } from '~/domains/category/infra/persistence/entities/category.entity';
 import { ShopEntity } from '~/domains/shop/infra/persistence/entities/shop.entity';
+import { ShippingDestinationScope } from '~/domains/shipping/domain/enums/shipping-destination-scope.enum';
+import { ShippingProfileStatus } from '~/domains/shipping/domain/enums/shipping-profile-status.enum';
+import { ShippingProfileEntity } from '~/domains/shipping/infra/persistence/entities/shipping-profile.entity';
+import { ShippingProfileRateEntity } from '~/domains/shipping/infra/persistence/entities/shipping-profile-rate.entity';
 import { ProductEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product.entity';
 import { ProductImageEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-image.entity';
 import { ProductImageVariantEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-image-variant.entity';
@@ -16,9 +19,7 @@ import { ProductOptionValueEntity } from '~/domains/product/infra/persistence/mi
 import { ProductVariantOptionValueEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-variant-option-value.entity';
 import { ProductInventoryEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-inventory.entity';
 import { VariantPriceEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/variant-price.entity';
-import { ProductShippingProfileEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-shipping-profile.entity';
 import type { TestDatabaseContext } from '../support/test-postgres';
-import { ProductShippingDestinationEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-shipping-destination.entity';
 import { MikroOrmSellerProductQueryRepository } from '~/domains/product/infra/persistence/mikro-orm/repositories/mikro-orm-seller-product-query.repository';
 import { createTestDatabase, dropTestDatabase } from '../support/test-postgres';
 
@@ -82,22 +83,20 @@ describe('MikroOrmSellerProductQueryRepository (integration)', () => {
         { storageKey: 'products/needle/main.jpg' },
         { storageKey: 'products/needle/side.jpg' },
       ],
-      variants: [
-        { name: 'Small' },
-        { name: 'Large' },
-      ],
       inventory: [
         { sku: 'NEEDLE-S', amountMinor: 1200, currency: 'USD' },
         { sku: 'NEEDLE-L', amountMinor: 1500, currency: 'USD' },
       ],
       shipping: {
-        originCountry: 'US',
-        destinations: [
-          { service: 'USPS Ground' },
-          { service: 'USPS Priority' },
+        name: 'Standard shipping needle-case',
+        status: ShippingProfileStatus.ACTIVE,
+        rates: [
+          { destinationScope: ShippingDestinationScope.COUNTRY, destinationCountry: 'US' },
+          { destinationScope: ShippingDestinationScope.EVERYWHERE_ELSE },
         ],
       },
     });
+    expect(result.items[0].variants).toHaveLength(2);
     expect(result.meta.total).toBe(4);
     expect(result.stateCounts).toEqual({
       all: 4,
@@ -385,29 +384,31 @@ describe('MikroOrmSellerProductQueryRepository (integration)', () => {
       currency: 'USD',
       amountMinor: 1500,
     });
-    const shipping = em.create(ProductShippingProfileEntity, {
-      product,
+    const shippingProfile = em.create(ShippingProfileEntity, {
       shop,
-      originCountry: 'US',
-      originZip: '10001',
-      processTimeLabel: '1-3 business days',
+      name: `Standard shipping ${product.slug}`,
+      normalizedName: `standard shipping ${product.slug}`,
+      status: ShippingProfileStatus.ACTIVE,
+      shipFromCountry: 'US',
+      shipFromPostal: '10001',
     });
-    const ground = em.create(ProductShippingDestinationEntity, {
-      shippingProfile: shipping,
-      countryCode: 'US',
-      deliveryTimeLabel: '3-5 business days',
-      service: 'USPS Ground',
-      chargeType: ProductShippingCharge.FREE_SHIPPING,
-      rank: 1,
+    const unitedStatesRate = em.create(ShippingProfileRateEntity, {
+      shippingProfile,
+      position: 1,
+      destinationScope: ShippingDestinationScope.COUNTRY,
+      destinationCountry: 'US',
+      oneItemFeeMinor: 599,
+      additionalItemFeeMinor: 199,
     });
-    const priority = em.create(ProductShippingDestinationEntity, {
-      shippingProfile: shipping,
-      countryCode: 'US',
-      deliveryTimeLabel: '1-2 business days',
-      service: 'USPS Priority',
-      chargeType: ProductShippingCharge.FIXED_PRICE,
-      rank: 2,
+    const everywhereElseRate = em.create(ShippingProfileRateEntity, {
+      shippingProfile,
+      position: 2,
+      destinationScope: ShippingDestinationScope.EVERYWHERE_ELSE,
+      oneItemFeeMinor: 1999,
+      additionalItemFeeMinor: 599,
     });
+
+    product.shippingProfile = shippingProfile;
 
     em.persist([
       firstImage,
@@ -424,9 +425,9 @@ describe('MikroOrmSellerProductQueryRepository (integration)', () => {
       largeInventory,
       smallPrice,
       largePrice,
-      shipping,
-      ground,
-      priority,
+      shippingProfile,
+      unitedStatesRate,
+      everywhereElseRate,
     ]);
   }
 });

@@ -16,6 +16,7 @@ import { ProductVariantEntity } from '~/domains/product/infra/persistence/mikro-
 import { ProductVariantOptionValueEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-variant-option-value.entity';
 import { VARIANT_PRICE_TYPES, VariantPriceEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/variant-price.entity';
 import { MikroOrmProductCommandRepository } from '~/domains/product/infra/persistence/mikro-orm/repositories/mikro-orm-product-command.repository';
+import { MikroOrmInventoryStockPoolRepository } from '~/domains/product/infra/persistence/mikro-orm/repositories/mikro-orm-inventory-stock-pool.repository';
 import {
   InvalidProductVariantConfigurationError,
   ProductConfigurationConflictError,
@@ -27,7 +28,11 @@ import { ConfigureProductVariantConfigurationUseCase } from '~/domains/product/a
 import { ok } from '~/platform/application/result';
 import { ValidationPipe } from '@nestjs/common';
 import { CreateProductDraftFacadeDto } from '~/domains/shop/api/rest/dto/create-product-draft-facade.dto';
-import { SetProductShippingUseCase } from '~/domains/product/app/use-cases/set-product-shipping/set-product-shipping.use-case';
+import { AssignProductShippingProfileUseCase } from '~/domains/product/app/use-cases/assign-product-shipping-profile/assign-product-shipping-profile.use-case';
+import { ShippingProfileEntity } from '~/domains/shipping/infra/persistence/entities/shipping-profile.entity';
+import { ShippingProfileRateEntity } from '~/domains/shipping/infra/persistence/entities/shipping-profile-rate.entity';
+import { ShippingProfileStatus } from '~/domains/shipping/domain/enums/shipping-profile-status.enum';
+import { ShippingDestinationScope } from '~/domains/shipping/domain/enums/shipping-destination-scope.enum';
 
 jest.setTimeout(120_000);
 
@@ -247,6 +252,7 @@ describe('product variant configuration command repository', () => {
   let orm: MikroORM;
   let em: EntityManager;
   let repository: MikroOrmProductCommandRepository;
+  const SHIPPING_PROFILE_ID = '00000000-0000-4000-8000-0000000000a1';
   let shop: ShopEntity;
   let product: ProductEntity;
   let colorOption: ProductOptionEntity;
@@ -270,6 +276,7 @@ describe('product variant configuration command repository', () => {
       em,
       { getPublicUrl: (key: string) => `https://cdn.example.com/${key}` } as never,
       { resolve: async () => ({ amountMinor: 1200 }) } as never,
+      new MikroOrmInventoryStockPoolRepository(),
     );
 
     const owner = em.create(UserEntity, {
@@ -283,6 +290,24 @@ describe('product variant configuration command repository', () => {
       slug: `shop-${randomUUID()}`,
       currency: 'USD',
     });
+    em.persist(em.create(ShippingProfileEntity, {
+      id: SHIPPING_PROFILE_ID,
+      shop,
+      name: 'Standard shipping',
+      normalizedName: 'standard shipping',
+      status: ShippingProfileStatus.ACTIVE,
+      shipFromCountry: 'VN',
+      shipFromPostal: '700000',
+      rates: [
+        em.create(ShippingProfileRateEntity, {
+          position: 1,
+          destinationScope: ShippingDestinationScope.COUNTRY,
+          destinationCountry: 'VN',
+          oneItemFeeMinor: 599,
+          additionalItemFeeMinor: 199,
+        }),
+      ],
+    }));
     product = em.create(ProductEntity, {
       shop,
       title: 'Configurable Shirt',
@@ -355,6 +380,12 @@ describe('product variant configuration command repository', () => {
     blueInventory.prices.add(bluePrice);
     em.persist([owner, shop, product, colorOption, blueValue, redValue, blueVariant, blueSelection, blueInventory, bluePrice]);
     await em.flush();
+    await new MikroOrmInventoryStockPoolRepository().openSellerPool(em, {
+      inventoryId: blueInventory.id,
+      shopId: shop.id,
+      onHandQuantity: 5,
+      commandId: `${blueInventory.id}:opening`,
+    });
     em.clear();
   });
 
@@ -369,19 +400,23 @@ describe('product variant configuration command repository', () => {
       nonTaxable: false,
     });
     const configure = new ConfigureProductVariantConfigurationUseCase(
-      { findById: async () => draft } as never,
+      { findById: async () => draft, findMutationTargetById: async () => draft } as never,
       repository,
       { findOwnedById: async () => shop } as never,
     );
+    const shippingProfile = await em.fork().findOne(ShippingProfileEntity, {
+      id: SHIPPING_PROFILE_ID,
+    });
     const facade = new CreateProductDraftFacadeUseCase(
       { execute: async () => ok(draft) } as never,
       {} as never,
       {} as never,
       configure,
-      new SetProductShippingUseCase(
+      new AssignProductShippingProfileUseCase(
         { findById: async () => draft } as never,
         repository,
         { findOwnedById: async () => shop } as never,
+        { findById: async () => shippingProfile! } as never,
       ),
     );
     const body = await new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true }).transform({
@@ -395,14 +430,7 @@ describe('product variant configuration command repository', () => {
       variants: [{ client_ref: 'default', selections: [], lifecycle_state: 'active' }],
       inventory: [{ variant_client_key: 'default', stock: 1 }],
       pricing: [{ variant_client_key: 'default', amount_minor: 12100, currency: 'USD' }],
-      shipping: {
-        origin_country: 'VN',
-        origin_zip: '700000',
-        process_time_label: '1d',
-        destinations: [{
-          country_code: 'VN', delivery_time_label: '2-4d', service: 'other', charge_type: 'free_shipping', 
-        }],
-      },
+      shipping_profile_id: shippingProfile!.id,
     }, { type: 'body', metatype: CreateProductDraftFacadeDto }) as CreateProductDraftFacadeDto;
     const result = await facade.execute({
       userId: shop.ownerUser.id,
@@ -428,9 +456,8 @@ describe('product variant configuration command repository', () => {
       expect.objectContaining({ amountMinor: 12100, currency: 'USD' }),
     ]);
     expect(result.value.shipping).toMatchObject({
-      originCountry: 'VN',
-      originZip: '700000',
-      destinations: [expect.objectContaining({ countryCode: 'VN', chargeType: 'free_shipping' })],
+      id: shippingProfile!.id,
+      name: 'Standard shipping',
     });
   });
 
@@ -575,6 +602,12 @@ describe('product variant configuration command repository', () => {
     conflictingProduct.inventoryRecords.add(conflictingInventory);
     em.persist([conflictingProduct, conflictingVariant, conflictingInventory]);
     await em.flush();
+    await new MikroOrmInventoryStockPoolRepository().openSellerPool(em, {
+      inventoryId: conflictingInventory.id,
+      shopId: shop.id,
+      onHandQuantity: 1,
+      commandId: `${conflictingInventory.id}:opening`,
+    });
 
     await expect(repository.configureVariantConfiguration({
       productId: product.id,

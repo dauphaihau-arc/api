@@ -1,5 +1,9 @@
 {
-  "moduleFileExtensions": ["js", "json", "ts"],
+  "moduleFileExtensions": [
+    "js",
+    "json",
+    "ts"
+  ],
   "rootDir": ".",
   "testEnvironment": "node",
   "testRegex": ".int-spec.ts$",
@@ -9,5 +13,8 @@
   "transform": {
     "^.+\\.(t|j)s$": "ts-jest"
   },
-  "watchman": false
+  "watchman": false,
+  "setupFiles": [
+    "<rootDir>/test/support/int-env.setup.ts"
+  ]
 }

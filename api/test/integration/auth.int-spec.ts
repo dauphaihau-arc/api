@@ -21,6 +21,7 @@ import { RequestContextService } from '~/platform/request-context/request-contex
 import { StorageService } from '~/integrations/storage/app/ports/storage.service';
 import { LocalFileStorageService } from '~/integrations/storage/infra/local-file-storage.service';
 import { createTestDatabase, dropTestDatabase } from '../support/test-postgres';
+import { randomUUID } from 'node:crypto';
 
 jest.setTimeout(30_000);
 
@@ -138,6 +139,7 @@ describe('Auth login (integration)', () => {
 
     const registerResponse = await agent
       .post(`${API_PREFIX}/auth/register`)
+      .set('Idempotency-Key', randomUUID())
       .set('X-Forwarded-For', randomForwardedIp())
       .send({
         email,
@@ -189,6 +191,7 @@ describe('Auth login (integration)', () => {
 
     await request(app.getHttpServer())
       .post(`${API_PREFIX}/auth/register`)
+      .set('Idempotency-Key', randomUUID())
       .set('X-Forwarded-For', randomForwardedIp())
       .send({
         email,

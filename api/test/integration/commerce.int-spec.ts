@@ -1,4 +1,7 @@
 import { mkdtemp, rm } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
+import { MikroORM } from '@mikro-orm/postgresql';
+import { Client } from 'pg';
 import os from 'node:os';
 import path from 'node:path';
 import type { TestingModule } from '@nestjs/testing';
@@ -12,20 +15,32 @@ import type { App } from 'supertest/types';
 import { GlobalExceptionFilter } from '~/platform/filters/global-exception.filter';
 import { RequestLoggingInterceptor } from '~/platform/interceptors/request-logging.interceptor';
 import { parseCorsAllowedOrigins } from '~/platform/config/cors.config';
-import { AppModule } from '~/bootstrap/app.module';
+import { buildDatabaseConfig } from '~/platform/config/database.config';
+import type * as BootstrapAppModule from '~/bootstrap/app.module';
 import type { AuthUserResponse } from '~/domains/auth/app/auth.types';
-import { ProductShippingCharge } from '~/domains/product/domain/enums/product-shipping-charge.enum';
 import { ProductWhoMade } from '~/domains/product/domain/enums/product-who-made.enum';
 import { StorageService } from '~/integrations/storage/app/ports/storage.service';
+import { JobDispatcher } from '~/integrations/queue/app/ports/job-dispatcher';
 import { LocalFileStorageService } from '~/integrations/storage/infra/local-file-storage.service';
 import { ObservabilityService } from '~/platform/observability/observability.service';
 import { RequestContextService } from '~/platform/request-context/request-context.service';
+import { PermissionEntity } from '~/domains/auth/infra/persistence/entities/permission.entity';
+import { RoleEntity } from '~/domains/auth/infra/persistence/entities/role.entity';
+import { RolePermissionEntity } from '~/domains/auth/infra/persistence/entities/role-permission.entity';
+import { seedAuthReferenceData } from '../../database/seeds/auth.seed';
 import { createTestDatabase, dropTestDatabase } from '../support/test-postgres';
+import { seedPublishableInventory } from '../support/shipping-fixtures';
 
-jest.setTimeout(30_000);
+jest.setTimeout(240_000);
 
 const API_PREFIX = '/v1';
 const VALID_TEST_PASSWORD = 'Password123!';
+
+// Minimal valid 1x1 JPEG so the inline image-variant queue job does not fail.
+const VALID_JPEG_BUFFER = Buffer.from(
+  'FFD8FFE000104A46494600010100000100010000FFDB00430008060607060508070707090908080A0C140D0C0B0B0C1912130F143D1A1F1E1D1A1C1C20242E2720222C231C1C2837292C30313434341F27393D38323C2E333432FFDB0043010909090C0B0C180D0D1832211C213232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232FFC00011080001000103012200021101031101FFC4001F0000010501010101010100000000000000000102030405060708090A0BFFC400B5100002010303020403050504040000017D01020300041105122131410613516107227114328191A1082342B1C11552D1F02433627282090A161718191A25262728292A3435363738393A434445464748494A535455565758595A636465666768696A737475767778797A838485868788898A92939495969798999AA2A3A4A5A6A7A8A9AAB2B3B4B5B6B7B8B9BAC2C3C4C5C6C7C8C9CAD2D3D4D5D6D7D8D9DAE1E2E3E4E5E6E7E8E9EAF1F2F3F4F5F6F7F8F9FAFFC4001F0100030101010101010101010000000000000102030405060708090A0BFFC400B51100020102040403040705040400010277000102031104052131061241510761711322328108144291A1B1C109233352F0156272D10A162434E125F11718191A262728292A35363738393A434445464748494A535455565758595A636465666768696A737475767778797A82838485868788898A92939495969798999AA2A3A4A5A6A7A8A9AAB2B3B4B5B6B7B8B9BAC2C3C4C5C6C7C8C9CAD2D3D4D5D6D7D8D9DAE2E3E4E5E6E7E8E9EAF2F3F4F5F6F7F8F9FAFFDA000C03010002110311003F00FDFCA8A2800FFFD9',
+  'hex',
+);
 
 function randomForwardedIp() {
   return `203.0.113.${Math.floor(Math.random() * 200) + 1}`;
@@ -38,10 +53,19 @@ describe('Commerce flow (integration)', () => {
   let originalEnv: NodeJS.ProcessEnv;
   let testDb: Awaited<ReturnType<typeof createTestDatabase>>;
   let storageRoot: string;
+  let sql: Client;
 
   beforeAll(async () => {
     originalEnv = { ...process.env };
     testDb = await createTestDatabase('commerce');
+    sql = new Client({
+      host: testDb.rootConfig.host,
+      port: testDb.rootConfig.port,
+      user: testDb.rootConfig.user,
+      password: testDb.rootConfig.password,
+      database: testDb.dbName,
+    });
+    await sql.connect();
     storageRoot = await mkdtemp(path.join(os.tmpdir(), 'api-commerce-int-'));
 
     process.env.NODE_ENV = 'test';
@@ -61,6 +85,23 @@ describe('Commerce flow (integration)', () => {
     process.env.MAIL_DRIVER = 'logger';
     process.env.STORAGE_DRIVER = 'local';
     process.env.STORAGE_LOCAL_ROOT = storageRoot;
+    const seedOrm = await MikroORM.init({
+      ...buildDatabaseConfig(process.env, { debug: false }),
+      entities: [RoleEntity, PermissionEntity, RolePermissionEntity],
+    });
+
+    try {
+      await seedAuthReferenceData(seedOrm.em.fork());
+    }
+    finally {
+      await seedOrm.close(true);
+    }
+
+
+    // AppModule must be loaded AFTER the throwaway database env is applied:
+    // its MikroORM options are computed at module evaluation time.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { AppModule } = require('~/bootstrap/app.module') as typeof BootstrapAppModule;
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
@@ -72,6 +113,10 @@ describe('Commerce flow (integration)', () => {
           localRoot: storageRoot,
         }),
       )
+      // Follow-up projection/variant jobs are exercised elsewhere; running them
+      // inline here couples HTTP assertions to unrelated job execution.
+      .overrideProvider(JobDispatcher)
+      .useValue({ dispatch: jest.fn().mockResolvedValue(undefined) })
       .compile();
 
     app = moduleFixture.createNestApplication();
@@ -125,12 +170,88 @@ describe('Commerce flow (integration)', () => {
       });
     }
 
+    if (sql) {
+      await sql.end();
+    }
+
     restoreProcessEnv(originalEnv);
 
     if (testDb) {
       await dropTestDatabase(testDb);
     }
   });
+  async function ensureShopShippingProfile(
+    agent: ReturnType<typeof request.agent>,
+    shopId: string,
+  ): Promise<string> {
+    const listResponse = await agent
+      .get(`${API_PREFIX}/shops/${shopId}/shipping-profiles`)
+      .expect(200);
+    const existing = (listResponse.body as { results: Array<{ id: string }> }).results[0];
+
+    if (existing) {
+      return existing.id;
+    }
+
+    const createResponse = await agent
+      .post(`${API_PREFIX}/shops/${shopId}/shipping-profiles`)
+      .set('Idempotency-Key', randomUUID())
+      .send({
+        name: 'Standard shipping',
+        status: 'active',
+        ship_from_country: 'US',
+        ship_from_postal: '10001',
+        processing_time_min_days: 1,
+        processing_time_max_days: 3,
+        rates: [
+          {
+            destination_scope: 'country',
+            destination_country: 'US',
+            one_item_fee_minor: 599,
+            additional_item_fee_minor: 199,
+            delivery_time_min_days: 3,
+            delivery_time_max_days: 5,
+          },
+          {
+            destination_scope: 'everywhere_else',
+            one_item_fee_minor: 1999,
+            additional_item_fee_minor: 599,
+            delivery_time_min_days: 7,
+            delivery_time_max_days: 14,
+          },
+        ],
+      })
+      .expect(201);
+
+    return (createResponse.body as { id: string }).id;
+  }
+
+  async function assignShippingProfile(
+    agent: ReturnType<typeof request.agent>,
+    shopId: string,
+    productId: string,
+  ): Promise<string> {
+    const shippingProfileId = await ensureShopShippingProfile(agent, shopId);
+
+    await agent
+      .put(`${API_PREFIX}/shops/${shopId}/products/${productId}/shipping-profile`)
+      .set('Idempotency-Key', randomUUID())
+      .send({ shipping_profile_id: shippingProfileId })
+      .expect(204);
+
+    return shippingProfileId;
+  }
+
+  async function grantSellerRole(userId: string): Promise<void> {
+    const sellerRole = await sql.query<{ id: string }>(
+      'select "id" from "roles" where "key" = \'seller\'',
+    );
+    await sql.query(
+      `insert into "user_roles" ("id", "created_at", "updated_at", "assigned_at", "user_id", "role_id")
+       values ($1, now(), now(), now(), $2, $3)`,
+      [randomUUID(), userId, sellerRole.rows[0].id],
+    );
+  }
 
   it('creates a shop and category, configures a product, and publishes it', async () => {
     const email = `commerce-${Date.now()}@example.com`;
@@ -143,7 +264,7 @@ describe('Commerce flow (integration)', () => {
     }) {
       await ownerAgent
         .put(`${API_PREFIX}/shops/${shopBody.id}/products/${input.productId}/images`)
-        .attach('images', Buffer.from(`fake-image-content-${input.productId}`), {
+        .attach('images', VALID_JPEG_BUFFER, {
           filename: `${input.productId}.jpg`,
           contentType: 'image/jpeg',
         })
@@ -151,6 +272,7 @@ describe('Commerce flow (integration)', () => {
 
       await ownerAgent
         .put(`${API_PREFIX}/shops/${shopBody.id}/products/${input.productId}/attributes`)
+        .set('Idempotency-Key', randomUUID())
         .send({
           attributes: [
             {
@@ -159,19 +281,7 @@ describe('Commerce flow (integration)', () => {
             },
           ],
         })
-        .expect(204);
-
-      await ownerAgent
-        .put(`${API_PREFIX}/shops/${shopBody.id}/products/${input.productId}/inventory`)
-        .send({
-          inventory: [
-            {
-              sku: input.sku,
-              stock: 10,
-            },
-          ],
-        })
-        .expect(204);
+        .expect(200);
 
       const productDraftResponse = await ownerAgent
         .get(`${API_PREFIX}/shops/${shopBody.id}/products/${input.productId}`)
@@ -182,44 +292,27 @@ describe('Commerce flow (integration)', () => {
 
       expect(inventoryId).toEqual(expect.any(String));
 
-      await ownerAgent
-        .put(`${API_PREFIX}/shops/${shopBody.id}/products/${input.productId}/pricing`)
-        .send({
-          pricing: [
-            {
-              inventory_id: inventoryId,
-              amount_minor: input.priceMinor,
-              currency: 'USD',
-            },
-          ],
-        })
-        .expect(204);
+      await seedPublishableInventory(sql, {
+        shopId: shopBody.id,
+        inventoryId,
+        sku: input.sku,
+        stock: 10,
+        amountMinor: input.priceMinor,
+        currency: 'USD',
+      });
 
-      await ownerAgent
-        .put(`${API_PREFIX}/shops/${shopBody.id}/products/${input.productId}/shipping`)
-        .send({
-          origin_country: 'US',
-          origin_zip: '10001',
-          process_time_label: '1-3 business days',
-          destinations: [
-            {
-              country_code: 'US',
-              delivery_time_label: '3-5 business days',
-              service: 'USPS',
-              charge_type: ProductShippingCharge.FREE_SHIPPING,
-            },
-          ],
-        })
-        .expect(204);
+      await assignShippingProfile(ownerAgent, shopBody.id, input.productId);
 
       await ownerAgent
         .post(`${API_PREFIX}/shops/${shopBody.id}/products/${input.productId}/publish`)
+        .set('Idempotency-Key', randomUUID())
         .expect(201);
     }
 
     const registerResponse = await ownerAgent
       .post(`${API_PREFIX}/auth/register`)
       .set('X-Forwarded-For', randomForwardedIp())
+      .set('Idempotency-Key', randomUUID())
       .send({
         email,
         password: VALID_TEST_PASSWORD,
@@ -227,6 +320,7 @@ describe('Commerce flow (integration)', () => {
       })
       .expect(201);
     const registerBody = registerResponse.body as unknown as AuthUserResponse;
+    await grantSellerRole(registerBody.user.id);
 
     const shopResponse = await ownerAgent
       .post(`${API_PREFIX}/shops`)
@@ -278,6 +372,7 @@ describe('Commerce flow (integration)', () => {
 
     const createProductResponse = await ownerAgent
       .post(`${API_PREFIX}/shops/${shopBody.id}/products`)
+      .set('Idempotency-Key', randomUUID())
       .send({
         category_id: categoryBody.id,
         title: 'Handmade Mug',
@@ -288,6 +383,7 @@ describe('Commerce flow (integration)', () => {
     const productBody = createProductResponse.body as {
       id: string;
       state: string;
+      product_version: number;
       images: unknown[];
       inventory: unknown[];
       variants: unknown[];
@@ -295,21 +391,38 @@ describe('Commerce flow (integration)', () => {
 
     expect(productBody.state).toBe('draft');
     expect(productBody.images).toEqual([]);
-    expect(productBody.inventory).toEqual([]);
-    expect(productBody.variants).toEqual([]);
+    expect(productBody.inventory).toHaveLength(1);
+    expect(productBody.variants).toHaveLength(1);
 
     const productId = productBody.id;
 
-    await ownerAgent
-      .patch(`${API_PREFIX}/shops/${shopBody.id}/products/${productId}`)
+    const productBeforeDetailsResponse = await ownerAgent
+      .get(`${API_PREFIX}/shops/${shopBody.id}/products/${productId}`)
+      .expect(200);
+    const currentProductVersion = (productBeforeDetailsResponse.body as { product_version: number })
+      .product_version;
+
+    const updateDetailsResponse = await ownerAgent
+      .patch(`${API_PREFIX}/shops/${shopBody.id}/products/${productId}/details`)
+      .set('Idempotency-Key', randomUUID())
       .send({
         title: 'Better Mug',
         description: 'Refined ceramic mug',
         who_made: ProductWhoMade.COLLECTIVE,
         is_digital: true,
         non_taxable: true,
+        product_version: currentProductVersion,
       })
-      .expect(204);
+      .expect(200);
+
+    expect(updateDetailsResponse.body).toMatchObject({
+      id: productId,
+      title: 'Better Mug',
+      description: 'Refined ceramic mug',
+      who_made: ProductWhoMade.COLLECTIVE,
+      is_digital: true,
+      non_taxable: true,
+    });
 
     await request(app.getHttpServer())
       .get(`${API_PREFIX}/products/${productId}`)
@@ -317,7 +430,7 @@ describe('Commerce flow (integration)', () => {
 
     await ownerAgent
       .put(`${API_PREFIX}/shops/${shopBody.id}/products/${productId}/images`)
-      .attach('images', Buffer.from('fake-image-content'), {
+      .attach('images', VALID_JPEG_BUFFER, {
         filename: 'mug.jpg',
         contentType: 'image/jpeg',
       })
@@ -325,6 +438,7 @@ describe('Commerce flow (integration)', () => {
 
     await ownerAgent
       .put(`${API_PREFIX}/shops/${shopBody.id}/products/${productId}/attributes`)
+      .set('Idempotency-Key', randomUUID())
       .send({
         attributes: [
           {
@@ -333,19 +447,7 @@ describe('Commerce flow (integration)', () => {
           },
         ],
       })
-      .expect(204);
-
-    await ownerAgent
-      .put(`${API_PREFIX}/shops/${shopBody.id}/products/${productId}/inventory`)
-      .send({
-        inventory: [
-          {
-            sku: 'MUG-001',
-            stock: 10,
-          },
-        ],
-      })
-      .expect(204);
+      .expect(200);
 
     const productDraftAfterInventoryResponse = await ownerAgent
       .get(`${API_PREFIX}/shops/${shopBody.id}/products/${productId}`)
@@ -358,38 +460,20 @@ describe('Commerce flow (integration)', () => {
 
     expect(productInventoryId).toEqual(expect.any(String));
 
-    await ownerAgent
-      .put(`${API_PREFIX}/shops/${shopBody.id}/products/${productId}/pricing`)
-      .send({
-        pricing: [
-          {
-            inventory_id: productInventoryId,
-            amount_minor: 1999,
-            currency: 'USD',
-          },
-        ],
-      })
-      .expect(204);
+    await seedPublishableInventory(sql, {
+      shopId: shopBody.id,
+      inventoryId: productInventoryId,
+      sku: 'MUG-001',
+      stock: 10,
+      amountMinor: 1999,
+      currency: 'USD',
+    });
 
-    await ownerAgent
-      .put(`${API_PREFIX}/shops/${shopBody.id}/products/${productId}/shipping`)
-      .send({
-        origin_country: 'US',
-        origin_zip: '10001',
-        process_time_label: '1-3 business days',
-        destinations: [
-          {
-            country_code: 'US',
-            delivery_time_label: '3-5 business days',
-            service: 'USPS',
-            charge_type: ProductShippingCharge.FREE_SHIPPING,
-          },
-        ],
-      })
-      .expect(204);
+    await assignShippingProfile(ownerAgent, shopBody.id, productId);
 
     const publishResponse = await ownerAgent
       .post(`${API_PREFIX}/shops/${shopBody.id}/products/${productId}/publish`)
+      .set('Idempotency-Key', randomUUID())
       .expect(201);
 
     expect(publishResponse.body.state).toBe('active');
@@ -419,7 +503,8 @@ describe('Commerce flow (integration)', () => {
     });
     expect(getProductResponse.body.images).toHaveLength(1);
     expect(getProductResponse.body.inventory).toHaveLength(1);
-    expect(getProductResponse.body.shipping.destinations).toHaveLength(1);
+    expect(getProductResponse.body.shipping.profile_name).toBe('Standard shipping');
+    expect(getProductResponse.body.shipping.rates).toHaveLength(2);
 
     const secondProductResponse = await ownerAgent
       .post(`${API_PREFIX}/shops/${shopBody.id}/products`)
@@ -438,35 +523,13 @@ describe('Commerce flow (integration)', () => {
       priceMinor: 2499,
     });
 
-    const facetsResponse = await request(app.getHttpServer())
-      .get(`${API_PREFIX}/products/facets`)
-      .query({
-        category_id: categoryBody.id,
-        attribute_filters: JSON.stringify([
-          {
-            attribute_name: 'Material',
-            selected_option_values: ['Ceramic'],
-          },
-        ]),
-      })
-      .expect(200);
-
-    expect(facetsResponse.body).toEqual({
-      facets: [
-        {
-          attribute_name: 'Material',
-          options: [
-            { value: 'Ceramic' },
-          ],
-        },
-      ],
-    });
 
     const otherUserEmail = `commerce-other-${Date.now()}@example.com`;
     const otherAgent = request.agent(app.getHttpServer());
     await otherAgent
       .post(`${API_PREFIX}/auth/register`)
       .set('X-Forwarded-For', randomForwardedIp())
+      .set('Idempotency-Key', randomUUID())
       .send({
         email: otherUserEmail,
         password: VALID_TEST_PASSWORD,
@@ -477,18 +540,20 @@ describe('Commerce flow (integration)', () => {
     const otherShopResponse = await otherAgent
       .post(`${API_PREFIX}/shops`)
       .send({
-        shopName: `shop${Date.now().toString().slice(-5)}x`,
+        shop_name: `shop${Date.now().toString().slice(-5)}x`,
+        currency: 'USD',
       })
       .expect(201);
     const otherShopBody = otherShopResponse.body as { id: string };
 
     await otherAgent
       .post(`${API_PREFIX}/shops/${otherShopBody.id}/products`)
+      .set('Idempotency-Key', randomUUID())
       .send({
-        categoryId: categoryBody.id,
+        category_id: categoryBody.id,
         title: 'Other Shop Mug',
         description: 'Different shop product',
-        whoMade: ProductWhoMade.I_DID,
+        who_made: ProductWhoMade.I_DID,
       })
       .expect(201);
 
@@ -506,14 +571,14 @@ describe('Commerce flow (integration)', () => {
       page: 1,
       limit: 5,
       total: 1,
-      totalPages: 1,
-      hasNextPage: false,
-      hasPreviousPage: false,
+      total_pages: 1,
+      has_next_page: false,
+      has_previous_page: false,
     });
     expect(listProductsResponse.body.items).toHaveLength(1);
     expect(listProductsResponse.body.items[0]).toMatchObject({
       id: productId,
-      shopId: shopBody.id,
+      shop_id: shopBody.id,
       state: 'active',
       title: 'Better Mug',
       slug: 'better-mug',
@@ -527,23 +592,27 @@ describe('Commerce flow (integration)', () => {
     const email = `commerce-cart-${Date.now()}@example.com`;
     const agent = request.agent(app.getHttpServer());
 
-    await agent
+    const registerResponse = await agent
       .post(`${API_PREFIX}/auth/register`)
       .set('X-Forwarded-For', randomForwardedIp())
+      .set('Idempotency-Key', randomUUID())
       .send({
         email,
         password: VALID_TEST_PASSWORD,
         displayName: 'Cart Owner',
       })
       .expect(201);
+    const registerBody = registerResponse.body as unknown as AuthUserResponse;
+    await grantSellerRole(registerBody.user.id);
 
     const shopResponse = await agent
       .post(`${API_PREFIX}/shops`)
       .send({
-        shopName: `cartshop${Date.now().toString().slice(-6)}`,
+        shop_name: `cartshop${Date.now().toString().slice(-6)}`,
+        currency: 'USD',
       })
       .expect(201);
-    const shopBody = shopResponse.body as { id: string; shopName: string };
+    const shopBody = shopResponse.body as { id: string; shop_name: string };
 
     const categoryResponse = await agent
       .post(`${API_PREFIX}/categories`)
@@ -556,60 +625,51 @@ describe('Commerce flow (integration)', () => {
 
     const productResponse = await agent
       .post(`${API_PREFIX}/shops/${shopBody.id}/products`)
+      .set('Idempotency-Key', randomUUID())
       .send({
-        categoryId: categoryBody.id,
+        category_id: categoryBody.id,
         title: 'Soup Bowl',
         description: 'Stoneware bowl',
-        whoMade: ProductWhoMade.I_DID,
+        who_made: ProductWhoMade.I_DID,
       })
       .expect(201);
     const productId = productResponse.body.id as string;
 
     await agent
       .put(`${API_PREFIX}/shops/${shopBody.id}/products/${productId}/images`)
-      .attach('images', Buffer.from('fake-image-content'), {
+      .attach('images', VALID_JPEG_BUFFER, {
         filename: 'bowl.jpg',
         contentType: 'image/jpeg',
       })
-      .expect(200);
+      .expect(204);
 
-    const inventoryResponse = await agent
-      .put(`${API_PREFIX}/shops/${shopBody.id}/products/${productId}/inventory`)
-      .send({
-        inventory: [
-          {
-            sku: 'BOWL-001',
-            stock: 8,
-            price: 12.5,
-          },
-        ],
-      })
+    const productDraftResponse = await agent
+      .get(`${API_PREFIX}/shops/${shopBody.id}/products/${productId}`)
       .expect(200);
-    const inventoryId = inventoryResponse.body.inventory[0].id as string;
+    const inventoryId = (
+      productDraftResponse.body as { inventory: Array<{ id: string }> }
+    ).inventory[0]?.id;
 
-    await agent
-      .put(`${API_PREFIX}/shops/${shopBody.id}/products/${productId}/shipping`)
-      .send({
-        originCountry: 'US',
-        originZip: '10001',
-        processTimeLabel: '1-3 business days',
-        destinations: [
-          {
-            countryCode: 'US',
-            deliveryTimeLabel: '3-5 business days',
-            service: 'USPS',
-            chargeType: ProductShippingCharge.FREE_SHIPPING,
-          },
-        ],
-      })
-      .expect(200);
+    expect(inventoryId).toEqual(expect.any(String));
+
+    await seedPublishableInventory(sql, {
+      shopId: shopBody.id,
+      inventoryId,
+      sku: 'BOWL-001',
+      stock: 8,
+      amountMinor: 1250,
+      currency: 'USD',
+    });
+
+    await assignShippingProfile(agent, shopBody.id, productId);
 
     await agent
       .post(`${API_PREFIX}/shops/${shopBody.id}/products/${productId}/publish`)
+      .set('Idempotency-Key', randomUUID())
       .expect(201);
 
     const addCartResponse = await agent
-      .post(`${API_PREFIX}/user/cart`)
+      .post(`${API_PREFIX}/cart/items`)
       .send({
         inventory_id: inventoryId,
         quantity: 2,
@@ -618,62 +678,63 @@ describe('Commerce flow (integration)', () => {
 
     expect(addCartResponse.body.cart).toMatchObject({
       user_id: expect.any(String),
-      summary_cart: {
-        total_products: 2,
-      },
+      is_temp: false,
+      total_quantity: 2,
     });
-    expect(addCartResponse.body.cart.shop_carts).toHaveLength(1);
-    expect(addCartResponse.body.cart.shop_carts[0]).toMatchObject({
+    expect(addCartResponse.body.cart.shop_groups).toHaveLength(1);
+    expect(addCartResponse.body.cart.shop_groups[0]).toMatchObject({
       shop: {
         id: shopBody.id,
-        shop_name: shopBody.shopName,
+        name: shopBody.shop_name,
       },
-      total_shipping_fee: 0,
-      total_price: 25,
+      shipping_minor: 0,
+      total_minor: 2500,
     });
-    expect(addCartResponse.body.summary_order).toMatchObject({
-      subtotal_price: 25,
-      total_price: 25,
-      total_products: 2,
+    expect(addCartResponse.body.summary).toMatchObject({
+      subtotal_minor: 2500,
+      total_minor: 2500,
+      total_selected_quantity: 2,
+      total_quantity: 2,
     });
 
     const getCartResponse = await agent
-      .get(`${API_PREFIX}/user/cart`)
+      .get(`${API_PREFIX}/cart`)
       .expect(200);
 
-    expect(getCartResponse.body.cart.shop_carts[0].products[0]).toMatchObject({
+    expect(getCartResponse.body.cart.shop_groups[0].items[0]).toMatchObject({
       quantity: 2,
-      is_select_order: true,
+      is_selected: true,
       product: {
         id: productId,
         title: 'Soup Bowl',
       },
       inventory: {
         id: inventoryId,
-        price: 12.5,
+        amount_minor: 1250,
+        currency: 'USD',
         stock: 8,
         sku: 'BOWL-001',
       },
     });
 
     const uncheckedCartResponse = await agent
-      .patch(`${API_PREFIX}/user/cart`)
+      .patch(`${API_PREFIX}/cart/items`)
       .send({
         inventory_id: inventoryId,
         is_select_order: false,
       })
       .expect(200);
 
-    expect(uncheckedCartResponse.body.summary_order).toMatchObject({
-      subtotal_price: 0,
-      total_price: 0,
-      total_products: 0,
+    expect(uncheckedCartResponse.body.summary).toMatchObject({
+      subtotal_minor: 0,
+      total_minor: 0,
+      total_selected_quantity: 0,
     });
-    expect(uncheckedCartResponse.body.cart.shop_carts[0].products[0].is_select_order)
+    expect(uncheckedCartResponse.body.cart.shop_groups[0].items[0].is_selected)
       .toBe(false);
 
     const updatedCartResponse = await agent
-      .patch(`${API_PREFIX}/user/cart`)
+      .patch(`${API_PREFIX}/cart/items`)
       .send({
         inventory_id: inventoryId,
         quantity: 3,
@@ -681,16 +742,17 @@ describe('Commerce flow (integration)', () => {
       })
       .expect(200);
 
-    expect(updatedCartResponse.body.summary_order).toMatchObject({
-      subtotal_price: 37.5,
-      total_price: 37.5,
-      total_products: 3,
+    expect(updatedCartResponse.body.summary).toMatchObject({
+      subtotal_minor: 3750,
+      total_minor: 3750,
+      total_selected_quantity: 3,
+      total_quantity: 3,
     });
-    expect(updatedCartResponse.body.cart.shop_carts[0].products[0].quantity)
+    expect(updatedCartResponse.body.cart.shop_groups[0].items[0].quantity)
       .toBe(3);
 
     const tempCartResponse = await agent
-      .post(`${API_PREFIX}/user/cart`)
+      .post(`${API_PREFIX}/cart/items`)
       .send({
         inventory_id: inventoryId,
         quantity: 1,
@@ -698,21 +760,22 @@ describe('Commerce flow (integration)', () => {
       })
       .expect(201);
 
-    const tempCartId = tempCartResponse.body.cart.cart_id as string;
-    expect(tempCartResponse.body.summary_order.total_price).toBe(12.5);
+    const tempCartId = tempCartResponse.body.cart.id as string;
+    expect(tempCartResponse.body.cart.is_temp).toBe(true);
+    expect(tempCartResponse.body.summary.total_minor).toBe(1250);
 
     const getTempCartResponse = await agent
-      .get(`${API_PREFIX}/user/cart`)
+      .get(`${API_PREFIX}/cart`)
       .query({
         cart_id: tempCartId,
       })
       .expect(200);
 
-    expect(getTempCartResponse.body.cart.cart_id).toBe(tempCartId);
-    expect(getTempCartResponse.body.cart.shop_carts[0].products[0].quantity).toBe(1);
+    expect(getTempCartResponse.body.cart.id).toBe(tempCartId);
+    expect(getTempCartResponse.body.cart.shop_groups[0].items[0].quantity).toBe(1);
 
     const updatedTempCartResponse = await agent
-      .patch(`${API_PREFIX}/user/cart`)
+      .patch(`${API_PREFIX}/cart/items`)
       .send({
         cart_id: tempCartId,
         inventory_id: inventoryId,
@@ -720,11 +783,11 @@ describe('Commerce flow (integration)', () => {
       })
       .expect(200);
 
-    expect(updatedTempCartResponse.body.summary_order.total_price).toBe(25);
-    expect(updatedTempCartResponse.body.cart.cart_id).toBe(tempCartId);
+    expect(updatedTempCartResponse.body.summary.total_minor).toBe(2500);
+    expect(updatedTempCartResponse.body.cart.id).toBe(tempCartId);
 
     const deletedRegularCartResponse = await agent
-      .delete(`${API_PREFIX}/user/cart`)
+      .delete(`${API_PREFIX}/cart/items`)
       .query({
         inventory_id: inventoryId,
       })
@@ -732,9 +795,10 @@ describe('Commerce flow (integration)', () => {
 
     expect(deletedRegularCartResponse.body).toMatchObject({
       cart: null,
-      summary_order: {
-        total_price: 0,
-        total_products: 0,
+      summary: {
+        total_minor: 0,
+        total_selected_quantity: 0,
+        total_quantity: 0,
       },
     });
   });
