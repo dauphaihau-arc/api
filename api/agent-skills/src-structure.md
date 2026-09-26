@@ -46,6 +46,7 @@ Use this file when adding files, moving code, or deciding where new behavior bel
 
 - `shared/` is only for small stable generic code, such as result types, pagination primitives, and pure helpers.
 - If a file mentions a business concept like user, workspace, document, membership, or publish, it probably does not belong in `shared/`.
+- `shared/` splits by dependency, which is also its ownership rule: `shared/utils/` holds functions with no third-party import, `shared/libs/` holds wrappers over a third-party library.
 
 ## Default Bias
 

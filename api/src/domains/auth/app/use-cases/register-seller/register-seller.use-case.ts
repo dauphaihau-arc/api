@@ -19,7 +19,7 @@ import { PasswordHasher } from '../../ports/password-hasher';
 import { UserPreferenceRepository } from '../../ports/user-preference.repository';
 import { IssueSessionUseCase } from '../issue-session/issue-session.use-case';
 import { normalizeUserPreferences } from '~/platform/config/marketplace.config';
-import { toSlug } from '~/platform/utils/slugify';
+import { toSlug } from '~/shared/utils/slug';
 import { ShopRepository } from '~/domains/shop/app/ports/shop.repository';
 import {
   ShopNameAlreadyTakenError,

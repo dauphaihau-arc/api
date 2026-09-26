@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { toSlug } from '~/platform/utils/slugify';
+import { toSlug } from '~/shared/utils/slug';
 import { err, ok, type Result } from '~/platform/application/result';
 import { CategoryNotFoundError } from '../../errors/category-app.error';
 import { CategoryRepository } from '../../ports/category.repository';

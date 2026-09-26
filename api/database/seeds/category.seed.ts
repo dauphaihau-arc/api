@@ -1,6 +1,6 @@
 import type { EntityManager } from '@mikro-orm/postgresql';
 import { basename, extname } from 'node:path';
-import { toSlug } from '~/platform/utils/slugify';
+import { toSlug } from '~/shared/utils/slug';
 import { CategoryAttributeOptionEntity } from '~/domains/category/infra/persistence/entities/category-attribute-option.entity';
 import { CategoryAttributeEntity } from '~/domains/category/infra/persistence/entities/category-attribute.entity';
 import { CategoryEntity } from '~/domains/category/infra/persistence/entities/category.entity';

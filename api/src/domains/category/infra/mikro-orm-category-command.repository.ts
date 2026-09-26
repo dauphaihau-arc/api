@@ -1,6 +1,6 @@
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
-import { toSlug } from '~/platform/utils/slugify';
+import { toSlug } from '~/shared/utils/slug';
 import { CategoryCommandRepository } from '../app/ports/category-command.repository';
 import type {
   CategorySummary,

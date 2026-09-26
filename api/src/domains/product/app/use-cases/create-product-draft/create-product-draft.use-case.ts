@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { err, ok, Result } from '~/platform/application/result';
-import { toSlug } from '~/platform/utils/slugify';
+import { toSlug } from '~/shared/utils/slug';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import { CategoryRepository } from '~/domains/category/app/ports/category.repository';
 import { ShopRepository } from '~/domains/shop/app/ports/shop.repository';

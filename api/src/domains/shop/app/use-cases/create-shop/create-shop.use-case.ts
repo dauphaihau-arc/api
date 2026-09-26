@@ -1,7 +1,7 @@
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
 import { err, ok, type Result } from '~/platform/application/result';
-import { toSlug } from '~/platform/utils/slugify';
+import { toSlug } from '~/shared/utils/slug';
 import type { MarketplaceCurrency } from '~/platform/config/marketplace.config';
 import { AuthUserRepository } from '~/domains/auth/app/ports/auth-user.repository';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';

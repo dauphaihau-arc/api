@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { err, ok, type Result } from '~/platform/application/result';
 import { appJobDeduplicationKey } from '~/platform/jobs/app-job-deduplication';
 import { appJobName } from '~/platform/jobs/app-job.names';
-import { toSlug } from '~/platform/utils/slugify';
+import { toSlug } from '~/shared/utils/slug';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import { ShopRepository } from '~/domains/shop/app/ports/shop.repository';
 import { CategoryRepository } from '~/domains/category/app/ports/category.repository';

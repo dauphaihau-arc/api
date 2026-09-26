@@ -10,7 +10,7 @@ import { PinoLogger } from 'nestjs-pino';
 import { captureException } from '../sentry/sentry';
 import { RequestContextService } from '~/platform/request-context/request-context.service';
 import { getActiveTraceContext } from '~/platform/observability/tracing';
-import { buildStructuredLog } from '../utils/structured-log';
+import { buildStructuredLog } from '../logging/structured-log';
 
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {

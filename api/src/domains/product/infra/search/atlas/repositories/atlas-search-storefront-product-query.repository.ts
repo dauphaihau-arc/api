@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 import type { StructuredLogRecord } from '~/platform/logging/structured-log.types';
-import { buildStructuredLog } from '~/platform/utils/structured-log';
+import { buildStructuredLog } from '~/platform/logging/structured-log';
 import { buildPaginationMeta } from '~/platform/application/pagination';
 import { CATALOG_CONFIG, type CatalogConfig } from '~/platform/config/catalog.config';
 import {

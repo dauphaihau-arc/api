@@ -14,7 +14,7 @@ import { RequestContextService } from '~/platform/request-context/request-contex
 import { ObservabilityService } from '~/platform/observability/observability.service';
 import { getActiveTraceContext } from '~/platform/observability/tracing';
 import type { StructuredLogRecord } from '../logging/structured-log.types';
-import { buildStructuredLog } from '../utils/structured-log';
+import { buildStructuredLog } from '../logging/structured-log';
 
 function isSseRequest(request: Request): boolean {
   const acceptHeader = request.headers.accept;
