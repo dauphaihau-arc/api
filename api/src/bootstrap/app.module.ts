@@ -15,9 +15,11 @@ import { CartModule } from '~/domains/cart/cart.module';
 import { CategoryModule } from '~/domains/category/category.module';
 import { CouponModule } from '~/domains/coupon/coupon.module';
 import { CheckoutModule } from '~/domains/checkout/checkout.module';
+import { FulfillmentModule } from '~/domains/fulfillment/fulfillment.module';
 import { OrderModule } from '~/domains/order/order.module';
 import { ProductModule } from '~/domains/product/product.module';
 import { ShopModule } from '~/domains/shop/shop.module';
+import { ShippingModule } from '~/domains/shipping/shipping.module';
 import { ChatModule } from '~/domains/chat/chat.module';
 import { UserModule } from '~/domains/user/user.module';
 import { CacheModule } from '~/integrations/cache/cache.module';
@@ -69,11 +71,13 @@ import { WsModule } from '~/platform/ws/ws.module';
     AuthModule,
     UserModule,
     ShopModule,
+    ShippingModule,
     CategoryModule,
     ProductModule,
     CouponModule,
     CartModule,
     CheckoutModule,
+    FulfillmentModule,
     OrderModule,
     ChatModule,
   ],
