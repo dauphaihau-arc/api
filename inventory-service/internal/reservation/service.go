@@ -3,14 +3,8 @@ package reservation
 import (
 	"crypto/rand"
 	"encoding/hex"
-	"errors"
 	"slices"
 	"time"
-)
-
-var (
-	ErrInvalidRequest         = errors.New("invalid reservation request")
-	ErrReservationUnavailable = errors.New("reservation unavailable")
 )
 
 type Service struct {
@@ -72,20 +66,29 @@ func (s *Service) SetOnHandQuantity(request SetOnHandQuantityRequest) (SetOnHand
 	}
 
 	balance, err := s.store.SetOnHandQuantity(request)
-	if err != nil {
-		return SetOnHandQuantityResponse{}, err
-	}
-
-	return SetOnHandQuantityResponse{
+	response := SetOnHandQuantityResponse{
+		StockPoolID:       balance.StockPoolID,
 		InventoryID:       request.InventoryID,
 		OnHandQuantity:    balance.OnHandQuantity,
 		ReservedQuantity:  balance.ReservedQuantity,
 		AvailableQuantity: balance.AvailableQuantity(),
 		OnHandVersion:     balance.OnHandVersion,
 		Shortage:          balance.Shortage(),
-	}, nil
+	}
+	if err != nil {
+		return response, err
+	}
+
+	return response, nil
 }
 
+func (s *Service) RestoreSale(request RestoreSaleRequest) (RestoreSaleResponse, error) {
+	if request.ReservationID == "" || request.IdempotencyKey == "" {
+		return RestoreSaleResponse{}, ErrInvalidRequest
+	}
+
+	return s.store.RestoreSale(request)
+}
 
 func (s *Service) ValidateReservation(request ValidateReservationRequest) (ValidateReservationResponse, error) {
 	reservation, ok := s.store.FindByID(request.ReservationID)
@@ -147,6 +150,13 @@ func (s *Service) ConsumeOrderCreated(event OrderCreatedEvent) error {
 		return s.store.Save(reservation)
 	}
 
+	// A canceled or expired hold has already been reconciled by the authority; a
+	// delayed or redelivered sale event must be acknowledged, not requeued forever.
+	if reservation.Status == StatusReleased || reservation.Status == StatusExpired {
+		reservation.ProcessedEvent[event.EventID] = time.Now()
+		return s.store.Save(reservation)
+	}
+
 	if reservation.Status != StatusActive || reservation.QuoteID != event.Payload.QuoteID {
 		return ErrReservationUnavailable
 	}
@@ -159,19 +169,71 @@ func (s *Service) ConsumeOrderCreated(event OrderCreatedEvent) error {
 	return s.store.Save(reservation)
 }
 
-func sameItems(left []Item, right []Item) bool {
-	if len(left) != len(right) {
-		return false
+func restrictRestoreTargets(reservation Reservation, request RestoreSaleRequest) ([]Item, bool) {
+	if len(request.Items) == 0 {
+		return reservation.Items, true
 	}
 
-	byInventoryID := map[string]int{}
+	reservedItems := sortItemsByStockPoolID(reservation.Items)
+	targets := make([]Item, 0, len(reservedItems))
+	for _, requested := range request.Items {
+		remaining := requested.Quantity
+		if remaining <= 0 {
+			for _, candidate := range reservedItems {
+				if candidate.InventoryID == requested.InventoryID &&
+					(requested.StockPoolID == "" || candidate.StockPoolID == requested.StockPoolID) {
+					remaining += candidate.Quantity
+				}
+			}
+		}
+
+		for _, candidate := range reservedItems {
+			if candidate.InventoryID != requested.InventoryID ||
+				(requested.StockPoolID != "" && candidate.StockPoolID != requested.StockPoolID) {
+				continue
+			}
+
+			quantity := min(candidate.Quantity, remaining)
+			if quantity <= 0 {
+				continue
+			}
+			target := candidate
+			target.Quantity = quantity
+			targets = append(targets, target)
+			remaining -= quantity
+		}
+
+		if remaining != 0 {
+			return nil, false
+		}
+	}
+
+	return targets, true
+}
+
+func sameItems(left []Item, right []Item) bool {
+	compareByPool := false
+	for _, item := range right {
+		if item.StockPoolID != "" {
+			compareByPool = true
+			break
+		}
+	}
+
+	quantities := map[string]int{}
+	key := func(item Item) string {
+		if compareByPool {
+			return item.InventoryID + "\x00" + item.StockPoolID
+		}
+		return item.InventoryID
+	}
 	for _, item := range left {
-		byInventoryID[item.InventoryID] += item.Quantity
+		quantities[key(item)] += item.Quantity
 	}
 	for _, item := range right {
-		byInventoryID[item.InventoryID] -= item.Quantity
+		quantities[key(item)] -= item.Quantity
 	}
-	for _, quantity := range byInventoryID {
+	for _, quantity := range quantities {
 		if quantity != 0 {
 			return false
 		}
@@ -188,6 +250,21 @@ func sortItemsByInventoryID(items []Item) []Item {
 			return -1
 		}
 		if left.InventoryID > right.InventoryID {
+			return 1
+		}
+		return 0
+	})
+	return sorted
+}
+
+func sortItemsByStockPoolID(items []Item) []Item {
+	sorted := slices.Clone(items)
+
+	slices.SortFunc(sorted, func(left Item, right Item) int {
+		if left.StockPoolID < right.StockPoolID {
+			return -1
+		}
+		if left.StockPoolID > right.StockPoolID {
 			return 1
 		}
 		return 0

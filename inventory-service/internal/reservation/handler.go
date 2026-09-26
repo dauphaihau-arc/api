@@ -20,6 +20,7 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("POST /inventory/reservations/quote", h.reserveQuote)
 	mux.HandleFunc("POST /inventory/reservations/validate", h.validateReservation)
 	mux.HandleFunc("POST /inventory/reservations/release", h.releaseReservation)
+	mux.HandleFunc("POST /inventory/reservations/restore-sale", h.restoreSale)
 	mux.HandleFunc("POST /inventory/items/on-hand", h.setOnHandQuantity)
 	return mux
 }
@@ -81,14 +82,54 @@ func (h *Handler) setOnHandQuantity(writer http.ResponseWriter, request *http.Re
 
 	response, err := h.service.SetOnHandQuantity(body)
 	if err != nil {
+		if errors.Is(err, ErrOnHandVersionConflict) {
+			writeJSON(writer, http.StatusConflict, map[string]any{
+				"code":              "ON_HAND_VERSION_CONFLICT",
+				"message":           err.Error(),
+				"stockPoolId":       response.StockPoolID,
+				"onHandQuantity":    response.OnHandQuantity,
+				"reservedQuantity":  response.ReservedQuantity,
+				"availableQuantity": response.AvailableQuantity,
+				"onHandVersion":     response.OnHandVersion,
+				"shortage":          response.Shortage,
+			})
+			return
+		}
+
 		status := http.StatusBadRequest
 		code := "ON_HAND_COUNT_FAILED"
-		if errors.Is(err, ErrOnHandVersionConflict) || errors.Is(err, ErrIdempotencyConflict) {
+		if errors.Is(err, ErrIdempotencyConflict) {
 			status = http.StatusConflict
 		}
-		if errors.Is(err, ErrInventoryNotFound) {
+		if errors.Is(err, ErrStockPoolNotFound) || errors.Is(err, ErrInventoryNotFound) {
 			status = http.StatusNotFound
 			code = "INVENTORY_NOT_FOUND"
+		}
+		writeError(writer, status, code, err.Error())
+		return
+	}
+
+	writeJSON(writer, http.StatusOK, response)
+}
+
+func (h *Handler) restoreSale(writer http.ResponseWriter, request *http.Request) {
+	var body RestoreSaleRequest
+
+	if err := json.NewDecoder(request.Body).Decode(&body); err != nil {
+		writeError(writer, http.StatusBadRequest, "INVALID_JSON", err.Error())
+		return
+	}
+	if key := request.Header.Get("Idempotency-Key"); body.IdempotencyKey == "" && key != "" {
+		body.IdempotencyKey = key
+	}
+
+	response, err := h.service.RestoreSale(body)
+	if err != nil {
+		status := http.StatusBadRequest
+		code := "RESTORE_SALE_FAILED"
+		if errors.Is(err, ErrReservationNotFound) {
+			status = http.StatusNotFound
+			code = "RESERVATION_NOT_FOUND"
 		}
 		writeError(writer, status, code, err.Error())
 		return

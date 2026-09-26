@@ -10,8 +10,11 @@ var (
 	ErrReservationNotFound    = errors.New("reservation not found")
 	ErrIdempotencyConflict    = errors.New("idempotency key conflict")
 	ErrInventoryNotFound      = errors.New("inventory not found")
+	ErrStockPoolNotFound      = errors.New("stock pool not found")
 	ErrOnHandVersionConflict  = errors.New("on-hand version conflict")
 	ErrSKUConflict            = errors.New("sku conflict")
+	ErrInvalidRequest         = errors.New("invalid reservation request")
+	ErrReservationUnavailable = errors.New("reservation unavailable")
 )
 
 type Store interface {
@@ -20,24 +23,29 @@ type Store interface {
 	FindByIdempotencyKey(key string) (Reservation, bool)
 	Save(reservation Reservation) error
 	SetOnHandQuantity(request SetOnHandQuantityRequest) (InventoryBalance, error)
+	RestoreSale(request RestoreSaleRequest) (RestoreSaleResponse, error)
 }
 
 type MemoryStore struct {
 	mu               sync.Mutex
 	byID             map[string]Reservation
 	byIdempotencyKey map[string]string
-	inventory        map[string]InventoryBalance
+	pools            map[string]InventoryBalance
+	defaultPoolByID  map[string]string
 	items            map[string]InventoryItem
 	movements        map[string][]InventoryMovement
+	processedEvents  map[string]bool
 }
 
 func NewMemoryStore() *MemoryStore {
 	return &MemoryStore{
 		byID:             map[string]Reservation{},
 		byIdempotencyKey: map[string]string{},
-		inventory:        map[string]InventoryBalance{},
+		pools:            map[string]InventoryBalance{},
+		defaultPoolByID:  map[string]string{},
 		items:            map[string]InventoryItem{},
 		movements:        map[string][]InventoryMovement{},
+		processedEvents:  map[string]bool{},
 	}
 }
 
@@ -52,7 +60,7 @@ func (s *MemoryStore) CreateReservation(reservation Reservation) (Reservation, e
 		}
 		return Reservation{}, ErrIdempotencyConflict
 	}
-	if err := s.reserveItems(reservation); err != nil {
+	if err := s.reserveItems(&reservation); err != nil {
 		return Reservation{}, err
 	}
 	s.saveReservationLocked(reservation)
@@ -70,6 +78,11 @@ func (s *MemoryStore) CreateReservationWithoutInventoryMutation(reservation Rese
 			return existing, nil
 		}
 		return Reservation{}, ErrIdempotencyConflict
+	}
+	for index := range reservation.Items {
+		if _, ok := s.resolvePoolID(&reservation.Items[index]); !ok {
+			return Reservation{}, ErrStockPoolNotFound
+		}
 	}
 	s.saveReservationLocked(reservation)
 	return reservation, nil
@@ -123,6 +136,8 @@ func (s *MemoryStore) Save(reservation Reservation) error {
 		}
 	}
 
+	// Preserve the recorded pool identity across status transitions.
+	reservation.Items = current.Items
 	s.saveReservationLocked(reservation)
 	return nil
 }
@@ -131,57 +146,156 @@ func (s *MemoryStore) SetOnHandQuantity(request SetOnHandQuantityRequest) (Inven
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	balance, ok := s.inventory[request.InventoryID]
-	if !ok {
-		return InventoryBalance{}, ErrInventoryNotFound
+	poolID := request.StockPoolID
+	if poolID == "" {
+		resolved, ok := s.defaultPoolByID[request.InventoryID]
+		if !ok {
+			return InventoryBalance{}, ErrStockPoolNotFound
+		}
+		poolID = resolved
+	}
+
+	balance, ok := s.pools[poolID]
+	if !ok || balance.InventoryID != request.InventoryID {
+		return InventoryBalance{}, ErrStockPoolNotFound
 	}
 	if balance.OnHandVersion != request.ExpectedOnHandVersion {
-		return balance.withDerivedQuantities(), ErrOnHandVersionConflict
+		return s.derived(balance), ErrOnHandVersionConflict
 	}
 
 	before := balance
 	balance.OnHandQuantity = request.OnHandQuantity
 	balance.OnHandVersion++
-	s.inventory[request.InventoryID] = balance
-	s.appendMovement(request.InventoryID, InventoryMovement{
-		InventoryID:       request.InventoryID,
-		Kind:              MovementCount,
-		QuantityDelta:     request.OnHandQuantity - before.OnHandQuantity,
-		OnHandBefore:      before.OnHandQuantity,
-		ReservedBefore:    before.ReservedQuantity,
-		OnHandAfter:       balance.OnHandQuantity,
-		ReservedAfter:     balance.ReservedQuantity,
-		Cause:             "seller_count",
-		ActorID:           request.ActorID,
-		CommandID:         request.IdempotencyKey,
-		Note:              request.Note,
-		OccurredAt:        time.Now(),
+	s.pools[poolID] = s.derived(balance)
+	s.appendMovement(poolID, InventoryMovement{
+		InventoryID:    request.InventoryID,
+		StockPoolID:    poolID,
+		Kind:           MovementCount,
+		QuantityDelta:  request.OnHandQuantity - before.OnHandQuantity,
+		OnHandBefore:   before.OnHandQuantity,
+		ReservedBefore: before.ReservedQuantity,
+		OnHandAfter:    balance.OnHandQuantity,
+		ReservedAfter:  balance.ReservedQuantity,
+		Cause:          "seller_count",
+		ActorID:        request.ActorID,
+		CommandID:      request.IdempotencyKey,
+		Note:           request.Note,
+		OccurredAt:     time.Now(),
 	})
-	return balance.withDerivedQuantities(), nil
+	return s.derived(balance), nil
 }
 
-func (s *MemoryStore) SetInventoryBalance(id string, balance InventoryBalance) {
+func (s *MemoryStore) RestoreSale(request RestoreSaleRequest) (RestoreSaleResponse, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	reservation, ok := s.byID[request.ReservationID]
+	if !ok {
+		return RestoreSaleResponse{}, ErrReservationNotFound
+	}
+
+	if s.processedEvents[request.IdempotencyKey] {
+		return RestoreSaleResponse{ReservationID: reservation.ID, Restored: true}, nil
+	}
+	s.processedEvents[request.IdempotencyKey] = true
+
+	targets, ok := restrictRestoreTargets(reservation, request)
+	if !ok {
+		return RestoreSaleResponse{}, ErrReservationUnavailable
+	}
+
+	restored := false
+	switch reservation.Status {
+	case StatusActive:
+		for _, item := range targets {
+			balance := s.pools[item.StockPoolID]
+			before := balance
+			balance.ReservedQuantity -= item.Quantity
+			if balance.ReservedQuantity < 0 {
+				balance.ReservedQuantity = 0
+			}
+			s.pools[item.StockPoolID] = s.derived(balance)
+			s.appendMovement(item.StockPoolID, InventoryMovement{
+				InventoryID:    item.InventoryID,
+				StockPoolID:    item.StockPoolID,
+				Kind:           MovementRelease,
+				QuantityDelta:  item.Quantity,
+				OnHandBefore:   before.OnHandQuantity,
+				ReservedBefore: before.ReservedQuantity,
+				OnHandAfter:    balance.OnHandQuantity,
+				ReservedAfter:  balance.ReservedQuantity,
+				Cause:          request.Reason,
+				CommandID:      request.IdempotencyKey,
+				OccurredAt:     time.Now(),
+			})
+		}
+		if len(targets) == len(reservation.Items) {
+			reservation.Status = StatusReleased
+		}
+	case StatusSold:
+		for _, item := range targets {
+			balance := s.pools[item.StockPoolID]
+			before := balance
+			balance.OnHandQuantity += item.Quantity
+			s.pools[item.StockPoolID] = s.derived(balance)
+			s.appendMovement(item.StockPoolID, InventoryMovement{
+				InventoryID:    item.InventoryID,
+				StockPoolID:    item.StockPoolID,
+				Kind:           MovementCorrection,
+				QuantityDelta:  item.Quantity,
+				OnHandBefore:   before.OnHandQuantity,
+				ReservedBefore: before.ReservedQuantity,
+				OnHandAfter:    balance.OnHandQuantity,
+				ReservedAfter:  balance.ReservedQuantity,
+				Cause:          request.Reason,
+				CommandID:      request.IdempotencyKey,
+				OccurredAt:     time.Now(),
+			})
+		}
+		restored = true
+	case StatusReleased, StatusExpired:
+		return RestoreSaleResponse{ReservationID: reservation.ID, Restored: false}, nil
+	}
+
+	s.saveReservationLocked(reservation)
+
+	return RestoreSaleResponse{ReservationID: reservation.ID, Restored: restored}, nil
+}
+
+func (s *MemoryStore) SetStockPoolBalance(balance InventoryBalance) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	if balance.LifecycleState == "" {
 		balance.LifecycleState = LifecycleActive
 	}
-	s.inventory[id] = balance.withDerivedQuantities()
+	if balance.OnHandVersion == 0 {
+		balance.OnHandVersion = 1
+	}
+	if balance.StockPoolID == "" {
+		balance.StockPoolID = balance.InventoryID
+	}
+	if balance.InventoryID == "" {
+		balance.InventoryID = balance.StockPoolID
+	}
+	s.pools[balance.StockPoolID] = s.derived(balance)
+	if balance.IsDefault {
+		s.defaultPoolByID[balance.InventoryID] = balance.StockPoolID
+	}
 }
 
-func (s *MemoryStore) InventoryBalance(id string) InventoryBalance {
+func (s *MemoryStore) StockPoolBalance(stockPoolID string) InventoryBalance {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	return s.inventory[id].withDerivedQuantities()
+	return s.derived(s.pools[stockPoolID])
 }
 
-func (s *MemoryStore) InventoryMovements(id string) []InventoryMovement {
+func (s *MemoryStore) StockPoolMovements(stockPoolID string) []InventoryMovement {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	return append([]InventoryMovement(nil), s.movements[id]...)
+	return append([]InventoryMovement(nil), s.movements[stockPoolID]...)
 }
 
 func (s *MemoryStore) SetInventoryItem(item InventoryItem) error {
@@ -202,24 +316,50 @@ func (s *MemoryStore) SetInventoryItem(item InventoryItem) error {
 	return nil
 }
 
-func (s *MemoryStore) reserveItems(reservation Reservation) error {
-	beforeByID := map[string]InventoryBalance{}
-	for _, item := range sortItemsByInventoryID(reservation.Items) {
-		balance, ok := s.inventory[item.InventoryID]
-		if !ok || balance.LifecycleState == LifecycleRemoved || balance.AvailableQuantity() < item.Quantity {
+func (s *MemoryStore) derived(balance InventoryBalance) InventoryBalance {
+	balance.AvailableQuantityValue = balance.AvailableQuantity()
+	balance.ShortageValue = balance.Shortage()
+	return balance
+}
+
+func (s *MemoryStore) resolvePoolID(item *Item) (string, bool) {
+	if item.StockPoolID != "" {
+		if _, ok := s.pools[item.StockPoolID]; ok {
+			return item.StockPoolID, true
+		}
+		return "", false
+	}
+
+	poolID, ok := s.defaultPoolByID[item.InventoryID]
+	if !ok {
+		return "", false
+	}
+	item.StockPoolID = poolID
+	return poolID, true
+}
+
+func (s *MemoryStore) reserveItems(reservation *Reservation) error {
+	for index := range reservation.Items {
+		poolID, ok := s.resolvePoolID(&reservation.Items[index])
+		if !ok {
 			return ErrReservationUnavailable
 		}
-		beforeByID[item.InventoryID] = balance
+		balance := s.pools[poolID]
+		if balance.LifecycleState == LifecycleRemoved || balance.AvailableQuantity() < reservation.Items[index].Quantity {
+			return ErrReservationUnavailable
+		}
 	}
+
 	for index := range reservation.Items {
-		item := reservation.Items[index]
-		balance := s.inventory[item.InventoryID]
-		before := beforeByID[item.InventoryID]
+		item := &reservation.Items[index]
+		balance := s.pools[item.StockPoolID]
+		before := balance
 		balance.ReservedQuantity += item.Quantity
-		reservation.Items[index].AvailableAfterReservation = balance.AvailableQuantity()
-		s.inventory[item.InventoryID] = balance.withDerivedQuantities()
-		s.appendMovement(item.InventoryID, InventoryMovement{
+		s.pools[item.StockPoolID] = s.derived(balance)
+		item.AvailableAfterReservation = balance.AvailableQuantity()
+		s.appendMovement(item.StockPoolID, InventoryMovement{
 			InventoryID:    item.InventoryID,
+			StockPoolID:    item.StockPoolID,
 			Kind:           MovementReserve,
 			QuantityDelta:  item.Quantity,
 			OnHandBefore:   before.OnHandQuantity,
@@ -236,15 +376,16 @@ func (s *MemoryStore) reserveItems(reservation Reservation) error {
 
 func (s *MemoryStore) releaseItems(reservation Reservation, status Status) {
 	for _, item := range reservation.Items {
-		balance := s.inventory[item.InventoryID]
+		balance := s.pools[item.StockPoolID]
 		before := balance
 		balance.ReservedQuantity -= item.Quantity
 		if balance.ReservedQuantity < 0 {
 			balance.ReservedQuantity = 0
 		}
-		s.inventory[item.InventoryID] = balance.withDerivedQuantities()
-		s.appendMovement(item.InventoryID, InventoryMovement{
+		s.pools[item.StockPoolID] = s.derived(balance)
+		s.appendMovement(item.StockPoolID, InventoryMovement{
 			InventoryID:    item.InventoryID,
+			StockPoolID:    item.StockPoolID,
 			Kind:           MovementRelease,
 			QuantityDelta:  item.Quantity,
 			OnHandBefore:   before.OnHandQuantity,
@@ -260,7 +401,7 @@ func (s *MemoryStore) releaseItems(reservation Reservation, status Status) {
 
 func (s *MemoryStore) canConsumeItems(items []Item) bool {
 	for _, item := range items {
-		balance, ok := s.inventory[item.InventoryID]
+		balance, ok := s.pools[item.StockPoolID]
 		if !ok || balance.OnHandQuantity < item.Quantity || balance.ReservedQuantity < item.Quantity {
 			return false
 		}
@@ -270,13 +411,14 @@ func (s *MemoryStore) canConsumeItems(items []Item) bool {
 
 func (s *MemoryStore) consumeItems(reservation Reservation) {
 	for _, item := range reservation.Items {
-		balance := s.inventory[item.InventoryID]
+		balance := s.pools[item.StockPoolID]
 		before := balance
 		balance.OnHandQuantity -= item.Quantity
 		balance.ReservedQuantity -= item.Quantity
-		s.inventory[item.InventoryID] = balance.withDerivedQuantities()
-		s.appendMovement(item.InventoryID, InventoryMovement{
+		s.pools[item.StockPoolID] = s.derived(balance)
+		s.appendMovement(item.StockPoolID, InventoryMovement{
 			InventoryID:    item.InventoryID,
+			StockPoolID:    item.StockPoolID,
 			Kind:           MovementSale,
 			QuantityDelta:  -item.Quantity,
 			OnHandBefore:   before.OnHandQuantity,
@@ -290,13 +432,13 @@ func (s *MemoryStore) consumeItems(reservation Reservation) {
 	}
 }
 
-func (s *MemoryStore) appendMovement(inventoryID string, movement InventoryMovement) {
-	for _, existing := range s.movements[inventoryID] {
+func (s *MemoryStore) appendMovement(stockPoolID string, movement InventoryMovement) {
+	for _, existing := range s.movements[stockPoolID] {
 		if existing.CommandID == movement.CommandID && existing.Kind == movement.Kind {
 			return
 		}
 	}
-	s.movements[inventoryID] = append(s.movements[inventoryID], movement)
+	s.movements[stockPoolID] = append(s.movements[stockPoolID], movement)
 }
 
 func (s *MemoryStore) saveReservationLocked(reservation Reservation) {

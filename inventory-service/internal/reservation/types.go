@@ -22,19 +22,23 @@ const (
 type MovementKind string
 
 const (
-	MovementCount   MovementKind = "count"
-	MovementReserve MovementKind = "reserve"
-	MovementRelease MovementKind = "release"
-	MovementSale    MovementKind = "sale"
+	MovementCount      MovementKind = "count"
+	MovementReserve    MovementKind = "reserve"
+	MovementRelease    MovementKind = "release"
+	MovementSale       MovementKind = "sale"
+	MovementCorrection MovementKind = "correction"
 )
 
 type InventoryBalance struct {
-	OnHandQuantity  int
-	ReservedQuantity int
+	StockPoolID            string
+	InventoryID            string
+	OnHandQuantity         int
+	ReservedQuantity       int
 	AvailableQuantityValue int
-	ShortageValue int
-	OnHandVersion int
-	LifecycleState LifecycleState
+	ShortageValue          int
+	OnHandVersion          int
+	LifecycleState         LifecycleState
+	IsDefault              bool
 }
 
 func (b InventoryBalance) AvailableQuantity() int {
@@ -61,6 +65,7 @@ func (b InventoryBalance) withDerivedQuantities() InventoryBalance {
 
 type InventoryMovement struct {
 	InventoryID    string
+	StockPoolID    string
 	Kind           MovementKind
 	QuantityDelta  int
 	OnHandBefore   int
@@ -83,6 +88,7 @@ type InventoryItem struct {
 
 type SetOnHandQuantityRequest struct {
 	InventoryID           string `json:"inventoryId"`
+	StockPoolID           string `json:"stockPoolId,omitempty"`
 	ExpectedOnHandVersion int    `json:"expectedOnHandVersion"`
 	OnHandQuantity        int    `json:"onHandQuantity"`
 	IdempotencyKey        string `json:"idempotencyKey"`
@@ -91,6 +97,7 @@ type SetOnHandQuantityRequest struct {
 }
 
 type SetOnHandQuantityResponse struct {
+	StockPoolID       string `json:"stockPoolId"`
 	InventoryID       string `json:"inventoryId"`
 	OnHandQuantity    int    `json:"onHandQuantity"`
 	ReservedQuantity  int    `json:"reservedQuantity"`
@@ -99,9 +106,9 @@ type SetOnHandQuantityResponse struct {
 	Shortage          int    `json:"shortage"`
 }
 
-
 type Item struct {
 	InventoryID               string `json:"inventoryId"`
+	StockPoolID               string `json:"stockPoolId,omitempty"`
 	Quantity                  int    `json:"quantity"`
 	Title                     string `json:"title,omitempty"`
 	AvailableAfterReservation int    `json:"-"`
@@ -170,4 +177,19 @@ type OrderCreatedEvent struct {
 		ReservationID string   `json:"reservationId"`
 		Items         []Item   `json:"items"`
 	} `json:"payload"`
+}
+
+type RestoreSaleRequest struct {
+	ReservationID  string `json:"reservationId"`
+	Reason         string `json:"reason"`
+	IdempotencyKey string `json:"idempotencyKey"`
+	// Items scopes the restoration to one Order's quantities; a quote-level
+	// reservation may span several shops, and cancelling one Order must not release
+	// another's consumed stock. When empty, the whole reservation is restored.
+	Items []Item `json:"items,omitempty"`
+}
+
+type RestoreSaleResponse struct {
+	ReservationID string `json:"reservationId"`
+	Restored      bool   `json:"restored"`
 }
