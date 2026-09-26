@@ -3,7 +3,7 @@ import { OrderTotalLimitExceededError } from '../../../order/app/errors/order-ap
 import type { CheckoutStockReservationPort } from '../ports/checkout-stock-reservation.port';
 import type { CheckoutQuoteRepository } from '../ports/checkout-quote.repository';
 import { CreateCheckoutQuoteService } from './create-checkout-quote.service';
-import type { CouponPricingService } from '../../../coupon/app/services/coupon-pricing.service';
+import type { CartPricingService } from '../../../cart/app/services/cart-pricing.service';
 import type { StorefrontMarketContextService } from '../../../product/app/services/storefront-market-context.service';
 import type { OrderTotalPolicyService } from '../../../order/app/services/order-total-policy.service';
 import type { PurchaseEligibilityService } from '../../../product/app/services/purchase-eligibility.service';
@@ -76,7 +76,7 @@ describe('CreateCheckoutQuoteService', () => {
         totalSelectedQuantity: 1,
         totalQuantity: 1,
       }),
-    } as unknown as jest.Mocked<CouponPricingService>;
+    } as unknown as jest.Mocked<CartPricingService>;
     const storefrontMarketContextService = {
       resolveCurrentRequest: jest.fn().mockResolvedValue({
         currency: 'VND',
@@ -259,7 +259,7 @@ describe('CreateCheckoutQuoteService', () => {
         totalShippingFee: 2,
         totalPrice: 16,
       }),
-    } as unknown as jest.Mocked<CouponPricingService>;
+    } as unknown as jest.Mocked<CartPricingService>;
     const storefrontMarketContextService = {
       resolveCurrentRequest: jest.fn().mockResolvedValue({
         currency: 'USD',
@@ -417,7 +417,7 @@ describe('CreateCheckoutQuoteService', () => {
         totalShippingFee: 0,
         totalPrice: 15,
       }),
-    } as unknown as jest.Mocked<CouponPricingService>;
+    } as unknown as jest.Mocked<CartPricingService>;
     const storefrontMarketContextService = {
       resolveCurrentRequest: jest.fn().mockResolvedValue({
         currency: 'USD',
@@ -539,7 +539,7 @@ describe('CreateCheckoutQuoteService', () => {
           originCountries: ['US'],
         }],
       }),
-    } as unknown as jest.Mocked<CouponPricingService>;
+    } as unknown as jest.Mocked<CartPricingService>;
     const storefrontMarketContextService = {
       resolveCurrentRequest: jest.fn().mockResolvedValue({ currency: 'USD' }),
     } as unknown as jest.Mocked<StorefrontMarketContextService>;
@@ -597,3 +597,251 @@ describe('CreateCheckoutQuoteService', () => {
     expect(checkoutStockReservationService.reserveForQuote).not.toHaveBeenCalled();
   });
 });
+
+const SHIPPING_ANCHOR = new Date('2026-09-22T10:15:00.000Z');
+
+function buildShippingQuoteSnapshot(profileVersion = 7) {
+  return {
+    shopId: 'shop-1',
+    currency: 'USD',
+    charge: {
+      currency: 'USD',
+      quantity: 2,
+      baseUnit: { productId: 'product-1', inventoryId: 'inventory-1', oneItemFeeMinor: 900 },
+      baseItemFeeMinor: 900,
+      baseItemTotalMinor: 900,
+      additionalItemsQuantity: 1,
+      additionalComponents: [
+        {
+          productId: 'product-1', inventoryId: 'inventory-1', quantity: 1, additionalItemFeeMinor: 250, 
+        },
+      ],
+      additionalItemFeeMinorTotal: 250,
+      totalMinor: 1150,
+    },
+    estimate: {
+      processingTimeMinDays: 1,
+      processingTimeMaxDays: 3,
+      deliveryTimeMinDays: 3,
+      deliveryTimeMaxDays: 5,
+      combinedMinDays: 4,
+      combinedMaxDays: 8,
+      anchorAt: SHIPPING_ANCHOR,
+      earliestDeliveryDate: new Date('2026-09-26T00:00:00.000Z'),
+      latestDeliveryDate: new Date('2026-09-30T00:00:00.000Z'),
+    },
+    units: [
+      {
+        productId: 'product-1',
+        inventoryId: 'inventory-1',
+        quantity: 2,
+        profileId: 'profile-1',
+        profileVersion,
+        profileShopId: 'shop-1',
+        rateId: 'rate-1',
+        rateDestinationScope: 'country',
+        rateDestinationCountry: 'US',
+        rateDestinationRegion: undefined,
+        currency: 'USD',
+        oneItemFeeMinor: 900,
+        additionalItemFeeMinor: 250,
+        processingTimeMinDays: 1,
+        processingTimeMaxDays: 3,
+        deliveryTimeMinDays: 3,
+        deliveryTimeMaxDays: 5,
+      },
+    ],
+  };
+}
+
+function buildPricedSummary(options: {
+  shippingAnchorAt?: Date;
+  profileVersion?: number;
+  shippingDiscountMinor?: number;
+}) {
+  const shipping = buildShippingQuoteSnapshot(options.profileVersion ?? 7);
+
+  return {
+    shops: [
+      {
+        shopId: 'shop-1',
+        shopName: 'Shop 1',
+        items: [
+          {
+            inventoryId: 'inventory-1',
+            productId: 'product-1',
+            shopId: 'shop-1',
+            shopName: 'Shop 1',
+            shopSlug: 'shop-1',
+            title: 'Product 1',
+            quantity: 2,
+            currency: 'USD',
+            price: 15,
+            effectiveUnitPrice: 15,
+            sourceCurrency: 'USD',
+            unitPriceMinor: 1500,
+            sourceUnitPriceMinor: 1500,
+          },
+        ],
+        subtotal: 30,
+        totalDiscount: 0,
+        totalShippingFee: 11.5,
+        total: 41.5,
+        note: undefined,
+        promoCoupons: [],
+        originCountries: ['US'],
+        shipping,
+        shippingDiscountMinor: options.shippingDiscountMinor ?? 0,
+        shippingDiscounts: [],
+      },
+    ],
+    subtotalPrice: 30,
+    totalDiscount: 0,
+    totalShippingFee: 11.5,
+    totalPrice: 41.5,
+    shippingAnchorAt: options.shippingAnchorAt ?? SHIPPING_ANCHOR,
+  };
+}
+
+function buildQuoteCreationService(pricedSummary: ReturnType<typeof buildPricedSummary>) {
+  const quoteRepository = {
+    create: jest.fn((input: Record<string, unknown>) => ({ id: 'quote-1', ...input })),
+  };
+  const quoteItemRepository = {
+    create: jest.fn((input: Record<string, unknown>) => input),
+  };
+  const transactionalEntityManager = {
+    getRepository: jest.fn((entity: { name?: string }) => {
+      switch (entity?.name) {
+        case 'CheckoutQuoteEntity':
+          return quoteRepository;
+        case 'CheckoutQuoteItemEntity':
+          return quoteItemRepository;
+        default:
+          return {};
+      }
+    }),
+    persist: jest.fn(),
+    flush: jest.fn(),
+    getReference: jest.fn((_entity: unknown, id: string) => ({ id })),
+  };
+  const entityManager = {
+    transactional: jest.fn(async (work: (em: EntityManager) => Promise<unknown>) =>
+      work(transactionalEntityManager as unknown as EntityManager)),
+  } as unknown as EntityManager;
+  const checkoutQuoteRepository = {
+    findReusable: jest.fn().mockResolvedValue(null),
+  } as unknown as jest.Mocked<CheckoutQuoteRepository>;
+  const service = new CreateCheckoutQuoteService(
+    entityManager,
+    checkoutQuoteRepository,
+    { buildPricedCartSummary: jest.fn().mockResolvedValue(pricedSummary) } as unknown as CartPricingService,
+    { resolveCurrentRequest: jest.fn().mockResolvedValue({ currency: 'USD', marketCode: 'US' }) } as unknown as StorefrontMarketContextService,
+    { assertWithinLimit: jest.fn() } as unknown as OrderTotalPolicyService,
+    { reserveForQuote: jest.fn().mockResolvedValue({ reservationId: 'reservation-1' }) } as unknown as CheckoutStockReservationPort,
+    { evaluate: jest.fn().mockResolvedValue({ eligible: true, failures: [] }) } as unknown as PurchaseEligibilityService,
+    { dispatch: jest.fn() } as unknown as JobDispatcher,
+  );
+
+  return { service, quoteRepository, checkoutQuoteRepository };
+}
+
+const QUOTE_CART_INPUT = {
+  actor: { type: 'guest' as const, guestSessionId: 'guest-1' },
+  cart: {
+    id: 'cart-1',
+    userId: null,
+    guestSessionId: 'guest-1',
+    kind: 'active' as never,
+    items: [],
+  },
+  shippingAddress: {
+    fullName: 'Jane Doe',
+    address1: '123 Main',
+    address2: '',
+    city: 'Austin',
+    country: 'US',
+    state: 'TX',
+    zip: '73301',
+    phone: '0123',
+  },
+};
+
+describe('CreateCheckoutQuoteService shipping', () => {
+  it('persists the accepted per-shop shipping snapshot and estimate', async () => {
+    const { service, quoteRepository } = buildQuoteCreationService(buildPricedSummary({}));
+
+    const result = await service.createFromCart(QUOTE_CART_INPUT);
+
+    const createdQuote = quoteRepository.create.mock.results[0]?.value as {
+      shippingMinor: number;
+      totalMinor: number;
+      pricedShops: unknown[];
+    };
+    expect(createdQuote.shippingMinor).toBe(1150);
+    expect(createdQuote.totalMinor).toBe(4150);
+    expect(createdQuote.pricedShops).toEqual([
+      expect.objectContaining({
+        shop_id: 'shop-1',
+        shipping_minor: 1150,
+        shipping_discount_minor: 0,
+        shipping_discounts: [],
+        shipping: expect.objectContaining({
+          charge: expect.objectContaining({ total_minor: 1150 }),
+          estimate: expect.objectContaining({
+            combined_min_days: 4,
+            combined_max_days: 8,
+            anchor_at: SHIPPING_ANCHOR.toISOString(),
+            earliest_delivery_date: '2026-09-26T00:00:00.000Z',
+            latest_delivery_date: '2026-09-30T00:00:00.000Z',
+          }),
+          units: [
+            expect.objectContaining({
+              profile_id: 'profile-1',
+              profile_version: 7,
+              rate_id: 'rate-1',
+              one_item_fee_minor: 900,
+              additional_item_fee_minor: 250,
+            }),
+          ],
+        }),
+      }),
+    ]);
+
+    expect(result.shippingAnchorAt).toEqual(SHIPPING_ANCHOR);
+    const [shop] = result.shops;
+    expect(shop?.shipping?.charge.totalMinor).toBe(1150);
+    expect(shop?.shipping?.estimate.anchorAt).toBeInstanceOf(Date);
+    expect(shop?.shipping?.estimate.anchorAt).toEqual(SHIPPING_ANCHOR);
+  });
+
+  it('binds quote reuse to the shipping calculation, estimate, and UTC anchor day', async () => {
+    const sameDay = buildQuoteCreationService(buildPricedSummary({
+      shippingAnchorAt: new Date('2026-09-22T23:30:00.000Z'),
+    }));
+    await sameDay.service.createFromCart(QUOTE_CART_INPUT);
+    const fingerprintSameDay = requestedFingerprint(sameDay.checkoutQuoteRepository);
+
+    const base = buildQuoteCreationService(buildPricedSummary({}));
+    await base.service.createFromCart(QUOTE_CART_INPUT);
+    const fingerprintBase = requestedFingerprint(base.checkoutQuoteRepository);
+
+    expect(fingerprintSameDay).toBe(fingerprintBase);
+
+    const nextDay = buildQuoteCreationService(buildPricedSummary({
+      shippingAnchorAt: new Date('2026-09-23T01:00:00.000Z'),
+    }));
+    await nextDay.service.createFromCart(QUOTE_CART_INPUT);
+    expect(requestedFingerprint(nextDay.checkoutQuoteRepository)).not.toBe(fingerprintBase);
+
+    const editedProfile = buildQuoteCreationService(buildPricedSummary({ profileVersion: 8 }));
+    await editedProfile.service.createFromCart(QUOTE_CART_INPUT);
+    expect(requestedFingerprint(editedProfile.checkoutQuoteRepository)).not.toBe(fingerprintBase);
+  });
+});
+
+function requestedFingerprint(repository: jest.Mocked<CheckoutQuoteRepository>): string {
+  const [input] = repository.findReusable.mock.calls[0] as unknown as [{ quoteFingerprint: string }];
+
+  return input.quoteFingerprint;
+}

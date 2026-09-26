@@ -4,11 +4,17 @@ import {
   type InventoryReservationConfig,
 } from '~/platform/config/inventory-reservation.config';
 import {
+  CheckoutQuoteReservationOutOfStockError,
+  CheckoutQuoteReservationUnavailableError,
+} from '../../../order/app/errors/order-app.error';
+import {
   RemoteInventoryReservationClient,
   type RemoteReleaseReservationInput,
   type RemoteReleaseReservationResult,
   type RemoteReserveQuoteInput,
   type RemoteReserveQuoteResult,
+  type RemoteRestoreSaleInput,
+  type RemoteRestoreSaleResult,
   type RemoteValidateReservationInput,
   type RemoteValidateReservationResult,
 } from '../../app/ports/remote-inventory-reservation.client';
@@ -48,6 +54,16 @@ implements RemoteInventoryReservationClient {
         ...input,
         expiresAt: input.expiresAt.toISOString(),
       },
+      (status) => {
+        if (status === 400) {
+          return new CheckoutQuoteReservationOutOfStockError();
+        }
+        if (status === 409) {
+          return new CheckoutQuoteReservationUnavailableError();
+        }
+
+        return undefined;
+      },
     );
   }
 
@@ -57,6 +73,7 @@ implements RemoteInventoryReservationClient {
     return this.post<RemoteValidateReservationResult>(
       '/inventory/reservations/validate',
       input,
+      () => new CheckoutQuoteReservationUnavailableError(),
     );
   }
 
@@ -69,9 +86,19 @@ implements RemoteInventoryReservationClient {
     );
   }
 
+  async restoreSale(
+    input: RemoteRestoreSaleInput,
+  ): Promise<RemoteRestoreSaleResult> {
+    return this.post<RemoteRestoreSaleResult>(
+      '/inventory/reservations/restore-sale',
+      input,
+    );
+  }
+
   private async post<TResponse>(
     path: string,
     body: unknown,
+    mapError?: (status: number) => Error | undefined,
   ): Promise<TResponse> {
     this.assertRemoteDriverEnabled();
 
@@ -90,9 +117,13 @@ implements RemoteInventoryReservationClient {
     if (!response.ok) {
       const responseBody = await response.text();
 
-      throw new Error(
-        `Inventory reservation request failed with status ${response.status}: ${responseBody}`,
-      );
+      // The configured Inventory authority reports business rejections through
+      // HTTP status codes; map them to the same domain errors the local
+      // implementation raises so callers see one contract in both modes.
+      throw mapError?.(response.status) ??
+        new Error(
+          `Inventory reservation request failed with status ${response.status}: ${responseBody}`,
+        );
     }
 
     return await response.json() as TResponse;

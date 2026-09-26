@@ -36,6 +36,9 @@ export class CheckoutStockReservationEntity extends AbstractBaseEntity {
   })
   inventory!: ProductInventoryEntity;
 
+  @Property({ fieldName: 'stock_pool_id', columnType: 'uuid' })
+  stockPoolId!: string;
+
   @ManyToOne(() => UserEntity, {
     fieldName: 'user_id',
     nullable: true,
@@ -46,7 +49,7 @@ export class CheckoutStockReservationEntity extends AbstractBaseEntity {
   @Property({ fieldName: 'guest_session_id', length: 255, nullable: true })
   guestSessionId?: string;
 
-  @Property({ fieldName: 'cart_id' })
+  @Property({ fieldName: 'cart_id', columnType: 'uuid' })
   cartId!: string;
 
   @Property()

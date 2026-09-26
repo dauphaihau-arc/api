@@ -13,6 +13,7 @@ import type { CheckoutQuoteEntity } from '../../infra/persistence/entities/check
 import { CheckoutInventoryQueryRepository } from '../ports/checkout-inventory-query.repository';
 import { CheckoutQuoteRepository } from '../ports/checkout-quote.repository';
 import { CheckoutStockReservationPort } from '../ports/checkout-stock-reservation.port';
+import type { InventoryMutationOptions } from '../ports/checkout-stock-reservation.port';
 import { RemoteInventoryReservationClient } from '../ports/remote-inventory-reservation.client';
 import { CheckoutStockReservationService } from './checkout-stock-reservation.service';
 
@@ -37,6 +38,7 @@ implements CheckoutStockReservationPort {
       quantity: number;
       title: string;
     }>,
+    options: InventoryMutationOptions = {},
   ): Promise<{
     inventoryById: Map<string, ProductInventoryEntity>;
     inventoryEvents: ProductInventoryUpdatedSseEventPayload[];
@@ -45,6 +47,7 @@ implements CheckoutStockReservationPort {
       return this.localReservationService.allocateInventoryForOrderItems(
         entityManager,
         items,
+        options,
       );
     }
 
@@ -61,13 +64,31 @@ implements CheckoutStockReservationPort {
       productId: string;
       quantity: number;
     }>,
+    options: InventoryMutationOptions = {},
   ): Promise<ProductInventoryUpdatedSseEventPayload[]> {
     if (this.isLocal()) {
       return this.localReservationService.restoreInventoryForOrderItems(
         entityManager,
         items,
+        options,
       );
     }
+
+    if (!options.reservationId) {
+      // No recorded purchase reservation (legacy lifecycle path). The remote
+      // authority has no consumed sale to restore, so there is nothing to apply.
+      return [];
+    }
+
+    await this.remoteReservationClient.restoreSale({
+      reservationId: options.reservationId,
+      reason: options.cause ?? 'order_canceled',
+      idempotencyKey: options.commandId ?? `${options.reservationId}:restore-sale`,
+      items: items.map((item) => ({
+        inventoryId: item.inventoryId,
+        quantity: item.quantity,
+      })),
+    });
 
     return [];
   }
@@ -78,7 +99,9 @@ implements CheckoutStockReservationPort {
       quoteId: string;
       cartId: string;
       expiresAt: Date;
-      items: Array<{ inventoryId: string; quantity: number; title: string }>;
+      items: Array<{
+        inventoryId: string; quantity: number; title: string
+      }>;
     },
   ): Promise<{ reservationId?: string } | void> {
     if (this.isLocal()) {

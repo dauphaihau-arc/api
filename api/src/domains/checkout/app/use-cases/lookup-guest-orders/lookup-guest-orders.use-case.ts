@@ -1,5 +1,7 @@
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
+import { OrderFulfillmentViewPort } from '../../../../fulfillment/app/ports/order-fulfillment-view.port';
+import { buildOrderFulfillmentSummary, canceledFulfillmentOrderIds } from '../../../../order/app/order-fulfillment';
 import { OrderEntity } from '../../../../order/infra/persistence/entities/order.entity';
 import { OrderItemEntity } from '../../../../order/infra/persistence/entities/order-item.entity';
 import {
@@ -15,11 +17,17 @@ import {
   getOrderTotalMajor,
 } from '../../../../order/app/order-money';
 import { getRequiredOrderNumber } from '../../../../order/app/order-number';
+import {
+  parsePersistedOrderShippingSnapshot,
+} from '../../checkout-shipping-snapshot.contract';
 import type { OrderListResult } from '../../../../order/app/order.types';
 
 @Injectable()
 export class LookupGuestOrdersUseCase {
-  constructor(private readonly entityManager: EntityManager) {}
+  constructor(
+    private readonly entityManager: EntityManager,
+    private readonly orderFulfillmentViewPort: OrderFulfillmentViewPort,
+  ) {}
 
   async execute(input: {
     email?: string;
@@ -31,11 +39,13 @@ export class LookupGuestOrdersUseCase {
     const entityManager = this.entityManager.fork();
     const normalizedEmail = input.email?.trim().toLowerCase();
     const normalizedZip = input.zip?.trim().toLowerCase();
+
     const requestedIds = input.orderIds?.length
       ? input.orderIds
       : input.orderId
         ? [input.orderId]
         : [];
+
     let orders: OrderEntity[];
 
     if (input.sessionId) {
@@ -47,6 +57,7 @@ export class LookupGuestOrdersUseCase {
       );
 
       const orderIds = rows.map((row) => row.id);
+
       orders = orderIds.length > 0
         ? await entityManager.getRepository(OrderEntity).find(
           { id: { $in: orderIds } },
@@ -88,6 +99,7 @@ export class LookupGuestOrdersUseCase {
         { populate: ['product', 'product.shop', 'inventory'] },
       )
       : [];
+
     const itemsByOrderId = new Map<string, OrderItemEntity[]>();
 
     for (const item of orderItems) {
@@ -95,6 +107,12 @@ export class LookupGuestOrdersUseCase {
       existing.push(item);
       itemsByOrderId.set(item.order.id, existing);
     }
+
+    const fulfillmentViews = await this.orderFulfillmentViewPort.load(
+      entityManager,
+      orders.map((order) => order.id),
+      { canceledOrderIds: canceledFulfillmentOrderIds(orders) },
+    );
 
     return {
       orderShops: orders.map((order) => ({
@@ -121,16 +139,7 @@ export class LookupGuestOrdersUseCase {
           percentCouponPercent: item.percentCouponPercent ?? null,
         })),
         promoCodes: order.promoCodes,
-        shippingStatus: order.shippingStatus,
-        shippingUpdatedAt: order.updatedAt,
-        shippingToCountry: order.shippingToCountry,
-        shippingFromCountries: order.shippingOriginCountries,
-        shippingEstimatedDelivery: order.shippingEstimatedDelivery,
-        trackingNumber: order.trackingNumber,
-        shippingCarrier: order.shippingCarrier,
-        shipmentNote: order.shipmentNote,
-        shippedAt: order.shippedAt,
-        deliveredAt: order.deliveredAt,
+        fulfillment: buildOrderFulfillmentSummary(order, fulfillmentViews.get(order.id)),
         canceledAt: order.canceledAt,
         cancelReason: order.cancelReason,
         customerSupportNote: order.customerSupportNote,
@@ -145,6 +154,7 @@ export class LookupGuestOrdersUseCase {
         discountMinor: getOrderDiscountMinor(order),
         total: getOrderTotalMajor(order),
         totalMinor: getOrderTotalMinor(order),
+        shippingQuote: parsePersistedOrderShippingSnapshot(order.shippingQuoteSnapshot),
         note: order.note,
         createdAt: order.createdAt,
       })),

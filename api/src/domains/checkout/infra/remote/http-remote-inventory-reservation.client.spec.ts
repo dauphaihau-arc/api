@@ -1,5 +1,9 @@
 import { HttpRemoteInventoryReservationClient } from './http-remote-inventory-reservation.client';
 import type { InventoryReservationConfig } from '~/platform/config/inventory-reservation.config';
+import {
+  CheckoutQuoteReservationOutOfStockError,
+  CheckoutQuoteReservationUnavailableError,
+} from '../../../order/app/errors/order-app.error';
 
 describe('HttpRemoteInventoryReservationClient', () => {
   const remoteConfig: InventoryReservationConfig = {
@@ -107,23 +111,51 @@ describe('HttpRemoteInventoryReservationClient', () => {
     );
   });
 
-  it('throws a readable error when the inventory service rejects the request', async () => {
-    const fetchFn = jest.fn().mockResolvedValue({
-      ok: false,
-      status: 409,
-      text: jest.fn().mockResolvedValue('conflict'),
-    });
+  it('maps an out-of-stock reservation rejection to the local domain error', async () => {
+    const fetchFn = jest.fn().mockResolvedValue(rejectionResponse(400, 'insufficient stock'));
+    const client = new HttpRemoteInventoryReservationClient(remoteConfig, fetchFn);
+
+    await expect(client.reserveQuote({
+      quoteId: 'quote-1',
+      cartId: 'cart-1',
+      idempotencyKey: 'quote-1:reservation:v1',
+      expiresAt: new Date('2026-08-12T05:31:19.013Z'),
+      items: [{ inventoryId: 'inventory-1', quantity: 1, title: 'Product' }],
+    })).rejects.toBeInstanceOf(CheckoutQuoteReservationOutOfStockError);
+  });
+
+  it('maps a reservation idempotency conflict to the unavailable domain error', async () => {
+    const fetchFn = jest.fn().mockResolvedValue(rejectionResponse(409, 'conflict'));
+    const client = new HttpRemoteInventoryReservationClient(remoteConfig, fetchFn);
+
+    await expect(client.reserveQuote({
+      quoteId: 'quote-1',
+      cartId: 'cart-1',
+      idempotencyKey: 'quote-1:reservation:v1',
+      expiresAt: new Date('2026-08-12T05:31:19.013Z'),
+      items: [{ inventoryId: 'inventory-1', quantity: 1, title: 'Product' }],
+    })).rejects.toBeInstanceOf(CheckoutQuoteReservationUnavailableError);
+  });
+
+  it('maps a rejected validation to the unavailable domain error', async () => {
+    const fetchFn = jest.fn().mockResolvedValue(rejectionResponse(409, 'conflict'));
     const client = new HttpRemoteInventoryReservationClient(remoteConfig, fetchFn);
 
     await expect(client.validateReservation({
       quoteId: 'quote-1',
       reservationId: 'reservation-1',
       items: [{ inventoryId: 'inventory-1', quantity: 1 }],
-    })).rejects.toThrow(
-      'Inventory reservation request failed with status 409: conflict',
-    );
+    })).rejects.toBeInstanceOf(CheckoutQuoteReservationUnavailableError);
   });
 });
+
+function rejectionResponse(status: number, body: string) {
+  return {
+    ok: false,
+    status,
+    text: jest.fn().mockResolvedValue(body),
+  };
+}
 
 function jsonResponse(payload: unknown) {
   return {

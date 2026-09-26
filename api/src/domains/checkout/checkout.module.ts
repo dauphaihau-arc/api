@@ -14,6 +14,7 @@ import { UserEntity } from '~/domains/user/infra/persistence/entities/user.entit
 import { CartModule } from '../cart/cart.module';
 import { CouponModule } from '../coupon/coupon.module';
 import { CouponUsageEntity } from '../coupon/infra/persistence/entities/coupon-usage.entity';
+import { FulfillmentModule } from '../fulfillment/fulfillment.module';
 import { OrderModule } from '../order/order.module';
 import { ProductModule } from '../product/product.module';
 import { ProductEntity } from '../product/infra/persistence/mikro-orm/entities/product.entity';
@@ -30,6 +31,7 @@ import { CheckoutController } from './api/rest/checkout.controller';
 import { MeCheckoutController } from './api/rest/me-checkout.controller';
 import { CheckoutInventoryQueryRepository } from './app/ports/checkout-inventory-query.repository';
 import { CheckoutQuoteRepository } from './app/ports/checkout-quote.repository';
+import { CheckoutStockReservationCommandRepository } from './app/ports/checkout-stock-reservation-command.repository';
 import { CheckoutStockReservationPort } from './app/ports/checkout-stock-reservation.port';
 import { RemoteInventoryReservationClient } from './app/ports/remote-inventory-reservation.client';
 import { CheckoutStockReservationService } from './app/services/checkout-stock-reservation.service';
@@ -53,6 +55,7 @@ import { CheckoutQuoteItemEntity } from './infra/persistence/entities/checkout-q
 import { CheckoutStockReservationEntity } from './infra/persistence/entities/checkout-stock-reservation.entity';
 import { MikroOrmCheckoutInventoryQueryRepository } from './infra/persistence/repositories/mikro-orm-checkout-inventory-query.repository';
 import { MikroOrmCheckoutQuoteRepository } from './infra/persistence/repositories/mikro-orm-checkout-quote.repository';
+import { MikroOrmCheckoutStockReservationCommandRepository } from './infra/persistence/repositories/mikro-orm-checkout-stock-reservation-command.repository';
 import {
   FETCH,
   HttpRemoteInventoryReservationClient,
@@ -65,6 +68,7 @@ import { OrderItemEntity } from '../order/infra/persistence/entities/order-item.
     ConfigModule,
     forwardRef(() => AuthModule),
     forwardRef(() => OrderModule),
+    FulfillmentModule,
     CartModule,
     CouponModule,
     ProductModule,
@@ -112,6 +116,10 @@ import { OrderItemEntity } from '../order/infra/persistence/entities/order-item.
     {
       provide: CheckoutInventoryQueryRepository,
       useClass: MikroOrmCheckoutInventoryQueryRepository,
+    },
+    {
+      provide: CheckoutStockReservationCommandRepository,
+      useClass: MikroOrmCheckoutStockReservationCommandRepository,
     },
     CheckoutStockReservationService,
     RemoteAwareCheckoutStockReservationService,

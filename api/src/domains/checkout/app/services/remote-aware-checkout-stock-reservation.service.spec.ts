@@ -21,7 +21,9 @@ describe('RemoteAwareCheckoutStockReservationService', () => {
       quoteId: 'quote-1',
       cartId: 'cart-1',
       expiresAt: new Date('2026-08-12T05:31:19.013Z'),
-      items: [{ inventoryId: 'inventory-1', quantity: 1, title: 'Product' }],
+      items: [{
+        inventoryId: 'inventory-1', quantity: 1, title: 'Product', 
+      }],
     });
 
     expect(localReservationService.reserveForQuote).toHaveBeenCalled();
@@ -42,7 +44,9 @@ describe('RemoteAwareCheckoutStockReservationService', () => {
       quoteId: 'quote-1',
       cartId: 'cart-1',
       expiresAt: new Date('2026-08-12T05:31:19.013Z'),
-      items: [{ inventoryId: 'inventory-1', quantity: 1, title: 'Product' }],
+      items: [{
+        inventoryId: 'inventory-1', quantity: 1, title: 'Product', 
+      }],
     });
 
     expect(remoteReservationClient.reserveQuote).toHaveBeenCalledWith({
@@ -50,7 +54,9 @@ describe('RemoteAwareCheckoutStockReservationService', () => {
       cartId: 'cart-1',
       idempotencyKey: 'quote-1:reservation:v1',
       expiresAt: new Date('2026-08-12T05:31:19.013Z'),
-      items: [{ inventoryId: 'inventory-1', quantity: 1, title: 'Product' }],
+      items: [{
+        inventoryId: 'inventory-1', quantity: 1, title: 'Product', 
+      }],
     });
     expect(result).toEqual({ reservationId: 'reservation-1' });
   });

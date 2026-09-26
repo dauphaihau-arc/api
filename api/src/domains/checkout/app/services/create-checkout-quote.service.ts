@@ -8,7 +8,7 @@ import { toMinorUnits } from '../../../../platform/money/money';
 import { MARKETPLACE_CURRENCIES } from '../../../../platform/config/marketplace.config';
 import { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
 import type { CartSnapshot } from '../../../cart/app/cart.types';
-import { CouponPricingService } from '../../../coupon/app/services/coupon-pricing.service';
+import { CartPricingService } from '../../../cart/app/services/cart-pricing.service';
 import { StorefrontMarketContextService } from '../../../product/app/services/storefront-market-context.service';
 import { ProductInventoryEntity } from '../../../product/infra/persistence/mikro-orm/entities/product-inventory.entity';
 import { dispatchCatalogProductProjections } from '../../../product/app/catalog-product-projection-dispatch';
@@ -30,10 +30,16 @@ import type {
   CheckoutQuoteResult,
   CheckoutQuoteShopSummary,
   PricedCartItem,
+  PricedShopCart,
   ShippingAddressInput,
   ShopAdjustmentInput,
 } from '../../../order/app/order.types';
 import { OrderTotalPolicyService } from '../../../order/app/services/order-total-policy.service';
+import {
+  parsePricedShops,
+  toPersistedPricedShops,
+} from './checkout-quote-priced-shops';
+import { createCheckoutQuoteItem } from './checkout-quote-item.mapping';
 
 const QUOTE_TTL_MS = ms('30m');
 
@@ -42,7 +48,7 @@ export class CreateCheckoutQuoteService {
   constructor(
     private readonly entityManager: EntityManager,
     private readonly checkoutQuoteRepository: CheckoutQuoteRepository,
-    private readonly couponPricingService: CouponPricingService,
+    private readonly cartPricingService: CartPricingService,
     private readonly storefrontMarketContextService: StorefrontMarketContextService,
     private readonly orderTotalPolicyService: OrderTotalPolicyService,
     private readonly checkoutStockReservationService: CheckoutStockReservationPort,
@@ -65,11 +71,16 @@ export class CreateCheckoutQuoteService {
       input.presentmentCurrency ?? storefrontMarketContext?.currency,
     );
 
-    const pricedCartSummary = await this.couponPricingService.buildPricedCartSummary({
+    // The quote timestamp anchors both the accepted delivery estimate and the
+    // expiry so a single instant owns the whole quote.
+    const anchorAt = new Date();
+
+    const pricedCartSummary = await this.cartPricingService.buildPricedCartSummary({
       userId: input.actor.type === 'user' ? input.actor.userId : undefined,
       cart: input.cart,
       shippingAddress: input.shippingAddress,
       shopAdjustments: input.shopAdjustments,
+      anchorAt,
     });
 
     const allItems = pricedCartSummary.shops.flatMap((shop) => shop.items);
@@ -80,11 +91,30 @@ export class CreateCheckoutQuoteService {
 
     const checkoutCurrency = resolveCheckoutCurrency(allItems);
 
-    const expiresAt = new Date(Date.now() + QUOTE_TTL_MS);
-    const subtotalMinor = toMinorUnits(pricedCartSummary.subtotalPrice, checkoutCurrency);
-    const shippingMinor = toMinorUnits(pricedCartSummary.totalShippingFee, checkoutCurrency);
-    const discountMinor = toMinorUnits(pricedCartSummary.totalDiscount, checkoutCurrency);
-    const totalMinor = toMinorUnits(pricedCartSummary.totalPrice, checkoutCurrency);
+    const expiresAt = new Date(anchorAt.getTime() + QUOTE_TTL_MS);
+
+    // Quote money is owned in minor units: each shop's total is exactly its
+    // subtotal minus discount plus shipping, and the quote total is the sum of
+    // the shop totals, so the payment charge and the confirmed Orders can agree
+    // exactly without rounding drift.
+    const shopMoney = pricedCartSummary.shops.map((shop) => {
+      const shopSubtotalMinor = toMinorUnits(shop.subtotal, checkoutCurrency);
+      const shopDiscountMinor = toMinorUnits(shop.totalDiscount, checkoutCurrency);
+      const shopShippingMinor = toMinorUnits(shop.totalShippingFee, checkoutCurrency);
+
+      return {
+        shop,
+        subtotalMinor: shopSubtotalMinor,
+        discountMinor: shopDiscountMinor,
+        shippingMinor: shopShippingMinor,
+        totalMinor: shopSubtotalMinor - shopDiscountMinor + shopShippingMinor,
+      };
+    });
+
+    const subtotalMinor = shopMoney.reduce((total, entry) => total + entry.subtotalMinor, 0);
+    const shippingMinor = shopMoney.reduce((total, entry) => total + entry.shippingMinor, 0);
+    const discountMinor = shopMoney.reduce((total, entry) => total + entry.discountMinor, 0);
+    const totalMinor = subtotalMinor - discountMinor + shippingMinor;
 
     const quoteFingerprint = buildQuoteFingerprint({
       presentmentCurrency,
@@ -92,6 +122,8 @@ export class CreateCheckoutQuoteService {
       shippingAddress: input.shippingAddress,
       shopAdjustments: input.shopAdjustments,
       items: allItems,
+      shipping: buildShippingFingerprint(pricedCartSummary.shops),
+      shippingAnchorAt: pricedCartSummary.shippingAnchorAt,
       totals: {
         checkoutCurrency,
         subtotalMinor,
@@ -120,7 +152,6 @@ export class CreateCheckoutQuoteService {
       if (failure?.reason === 'insufficient_available_quantity') {
         throw new CheckoutQuoteReservationOutOfStockError(failure.title);
       }
-
       throw new CheckoutQuoteReservationUnavailableError();
     }
 
@@ -210,138 +241,37 @@ export class CreateCheckoutQuoteService {
       }
 
       const quoteItems = allItems.map((item) => {
-        const unitPriceCheckoutMinor = item.unitPriceMinor ??
-          toMinorUnits(item.effectiveUnitPrice, checkoutCurrency);
-
-        const sourceCurrency = item.sourceCurrency ?? checkoutCurrency;
-
-        const unitPriceSourceMinor = item.sourceUnitPriceMinor ??
-          unitPriceCheckoutMinor;
-
-        const originalAmountMinor = item.originalAmountMinor != null
-          ? item.originalAmountMinor
-          : item.effectiveUnitPrice < item.price
-            ? toMinorUnits(item.price, checkoutCurrency)
-            : undefined;
-
-        const quoteItem = quoteItemRepository.create({
+        const { entity, summary } = createCheckoutQuoteItem({
+          repository: quoteItemRepository,
           quote: checkoutQuote,
           inventory: entityManager.getReference(ProductInventoryEntity, item.inventoryId),
-          title: item.title,
-          imageUrl: item.imageUrl,
-          imageReference: item.imageReference,
-          sku: item.sku,
-          selectedOptions: item.selectedOptions,
-          quantity: item.quantity,
-          sourceCurrency,
-          unitPriceSourceMinor,
-          lineTotalSourceMinor: unitPriceSourceMinor * item.quantity,
+          item,
           checkoutCurrency,
-          unitPriceCheckoutMinor,
-          lineTotalCheckoutMinor: unitPriceCheckoutMinor * item.quantity,
-          unitPriceMinor: unitPriceCheckoutMinor,
-          ...(originalAmountMinor !== undefined ? { originalAmountMinor } : {}),
-          lineTotalMinor: unitPriceCheckoutMinor * item.quantity,
-          currency: checkoutCurrency,
-          sourcePriceId: item.sourcePriceId,
-          sourceType: item.sourceType,
-          marketCode: item.marketCode,
-          fxRate: item.fxRate,
-          fxSource: item.fxSource,
-          fxEffectiveAt: item.fxEffectiveAt,
-          fxSourceTimestamp: item.fxSourceTimestamp,
         });
 
-        entityManager.persist(quoteItem);
+        entityManager.persist(entity);
 
-        return {
-          inventoryId: item.inventoryId,
-          productId: item.productId,
-          shopId: item.shopId,
-          shopName: item.shopName,
-          shopSlug: item.shopSlug,
-          title: item.title,
-          imageUrl: item.imageUrl,
-          imageReference: quoteItem.imageReference,
-          quantity: item.quantity,
-          sku: quoteItem.sku,
-          selectedOptions: quoteItem.selectedOptions ?? [],
-          sourceCurrency: quoteItem.sourceCurrency,
-          unitPriceSourceMinor: quoteItem.unitPriceSourceMinor,
-          lineTotalSourceMinor: quoteItem.lineTotalSourceMinor,
-          checkoutCurrency: quoteItem.checkoutCurrency,
-          unitPriceCheckoutMinor: quoteItem.unitPriceCheckoutMinor,
-          lineTotalCheckoutMinor: quoteItem.lineTotalCheckoutMinor,
-          unitPriceMinor: quoteItem.unitPriceMinor,
-          originalAmountMinor: quoteItem.originalAmountMinor,
-          lineTotalMinor: quoteItem.lineTotalMinor,
-          currency: quoteItem.currency,
-          sourcePriceId: quoteItem.sourcePriceId,
-          sourceType: quoteItem.sourceType,
-          marketCode: quoteItem.marketCode,
-          fxRate: quoteItem.fxRate,
-          fxSource: quoteItem.fxSource,
-          fxEffectiveAt: quoteItem.fxEffectiveAt,
-          fxSourceTimestamp: quoteItem.fxSourceTimestamp,
-        };
+        return summary;
       });
 
-      const shops: CheckoutQuoteShopSummary[] = pricedCartSummary.shops.map((shop) => ({
-        shopId: shop.shopId,
-        shopName: shop.shopName,
-        shopSlug: shop.items[0]?.shopSlug ?? '',
-        subtotalMinor: toMinorUnits(shop.subtotal, checkoutCurrency),
-        discountMinor: toMinorUnits(shop.totalDiscount, checkoutCurrency),
-        shippingMinor: toMinorUnits(shop.totalShippingFee, checkoutCurrency),
-        totalMinor: toMinorUnits(shop.total, checkoutCurrency),
-        note: shop.note,
-        promoCodes: shop.promoCoupons.map((coupon) => coupon.code),
-        originCountries: shop.originCountries,
-        items: quoteItems.filter((entry) => entry.shopId === shop.shopId),
+      const shops: CheckoutQuoteShopSummary[] = shopMoney.map((entry) => ({
+        shopId: entry.shop.shopId,
+        shopName: entry.shop.shopName,
+        shopSlug: entry.shop.items[0]?.shopSlug ?? '',
+        subtotalMinor: entry.subtotalMinor,
+        discountMinor: entry.discountMinor,
+        shippingMinor: entry.shippingMinor,
+        shippingDiscountMinor: entry.shop.shippingDiscountMinor ?? 0,
+        totalMinor: entry.totalMinor,
+        note: entry.shop.note,
+        promoCodes: entry.shop.promoCoupons.map((coupon) => coupon.code),
+        originCountries: entry.shop.originCountries,
+        shipping: entry.shop.shipping,
+        shippingDiscounts: entry.shop.shippingDiscounts ?? [],
+        items: quoteItems.filter((item) => item.shopId === entry.shop.shopId),
       }));
 
-      checkoutQuote.pricedShops = shops.map((shop) => ({
-        shop_id: shop.shopId,
-        shop_name: shop.shopName,
-        shop_slug: shop.shopSlug,
-        subtotal_minor: shop.subtotalMinor,
-        discount_minor: shop.discountMinor,
-        shipping_minor: shop.shippingMinor,
-        total_minor: shop.totalMinor,
-        note: shop.note,
-        promo_codes: shop.promoCodes,
-        origin_countries: shop.originCountries,
-        items: shop.items.map((item) => ({
-          inventory_id: item.inventoryId,
-          product_id: item.productId,
-          shop_id: item.shopId,
-          shop_name: item.shopName,
-          shop_slug: item.shopSlug,
-          title: item.title,
-          image_url: item.imageUrl,
-          image_reference: item.imageReference,
-          quantity: item.quantity,
-          sku: item.sku,
-          source_currency: item.sourceCurrency,
-          unit_price_source_minor: item.unitPriceSourceMinor,
-          line_total_source_minor: item.lineTotalSourceMinor,
-          checkout_currency: item.checkoutCurrency,
-          unit_price_checkout_minor: item.unitPriceCheckoutMinor,
-          line_total_checkout_minor: item.lineTotalCheckoutMinor,
-          unit_price_minor: item.unitPriceMinor,
-          original_amount_minor: item.originalAmountMinor,
-          line_total_minor: item.lineTotalMinor,
-          currency: item.currency,
-          source_price_id: item.sourcePriceId,
-          source_type: item.sourceType,
-          market_code: item.marketCode,
-          fx_rate: item.fxRate,
-          fx_source: item.fxSource,
-          fx_effective_at: item.fxEffectiveAt,
-          fx_source_timestamp: item.fxSourceTimestamp,
-          selected_options: item.selectedOptions,
-        })),
-      }));
+      checkoutQuote.pricedShops = toPersistedPricedShops(shops);
 
       await entityManager.flush();
 
@@ -349,6 +279,7 @@ export class CreateCheckoutQuoteService {
     });
 
     const shops = parsePricedShops(persistedQuote.pricedShops);
+    const shippingAnchorAt = shops.find((shop) => shop.shipping)?.shipping?.estimate.anchorAt;
 
     if (createdNewQuote) {
       await this.jobDispatcher.dispatch(
@@ -379,6 +310,7 @@ export class CreateCheckoutQuoteService {
       shippingMinor: persistedQuote.shippingMinor,
       discountMinor: persistedQuote.discountMinor,
       totalMinor: persistedQuote.totalMinor,
+      ...(shippingAnchorAt ? { shippingAnchorAt } : {}),
       expiresAt: persistedQuote.expiresAt,
       shops,
       items: persistedItems,
@@ -386,101 +318,37 @@ export class CreateCheckoutQuoteService {
   }
 }
 
-function parsePricedShops(
-  pricedShops: Record<string, unknown>[],
-): CheckoutQuoteShopSummary[] {
-  return (pricedShops as Array<{
-    shop_id: string;
-    shop_name: string;
-    shop_slug: string;
-    subtotal_minor: number;
-    discount_minor: number;
-    shipping_minor: number;
-    total_minor: number;
-    note?: string;
-    promo_codes?: string[];
-    origin_countries?: string[];
-    items?: Array<{
-      inventory_id: string;
-      product_id: string;
-      shop_id: string;
-      shop_name: string;
-      shop_slug: string;
-      title: string;
-      image_url?: string;
-      image_reference?: string;
-      quantity: number;
-      sku?: string;
-      source_currency: string;
-      unit_price_source_minor: number;
-      line_total_source_minor: number;
-      checkout_currency: string;
-      unit_price_checkout_minor: number;
-      line_total_checkout_minor: number;
-      unit_price_minor: number;
-      original_amount_minor?: number;
-      line_total_minor: number;
-      currency: string;
-      source_price_id?: string;
-      source_type?: 'market_override' | 'base_native' | 'base_fx';
-      market_code?: string;
-      fx_rate?: string;
-      fx_source?: string;
-      fx_effective_at?: Date;
-      fx_source_timestamp?: Date;
-      selected_options?: Array<{
-        optionId?: string;
-        optionName: string;
-        valueId?: string;
-        value: string;
-      }>;
-    }>;
-  }>).map((shop) => ({
-    shopId: shop.shop_id,
-    shopName: shop.shop_name,
-    shopSlug: shop.shop_slug,
-    subtotalMinor: shop.subtotal_minor,
-    discountMinor: shop.discount_minor,
-    shippingMinor: shop.shipping_minor,
-    totalMinor: shop.total_minor,
-    note: shop.note,
-    promoCodes: shop.promo_codes ?? [],
-    originCountries: shop.origin_countries ?? [],
-    items: (shop.items ?? []).map((item) => ({
-      inventoryId: item.inventory_id,
-      productId: item.product_id,
-      shopId: item.shop_id,
-      shopName: item.shop_name,
-      shopSlug: item.shop_slug,
-      title: item.title,
-      imageUrl: item.image_url,
-      imageReference: item.image_reference,
-      quantity: item.quantity,
-      sku: item.sku,
-      selectedOptions: item.selected_options ?? [],
-      sourceCurrency: item.source_currency,
-      unitPriceSourceMinor: item.unit_price_source_minor,
-      lineTotalSourceMinor: item.line_total_source_minor,
-      checkoutCurrency: item.checkout_currency,
-      unitPriceCheckoutMinor: item.unit_price_checkout_minor,
-      lineTotalCheckoutMinor: item.line_total_checkout_minor,
-      unitPriceMinor: item.unit_price_minor,
-      originalAmountMinor: item.original_amount_minor,
-      lineTotalMinor: item.line_total_minor,
-      currency: item.currency,
-      sourcePriceId: item.source_price_id,
-      sourceType: item.source_type,
-      marketCode: item.market_code,
-      fxRate: item.fx_rate,
-      fxSource: item.fx_source,
-      fxEffectiveAt: item.fx_effective_at,
-      fxSourceTimestamp: item.fx_source_timestamp,
-    })),
-  }));
-}
-
 function flattenQuoteItems(pricedShops: Record<string, unknown>[]): CheckoutQuoteResult['items'] {
   return parsePricedShops(pricedShops).flatMap((shop) => shop.items);
+}
+
+/**
+ * The price- and estimate-affecting surface of every shop's shipping quote.
+ * Any change to a profile/rate identity or version, the chosen base unit, a
+ * component fee, a Processing/Delivery range, the combined estimate, or the
+ * coupon waiver produces a new fingerprint and therefore a new quote.
+ */
+function buildShippingFingerprint(shops: PricedShopCart[]): unknown {
+  return [...shops]
+    .sort((left, right) => left.shopId.localeCompare(right.shopId))
+    .map((shop) => ({
+      shopId: shop.shopId,
+      shipping: shop.shipping
+        ? {
+          currency: shop.shipping.currency,
+          charge: shop.shipping.charge,
+          estimate: {
+            ...shop.shipping.estimate,
+            anchorAt: shop.shipping.estimate.anchorAt.toISOString(),
+            earliestDeliveryDate: shop.shipping.estimate.earliestDeliveryDate.toISOString(),
+            latestDeliveryDate: shop.shipping.estimate.latestDeliveryDate.toISOString(),
+          },
+          units: shop.shipping.units,
+        }
+        : null,
+      shippingDiscountMinor: shop.shippingDiscountMinor ?? 0,
+      shippingDiscounts: shop.shippingDiscounts ?? [],
+    }));
 }
 
 function buildQuoteFingerprint(input: {
@@ -489,6 +357,8 @@ function buildQuoteFingerprint(input: {
   shippingAddress: ShippingAddressInput;
   shopAdjustments?: ShopAdjustmentInput[];
   items: PricedCartItem[];
+  shipping: unknown;
+  shippingAnchorAt?: Date;
   totals: {
     checkoutCurrency: string;
     subtotalMinor: number;
@@ -500,6 +370,16 @@ function buildQuoteFingerprint(input: {
   const payload = {
     presentmentCurrency: input.presentmentCurrency ?? null,
     marketCode: input.marketCode ?? null,
+    // The anchor is bound at UTC-day precision: identical requests reuse the
+    // quote within the same UTC day, while a new day prices a fresh estimate.
+    shippingAnchorDay: input.shippingAnchorAt
+      ? new Date(Date.UTC(
+        input.shippingAnchorAt.getUTCFullYear(),
+        input.shippingAnchorAt.getUTCMonth(),
+        input.shippingAnchorAt.getUTCDate(),
+      )).toISOString()
+      : null,
+    shipping: input.shipping,
     shippingAddress: {
       fullName: input.shippingAddress.fullName,
       address1: input.shippingAddress.address1,

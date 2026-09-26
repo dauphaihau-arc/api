@@ -15,6 +15,8 @@ describe('LookupGuestOrdersUseCase', () => {
               return { find };
             case 'OrderItemEntity':
               return { find: itemFind };
+            case 'FulfillmentGroupEntity':
+              return { find: jest.fn().mockResolvedValue([]) };
             default:
               return { find: jest.fn() };
           }
@@ -24,7 +26,7 @@ describe('LookupGuestOrdersUseCase', () => {
     } as unknown as EntityManager;
 
     return {
-      useCase: new LookupGuestOrdersUseCase(entityManager),
+      useCase: new LookupGuestOrdersUseCase(entityManager, { load: jest.fn(async () => new Map()) } as never),
       find,
       itemFind,
       execute,

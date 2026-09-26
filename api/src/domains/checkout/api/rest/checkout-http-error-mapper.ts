@@ -1,6 +1,7 @@
 import type { HttpException } from '@nestjs/common';
 import {
   BadRequestException,
+  ConflictException,
   NotFoundException,
 } from '@nestjs/common';
 import {
@@ -18,10 +19,10 @@ import {
   CheckoutQuoteExpiredError,
   CheckoutQuoteReservationOutOfStockError,
   CheckoutQuoteReservationUnavailableError,
+  CheckoutShippingUnavailableError,
   CheckoutSessionExpiredError,
   CheckoutSessionIdRequiredError,
   CheckoutSessionNotFoundError,
-  InvalidShippingStatusTransitionError,
   OrderAppError,
   OrderNotFoundError,
   OrderTotalLimitExceededError,
@@ -31,8 +32,6 @@ import {
   SellerOrderCancelNotAllowedError,
   SellerOrderStatusUpdateNotAllowedError,
   SellerShippedOrderCancelNotAllowedError,
-  ShipmentUpdateNotAllowedError,
-  ShipmentUpdatePayloadRequiredError,
   TemporaryCartNotFoundError,
 } from '../../../order/app/errors/order-app.error';
 
@@ -50,6 +49,7 @@ type CheckoutHttpErrorCode =
   | 'CHECKOUT_QUOTE_RESERVATION_UNAVAILABLE'
   | 'CHECKOUT_QUOTE_RESERVATION_OUT_OF_STOCK'
   | 'CHECKOUT_QUOTE_CART_CHANGED'
+  | 'CHECKOUT_SHIPPING_UNAVAILABLE'
   | 'ORDER_TOTAL_LIMIT_EXCEEDED'
   | 'ORDER_NOT_FOUND'
   | 'CHECKOUT_SESSION_ID_REQUIRED'
@@ -63,9 +63,6 @@ type CheckoutHttpErrorCode =
   | 'SELLER_REFUND_ACTION_NOT_ALLOWED'
   | 'BUYER_ORDER_CANCEL_NOT_ALLOWED'
   | 'BUYER_SHIPPED_ORDER_CANCEL_NOT_ALLOWED'
-  | 'SHIPMENT_UPDATE_PAYLOAD_REQUIRED'
-  | 'SHIPMENT_UPDATE_NOT_ALLOWED'
-  | 'INVALID_SHIPPING_STATUS_TRANSITION'
   | 'ADMIN_ORDER_STATUS_OVERRIDE_NOT_ALLOWED'
   | 'ADMIN_REFUND_NOT_ALLOWED'
   | 'ADMIN_REFUND_REQUIRES_CARD_PAYMENT'
@@ -86,6 +83,10 @@ export function mapCheckoutAppErrorToHttpException(
     return new NotFoundException(buildCheckoutErrorPayload(error));
   }
 
+  if (error instanceof CheckoutShippingUnavailableError) {
+    return new ConflictException(buildCheckoutErrorPayload(error));
+  }
+
   if (
     error instanceof CheckoutSessionIdRequiredError
     || error instanceof SellerOrderStatusUpdateNotAllowedError
@@ -96,9 +97,6 @@ export function mapCheckoutAppErrorToHttpException(
     || error instanceof SellerRefundRequiresCardPaymentError
     || error instanceof BuyerOrderCancelNotAllowedError
     || error instanceof BuyerShippedOrderCancelNotAllowedError
-    || error instanceof ShipmentUpdatePayloadRequiredError
-    || error instanceof ShipmentUpdateNotAllowedError
-    || error instanceof InvalidShippingStatusTransitionError
     || error instanceof AdminOrderStatusOverrideNotAllowedError
     || error instanceof AdminRefundActionNotAllowedError
     || error instanceof AdminRefundNotAllowedError
@@ -119,10 +117,28 @@ export function mapCheckoutAppErrorToHttpException(
 function buildCheckoutErrorPayload(error: OrderAppError): {
   message: string;
   code: CheckoutHttpErrorCode;
+  products?: Array<{
+    product_id: string;
+    inventory_id: string;
+    quantity: number;
+    reason: string;
+    readiness_issues: string[];
+  }>;
 } {
   return {
     message: error.message,
     code: getCheckoutErrorCode(error),
+    ...(error instanceof CheckoutShippingUnavailableError
+      ? {
+        products: error.products.map((product) => ({
+          product_id: product.productId,
+          inventory_id: product.inventoryId,
+          quantity: product.quantity,
+          reason: product.reason,
+          readiness_issues: product.readinessIssues,
+        })),
+      }
+      : {}),
   };
 }
 
@@ -153,6 +169,9 @@ function getCheckoutErrorCode(error: OrderAppError): CheckoutHttpErrorCode {
   }
   if (error instanceof CheckoutQuoteCartChangedError) {
     return 'CHECKOUT_QUOTE_CART_CHANGED';
+  }
+  if (error instanceof CheckoutShippingUnavailableError) {
+    return 'CHECKOUT_SHIPPING_UNAVAILABLE';
   }
   if (error instanceof OrderTotalLimitExceededError) {
     return 'ORDER_TOTAL_LIMIT_EXCEEDED';
@@ -192,15 +211,6 @@ function getCheckoutErrorCode(error: OrderAppError): CheckoutHttpErrorCode {
   }
   if (error instanceof BuyerShippedOrderCancelNotAllowedError) {
     return 'BUYER_SHIPPED_ORDER_CANCEL_NOT_ALLOWED';
-  }
-  if (error instanceof ShipmentUpdatePayloadRequiredError) {
-    return 'SHIPMENT_UPDATE_PAYLOAD_REQUIRED';
-  }
-  if (error instanceof ShipmentUpdateNotAllowedError) {
-    return 'SHIPMENT_UPDATE_NOT_ALLOWED';
-  }
-  if (error instanceof InvalidShippingStatusTransitionError) {
-    return 'INVALID_SHIPPING_STATUS_TRANSITION';
   }
   if (error instanceof AdminOrderStatusOverrideNotAllowedError) {
     return 'ADMIN_ORDER_STATUS_OVERRIDE_NOT_ALLOWED';

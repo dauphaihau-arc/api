@@ -57,6 +57,26 @@ export interface RemoteReleaseReservationResult {
   status: Extract<RemoteInventoryReservationStatus, 'EXPIRED' | 'RELEASED'>;
 }
 
+export interface RemoteRestoreSaleInput {
+  reservationId: string;
+  reason: string;
+  idempotencyKey: string;
+  /**
+   * The canceled Order's recorded quantities. A quote reservation may span several
+   * shops, so restoring the whole reservation would restock another Order's sale.
+   * Pool identity is resolved from the recorded reservation, never from the caller.
+   */
+  items: Array<{
+    inventoryId: string;
+    quantity: number;
+  }>;
+}
+
+export interface RemoteRestoreSaleResult {
+  reservationId: string;
+  restored: boolean;
+}
+
 export abstract class RemoteInventoryReservationClient {
   abstract reserveQuote(
     input: RemoteReserveQuoteInput
@@ -69,4 +89,8 @@ export abstract class RemoteInventoryReservationClient {
   abstract releaseReservation(
     input: RemoteReleaseReservationInput
   ): Promise<RemoteReleaseReservationResult>;
+
+  abstract restoreSale(
+    input: RemoteRestoreSaleInput
+  ): Promise<RemoteRestoreSaleResult>;
 }

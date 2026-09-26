@@ -83,6 +83,9 @@ export class MikroOrmCheckoutQuoteRepository implements CheckoutQuoteRepository 
       return null;
     }
 
+    // One Inventory Item has exactly one active reservation row from its default
+    // seller Stock Pool, so the active reservation count must match the quote's
+    // item count.
     const activeReservations = await entityManager
       .getRepository(CheckoutStockReservationEntity)
       .count({

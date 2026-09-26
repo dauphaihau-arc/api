@@ -2,6 +2,20 @@ import type { EntityManager } from '@mikro-orm/postgresql';
 import type { ProductInventoryUpdatedSseEventPayload } from '../../../product/app/events/product-inventory-sse.event';
 import type { ProductInventoryEntity } from '../../../product/infra/persistence/mikro-orm/entities/product-inventory.entity';
 
+export interface InventoryMutationOptions {
+  /**
+   * Stable command identity recorded on the immutable Inventory Movement so a
+   * retried command cannot apply the same balance change twice.
+   */
+  commandId?: string;
+  cause?: string;
+  /**
+   * The remote authority restores a consumed sale through its recorded
+   * reservation, so callers pass the purchase reservation identity.
+   */
+  reservationId?: string;
+}
+
 export abstract class CheckoutStockReservationPort {
   abstract allocateInventoryForOrderItems(
     entityManager: EntityManager,
@@ -11,6 +25,7 @@ export abstract class CheckoutStockReservationPort {
       quantity: number;
       title: string;
     }>,
+    options?: InventoryMutationOptions,
   ): Promise<{
     inventoryById: Map<string, ProductInventoryEntity>;
     inventoryEvents: ProductInventoryUpdatedSseEventPayload[];
@@ -23,6 +38,7 @@ export abstract class CheckoutStockReservationPort {
       productId: string;
       quantity: number;
     }>,
+    options?: InventoryMutationOptions,
   ): Promise<ProductInventoryUpdatedSseEventPayload[]>;
 
   abstract reserveForQuote(
@@ -31,7 +47,11 @@ export abstract class CheckoutStockReservationPort {
       quoteId: string;
       cartId: string;
       expiresAt: Date;
-      items: Array<{ inventoryId: string; quantity: number; title: string }>;
+      items: Array<{
+        inventoryId: string;
+        quantity: number;
+        title: string;
+      }>;
     },
   ): Promise<{ reservationId?: string } | void>;
 
