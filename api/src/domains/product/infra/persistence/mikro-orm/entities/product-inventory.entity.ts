@@ -12,6 +12,7 @@ import { AbstractBaseEntity } from '~/platform/database/abstract-base.entity';
 import { ShopEntity } from '~/domains/shop/infra/persistence/entities/shop.entity';
 import { ProductEntity } from './product.entity';
 import { ProductInventoryReservationEntity } from './product-inventory-reservation.entity';
+import { ProductStockPoolEntity } from './product-stock-pool.entity';
 import { ProductVariantEntity } from './product-variant.entity';
 import { VariantPriceEntity } from './variant-price.entity';
 
@@ -20,16 +21,6 @@ export enum ProductInventoryLifecycleState {
   ACTIVE = 'active',
   INACTIVE = 'inactive',
   REMOVED = 'removed',
-}
-
-export class ProductInventoryOnHandVersionConflictError extends Error {
-  constructor(
-    public readonly currentOnHandQuantity: number,
-    public readonly currentReservedQuantity: number,
-    public readonly currentOnHandVersion: number,
-  ) {
-    super('On-hand Version conflict');
-  }
 }
 
 @Entity({ tableName: 'product_inventory' })
@@ -58,6 +49,12 @@ export class ProductInventoryEntity extends AbstractBaseEntity {
   @Property({ fieldName: 'sku', length: 255, nullable: true })
   sku?: string;
 
+  /**
+   * Derived aggregate of this Inventory Item's Stock Pools. The database
+   * maintains these four columns from `product_stock_pool`; they are read for
+   * catalog, cart, and storefront availability, and no application code writes
+   * a balance through them.
+   */
   @Property({ fieldName: 'stock' })
   stock!: number;
 
@@ -82,6 +79,9 @@ export class ProductInventoryEntity extends AbstractBaseEntity {
   )
   reservations = new Collection<ProductInventoryReservationEntity>(this);
 
+  @OneToMany(() => ProductStockPoolEntity, (stockPool) => stockPool.inventory)
+  stockPools = new Collection<ProductStockPoolEntity>(this);
+
   @OneToMany(() => VariantPriceEntity, (price) => price.productInventory)
   prices = new Collection<VariantPriceEntity>(this);
 
@@ -98,42 +98,5 @@ export class ProductInventoryEntity extends AbstractBaseEntity {
 
   get shortage(): number {
     return Math.max(0, this.reservedQuantity - this.onHandQuantity);
-  }
-
-  applyOnHandCount(input: {
-    onHandQuantity: number;
-    expectedOnHandVersion: number;
-  }): void {
-    if (input.expectedOnHandVersion !== this.onHandVersion) {
-      throw new ProductInventoryOnHandVersionConflictError(
-        this.onHandQuantity,
-        this.reservedQuantity,
-        this.onHandVersion,
-      );
-    }
-
-    this.onHandQuantity = input.onHandQuantity;
-    this.onHandVersion += 1;
-    this.stock = this.availableQuantity;
-  }
-
-  reserve(quantity: number): void {
-    this.reservedQuantity += quantity;
-    this.stock = this.availableQuantity;
-  }
-
-  release(quantity: number): void {
-    this.reservedQuantity = Math.max(0, this.reservedQuantity - quantity);
-    this.stock = this.availableQuantity;
-  }
-
-  consumeReserved(quantity: number): void {
-    if (this.onHandQuantity < quantity || this.reservedQuantity < quantity) {
-      throw new Error('Inventory reservation cannot be consumed');
-    }
-
-    this.onHandQuantity -= quantity;
-    this.reservedQuantity -= quantity;
-    this.stock = this.availableQuantity;
   }
 }
