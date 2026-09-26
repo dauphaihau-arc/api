@@ -88,6 +88,7 @@ services:
     profiles: ["catalog-nosql", "app"]
     image: mongo:7
     container_name: arc-mongodb
+    command: ["mongod", "--wiredTigerCacheSizeGB", "0.25"]
     restart: unless-stopped
     ports:
       - "27017:27017"
@@ -153,11 +154,12 @@ services:
     image: rabbitmq:3.13-management-alpine
     container_name: arc-rabbitmq
     restart: unless-stopped
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+      - ./rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
     ports:
       - "5672:5672"
       - "15672:15672"
-    volumes:
-      - rabbitmq_data:/var/lib/rabbitmq
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
       interval: 10s
