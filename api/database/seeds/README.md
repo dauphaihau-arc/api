@@ -68,6 +68,7 @@ console.log(
   - inventory
   - shipping
 - Flush once after the full per-product update when possible.
+- Every seeded Inventory Item must be backed by exactly one default seller Stock Pool: the pool holds On-hand Quantity, Reserved Quantity, and On-hand Version, and the Inventory Item only mirrors them. A fresh `just seed-full` runs migrations on an empty schema, so the cutover backfill cannot create these pools; the product seeder must.
 
 ## Auth Seeder Rules
 

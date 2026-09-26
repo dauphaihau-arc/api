@@ -27,11 +27,12 @@ import { ProductOptionEntity } from '~/domains/product/infra/persistence/mikro-o
 import { ProductOptionValueEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-option-value.entity';
 import { ProductVariantOptionValueEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-variant-option-value.entity';
 import { ProductInventoryEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-inventory.entity';
+import { ProductStockPoolEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-stock-pool.entity';
 import { ProductReviewEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-review.entity';
 import { ProductReviewImageEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-review-image.entity';
-import { ProductShippingDestinationEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-shipping-destination.entity';
-import { ProductShippingProfileEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-shipping-profile.entity';
 import { ProductVariantEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-variant.entity';
+import { ShippingProfileEntity } from '~/domains/shipping/infra/persistence/entities/shipping-profile.entity';
+import { ShippingProfileRateEntity } from '~/domains/shipping/infra/persistence/entities/shipping-profile-rate.entity';
 import { ProductViewHistoryEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-view-history.entity';
 import { ProductEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product.entity';
 import { ExchangeRateEntity } from '~/integrations/currency/infra/persistence/entities/exchange-rate.entity';
@@ -111,13 +112,14 @@ async function main() {
       ProductOptionValueEntity,
       ProductVariantOptionValueEntity,
       ProductInventoryEntity,
+      ProductStockPoolEntity,
       VariantPriceEntity,
       ProductInventoryReservationEntity,
       ProductReviewEntity,
       OutboxEventEntity,
       ProductReviewImageEntity,
-      ProductShippingProfileEntity,
-      ProductShippingDestinationEntity,
+      ShippingProfileEntity,
+      ShippingProfileRateEntity,
       ProductViewHistoryEntity,
       ExchangeRateEntity,
       UserAddressEntity,

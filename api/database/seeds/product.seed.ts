@@ -6,7 +6,6 @@ import { CategoryAttributeEntity } from '~/domains/category/infra/persistence/en
 import { CategoryEntity } from '~/domains/category/infra/persistence/entities/category.entity';
 import { ProductState } from '~/domains/product/domain/enums/product-state.enum';
 import { ProductImageVariantStatus } from '~/domains/product/domain/enums/product-image-variant-status.enum';
-import { ProductShippingCharge } from '~/domains/product/domain/enums/product-shipping-charge.enum';
 import { ProductVariantLifecycleState } from '~/domains/product/domain/enums/product-variant-lifecycle-state.enum';
 import type { MarketplaceCurrency } from '~/platform/config/marketplace.config';
 import {
@@ -19,13 +18,21 @@ import { ProductOptionEntity } from '~/domains/product/infra/persistence/mikro-o
 import { ProductOptionValueEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-option-value.entity';
 import { ProductVariantOptionValueEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-variant-option-value.entity';
 import { ProductInventoryEntity, ProductInventoryLifecycleState } from '~/domains/product/infra/persistence/mikro-orm/entities/product-inventory.entity';
-import { ProductShippingDestinationEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-shipping-destination.entity';
-import { ProductShippingProfileEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-shipping-profile.entity';
+import {
+  DEFAULT_SELLER_STOCK_POOL_NAME,
+  ProductStockPoolCustody,
+  ProductStockPoolEntity,
+  ProductStockPoolLifecycleState,
+} from '~/domains/product/infra/persistence/mikro-orm/entities/product-stock-pool.entity';
 import { VariantPriceEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/variant-price.entity';
 import { VARIANT_PRICE_TYPES } from '~/domains/product/infra/persistence/mikro-orm/entities/variant-price.entity';
 import { ProductVariantEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-variant.entity';
 import { ProductEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product.entity';
 import type { ShopEntity } from '~/domains/shop/infra/persistence/entities/shop.entity';
+import { ShippingDestinationScope } from '~/domains/shipping/domain/enums/shipping-destination-scope.enum';
+import { ShippingProfileStatus } from '~/domains/shipping/domain/enums/shipping-profile-status.enum';
+import { ShippingProfileEntity } from '~/domains/shipping/infra/persistence/entities/shipping-profile.entity';
+import { ShippingProfileRateEntity } from '~/domains/shipping/infra/persistence/entities/shipping-profile-rate.entity';
 import { productSeeds, type ProductSeed } from './product.seed-loader';
 import { PRODUCT_IMAGE_ROOT_DIRS } from './product-seed-paths';
 import {
@@ -458,6 +465,27 @@ async function syncProductInventory(
       .map((inventory) => [inventory.sku as string, inventory]),
   );
 
+  // The default seller Stock Pool is the authoritative quantity holder, so the
+  // seeded Inventory Items must be backed by one. Preload both the pools of the
+  // matched Inventory Items and the pools a previous run would have created for
+  // the deterministic Inventory Item ids.
+  const seededInventoryIds = inventorySeeds.map((inventorySeed) =>
+    deterministicSeedUuid(
+      `product-inventory:${product.id}:${buildSeedSelectionKey(inventorySeed.selections)}`,
+    ));
+  const candidateInventoryIds = [
+    ...new Set([
+      ...existingInventories.map((inventory) => inventory.id),
+      ...seededInventoryIds,
+    ]),
+  ];
+  const existingStockPools = await em.find(ProductStockPoolEntity, {
+    inventory: { $in: candidateInventoryIds },
+  });
+  const stockPoolByInventoryId = new Map(
+    existingStockPools.map((stockPool) => [stockPool.inventory.id, stockPool]),
+  );
+
   const createdInventories: Array<{
     inventory: ProductInventoryEntity;
     seed: ProductSeed['inventory'][number];
@@ -482,14 +510,36 @@ async function syncProductInventory(
     inventory.product = product;
     inventory.productVariant = variant;
     inventory.sku = inventorySeed.sku;
-    inventory.onHandQuantity = inventorySeed.stock;
-    inventory.stock = Math.max(0, inventory.onHandQuantity - inventory.reservedQuantity);
     inventory.lifecycleState = inventorySeed.variantState === ProductVariantLifecycleState.REMOVED
       ? ProductInventoryLifecycleState.REMOVED
       : inventorySeed.variantState === ProductVariantLifecycleState.INACTIVE
         ? ProductInventoryLifecycleState.INACTIVE
         : ProductInventoryLifecycleState.ACTIVE;
     inventory.removedAt = inventorySeed.variantState === ProductVariantLifecycleState.REMOVED ? new Date() : undefined;
+
+    const stockPool = stockPoolByInventoryId.get(inventory.id) ??
+      em.create(ProductStockPoolEntity, {
+        id: deterministicSeedUuid(`product-stock-pool:${inventory.id}`),
+        inventory,
+        shop,
+      });
+
+    stockPool.inventory = inventory;
+    stockPool.shop = shop;
+    stockPool.name = DEFAULT_SELLER_STOCK_POOL_NAME;
+    stockPool.custody = ProductStockPoolCustody.SELLER;
+    stockPool.isDefault = true;
+    stockPool.lifecycleState = ProductStockPoolLifecycleState.ACTIVE;
+    stockPool.onHandQuantity = inventorySeed.stock;
+    stockPool.stock = Math.max(0, stockPool.onHandQuantity - stockPool.reservedQuantity);
+    stockPoolByInventoryId.set(inventory.id, stockPool);
+    em.persist(stockPool);
+
+    // The pool holds the quantity; the Inventory Item only mirrors it.
+    inventory.onHandQuantity = stockPool.onHandQuantity;
+    inventory.reservedQuantity = stockPool.reservedQuantity;
+    inventory.onHandVersion = stockPool.onHandVersion;
+    inventory.stock = stockPool.stock;
 
     createdInventories.push({
       inventory,
@@ -525,90 +575,146 @@ async function syncProductInventory(
 function productSeedKey(product: ProductEntity): string {
   return `${product.shop.id}::${product.slug}`;
 }
-async function syncProductShipping(
-  em: EntityManager,
-  product: ProductEntity,
-  shop: ShopEntity,
-): Promise<void> {
-  const profiles = await em.find(ProductShippingProfileEntity, { product });
-  const profileIds = profiles.map((profile) => profile.id);
-
-  if (profileIds.length > 0) {
-    await em.nativeDelete(ProductShippingDestinationEntity, {
-      shippingProfile: { $in: profileIds },
-    });
-    await em.nativeDelete(ProductShippingProfileEntity, { id: { $in: profileIds } });
-  }
-
-  const shippingSeed = `${shop.slug}:${product.slug}`;
-  const originZip = pickDeterministicValue(shippingSeed, [
-    '10001',
-    '11201',
-    '20001',
-    '30301',
-    '60601',
-    '73301',
-    '85001',
-    '94105',
-  ]);
-  const processTimeLabel = pickDeterministicValue(`${shippingSeed}:process`, [
-    '1 business day',
-    '1-2 business days',
-    '2-3 business days',
-  ]);
-  const deliveryTimeLabel = pickDeterministicValue(`${shippingSeed}:delivery`, [
-    '1-3 business days',
-    '2-5 business days',
-    '3-5 business days',
-    '3-7 business days',
-  ]);
-  const service = pickDeterministicValue(`${shippingSeed}:service`, [
-    'standard',
-    'ground',
-    'economy',
-  ]);
-  const chargeType = pickDeterministicValue(`${shippingSeed}:charge`, [
-    ProductShippingCharge.FREE_SHIPPING,
-    ProductShippingCharge.FIXED_PRICE,
-    ProductShippingCharge.FIXED_PRICE,
-  ]);
-
-  const shippingProfile = em.create(ProductShippingProfileEntity, {
-    product,
-    shop,
-    originCountry: 'US',
-    originZip,
-    processTimeLabel,
-  });
-  em.persist(shippingProfile);
-
-  em.persist(
-    em.create(ProductShippingDestinationEntity, {
-      shippingProfile,
-      countryCode: 'US',
-      deliveryTimeLabel,
-      service,
-      chargeType,
-      rank: 1,
-    }),
-  );
+interface SeedShippingRate {
+  destinationScope: ShippingDestinationScope;
+  destinationCountry?: string;
+  oneItemFeeMinor: number;
+  additionalItemFeeMinor: number;
+  deliveryTimeMinDays: number;
+  deliveryTimeMaxDays: number;
 }
 
-async function clearProductShipping(
-  em: EntityManager,
-  product: ProductEntity,
-): Promise<void> {
-  const profiles = await em.find(ProductShippingProfileEntity, { product });
-  const profileIds = profiles.map((profile) => profile.id);
+const SEED_SHIPPING_PROFILES: Array<{
+  name: string;
+  status: ShippingProfileStatus;
+  processingTimeMinDays?: number;
+  processingTimeMaxDays?: number;
+  rates: SeedShippingRate[];
+}> = [
+  {
+    name: 'Standard shipping',
+    status: ShippingProfileStatus.ACTIVE,
+    processingTimeMinDays: 1,
+    processingTimeMaxDays: 3,
+    rates: [
+      {
+        destinationScope: ShippingDestinationScope.COUNTRY,
+        destinationCountry: 'US',
+        oneItemFeeMinor: 599,
+        additionalItemFeeMinor: 199,
+        deliveryTimeMinDays: 3,
+        deliveryTimeMaxDays: 5,
+      },
+      {
+        destinationScope: ShippingDestinationScope.COUNTRY,
+        destinationCountry: 'CA',
+        oneItemFeeMinor: 1299,
+        additionalItemFeeMinor: 399,
+        deliveryTimeMinDays: 4,
+        deliveryTimeMaxDays: 8,
+      },
+      {
+        destinationScope: ShippingDestinationScope.EVERYWHERE_ELSE,
+        oneItemFeeMinor: 1999,
+        additionalItemFeeMinor: 599,
+        deliveryTimeMinDays: 7,
+        deliveryTimeMaxDays: 14,
+      },
+    ],
+  },
+  {
+    name: 'Express shipping',
+    status: ShippingProfileStatus.ACTIVE,
+    processingTimeMinDays: 1,
+    processingTimeMaxDays: 2,
+    rates: [
+      {
+        destinationScope: ShippingDestinationScope.COUNTRY,
+        destinationCountry: 'US',
+        oneItemFeeMinor: 1499,
+        additionalItemFeeMinor: 499,
+        deliveryTimeMinDays: 2,
+        deliveryTimeMaxDays: 3,
+      },
+      {
+        destinationScope: ShippingDestinationScope.EVERYWHERE_ELSE,
+        oneItemFeeMinor: 2999,
+        additionalItemFeeMinor: 899,
+        deliveryTimeMinDays: 3,
+        deliveryTimeMaxDays: 6,
+      },
+    ],
+  },
+  {
+    name: 'Freight shipping',
+    status: ShippingProfileStatus.DRAFT,
+    rates: [],
+  },
+];
 
-  if (profileIds.length === 0) {
-    return;
+/**
+ * Reusable shop-owned Shipping Profiles are shared by many seeded Products, so
+ * they are created once per shop and never copied onto a Product.
+ */
+async function syncShopShippingProfiles(
+  em: EntityManager,
+  shop: ShopEntity,
+): Promise<ShippingProfileEntity[]> {
+  const existing = await em.find(
+    ShippingProfileEntity,
+    { shop },
+    { populate: ['rates'] },
+  );
+  const existingByNormalizedName = new Map(
+    existing.map((profile) => [profile.normalizedName, profile]),
+  );
+  const profiles: ShippingProfileEntity[] = [];
+
+  for (const seedProfile of SEED_SHIPPING_PROFILES) {
+    const normalizedName = seedProfile.name.toLowerCase();
+    const profile = existingByNormalizedName.get(normalizedName) ??
+      em.create(ShippingProfileEntity, {
+        shop,
+        name: seedProfile.name,
+        normalizedName,
+        shipFromCountry: 'US',
+        shipFromPostal: pickDeterministicValue(`${shop.slug}:${normalizedName}:postal`, [
+          '10001',
+          '11201',
+          '20001',
+          '30301',
+          '60601',
+          '73301',
+          '85001',
+          '94105',
+        ]),
+      });
+
+    profile.status = seedProfile.status;
+    profile.shipFromCountry = profile.shipFromCountry ?? 'US';
+    profile.processingTimeMinDays = seedProfile.processingTimeMinDays;
+    profile.processingTimeMaxDays = seedProfile.processingTimeMaxDays;
+    em.persist(profile);
+
+    if (!existingByNormalizedName.has(normalizedName)) {
+      for (const [index, rate] of seedProfile.rates.entries()) {
+        em.persist(em.create(ShippingProfileRateEntity, {
+          shippingProfile: profile,
+          position: index + 1,
+          destinationScope: rate.destinationScope,
+          destinationCountry: rate.destinationCountry,
+          oneItemFeeMinor: rate.oneItemFeeMinor,
+          additionalItemFeeMinor: rate.additionalItemFeeMinor,
+          deliveryTimeMinDays: rate.deliveryTimeMinDays,
+          deliveryTimeMaxDays: rate.deliveryTimeMaxDays,
+        }));
+      }
+    }
+
+    profiles.push(profile);
   }
 
-  await em.nativeDelete(ProductShippingDestinationEntity, {
-    shippingProfile: { $in: profileIds },
-  });
-  await em.nativeDelete(ProductShippingProfileEntity, { id: { $in: profileIds } });
+  return profiles.filter((profile) => profile.status !== ShippingProfileStatus.DRAFT);
 }
 
 async function pruneSyntheticBulkCatalogProducts(
@@ -672,6 +778,7 @@ export async function seedProducts(
   const existingProductsByShopSlugAndSlug = new Map(
     existingProducts.map((product) => [`${product.shop.slug}::${product.slug}`, product]),
   );
+  const shippingProfilesByShopId = new Map<string, ShippingProfileEntity[]>();
 
   for (const [index, productSeed] of productSeeds.entries()) {
     const shop = shopsBySlug.get(productSeed.shopSlug);
@@ -748,12 +855,12 @@ export async function seedProducts(
       productSeed.inventory,
       variantsBySelectionKey,
     );
-    if (productSeed.isDigital) {
-      await clearProductShipping(em, product);
-    }
-    else {
-      await syncProductShipping(em, product, shop);
-    }
+    const shopShippingProfiles = shippingProfilesByShopId.get(shop.id) ??
+      await syncShopShippingProfiles(em, shop);
+    shippingProfilesByShopId.set(shop.id, shopShippingProfiles);
+    product.shippingProfile = productSeed.isDigital
+      ? undefined
+      : pickDeterministicValue(`${shop.slug}:${slug}:shipping-profile`, shopShippingProfiles);
     await em.flush();
 
     if ((index + 1) % 10 === 0 || index + 1 === totalProducts) {
