@@ -80,13 +80,15 @@ export class MikroOrmAuthUserRepository implements AuthUserRepository {
       status: input.status,
       emailVerifiedAt: input.emailVerifiedAt,
     });
+    // Persist the user first so its row exists before inserting the credential.
+    await em.persist(user).flush();
+
     const credential = credentialRepository.create({
       userId: user.id,
       passwordHash: input.passwordHash.toString(),
       passwordUpdatedAt: input.passwordUpdatedAt,
     });
-
-    await em.persistAndFlush([user, credential]);
+    await em.persist(credential).flush();
 
     return this.toUserAccount(em, user, credential);
   }
