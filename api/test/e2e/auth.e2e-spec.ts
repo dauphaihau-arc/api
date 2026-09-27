@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { mkdtemp, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -151,6 +152,7 @@ describe('Auth flow (e2e)', () => {
 
     const registerResponse = await agent
       .post(`${API_PREFIX}/auth/register`)
+      .set('Idempotency-Key', randomUUID())
       .send({
         email,
         password: VALID_TEST_PASSWORD,
