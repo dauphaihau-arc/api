@@ -73,6 +73,11 @@ When the first request succeeds, the API caches:
 If a later request uses the same scope, idempotency key, and request payload, the
 API returns the cached response instead of executing the handler again.
 
+The cached body is the *serialized* response: it is passed through the same
+`@Expose` metadata that class serialization applies to the live response before
+it is handed to the cache backend. A replayed body is therefore field-for-field
+identical to the response it replaces, including snake_case transport names.
+
 Replay responses include:
 
 ```txt

@@ -8,6 +8,7 @@ import {
   NestInterceptor,
 } from '@nestjs/common';
 import { createHash } from 'node:crypto';
+import { instanceToPlain } from 'class-transformer';
 import { Reflector } from '@nestjs/core';
 import type { Cache } from 'cache-manager';
 import type { Request, Response } from 'express';
@@ -126,9 +127,15 @@ export class IdempotencyKeyInterceptor implements NestInterceptor {
 
     try {
       const responseBody = await lastValueFrom(next.handle());
+      // Controllers hand back `@Expose`-renamed DTO instances, and class
+      // serialization runs *outside* this interceptor. Caching the raw instance
+      // would make the cache backend JSON-encode its TypeScript property names,
+      // so a replayed response would emit `displayName` where the live response
+      // emitted `display_name`. Serializing with the same metadata before
+      // caching keeps replays identical to the response they replace.
       const cachedRecord: CachedIdempotencyResponse = {
         fingerprint,
-        responseBody,
+        responseBody: instanceToPlain(responseBody),
         statusCode: response.statusCode,
       };
 
