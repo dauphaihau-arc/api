@@ -43,7 +43,7 @@ Top-level structure:
 
 - **REST-first API** - the main application surface is versioned REST endpoints under `/v1`
 - **OpenAPI and Scalar docs** - REST endpoints are exposed as generated OpenAPI JSON at `/docs/openapi.json` and browsable API reference at `/docs`
-- **JWT guards with cookie-backed sessions** - authentication uses JWT-based access control with cookie-managed access and refresh session flows
+- **JWT guards with cookie-backed sessions** - authentication uses JWT-based access control with cookie-managed access and refresh session flows. Protected endpoints answer unauthenticated requests with a structured `401` payload whose `code` separates `ACCESS_TOKEN_EXPIRED`, `ACCESS_TOKEN_MISSING`, `ACCESS_TOKEN_INVALID`, and `AUTH_REQUIRED` so clients can tell a refreshable session apart from a dead one
 - **Role and permission model** - authorization is enforced through explicit permission checks and seeded access data
 - **DTO validation plus config schema validation** - request DTOs use Nest validation, while environment configuration is validated with Zod at startup
 - **Rate limiting** - Nest throttling protects the global API surface and sensitive endpoints

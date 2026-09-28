@@ -5,6 +5,7 @@ import { WsModule } from '~/platform/ws/ws.module';
 import { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
 import { ProductEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product.entity';
 import { ProductModule } from '~/domains/product/product.module';
+import { AuthModule } from '../auth/auth.module';
 import { ShopModule } from '../shop/shop.module';
 import { ShopEntity } from '../shop/infra/persistence/entities/shop.entity';
 import { MeChatController } from './api/rest/me-chat.controller';
@@ -30,6 +31,7 @@ import { ForwardChatMessageToWsListener } from './listeners/forward-chat-message
 
 @Module({
   imports: [
+    AuthModule,
     WsModule,
     StorageModule,
     ShopModule,

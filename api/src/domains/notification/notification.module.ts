@@ -5,6 +5,7 @@ import { SendWebPushNotificationJob } from '~/domains/notification/jobs/send-web
 import { WEB_PUSH_CONFIG, buildWebPushConfig } from '~/platform/config/web-push.config';
 import { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
 import { QueueModule } from '~/integrations/queue/queue.module';
+import { AuthModule } from '../auth/auth.module';
 import { MeNotificationsController } from './api/rest/me-notifications.controller';
 import { NotificationCommandRepository } from './app/ports/notification-command.repository';
 import { NotificationQueryRepository } from './app/ports/notification-query.repository';
@@ -30,6 +31,7 @@ import { VapidWebPushSender } from './infra/web-push.sender';
 @Module({
   imports: [
     ConfigModule,
+    AuthModule,
     forwardRef(() => QueueModule),
     MikroOrmModule.forFeature([
       UserEntity,
