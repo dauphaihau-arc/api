@@ -1,14 +1,26 @@
 import * as path from 'node:path';
 import ms, { type StringValue } from 'ms';
+import {
+  MARKETPLACE_CURRENCIES,
+  type MarketplaceCurrency,
+} from '~/platform/config/marketplace.config';
 import { CouponAppliesTo } from '~/domains/coupon/domain/enums/coupon-applies-to.enum';
 import { CouponMinOrderType } from '~/domains/coupon/domain/enums/coupon-min-order-type.enum';
 import { CouponType } from '~/domains/coupon/domain/enums/coupon-type.enum';
+import { CouponVisibility } from '~/domains/coupon/domain/enums/coupon-visibility.enum';
 import { readTsvRows } from './shared/read-tsv-rows';
 
 export type CouponSeed = {
   shopSlug: string;
   code: string;
   type: CouponType;
+  /**
+   * Canonical currency the coupon's `amountOff` and `minOrderValue` are
+   * denominated in. It is stated explicitly in `coupons.tsv` and must equal the
+   * owning Shop's currency; the seed writer refuses a mismatch rather than
+   * persisting an amount attributed to the wrong currency.
+   */
+  currency: MarketplaceCurrency;
   appliesTo: CouponAppliesTo;
   appliesProductTitles?: string[];
   amountOff?: number;
@@ -20,12 +32,14 @@ export type CouponSeed = {
   minProducts?: number;
   isActive: boolean;
   isAutoSale: boolean;
+  visibility: CouponVisibility;
   startDate: string;
   endDate: string;
 };
 
 type CouponRow = {
   shop_slug: string;
+  currency: string;
   code: string;
   type: string;
   applies_to: string;
@@ -38,6 +52,7 @@ type CouponRow = {
   min_products: string;
   is_active: string;
   is_auto_sale: string;
+  visibility: string;
   period: string;
   start_date: string;
   end_date: string;
@@ -88,6 +103,16 @@ function parseBoolean(value: string, fieldName: string, couponKey: string): bool
   throw new Error(`Invalid ${fieldName} "${value}" for coupon seed ${couponKey}`);
 }
 
+function parseCouponCurrency(value: string, couponKey: string): MarketplaceCurrency {
+  const normalized = value.trim().toUpperCase();
+
+  if (!(MARKETPLACE_CURRENCIES as readonly string[]).includes(normalized)) {
+    throw new Error(`Invalid currency "${value}" for coupon seed ${couponKey}`);
+  }
+
+  return normalized as MarketplaceCurrency;
+}
+
 function parseCouponType(value: string, couponKey: string): CouponType {
   if (value === CouponType.FIXED_AMOUNT) {
     return CouponType.FIXED_AMOUNT;
@@ -111,6 +136,17 @@ function parseCouponAppliesTo(value: string, couponKey: string): CouponAppliesTo
   }
 
   throw new Error(`Invalid applies_to "${value}" for coupon seed ${couponKey}`);
+}
+
+function parseCouponVisibility(value: string, couponKey: string): CouponVisibility {
+  if (value === CouponVisibility.PUBLIC) {
+    return CouponVisibility.PUBLIC;
+  }
+  if (value === CouponVisibility.CODE_ONLY) {
+    return CouponVisibility.CODE_ONLY;
+  }
+
+  throw new Error(`Invalid visibility "${value}" for coupon seed ${couponKey}`);
 }
 
 function parseMinOrderType(value: string, couponKey: string): CouponMinOrderType {
@@ -235,6 +271,7 @@ function loadCouponSeeds(): CouponSeed[] {
       shopSlug: row.shop_slug.trim(),
       code: row.code.trim(),
       type: parseCouponType(row.type.trim(), couponKey),
+      currency: parseCouponCurrency(row.currency, couponKey),
       appliesTo: parseCouponAppliesTo(row.applies_to.trim(), couponKey),
       appliesProductTitles: productTitlesByCouponKey.get(lookupKey),
       amountOff: parseOptionalNumber(row.amount_off, 'amount_off', couponKey),
@@ -246,6 +283,7 @@ function loadCouponSeeds(): CouponSeed[] {
       minProducts: parseOptionalNumber(row.min_products, 'min_products', couponKey),
       isActive: parseBoolean(row.is_active, 'is_active', couponKey),
       isAutoSale: parseBoolean(row.is_auto_sale, 'is_auto_sale', couponKey),
+      visibility: parseCouponVisibility(row.visibility.trim(), couponKey),
       startDate: couponWindow.startDate,
       endDate: couponWindow.endDate,
     };

@@ -29,7 +29,6 @@ import { VARIANT_PRICE_TYPES } from '~/domains/product/infra/persistence/mikro-o
 import { ProductVariantEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-variant.entity';
 import { ProductEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product.entity';
 import type { ShopEntity } from '~/domains/shop/infra/persistence/entities/shop.entity';
-import { ShippingDestinationScope } from '~/domains/shipping/domain/enums/shipping-destination-scope.enum';
 import { ShippingProfileStatus } from '~/domains/shipping/domain/enums/shipping-profile-status.enum';
 import { ShippingProfileEntity } from '~/domains/shipping/infra/persistence/entities/shipping-profile.entity';
 import { ShippingProfileRateEntity } from '~/domains/shipping/infra/persistence/entities/shipping-profile-rate.entity';
@@ -40,6 +39,12 @@ import {
   resolveSeedProductImagePaths,
   slugifySeedValue,
 } from './product-seed-image-resolver';
+import {
+  SHIPPING_PROFILE_ALL_SHOPS_SLUG,
+  shippingProfileSeeds,
+  type ShippingProfileRateSeed,
+  type ShippingProfileSeed,
+} from './shipping-profile.seed-loader';
 
 function slugify(value: string): string {
   return slugifySeedValue(value);
@@ -575,142 +580,163 @@ async function syncProductInventory(
 function productSeedKey(product: ProductEntity): string {
   return `${product.shop.id}::${product.slug}`;
 }
-interface SeedShippingRate {
-  destinationScope: ShippingDestinationScope;
-  destinationCountry?: string;
-  oneItemFeeMinor: number;
-  additionalItemFeeMinor: number;
-  deliveryTimeMinDays: number;
-  deliveryTimeMaxDays: number;
-}
-
-const SEED_SHIPPING_PROFILES: Array<{
-  name: string;
-  status: ShippingProfileStatus;
-  processingTimeMinDays?: number;
-  processingTimeMaxDays?: number;
-  rates: SeedShippingRate[];
-}> = [
-  {
-    name: 'Standard shipping',
-    status: ShippingProfileStatus.ACTIVE,
-    processingTimeMinDays: 1,
-    processingTimeMaxDays: 3,
-    rates: [
-      {
-        destinationScope: ShippingDestinationScope.COUNTRY,
-        destinationCountry: 'US',
-        oneItemFeeMinor: 599,
-        additionalItemFeeMinor: 199,
-        deliveryTimeMinDays: 3,
-        deliveryTimeMaxDays: 5,
-      },
-      {
-        destinationScope: ShippingDestinationScope.COUNTRY,
-        destinationCountry: 'CA',
-        oneItemFeeMinor: 1299,
-        additionalItemFeeMinor: 399,
-        deliveryTimeMinDays: 4,
-        deliveryTimeMaxDays: 8,
-      },
-      {
-        destinationScope: ShippingDestinationScope.EVERYWHERE_ELSE,
-        oneItemFeeMinor: 1999,
-        additionalItemFeeMinor: 599,
-        deliveryTimeMinDays: 7,
-        deliveryTimeMaxDays: 14,
-      },
-    ],
-  },
-  {
-    name: 'Express shipping',
-    status: ShippingProfileStatus.ACTIVE,
-    processingTimeMinDays: 1,
-    processingTimeMaxDays: 2,
-    rates: [
-      {
-        destinationScope: ShippingDestinationScope.COUNTRY,
-        destinationCountry: 'US',
-        oneItemFeeMinor: 1499,
-        additionalItemFeeMinor: 499,
-        deliveryTimeMinDays: 2,
-        deliveryTimeMaxDays: 3,
-      },
-      {
-        destinationScope: ShippingDestinationScope.EVERYWHERE_ELSE,
-        oneItemFeeMinor: 2999,
-        additionalItemFeeMinor: 899,
-        deliveryTimeMinDays: 3,
-        deliveryTimeMaxDays: 6,
-      },
-    ],
-  },
-  {
-    name: 'Freight shipping',
-    status: ShippingProfileStatus.DRAFT,
-    rates: [],
-  },
-];
+const SHIP_FROM_POSTAL_CODES = [
+  '10001',
+  '11201',
+  '20001',
+  '30301',
+  '60601',
+  '73301',
+  '85001',
+  '94105',
+] as const;
 
 /**
- * Reusable shop-owned Shipping Profiles are shared by many seeded Products, so
- * they are created once per shop and never copied onto a Product.
+ * Seeded Shipping Profiles come from `seed-data/shipping-profiles.tsv`: a row
+ * whose shop slug is `*` applies to every seeded shop, and a row naming a shop
+ * replaces the wildcard row with the same profile name for that shop. Profiles
+ * stay shop-owned and are shared by many seeded Products, so they are created
+ * once per shop and never copied onto a Product.
  */
+function resolveShopShippingProfileSeeds(shopSlug: string): ShippingProfileSeed[] {
+  const seedsByNormalizedName = new Map<string, ShippingProfileSeed>();
+
+  for (const seed of shippingProfileSeeds) {
+    if (seed.shopSlug === SHIPPING_PROFILE_ALL_SHOPS_SLUG) {
+      // A shop-specific row already in hand wins over the wildcard row.
+      if (!seedsByNormalizedName.has(seed.normalizedName)) {
+        seedsByNormalizedName.set(seed.normalizedName, seed);
+      }
+
+      continue;
+    }
+
+    if (seed.shopSlug === shopSlug) {
+      seedsByNormalizedName.set(seed.normalizedName, seed);
+    }
+  }
+
+  const seeds = [...seedsByNormalizedName.values()];
+  const defaultSeeds = seeds.filter((seed) => seed.isDefault);
+
+  if (defaultSeeds.length > 1) {
+    throw new Error(
+      `Shop ${shopSlug} seeds ${defaultSeeds.length} default shipping profiles: ${defaultSeeds.map((seed) => seed.name).join(', ')}`,
+    );
+  }
+
+  return seeds;
+}
+
+function shippingProfileRateKey(rate: {
+  destinationScope: string;
+  destinationCountry?: string;
+}): string {
+  // A profile prices one rate per destination: a configured country, or the
+  // everywhere-else fallback.
+  return `${rate.destinationScope}::${rate.destinationCountry ?? ''}`;
+}
+
+/**
+ * Rates mirror the seed row: a destination the seed no longer declares is
+ * dropped, so an edited TSV rate reaches profiles that already exist.
+ */
+function syncShippingProfileRates(
+  em: EntityManager,
+  profile: ShippingProfileEntity,
+  rateSeeds: ShippingProfileRateSeed[],
+): void {
+  const existingRatesByKey = new Map(
+    profile.rates.getItems().map((rate) => [shippingProfileRateKey(rate), rate]),
+  );
+  const seededRateKeys = new Set(rateSeeds.map((seed) => shippingProfileRateKey(seed)));
+
+  for (const [rateKey, rate] of existingRatesByKey) {
+    if (!seededRateKeys.has(rateKey)) {
+      profile.rates.remove(rate);
+      em.remove(rate);
+    }
+  }
+
+  rateSeeds.forEach((rateSeed, index) => {
+    const rate = existingRatesByKey.get(shippingProfileRateKey(rateSeed)) ??
+      em.create(ShippingProfileRateEntity, { shippingProfile: profile });
+
+    if (!profile.rates.contains(rate)) {
+      profile.rates.add(rate);
+    }
+
+    rate.position = index + 1;
+    rate.destinationScope = rateSeed.destinationScope;
+    rate.destinationCountry = rateSeed.destinationCountry;
+    rate.oneItemFeeMinor = rateSeed.oneItemFeeMinor;
+    rate.additionalItemFeeMinor = rateSeed.additionalItemFeeMinor;
+    rate.deliveryTimeMinDays = rateSeed.deliveryTimeMinDays;
+    rate.deliveryTimeMaxDays = rateSeed.deliveryTimeMaxDays;
+    em.persist(rate);
+  });
+}
+
 async function syncShopShippingProfiles(
   em: EntityManager,
   shop: ShopEntity,
 ): Promise<ShippingProfileEntity[]> {
-  const existing = await em.find(
+  const seeds = resolveShopShippingProfileSeeds(shop.slug);
+
+  if (seeds.length === 0) {
+    return [];
+  }
+
+  const existingProfiles = await em.find(
     ShippingProfileEntity,
     { shop },
     { populate: ['rates'] },
   );
-  const existingByNormalizedName = new Map(
-    existing.map((profile) => [profile.normalizedName, profile]),
+  const existingByNormalizedName = new Map<string, ShippingProfileEntity>(
+    existingProfiles.map((profile) => [profile.normalizedName, profile]),
   );
-  const profiles: ShippingProfileEntity[] = [];
 
-  for (const seedProfile of SEED_SHIPPING_PROFILES) {
-    const normalizedName = seedProfile.name.toLowerCase();
-    const profile = existingByNormalizedName.get(normalizedName) ??
-      em.create(ShippingProfileEntity, {
-        shop,
-        name: seedProfile.name,
-        normalizedName,
-        shipFromCountry: 'US',
-        shipFromPostal: pickDeterministicValue(`${shop.slug}:${normalizedName}:postal`, [
-          '10001',
-          '11201',
-          '20001',
-          '30301',
-          '60601',
-          '73301',
-          '85001',
-          '94105',
-        ]),
-      });
+  // The shop-wide designation is exclusive and the partial unique index is
+  // checked per row, so the current holder has to lose the flag in an earlier
+  // statement than the seeded profile that claims it.
+  if (seeds.some((seed) => seed.isDefault)) {
+    const currentDefaults = existingProfiles.filter((profile) => profile.isDefault);
 
-    profile.status = seedProfile.status;
-    profile.shipFromCountry = profile.shipFromCountry ?? 'US';
-    profile.processingTimeMinDays = seedProfile.processingTimeMinDays;
-    profile.processingTimeMaxDays = seedProfile.processingTimeMaxDays;
-    em.persist(profile);
-
-    if (!existingByNormalizedName.has(normalizedName)) {
-      for (const [index, rate] of seedProfile.rates.entries()) {
-        em.persist(em.create(ShippingProfileRateEntity, {
-          shippingProfile: profile,
-          position: index + 1,
-          destinationScope: rate.destinationScope,
-          destinationCountry: rate.destinationCountry,
-          oneItemFeeMinor: rate.oneItemFeeMinor,
-          additionalItemFeeMinor: rate.additionalItemFeeMinor,
-          deliveryTimeMinDays: rate.deliveryTimeMinDays,
-          deliveryTimeMaxDays: rate.deliveryTimeMaxDays,
-        }));
-      }
+    for (const profile of currentDefaults) {
+      profile.isDefault = false;
     }
 
+    if (currentDefaults.length > 0) {
+      await em.flush();
+    }
+  }
+
+  const profiles: ShippingProfileEntity[] = [];
+
+  for (const seed of seeds) {
+    // A renamed row is a new identity: the unique (shop, normalized_name) pair
+    // is what makes a seeded profile stable across runs.
+    const profile = existingByNormalizedName.get(seed.normalizedName) ??
+      em.create(ShippingProfileEntity, {
+        shop,
+        name: seed.name,
+        normalizedName: seed.normalizedName,
+      });
+    existingByNormalizedName.set(seed.normalizedName, profile);
+
+    profile.name = seed.name;
+    profile.status = seed.status;
+    profile.isDefault = seed.isDefault;
+    profile.shipFromCountry = seed.shipFromCountry;
+    profile.shipFromPostal = seed.shipFromPostal ?? pickDeterministicValue(
+      `${shop.slug}:${seed.normalizedName}:postal`,
+      SHIP_FROM_POSTAL_CODES,
+    );
+    profile.processingTimeMinDays = seed.processingTimeMinDays;
+    profile.processingTimeMaxDays = seed.processingTimeMaxDays;
+    em.persist(profile);
+
+    syncShippingProfileRates(em, profile, seed.rates);
     profiles.push(profile);
   }
 
@@ -858,7 +884,7 @@ export async function seedProducts(
     const shopShippingProfiles = shippingProfilesByShopId.get(shop.id) ??
       await syncShopShippingProfiles(em, shop);
     shippingProfilesByShopId.set(shop.id, shopShippingProfiles);
-    product.shippingProfile = productSeed.isDigital
+    product.shippingProfile = productSeed.isDigital || shopShippingProfiles.length === 0
       ? undefined
       : pickDeterministicValue(`${shop.slug}:${slug}:shipping-profile`, shopShippingProfiles);
     await em.flush();

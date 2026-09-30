@@ -445,6 +445,7 @@ export interface ShippingDiscountProvenance {
   appliesTo: CouponAppliesTo;
   appliesProductIds: string[];
   minOrderType: CouponMinOrderType;
+  /** Order-total minimum in major units of `currency` (the checkout currency). */
   minOrderValue: number;
   minProducts: number;
   maxUses: number;
@@ -499,13 +500,31 @@ export function couponAppliesToProduct(
     || coupon.appliesProductIds.includes(productId);
 }
 
+/**
+ * A Coupon's monetary fields resolved into the buyer's presentment currency.
+ *
+ * A Coupon stores `amountOff` and `minOrderValue` in its own canonical
+ * `currency` (the owning Shop's currency). Every eligibility check, discount
+ * calculation, and display projection compares those amounts against money in
+ * the checkout currency, so callers must resolve them through the currency
+ * conversion seam first. Percentage and quantity rules are currency-neutral
+ * and never use these values.
+ */
+export interface CouponPresentmentAmounts {
+  /** Fixed discount in major units of the presentment currency. */
+  amountOff: number;
+  /** Order-total minimum in major units of the presentment currency. */
+  minOrderValue: number;
+}
+
 export function couponMeetsMinimum(
   coupon: CouponEntity,
+  amounts: CouponPresentmentAmounts,
   subtotal: number,
   quantity: number,
 ): boolean {
   if (coupon.minOrderType === CouponMinOrderType.ORDER_TOTAL) {
-    return subtotal >= coupon.minOrderValue;
+    return subtotal >= amounts.minOrderValue;
   }
 
   if (coupon.minOrderType === CouponMinOrderType.NUMBER_OF_PRODUCTS) {
@@ -517,6 +536,7 @@ export function couponMeetsMinimum(
 
 export function computeCouponDiscount(
   coupon: CouponEntity,
+  amounts: CouponPresentmentAmounts,
   subtotal: number,
 ): number {
   if (coupon.type === CouponType.PERCENTAGE) {
@@ -524,7 +544,7 @@ export function computeCouponDiscount(
   }
 
   if (coupon.type === CouponType.FIXED_AMOUNT) {
-    return coupon.amountOff;
+    return amounts.amountOff;
   }
 
   return 0;

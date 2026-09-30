@@ -1,240 +1,367 @@
-import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
-import { fromMinorUnits, toMinorUnits } from '../../../../platform/money/money';
-import type { CartSnapshot } from '../../../cart/app/cart.types';
-import type {
-  PricedCartItem,
-  ShippingDiscountProvenance,
-  ShopAdjustmentInput,
-} from '../../../order/app/order.types';
-import {
-  computeCouponDiscount,
-  couponAppliesToProduct,
-  couponMeetsMinimum,
-  isCouponActive,
-} from '../../../order/app/order.types';
-import { CheckoutShippingShopQuote } from '../../../shipping/app/shipping.types';
+import type { FxRateCache } from '~/integrations/currency/fx-rate.service';
+import type { CouponPresentmentAmounts, PricedCartItem } from '../../../order/app/order.types';
+import { computeCouponDiscount } from '../../../order/app/order.types';
+import type { CheckoutShippingShopQuote } from '../../../shipping/app/shipping.types';
+import { CouponIneligibleReason } from '../../domain/enums/coupon-ineligible-reason.enum';
 import { CouponType } from '../../domain/enums/coupon-type.enum';
-import { CouponUsageEntity } from '../../infra/persistence/entities/coupon-usage.entity';
-import { CouponEntity } from '../../infra/persistence/entities/coupon.entity';
-
-export class CouponCodeNotFoundError extends Error {
-  constructor(code: string) {
-    super(`Coupon code ${code} not found`);
-  }
-}
-
-export class CouponCodeNotApplicableError extends Error {
-  constructor(code: string) {
-    super(`Coupon code ${code} cannot be applied to this cart`);
-  }
-}
-
-export interface CouponPricedShop {
-  shopId: string;
-  items: PricedCartItem[];
-  subtotal: number;
-  totalDiscount: number;
-  promoCoupons: CouponEntity[];
-  shippingDiscountMinor: number;
-  shippingDiscounts: ShippingDiscountProvenance[];
-}
+import { CouponVisibility } from '../../domain/enums/coupon-visibility.enum';
+import type { CouponEntity } from '../../infra/persistence/entities/coupon.entity';
+import {
+  CouponCodeNotFoundError,
+  CouponCodeNotApplicableError,
+  CouponCurrencyConversionUnavailableError,
+} from '../errors/coupon-app.error';
+import { CouponRepository } from '../ports/coupon.repository';
+import { SaleProjectionReader } from '../../../promotion/app/ports/sale-projection.reader';
+import type {
+  AddPromoCouponInput,
+  AppliedCoupon,
+  ApplyCouponToCartInput,
+  CouponPricedShop,
+  DiscoverableCoupon,
+  ListDiscoverableCouponsInput,
+} from '../types/coupon.types';
+import { priceItems } from './auto-sale-item-pricing';
+import {
+  assertManualCouponSlots,
+  evaluateCoupon,
+  nextPromoCodeSelection,
+  sortDiscoverableCoupons,
+} from './coupon-eligibility';
+import { CouponPresentmentService } from './coupon-presentment.service';
 
 @Injectable()
 export class CouponPricingService {
-  constructor(private readonly entityManager: EntityManager) {}
+  constructor(
+    private readonly couponRepository: CouponRepository,
+    private readonly couponPresentmentService: CouponPresentmentService,
+    private readonly saleProjectionReader: SaleProjectionReader,
+  ) {}
 
-  async applyToCart(input: {
-    userId?: string;
-    cart: CartSnapshot;
-    shopAdjustments?: ShopAdjustmentInput[];
-    validatePromoCodes?: boolean;
-    checkoutCurrency: string;
-    shippingShops?: CheckoutShippingShopQuote[];
-  }): Promise<CouponPricedShop[]> {
+  async applyToCart(input: ApplyCouponToCartInput): Promise<CouponPricedShop[]> {
     const shopAdjustments = new Map(
       (input.shopAdjustments ?? []).map((entry) => [entry.shopId, entry]),
     );
 
     const selectedItems = input.cart.items.filter((item) => item.isSelectOrder);
     const shopIds = [...new Set(selectedItems.map((item) => item.inventory.shopId))];
-    const couponRepository = this.entityManager.fork().getRepository(CouponEntity);
-    const usageRepository = this.entityManager.fork().getRepository(CouponUsageEntity);
-
-    const coupons = shopIds.length > 0
-      ? await couponRepository.find({ shop: { $in: shopIds } })
-      : [];
-
-    const couponUsageCounts = new Map<string, number>();
-
-    if (coupons.length > 0 && input.userId) {
-      const usages = await usageRepository.find({
-        coupon: { $in: coupons.map((coupon) => coupon.id) },
-        user: input.userId,
-      });
-      for (const usage of usages) {
-        couponUsageCounts.set(
-          usage.coupon.id,
-          (couponUsageCounts.get(usage.coupon.id) ?? 0) + 1,
-        );
-      }
-    }
-
-    const autoCouponsByShop = new Map<string, CouponEntity[]>();
-    for (const coupon of coupons) {
-      if (coupon.isAutoSale) {
-        const existing = autoCouponsByShop.get(coupon.shop.id) ?? [];
-        existing.push(coupon);
-        autoCouponsByShop.set(coupon.shop.id, existing);
-      }
-    }
-
-    const pricedItemsByShop = new Map<string, PricedCartItem[]>();
-    for (const item of selectedItems) {
-      const snapshotPrice = item.inventory.pricing;
-      const pricingCurrency = snapshotPrice.currency;
-      const baseUnitPriceMinor = snapshotPrice.originalAmountMinor ?? snapshotPrice.amountMinor;
-      const baseUnitPrice = fromMinorUnits(baseUnitPriceMinor, pricingCurrency);
-
-      const saleUnitPrice = snapshotPrice.originalAmountMinor != null
-        ? fromMinorUnits(snapshotPrice.amountMinor, pricingCurrency)
-        : undefined;
-
-      const activeAutoCoupons = (autoCouponsByShop.get(item.inventory.shopId) ?? [])
-        .filter((coupon) =>
-          isCouponActive(coupon)
-          && couponAppliesToProduct(coupon, item.inventory.productId),
-        );
-
-      let autoSaleCoupon: CouponEntity | undefined;
-      let bestPrice = saleUnitPrice ?? baseUnitPrice;
-      let effectiveUnitPriceMinor = snapshotPrice.amountMinor;
-
-      for (const coupon of activeAutoCoupons) {
-        if (coupon.type !== CouponType.PERCENTAGE) continue;
-        const discounted = baseUnitPrice * (1 - (coupon.percentOff / 100));
-
-        if (discounted < bestPrice) {
-          bestPrice = discounted;
-          autoSaleCoupon = coupon;
-          effectiveUnitPriceMinor = toMinorUnits(discounted, pricingCurrency);
-        }
-      }
-
-      const pricedItem: PricedCartItem = {
-        cartItemId: item.id,
-        inventoryId: item.inventory.inventoryId,
-        productId: item.inventory.productId,
+    const coupons = await this.couponRepository.findByShopIds(shopIds);
+    const couponUsageCounts = await this.loadUserUsageCounts(coupons, input.userId);
+    const salesByProductId = await this.saleProjectionReader.findBestSalesForProducts({
+      targets: selectedItems.map((item) => ({
         shopId: item.inventory.shopId,
-        shopName: item.inventory.shopName,
-        shopSlug: item.inventory.shopSlug,
-        title: item.inventory.title,
-        imageUrl: item.inventory.imageUrl,
-        imageReference: item.inventory.imageReference,
-        quantity: item.quantity,
-        sku: item.inventory.sku,
-        currency: pricingCurrency,
-        sourceCurrency: snapshotPrice.sourceCurrency,
-        sourceUnitPriceMinor: snapshotPrice.sourceUnitAmountMinor,
-        unitPriceMinor: effectiveUnitPriceMinor,
-        originalAmountMinor: baseUnitPriceMinor,
-        price: baseUnitPrice,
-        salePrice: bestPrice < baseUnitPrice ? bestPrice : saleUnitPrice,
-        baseUnitPrice,
-        effectiveUnitPrice: bestPrice,
-        sourcePriceId: snapshotPrice.sourcePriceId,
-        sourceType: snapshotPrice.sourceType,
-        marketCode: snapshotPrice.marketCode,
-        fxRate: snapshotPrice.fxRate,
-        fxSource: snapshotPrice.fxSource,
-        fxEffectiveAt: snapshotPrice.fxEffectiveAt,
-        fxSourceTimestamp: snapshotPrice.fxSourceTimestamp,
-        autoSaleCoupon,
-      };
-      const shopItems = pricedItemsByShop.get(pricedItem.shopId) ?? [];
-      shopItems.push(pricedItem);
-      pricedItemsByShop.set(pricedItem.shopId, shopItems);
-    }
+        productId: item.inventory.productId,
+      })),
+    });
+    const pricedItemsByShop = priceItems(selectedItems, coupons, salesByProductId);
+    // One rate cache per pricing call, so repeated lookups for the same pair
+    // are resolved once and the whole cart prices from one FX snapshot.
+    const rateCache: FxRateCache = new Map();
+    const now = new Date();
 
     const result: CouponPricedShop[] = [];
     for (const [shopId, items] of pricedItemsByShop.entries()) {
-      const subtotal = items.reduce(
-        (sum, item) => sum + (item.effectiveUnitPrice * item.quantity),
-        0,
-      );
-      const promoCodes = shopAdjustments.get(shopId)?.promoCodes ?? [];
-      const promoCoupons: CouponEntity[] = [];
-      let totalDiscount = 0;
-
-      for (const code of promoCodes) {
-        const coupon = coupons.find((entry) => entry.shop.id === shopId && entry.code === code);
-        if (!coupon) {
-          if (input.validatePromoCodes) throw new CouponCodeNotFoundError(code);
-          continue;
-        }
-        if (!isCouponActive(coupon) || coupon.isAutoSale) {
-          if (input.validatePromoCodes) throw new CouponCodeNotApplicableError(code);
-          continue;
-        }
-        if ((couponUsageCounts.get(coupon.id) ?? 0) >= coupon.maxUsesPerUser) {
-          if (input.validatePromoCodes) throw new CouponCodeNotApplicableError(code);
-          continue;
-        }
-
-        const eligibleItems = items.filter((item) => couponAppliesToProduct(coupon, item.productId));
-        const eligibleSubtotal = eligibleItems.reduce(
-          (sum, item) => sum + (item.effectiveUnitPrice * item.quantity),
-          0,
-        );
-        const eligibleQuantity = eligibleItems.reduce((sum, item) => sum + item.quantity, 0);
-        if (!couponMeetsMinimum(coupon, eligibleSubtotal, eligibleQuantity)) {
-          if (input.validatePromoCodes) throw new CouponCodeNotApplicableError(code);
-          continue;
-        }
-        if (coupon.usesCount >= coupon.maxUses) {
-          if (input.validatePromoCodes) throw new CouponCodeNotApplicableError(code);
-          continue;
-        }
-
-        promoCoupons.push(coupon);
-        if (coupon.type !== CouponType.FREE_SHIP) {
-          totalDiscount += Math.min(eligibleSubtotal, computeCouponDiscount(coupon, eligibleSubtotal));
-        }
-      }
-
-      const shipping = input.shippingShops?.find((entry) => entry.shopId === shopId);
-      const freeShipCoupon = promoCoupons.find((coupon) => coupon.type === CouponType.FREE_SHIP);
-      const shippingDiscountMinor = shipping && freeShipCoupon
-        ? shipping.charge.totalMinor
-        : 0;
-      const shippingDiscounts: ShippingDiscountProvenance[] = shippingDiscountMinor > 0 && freeShipCoupon
-        ? [{
-          couponId: freeShipCoupon.id,
-          code: freeShipCoupon.code,
-          type: 'free_ship',
-          appliesTo: freeShipCoupon.appliesTo,
-          appliesProductIds: [...freeShipCoupon.appliesProductIds],
-          minOrderType: freeShipCoupon.minOrderType,
-          minOrderValue: freeShipCoupon.minOrderValue,
-          minProducts: freeShipCoupon.minProducts,
-          maxUses: freeShipCoupon.maxUses,
-          maxUsesPerUser: freeShipCoupon.maxUsesPerUser,
-          usesCount: freeShipCoupon.usesCount,
-          waivedMinor: shippingDiscountMinor,
-          currency: input.checkoutCurrency,
-        }]
-        : [];
-
-      result.push({
+      result.push(await this.priceShop({
         shopId,
         items,
-        subtotal,
-        totalDiscount,
-        promoCoupons,
-        shippingDiscountMinor,
-        shippingDiscounts,
+        coupons,
+        promoCodes: shopAdjustments.get(shopId)?.promoCodes ?? [],
+        couponUsageCounts,
+        checkoutCurrency: input.checkoutCurrency,
+        shippingShop: input.shippingShops?.find((entry) => entry.shopId === shopId),
+        validatePromoCodes: input.validatePromoCodes === true,
+        rateCache,
+        now,
+      }));
+    }
+
+    return result;
+  }
+
+  /**
+   * The discoverable Coupons for the selected items of one shop: the public,
+   * manually redeemed Coupons the buyer can see in the coupon listing. The only
+   * visibility exclusion is `code_only`; automatic sale Coupons are also absent
+   * because they are not manual codes and the apply path rejects them, and
+   * expired Coupons are absent because a dead code is not a usable offer.
+   *
+   * A public Coupon the current cart cannot redeem is still returned, flagged
+   * with the first failing `CouponIneligibleReason`, so the buyer sees why it is
+   * unavailable instead of the listing silently hiding it. `expired` never
+   * appears as a flag because those Coupons are excluded outright; the apply
+   * path still rejects them. Eligibility comes from the same evaluator the
+   * pricing path uses, so the two can never disagree.
+   *
+   * Amounts are converted into `checkoutCurrency`. A Coupon whose monetary
+   * fields cannot be expressed in that currency is not listed at all, because
+   * showing its native amount as if it were the checkout currency would offer
+   * a discount that checkout then rejects. Eligible Coupons come first, then
+   * ineligible ones, each group ordered by `code`.
+   */
+  async listDiscoverableCoupons(
+    input: ListDiscoverableCouponsInput,
+  ): Promise<DiscoverableCoupon[]> {
+    const selectedItems = input.cart.items.filter((item) =>
+      item.isSelectOrder && item.inventory.shopId === input.shopId);
+
+    if (selectedItems.length === 0) {
+      return [];
+    }
+
+    const coupons = await this.couponRepository.findByShopIds([input.shopId]);
+    const couponUsageCounts = await this.loadUserUsageCounts(coupons, input.userId);
+    const salesByProductId = await this.saleProjectionReader.findBestSalesForProducts({
+      targets: selectedItems.map((item) => ({
+        shopId: item.inventory.shopId,
+        productId: item.inventory.productId,
+      })),
+    });
+    const items = priceItems(selectedItems, coupons, salesByProductId).get(input.shopId) ?? [];
+    const rateCache: FxRateCache = new Map();
+    const now = new Date();
+
+    const discoverable: DiscoverableCoupon[] = [];
+    for (const coupon of coupons) {
+      if (coupon.isAutoSale || coupon.visibility !== CouponVisibility.PUBLIC) {
+        continue;
+      }
+
+      const amounts = await this.couponPresentmentService.resolveForCoupon(
+        coupon,
+        input.checkoutCurrency,
+        rateCache,
+      );
+      if (!amounts) {
+        continue;
+      }
+
+      const eligibility = evaluateCoupon({
+        coupon,
+        items,
+        userUsageCount: couponUsageCounts.get(coupon.id) ?? 0,
+        amounts,
+        now,
+      });
+
+      // An expired Coupon is never listed: a dead code is not a usable offer,
+      // unlike the other ineligible states which are shown flagged. The apply
+      // path still rejects it, so the shared evaluator stays the single rule.
+      if (eligibility.outcome === 'ineligible'
+        && eligibility.reason === CouponIneligibleReason.EXPIRED) {
+        continue;
+      }
+
+      discoverable.push({
+        code: coupon.code,
+        type: coupon.type,
+        appliesTo: coupon.appliesTo,
+        amountOff: amounts.amountOff,
+        percentOff: coupon.percentOff,
+        minOrderType: coupon.minOrderType,
+        minOrderValue: amounts.minOrderValue,
+        minProducts: coupon.minProducts,
+        endDate: coupon.endDate,
+        currency: input.checkoutCurrency,
+        isEligible: eligibility.outcome === 'eligible',
+        ineligibleReason: eligibility.outcome === 'ineligible'
+          ? eligibility.reason
+          : null,
       });
     }
-    return result;
+
+    return sortDiscoverableCoupons(discoverable);
+  }
+
+  /**
+   * The promo codes a shop cart holds after adding `code` alongside the codes
+   * already retained in the other slot. Adding a code atomically replaces any
+   * retained code in the same slot, and the resulting selection is validated as
+   * a whole, so an invalid combination throws instead of returning a partial or
+   * stacked state.
+   */
+  async addPromoCode(input: AddPromoCouponInput): Promise<AppliedCoupon[]> {
+    const requestedCode = input.code.trim().toUpperCase();
+    const coupons = await this.couponRepository.findByShopIds([input.shopId]);
+    const couponsByCode = new Map(coupons.map((coupon) => [coupon.code, coupon]));
+    const requested = couponsByCode.get(requestedCode);
+
+    if (!requested) {
+      throw new CouponCodeNotFoundError(requestedCode);
+    }
+    if (requested.isAutoSale) {
+      throw new CouponCodeNotApplicableError(requestedCode);
+    }
+
+    const nextCodes = nextPromoCodeSelection({
+      requested,
+      retainedCodes: input.retainedPromoCodes,
+      couponsByCode,
+    });
+
+    const checkoutCurrency = input.cart.items.find((item) =>
+      item.isSelectOrder && item.inventory.shopId === input.shopId)?.inventory.currency ?? 'USD';
+
+    await this.applyToCart({
+      userId: input.userId,
+      cart: input.cart,
+      shopAdjustments: [{ shopId: input.shopId, promoCodes: nextCodes }],
+      validatePromoCodes: true,
+      checkoutCurrency,
+    });
+
+    // Validation above rejects any code it cannot resolve, so every remaining
+    // code has a Coupon and its type can be read without a second query.
+    return nextCodes.map((code) => {
+      const coupon = couponsByCode.get(code);
+      if (!coupon) {
+        throw new CouponCodeNotFoundError(code);
+      }
+
+      return { code: coupon.code, type: coupon.type };
+    });
+  }
+
+  // ---------- Private helpers ----------
+
+  /**
+   * Prices one shop's items against the requested codes: resolves each Coupon's
+   * money, rejects the whole selection when a rate is missing or promo
+   * validation is on, and folds the accepted codes into discount and shipping
+   * provenance.
+   */
+  private async priceShop(input: {
+    shopId: string;
+    items: PricedCartItem[];
+    coupons: CouponEntity[];
+    promoCodes: string[];
+    couponUsageCounts: Map<string, number>;
+    checkoutCurrency: string;
+    shippingShop: CheckoutShippingShopQuote | undefined;
+    validatePromoCodes: boolean;
+    rateCache: FxRateCache;
+    now: Date;
+  }): Promise<CouponPricedShop> {
+    const {
+      shopId, items, promoCodes, checkoutCurrency, validatePromoCodes, rateCache, now,
+    } = input;
+
+    const subtotal = items.reduce(
+      (sum, item) => sum + (item.effectiveUnitPrice * item.quantity),
+      0,
+    );
+    const couponsByCode = new Map(
+      input.coupons
+        .filter((coupon) => coupon.shop.id === shopId)
+        .map((coupon) => [coupon.code, coupon]),
+    );
+    const requestedCoupons: CouponEntity[] = [];
+
+    for (const code of promoCodes) {
+      const coupon = couponsByCode.get(code);
+      if (!coupon) {
+        if (validatePromoCodes) throw new CouponCodeNotFoundError(code);
+        continue;
+      }
+      if (coupon.isAutoSale) {
+        if (validatePromoCodes) throw new CouponCodeNotApplicableError(code);
+        continue;
+      }
+      requestedCoupons.push(coupon);
+    }
+
+    assertManualCouponSlots(requestedCoupons);
+
+    const promoCoupons: CouponEntity[] = [];
+    let totalDiscount = 0;
+    let freeShipCoupon: CouponEntity | undefined;
+    let freeShipAmounts: CouponPresentmentAmounts | undefined;
+
+    for (const coupon of requestedCoupons) {
+      // The coupon's own currency is never assumed to be the checkout
+      // currency: without a rate the selection fails rather than charge a
+      // wrong total or silently drop the discount the buyer chose.
+      const amounts = await this.couponPresentmentService.resolveForCoupon(
+        coupon,
+        checkoutCurrency,
+        rateCache,
+      );
+      const eligibility = evaluateCoupon({
+        coupon,
+        items,
+        userUsageCount: input.couponUsageCounts.get(coupon.id) ?? 0,
+        amounts,
+        now,
+      });
+
+      if (eligibility.outcome === 'conversion_unavailable') {
+        throw new CouponCurrencyConversionUnavailableError(
+          coupon.code,
+          coupon.currency,
+          checkoutCurrency,
+        );
+      }
+      if (eligibility.outcome === 'ineligible') {
+        if (validatePromoCodes) throw new CouponCodeNotApplicableError(coupon.code);
+        continue;
+      }
+
+      promoCoupons.push(coupon);
+      if (coupon.type === CouponType.FREE_SHIP) {
+        freeShipCoupon = coupon;
+        freeShipAmounts = eligibility.amounts;
+      }
+      else {
+        totalDiscount += Math.min(
+          eligibility.eligibleSubtotal,
+          computeCouponDiscount(coupon, eligibility.amounts, eligibility.eligibleSubtotal),
+        );
+      }
+    }
+
+    const shippingDiscountMinor = input.shippingShop && freeShipCoupon
+      ? input.shippingShop.charge.totalMinor
+      : 0;
+    const shippingDiscounts = shippingDiscountMinor > 0 && freeShipCoupon && freeShipAmounts
+      ? [{
+        couponId: freeShipCoupon.id,
+        code: freeShipCoupon.code,
+        type: 'free_ship' as const,
+        appliesTo: freeShipCoupon.appliesTo,
+        appliesProductIds: [...freeShipCoupon.appliesProductIds],
+        minOrderType: freeShipCoupon.minOrderType,
+        minOrderValue: freeShipAmounts.minOrderValue,
+        minProducts: freeShipCoupon.minProducts,
+        maxUses: freeShipCoupon.maxUses,
+        maxUsesPerUser: freeShipCoupon.maxUsesPerUser,
+        usesCount: freeShipCoupon.usesCount,
+        waivedMinor: shippingDiscountMinor,
+        currency: checkoutCurrency,
+      }]
+      : [];
+
+    return {
+      shopId,
+      items,
+      subtotal,
+      totalDiscount,
+      promoCoupons,
+      shippingDiscountMinor,
+      shippingDiscounts,
+    };
+  }
+
+  private async loadUserUsageCounts(
+    coupons: CouponEntity[],
+    userId?: string,
+  ): Promise<Map<string, number>> {
+    if (coupons.length === 0 || !userId) {
+      return new Map();
+    }
+
+    return this.couponRepository.countUsagesByUser(
+      coupons.map((coupon) => coupon.id),
+      userId,
+    );
   }
 }

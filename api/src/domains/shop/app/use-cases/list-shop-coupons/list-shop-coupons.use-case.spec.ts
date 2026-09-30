@@ -1,9 +1,9 @@
 import type { EntityManager } from '@mikro-orm/postgresql';
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import { CouponEntity } from '~/domains/coupon/infra/persistence/entities/coupon.entity';
 import { UserStatus } from '~/domains/auth/domain/enums/user-status.enum';
 import { ShopEntity } from '../../../infra/persistence/entities/shop.entity';
+import { ShopAccessDeniedError, ShopNotFoundError } from '../../errors/shop-app.error';
 import { ListShopCouponsUseCase } from './list-shop-coupons.use-case';
 
 describe('ListShopCouponsUseCase', () => {
@@ -121,7 +121,7 @@ describe('ListShopCouponsUseCase', () => {
       buildActor('user-1'),
       'shop-1',
       { page: 1, limit: 20 },
-    )).rejects.toBeInstanceOf(NotFoundException);
+    )).rejects.toBeInstanceOf(ShopNotFoundError);
   });
 
   it('throws when the actor cannot manage the shop', async () => {
@@ -131,6 +131,6 @@ describe('ListShopCouponsUseCase', () => {
       buildActor('user-2'),
       'shop-1',
       { page: 1, limit: 20 },
-    )).rejects.toBeInstanceOf(ForbiddenException);
+    )).rejects.toBeInstanceOf(ShopAccessDeniedError);
   });
 });

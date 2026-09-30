@@ -16,6 +16,7 @@ import { CategoryModule } from '../category/category.module';
 import { ShopModule } from '../shop/shop.module';
 import { ShippingModule } from '../shipping/shipping.module';
 import { CouponModule } from '../coupon/coupon.module';
+import { PromotionModule } from '../promotion/promotion.module';
 import { ProductImageService } from './app/services/product-image.service';
 import { ReviewImageService } from './app/services/review-image.service';
 import { PendingReviewImageUploadService } from './app/pending-review-image-upload.service';
@@ -153,6 +154,7 @@ import { STOREFRONT_PRICING_CONFIG, buildStorefrontPricingConfig } from '~/platf
     ShippingModule,
     CategoryModule,
     CouponModule,
+    PromotionModule,
     StorageModule,
     AiModule,
     ImageTransformModule,

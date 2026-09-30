@@ -1,9 +1,39 @@
 import type { EntityManager } from '@mikro-orm/postgresql';
+import { MoneyConversionService } from '~/integrations/currency/money-conversion.service';
+import { RoundingPolicyService } from '~/integrations/currency/rounding-policy.service';
 import { CartKind } from '../../domain/enums/cart-kind.enum';
 import type { CartSnapshot } from '../cart.types';
 import { CouponPricingService } from '../../../coupon/app/services/coupon-pricing.service';
+import { CouponPresentmentService } from '../../../coupon/app/services/coupon-presentment.service';
+import { MikroOrmCouponRepository } from '../../../coupon/infra/persistence/repositories/mikro-orm-coupon.repository';
 import { CheckoutShippingUnavailableError } from '../../../order/app/errors/order-app.error';
 import { CartPricingService } from './cart-pricing.service';
+
+/**
+ * Coupon pricing over an identity-only conversion seam: these cases price USD
+ * coupons in a USD cart, so any cross-currency lookup means the fixture is
+ * wrong and should fail rather than silently pass.
+ */
+function buildCouponPricingService(entityManager: EntityManager): CouponPricingService {
+  const fxRateService = {
+    getLatestRate: jest.fn(async (input: { fromCurrency: string; toCurrency: string }) =>
+      input.fromCurrency === input.toCurrency
+        ? {
+          fromCurrency: input.fromCurrency,
+          toCurrency: input.toCurrency,
+          rate: '1',
+          effectiveAt: new Date(),
+          source: 'identity',
+        }
+        : null),
+  };
+
+  return new CouponPricingService(
+    new MikroOrmCouponRepository(entityManager),
+    new CouponPresentmentService(new MoneyConversionService(fxRateService as never, new RoundingPolicyService())),
+    { findBestSalesForProducts: jest.fn().mockResolvedValue(new Map()) } as never,
+  );
+}
 
 const cart: CartSnapshot = {
   id: 'cart-1',
@@ -57,7 +87,7 @@ describe('CartPricingService', () => {
       listOriginCountries: jest.fn().mockResolvedValue(['US']),
     };
     const service = new CartPricingService(
-      new CouponPricingService(entityManager),
+      buildCouponPricingService(entityManager),
       shippingQuoteService as never,
     );
 
@@ -98,6 +128,7 @@ describe('CartPricingService', () => {
       type: 'free_ship',
       percentOff: 0,
       amountOff: 0,
+      currency: 'USD',
     };
     const couponRepository = { find: jest.fn().mockResolvedValue([freeShipCoupon]) };
     const entityManager = {
@@ -114,7 +145,7 @@ describe('CartPricingService', () => {
       listOriginCountries: jest.fn().mockResolvedValue(['US']),
     };
     const service = new CartPricingService(
-      new CouponPricingService(entityManager),
+      buildCouponPricingService(entityManager),
       shippingQuoteService as never,
     );
 
@@ -153,7 +184,7 @@ describe('CartPricingService', () => {
       listOriginCountries: jest.fn(),
     };
     const service = new CartPricingService(
-      new CouponPricingService(entityManager),
+      buildCouponPricingService(entityManager),
       shippingQuoteService as never,
     );
 

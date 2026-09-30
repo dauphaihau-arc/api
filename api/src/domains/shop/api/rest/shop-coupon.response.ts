@@ -9,6 +9,7 @@ export function toShopCouponResponse(coupon: ShopCouponSummary) {
     shop: coupon.shopId,
     code: coupon.code,
     type: coupon.type,
+    currency: coupon.currency,
     applies_to: coupon.appliesTo,
     applies_product_ids: coupon.appliesProductIds,
     amount_off: coupon.amountOff,
@@ -23,6 +24,7 @@ export function toShopCouponResponse(coupon: ShopCouponSummary) {
     min_products: coupon.minProducts,
     is_active: coupon.isActive,
     is_auto_sale: coupon.isAutoSale,
+    visibility: coupon.visibility,
     created_at: coupon.createdAt,
     updated_at: coupon.updatedAt,
   };

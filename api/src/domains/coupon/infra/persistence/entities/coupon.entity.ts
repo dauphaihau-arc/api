@@ -6,6 +6,7 @@ import { ShopEntity } from '~/domains/shop/infra/persistence/entities/shop.entit
 import { CouponAppliesTo } from '../../../domain/enums/coupon-applies-to.enum';
 import { CouponMinOrderType } from '../../../domain/enums/coupon-min-order-type.enum';
 import { CouponType } from '../../../domain/enums/coupon-type.enum';
+import { CouponVisibility } from '../../../domain/enums/coupon-visibility.enum';
 
 @Entity({ tableName: 'coupons' })
 @Index({ properties: ['shop'] })
@@ -29,6 +30,15 @@ export class CouponEntity extends AbstractBaseEntity {
 
   @Enum({ items: () => CouponType })
   type!: CouponType;
+
+  /**
+   * Currency the monetary fields are denominated in. It is snapshotted from
+   * the owning Shop's currency when the Coupon is created and never rewritten
+   * afterwards, so a later Shop currency change cannot silently redefine an
+   * existing `amountOff` or `minOrderValue`.
+   */
+  @Property({ length: 3 })
+  currency!: string;
 
   @Property({
     fieldName: 'amount_off', type: 'numeric', precision: 12, scale: 2, default: 0, 
@@ -69,4 +79,7 @@ export class CouponEntity extends AbstractBaseEntity {
 
   @Property({ fieldName: 'is_auto_sale', default: false })
   isAutoSale = false;
+
+  @Enum({ items: () => CouponVisibility, fieldName: 'visibility' })
+  visibility = CouponVisibility.CODE_ONLY;
 }

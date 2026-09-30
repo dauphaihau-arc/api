@@ -20,6 +20,10 @@ import { Throttle } from '@nestjs/throttler';
 import type { Request } from 'express';
 import { CHECKOUT_CONFIG, type CheckoutConfig } from '~/platform/config/checkout.config';
 import { GuestCartSessionService } from '~/domains/cart/api/rest/guest-cart-session.service';
+import {
+  isCouponAppError,
+  mapCouponAppErrorToHttpException,
+} from '~/domains/coupon/api/rest/coupon-http-error-mapper';
 import { CreateGuestCheckoutQuoteForBuyNowUseCase } from '~/domains/checkout/app/use-cases/create-guest-checkout-quote-for-buy-now/create-guest-checkout-quote-for-buy-now.use-case';
 import { CreateGuestOrderForBuyNowUseCase } from '~/domains/checkout/app/use-cases/create-guest-order-for-buy-now/create-guest-order-for-buy-now.use-case';
 import { CreateGuestCheckoutQuoteFromCartUseCase } from '~/domains/checkout/app/use-cases/create-guest-checkout-quote-from-cart/create-guest-checkout-quote-from-cart.use-case';
@@ -235,6 +239,10 @@ export class CheckoutController {
   private throwMappedOrderError(error: unknown): never {
     if (isCheckoutAppError(error)) {
       throw mapCheckoutAppErrorToHttpException(error);
+    }
+
+    if (isCouponAppError(error)) {
+      throw mapCouponAppErrorToHttpException(error);
     }
 
     throw error;

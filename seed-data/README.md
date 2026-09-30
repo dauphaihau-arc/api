@@ -4,6 +4,8 @@ Expected layout:
 
 - `seed-data/shops.tsv`
 - `seed-data/shops.local.tsv` (optional, local-only)
+- `seed-data/shipping-profiles.tsv`
+- `seed-data/shipping-profiles.local.tsv` (optional, local-only)
 - `seed-data/auth-roles.tsv`
 - `seed-data/auth-permissions.tsv`
 - `seed-data/auth-role-permissions.tsv`
@@ -51,6 +53,20 @@ Rules:
 - Preference rows must use supported marketplace values for `region`, `language`, and `currency`.
 - Shop metadata lives in `seed-data/shops.tsv` and should use `shop_slug` as the stable seed identifier.
 - Optional local-only shops can live in `seed-data/shops.local.tsv`.
+- Shipping profile metadata lives in `seed-data/shipping-profiles.tsv`.
+- Optional local-only shipping profiles can live in `seed-data/shipping-profiles.local.tsv`.
+- A shipping profile row uses `shop_slug` = `*` to seed the profile for every shop derived from `shops.tsv` plus `shops.local.tsv`; a row naming a shop explicitly replaces the wildcard row with the same `name` for that shop only.
+- A local row with the same `shop_slug` + `name` as a shared row replaces the whole profile, rates included.
+- Profile identity is `shop_slug` + `name`; renaming a profile in the TSV creates a new profile instead of renaming the seeded one, and the same pair must not appear twice in one file.
+- `name` is limited to `80` characters, `ship_from_country` is an uppercase ISO 3166-1 alpha-2 code, and `ship_from_postal` is limited to `20` characters.
+- `status` is optional and defaults to `draft`; supported values are `draft`, `active`, and `archived`.
+- `is_default` is optional and defaults to `false`. It may only be `true` for a profile that is checkout ready: `active`, both processing time bounds set, at least one rate, and delivery time bounds on every rate. At most one profile per shop may hold it.
+- `processing_time_min_days` and `processing_time_max_days` are set together or left blank, and `min` must not exceed `max`.
+- `ship_from_postal` may be blank; the seeder then picks a deterministic postal code per shop.
+- `rates_json` is a JSON array of `{ "destination_scope", "destination_country", "one_item_fee_minor", "additional_item_fee_minor", "delivery_time_min_days", "delivery_time_max_days" }` objects; array order becomes rate `position`.
+- Each rate needs `destination_scope` `country` (with an uppercase `destination_country`) or `everywhere_else` (without `destination_country`), plus both fee columns as non-negative minor units.
+- Rate delivery time bounds are set together or left blank, `min` must not exceed `max`, and one profile may declare each destination once.
+- Seeded rates mirror the TSV: a rate the row no longer declares is removed from profiles that already exist.
 - Product metadata lives in `seed-data/products.tsv`.
 - `seed-data/products.tsv` may include a `state` column; blank defaults to `active`.
 - Product rows use `options_json`, a JSON array of `{ "key", "name", "values": [{ "key", "value" }] }` objects. Product option and value keys are stable seed identities; do not rename them for display-only label changes.
@@ -96,6 +112,8 @@ Rules:
 - Optional local-only exchange rates can live in `seed-data/exchange-rates.local.tsv`.
 - Exchange-rate TSV should contain direct currency pairs because current FX lookup reads `from_currency -> to_currency` rows directly.
 - Coupon metadata lives in `seed-data/coupons.tsv`.
+- Each coupon row includes a required `currency`: the canonical currency its `amount_off` and `min_order_value` are denominated in. It must equal the owning shop's `currency` in `shops.tsv`; the seeder fails on a mismatch instead of persisting an amount attributed to the wrong currency. Shopper-facing responses convert these amounts from that currency into the buyer's checkout currency.
+- Each coupon row includes a required `visibility` of `public` (listed to shoppers) or `code_only` (redeemable only with the code). Auto-sale rows keep `code_only`; they are never listed.
 - Coupon-to-product mappings live in `seed-data/coupon-products.tsv`.
 - Coupon seeds may use a seed-only `period` column instead of explicit `start_date` and `end_date`.
 - `period` uses `<start>..<end>` offsets relative to seed runtime, where each side is `now` or an `ms`-style duration like `4d`, `12h`, or `30m`.
@@ -106,7 +124,7 @@ Rules:
 - Draft products can omit image folders entirely; active products still require seeded images.
 - Local-only product images can live under `seed-data/images/products-local/` with the same shop/product slug structure. The local folder is checked before the tracked folder.
 - Each product folder must contain one `hero.*` image. Additional images should be named `detail-*` and are uploaded after `hero.*`.
-- Digital seeded products still use listing images, but the seeder skips shipping-profile creation for them.
+- Digital seeded products still use listing images, but the seeder skips shipping-profile assignment for them.
 - Review images should live under `seed-data/images/reviews/<shop-slug>/<product-slug>/<reviewer-email-slug>/`.
 - Use the slugified reviewer email for the last folder segment. Example: `member@example.com` becomes `member-example-com`.
 - Example review image folder: `seed-data/images/reviews/olive-atelier/canvas-market-tote/member-example-com/`.
@@ -141,3 +159,4 @@ Local-only workflow:
 - Put matching local images in `seed-data/images/products-local/<shop-slug>/<product-slug>/`.
 - Put local-only review images in `seed-data/images/reviews-local/<shop-slug>/<product-slug>/<reviewer-email-slug>/`.
 - Put local-only shops in `seed-data/shops.local.tsv` when products need a new local `shop_slug`.
+- Put local-only shipping profiles, or per-shop replacements of the shared ones, in `seed-data/shipping-profiles.local.tsv`.

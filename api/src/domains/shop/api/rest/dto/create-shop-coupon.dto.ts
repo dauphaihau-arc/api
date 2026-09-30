@@ -17,6 +17,7 @@ import {
 import { CouponAppliesTo } from '~/domains/coupon/domain/enums/coupon-applies-to.enum';
 import { CouponMinOrderType } from '~/domains/coupon/domain/enums/coupon-min-order-type.enum';
 import { CouponType } from '~/domains/coupon/domain/enums/coupon-type.enum';
+import { CouponVisibility } from '~/domains/coupon/domain/enums/coupon-visibility.enum';
 
 export class CreateShopCouponDto {
   @IsString()
@@ -129,4 +130,15 @@ export class CreateShopCouponDto {
   @Transform(({ value, obj: source }) => value ?? source.is_auto_sale)
   @IsBoolean()
   isAutoSale?: boolean;
+
+  @IsOptional()
+  @ApiPropertyOptional({
+    name: 'visibility',
+    enum: CouponVisibility,
+    default: CouponVisibility.CODE_ONLY,
+  })
+  @Expose({ name: 'visibility' })
+  @Transform(({ value, obj: source }) => value ?? source.visibility)
+  @IsEnum(CouponVisibility)
+  visibility?: CouponVisibility;
 }

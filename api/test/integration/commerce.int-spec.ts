@@ -751,6 +751,112 @@ describe('Commerce flow (integration)', () => {
     expect(updatedCartResponse.body.cart.shop_groups[0].items[0].quantity)
       .toBe(3);
 
+    const couponWindow = {
+      start_date: '2026-01-01T00:00:00.000Z',
+      end_date: '2027-01-01T00:00:00.000Z',
+      max_uses: 100,
+      max_uses_per_user: 3,
+    };
+
+    const couponBase = {
+      applies_to: 'all',
+      min_order_type: 'none',
+      ...couponWindow,
+    };
+
+    const publicCouponResponse = await agent
+      .post(`${API_PREFIX}/shops/${shopBody.id}/coupons`)
+      .send({
+        code: 'SAVE10',
+        type: 'percentage',
+        percent_off: 10,
+        visibility: 'public',
+        ...couponBase,
+      })
+      .expect(201);
+    expect(publicCouponResponse.body.coupon.visibility).toBe('public');
+
+    const shippingCouponResponse = await agent
+      .post(`${API_PREFIX}/shops/${shopBody.id}/coupons`)
+      .send({
+        code: 'FREESHIP',
+        type: 'free_ship',
+        visibility: 'public',
+        ...couponBase,
+      })
+      .expect(201);
+    expect(shippingCouponResponse.body.coupon.visibility).toBe('public');
+
+    const codeOnlyCouponResponse = await agent
+      .post(`${API_PREFIX}/shops/${shopBody.id}/coupons`)
+      .send({
+        code: 'HIDDEN5',
+        type: 'fixed_amount',
+        amount_off: 5,
+        ...couponBase,
+      })
+      .expect(201);
+    expect(codeOnlyCouponResponse.body.coupon.visibility).toBe('code_only');
+
+    const listCouponsResponse = await agent
+      .get(`${API_PREFIX}/cart/coupons`)
+      .query({ shop_id: shopBody.id })
+      .expect(200);
+
+    const listedCodes = (listCouponsResponse.body.coupons as Array<{ code: string }>)
+      .map((coupon) => coupon.code)
+      .sort();
+    expect(listedCodes).toEqual(['FREESHIP', 'SAVE10']);
+    expect(listCouponsResponse.body.coupons).toContainEqual(
+      expect.objectContaining({
+        code: 'SAVE10',
+        type: 'percentage',
+        applies_to: 'all',
+        percent_off: 10,
+        currency: 'USD',
+      }),
+    );
+
+    const codeOnlyApplyResponse = await agent
+      .post(`${API_PREFIX}/cart/coupons/apply`)
+      .send({
+        shop_id: shopBody.id,
+        code: 'HIDDEN5',
+        promo_codes: [],
+      })
+      .expect(201);
+
+    expect(codeOnlyApplyResponse.body).toEqual({
+      promo_codes: ['HIDDEN5'],
+      applied_coupons: [{ code: 'HIDDEN5', type: 'fixed_amount' }],
+    });
+
+    await agent
+      .post(`${API_PREFIX}/cart/coupons/apply`)
+      .send({
+        shop_id: shopBody.id,
+        code: 'FREESHIP',
+        promo_codes: ['SAVE10', 'HIDDEN5'],
+      })
+      .expect(422);
+
+    const stackedApplyResponse = await agent
+      .post(`${API_PREFIX}/cart/coupons/apply`)
+      .send({
+        shop_id: shopBody.id,
+        code: 'FREESHIP',
+        promo_codes: ['SAVE10'],
+      })
+      .expect(201);
+
+    expect(stackedApplyResponse.body).toEqual({
+      promo_codes: ['SAVE10', 'FREESHIP'],
+      applied_coupons: [
+        { code: 'SAVE10', type: 'percentage' },
+        { code: 'FREESHIP', type: 'free_ship' },
+      ],
+    });
+
     const tempCartResponse = await agent
       .post(`${API_PREFIX}/cart/items`)
       .send({
@@ -800,6 +906,219 @@ describe('Commerce flow (integration)', () => {
         total_selected_quantity: 0,
         total_quantity: 0,
       },
+    });
+  });
+
+  it('resolves coupon money in the shop currency against a VND checkout currency', async () => {
+    const email = `coupon-fx-${Date.now()}@example.com`;
+    const agent = request.agent(app.getHttpServer());
+
+    const registerResponse = await agent
+      .post(`${API_PREFIX}/auth/register`)
+      .set('X-Forwarded-For', randomForwardedIp())
+      .set('Idempotency-Key', randomUUID())
+      .send({
+        email,
+        password: VALID_TEST_PASSWORD,
+        displayName: 'Coupon Fx Buyer',
+      })
+      .expect(201);
+    const registerBody = registerResponse.body as unknown as AuthUserResponse;
+    await grantSellerRole(registerBody.user.id);
+
+    // The shop's currency is the Coupon's canonical currency; the buyer's cart
+    // is priced in VND, so every Coupon amount below must be converted before it
+    // is compared with or subtracted from VND money.
+    const shopResponse = await agent
+      .post(`${API_PREFIX}/shops`)
+      .send({
+        shop_name: `fxshop${Date.now().toString().slice(-6)}`,
+        currency: 'USD',
+      })
+      .expect(201);
+    const fxShopBody = shopResponse.body as { id: string; shop_name: string };
+
+    await sql.query(
+      `insert into "exchange_rates"
+         ("id", "created_at", "updated_at", "from_currency", "to_currency", "rate",
+          "effective_at", "expires_at", "source", "source_timestamp")
+       values ($1, now(), now(), 'USD', 'VND', '24803.0000000000',
+          now() - interval '1 day', null, 'integration-test', null)`,
+      [randomUUID()],
+    );
+
+    const categoryResponse = await agent
+      .post(`${API_PREFIX}/categories`)
+      .send({ name: 'FxBowls', rank: 1 })
+      .expect(201);
+    const fxCategoryBody = categoryResponse.body as { id: string };
+
+    const productResponse = await agent
+      .post(`${API_PREFIX}/shops/${fxShopBody.id}/products`)
+      .set('Idempotency-Key', randomUUID())
+      .send({
+        category_id: fxCategoryBody.id,
+        title: 'Fx Bowl',
+        description: 'Stoneware bowl priced in VND',
+        who_made: ProductWhoMade.I_DID,
+      })
+      .expect(201);
+    const fxProductId = productResponse.body.id as string;
+
+    await agent
+      .put(`${API_PREFIX}/shops/${fxShopBody.id}/products/${fxProductId}/images`)
+      .attach('images', VALID_JPEG_BUFFER, {
+        filename: 'fx-bowl.jpg',
+        contentType: 'image/jpeg',
+      })
+      .expect(204);
+
+    const productDraftResponse = await agent
+      .get(`${API_PREFIX}/shops/${fxShopBody.id}/products/${fxProductId}`)
+      .expect(200);
+    const fxProductDraft = productDraftResponse.body as { inventory: Array<{ id: string }> };
+    const fxInventoryId = fxProductDraft.inventory[0]?.id;
+
+    expect(fxInventoryId).toEqual(expect.any(String));
+
+    // 500,000 VND is about 20 USD, far below every coupon minimum below.
+    await seedPublishableInventory(sql, {
+      shopId: fxShopBody.id,
+      inventoryId: fxInventoryId,
+      sku: 'FX-BOWL-001',
+      stock: 8,
+      amountMinor: 500_000,
+      currency: 'VND',
+    });
+
+    await assignShippingProfile(agent, fxShopBody.id, fxProductId);
+
+    await agent
+      .post(`${API_PREFIX}/shops/${fxShopBody.id}/products/${fxProductId}/publish`)
+      .set('Idempotency-Key', randomUUID())
+      .expect(201);
+
+    await agent
+      .post(`${API_PREFIX}/cart/items`)
+      .send({ inventory_id: fxInventoryId, quantity: 1 })
+      .expect(201);
+
+    const couponWindow = {
+      start_date: '2026-01-01T00:00:00.000Z',
+      end_date: '2027-01-01T00:00:00.000Z',
+      max_uses: 100,
+      max_uses_per_user: 3,
+      applies_to: 'all',
+    };
+
+    // 120 USD is about 2,976,360 VND. A raw comparison would wrongly accept it
+    // for a 500,000 VND cart, so this Coupon must not be offered at all.
+    await agent
+      .post(`${API_PREFIX}/shops/${fxShopBody.id}/coupons`)
+      .send({
+        code: 'MIN120USD',
+        type: 'percentage',
+        percent_off: 15,
+        visibility: 'public',
+        min_order_type: 'order_total',
+        min_order_value: 120,
+        ...couponWindow,
+      })
+      .expect(201);
+
+    await agent
+      .post(`${API_PREFIX}/shops/${fxShopBody.id}/coupons`)
+      .send({
+        code: 'MIN10USD',
+        type: 'percentage',
+        percent_off: 10,
+        visibility: 'public',
+        min_order_type: 'order_total',
+        min_order_value: 10,
+        ...couponWindow,
+      })
+      .expect(201);
+
+    await agent
+      .post(`${API_PREFIX}/shops/${fxShopBody.id}/coupons`)
+      .send({
+        code: 'SAVE12USD',
+        type: 'fixed_amount',
+        amount_off: 12,
+        visibility: 'public',
+        min_order_type: 'none',
+        ...couponWindow,
+      })
+      .expect(201);
+
+    const listCouponsResponse = await agent
+      .get(`${API_PREFIX}/cart/coupons`)
+      .query({ shop_id: fxShopBody.id })
+      .expect(200);
+
+    const listCouponsPayload = listCouponsResponse.body as {
+      coupons: Array<{
+        code: string;
+        amount_off: number;
+        min_order_value: number;
+        currency: string;
+        is_eligible: boolean;
+        ineligible_reason: string | null;
+      }>;
+    };
+    const listedCoupons = listCouponsPayload.coupons;
+
+    // MIN120USD is discoverable but unaffordable for this cart: it is listed
+    // after the eligible Coupons, flagged with the rule it fails.
+    expect(listedCoupons.map((coupon) => coupon.code))
+      .toEqual(['MIN10USD', 'SAVE12USD', 'MIN120USD']);
+
+    // The offered amounts are the converted VND values the redemption path
+    // enforces, labelled with the VND checkout currency.
+    expect(listedCoupons).toContainEqual(expect.objectContaining({
+      code: 'MIN10USD',
+      min_order_value: 248_030,
+      currency: 'VND',
+      is_eligible: true,
+      ineligible_reason: null,
+    }));
+    expect(listedCoupons).toContainEqual(expect.objectContaining({
+      code: 'SAVE12USD',
+      amount_off: 297_636,
+      currency: 'VND',
+      is_eligible: true,
+      ineligible_reason: null,
+    }));
+    expect(listedCoupons).toContainEqual(expect.objectContaining({
+      code: 'MIN120USD',
+      min_order_value: 2_976_360,
+      currency: 'VND',
+      is_eligible: false,
+      ineligible_reason: 'min_order_value',
+    }));
+
+    // Redemption re-checks the converted minimum, so the unaffordable Coupon is
+    // rejected rather than applied at its USD face value.
+    await agent
+      .post(`${API_PREFIX}/cart/coupons/apply`)
+      .send({ shop_id: fxShopBody.id, code: 'MIN120USD', promo_codes: [] })
+      .expect(422);
+
+    // Pricing subtracts the converted fixed discount from VND money.
+    const pricedCartResponse = await agent
+      .patch(`${API_PREFIX}/cart/items`)
+      .send({
+        addition_info_shop_carts: [
+          { shop_id: fxShopBody.id, promo_codes: ['SAVE12USD'] },
+        ],
+      })
+      .expect(200);
+
+    expect(pricedCartResponse.body.summary).toMatchObject({
+      currency: 'VND',
+      subtotal_minor: 500_000,
+      discount_minor: 297_636,
+      total_minor: 202_364,
     });
   });
 });

@@ -1,13 +1,10 @@
 import { EntityManager } from '@mikro-orm/postgresql';
-import {
-  ForbiddenException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import { CouponType } from '~/domains/coupon/domain/enums/coupon-type.enum';
 import { CouponEntity } from '~/domains/coupon/infra/persistence/entities/coupon.entity';
 import { JobDispatcher } from '~/integrations/queue/app/ports/job-dispatcher';
+import { CouponNotFoundError, ShopAccessDeniedError } from '../../errors/shop-app.error';
 import { dispatchShopProjection } from '../shop-coupon-catalog-projection';
 
 @Injectable()
@@ -26,14 +23,14 @@ export class DeleteShopCouponUseCase {
     );
 
     if (!coupon || coupon.shop.id !== shopId) {
-      throw new NotFoundException('Coupon not found');
+      throw new CouponNotFoundError();
     }
 
     if (
       coupon.shop.ownerUser.id !== actor.userId
       && !actor.roles.includes('admin')
     ) {
-      throw new ForbiddenException('You do not own this shop');
+      throw new ShopAccessDeniedError();
     }
 
     await entityManager.remove(coupon).flush();

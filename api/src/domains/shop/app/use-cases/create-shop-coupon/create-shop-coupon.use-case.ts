@@ -1,17 +1,20 @@
 import { EntityManager } from '@mikro-orm/postgresql';
-import {
-  BadRequestException,
-  ForbiddenException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import { CouponAppliesTo } from '~/domains/coupon/domain/enums/coupon-applies-to.enum';
 import { CouponMinOrderType } from '~/domains/coupon/domain/enums/coupon-min-order-type.enum';
 import { CouponType } from '~/domains/coupon/domain/enums/coupon-type.enum';
+import { CouponVisibility } from '~/domains/coupon/domain/enums/coupon-visibility.enum';
 import { CouponEntity } from '~/domains/coupon/infra/persistence/entities/coupon.entity';
 import { JobDispatcher } from '~/integrations/queue/app/ports/job-dispatcher';
 import { ShopEntity } from '../../../infra/persistence/entities/shop.entity';
+import {
+  CouponCodeAlreadyExistsError,
+  CouponUsageLimitsInvalidError,
+  InvalidCouponWindowError,
+  ShopAccessDeniedError,
+  ShopNotFoundError,
+} from '../../errors/shop-app.error';
 import type { CreateShopCouponDto } from '../../../api/rest/dto/create-shop-coupon.dto';
 import type { ShopCouponSummary } from '../../shop.types';
 import { scheduleShopCouponCatalogProjection } from '../shop-coupon-catalog-projection';
@@ -32,22 +35,22 @@ export class CreateShopCouponUseCase {
     );
 
     if (!shop) {
-      throw new NotFoundException('Shop not found');
+      throw new ShopNotFoundError();
     }
 
     if (
       shop.ownerUser.id !== actor.userId
       && !actor.roles.includes('admin')
     ) {
-      throw new ForbiddenException('You do not own this shop');
+      throw new ShopAccessDeniedError();
     }
 
     if (new Date(body.startDate) > new Date(body.endDate)) {
-      throw new BadRequestException('endDate must be after startDate');
+      throw new InvalidCouponWindowError();
     }
 
     if (body.maxUsesPerUser > body.maxUses) {
-      throw new BadRequestException('maxUsesPerUser must be less than or equal to maxUses');
+      throw new CouponUsageLimitsInvalidError();
     }
 
     const existing = await entityManager.getRepository(CouponEntity).findOne({
@@ -56,13 +59,17 @@ export class CreateShopCouponUseCase {
     });
 
     if (existing) {
-      throw new BadRequestException('Coupon code already exists');
+      throw new CouponCodeAlreadyExistsError();
     }
 
     const coupon = entityManager.getRepository(CouponEntity).create({
       shop,
       code: body.code.toUpperCase(),
       type: body.type,
+      // The source currency of a Coupon is the owning Shop's currency; sellers
+      // cannot override it, so monetary fields never drift from the Shop they
+      // belong to.
+      currency: shop.currency,
       appliesTo: body.appliesTo ?? CouponAppliesTo.ALL,
       appliesProductIds: body.appliesTo === CouponAppliesTo.SPECIFIC
         ? (body.appliesProductIds ?? [])
@@ -83,6 +90,7 @@ export class CreateShopCouponUseCase {
         : 0,
       isActive: body.isActive ?? true,
       isAutoSale: body.isAutoSale ?? false,
+      visibility: body.visibility ?? CouponVisibility.CODE_ONLY,
     });
 
     await entityManager.persist(coupon).flush();
@@ -97,6 +105,7 @@ function toShopCouponSummary(coupon: CouponEntity): ShopCouponSummary {
     shopId: coupon.shop.id,
     code: coupon.code,
     type: coupon.type,
+    currency: coupon.currency,
     appliesTo: coupon.appliesTo,
     appliesProductIds: coupon.appliesProductIds,
     amountOff: Number(coupon.amountOff),
@@ -111,6 +120,7 @@ function toShopCouponSummary(coupon: CouponEntity): ShopCouponSummary {
     minProducts: coupon.minProducts,
     isActive: coupon.isActive,
     isAutoSale: coupon.isAutoSale,
+    visibility: coupon.visibility,
     createdAt: coupon.createdAt,
     updatedAt: coupon.updatedAt,
   };

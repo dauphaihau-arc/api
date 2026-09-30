@@ -18,6 +18,7 @@ import { CheckoutModule } from '~/domains/checkout/checkout.module';
 import { FulfillmentModule } from '~/domains/fulfillment/fulfillment.module';
 import { OrderModule } from '~/domains/order/order.module';
 import { ProductModule } from '~/domains/product/product.module';
+import { PromotionModule } from '~/domains/promotion/promotion.module';
 import { ShopModule } from '~/domains/shop/shop.module';
 import { ShippingModule } from '~/domains/shipping/shipping.module';
 import { ChatModule } from '~/domains/chat/chat.module';
@@ -74,6 +75,7 @@ import { WsModule } from '~/platform/ws/ws.module';
     ShippingModule,
     CategoryModule,
     ProductModule,
+    PromotionModule,
     CouponModule,
     CartModule,
     CheckoutModule,

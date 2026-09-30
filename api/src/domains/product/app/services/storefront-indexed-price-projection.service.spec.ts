@@ -31,9 +31,17 @@ describe('StorefrontIndexedPriceProjectionService', () => {
   function buildService(input?: {
     indexedPricePairs?: Array<{ marketCode: string; currency: string }>;
     autoSale?: { couponId: string; percentOff: number };
+    sale?: { promotionId: string; percentOff: number };
   }) {
     const couponAutoSaleProjectionReader: Pick<jest.Mocked<CouponAutoSaleProjectionReader>, 'findBestAutoSaleForProduct'> = {
       findBestAutoSaleForProduct: jest.fn().mockResolvedValue(input?.autoSale),
+    };
+    const saleProjectionReader = {
+      findBestSalesForProducts: jest.fn().mockResolvedValue(
+        input?.sale
+          ? new Map([['product-1', input.sale]])
+          : new Map(),
+      ),
     };
     const fxRateService: Pick<jest.Mocked<FxRateService>, 'getLatestRate'> = {
       getLatestRate: jest.fn(),
@@ -48,6 +56,7 @@ describe('StorefrontIndexedPriceProjectionService', () => {
         },
         new MoneyConversionService(fxRateService as never, roundingPolicyService),
         couponAutoSaleProjectionReader as never,
+        saleProjectionReader as never,
       ),
       couponAutoSaleProjectionReader,
     };
@@ -88,6 +97,66 @@ describe('StorefrontIndexedPriceProjectionService', () => {
         couponId: 'coupon-1',
         percentOff: 18,
       },
+    });
+  });
+
+  it('projects an active Promotion Sale and lets the highest reduction win', async () => {
+    const { service, couponAutoSaleProjectionReader } = buildService({
+      autoSale: { couponId: 'coupon-1', percentOff: 10 },
+      sale: { promotionId: 'promotion-1', percentOff: 25 },
+    });
+
+    const result = await service.projectProduct(buildProduct([
+      {
+        currency: 'USD',
+        amountMinor: 10_000,
+      },
+    ]));
+
+    expect(couponAutoSaleProjectionReader.findBestAutoSaleForProduct).toHaveBeenCalledWith({
+      shopId: 'shop-1',
+      productId: 'product-1',
+    });
+    expect(result.baseSummary).toEqual({
+      currency: 'USD',
+      minAmountMinor: 7500,
+      maxAmountMinor: 7500,
+      originalMinAmountMinor: 10_000,
+      originalMaxAmountMinor: 10_000,
+      autoSale: {
+        couponId: 'promotion-1',
+        percentOff: 25,
+      },
+    });
+  });
+
+  it('discounts every purchasable inventory item of a selected product', async () => {
+    const { service } = buildService({
+      sale: { promotionId: 'promotion-1', percentOff: 50 },
+    });
+
+    const result = await service.projectProduct({
+      id: 'product-1',
+      shop: { id: 'shop-1' },
+      inventoryRecords: {
+        getItems: () => [
+          { id: 'inventory-1', prices: { getItems: () => [{ currency: 'USD', amountMinor: 2000 }] } },
+          { id: 'inventory-2', prices: { getItems: () => [{ currency: 'USD', amountMinor: 3000 }] } },
+        ],
+      },
+    } as never);
+
+    expect(result.inventoryPricingById.get('inventory-1')?.basePrice).toEqual({
+      amountMinor: 1000,
+      originalAmountMinor: 2000,
+      currency: 'USD',
+      autoSale: { couponId: 'promotion-1', percentOff: 50 },
+    });
+    expect(result.inventoryPricingById.get('inventory-2')?.basePrice).toEqual({
+      amountMinor: 1500,
+      originalAmountMinor: 3000,
+      currency: 'USD',
+      autoSale: { couponId: 'promotion-1', percentOff: 50 },
     });
   });
 

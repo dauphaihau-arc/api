@@ -1,0 +1,31 @@
+import type { ShopSaleListResult, ShopSaleSummary } from '../../app/shop.types';
+
+export function toShopSaleResponse(sale: ShopSaleSummary) {
+  return {
+    id: sale.id,
+    shop: sale.shopId,
+    name: sale.name,
+    percent_off: sale.percentOff,
+    product_scope: sale.productScope,
+    product_ids: sale.productIds,
+    currency: sale.currency,
+    start_at: sale.startAt,
+    end_at: sale.endAt,
+    timezone: sale.timezone,
+    status: sale.status,
+    cancelled_at: sale.cancelledAt,
+    ended_at: sale.endedAt,
+    created_at: sale.createdAt,
+    updated_at: sale.updatedAt,
+  };
+}
+
+export function toShopSaleListResponse(result: ShopSaleListResult) {
+  return {
+    results: result.results.map(toShopSaleResponse),
+    page: result.page,
+    limit: result.limit,
+    total_pages: result.totalPages,
+    total_results: result.totalResults,
+  };
+}

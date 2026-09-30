@@ -6,15 +6,20 @@ import { CacheModule } from '~/integrations/cache/cache.module';
 import { IdempotencyModule } from '~/platform/idempotency/idempotency.module';
 import { QueueModule } from '~/integrations/queue/queue.module';
 import { CouponEntity } from '../coupon/infra/persistence/entities/coupon.entity';
+import { PromotionProductEntity } from '../promotion/infra/persistence/entities/promotion-product.entity';
+import { PromotionEntity } from '../promotion/infra/persistence/entities/promotion.entity';
 import { ShopRepository } from './app/ports/shop.repository';
 import { ShopAccessService } from './app/services/shop-access.service';
 import { BulkDeleteShopCouponsUseCase } from './app/use-cases/bulk-delete-shop-coupons/bulk-delete-shop-coupons.use-case';
 import { CreateShopCouponUseCase } from './app/use-cases/create-shop-coupon/create-shop-coupon.use-case';
+import { CreateShopSaleUseCase } from './app/use-cases/create-shop-sale/create-shop-sale.use-case';
 import { CreateShopUseCase } from './app/use-cases/create-shop/create-shop.use-case';
 import { DeleteShopCouponUseCase } from './app/use-cases/delete-shop-coupon/delete-shop-coupon.use-case';
 import { GetMyShopUseCase } from './app/use-cases/get-my-shop/get-my-shop.use-case';
 import { ListShopCouponsUseCase } from './app/use-cases/list-shop-coupons/list-shop-coupons.use-case';
+import { ListShopSalesUseCase } from './app/use-cases/list-shop-sales/list-shop-sales.use-case';
 import { ShopCouponsController } from './api/rest/shop-coupons.controller';
+import { ShopSalesController } from './api/rest/shop-sales.controller';
 import { ShopController } from './api/rest/shop.controller';
 import { MikroOrmShopRepository } from './infra/mikro-orm-shop.repository';
 import { ShopEntity } from './infra/persistence/entities/shop.entity';
@@ -26,9 +31,14 @@ import { ShopEntity } from './infra/persistence/entities/shop.entity';
     CacheModule,
     IdempotencyModule,
     QueueModule,
-    MikroOrmModule.forFeature([ShopEntity, CouponEntity]),
+    MikroOrmModule.forFeature([
+      ShopEntity,
+      CouponEntity,
+      PromotionEntity,
+      PromotionProductEntity,
+    ]),
   ],
-  controllers: [ShopController, ShopCouponsController],
+  controllers: [ShopController, ShopCouponsController, ShopSalesController],
   providers: [
     {
       provide: ShopRepository,
@@ -41,6 +51,8 @@ import { ShopEntity } from './infra/persistence/entities/shop.entity';
     ListShopCouponsUseCase,
     BulkDeleteShopCouponsUseCase,
     DeleteShopCouponUseCase,
+    CreateShopSaleUseCase,
+    ListShopSalesUseCase,
   ],
   exports: [
     ShopRepository,

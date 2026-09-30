@@ -18,7 +18,9 @@ import { CartUpdatePricingService } from './app/services/cart-update-pricing.ser
 import { CartPricingService } from './app/services/cart-pricing.service';
 import { ShippingModule } from '../shipping/shipping.module';
 import { AddCartItemUseCase } from './app/use-cases/add-cart-item/add-cart-item.use-case';
+import { ApplyCouponUseCase } from './app/use-cases/apply-coupon/apply-coupon.use-case';
 import { GetCartUseCase } from './app/use-cases/get-cart/get-cart.use-case';
+import { ListDiscoverableCouponsUseCase } from './app/use-cases/list-discoverable-coupons/list-discoverable-coupons.use-case';
 import { MergeGuestCartUseCase } from './app/use-cases/merge-guest-cart/merge-guest-cart.use-case';
 import { RemoveCartItemUseCase } from './app/use-cases/remove-cart-item/remove-cart-item.use-case';
 import { UpdateCartItemUseCase } from './app/use-cases/update-cart-item/update-cart-item.use-case';
@@ -70,6 +72,8 @@ import { CartItemEntity } from './infra/persistence/entities/cart-item.entity';
     AddCartItemUseCase,
     UpdateCartItemUseCase,
     RemoveCartItemUseCase,
+    ListDiscoverableCouponsUseCase,
+    ApplyCouponUseCase,
     GuestCartSessionService,
   ],
   exports: [

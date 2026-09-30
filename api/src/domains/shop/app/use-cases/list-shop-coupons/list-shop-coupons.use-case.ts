@@ -1,12 +1,9 @@
 import { EntityManager } from '@mikro-orm/postgresql';
-import {
-  ForbiddenException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import { CouponEntity } from '~/domains/coupon/infra/persistence/entities/coupon.entity';
 import { ShopEntity } from '../../../infra/persistence/entities/shop.entity';
+import { ShopAccessDeniedError, ShopNotFoundError } from '../../errors/shop-app.error';
 import type { ListShopCouponsQueryDto } from '../../../api/rest/dto/list-shop-coupons.query.dto';
 import type { ShopCouponListResult } from '../../shop.types';
 
@@ -20,20 +17,21 @@ export class ListShopCouponsUseCase {
     query: ListShopCouponsQueryDto,
   ): Promise<ShopCouponListResult> {
     const entityManager = this.entityManager.fork();
+
     const shop = await entityManager.getRepository(ShopEntity).findOne(
       { id: shopId },
       { populate: ['ownerUser'] },
     );
 
     if (!shop) {
-      throw new NotFoundException('Shop not found');
+      throw new ShopNotFoundError();
     }
 
     if (
       shop.ownerUser.id !== actor.userId
       && !actor.roles.includes('admin')
     ) {
-      throw new ForbiddenException('You do not own this shop');
+      throw new ShopAccessDeniedError();
     }
 
     const baseWhere: Record<string, unknown> = { shop: shopId };
@@ -53,9 +51,11 @@ export class ListShopCouponsUseCase {
     }
 
     const repository = entityManager.getRepository(CouponEntity);
+
     const where = query.is_auto_sale !== undefined
       ? { ...baseWhere, isAutoSale: query.is_auto_sale }
       : baseWhere;
+
     const [[results, totalResults], allCount, promoCodeCount, saleCount] = await Promise.all([
       repository.findAndCount(where, {
         orderBy: { createdAt: 'desc' },
@@ -73,6 +73,7 @@ export class ListShopCouponsUseCase {
         shopId: coupon.shop.id,
         code: coupon.code,
         type: coupon.type,
+        currency: coupon.currency,
         appliesTo: coupon.appliesTo,
         appliesProductIds: coupon.appliesProductIds,
         amountOff: Number(coupon.amountOff),
@@ -87,6 +88,7 @@ export class ListShopCouponsUseCase {
         minProducts: coupon.minProducts,
         isActive: coupon.isActive,
         isAutoSale: coupon.isAutoSale,
+        visibility: coupon.visibility,
         createdAt: coupon.createdAt,
         updatedAt: coupon.updatedAt,
       })),

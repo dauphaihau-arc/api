@@ -15,6 +15,11 @@ export interface ShopCouponSummary {
   shopId: string;
   code: string;
   type: string;
+  /**
+   * Currency the `amountOff` and `minOrderValue` amounts are denominated in.
+   * It is the owning Shop's currency snapshotted at Coupon creation.
+   */
+  currency: string;
   appliesTo: string;
   appliesProductIds: string[];
   amountOff: number;
@@ -29,6 +34,7 @@ export interface ShopCouponSummary {
   minProducts: number;
   isActive: boolean;
   isAutoSale: boolean;
+  visibility: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -44,6 +50,32 @@ export interface ShopCouponListResult {
     promo_code: number;
     sale: number;
   };
+}
+
+export interface ShopSaleSummary {
+  id: string;
+  shopId: string;
+  name: string;
+  percentOff: number;
+  productScope: string;
+  productIds: string[];
+  currency: string;
+  startAt: Date;
+  endAt: Date;
+  timezone: string;
+  status: string;
+  cancelledAt?: Date | null;
+  endedAt?: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface ShopSaleListResult {
+  results: ShopSaleSummary[];
+  page: number;
+  limit: number;
+  totalPages: number;
+  totalResults: number;
 }
 
 export interface CreateShopInput {

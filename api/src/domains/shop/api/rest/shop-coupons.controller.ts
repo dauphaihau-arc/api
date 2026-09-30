@@ -28,6 +28,10 @@ import { BulkDeleteShopCouponsDto } from './dto/bulk-delete-shop-coupons.dto';
 import { CreateShopCouponDto } from './dto/create-shop-coupon.dto';
 import { ListShopCouponsQueryDto } from './dto/list-shop-coupons.query.dto';
 import {
+  isShopAppError,
+  mapShopAppErrorToHttpException,
+} from './shop-http-error-mapper';
+import {
   toShopCouponListResponse,
   toShopCouponResponse,
 } from './shop-coupon.response';
@@ -57,13 +61,18 @@ export class ShopCouponsController {
     @Param('shop_id') shopId: string,
     @Body() body: CreateShopCouponDto,
   ) {
-    const coupon = await this.createShopCouponUseCase.execute(
-      currentUser,
-      shopId,
-      body,
-    );
+    try {
+      const coupon = await this.createShopCouponUseCase.execute(
+        currentUser,
+        shopId,
+        body,
+      );
 
-    return { coupon: toShopCouponResponse(coupon) };
+      return { coupon: toShopCouponResponse(coupon) };
+    }
+    catch (error) {
+      this.throwMappedShopError(error);
+    }
   }
 
   @Get()
@@ -78,8 +87,14 @@ export class ShopCouponsController {
     @Param('shop_id') shopId: string,
     @Query() query: ListShopCouponsQueryDto,
   ) {
-    return this.listShopCouponsUseCase.execute(currentUser, shopId, query)
-      .then(toShopCouponListResponse);
+    try {
+      return toShopCouponListResponse(
+        await this.listShopCouponsUseCase.execute(currentUser, shopId, query),
+      );
+    }
+    catch (error) {
+      this.throwMappedShopError(error);
+    }
   }
 
   @Post('bulk-delete')
@@ -119,7 +134,25 @@ export class ShopCouponsController {
     @Param('shop_id') shopId: string,
     @Param('coupon_id') couponId: string,
   ) {
-    await this.deleteShopCouponUseCase.execute(currentUser, shopId, couponId);
+    try {
+      await this.deleteShopCouponUseCase.execute(currentUser, shopId, couponId);
+    }
+    catch (error) {
+      this.throwMappedShopError(error);
+    }
+
     return { message: 'deleted successfully' };
+  }
+
+  /**
+   * Translates the coupon use cases' application errors into responses; anything
+   * the shop domain does not own is rethrown untouched.
+   */
+  private throwMappedShopError(error: unknown): never {
+    if (isShopAppError(error)) {
+      throw mapShopAppErrorToHttpException(error);
+    }
+
+    throw error;
   }
 }

@@ -14,6 +14,8 @@ import {
   CouponAutoSaleProjectionReader,
   type ProductAutoSaleProjection,
 } from '~/domains/coupon/app/ports/coupon-auto-sale-projection.reader';
+import { SaleProjectionReader } from '~/domains/promotion/app/ports/sale-projection.reader';
+import type { SaleProjection } from '~/domains/promotion/app/ports/sale-projection.reader';
 import {
   getActiveBasePrice,
   getActiveMarketPrice,
@@ -38,6 +40,7 @@ export class StorefrontIndexedPriceProjectionService {
     private readonly storefrontPricingConfig: StorefrontPricingConfig,
     private readonly moneyConversionService: MoneyConversionService,
     private readonly couponAutoSaleProjectionReader: CouponAutoSaleProjectionReader,
+    private readonly saleProjectionReader: SaleProjectionReader,
   ) {}
 
   async projectProduct(product: ProductEntity): Promise<{
@@ -48,14 +51,20 @@ export class StorefrontIndexedPriceProjectionService {
     const rateCache: FxRateCache = new Map();
     const inventoryPricingById = new Map<string, ProductInventoryPricingProjection>();
 
-    const autoSale = await this.couponAutoSaleProjectionReader.findBestAutoSaleForProduct({
-      shopId: product.shop.id,
-      productId: product.id,
-    });
+    const [couponAutoSale, salesByProductId] = await Promise.all([
+      this.couponAutoSaleProjectionReader.findBestAutoSaleForProduct({
+        shopId: product.shop.id,
+        productId: product.id,
+      }),
+      this.saleProjectionReader.findBestSalesForProducts({
+        targets: [{ shopId: product.shop.id, productId: product.id }],
+      }),
+    ]);
+    const sale = pickHighestReduction(couponAutoSale, salesByProductId.get(product.id));
 
     await Promise.all(
       product.inventoryRecords.getItems().map(async (inventory) => {
-        const pricingByMarket = await this.projectInventory(inventory, rateCache, autoSale);
+        const pricingByMarket = await this.projectInventory(inventory, rateCache, sale);
 
         if (pricingByMarket.basePrice || pricingByMarket.marketOverrides || pricingByMarket.resolvedByMarket) {
           inventoryPricingById.set(inventory.id, pricingByMarket);
@@ -167,6 +176,31 @@ export class StorefrontIndexedPriceProjectionService {
   }
 }
 
+
+/**
+ * The winning product-price reduction for a Product: the highest percentage of
+ * a legacy automatic-sale Coupon and a Promotion Sale. Overlapping reductions
+ * never compound, and the returned shape stays the projection metadata the
+ * catalog documents have always carried.
+ */
+function pickHighestReduction(
+  couponAutoSale: ProductAutoSaleProjection | undefined,
+  sale: SaleProjection | undefined,
+): ProductAutoSaleProjection | undefined {
+  const saleAsProjection = sale
+    ? { couponId: sale.promotionId, percentOff: sale.percentOff }
+    : undefined;
+
+  if (!couponAutoSale) {
+    return saleAsProjection;
+  }
+
+  if (!saleAsProjection || couponAutoSale.percentOff >= saleAsProjection.percentOff) {
+    return couponAutoSale;
+  }
+
+  return saleAsProjection;
+}
 
 function toBaseInventoryPrice(
   inventory: ProductInventoryEntity,

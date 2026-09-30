@@ -55,6 +55,11 @@ export const EXCHANGE_RATES_LOCAL_TSV_PATH = path.join(
 );
 export const SHOPS_TSV_PATH = path.join(SEED_DATA_DIR, 'shops.tsv');
 export const SHOPS_LOCAL_TSV_PATH = path.join(SEED_DATA_DIR, 'shops.local.tsv');
+export const SHIPPING_PROFILES_TSV_PATH = path.join(SEED_DATA_DIR, 'shipping-profiles.tsv');
+export const SHIPPING_PROFILES_LOCAL_TSV_PATH = path.join(
+  SEED_DATA_DIR,
+  'shipping-profiles.local.tsv',
+);
 
 export const PRODUCT_IMAGE_ROOT_DIRS = [
   path.join(SEED_DATA_DIR, 'images', 'products-local'),

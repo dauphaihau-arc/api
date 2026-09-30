@@ -11,7 +11,6 @@ import {
   Query,
   Req,
   Res,
-  UnprocessableEntityException,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -30,13 +29,15 @@ import {
 import { OptionalJwtAuthGuard } from '~/domains/auth/api/guard/optional-jwt-auth.guard';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import {
-  CouponCodeNotApplicableError,
-  CouponCodeNotFoundError,
-} from '~/domains/coupon/app/services/coupon-pricing.service';
+  isCouponAppError,
+  mapCouponAppErrorToHttpException,
+} from '~/domains/coupon/api/rest/coupon-http-error-mapper';
 import type { PricedCartSummary } from '~/domains/order/app/order.types';
 import { CartUpdatePricingService } from '../../app/services/cart-update-pricing.service';
 import { AddCartItemUseCase } from '../../app/use-cases/add-cart-item/add-cart-item.use-case';
+import { ApplyCouponUseCase } from '../../app/use-cases/apply-coupon/apply-coupon.use-case';
 import { GetCartUseCase } from '../../app/use-cases/get-cart/get-cart.use-case';
+import { ListDiscoverableCouponsUseCase } from '../../app/use-cases/list-discoverable-coupons/list-discoverable-coupons.use-case';
 import { MergeGuestCartUseCase } from '../../app/use-cases/merge-guest-cart/merge-guest-cart.use-case';
 import { RemoveCartItemUseCase } from '../../app/use-cases/remove-cart-item/remove-cart-item.use-case';
 import { UpdateCartItemUseCase } from '../../app/use-cases/update-cart-item/update-cart-item.use-case';
@@ -47,8 +48,15 @@ import {
   type CartSnapshot,
 } from '../../app/cart.types';
 import { mapCartAppErrorToHttpException } from './cart-http-error-mapper';
+import { CartNotFoundError } from '../../app/errors/cart-app.error';
+import {
+  toCartCouponListResponse,
+  toCartPromoCodeResponse,
+} from './cart-coupon.response';
 import { AddCartItemDto } from './dto/add-cart-item.dto';
+import { ApplyCartCouponDto } from './dto/apply-cart-coupon.dto';
 import { DeleteCartItemQueryDto } from './dto/delete-cart-item.query.dto';
+import { GetCartCouponsQueryDto } from './dto/get-cart-coupons.query.dto';
 import { GetCartQueryDto } from './dto/get-cart.query.dto';
 import { UpdateCartItemDto } from './dto/update-cart-item.dto';
 import { GuestCartSessionService } from './guest-cart-session.service';
@@ -70,6 +78,8 @@ export class CartController {
     private readonly addCartItemUseCase: AddCartItemUseCase,
     private readonly updateCartItemUseCase: UpdateCartItemUseCase,
     private readonly removeCartItemUseCase: RemoveCartItemUseCase,
+    private readonly listDiscoverableCouponsUseCase: ListDiscoverableCouponsUseCase,
+    private readonly applyCouponUseCase: ApplyCouponUseCase,
   ) {}
 
   @Get()
@@ -91,6 +101,73 @@ export class CartController {
 
     const cart = await this.getCartUseCase.execute(actor, query.cartId);
     return this.buildResponse(cart);
+  }
+
+  @Get('coupons')
+  @Header('Cache-Control', 'private, no-cache')
+  @ApiOperation({ summary: 'List eligible public coupons for the current cart' })
+  @ApiOkResponse({
+    description: 'Eligible public coupons for the selected shop items.',
+    schema: { type: 'object' },
+  })
+  async coupons(
+    @Req() request: CartRequest,
+    @Query() query: GetCartCouponsQueryDto,
+  ) {
+    const actor = this.resolveReadActor(request);
+
+    if (!actor) {
+      return toCartCouponListResponse([]);
+    }
+
+    const coupons = await this.listDiscoverableCouponsUseCase.execute({
+      actor,
+      cartId: query.cartId,
+      shopId: query.shopId,
+    });
+
+    return toCartCouponListResponse(coupons);
+  }
+
+  @Post('coupons/apply')
+  @Header('Cache-Control', 'private, no-store')
+  @ApiOperation({ summary: 'Select a coupon for the current cart' })
+  @ApiOkResponse({
+    description: 'Promo codes the cart holds after the selection.',
+    schema: { type: 'object' },
+  })
+  async applyCoupon(
+    @Req() request: CartRequest,
+    @Body() body: ApplyCartCouponDto,
+  ) {
+    const actor = this.resolveReadActor(request);
+
+    if (!actor) {
+      throw new NotFoundException('Cart not found');
+    }
+
+    try {
+      const { promoCodes, appliedCoupons } = await this.applyCouponUseCase.execute({
+        actor,
+        cartId: body.cartId,
+        shopId: body.shopId,
+        code: body.code,
+        promoCodes: body.promoCodes ?? [],
+      });
+
+      return toCartPromoCodeResponse(promoCodes, appliedCoupons);
+    }
+    catch (error) {
+      if (error instanceof CartNotFoundError) {
+        throw new NotFoundException('Cart not found');
+      }
+
+      if (isCouponAppError(error)) {
+        throw mapCouponAppErrorToHttpException(error);
+      }
+
+      throw error;
+    }
   }
 
   @Post('items')
@@ -287,12 +364,8 @@ export class CartController {
       });
     }
     catch (error) {
-      if (error instanceof CouponCodeNotFoundError) {
-        throw new NotFoundException('Coupon code not found');
-      }
-
-      if (error instanceof CouponCodeNotApplicableError) {
-        throw new UnprocessableEntityException(error.message);
+      if (isCouponAppError(error)) {
+        throw mapCouponAppErrorToHttpException(error);
       }
 
       throw error;

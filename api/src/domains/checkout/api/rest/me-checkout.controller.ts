@@ -21,6 +21,10 @@ import { JwtAuthGuard } from '~/domains/auth/api/guard/jwt-auth.guard';
 import { PermissionsGuard } from '~/domains/auth/api/guard/permissions.guard';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import {
+  isCouponAppError,
+  mapCouponAppErrorToHttpException,
+} from '~/domains/coupon/api/rest/coupon-http-error-mapper';
+import {
   isCheckoutAppError,
   mapCheckoutAppErrorToHttpException,
 } from './checkout-http-error-mapper';
@@ -183,6 +187,10 @@ export class MeCheckoutController {
   private throwMappedCheckoutError(error: unknown): never {
     if (isCheckoutAppError(error)) {
       throw mapCheckoutAppErrorToHttpException(error);
+    }
+
+    if (isCouponAppError(error)) {
+      throw mapCouponAppErrorToHttpException(error);
     }
 
     throw error;

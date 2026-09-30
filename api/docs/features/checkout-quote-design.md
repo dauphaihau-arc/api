@@ -168,6 +168,34 @@ That means:
 - quote totals should remain stable for the lifetime of the quote
 - order creation should compare current cart state to the stored quote before proceeding
 
+## Coupon Selection
+
+A seller marks each Coupon `public` or `code_only`. Only `public`, non-automatic
+sale Coupons are discoverable through the shopper coupon listing
+(`GET /cart/coupons?shop_id=...`); `code_only` Coupons are redeemed only when the
+buyer already holds the code, and automatic sale Coupons price items on their
+own. The listing returns every discoverable Coupon of the shop for the selected
+items, flagging each one with `is_eligible` and, when it cannot be redeemed for
+this cart, an `ineligible_reason` (`not_started`, `inactive`,
+`usage_limit_reached`, `user_usage_limit_reached`, `product_scope`,
+`min_order_value`, `min_products`; first matching rule wins in that order).
+Listing and redemption share one eligibility evaluator, so a Coupon the listing
+marks ineligible is exactly the one `validatePromoCodes` rejects. The only
+Coupons the listing omits are `code_only`, automatic sale, and expired Coupons,
+and any Coupon whose monetary fields have no exchange rate into the buyer's
+checkout currency. Items are ordered eligible first, then by `code`.
+
+A shop cart may hold at most two manually redeemed Coupons: at most one
+shipping Coupon (`FREE_SHIP`) and at most one merchandise Coupon
+(`FIXED_AMOUNT` or `PERCENTAGE`). `POST /cart/coupons/apply` adds a code next to
+the retained codes in the other slot, replacing any retained code in the same
+slot, and validates the whole resulting selection before returning it. It writes
+nothing: it returns the accepted `promo_codes` together with `applied_coupons`
+(`{ code, type }` per code), so a caller can stage a selection and act on each
+code's manual slot without a second lookup. An invalid combination is rejected
+rather than stacked, and cart pricing, quotes, and final order submission
+enforce the same rule.
+
 ## Boundary With Orders
 
 Orders should be created from the quote, not from raw cart totals.

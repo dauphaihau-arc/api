@@ -60,6 +60,15 @@ export async function seedCoupons(
       throw new Error(`Missing seeded shop for coupon: ${couponSeed.shopSlug}`);
     }
 
+    // The Coupon's canonical currency is the owning Shop's currency. A TSV that
+    // disagrees with the shop would persist an amount attributed to the wrong
+    // currency, so the seed fails instead of guessing.
+    if (couponSeed.currency !== shop.currency) {
+      throw new Error(
+        `Coupon ${couponSeed.code} currency ${couponSeed.currency} does not match shop ${shop.slug} currency ${shop.currency}`,
+      );
+    }
+
     const appliesProductIds: string[] = [];
 
     if (couponSeed.appliesProductTitles?.length) {
@@ -82,6 +91,7 @@ export async function seedCoupons(
         shop,
         code: couponSeed.code,
         type: couponSeed.type,
+        currency: couponSeed.currency,
         appliesTo: couponSeed.appliesTo,
         appliesProductIds,
         amountOff: couponSeed.amountOff ?? 0,
@@ -96,12 +106,14 @@ export async function seedCoupons(
         minProducts: couponSeed.minProducts ?? 0,
         isActive: couponSeed.isActive,
         isAutoSale: couponSeed.isAutoSale,
+        visibility: couponSeed.visibility,
       });
     existingCouponsByShopSlugAndCode.set(`${shop.slug}::${couponSeed.code}`, coupon);
 
     coupon.shop = shop;
     coupon.code = couponSeed.code;
     coupon.type = couponSeed.type;
+    coupon.currency = couponSeed.currency;
     coupon.appliesTo = couponSeed.appliesTo;
     coupon.appliesProductIds = appliesProductIds;
     coupon.amountOff = couponSeed.amountOff ?? 0;
@@ -115,6 +127,7 @@ export async function seedCoupons(
     coupon.minProducts = couponSeed.minProducts ?? 0;
     coupon.isActive = couponSeed.isActive;
     coupon.isAutoSale = couponSeed.isAutoSale;
+    coupon.visibility = couponSeed.visibility;
     coupon.usesCount = 0;
 
     em.persist(coupon);

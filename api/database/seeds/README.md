@@ -70,6 +70,15 @@ console.log(
 - Flush once after the full per-product update when possible.
 - Every seeded Inventory Item must be backed by exactly one default seller Stock Pool: the pool holds On-hand Quantity, Reserved Quantity, and On-hand Version, and the Inventory Item only mirrors them. A fresh `just seed-full` runs migrations on an empty schema, so the cutover backfill cannot create these pools; the product seeder must.
 
+## Shipping Profile Seeder Rules
+
+- Shipping Profiles come from `seed-data/shipping-profiles.tsv` and `seed-data/shipping-profiles.local.tsv`, never from profile data in code.
+- A `*` shop slug row applies to every seeded shop; a shop-named row replaces the wildcard row with the same profile name for that shop.
+- A local row replaces the shared row it matches, rates included.
+- Seeded profiles are keyed by `shop` + normalized name, so a renamed row seeds a new profile and leaves the old one alone.
+- Rates mirror the seed row: reconcile by destination (configured country or everywhere-else) instead of inserting rates only when the profile is created, so edited seed rates reach existing profiles.
+- Leave profiles the seed does not name untouched, and only release the shop-wide default when a seeded row designates one.
+
 ## Auth Seeder Rules
 
 - Seed mode may use lower bcrypt rounds than runtime auth.
