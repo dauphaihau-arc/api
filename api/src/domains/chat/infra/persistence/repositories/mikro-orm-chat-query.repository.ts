@@ -217,7 +217,7 @@ export class MikroOrmChatQueryRepository implements ChatQueryRepository {
 
     const products = await entityManager.getRepository(ProductEntity).find(
       { id: { $in: productIds } },
-      { populate: ['inventoryRecords.prices'] },
+      { populate: ['inventoryRecords.prices', 'inventoryRecords.shop', 'inventoryRecords.product'] },
     );
     const displayPrices = await this.resolveProductReferenceDisplayPrices(products, pricingMode);
 

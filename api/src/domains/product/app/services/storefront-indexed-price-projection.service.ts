@@ -6,7 +6,6 @@ import {
 } from '~/platform/config/storefront-pricing.config';
 import type { FxRateCache } from '~/integrations/currency/fx-rate.service';
 import { MoneyConversionService } from '~/integrations/currency/money-conversion.service';
-import { fromMinorUnitsExact, toMinorUnits } from '~/platform/money/money';
 import type { ProductEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product.entity';
 import type { ProductInventoryEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-inventory.entity';
 import type { VariantPriceEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/variant-price.entity';
@@ -15,7 +14,10 @@ import {
   type ProductAutoSaleProjection,
 } from '~/domains/coupon/app/ports/coupon-auto-sale-projection.reader';
 import { SaleProjectionReader } from '~/domains/promotion/app/ports/sale-projection.reader';
-import type { SaleProjection } from '~/domains/promotion/app/ports/sale-projection.reader';
+import {
+  applyPercentageReduction,
+  pickHighestPercentOff,
+} from '~/platform/pricing/percentage-reduction';
 import {
   getActiveBasePrice,
   getActiveMarketPrice,
@@ -60,7 +62,17 @@ export class StorefrontIndexedPriceProjectionService {
         targets: [{ shopId: product.shop.id, productId: product.id }],
       }),
     ]);
-    const sale = pickHighestReduction(couponAutoSale, salesByProductId.get(product.id));
+    const saleProjection = salesByProductId.get(product.id);
+    const percentOff = pickHighestPercentOff(couponAutoSale?.percentOff, saleProjection?.percentOff);
+    let sale: ProductAutoSaleProjection | undefined;
+
+    if (percentOff != null) {
+      sale = couponAutoSale?.percentOff === percentOff
+        ? { couponId: couponAutoSale.couponId, percentOff }
+        : saleProjection
+          ? { couponId: saleProjection.promotionId, percentOff }
+          : undefined;
+    }
 
     await Promise.all(
       product.inventoryRecords.getItems().map(async (inventory) => {
@@ -177,31 +189,6 @@ export class StorefrontIndexedPriceProjectionService {
 }
 
 
-/**
- * The winning product-price reduction for a Product: the highest percentage of
- * a legacy automatic-sale Coupon and a Promotion Sale. Overlapping reductions
- * never compound, and the returned shape stays the projection metadata the
- * catalog documents have always carried.
- */
-function pickHighestReduction(
-  couponAutoSale: ProductAutoSaleProjection | undefined,
-  sale: SaleProjection | undefined,
-): ProductAutoSaleProjection | undefined {
-  const saleAsProjection = sale
-    ? { couponId: sale.promotionId, percentOff: sale.percentOff }
-    : undefined;
-
-  if (!couponAutoSale) {
-    return saleAsProjection;
-  }
-
-  if (!saleAsProjection || couponAutoSale.percentOff >= saleAsProjection.percentOff) {
-    return couponAutoSale;
-  }
-
-  return saleAsProjection;
-}
-
 function toBaseInventoryPrice(
   inventory: ProductInventoryEntity,
 ): StorefrontIndexedInventoryPrice | undefined {
@@ -224,23 +211,20 @@ function applyAutoSale(
     return price;
   }
 
-  const baseAmountMinor = price.amountMinor;
-
-  const discountedAmountMinor = toMinorUnits(
-    fromMinorUnitsExact(baseAmountMinor, price.currency)
-      .times(100 - autoSale.percentOff)
-      .div(100),
+  const reduced = applyPercentageReduction(
+    price.amountMinor,
     price.currency,
+    autoSale.percentOff,
   );
 
-  if (discountedAmountMinor >= price.amountMinor) {
+  if (!reduced) {
     return price;
   }
 
   return {
     ...price,
-    amountMinor: discountedAmountMinor,
-    originalAmountMinor: baseAmountMinor,
+    amountMinor: reduced.amountMinor,
+    originalAmountMinor: reduced.originalAmountMinor,
     autoSale: {
       couponId: autoSale.couponId,
       percentOff: autoSale.percentOff,

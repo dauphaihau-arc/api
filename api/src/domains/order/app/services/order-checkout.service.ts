@@ -37,10 +37,12 @@ import type { LoadedCheckoutQuote } from './load-checkout-quote.service';
 import { OrderCheckoutOutboxService } from './order-checkout-outbox.service';
 import { CheckoutStockReservationPort } from '../../../checkout/app/ports/checkout-stock-reservation.port';
 import {
+  CheckoutQuotePricesChangedError,
   CheckoutQuoteReservationOutOfStockError,
   CheckoutQuoteReservationUnavailableError,
   CheckoutShippingUnavailableError,
 } from '../errors/order-app.error';
+import { resolveRefreshedCheckoutTotals } from '../../../checkout/app/services/checkout-quote-price-freshness';
 import {
   toPersistedOrderShippingSnapshot,
 } from '../../../checkout/app/checkout-shipping-snapshot.contract';
@@ -108,24 +110,34 @@ export class OrderCheckoutService {
       ? quote.checkoutCurrency
       : normalizeCurrency(input.currency);
 
-    const pricedCartSummary = quote
-      ? undefined
-      : await this.cartPricingService.buildPricedCartSummary({
-        userId: actor.type === 'user' ? actor.userId : undefined,
-        cart,
-        shippingAddress: input.shippingAddress,
-        shopAdjustments: input.shopAdjustments,
-      });
-
-    const pricedShops = quote?.shops ?? pricedCartSummary?.shops ?? [];
-
     if (quote) {
       await this.assertQuoteShippingStillAvailable(quote, input.shippingAddress);
     }
 
+    const pricedCartSummary = await this.cartPricingService.buildPricedCartSummary({
+      userId: actor.type === 'user' ? actor.userId : undefined,
+      cart,
+      shippingAddress: input.shippingAddress,
+      shopAdjustments: input.shopAdjustments,
+    });
+
+    if (quote) {
+      // An accepted quote is never a price reservation: the cart does not lock
+      // Sale prices, so the totals are re-derived here and compared with what
+      // the buyer accepted. A difference fails the commitment instead of
+      // charging an amount the buyer never agreed to.
+      const refreshedTotals = resolveRefreshedCheckoutTotals(quote, pricedCartSummary);
+
+      if (refreshedTotals) {
+        throw new CheckoutQuotePricesChangedError(refreshedTotals);
+      }
+    }
+
+    const pricedShops = quote?.shops ?? pricedCartSummary.shops;
+
     const totalMinor = quote
       ? quote.totalMinor
-      : toMinorUnits(pricedCartSummary?.totalPrice ?? 0, currency);
+      : toMinorUnits(pricedCartSummary.totalPrice, currency);
 
     if (pricedShops.length === 0) {
       throw new BadRequestException('No selected cart items to order');

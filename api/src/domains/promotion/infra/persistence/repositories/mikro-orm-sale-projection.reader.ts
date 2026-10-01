@@ -1,5 +1,6 @@
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
+import { Clock } from '~/platform/time/clock';
 import {
   SaleProjectionReader,
   type FindBestSalesForProductsInput,
@@ -13,7 +14,10 @@ import { PromotionEntity } from '../entities/promotion.entity';
 
 @Injectable()
 export class MikroOrmSaleProjectionReader extends SaleProjectionReader {
-  constructor(private readonly entityManager: EntityManager) {
+  constructor(
+    private readonly entityManager: EntityManager,
+    private readonly clock: Clock,
+  ) {
     super();
   }
 
@@ -26,7 +30,7 @@ export class MikroOrmSaleProjectionReader extends SaleProjectionReader {
       return bestByProductId;
     }
 
-    const now = input.at ?? new Date();
+    const now = input.at ?? this.clock.now();
     const shopIds = [...new Set(input.targets.map((target) => target.shopId))];
     const promotions = await this.entityManager.fork().getRepository(PromotionEntity).find(
       {

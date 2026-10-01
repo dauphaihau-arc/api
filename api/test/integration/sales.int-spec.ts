@@ -24,6 +24,7 @@ import { RoleEntity } from '~/domains/auth/infra/persistence/entities/role.entit
 import { StorageService } from '~/integrations/storage/app/ports/storage.service';
 import { LocalFileStorageService } from '~/integrations/storage/infra/local-file-storage.service';
 import { JobDispatcher } from '~/integrations/queue/app/ports/job-dispatcher';
+import { Clock } from '~/platform/time/clock';
 import { ObservabilityService } from '~/platform/observability/observability.service';
 import { RequestContextService } from '~/platform/request-context/request-context.service';
 import { createTestDatabase, dropTestDatabase } from '../support/test-postgres';
@@ -62,12 +63,19 @@ type ShopSaleResponse = {
   end_at: string;
   timezone: string;
   status: string;
+  cancelled_at?: string | null;
+  ended_at?: string | null;
 };
 
 type QuoteResponse = {
   quote_id: string;
   subtotal_minor: number;
   total_minor: number;
+  items?: Array<{
+    inventory_id: string;
+    unit_price_checkout_minor: number;
+    line_total_checkout_minor: number;
+  }>;
   shops: Array<{
     shop_id: string;
     subtotal_minor: number;
@@ -107,9 +115,22 @@ describe('Shop sales (integration)', () => {
   let storageRoot: string;
   let sql: Client;
   let categoryId: string | undefined;
+  let jobDispatcher: { dispatch: jest.Mock };
+
+  /**
+   * The instant every Sale lifecycle decision reads. Pinning it proves exact
+   * Promotion Period boundaries without waiting for real time to pass.
+   */
+  let testNow: Date;
+
+  function setTestNow(instant: Date) {
+    testNow = instant;
+  }
 
   beforeAll(async () => {
     originalEnv = { ...process.env };
+    testNow = new Date();
+    jobDispatcher = { dispatch: jest.fn().mockResolvedValue(undefined) };
     testDb = await createTestDatabase('sales');
     storageRoot = await mkdtemp(path.join(os.tmpdir(), 'api-sales-int-'));
 
@@ -163,7 +184,9 @@ describe('Shop sales (integration)', () => {
       .overrideProvider(StorageService)
       .useValue(new LocalFileStorageService({ driver: 'local', localRoot: storageRoot }))
       .overrideProvider(JobDispatcher)
-      .useValue({ dispatch: jest.fn().mockResolvedValue(undefined) })
+      .useValue(jobDispatcher)
+      .overrideProvider(Clock)
+      .useValue({ now: () => testNow })
       .compile();
 
     app = moduleFixture.createNestApplication();
@@ -398,6 +421,71 @@ describe('Shop sales (integration)', () => {
     return response.body as QuoteResponse;
   }
 
+  async function createSale(
+    seller: TestSeller,
+    body: Record<string, unknown>,
+  ): Promise<ShopSaleResponse> {
+    const response = await seller.agent
+      .post(`${API_PREFIX}/shops/${seller.shopId}/sales`)
+      .set('Idempotency-Key', randomUUID())
+      .send(body)
+      .expect(201);
+
+    return response.body.sale as ShopSaleResponse;
+  }
+
+  async function listSales(seller: TestSeller): Promise<ShopSaleResponse[]> {
+    const response = await seller.agent
+      .get(`${API_PREFIX}/shops/${seller.shopId}/sales`)
+      .query({ limit: 100 })
+      .expect(200);
+
+    return response.body.results as ShopSaleResponse[];
+  }
+
+  function cancelSale(seller: TestSeller, saleId: string) {
+    return seller.agent
+      .post(`${API_PREFIX}/shops/${seller.shopId}/sales/${saleId}/cancel`)
+      .set('Idempotency-Key', randomUUID());
+  }
+
+  function endSale(seller: TestSeller, saleId: string) {
+    return seller.agent
+      .post(`${API_PREFIX}/shops/${seller.shopId}/sales/${saleId}/end`)
+      .set('Idempotency-Key', randomUUID());
+  }
+
+  function bulkStopSales(seller: TestSeller, ids: string[]) {
+    return seller.agent
+      .post(`${API_PREFIX}/shops/${seller.shopId}/sales/bulk-stop`)
+      .set('Idempotency-Key', randomUUID())
+      .send({ ids });
+  }
+
+  /**
+   * Changes the regular price of an Inventory Item. This writes the same base
+   * `variant_prices` row the seller price-edit path owns, so the next quote and
+   * the next Sale projection both read the new regular price.
+   */
+  async function setRegularPriceMinor(
+    inventoryId: string,
+    amountMinor: number,
+  ): Promise<void> {
+    await sql.query(
+      `update "variant_prices"
+       set "amount_minor" = $2, "updated_at" = now()
+       where "product_inventory_id" = $1 and "market_code" is null and "active_to" is null`,
+      [inventoryId, amountMinor],
+    );
+  }
+
+  function submitCashOrder(buyer: TestBuyer, quoteId: string) {
+    return buyer.agent
+      .post(`${API_PREFIX}/me/checkout`)
+      .set('Idempotency-Key', randomUUID())
+      .send({ quote_id: quoteId, payment_type: 'cash' });
+  }
+
   it('creates an active selected-product Sale and discounts only its targets at checkout', async () => {
     const seller = await registerSeller('sale-active');
     const profile = await createActiveProfile(seller);
@@ -603,5 +691,558 @@ describe('Shop sales (integration)', () => {
     expect((disambiguated.body.sale as ShopSaleResponse).status).toBe('scheduled');
     expect((disambiguated.body.sale as ShopSaleResponse).timezone)
       .toBe('America/New_York');
+  });
+
+  it('takes the highest matching active Sale percentage and never compounds overlaps', async () => {
+    const seller = await registerSeller('sale-overlap');
+    const profile = await createActiveProfile(seller);
+    const product = await createPublishedProduct({
+      seller,
+      shippingProfileId: profile,
+      title: 'Overlap Mug',
+      sku: 'SALE-OVERLAP-1',
+      amountMinor: 10000,
+    });
+    const endLocal = utcLocalDateTime(new Date(Date.now() + TWO_DAYS_MS));
+
+    const twenty = await createSale(seller, {
+      name: 'Twenty off',
+      percent_off: 20,
+      product_scope: 'all',
+      timezone: 'UTC',
+      start_now: true,
+      end_local: endLocal,
+    });
+    const thirty = await createSale(seller, {
+      name: 'Thirty off',
+      percent_off: 30,
+      product_scope: 'all',
+      timezone: 'UTC',
+      start_now: true,
+      end_local: endLocal,
+    });
+
+    const buyer = await registerBuyer('sale-overlap');
+    await addCartItem(buyer, product.inventoryId, 1);
+
+    // 100.00 x (1 - 30%) = 70.00. Compounding would have produced 56.00.
+    expect((await createQuote(buyer)).subtotal_minor).toBe(7000);
+
+    // Stopping the winning Sale leaves the other eligible Sale in force.
+    await endSale(seller, thirty.id).expect(201);
+    expect((await createQuote(buyer)).subtotal_minor).toBe(8000);
+
+    await endSale(seller, twenty.id).expect(201);
+    expect((await createQuote(buyer)).subtotal_minor).toBe(10000);
+  });
+
+  it('includes a Product published after an all-Products Sale was created', async () => {
+    const seller = await registerSeller('sale-future');
+    const profile = await createActiveProfile(seller);
+
+    await createSale(seller, {
+      name: 'Everything off',
+      percent_off: 10,
+      product_scope: 'all',
+      timezone: 'UTC',
+      start_now: true,
+      end_local: utcLocalDateTime(new Date(Date.now() + TWO_DAYS_MS)),
+    });
+
+    const later = await createPublishedProduct({
+      seller,
+      shippingProfileId: profile,
+      title: 'Published After',
+      sku: 'SALE-FUTURE-1',
+      amountMinor: 5000,
+    });
+
+    const buyer = await registerBuyer('sale-future');
+    await addCartItem(buyer, later.inventoryId, 2);
+
+    expect((await createQuote(buyer)).subtotal_minor).toBe(9000);
+  });
+
+  it('recomputes a Sale from the new regular price after a price change', async () => {
+    const seller = await registerSeller('sale-reprice');
+    const profile = await createActiveProfile(seller);
+    const product = await createPublishedProduct({
+      seller,
+      shippingProfileId: profile,
+      title: 'Reprice Mug',
+      sku: 'SALE-REPRICE-1',
+      amountMinor: 10000,
+    });
+
+    await createSale(seller, {
+      name: 'Reprice twenty',
+      percent_off: 20,
+      product_scope: 'all',
+      timezone: 'UTC',
+      start_now: true,
+      end_local: utcLocalDateTime(new Date(Date.now() + TWO_DAYS_MS)),
+    });
+
+    const buyer = await registerBuyer('sale-reprice');
+    await addCartItem(buyer, product.inventoryId, 1);
+    expect((await createQuote(buyer)).subtotal_minor).toBe(8000);
+
+    await setRegularPriceMinor(product.inventoryId, 12000);
+
+    // 120.00 x (1 - 20%) = 96.00: the Sale tracks the current regular price
+    // instead of a frozen creation-time base.
+    expect((await createQuote(buyer)).subtotal_minor).toBe(9600);
+  });
+
+  it('activates inclusively at its start instant and stops exclusively at its end instant', async () => {
+    const seller = await registerSeller('sale-boundary');
+    const profile = await createActiveProfile(seller);
+    const product = await createPublishedProduct({
+      seller,
+      shippingProfileId: profile,
+      title: 'Boundary Mug',
+      sku: 'SALE-BOUNDARY-1',
+      amountMinor: 10000,
+    });
+    const buyer = await registerBuyer('sale-boundary');
+    await addCartItem(buyer, product.inventoryId, 1);
+
+    setTestNow(new Date('2026-06-01T09:59:59.999Z'));
+
+    const sale = await createSale(seller, {
+      name: 'Boundary Sale',
+      percent_off: 25,
+      product_scope: 'all',
+      timezone: 'UTC',
+      start_local: '2026-06-01T10:00',
+      end_local: '2026-06-01T11:00',
+    });
+
+    expect(sale.start_at).toBe('2026-06-01T10:00:00.000Z');
+    expect(sale.end_at).toBe('2026-06-01T11:00:00.000Z');
+    expect(sale.status).toBe('scheduled');
+    expect((await createQuote(buyer)).subtotal_minor).toBe(10000);
+
+    // One millisecond before the start: still not applied.
+    setTestNow(new Date('2026-06-01T09:59:59.999Z'));
+    expect((await listSales(seller))[0]?.status).toBe('scheduled');
+
+    // Exactly at the start instant: the start is inclusive.
+    setTestNow(new Date('2026-06-01T10:00:00.000Z'));
+    expect((await listSales(seller))[0]?.status).toBe('active');
+    expect((await createQuote(buyer)).subtotal_minor).toBe(7500);
+
+    // One millisecond before the end: still applied.
+    setTestNow(new Date('2026-06-01T10:59:59.999Z'));
+    expect((await createQuote(buyer)).subtotal_minor).toBe(7500);
+
+    // Exactly at the end instant: the end is exclusive.
+    setTestNow(new Date('2026-06-01T11:00:00.000Z'));
+    expect((await listSales(seller))[0]?.status).toBe('ended');
+    expect((await createQuote(buyer)).subtotal_minor).toBe(10000);
+  });
+
+  it('cancels scheduled Sales and ends active Sales individually and in bulk without removing them', async () => {
+    setTestNow(new Date('2026-07-01T00:00:00.000Z'));
+
+    const seller = await registerSeller('sale-stop');
+    const profile = await createActiveProfile(seller);
+    const product = await createPublishedProduct({
+      seller,
+      shippingProfileId: profile,
+      title: 'Stop Mug',
+      sku: 'SALE-STOP-1',
+      amountMinor: 10000,
+    });
+    const buyer = await registerBuyer('sale-stop');
+    await addCartItem(buyer, product.inventoryId, 1);
+
+    const scheduled = await createSale(seller, {
+      name: 'Scheduled stop',
+      percent_off: 10,
+      product_scope: 'all',
+      timezone: 'UTC',
+      start_local: '2026-07-02T10:00',
+      end_local: '2026-07-02T11:00',
+    });
+    const active = await createSale(seller, {
+      name: 'Active stop',
+      percent_off: 20,
+      product_scope: 'all',
+      timezone: 'UTC',
+      start_local: '2026-06-01T00:00',
+      end_local: '2026-07-30T00:00',
+    });
+
+    expect(scheduled.status).toBe('scheduled');
+    expect(active.status).toBe('active');
+    expect((await createQuote(buyer)).subtotal_minor).toBe(8000);
+
+    const cancelled = await cancelSale(seller, scheduled.id).expect(201);
+    expect((cancelled.body.sale as ShopSaleResponse).status).toBe('cancelled');
+    expect((cancelled.body.sale as ShopSaleResponse).cancelled_at).not.toBeNull();
+
+    const ended = await endSale(seller, active.id).expect(201);
+    expect((ended.body.sale as ShopSaleResponse).status).toBe('ended');
+    expect((ended.body.sale as ShopSaleResponse).ended_at).not.toBeNull();
+
+    // The stop is irreversible and the selling price is back to regular.
+    await cancelSale(seller, scheduled.id).expect(409);
+    await endSale(seller, active.id).expect(409);
+    expect((await createQuote(buyer)).subtotal_minor).toBe(10000);
+
+    // State rules are the same for the individual and the bulk action.
+    const scheduledTwo = await createSale(seller, {
+      name: 'Scheduled two',
+      percent_off: 15,
+      product_scope: 'all',
+      timezone: 'UTC',
+      start_local: '2026-07-03T10:00',
+      end_local: '2026-07-03T11:00',
+    });
+    const activeTwo = await createSale(seller, {
+      name: 'Active two',
+      percent_off: 25,
+      product_scope: 'all',
+      timezone: 'UTC',
+      start_local: '2026-06-01T00:00',
+      end_local: '2026-07-29T00:00',
+    });
+    await endSale(seller, scheduledTwo.id).expect(409);
+    await cancelSale(seller, activeTwo.id).expect(409);
+
+    const missingId = randomUUID();
+    const bulk = await bulkStopSales(seller, [
+      scheduledTwo.id,
+      activeTwo.id,
+      scheduled.id,
+      missingId,
+    ]).expect(201);
+
+    expect(bulk.body.succeeded_ids).toEqual([scheduledTwo.id, activeTwo.id]);
+    expect(bulk.body.failed).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: scheduled.id, code: 'NotStoppable' }),
+      expect.objectContaining({ id: missingId, code: 'NotFound' }),
+    ]));
+    expect((await createQuote(buyer)).subtotal_minor).toBe(10000);
+
+    // Every stopped Sale keeps its definition, scope and schedule.
+    const sales = await listSales(seller);
+    const stoppedIds = [scheduled.id, active.id, scheduledTwo.id, activeTwo.id];
+
+    expect(sales.map((entry) => entry.id).sort())
+      .toEqual(expect.arrayContaining(stoppedIds));
+    expect(sales.find((entry) => entry.id === scheduled.id)).toMatchObject({
+      name: 'Scheduled stop',
+      percent_off: 10,
+      product_scope: 'all',
+      start_at: '2026-07-02T10:00:00.000Z',
+      end_at: '2026-07-02T11:00:00.000Z',
+      status: 'cancelled',
+    });
+    expect(sales.find((entry) => entry.id === activeTwo.id)).toMatchObject({
+      name: 'Active two',
+      status: 'ended',
+    });
+
+    // The stop refreshes the affected catalog projections for its shop.
+    expect(jobDispatcher.dispatch.mock.calls).toEqual(expect.arrayContaining([
+      [
+        'catalog.project-shop-products',
+        { shopId: seller.shopId },
+        expect.objectContaining({
+          deduplicationKey: `catalog-project-shop-products--${seller.shopId}--sale-${scheduled.id}-cancel`,
+        }),
+      ],
+      [
+        'catalog.project-shop-products',
+        { shopId: seller.shopId },
+        expect.objectContaining({
+          deduplicationKey: `catalog-project-shop-products--${seller.shopId}--sale-${active.id}-end`,
+        }),
+      ],
+      [
+        'catalog.project-shop-products',
+        { shopId: seller.shopId },
+        expect.objectContaining({
+          deduplicationKey: `catalog-project-shop-products--${seller.shopId}--sale-${scheduledTwo.id}-bulk-stop`,
+        }),
+      ],
+    ]));
+  });
+
+  it('keeps committed Order prices after a Sale stops and the regular price changes', async () => {
+    const seller = await registerSeller('sale-frozen');
+    const profile = await createActiveProfile(seller);
+    const product = await createPublishedProduct({
+      seller,
+      shippingProfileId: profile,
+      title: 'Frozen Mug',
+      sku: 'SALE-FROZEN-1',
+      amountMinor: 10000,
+    });
+
+    const sale = await createSale(seller, {
+      name: 'Frozen twenty',
+      percent_off: 20,
+      product_scope: 'all',
+      timezone: 'UTC',
+      start_now: true,
+      end_local: utcLocalDateTime(new Date(Date.now() + TWO_DAYS_MS)),
+    });
+
+    const buyer = await registerBuyer('sale-frozen');
+    await addCartItem(buyer, product.inventoryId, 2);
+
+    const quote = await createQuote(buyer);
+    expect(quote.subtotal_minor).toBe(16000);
+
+    const orderResponse = await submitCashOrder(buyer, quote.quote_id).expect(201);
+    const orderId = orderResponse.body.order_shops[0].id as string;
+
+    await endSale(seller, sale.id).expect(201);
+    await setRegularPriceMinor(product.inventoryId, 15000);
+
+    const order = await sql.query(
+      'select "subtotal_minor", "discount_minor" from "orders" where "id" = $1',
+      [orderId],
+    );
+    expect(order.rows[0]).toEqual({ subtotal_minor: 16000, discount_minor: 0 });
+
+    const items = await sql.query(
+      'select "unit_price_minor", "line_total_minor" from "order_items" where "order_id" = $1',
+      [orderId],
+    );
+    expect(items.rows).toEqual([{ unit_price_minor: 8000, line_total_minor: 16000 }]);
+  });
+
+  it('refuses a stale accepted quote and requires the refreshed totals to be accepted', async () => {
+    const seller = await registerSeller('sale-stale');
+    const profile = await createActiveProfile(seller);
+    const product = await createPublishedProduct({
+      seller,
+      shippingProfileId: profile,
+      title: 'Stale Mug',
+      sku: 'SALE-STALE-1',
+      amountMinor: 10000,
+    });
+
+    const sale = await createSale(seller, {
+      name: 'Stale twenty-five',
+      percent_off: 25,
+      product_scope: 'all',
+      timezone: 'UTC',
+      start_now: true,
+      end_local: utcLocalDateTime(new Date(Date.now() + TWO_DAYS_MS)),
+    });
+
+    const buyer = await registerBuyer('sale-stale');
+    await addCartItem(buyer, product.inventoryId, 1);
+
+    const accepted = await createQuote(buyer);
+    expect(accepted.subtotal_minor).toBe(7500);
+
+    await endSale(seller, sale.id).expect(201);
+
+    const rejected = await submitCashOrder(buyer, accepted.quote_id).expect(409);
+    expect(rejected.body.code).toBe('CHECKOUT_QUOTE_PRICES_CHANGED');
+    expect(rejected.body.refreshed_totals).toMatchObject({
+      checkout_currency: 'USD',
+      subtotal_minor: 10000,
+      discount_minor: 0,
+    });
+
+    const ordersAfterRejection = await sql.query(
+      'select count(*)::int as count from "orders" where "user_id" = $1',
+      [buyer.userId],
+    );
+    expect(ordersAfterRejection.rows[0].count).toBe(0);
+
+    // Accepting the refreshed totals is an explicit new quote, and that quote
+    // commits at the price the buyer saw.
+    const refreshed = await createQuote(buyer);
+    expect(refreshed.subtotal_minor).toBe(10000);
+
+    const orderResponse = await submitCashOrder(buyer, refreshed.quote_id).expect(201);
+    const orderId = orderResponse.body.order_shops[0].id as string;
+    const items = await sql.query(
+      'select "unit_price_minor" from "order_items" where "order_id" = $1',
+      [orderId],
+    );
+    expect(items.rows).toEqual([{ unit_price_minor: 10000 }]);
+  });
+
+  it('prices the cart line with the active Sale and agrees with the accepted quote', async () => {
+    const seller = await registerSeller('sale-cart-line');
+    const shippingProfileId = await createActiveProfile(seller);
+    const product = await createPublishedProduct({
+      seller,
+      shippingProfileId,
+      title: 'Cart line product',
+      sku: 'CART-LINE-1',
+      amountMinor: 1500,
+    });
+
+    await createSale(seller, {
+      name: 'Cart line sale',
+      percent_off: 60,
+      product_scope: 'all',
+      timezone: 'UTC',
+      start_now: true,
+      end_local: utcLocalDateTime(new Date(Date.now() + TWO_DAYS_MS)),
+    });
+
+    const buyer = await registerBuyer('sale-cart-line');
+    await addCartItem(buyer, product.inventoryId, 1);
+
+    const cartResponse = await buyer.agent
+      .get(`${API_PREFIX}/cart`)
+      .expect(200);
+    const line = cartResponse.body.cart.shop_groups[0].items[0];
+
+    // The line shows what the buyer is actually charged, plus the regular price
+    // it was reduced from.
+    expect(line.inventory).toMatchObject({
+      amount_minor: 600,
+      original_amount_minor: 1500,
+      currency: 'USD',
+    });
+
+    const quote = await createQuote(buyer);
+
+    // The line, the per-item quote and the order the buyer accepts cannot
+    // disagree about the merchandise.
+    expect(quote.subtotal_minor).toBe(600);
+    expect(quote.subtotal_minor).toBe(line.inventory.amount_minor * line.quantity);
+    expect(quote.items).toEqual([
+      expect.objectContaining({
+        inventory_id: product.inventoryId,
+        unit_price_checkout_minor: 600,
+        line_total_checkout_minor: 600,
+      }),
+    ]);
+  });
+
+  it('rounds the cart line and the accepted quote identically at a half-cent boundary', async () => {
+    const seller = await registerSeller('sale-cart-rounding');
+    const shippingProfileId = await createActiveProfile(seller);
+    const product = await createPublishedProduct({
+      seller,
+      shippingProfileId,
+      title: 'Rounding product',
+      sku: 'CART-ROUND-1',
+      amountMinor: 1050,
+    });
+
+    await createSale(seller, {
+      name: 'Rounding sale',
+      percent_off: 5,
+      product_scope: 'all',
+      timezone: 'UTC',
+      start_now: true,
+      end_local: utcLocalDateTime(new Date(Date.now() + TWO_DAYS_MS)),
+    });
+
+    const buyer = await registerBuyer('sale-cart-rounding');
+    await addCartItem(buyer, product.inventoryId, 1);
+
+    const cartResponse = await buyer.agent
+      .get(`${API_PREFIX}/cart`)
+      .expect(200);
+    const line = cartResponse.body.cart.shop_groups[0].items[0];
+
+    // $10.50 less 5% is 997.5 minor units, and half-up is 998. Multiplying
+    // major units as a float first would round down to 997 and charge a
+    // different amount from the one the line shows.
+    expect(line.inventory).toMatchObject({
+      amount_minor: 998,
+      original_amount_minor: 1050,
+    });
+
+    const quote = await createQuote(buyer);
+
+    expect(quote.subtotal_minor).toBe(998);
+    expect(quote.items).toEqual([
+      expect.objectContaining({
+        inventory_id: product.inventoryId,
+        unit_price_checkout_minor: 998,
+      }),
+    ]);
+  });
+
+  describe('store timezone settings', () => {
+    function updateShopSettings(seller: TestSeller, timezone: unknown) {
+      return seller.agent
+        .patch(`${API_PREFIX}/shops/${seller.shopId}/settings`)
+        .set('Idempotency-Key', randomUUID())
+        .send({ timezone });
+    }
+
+    async function getMyShop(seller: TestSeller): Promise<{ id: string; timezone: string }> {
+      const response = await seller.agent
+        .get(`${API_PREFIX}/shops/me`)
+        .expect(200);
+
+      return response.body as { id: string; timezone: string };
+    }
+
+    it('starts at UTC and persists the store timezone the seller chooses', async () => {
+      const seller = await registerSeller('store-tz');
+
+      expect((await getMyShop(seller)).timezone).toBe('UTC');
+
+      const updated = await updateShopSettings(seller, 'Asia/Saigon').expect(200);
+      expect(updated.body).toMatchObject({ id: seller.shopId, timezone: 'Asia/Saigon' });
+
+      expect((await getMyShop(seller)).timezone).toBe('Asia/Saigon');
+    });
+
+    it('rejects a timezone that is not an IANA zone and keeps the stored one', async () => {
+      const seller = await registerSeller('store-tz-bad');
+      await updateShopSettings(seller, 'Asia/Saigon').expect(200);
+
+      await updateShopSettings(seller, 'Not/AZone').expect(400);
+
+      expect((await getMyShop(seller)).timezone).toBe('Asia/Saigon');
+    });
+
+    it('refuses a seller who does not own the shop', async () => {
+      const owner = await registerSeller('store-tz-owner');
+      const intruder = await registerSeller('store-tz-intruder');
+
+      await intruder.agent
+        .patch(`${API_PREFIX}/shops/${owner.shopId}/settings`)
+        .set('Idempotency-Key', randomUUID())
+        .send({ timezone: 'Asia/Saigon' })
+        .expect(403);
+
+      expect((await getMyShop(owner)).timezone).toBe('UTC');
+      expect((await getMyShop(intruder)).timezone).toBe('UTC');
+    });
+
+    it('leaves an existing sale schedule untouched when the store timezone changes', async () => {
+      const seller = await registerSeller('store-tz-sale');
+      await updateShopSettings(seller, 'Asia/Saigon').expect(200);
+
+      const sale = await createSale(seller, {
+        name: 'Timezone preserved',
+        percent_off: 20,
+        product_scope: 'all',
+        timezone: 'Asia/Saigon',
+        start_local: '2026-12-01T09:00',
+        end_local: '2026-12-31T21:00',
+      });
+
+      await updateShopSettings(seller, 'America/New_York').expect(200);
+
+      const [listed] = await listSales(seller);
+      expect(listed.id).toBe(sale.id);
+      expect(listed.timezone).toBe('Asia/Saigon');
+      expect(listed.start_at).toBe(sale.start_at);
+      expect(listed.end_at).toBe(sale.end_at);
+
+      // The store default moved; the already scheduled Sale did not.
+      expect((await getMyShop(seller)).timezone).toBe('America/New_York');
+    });
   });
 });

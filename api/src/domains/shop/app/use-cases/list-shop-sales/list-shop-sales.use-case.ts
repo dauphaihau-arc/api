@@ -2,16 +2,20 @@ import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import { PromotionApplicationKind } from '~/domains/promotion/domain/enums/promotion-application-kind.enum';
-import { resolvePromotionStatus } from '~/domains/promotion/domain/promotion-lifecycle';
 import { PromotionEntity } from '~/domains/promotion/infra/persistence/entities/promotion.entity';
+import { Clock } from '~/platform/time/clock';
 import { ShopEntity } from '../../../infra/persistence/entities/shop.entity';
 import { ShopAccessDeniedError, ShopNotFoundError } from '../../errors/shop-app.error';
 import type { ListShopSalesQueryDto } from '../../../api/rest/dto/list-shop-sales.query.dto';
 import type { ShopSaleListResult } from '../../shop.types';
+import { toShopSaleSummary } from '../../sale-summary';
 
 @Injectable()
 export class ListShopSalesUseCase {
-  constructor(private readonly entityManager: EntityManager) {}
+  constructor(
+    private readonly entityManager: EntityManager,
+    private readonly clock: Clock,
+  ) {}
 
   async execute(
     actor: AuthenticatedUser,
@@ -46,26 +50,14 @@ export class ListShopSalesUseCase {
       populate: ['products'],
     });
 
-    const now = new Date();
+    const now = this.clock.now();
 
     return {
-      results: promotions.map((promotion) => ({
-        id: promotion.id,
-        shopId: shop.id,
-        name: promotion.name,
-        percentOff: promotion.percentOff ?? 0,
-        productScope: promotion.productScope,
-        productIds: promotion.products.getItems().map((target) => target.productId),
-        currency: promotion.currency,
-        startAt: promotion.startAt,
-        endAt: promotion.endAt,
-        timezone: promotion.timezone,
-        status: resolvePromotionStatus(promotion, now),
-        cancelledAt: promotion.cancelledAt ?? null,
-        endedAt: promotion.endedAt ?? null,
-        createdAt: promotion.createdAt,
-        updatedAt: promotion.updatedAt,
-      })),
+      results: promotions.map((promotion) => toShopSaleSummary(
+        promotion,
+        promotion.products.getItems().map((target) => target.productId),
+        now,
+      )),
       page: query.page,
       limit: query.limit,
       totalPages: Math.max(1, Math.ceil(totalResults / query.limit)),

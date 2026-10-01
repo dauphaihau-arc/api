@@ -1,11 +1,12 @@
 import {
-  Body, Controller, Get, Header, NotFoundException, Post, UseGuards, 
+  Body, Controller, Get, Header, NotFoundException, Param, Patch, Post, UseGuards, 
 } from '@nestjs/common';
 import {
   ApiCookieAuth,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
+  ApiParam,
   ApiTags,
 } from '@nestjs/swagger';
 import { RequirePermissions } from '~/platform/decorators/require-permissions.decorator';
@@ -16,8 +17,13 @@ import { JwtAuthGuard } from '~/domains/auth/api/guard/jwt-auth.guard';
 import { PermissionsGuard } from '~/domains/auth/api/guard/permissions.guard';
 import { CreateShopUseCase } from '../../app/use-cases/create-shop/create-shop.use-case';
 import { GetMyShopUseCase } from '../../app/use-cases/get-my-shop/get-my-shop.use-case';
+import { UpdateShopSettingsUseCase } from '../../app/use-cases/update-shop-settings/update-shop-settings.use-case';
 import { CreateShopDto } from './dto/create-shop.dto';
-import { mapShopAppErrorToHttpException } from './shop-http-error-mapper';
+import { UpdateShopSettingsDto } from './dto/update-shop-settings.dto';
+import {
+  isShopAppError,
+  mapShopAppErrorToHttpException,
+} from './shop-http-error-mapper';
 import { toShopResponse } from './shop.response';
 
 @Controller('shops')
@@ -28,6 +34,7 @@ export class ShopController {
   constructor(
     private readonly createShopUseCase: CreateShopUseCase,
     private readonly getMyShopUseCase: GetMyShopUseCase,
+    private readonly updateShopSettingsUseCase: UpdateShopSettingsUseCase,
   ) {}
 
   @Post()
@@ -69,5 +76,42 @@ export class ShopController {
     }
 
     return toShopResponse(shop);
+  }
+
+  @Patch(':shop_id/settings')
+  @Header('Cache-Control', 'private, no-store')
+  @RequirePermissions('shops.manage')
+  @ApiOperation({ summary: 'Update the shop store settings' })
+  @ApiParam({ name: 'shop_id', type: String })
+  @ApiOkResponse({
+    description: 'Updated shop.',
+    schema: { type: 'object' },
+  })
+  @ApiNotFoundResponse({ description: 'Shop was not found.' })
+  async updateSettings(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('shop_id') shopId: string,
+    @Body() body: UpdateShopSettingsDto,
+  ) {
+    try {
+      const shop = await this.updateShopSettingsUseCase.execute(
+        currentUser,
+        shopId,
+        { timezone: body.timezone },
+      );
+
+      return toShopResponse(shop);
+    }
+    catch (error) {
+      this.throwMappedShopError(error);
+    }
+  }
+
+  private throwMappedShopError(error: unknown): never {
+    if (isShopAppError(error)) {
+      throw mapShopAppErrorToHttpException(error);
+    }
+
+    throw error;
   }
 }

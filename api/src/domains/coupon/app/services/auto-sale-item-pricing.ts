@@ -1,4 +1,5 @@
-import { fromMinorUnits, toMinorUnits } from '../../../../platform/money/money';
+import { fromMinorUnits } from '../../../../platform/money/money';
+import { applyPercentageReduction } from '../../../../platform/pricing/percentage-reduction';
 import type { CartItemSnapshot } from '../../../cart/app/cart.types';
 import type { PricedCartItem } from '../../../order/app/order.types';
 import {
@@ -54,31 +55,45 @@ export function priceItems(
       );
 
     let autoSaleCoupon: CouponEntity | undefined;
-    let bestPrice = saleUnitPrice ?? baseUnitPrice;
+    // The winning price is tracked and stored in minor units: a candidate has
+    // to beat the price the buyer is already shown, and it has to round exactly
+    // as the catalog and the cart line round it.
+    let bestPriceMinor = snapshotPrice.amountMinor;
     let effectiveUnitPriceMinor = snapshotPrice.amountMinor;
 
     for (const coupon of activeAutoCoupons) {
       if (coupon.type !== CouponType.PERCENTAGE) continue;
-      const discounted = baseUnitPrice * (1 - (coupon.percentOff / 100));
 
-      if (discounted < bestPrice) {
-        bestPrice = discounted;
+      const discounted = applyPercentageReduction(
+        baseUnitPriceMinor,
+        pricingCurrency,
+        coupon.percentOff,
+      );
+
+      if (discounted && discounted.amountMinor < bestPriceMinor) {
+        bestPriceMinor = discounted.amountMinor;
         autoSaleCoupon = coupon;
-        effectiveUnitPriceMinor = toMinorUnits(discounted, pricingCurrency);
+        effectiveUnitPriceMinor = discounted.amountMinor;
       }
     }
 
     const sale = salesByProductId?.get(item.inventory.productId);
 
     if (sale) {
-      const discounted = baseUnitPrice * (1 - (sale.percentOff / 100));
+      const discounted = applyPercentageReduction(
+        baseUnitPriceMinor,
+        pricingCurrency,
+        sale.percentOff,
+      );
 
-      if (discounted < bestPrice) {
-        bestPrice = discounted;
+      if (discounted && discounted.amountMinor < bestPriceMinor) {
+        bestPriceMinor = discounted.amountMinor;
         autoSaleCoupon = undefined;
-        effectiveUnitPriceMinor = toMinorUnits(discounted, pricingCurrency);
+        effectiveUnitPriceMinor = discounted.amountMinor;
       }
     }
+
+    const bestPrice = fromMinorUnits(bestPriceMinor, pricingCurrency);
 
     const pricedItem: PricedCartItem = {
       cartItemId: item.id,

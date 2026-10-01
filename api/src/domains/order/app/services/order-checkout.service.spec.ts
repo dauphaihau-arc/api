@@ -9,7 +9,7 @@ import type { FulfillmentService } from '../../../fulfillment/app/services/fulfi
 import type { OrderInventoryOutboxService } from './order-inventory-outbox.service';
 import { OrderCheckoutService } from './order-checkout.service';
 import type { CartSnapshot } from '../../../cart/app/cart.types';
-import type { PricedCartSummary } from '../order.types';
+import type { PricedCartItem, PricedCartSummary } from '../order.types';
 import { PaymentType } from '../../domain/enums/payment-type.enum';
 import { OrderStatus } from '../../domain/enums/order-status.enum';
 import type { OrderTotalPolicyService } from './order-total-policy.service';
@@ -97,6 +97,7 @@ describe('OrderCheckoutService', () => {
     purchaseEligibilityResult?: { eligible: boolean; failures: Array<Record<string, unknown>> };
     shippingResolutions?: Array<Record<string, unknown>>;
     coupons?: Array<Record<string, unknown>>;
+    pricedCartSummary?: PricedCartSummary;
   }) {
     const orders: Array<Record<string, unknown>> = [];
     const inventory = {
@@ -168,7 +169,7 @@ describe('OrderCheckoutService', () => {
         callback(fakeEntityManager as unknown as EntityManager)),
     } as unknown as EntityManager;
     const couponPricingService: jest.Mocked<CartPricingService> = {
-      buildPricedCartSummary: jest.fn().mockResolvedValue(pricedCartSummary),
+      buildPricedCartSummary: jest.fn().mockResolvedValue(options?.pricedCartSummary ?? pricedCartSummary),
     } as unknown as jest.Mocked<CartPricingService>;
 
 
@@ -506,7 +507,18 @@ describe('OrderCheckoutService', () => {
       orderRepository,
       orderItemRepository,
       orderInventoryOutboxService,
-    } = buildService();
+    } = buildService({
+      pricedCartSummary: buildPricedCartSummaryMatchingQuote({
+        shops: [{
+          shopId: 'shop-1',
+          shopName: 'Shop 1',
+          subtotalMinor: 1800,
+          discountMinor: 0,
+          shippingMinor: 0,
+          items: [{ inventoryId: 'inventory-1', quantity: 2, unitPriceCheckoutMinor: 900 }],
+        }],
+      }),
+    });
 
     await service.createOrders(
       {
@@ -801,6 +813,61 @@ describe('OrderCheckoutService', () => {
     };
   }
 
+  /**
+   * Pricing that still matches an accepted quote's shops, so commitment's
+   * price-freshness revalidation passes and the test reaches the behaviour it
+   * targets.
+   */
+  function buildPricedCartSummaryMatchingQuote(
+    quote: {
+      shops: Array<{
+        shopId: string;
+        shopName: string;
+        subtotalMinor: number;
+        discountMinor: number;
+        shippingMinor: number;
+        items: Array<{
+          inventoryId: string;
+          quantity: number;
+          unitPriceCheckoutMinor: number;
+        }>
+      }>
+    },
+  ): PricedCartSummary {
+    const shops = quote.shops.map((shop) => ({
+      shopId: shop.shopId,
+      shopName: shop.shopName,
+      items: shop.items.map((item) => ({
+        inventoryId: item.inventoryId,
+        quantity: item.quantity,
+        unitPriceMinor: item.unitPriceCheckoutMinor,
+      })) as PricedCartItem[],
+      subtotal: shop.subtotalMinor / 100,
+      totalDiscount: shop.discountMinor / 100,
+      totalShippingFee: shop.shippingMinor / 100,
+      total: (shop.subtotalMinor - shop.discountMinor + shop.shippingMinor) / 100,
+      promoCoupons: [],
+      originCountries: [],
+    }));
+
+    const subtotalPrice = shops.reduce((total, shop) => total + shop.subtotal, 0);
+    const totalDiscount = shops.reduce((total, shop) => total + shop.totalDiscount, 0);
+    const totalShippingFee = shops.reduce((total, shop) => total + shop.totalShippingFee, 0);
+
+    return {
+      cart,
+      currency: 'USD',
+      shops,
+      subtotalPrice,
+      totalDiscount,
+      subtotalAfterDiscount: subtotalPrice - totalDiscount,
+      totalShippingFee,
+      totalPrice: subtotalPrice - totalDiscount + totalShippingFee,
+      totalSelectedQuantity: 2,
+      totalQuantity: 2,
+    };
+  }
+
   function buildQuotedCheckout(totalMinorOverride?: number) {
     const shipping = buildAcceptedShipping();
 
@@ -888,8 +955,10 @@ describe('OrderCheckoutService', () => {
 
   describe('OrderCheckoutService accepted shipping facts', () => {
     it('persists the accepted per-shop shipping snapshot and estimate instead of a fabricated date', async () => {
-      const { service, orderRepository } = buildService();
       const quote = buildQuotedCheckout();
+      const { service, orderRepository } = buildService({
+        pricedCartSummary: buildPricedCartSummaryMatchingQuote(quote),
+      });
 
       await service.createOrders(
         { type: 'user', userId: 'user-1', email: 'member@example.com' },
@@ -980,10 +1049,11 @@ describe('OrderCheckoutService', () => {
         code: 'FREESHIP',
         usesCount: 4,
       };
+      const quote = buildQuotedCheckout();
       const { service, usageRepository, couponRepository } = buildService({
         coupons: [coupon],
+        pricedCartSummary: buildPricedCartSummaryMatchingQuote(quote),
       });
-      const quote = buildQuotedCheckout();
       quote.shops[0]!.promoCodes = ['FREESHIP'];
 
       await service.createOrders(
@@ -1013,6 +1083,7 @@ describe('OrderCheckoutService', () => {
     it('charges the provider exactly the persisted order money', async () => {
       const { service, orderCheckoutOutboxService } = buildService({
         processResult: undefined,
+        pricedCartSummary: buildPricedCartSummaryMatchingQuote(buildQuotedCheckout()),
       });
 
       await service.createOrders(
@@ -1046,7 +1117,9 @@ describe('OrderCheckoutService', () => {
     });
 
     it('refuses to charge an amount that disagrees with the accepted quote total', async () => {
-      const { service, orderRepository, orderCheckoutOutboxService } = buildService();
+      const { service, orderRepository, orderCheckoutOutboxService } = buildService({
+        pricedCartSummary: buildPricedCartSummaryMatchingQuote(buildQuotedCheckout()),
+      });
 
       await expect(service.createOrders(
         { type: 'user', userId: 'user-1', email: 'member@example.com' },

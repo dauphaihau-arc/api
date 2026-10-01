@@ -1,6 +1,7 @@
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
 import { ShopRepository } from '../app/ports/shop.repository';
+import { toShopSummary } from '../app/shop-summary';
 import type { CreateShopInput, ShopSummary } from '../app/shop.types';
 import { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
 import { ShopEntity } from './persistence/entities/shop.entity';
@@ -26,14 +27,14 @@ export class MikroOrmShopRepository implements ShopRepository {
     await em.persistAndFlush(shop);
     await em.populate(shop, ['ownerUser']);
 
-    return this.toSummary(shop);
+    return toShopSummary(shop);
   }
 
   async findById(id: string): Promise<ShopSummary | null> {
     const repository = this.entityManager.fork().getRepository(ShopEntity);
     const shop = await repository.findOne({ id }, { populate: ['ownerUser'] });
 
-    return shop ? this.toSummary(shop) : null;
+    return shop ? toShopSummary(shop) : null;
   }
 
   async findByOwnerUserId(ownerUserId: string): Promise<ShopSummary | null> {
@@ -43,7 +44,7 @@ export class MikroOrmShopRepository implements ShopRepository {
       { populate: ['ownerUser'] },
     );
 
-    return shop ? this.toSummary(shop) : null;
+    return shop ? toShopSummary(shop) : null;
   }
 
   async findByShopName(shopName: string): Promise<ShopSummary | null> {
@@ -53,7 +54,7 @@ export class MikroOrmShopRepository implements ShopRepository {
       { populate: ['ownerUser'] },
     );
 
-    return shop ? this.toSummary(shop) : null;
+    return shop ? toShopSummary(shop) : null;
   }
 
   async findBySlug(slug: string): Promise<ShopSummary | null> {
@@ -63,7 +64,7 @@ export class MikroOrmShopRepository implements ShopRepository {
       { populate: ['ownerUser'] },
     );
 
-    return shop ? this.toSummary(shop) : null;
+    return shop ? toShopSummary(shop) : null;
   }
 
   async findOwnedById(
@@ -79,18 +80,6 @@ export class MikroOrmShopRepository implements ShopRepository {
       { populate: ['ownerUser'] },
     );
 
-    return shop ? this.toSummary(shop) : null;
-  }
-
-  private toSummary(shop: ShopEntity): ShopSummary {
-    return {
-      id: shop.id,
-      publicId: shop.publicId,
-      ownerUserId: shop.ownerUser.id,
-      shopName: shop.shopName,
-      slug: shop.slug,
-      status: shop.status,
-      currency: shop.currency,
-    };
+    return shop ? toShopSummary(shop) : null;
   }
 }

@@ -11,6 +11,7 @@ import { PromotionEntity } from '../promotion/infra/persistence/entities/promoti
 import { ShopRepository } from './app/ports/shop.repository';
 import { ShopAccessService } from './app/services/shop-access.service';
 import { BulkDeleteShopCouponsUseCase } from './app/use-cases/bulk-delete-shop-coupons/bulk-delete-shop-coupons.use-case';
+import { BulkStopShopSalesUseCase } from './app/use-cases/bulk-stop-shop-sales/bulk-stop-shop-sales.use-case';
 import { CreateShopCouponUseCase } from './app/use-cases/create-shop-coupon/create-shop-coupon.use-case';
 import { CreateShopSaleUseCase } from './app/use-cases/create-shop-sale/create-shop-sale.use-case';
 import { CreateShopUseCase } from './app/use-cases/create-shop/create-shop.use-case';
@@ -18,6 +19,8 @@ import { DeleteShopCouponUseCase } from './app/use-cases/delete-shop-coupon/dele
 import { GetMyShopUseCase } from './app/use-cases/get-my-shop/get-my-shop.use-case';
 import { ListShopCouponsUseCase } from './app/use-cases/list-shop-coupons/list-shop-coupons.use-case';
 import { ListShopSalesUseCase } from './app/use-cases/list-shop-sales/list-shop-sales.use-case';
+import { UpdateShopSettingsUseCase } from './app/use-cases/update-shop-settings/update-shop-settings.use-case';
+import { StopShopSaleUseCase } from './app/use-cases/stop-shop-sale/stop-shop-sale.use-case';
 import { ShopCouponsController } from './api/rest/shop-coupons.controller';
 import { ShopSalesController } from './api/rest/shop-sales.controller';
 import { ShopController } from './api/rest/shop.controller';
@@ -53,6 +56,9 @@ import { ShopEntity } from './infra/persistence/entities/shop.entity';
     DeleteShopCouponUseCase,
     CreateShopSaleUseCase,
     ListShopSalesUseCase,
+    StopShopSaleUseCase,
+    BulkStopShopSalesUseCase,
+    UpdateShopSettingsUseCase,
   ],
   exports: [
     ShopRepository,

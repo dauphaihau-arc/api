@@ -42,6 +42,13 @@ export class ShopAccessDeniedError extends ShopAppError {
   }
 }
 
+/** The shop's scheduling timezone is not a recognized IANA zone. */
+export class ShopTimeZoneInvalidError extends ShopAppError {
+  constructor(timezone: string) {
+    super(`"${timezone}" is not a recognized IANA timezone`);
+  }
+}
+
 export class CouponNotFoundError extends ShopAppError {
   constructor() {
     super('Coupon not found');
@@ -105,5 +112,24 @@ export class SaleLocalTimeNonexistentError extends ShopAppError {
 export class SaleLocalTimeAmbiguousError extends ShopAppError {
   constructor(boundary: 'start' | 'end') {
     super(`The sale ${boundary} occurs twice in the selected timezone; choose which occurrence to use`);
+  }
+}
+
+export class SaleNotFoundError extends ShopAppError {
+  constructor() {
+    super('Sale not found');
+  }
+}
+
+/**
+ * The Sale's lifecycle state does not admit the requested irreversible stop.
+ * A scheduled Sale can only be cancelled and an active Sale can only be ended;
+ * a Sale that already reached either state is final.
+ */
+export class SaleStopNotAllowedError extends ShopAppError {
+  constructor(action: 'cancel' | 'end', status: string) {
+    super(action === 'cancel'
+      ? `Only a scheduled sale can be cancelled; this sale is ${status}`
+      : `Only an active sale can be ended early; this sale is ${status}`);
   }
 }

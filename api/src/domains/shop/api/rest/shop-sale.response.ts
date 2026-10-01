@@ -1,4 +1,5 @@
 import type { ShopSaleListResult, ShopSaleSummary } from '../../app/shop.types';
+import type { BulkStopShopSalesResult } from '../../app/use-cases/bulk-stop-shop-sales/bulk-stop-shop-sales.use-case';
 
 export function toShopSaleResponse(sale: ShopSaleSummary) {
   return {
@@ -27,5 +28,19 @@ export function toShopSaleListResponse(result: ShopSaleListResult) {
     limit: result.limit,
     total_pages: result.totalPages,
     total_results: result.totalResults,
+  };
+}
+
+export function toShopSaleStopListResponse(
+  result: BulkStopShopSalesResult,
+) {
+  return {
+    results: result.results.map(toShopSaleResponse),
+    succeeded_ids: result.succeededIds,
+    failed: result.failed.map((failure) => ({
+      id: failure.id,
+      code: failure.code,
+      reason: failure.reason,
+    })),
   };
 }

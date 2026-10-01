@@ -12,6 +12,17 @@ import {
 } from '~/integrations/currency/money-conversion.service';
 import type { ProductInventoryEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-inventory.entity';
 import {
+  CouponAutoSaleProjectionReader,
+} from '~/domains/coupon/app/ports/coupon-auto-sale-projection.reader';
+import {
+  SaleProjectionReader,
+  type SaleProjection,
+} from '~/domains/promotion/app/ports/sale-projection.reader';
+import {
+  applyPercentageReduction,
+  pickHighestPercentOff,
+} from '~/platform/pricing/percentage-reduction';
+import {
   getActiveBasePrice,
   getActiveMarketPrice,
 } from '../../infra/persistence/mikro-orm/reads/variant-price-read';
@@ -23,6 +34,11 @@ import {
 
 export interface ResolvedStorefrontPrice {
   amountMinor: number;
+  /**
+   * The regular price this was reduced from, present only when the current
+   * storefront reduction is genuine. Callers show it as the compare-at amount.
+   */
+  originalAmountMinor?: number;
   currency: string;
   sourceCurrency: string;
   sourceUnitAmountMinor: number;
@@ -43,6 +59,8 @@ export class ResolvedStorefrontPriceService {
     private readonly optionalCacheService: OptionalCacheService,
     private readonly storefrontMarketContextService: StorefrontMarketContextService,
     private readonly moneyConversionService: MoneyConversionService,
+    private readonly couponAutoSaleProjectionReader: CouponAutoSaleProjectionReader,
+    private readonly saleProjectionReader: SaleProjectionReader,
   ) {}
 
   async resolveForCurrentRequest(
@@ -71,9 +89,11 @@ export class ResolvedStorefrontPriceService {
       at?: Date;
     },
   ): Promise<ResolvedStorefrontPrice | undefined> {
-    return this.resolveNormalized(
+    const normalizedContext = normalizeContext(context);
+
+    return this.applyReduction(
       inventory,
-      normalizeContext(context),
+      await this.resolveNormalized(inventory, normalizedContext),
     );
   }
 
@@ -83,14 +103,67 @@ export class ResolvedStorefrontPriceService {
   ): Promise<Map<string, ResolvedStorefrontPrice | undefined>> {
     const normalizedContext = normalizeContext(context);
     const rateCache: FxRateCache = new Map();
+    const salesByProductId = await this.saleProjectionReader.findBestSalesForProducts({
+      targets: inventories.map((inventory) => ({
+        shopId: inventory.shop.id,
+        productId: inventory.product.id,
+      })),
+    });
     const resolvedEntries = await Promise.all(
       inventories.map(async (inventory) => [
         inventory.id,
-        await this.resolveNormalized(inventory, normalizedContext, rateCache),
+        await this.applyReduction(
+          inventory,
+          await this.resolveNormalized(inventory, normalizedContext, rateCache),
+          salesByProductId,
+        ),
       ] as const),
     );
 
     return new Map(resolvedEntries);
+  }
+
+  /**
+   * Applies the current storefront reduction to the regular price.
+   *
+   * The price cache above is keyed by the inventory's own price rows, which a
+   * Sale never changes, so the reduction is deliberately applied after the
+   * cache read: a Sale starting or ending is visible immediately rather than
+   * waiting for the cached regular price to expire.
+   */
+  private async applyReduction(
+    inventory: ProductInventoryEntity,
+    price: ResolvedStorefrontPrice | undefined,
+    salesByProductId?: Map<string, SaleProjection>,
+  ): Promise<ResolvedStorefrontPrice | undefined> {
+    if (!price) {
+      return undefined;
+    }
+
+    const sales = salesByProductId ??
+      await this.saleProjectionReader.findBestSalesForProducts({
+        targets: [{ shopId: inventory.shop.id, productId: inventory.product.id }],
+      });
+    const couponAutoSale = await this.couponAutoSaleProjectionReader.findBestAutoSaleForProduct({
+      shopId: inventory.shop.id,
+      productId: inventory.product.id,
+    });
+    const reduced = applyPercentageReduction(
+      price.amountMinor,
+      price.currency,
+      pickHighestPercentOff(
+        couponAutoSale?.percentOff,
+        sales.get(inventory.product.id)?.percentOff,
+      ),
+    );
+
+    return reduced
+      ? {
+        ...price,
+        amountMinor: reduced.amountMinor,
+        originalAmountMinor: reduced.originalAmountMinor,
+      }
+      : price;
   }
 
   private async resolveNormalized(

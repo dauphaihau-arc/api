@@ -8,6 +8,8 @@ import {
 import { ShopAppError } from '../../app/errors/shop-app.error';
 import {
   CouponNotFoundError,
+  SaleNotFoundError,
+  SaleStopNotAllowedError,
   ShopAccessDeniedError,
   ShopNameAlreadyTakenError,
   ShopNotFoundError,
@@ -23,7 +25,11 @@ export function isShopAppError(error: unknown): error is ShopAppError {
 export function mapShopAppErrorToHttpException(
   error: ShopAppError,
 ): HttpException {
-  if (error instanceof ShopNotFoundError || error instanceof CouponNotFoundError) {
+  if (
+    error instanceof ShopNotFoundError
+    || error instanceof CouponNotFoundError
+    || error instanceof SaleNotFoundError
+  ) {
     return new NotFoundException(error.message);
   }
 
@@ -36,6 +42,12 @@ export function mapShopAppErrorToHttpException(
   }
 
   if (error instanceof ShopSlugAlreadyTakenError) {
+    return new ConflictException(error.message);
+  }
+
+  // A stop that the Sale's lifecycle state does not admit is a conflict with
+  // current state, not malformed input.
+  if (error instanceof SaleStopNotAllowedError) {
     return new ConflictException(error.message);
   }
 

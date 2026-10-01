@@ -8,6 +8,8 @@ export interface ShopSummary {
   slug: string;
   status: string;
   currency: MarketplaceCurrency;
+  /** IANA timezone new Sale schedules default to. */
+  timezone: string;
 }
 
 export interface ShopCouponSummary {

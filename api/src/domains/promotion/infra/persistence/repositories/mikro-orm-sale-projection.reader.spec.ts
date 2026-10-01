@@ -1,4 +1,5 @@
 import type { EntityManager } from '@mikro-orm/postgresql';
+import type { Clock } from '~/platform/time/clock';
 import { PromotionApplicationKind } from '../../../domain/enums/promotion-application-kind.enum';
 import { PromotionBenefitType } from '../../../domain/enums/promotion-benefit-type.enum';
 import { PromotionProductScope } from '../../../domain/enums/promotion-product-scope.enum';
@@ -31,7 +32,10 @@ function buildReader(promotions: object[]) {
   };
 
   return {
-    reader: new MikroOrmSaleProjectionReader(entityManager as unknown as EntityManager),
+    reader: new MikroOrmSaleProjectionReader(
+      entityManager as unknown as EntityManager,
+      { now: () => new Date('2030-01-01T00:00:00.000Z') } as unknown as Clock,
+    ),
     getRepository,
     find,
   };

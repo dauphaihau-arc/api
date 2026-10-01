@@ -5,7 +5,6 @@ import { ProductEntity } from '~/domains/product/infra/persistence/mikro-orm/ent
 import { PromotionApplicationKind } from '~/domains/promotion/domain/enums/promotion-application-kind.enum';
 import { PromotionBenefitType } from '~/domains/promotion/domain/enums/promotion-benefit-type.enum';
 import { PromotionProductScope } from '~/domains/promotion/domain/enums/promotion-product-scope.enum';
-import { resolvePromotionStatus } from '~/domains/promotion/domain/promotion-lifecycle';
 import {
   isValidTimeZone,
   parseLocalDateTime,
@@ -14,6 +13,7 @@ import {
 } from '~/domains/promotion/domain/local-date-time';
 import { PromotionEntity } from '~/domains/promotion/infra/persistence/entities/promotion.entity';
 import { PromotionProductEntity } from '~/domains/promotion/infra/persistence/entities/promotion-product.entity';
+import { Clock } from '~/platform/time/clock';
 import { JobDispatcher } from '~/integrations/queue/app/ports/job-dispatcher';
 import { ShopEntity } from '../../../infra/persistence/entities/shop.entity';
 import {
@@ -28,6 +28,7 @@ import {
 } from '../../errors/shop-app.error';
 import type { CreateShopSaleDto } from '../../../api/rest/dto/create-shop-sale.dto';
 import type { ShopSaleSummary } from '../../shop.types';
+import { toShopSaleSummary } from '../../sale-summary';
 import { dispatchShopProjection } from '../shop-coupon-catalog-projection';
 
 @Injectable()
@@ -35,6 +36,7 @@ export class CreateShopSaleUseCase {
   constructor(
     private readonly entityManager: EntityManager,
     private readonly jobDispatcher: JobDispatcher,
+    private readonly clock: Clock,
   ) {}
 
   async execute(
@@ -61,7 +63,7 @@ export class CreateShopSaleUseCase {
       throw new SaleTimeZoneInvalidError(body.timezone);
     }
 
-    const now = new Date();
+    const now = this.clock.now();
     const startAt = body.start_now === true
       ? now
       : this.resolveBoundary('start', body.start_local, body.start_offset_minutes, body.timezone);
@@ -99,23 +101,7 @@ export class CreateShopSaleUseCase {
 
     await this.scheduleSaleProjection(promotion, productIds, now);
 
-    return {
-      id: promotion.id,
-      shopId: shop.id,
-      name: promotion.name,
-      percentOff: promotion.percentOff ?? 0,
-      productScope: promotion.productScope,
-      productIds,
-      currency: promotion.currency,
-      startAt: promotion.startAt,
-      endAt: promotion.endAt,
-      timezone: promotion.timezone,
-      status: resolvePromotionStatus(promotion, now),
-      cancelledAt: promotion.cancelledAt ?? null,
-      endedAt: promotion.endedAt ?? null,
-      createdAt: promotion.createdAt,
-      updatedAt: promotion.updatedAt,
-    };
+    return toShopSaleSummary(promotion, productIds, now);
   }
 
   /**

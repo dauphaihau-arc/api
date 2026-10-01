@@ -43,6 +43,14 @@ export class ShopEntity extends AbstractBaseEntity {
   @Property({ fieldName: 'currency', length: 3 })
   currency!: MarketplaceCurrency;
 
+  /**
+   * IANA timezone the shop authors its Sale schedules in. It only supplies the
+   * default for a new Sale: each Sale stores the timezone it was created with,
+   * so changing this never reinterprets an existing schedule.
+   */
+  @Property({ fieldName: 'timezone', length: 64 })
+  timezone = 'UTC';
+
   @OneToMany(() => ProductEntity, (product) => product.shop)
   products = new Collection<ProductEntity>(this);
 }

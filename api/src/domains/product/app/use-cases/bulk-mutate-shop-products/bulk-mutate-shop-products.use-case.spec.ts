@@ -2,6 +2,7 @@ import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import { UserStatus } from '~/domains/auth/domain/enums/user-status.enum';
 import type { ShopRepository } from '~/domains/shop/app/ports/shop.repository';
 import type { AuditLogService } from '~/integrations/audit/app/audit-log.service';
+import type { JobDispatcher } from '~/integrations/queue/app/ports/job-dispatcher';
 import { ProductState } from '../../../domain/enums/product-state.enum';
 import { ProductVariantLifecycleState } from '../../../domain/enums/product-variant-lifecycle-state.enum';
 import { ShippingDestinationScope } from '~/domains/shipping/domain/enums/shipping-destination-scope.enum';
@@ -158,11 +159,16 @@ describe('BulkMutateShopProductsUseCase', () => {
       auditLogService: {
         record: jest.fn().mockResolvedValue(undefined),
       } as unknown as jest.Mocked<AuditLogService>,
+      jobDispatcher: {
+        dispatch: jest.fn().mockResolvedValue(undefined),
+      } as unknown as jest.Mocked<JobDispatcher>,
     };
   }
 
   it('publishes each ready product and collects successful ids', async () => {
-    const { productRepository, shopRepository, auditLogService } = buildDeps({
+    const {
+      productRepository, shopRepository, auditLogService, jobDispatcher, 
+    } = buildDeps({
       'product-2': {
         ...readyProduct,
         id: 'product-2',
@@ -174,6 +180,7 @@ describe('BulkMutateShopProductsUseCase', () => {
       productRepository,
       shopRepository,
       auditLogService,
+      jobDispatcher,
     );
 
     const result = await useCase.execute(actor, {
@@ -191,7 +198,9 @@ describe('BulkMutateShopProductsUseCase', () => {
   });
 
   it('returns per-item failures without aborting the whole batch', async () => {
-    const { productRepository, shopRepository, auditLogService } = buildDeps({
+    const {
+      productRepository, shopRepository, auditLogService, jobDispatcher, 
+    } = buildDeps({
       'product-2': {
         ...readyProduct,
         id: 'product-2',
@@ -203,6 +212,7 @@ describe('BulkMutateShopProductsUseCase', () => {
       productRepository,
       shopRepository,
       auditLogService,
+      jobDispatcher,
     );
 
     const result = await useCase.execute(actor, {
@@ -228,7 +238,9 @@ describe('BulkMutateShopProductsUseCase', () => {
   });
 
   it('deactivates previously published products by updating their state', async () => {
-    const { productRepository, shopRepository, auditLogService } = buildDeps({
+    const {
+      productRepository, shopRepository, auditLogService, jobDispatcher, 
+    } = buildDeps({
       'product-1': {
         ...readyProduct,
         state: ProductState.ACTIVE,
@@ -244,6 +256,7 @@ describe('BulkMutateShopProductsUseCase', () => {
       productRepository,
       shopRepository,
       auditLogService,
+      jobDispatcher,
     );
 
     const result = await useCase.execute(actor, {
@@ -267,12 +280,15 @@ describe('BulkMutateShopProductsUseCase', () => {
   });
 
   it('rejects deactivating draft products', async () => {
-    const { productRepository, shopRepository, auditLogService } = buildDeps();
+    const {
+      productRepository, shopRepository, auditLogService, jobDispatcher, 
+    } = buildDeps();
     const useCase = new BulkMutateShopProductsUseCase(
       productRepository,
       productRepository,
       shopRepository,
       auditLogService,
+      jobDispatcher,
     );
 
     const result = await useCase.execute(actor, {
@@ -295,7 +311,9 @@ describe('BulkMutateShopProductsUseCase', () => {
   });
 
   it('removes a Product as a retained tombstone and cascades removed state to variants', async () => {
-    const { productRepository, shopRepository, auditLogService } = buildDeps({
+    const {
+      productRepository, shopRepository, auditLogService, jobDispatcher, 
+    } = buildDeps({
       'product-1': {
         ...readyProduct,
         state: ProductState.ACTIVE,
@@ -307,6 +325,7 @@ describe('BulkMutateShopProductsUseCase', () => {
       productRepository,
       shopRepository,
       auditLogService,
+      jobDispatcher,
     );
 
     const result = await useCase.execute(actor, {

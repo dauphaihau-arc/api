@@ -9,5 +9,6 @@ export function toShopResponse(shop: ShopSummary) {
     slug: shop.slug,
     status: shop.status,
     currency: shop.currency,
+    timezone: shop.timezone,
   };
 }

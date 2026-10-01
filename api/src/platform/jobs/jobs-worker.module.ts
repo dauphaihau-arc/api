@@ -11,6 +11,7 @@ import { BullMqWorkerService } from '~/integrations/queue/infra/bullmq-worker.se
 import { buildDatabaseConfig } from '~/platform/config/database.config';
 import { validateAppEnv } from '~/platform/config/app-env.config';
 import { buildPinoLoggerParams } from '~/platform/logging/pino-logger.config';
+import { TimeModule } from '~/platform/time/time.module';
 import { JobsModule } from './jobs.module';
 
 @Module({
@@ -20,6 +21,7 @@ import { JobsModule } from './jobs.module';
       validate: validateAppEnv,
     }),
     LoggerModule.forRoot(buildPinoLoggerParams('worker')),
+    TimeModule,
     EventEmitterModule.forRoot(),
     MikroOrmModule.forRoot({
       ...buildDatabaseConfig(process.env),

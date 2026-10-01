@@ -1,10 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
+import { JobDispatcher } from '~/integrations/queue/app/ports/job-dispatcher';
 import { ShopRepository } from '~/domains/shop/app/ports/shop.repository';
 import { AuditLogService } from '~/integrations/audit/app/audit-log.service';
 import { ProductState } from '../../../domain/enums/product-state.enum';
 import { ProductCommandRepository } from '../../ports/product-command.repository';
 import { SellerProductQueryRepository } from '../../ports/seller-product-query.repository';
+import { dispatchCatalogProductProjections } from '../../catalog-product-projection-dispatch';
 import type { ProductDraftSummary } from '../../product.types';
 import { validatePublishReadiness } from '../publish-product/publish-product-readiness';
 
@@ -39,6 +41,7 @@ export class BulkMutateShopProductsUseCase {
     private readonly productCommandRepository: ProductCommandRepository,
     private readonly shopRepository: ShopRepository,
     private readonly auditLogService: AuditLogService,
+    private readonly jobDispatcher: JobDispatcher,
   ) {}
 
   async execute(
@@ -92,6 +95,14 @@ export class BulkMutateShopProductsUseCase {
       }
 
       succeededIds.push(productId);
+    }
+
+    // Publishing makes a Product eligible for every all-Products Sale, and
+    // deactivating or removing one must drop its stored price. Both are
+    // catalog-visible changes, so the affected projections are refreshed here
+    // exactly as the single-Product actions do.
+    if (succeededIds.length > 0) {
+      await dispatchCatalogProductProjections(this.jobDispatcher, succeededIds);
     }
 
     return {

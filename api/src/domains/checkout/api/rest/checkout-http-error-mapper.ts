@@ -16,6 +16,7 @@ import {
   CheckoutQuoteNoItemsError,
   CheckoutQuoteNotFoundError,
   CheckoutQuoteCartChangedError,
+  CheckoutQuotePricesChangedError,
   CheckoutQuoteExpiredError,
   CheckoutQuoteReservationOutOfStockError,
   CheckoutQuoteReservationUnavailableError,
@@ -49,6 +50,7 @@ type CheckoutHttpErrorCode =
   | 'CHECKOUT_QUOTE_RESERVATION_UNAVAILABLE'
   | 'CHECKOUT_QUOTE_RESERVATION_OUT_OF_STOCK'
   | 'CHECKOUT_QUOTE_CART_CHANGED'
+  | 'CHECKOUT_QUOTE_PRICES_CHANGED'
   | 'CHECKOUT_SHIPPING_UNAVAILABLE'
   | 'ORDER_TOTAL_LIMIT_EXCEEDED'
   | 'ORDER_NOT_FOUND'
@@ -84,6 +86,10 @@ export function mapCheckoutAppErrorToHttpException(
   }
 
   if (error instanceof CheckoutShippingUnavailableError) {
+    return new ConflictException(buildCheckoutErrorPayload(error));
+  }
+
+  if (error instanceof CheckoutQuotePricesChangedError) {
     return new ConflictException(buildCheckoutErrorPayload(error));
   }
 
@@ -124,6 +130,20 @@ function buildCheckoutErrorPayload(error: OrderAppError): {
     reason: string;
     readiness_issues: string[];
   }>;
+  refreshed_totals?: {
+    checkout_currency: string;
+    subtotal_minor: number;
+    shipping_minor: number;
+    discount_minor: number;
+    total_minor: number;
+    shops: Array<{
+      shop_id: string;
+      subtotal_minor: number;
+      discount_minor: number;
+      shipping_minor: number;
+      total_minor: number;
+    }>;
+  };
 } {
   return {
     message: error.message,
@@ -137,6 +157,24 @@ function buildCheckoutErrorPayload(error: OrderAppError): {
           reason: product.reason,
           readiness_issues: product.readinessIssues,
         })),
+      }
+      : {}),
+    ...(error instanceof CheckoutQuotePricesChangedError
+      ? {
+        refreshed_totals: {
+          checkout_currency: error.refreshedTotals.checkoutCurrency,
+          subtotal_minor: error.refreshedTotals.subtotalMinor,
+          shipping_minor: error.refreshedTotals.shippingMinor,
+          discount_minor: error.refreshedTotals.discountMinor,
+          total_minor: error.refreshedTotals.totalMinor,
+          shops: error.refreshedTotals.shops.map((shop) => ({
+            shop_id: shop.shopId,
+            subtotal_minor: shop.subtotalMinor,
+            discount_minor: shop.discountMinor,
+            shipping_minor: shop.shippingMinor,
+            total_minor: shop.totalMinor,
+          })),
+        },
       }
       : {}),
   };
@@ -169,6 +207,9 @@ function getCheckoutErrorCode(error: OrderAppError): CheckoutHttpErrorCode {
   }
   if (error instanceof CheckoutQuoteCartChangedError) {
     return 'CHECKOUT_QUOTE_CART_CHANGED';
+  }
+  if (error instanceof CheckoutQuotePricesChangedError) {
+    return 'CHECKOUT_QUOTE_PRICES_CHANGED';
   }
   if (error instanceof CheckoutShippingUnavailableError) {
     return 'CHECKOUT_SHIPPING_UNAVAILABLE';

@@ -4,6 +4,7 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
 import { MikroOrmModule } from '@mikro-orm/nestjs';
 import { LoggerModule } from 'nestjs-pino';
 import { RequestContextModule } from '~/platform/request-context/request-context.module';
+import { TimeModule } from '~/platform/time/time.module';
 import { InvalidateUserCacheOnUserCreatedListener } from '~/domains/user/listeners/invalidate-user-cache-on-user-created.listener';
 import { InvalidateUserCacheOnUserUpdatedListener } from '~/domains/user/listeners/invalidate-user-cache-on-user-updated.listener';
 import { SendWelcomeEmailOnUserCreatedListener } from '~/domains/user/listeners/send-welcome-email-on-user-created.listener';
@@ -46,6 +47,7 @@ import { WsModule } from '~/platform/ws/ws.module';
     }),
     LoggerModule.forRoot(buildPinoLoggerParams('api')),
     RequestContextModule,
+    TimeModule,
     EventEmitterModule.forRoot(),
     MikroOrmModule.forRoot({
       ...buildDatabaseConfig(process.env),

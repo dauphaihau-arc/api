@@ -522,6 +522,7 @@ export class MikroOrmCartRepository implements CartRepository {
       currency: pricing.currency,
       pricing: {
         amountMinor: pricing.amountMinor,
+        originalAmountMinor: pricing.originalAmountMinor,
         currency: pricing.currency,
         sourceCurrency: pricing.sourceCurrency,
         sourceUnitAmountMinor: pricing.sourceUnitAmountMinor,

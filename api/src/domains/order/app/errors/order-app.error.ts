@@ -64,6 +64,38 @@ export class CheckoutQuoteCartChangedError extends OrderAppError {
 }
 
 /**
+ * The money a quote froze for buyer acceptance, recomputed from current regular
+ * prices, active Sales and Promo Codes. Returned so the buyer can review the
+ * refreshed totals instead of being charged a silently different amount.
+ */
+export interface RefreshedCheckoutTotals {
+  checkoutCurrency: string;
+  subtotalMinor: number;
+  shippingMinor: number;
+  discountMinor: number;
+  totalMinor: number;
+  shops: Array<{
+    shopId: string;
+    subtotalMinor: number;
+    discountMinor: number;
+    shippingMinor: number;
+    totalMinor: number;
+  }>;
+}
+
+/**
+ * Raised at Order commitment when re-pricing the accepted quote no longer
+ * yields the accepted totals — a Sale started, expired, was stopped, was
+ * overridden by a better overlapping Sale, or a regular price changed. The
+ * buyer must accept the refreshed totals before the Order is created.
+ */
+export class CheckoutQuotePricesChangedError extends OrderAppError {
+  constructor(readonly refreshedTotals: RefreshedCheckoutTotals) {
+    super('Checkout totals changed since the quote was accepted; review the refreshed totals to continue');
+  }
+}
+
+/**
  * Raised when a purchased Product cannot be delivered to the buyer destination.
  * The quote never falls back to zero shipping, another Product's profile, or a
  * shop-wide rule.

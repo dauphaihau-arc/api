@@ -23,6 +23,7 @@ import { RoundingPolicyService } from '~/integrations/currency/rounding-policy.s
 import { StorefrontIndexedPriceProjectionService } from '~/domains/product/app/services/storefront-indexed-price-projection.service';
 import { MikroOrmCouponAutoSaleProjectionReader } from '~/domains/coupon/infra/persistence/repositories/mikro-orm-coupon-auto-sale-projection.reader';
 import { MikroOrmSaleProjectionReader } from '~/domains/promotion/infra/persistence/repositories/mikro-orm-sale-projection.reader';
+import { SystemClock } from '~/platform/time/clock';
 import { ensureAtlasSearchIndexes } from './catalog/ensure-atlas-search-indexes';
 
 type MongoDeleteManyCollectionLike = {
@@ -103,7 +104,7 @@ async function main() {
     storefrontPricingConfig,
     new MoneyConversionService(new FxRateService(orm.em), new RoundingPolicyService()),
     new MikroOrmCouponAutoSaleProjectionReader(orm.em),
-    new MikroOrmSaleProjectionReader(orm.em),
+    new MikroOrmSaleProjectionReader(orm.em, new SystemClock()),
   );
   const projector = new CatalogProductProjectorService(
     catalogProjectorSourceRepository,
