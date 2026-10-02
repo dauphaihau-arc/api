@@ -19,7 +19,7 @@ describe('Inventory stock pool migration (integration)', () => {
   let inventoryId: string;
 
   beforeAll(async () => {
-    testDb = await createTestDatabase('inventory_stock_pool_migration');
+    testDb = await createTestDatabase('inventory_stock_pool_migration', { fresh: true });
 
     sql = new Client({
       host: testDb.rootConfig.host,

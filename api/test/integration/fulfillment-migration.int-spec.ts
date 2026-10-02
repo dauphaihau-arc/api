@@ -110,7 +110,7 @@ describe('Fulfillment migration (integration)', () => {
 
   beforeAll(async () => {
     originalEnv = { ...process.env };
-    testDb = await createTestDatabase('fulfillment-migration');
+    testDb = await createTestDatabase('fulfillment-migration', { fresh: true });
 
     sql = new Client({
       host: testDb.rootConfig.host,

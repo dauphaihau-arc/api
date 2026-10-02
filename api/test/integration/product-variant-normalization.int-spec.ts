@@ -250,6 +250,7 @@ describe('product variant normalization migration', () => {
 describe('product variant configuration command repository', () => {
   let context: TestDatabaseContext;
   let orm: MikroORM;
+  let resetSql: string;
   let em: EntityManager;
   let repository: MikroOrmProductCommandRepository;
   const SHIPPING_PROFILE_ID = '00000000-0000-4000-8000-0000000000a1';
@@ -261,7 +262,7 @@ describe('product variant configuration command repository', () => {
   let blueVariant: ProductVariantEntity;
   let blueInventory: ProductInventoryEntity;
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     context = await createTestDatabase('variant_configuration_command');
     orm = await MikroORM.init(buildDatabaseConfig({
       ...process.env,
@@ -271,6 +272,20 @@ describe('product variant configuration command repository', () => {
       DB_PASSWORD: context.rootConfig.password,
       DB_NAME: context.dbName,
     }, { includeEntityGlobs: true }));
+    const [reset] = await orm.em.getConnection().execute<{ sql: string }[]>(`
+      select 'truncate table ' ||
+        string_agg(format('%I.%I', schemaname, tablename), ', ') ||
+        ' restart identity cascade' as sql
+      from pg_tables
+      where schemaname = current_schema()
+        and tablename <> 'mikro_orm_migrations'
+    `);
+    resetSql = reset.sql;
+  });
+
+  beforeEach(async () => {
+    // One truncate preserves the migrated schema without per-table round trips.
+    await orm.em.getConnection().execute(resetSql);
     em = orm.em.fork();
     repository = new MikroOrmProductCommandRepository(
       em,
@@ -540,7 +555,7 @@ describe('product variant configuration command repository', () => {
     expect(replacementInventory.id).not.toBe(blueInventory.id);
   });
 
-  afterEach(async () => {
+  afterAll(async () => {
     await orm?.close(true);
     if (context) await dropTestDatabase(context);
   });

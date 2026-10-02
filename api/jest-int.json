@@ -14,6 +14,9 @@
     "^.+\\.(t|j)s$": "ts-jest"
   },
   "watchman": false,
+  "globalSetup": "<rootDir>/test/support/int-global-setup.cjs",
+  "globalTeardown": "<rootDir>/test/support/int-global-teardown.cjs",
+  "maxWorkers": 2,
   "setupFiles": [
     "<rootDir>/test/support/int-env.setup.ts"
   ]

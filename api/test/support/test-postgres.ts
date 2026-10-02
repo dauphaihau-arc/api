@@ -19,14 +19,20 @@ function normalizeDbPrefix(prefix: string): string {
 
 export async function createTestDatabase(
   suiteName = 'api',
+  options: { fresh?: boolean } = {},
 ): Promise<TestDatabaseContext> {
-  const dbName = `arc_e2e_${normalizeDbPrefix(suiteName)}_${randomUUID().replace(/-/g, '_')}`;
-  const rootConfig = {
+  // PostgreSQL truncates identifiers after 63 bytes; retain the entire UUID.
+  const dbName = `arc_e2e_${normalizeDbPrefix(suiteName).slice(0, 22)}_${randomUUID().replace(/-/g, '')}`;
+  const template = process.env.ARC_INT_TEMPLATE_DATABASE
+    ? JSON.parse(process.env.ARC_INT_TEMPLATE_DATABASE) as TestDatabaseContext
+    : undefined;
+  const rootConfig = template?.rootConfig ?? {
     host: process.env.DB_HOST ?? '127.0.0.1',
     port: Number(process.env.DB_PORT ?? 5432),
     user: process.env.DB_USER ?? 'postgres',
     password: process.env.DB_PASSWORD ?? 'postgres',
   };
+  const context = { dbName, rootConfig };
 
   const adminClient = new Client({
     ...rootConfig,
@@ -36,37 +42,47 @@ export async function createTestDatabase(
   await adminClient.connect();
 
   try {
-    await adminClient.query(`CREATE DATABASE "${dbName}"`);
+    const source = template && !options.fresh
+      ? ` TEMPLATE "${template.dbName.replace(/"/g, '""')}"`
+      : '';
+    await adminClient.query(`CREATE DATABASE "${dbName}"${source}`);
   }
   finally {
     await adminClient.end();
   }
 
-  const orm = await MikroORM.init(
-    buildDatabaseConfig(
-      {
-        ...process.env,
-        DB_HOST: rootConfig.host,
-        DB_PORT: String(rootConfig.port),
-        DB_USER: rootConfig.user,
-        DB_PASSWORD: rootConfig.password,
-        DB_NAME: dbName,
-      },
-      { includeEntityGlobs: true },
-    ),
-  );
+  if (template && !options.fresh) return context;
 
   try {
-    await orm.getMigrator().up();
+    const orm = await MikroORM.init(
+      buildDatabaseConfig(
+        {
+          ...process.env,
+          // The helper owns a DB_* database, never the developer DATABASE_URL.
+          DATABASE_URL: undefined,
+          DB_HOST: rootConfig.host,
+          DB_PORT: String(rootConfig.port),
+          DB_USER: rootConfig.user,
+          DB_PASSWORD: rootConfig.password,
+          DB_NAME: dbName,
+        },
+        { includeEntityGlobs: true, debug: false },
+      ),
+    );
+
+    try {
+      await orm.getMigrator().up();
+    }
+    finally {
+      await orm.close(true);
+    }
   }
-  finally {
-    await orm.close(true);
+  catch (error) {
+    await dropTestDatabase(context);
+    throw error;
   }
 
-  return {
-    dbName,
-    rootConfig,
-  };
+  return context;
 }
 
 export async function dropTestDatabase(

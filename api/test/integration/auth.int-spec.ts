@@ -15,7 +15,7 @@ import { RequestLoggingInterceptor } from '~/platform/interceptors/request-loggi
 import { parseCorsAllowedOrigins } from '~/platform/config/cors.config';
 import type { AuthUserResponse } from '~/domains/auth/app/auth.types';
 import { UserSessionEntity } from '~/domains/auth/infra/persistence/entities/user-session.entity';
-import { AppModule } from '~/bootstrap/app.module';
+import type * as BootstrapAppModule from '~/bootstrap/app.module';
 import { ObservabilityService } from '~/platform/observability/observability.service';
 import { RequestContextService } from '~/platform/request-context/request-context.service';
 import { StorageService } from '~/integrations/storage/app/ports/storage.service';
@@ -61,6 +61,10 @@ describe('Auth login (integration)', () => {
     process.env.MAIL_DRIVER = 'logger';
     process.env.STORAGE_DRIVER = 'local';
     process.env.STORAGE_LOCAL_ROOT = storageRoot;
+
+    // Load module configuration only after selecting the isolated test services.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { AppModule } = require('~/bootstrap/app.module') as typeof BootstrapAppModule;
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],

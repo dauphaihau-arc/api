@@ -70,7 +70,7 @@ describe('Fulfillment fresh migration chain (integration)', () => {
   let database: MigratedDatabase;
 
   beforeAll(async () => {
-    const testDb = await createTestDatabase('fulfillment_fresh_chain');
+    const testDb = await createTestDatabase('fulfillment_fresh_chain', { fresh: true });
     const orm = await migrateUp(testDb);
     const sql = await connect(testDb);
     database = { testDb, sql, orm };

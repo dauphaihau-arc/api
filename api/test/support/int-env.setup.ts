@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 /**
  * Integration suites drive the API over plain HTTP with supertest agents.
  * The developer `.env` targets browsers over HTTPS, so its Secure/SameSite=None
@@ -10,3 +12,6 @@ process.env.AUTH_COOKIE_SAME_SITE = 'lax';
 process.env.AUTH_COOKIE_SECURE = 'false';
 process.env.AUTH_COOKIE_PATH = '/';
 delete process.env.AUTH_COOKIE_DOMAIN;
+
+// Redis-backed app modules must not share a queue with another suite or dev app.
+process.env.QUEUE_PREFIX = `arc-int-${randomUUID()}`;

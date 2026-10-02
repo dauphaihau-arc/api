@@ -44,7 +44,7 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./jest-e2e.json",
-    "test:int": "jest --config ./jest-int.json --runInBand",
+    "test:int": "jest --config ./jest-int.json",
     "test:hurl": "hurl --test --glob \"api-tests/**/*.hurl\" --variables-file api-tests/hurl.variables",
     "storage:clear": "ts-node -r tsconfig-paths/register ./scripts/clear-seed-storage.ts"
   },

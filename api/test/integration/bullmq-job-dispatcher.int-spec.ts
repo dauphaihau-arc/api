@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { Queue, Worker } from 'bullmq';
 import Redis from 'ioredis';
 import { appJobName } from '~/platform/jobs/app-job.names';
@@ -99,7 +100,7 @@ describe('BullMqJobDispatcher integration', () => {
   });
 
   it('runs a coalesce-latest dispatch even when a completed legacy job id is retained', async () => {
-    const prefix = `arc-test-${Date.now()}-legacy`;
+    const prefix = `arc-test-${randomUUID()}-legacy`;
     const queueName = 'bullmq-job-dispatcher';
     const deduplicationKey = 'user-send-welcome-email--user-1';
     const processedUserIds: string[] = [];
@@ -169,7 +170,7 @@ describe('BullMqJobDispatcher integration', () => {
   });
 
   it('runs the latest coalesce-latest dispatch once after duplicates arrive while active', async () => {
-    const prefix = `arc-test-${Date.now()}-active`;
+    const prefix = `arc-test-${randomUUID()}-active`;
     const queueName = 'bullmq-job-dispatcher';
     const deduplicationKey = 'user-send-welcome-email--user-2';
     const processedUserIds: string[] = [];
@@ -267,7 +268,7 @@ describe('BullMqJobDispatcher integration', () => {
   });
 
   it('keeps omitted-mode deduplicated jobs idempotent', async () => {
-    const prefix = `arc-test-${Date.now()}-stable`;
+    const prefix = `arc-test-${randomUUID()}-stable`;
     const queueName = 'bullmq-job-dispatcher';
     const deduplicationKey = 'catalog-project-product--product-1';
     const processedProductIds: string[] = [];

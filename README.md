@@ -196,6 +196,11 @@ DB_SLOW_QUERY_THRESHOLD_MS=250
 queries when full query logging is disabled. Query logs include `requestId` and `traceId`
 when available so they can be correlated with request logs and traces.
 
+## Integration tests
+
+See [Integration tests](docs/operations/integration-tests.md) for commands,
+database isolation, worker configuration, and remote inventory prerequisites.
+
 ## Useful Commands
 
 ```bash
