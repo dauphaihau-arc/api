@@ -73,11 +73,13 @@ export interface RefreshedCheckoutTotals {
   subtotalMinor: number;
   shippingMinor: number;
   discountMinor: number;
+  saleDiscountMinor: number;
   totalMinor: number;
   shops: Array<{
     shopId: string;
     subtotalMinor: number;
     discountMinor: number;
+    saleDiscountMinor: number;
     shippingMinor: number;
     totalMinor: number;
   }>;

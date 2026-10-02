@@ -81,6 +81,9 @@ export class OrderEntity extends AbstractBaseEntity {
   @Property({ fieldName: 'discount_minor' })
   discountMinor!: number;
 
+  @Property({ fieldName: 'sale_discount_minor', default: 0 })
+  saleDiscountMinor = 0;
+
   @Property({ type: 'numeric', precision: 12, scale: 2 })
   total!: number;
 

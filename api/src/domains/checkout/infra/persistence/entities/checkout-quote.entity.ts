@@ -53,6 +53,9 @@ export class CheckoutQuoteEntity extends AbstractBaseEntity {
   @Property({ fieldName: 'discount_minor', default: 0 })
   discountMinor = 0;
 
+  @Property({ fieldName: 'sale_discount_minor', default: 0 })
+  saleDiscountMinor = 0;
+
   @Property({ fieldName: 'total_minor' })
   totalMinor!: number;
 

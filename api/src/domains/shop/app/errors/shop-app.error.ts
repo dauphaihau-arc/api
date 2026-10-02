@@ -133,3 +133,52 @@ export class SaleStopNotAllowedError extends ShopAppError {
       : `Only an active sale can be ended early; this sale is ${status}`);
   }
 }
+
+/** The selected Products of a Promo Code are not a valid Product Scope. */
+export class PromoCodeProductScopeInvalidError extends ShopAppError {
+  constructor(message: string) {
+    super(message);
+  }
+}
+
+export class PromoCodeScheduleInvalidError extends ShopAppError {
+  constructor(message: string) {
+    super(message);
+  }
+}
+
+export class PromoCodeTimeZoneInvalidError extends ShopAppError {
+  constructor(timezone: string) {
+    super(`"${timezone}" is not a recognized IANA timezone`);
+  }
+}
+
+export class PromoCodeEndAfterStartRequiredError extends ShopAppError {
+  constructor() {
+    super('The promo code must start before it ends');
+  }
+}
+
+/** A spring-forward local time that never exists on the calendar. */
+export class PromoCodeLocalTimeNonexistentError extends ShopAppError {
+  constructor(boundary: 'start' | 'end') {
+    super(`The promo code ${boundary} is a local time that does not exist in the selected timezone`);
+  }
+}
+
+/** A fall-back local time that occurs twice and needs explicit disambiguation. */
+export class PromoCodeLocalTimeAmbiguousError extends ShopAppError {
+  constructor(boundary: 'start' | 'end') {
+    super(`The promo code ${boundary} occurs twice in the selected timezone; choose which occurrence to use`);
+  }
+}
+
+/**
+ * A code collides case-insensitively with an existing Promo Code in the same
+ * shop. Codes may repeat across shops, but are never reassigned after ending.
+ */
+export class PromoCodeAlreadyExistsError extends ShopAppError {
+  constructor() {
+    super('Promo code already exists');
+  }
+}

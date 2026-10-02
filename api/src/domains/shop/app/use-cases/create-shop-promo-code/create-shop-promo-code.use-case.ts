@@ -12,39 +12,38 @@ import {
   NonexistentPromotionLocalTimeError,
   resolvePromotionScheduleBoundary,
 } from '~/domains/promotion/domain/schedule-boundary';
+import { PromotionCodeEntity } from '~/domains/promotion/infra/persistence/entities/promotion-code.entity';
 import { PromotionEntity } from '~/domains/promotion/infra/persistence/entities/promotion.entity';
 import { PromotionProductEntity } from '~/domains/promotion/infra/persistence/entities/promotion-product.entity';
 import { Clock } from '~/platform/time/clock';
-import { JobDispatcher } from '~/integrations/queue/app/ports/job-dispatcher';
 import { ShopEntity } from '../../../infra/persistence/entities/shop.entity';
 import {
-  SaleEndAfterStartRequiredError,
-  SaleLocalTimeAmbiguousError,
-  SaleLocalTimeNonexistentError,
-  SaleProductScopeInvalidError,
-  SaleScheduleInvalidError,
-  SaleTimeZoneInvalidError,
+  PromoCodeAlreadyExistsError,
+  PromoCodeEndAfterStartRequiredError,
+  PromoCodeLocalTimeAmbiguousError,
+  PromoCodeLocalTimeNonexistentError,
+  PromoCodeProductScopeInvalidError,
+  PromoCodeScheduleInvalidError,
+  PromoCodeTimeZoneInvalidError,
   ShopAccessDeniedError,
   ShopNotFoundError,
 } from '../../errors/shop-app.error';
-import type { CreateShopSaleDto } from '../../../api/rest/dto/create-shop-sale.dto';
-import type { ShopSaleSummary } from '../../shop.types';
-import { toShopSaleSummary } from '../../sale-summary';
-import { dispatchShopProjection } from '../shop-coupon-catalog-projection';
+import type { CreateShopPromoCodeDto } from '../../../api/rest/dto/create-shop-promo-code.dto';
+import type { ShopPromoCodeSummary } from '../../shop.types';
+import { toShopPromoCodeSummary } from '../../promo-code-summary.mapper';
 
 @Injectable()
-export class CreateShopSaleUseCase {
+export class CreateShopPromoCodeUseCase {
   constructor(
     private readonly entityManager: EntityManager,
-    private readonly jobDispatcher: JobDispatcher,
     private readonly clock: Clock,
   ) {}
 
   async execute(
     actor: AuthenticatedUser,
     shopId: string,
-    body: CreateShopSaleDto,
-  ): Promise<ShopSaleSummary> {
+    body: CreateShopPromoCodeDto,
+  ): Promise<ShopPromoCodeSummary> {
     const entityManager = this.entityManager.fork();
 
     const shop = await entityManager.getRepository(ShopEntity).findOne(
@@ -61,7 +60,7 @@ export class CreateShopSaleUseCase {
     }
 
     if (!isValidTimeZone(body.timezone)) {
-      throw new SaleTimeZoneInvalidError(body.timezone);
+      throw new PromoCodeTimeZoneInvalidError(body.timezone);
     }
 
     const now = this.clock.now();
@@ -71,25 +70,46 @@ export class CreateShopSaleUseCase {
     const endAt = this.resolveBoundary('end', body.end_local, body.end_offset_minutes, body.timezone);
 
     if (startAt.getTime() >= endAt.getTime()) {
-      throw new SaleEndAfterStartRequiredError();
+      throw new PromoCodeEndAfterStartRequiredError();
     }
 
     const productIds = body.product_scope === PromotionProductScope.SPECIFIC
       ? await this.resolveProductScope(entityManager, shopId, body.product_ids ?? [])
       : [];
 
-    const repository = entityManager.getRepository(PromotionEntity);
-    const promotion = repository.create({
+    const normalizedCode = body.code.trim().toUpperCase();
+    const existingCode = await entityManager.getRepository(PromotionCodeEntity).findOne({
+      shopId,
+      code: normalizedCode,
+    });
+
+    if (existingCode) {
+      throw new PromoCodeAlreadyExistsError();
+    }
+
+    const promotion = entityManager.getRepository(PromotionEntity).create({
       shop,
       name: body.name.trim(),
-      applicationKind: PromotionApplicationKind.SALE,
+      applicationKind: PromotionApplicationKind.CHECKOUT_DISCOUNT,
       benefitType: PromotionBenefitType.PERCENTAGE,
       currency: shop.currency,
       percentOff: body.percent_off,
       productScope: body.product_scope,
+      visibility: body.visibility,
+      minOrderType: null,
+      minOrderValue: 0,
+      minPurchaseQuantity: 0,
+      maxRedemptions: null,
+      maxRedemptionsPerBuyer: null,
       startAt,
       endAt,
       timezone: body.timezone,
+    });
+
+    const code = entityManager.getRepository(PromotionCodeEntity).create({
+      promotion,
+      shopId,
+      code: normalizedCode,
     });
 
     const targets = productIds.map((productId) =>
@@ -98,17 +118,11 @@ export class CreateShopSaleUseCase {
         productId,
       }));
 
-    await entityManager.persist([promotion, ...targets]).flush();
+    await entityManager.persist([promotion, code, ...targets]).flush();
 
-    await this.scheduleSaleProjection(promotion, productIds, now);
-
-    return toShopSaleSummary(promotion, productIds, now);
+    return toShopPromoCodeSummary(promotion, code.code, productIds, now);
   }
 
-  /**
-   * Resolves one authored wall clock into the instant a Sale boundary falls on,
-   * rejecting the two daylight-saving cases a silent resolution would hide.
-   */
   private resolveBoundary(
     boundary: 'start' | 'end',
     local: string | undefined,
@@ -120,34 +134,28 @@ export class CreateShopSaleUseCase {
     }
     catch (error) {
       if (error instanceof NonexistentPromotionLocalTimeError) {
-        throw new SaleLocalTimeNonexistentError(error.boundary);
+        throw new PromoCodeLocalTimeNonexistentError(error.boundary);
       }
 
       if (error instanceof AmbiguousPromotionLocalTimeError) {
-        throw new SaleLocalTimeAmbiguousError(error.boundary);
+        throw new PromoCodeLocalTimeAmbiguousError(error.boundary);
       }
 
       if (error instanceof InvalidPromotionScheduleError) {
-        throw new SaleScheduleInvalidError(error.message);
+        throw new PromoCodeScheduleInvalidError(error.message);
       }
 
       throw error;
     }
   }
 
-  /**
-   * Validates explicit Product targets: every target must exist in the owning
-   * shop and each may be listed once. Selected Products include all their
-   * purchasable Product Variants by construction, so no variant rows are
-   * enumerated here.
-   */
   private async resolveProductScope(
     entityManager: EntityManager,
     shopId: string,
     productIds: string[],
   ): Promise<string[]> {
     if (new Set(productIds).size !== productIds.length) {
-      throw new SaleProductScopeInvalidError('Selected products must be unique');
+      throw new PromoCodeProductScopeInvalidError('Selected products must be unique');
     }
 
     const products = await entityManager.getRepository(ProductEntity).find(
@@ -160,59 +168,14 @@ export class CreateShopSaleUseCase {
       const product = productsById.get(productId);
 
       if (!product) {
-        throw new SaleProductScopeInvalidError('A selected product was not found');
+        throw new PromoCodeProductScopeInvalidError('A selected product was not found');
       }
 
       if (product.shop.id !== shopId) {
-        throw new SaleProductScopeInvalidError('A selected product belongs to another shop');
+        throw new PromoCodeProductScopeInvalidError('A selected product belongs to another shop');
       }
     }
 
     return productIds;
-  }
-
-  /**
-   * Refreshes the affected catalog projections now, at the Sale's start, and at
-   * its end. Projection stays derived display data; the checkout quote and
-   * Order commitment re-resolve Sale pricing independently.
-   */
-  private async scheduleSaleProjection(
-    promotion: PromotionEntity,
-    productIds: string[],
-    now: Date,
-  ): Promise<void> {
-    const startAt = promotion.startAt.getTime();
-    const endAt = promotion.endAt.getTime();
-    const nowMs = now.getTime();
-    const targetProductIds = productIds.length > 0 ? productIds : undefined;
-
-    if (startAt <= nowMs && endAt > nowMs) {
-      await dispatchShopProjection(
-        this.jobDispatcher,
-        promotion.shop.id,
-        targetProductIds,
-        `sale-${promotion.id}-now`,
-      );
-    }
-
-    if (startAt > nowMs) {
-      await dispatchShopProjection(
-        this.jobDispatcher,
-        promotion.shop.id,
-        targetProductIds,
-        `sale-${promotion.id}-start-${startAt}`,
-        startAt - nowMs,
-      );
-    }
-
-    if (endAt > nowMs) {
-      await dispatchShopProjection(
-        this.jobDispatcher,
-        promotion.shop.id,
-        targetProductIds,
-        `sale-${promotion.id}-end-${endAt}`,
-        endAt - nowMs,
-      );
-    }
   }
 }

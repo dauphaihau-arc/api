@@ -1,4 +1,5 @@
 import type { CartSnapshot } from '../../cart/app/cart.types';
+import type { ManualPromoOffer } from '../../coupon/app/types/manual-promo-offer.mapper';
 import type { CouponEntity } from '../../coupon/infra/persistence/entities/coupon.entity';
 import type { FulfillmentAggregateStatus } from '../../fulfillment/domain/enums/fulfillment-aggregate-status.enum';
 import type { FulfillmentProgressSnapshot } from '../../fulfillment/domain/fulfillment-progress';
@@ -89,6 +90,7 @@ export interface CheckoutQuoteShopSummary {
   shopSlug: string;
   subtotalMinor: number;
   discountMinor: number;
+  saleDiscountMinor: number;
   shippingMinor: number;
   shippingDiscountMinor: number;
   totalMinor: number;
@@ -108,6 +110,7 @@ export interface CheckoutQuoteResult {
   subtotalMinor: number;
   shippingMinor: number;
   discountMinor: number;
+  saleDiscountMinor: number;
   totalMinor: number;
   /** UTC instant the accepted delivery estimate is anchored to. */
   shippingAnchorAt?: Date;
@@ -198,6 +201,7 @@ export interface OrderListShop {
   shippingMinor?: number;
   totalDiscount: number;
   discountMinor?: number;
+  saleDiscountMinor?: number;
   total: number;
   totalMinor?: number;
   shippingQuote?: OrderShippingQuote;
@@ -320,6 +324,7 @@ export interface ShopOrderSummary {
   shippingMinor?: number;
   totalDiscount: number;
   discountMinor?: number;
+  saleDiscountMinor?: number;
   total: number;
   totalMinor?: number;
   shippingQuote?: OrderShippingQuote;
@@ -462,10 +467,11 @@ export interface PricedShopCart {
   items: PricedCartItem[];
   subtotal: number;
   totalDiscount: number;
+  saleDiscount: number;
   totalShippingFee: number;
   total: number;
   note?: string;
-  promoCoupons: CouponEntity[];
+  promoOffers: ManualPromoOffer[];
   originCountries: string[];
   /** Per-shop shipping quote: charge, base-unit calculation, and estimate. */
   shipping?: CheckoutShippingShopQuote;
@@ -479,6 +485,7 @@ export interface PricedCartSummary {
   currency: string;
   subtotalPrice: number;
   totalDiscount: number;
+  saleDiscount: number;
   subtotalAfterDiscount: number;
   totalShippingFee: number;
   totalPrice: number;

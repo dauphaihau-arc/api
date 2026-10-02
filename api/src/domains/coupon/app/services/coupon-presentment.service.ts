@@ -3,8 +3,8 @@ import type { FxRateCache } from '~/integrations/currency/fx-rate.service';
 import { MoneyConversionService } from '~/integrations/currency/money-conversion.service';
 import { fromMinorUnits, toMinorUnits } from '../../../../platform/money/money';
 import type { CouponPresentmentAmounts } from '../../../order/app/order.types';
-import { CouponMinOrderType } from '../../domain/enums/coupon-min-order-type.enum';
-import { CouponType } from '../../domain/enums/coupon-type.enum';
+import type { ManualPromoOffer } from '../types/coupon.types';
+import { couponToManualOffer } from '../types/coupon.types';
 import type { CouponEntity } from '../../infra/persistence/entities/coupon.entity';
 
 /**
@@ -23,37 +23,37 @@ export class CouponPresentmentService {
    * required rate is missing, so no caller can compare a native amount as if it
    * were the checkout currency.
    */
-  async resolveForCoupon(
-    coupon: CouponEntity,
+  async resolveForManualPromoOffer(
+    offer: ManualPromoOffer,
     checkoutCurrency: string,
     rateCache: FxRateCache,
   ): Promise<CouponPresentmentAmounts | undefined> {
-    const needsAmountOff = coupon.type === CouponType.FIXED_AMOUNT;
-    const needsMinOrderValue = coupon.minOrderType === CouponMinOrderType.ORDER_TOTAL;
+    const needsAmountOff = offer.type === 'fixed_amount';
+    const needsMinOrderValue = offer.minOrderType === 'order_total';
 
     if (!needsAmountOff && !needsMinOrderValue) {
       return { amountOff: 0, minOrderValue: 0 };
     }
 
-    if (coupon.currency === checkoutCurrency) {
+    if (offer.currency === checkoutCurrency) {
       return {
-        amountOff: needsAmountOff ? Number(coupon.amountOff) : 0,
-        minOrderValue: needsMinOrderValue ? Number(coupon.minOrderValue) : 0,
+        amountOff: needsAmountOff ? offer.amountOff : 0,
+        minOrderValue: needsMinOrderValue ? offer.minOrderValue : 0,
       };
     }
 
     const amountOff = needsAmountOff
       ? await this.convertAmount(
-        Number(coupon.amountOff),
-        coupon.currency,
+        offer.amountOff,
+        offer.currency,
         checkoutCurrency,
         rateCache,
       )
       : 0;
     const minOrderValue = needsMinOrderValue
       ? await this.convertAmount(
-        Number(coupon.minOrderValue),
-        coupon.currency,
+        offer.minOrderValue,
+        offer.currency,
         checkoutCurrency,
         rateCache,
       )
@@ -64,6 +64,21 @@ export class CouponPresentmentService {
     }
 
     return { amountOff, minOrderValue };
+  }
+
+  /**
+   * Legacy Coupon adapter around the shared manual-promo presentment rule.
+   */
+  async resolveForCoupon(
+    coupon: CouponEntity,
+    checkoutCurrency: string,
+    rateCache: FxRateCache,
+  ): Promise<CouponPresentmentAmounts | undefined> {
+    return this.resolveForManualPromoOffer(
+      couponToManualOffer(coupon),
+      checkoutCurrency,
+      rateCache,
+    );
   }
 
   private async convertAmount(

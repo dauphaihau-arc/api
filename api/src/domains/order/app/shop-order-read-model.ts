@@ -101,6 +101,7 @@ export function toShopOrderSummary(
     shippingMinor: getOrderShippingMinor(order),
     totalDiscount: getOrderDiscountMajor(order),
     discountMinor: getOrderDiscountMinor(order),
+    saleDiscountMinor: order.saleDiscountMinor,
     total: getOrderTotalMajor(order),
     totalMinor: getOrderTotalMinor(order),
     shippingQuote: parsePersistedOrderShippingSnapshot(order.shippingQuoteSnapshot),

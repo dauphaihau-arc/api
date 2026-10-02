@@ -28,6 +28,7 @@ export interface LoadedCheckoutQuote {
   subtotalMinor: number;
   shippingMinor: number;
   discountMinor: number;
+  saleDiscountMinor: number;
   totalMinor: number;
   shippingAddress: ShippingAddressInput;
   shopAdjustments?: ShopAdjustmentInput[];
@@ -121,6 +122,7 @@ export class LoadCheckoutQuoteService {
       subtotalMinor: quote.subtotalMinor,
       shippingMinor: quote.shippingMinor,
       discountMinor: quote.discountMinor,
+      saleDiscountMinor: quote.saleDiscountMinor,
       totalMinor: quote.totalMinor,
       shippingAddress: {
         fullName: shippingAddress.full_name,

@@ -67,15 +67,17 @@ describe('OrderCheckoutService', () => {
         ],
         subtotal: 18,
         totalDiscount: 2,
+        saleDiscount: 2,
         totalShippingFee: 0,
         total: 16,
         note: 'Leave at door',
-        promoCoupons: [],
+        promoOffers: [],
         originCountries: ['US'],
       },
     ],
     subtotalPrice: 18,
     totalDiscount: 2,
+    saleDiscount: 2,
     subtotalAfterDiscount: 16,
     totalShippingFee: 0,
     totalPrice: 16,
@@ -132,6 +134,10 @@ describe('OrderCheckoutService', () => {
     };
     const couponRepository = {
       find: jest.fn().mockResolvedValue(options?.coupons ?? []),
+      findOne: jest.fn().mockImplementation(async (filter: { code?: string }) => {
+        const code = filter?.code;
+        return options?.coupons?.find((coupon) => coupon.code === code) ?? null;
+      }),
     };
 
     const fakeEntityManager = {
@@ -150,6 +156,8 @@ describe('OrderCheckoutService', () => {
             return usageRepository;
           case 'CouponEntity':
             return couponRepository;
+          case 'PromotionCodeEntity':
+            return { find: jest.fn().mockResolvedValue([]) };
           default:
             return {
               findOne: jest.fn(),
@@ -549,6 +557,7 @@ describe('OrderCheckoutService', () => {
           subtotalMinor: 1800,
           shippingMinor: 0,
           discountMinor: 0,
+          saleDiscountMinor: 0,
           totalMinor: 1800,
           shippingAddress,
           shops: [
@@ -559,6 +568,7 @@ describe('OrderCheckoutService', () => {
               subtotalMinor: 1800,
               shippingMinor: 0,
               discountMinor: 0,
+              saleDiscountMinor: 0,
               shippingDiscountMinor: 0,
               totalMinor: 1800,
               promoCodes: [],
@@ -639,6 +649,7 @@ describe('OrderCheckoutService', () => {
         subtotalMinor: 1800,
         shippingMinor: 0,
         discountMinor: 0,
+        saleDiscountMinor: 0,
         totalMinor: 1800,
       }),
     );
@@ -844,9 +855,10 @@ describe('OrderCheckoutService', () => {
       })) as PricedCartItem[],
       subtotal: shop.subtotalMinor / 100,
       totalDiscount: shop.discountMinor / 100,
+      saleDiscount: 0,
       totalShippingFee: shop.shippingMinor / 100,
       total: (shop.subtotalMinor - shop.discountMinor + shop.shippingMinor) / 100,
-      promoCoupons: [],
+      promoOffers: [],
       originCountries: [],
     }));
 
@@ -860,6 +872,7 @@ describe('OrderCheckoutService', () => {
       shops,
       subtotalPrice,
       totalDiscount,
+      saleDiscount: 0,
       subtotalAfterDiscount: subtotalPrice - totalDiscount,
       totalShippingFee,
       totalPrice: subtotalPrice - totalDiscount + totalShippingFee,
@@ -881,6 +894,7 @@ describe('OrderCheckoutService', () => {
       subtotalMinor: 1800,
       shippingMinor: 1150,
       discountMinor: 0,
+      saleDiscountMinor: 0,
       totalMinor: totalMinorOverride ?? 2950,
       shippingAddress,
       shippingAnchorAt: shipping.estimate.anchorAt,
@@ -892,6 +906,7 @@ describe('OrderCheckoutService', () => {
           subtotalMinor: 1800,
           shippingMinor: 1150,
           discountMinor: 0,
+          saleDiscountMinor: 0,
           shippingDiscountMinor: 0,
           totalMinor: 2950,
           promoCodes: [] as string[],
@@ -1048,6 +1063,21 @@ describe('OrderCheckoutService', () => {
         id: 'coupon-free',
         code: 'FREESHIP',
         usesCount: 4,
+        shop: { id: 'shop-1' },
+        type: 'free_ship',
+        currency: 'USD',
+        percentOff: 0,
+        amountOff: 0,
+        appliesTo: 'all',
+        appliesProductIds: [],
+        startDate: new Date('2026-01-01T00:00:00.000Z'),
+        endDate: new Date('2027-01-01T00:00:00.000Z'),
+        minOrderType: 'none',
+        minOrderValue: 0,
+        minProducts: 0,
+        maxUses: 100,
+        maxUsesPerUser: 100,
+        isActive: true,
       };
       const quote = buildQuotedCheckout();
       const { service, usageRepository, couponRepository } = buildService({

@@ -9,7 +9,7 @@ import type { CouponAppliesTo } from '../../domain/enums/coupon-applies-to.enum'
 import type { CouponIneligibleReason } from '../../domain/enums/coupon-ineligible-reason.enum';
 import type { CouponMinOrderType } from '../../domain/enums/coupon-min-order-type.enum';
 import type { CouponType } from '../../domain/enums/coupon-type.enum';
-import type { CouponEntity } from '../../infra/persistence/entities/coupon.entity';
+import type { ManualPromoOffer } from './manual-promo-offer.mapper';
 
 export interface ApplyCouponToCartInput {
   userId?: string;
@@ -40,7 +40,8 @@ export interface CouponPricedShop {
   items: PricedCartItem[];
   subtotal: number;
   totalDiscount: number;
-  promoCoupons: CouponEntity[];
+  saleDiscount: number;
+  promoOffers: ManualPromoOffer[];
   shippingDiscountMinor: number;
   shippingDiscounts: ShippingDiscountProvenance[];
 }
@@ -81,3 +82,15 @@ export interface AppliedCoupon {
   code: string;
   type: CouponType;
 }
+
+export {
+  couponMinOrderTypeToManual,
+  couponToManualOffer,
+  couponTypeToManualType,
+  manualTypeToCouponType,
+  promotionBenefitTypeToManualType,
+  promotionCodeOfferToManualOffer,
+  type ManualPromoOffer,
+  type ManualPromoOfferSource,
+  type ManualPromoOfferType,
+} from './manual-promo-offer.mapper';

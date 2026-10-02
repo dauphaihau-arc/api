@@ -80,6 +80,34 @@ export interface ShopSaleListResult {
   totalResults: number;
 }
 
+export interface ShopPromoCodeSummary {
+  id: string;
+  shopId: string;
+  name: string;
+  code: string;
+  percentOff: number;
+  currency: string;
+  visibility: string;
+  productScope: string;
+  productIds: string[];
+  startAt: Date;
+  endAt: Date;
+  timezone: string;
+  status: string;
+  cancelledAt?: Date | null;
+  endedAt?: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface ShopPromoCodeListResult {
+  results: ShopPromoCodeSummary[];
+  page: number;
+  limit: number;
+  totalPages: number;
+  totalResults: number;
+}
+
 export interface CreateShopInput {
   ownerUserId: string;
   shopName: string;

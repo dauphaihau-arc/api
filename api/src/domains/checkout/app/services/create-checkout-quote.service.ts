@@ -100,12 +100,14 @@ export class CreateCheckoutQuoteService {
     const shopMoney = pricedCartSummary.shops.map((shop) => {
       const shopSubtotalMinor = toMinorUnits(shop.subtotal, checkoutCurrency);
       const shopDiscountMinor = toMinorUnits(shop.totalDiscount, checkoutCurrency);
+      const shopSaleDiscountMinor = toMinorUnits(shop.saleDiscount, checkoutCurrency);
       const shopShippingMinor = toMinorUnits(shop.totalShippingFee, checkoutCurrency);
 
       return {
         shop,
         subtotalMinor: shopSubtotalMinor,
         discountMinor: shopDiscountMinor,
+        saleDiscountMinor: shopSaleDiscountMinor,
         shippingMinor: shopShippingMinor,
         totalMinor: shopSubtotalMinor - shopDiscountMinor + shopShippingMinor,
       };
@@ -114,6 +116,7 @@ export class CreateCheckoutQuoteService {
     const subtotalMinor = shopMoney.reduce((total, entry) => total + entry.subtotalMinor, 0);
     const shippingMinor = shopMoney.reduce((total, entry) => total + entry.shippingMinor, 0);
     const discountMinor = shopMoney.reduce((total, entry) => total + entry.discountMinor, 0);
+    const saleDiscountMinor = shopMoney.reduce((total, entry) => total + entry.saleDiscountMinor, 0);
     const totalMinor = subtotalMinor - discountMinor + shippingMinor;
 
     const quoteFingerprint = buildQuoteFingerprint({
@@ -129,6 +132,7 @@ export class CreateCheckoutQuoteService {
         subtotalMinor,
         shippingMinor,
         discountMinor,
+        saleDiscountMinor,
         totalMinor,
       },
     });
@@ -199,6 +203,7 @@ export class CreateCheckoutQuoteService {
         subtotalMinor,
         shippingMinor,
         discountMinor,
+        saleDiscountMinor,
         totalMinor,
         shippingAddress: {
           full_name: input.shippingAddress.fullName,
@@ -260,11 +265,12 @@ export class CreateCheckoutQuoteService {
         shopSlug: entry.shop.items[0]?.shopSlug ?? '',
         subtotalMinor: entry.subtotalMinor,
         discountMinor: entry.discountMinor,
+        saleDiscountMinor: entry.saleDiscountMinor,
         shippingMinor: entry.shippingMinor,
         shippingDiscountMinor: entry.shop.shippingDiscountMinor ?? 0,
         totalMinor: entry.totalMinor,
         note: entry.shop.note,
-        promoCodes: entry.shop.promoCoupons.map((coupon) => coupon.code),
+        promoCodes: entry.shop.promoOffers.map((offer) => offer.code),
         originCountries: entry.shop.originCountries,
         shipping: entry.shop.shipping,
         shippingDiscounts: entry.shop.shippingDiscounts ?? [],
@@ -309,6 +315,7 @@ export class CreateCheckoutQuoteService {
       subtotalMinor: persistedQuote.subtotalMinor,
       shippingMinor: persistedQuote.shippingMinor,
       discountMinor: persistedQuote.discountMinor,
+      saleDiscountMinor: persistedQuote.saleDiscountMinor,
       totalMinor: persistedQuote.totalMinor,
       ...(shippingAnchorAt ? { shippingAnchorAt } : {}),
       expiresAt: persistedQuote.expiresAt,
@@ -364,6 +371,7 @@ function buildQuoteFingerprint(input: {
     subtotalMinor: number;
     shippingMinor: number;
     discountMinor: number;
+    saleDiscountMinor: number;
     totalMinor: number;
   };
 }): string {

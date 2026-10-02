@@ -22,15 +22,18 @@ export function resolveRefreshedCheckoutTotals(
   summary: PricedCartSummary,
 ): RefreshedCheckoutTotals | undefined {
   const currency = quote.checkoutCurrency;
+
   const shops = summary.shops.map((shop) => {
     const subtotalMinor = toMinorUnits(shop.subtotal, currency);
     const discountMinor = toMinorUnits(shop.totalDiscount, currency);
+    const saleDiscountMinor = toMinorUnits(shop.saleDiscount, currency);
     const shippingMinor = toMinorUnits(shop.totalShippingFee, currency);
 
     return {
       shopId: shop.shopId,
       subtotalMinor,
       discountMinor,
+      saleDiscountMinor,
       shippingMinor,
       totalMinor: subtotalMinor - discountMinor + shippingMinor,
     };
@@ -41,6 +44,7 @@ export function resolveRefreshedCheckoutTotals(
     subtotalMinor: shops.reduce((total, shop) => total + shop.subtotalMinor, 0),
     shippingMinor: shops.reduce((total, shop) => total + shop.shippingMinor, 0),
     discountMinor: shops.reduce((total, shop) => total + shop.discountMinor, 0),
+    saleDiscountMinor: shops.reduce((total, shop) => total + shop.saleDiscountMinor, 0),
     totalMinor: 0,
     shops,
   };
@@ -117,6 +121,7 @@ function matchesAcceptedQuote(
     return current != null
       && current.subtotalMinor === shop.subtotalMinor
       && current.discountMinor === shop.discountMinor
+      && current.saleDiscountMinor === shop.saleDiscountMinor
       && current.shippingMinor === shop.shippingMinor;
   });
 }

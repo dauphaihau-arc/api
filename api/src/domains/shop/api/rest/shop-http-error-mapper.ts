@@ -7,16 +7,67 @@ import {
 } from '@nestjs/common';
 import { ShopAppError } from '../../app/errors/shop-app.error';
 import {
+  CouponCodeAlreadyExistsError,
   CouponNotFoundError,
+  CouponUsageLimitsInvalidError,
+  InvalidCouponWindowError,
+  PromoCodeAlreadyExistsError,
+  PromoCodeEndAfterStartRequiredError,
+  PromoCodeLocalTimeAmbiguousError,
+  PromoCodeLocalTimeNonexistentError,
+  PromoCodeProductScopeInvalidError,
+  PromoCodeScheduleInvalidError,
+  PromoCodeTimeZoneInvalidError,
+  SaleEndAfterStartRequiredError,
+  SaleLocalTimeAmbiguousError,
+  SaleLocalTimeNonexistentError,
   SaleNotFoundError,
+  SaleProductScopeInvalidError,
+  SaleScheduleInvalidError,
   SaleStopNotAllowedError,
+  SaleTimeZoneInvalidError,
   ShopAccessDeniedError,
   ShopNameAlreadyTakenError,
   ShopNotFoundError,
   ShopSlugAlreadyTakenError,
   ShopSlugReservedError,
+  ShopTimeZoneInvalidError,
   UserAlreadyOwnsShopError,
 } from '../../app/errors/shop-app.error';
+
+/**
+ * The machine-readable identity of a shop failure. A client branches and writes
+ * its own copy from the code; the human `message` stays a fallback for codes a
+ * client does not know yet, so the vocabulary can grow without breaking one.
+ */
+export type ShopHttpErrorCode =
+  | 'SHOP_NAME_ALREADY_TAKEN'
+  | 'SHOP_SLUG_ALREADY_TAKEN'
+  | 'SHOP_SLUG_RESERVED'
+  | 'USER_ALREADY_OWNS_SHOP'
+  | 'SHOP_NOT_FOUND'
+  | 'SHOP_ACCESS_DENIED'
+  | 'SHOP_TIMEZONE_INVALID'
+  | 'COUPON_NOT_FOUND'
+  | 'COUPON_CODE_ALREADY_EXISTS'
+  | 'COUPON_WINDOW_INVALID'
+  | 'COUPON_USAGE_LIMITS_INVALID'
+  | 'SALE_NOT_FOUND'
+  | 'SALE_STOP_NOT_ALLOWED'
+  | 'SALE_PRODUCT_SCOPE_INVALID'
+  | 'SALE_SCHEDULE_INVALID'
+  | 'SALE_TIMEZONE_INVALID'
+  | 'SALE_END_AFTER_START_REQUIRED'
+  | 'SALE_LOCAL_TIME_NONEXISTENT'
+  | 'SALE_LOCAL_TIME_AMBIGUOUS'
+  | 'PROMO_CODE_ALREADY_EXISTS'
+  | 'PROMO_CODE_PRODUCT_SCOPE_INVALID'
+  | 'PROMO_CODE_SCHEDULE_INVALID'
+  | 'PROMO_CODE_TIMEZONE_INVALID'
+  | 'PROMO_CODE_END_AFTER_START_REQUIRED'
+  | 'PROMO_CODE_LOCAL_TIME_NONEXISTENT'
+  | 'PROMO_CODE_LOCAL_TIME_AMBIGUOUS'
+  | 'SHOP_INVALID_INPUT';
 
 export function isShopAppError(error: unknown): error is ShopAppError {
   return error instanceof ShopAppError;
@@ -25,41 +76,68 @@ export function isShopAppError(error: unknown): error is ShopAppError {
 export function mapShopAppErrorToHttpException(
   error: ShopAppError,
 ): HttpException {
+  const payload = { message: error.message, code: getShopErrorCode(error) };
+
   if (
     error instanceof ShopNotFoundError
     || error instanceof CouponNotFoundError
     || error instanceof SaleNotFoundError
   ) {
-    return new NotFoundException(error.message);
+    return new NotFoundException(payload);
   }
 
   if (error instanceof ShopAccessDeniedError) {
-    return new ForbiddenException(error.message);
+    return new ForbiddenException(payload);
   }
 
-  if (error instanceof ShopNameAlreadyTakenError) {
-    return new ConflictException(error.message);
-  }
-
-  if (error instanceof ShopSlugAlreadyTakenError) {
-    return new ConflictException(error.message);
-  }
-
-  // A stop that the Sale's lifecycle state does not admit is a conflict with
-  // current state, not malformed input.
-  if (error instanceof SaleStopNotAllowedError) {
-    return new ConflictException(error.message);
-  }
-
-  if (error instanceof ShopSlugReservedError) {
-    return new BadRequestException(error.message);
-  }
-
-  if (error instanceof UserAlreadyOwnsShopError) {
-    return new BadRequestException(error.message);
+  // A stop that the Sale's lifecycle state does not admit, a taken shop name,
+  // or a Promo Code that already exists in the shop are conflicts with current
+  // state, not malformed input.
+  if (
+    error instanceof ShopNameAlreadyTakenError
+    || error instanceof ShopSlugAlreadyTakenError
+    || error instanceof SaleStopNotAllowedError
+    || error instanceof PromoCodeAlreadyExistsError
+  ) {
+    return new ConflictException(payload);
   }
 
   // The remaining shop application failures are invalid input the use case
-  // could not accept (e.g. a reversed coupon window, inconsistent usage limits).
-  return new BadRequestException(error.message);
+  // could not accept (e.g. a reversed schedule, foreign Product targets).
+  return new BadRequestException(payload);
+}
+
+export function getShopErrorCode(error: ShopAppError): ShopHttpErrorCode {
+  if (error instanceof ShopNameAlreadyTakenError) return 'SHOP_NAME_ALREADY_TAKEN';
+  if (error instanceof ShopSlugAlreadyTakenError) return 'SHOP_SLUG_ALREADY_TAKEN';
+  if (error instanceof ShopSlugReservedError) return 'SHOP_SLUG_RESERVED';
+  if (error instanceof UserAlreadyOwnsShopError) return 'USER_ALREADY_OWNS_SHOP';
+  if (error instanceof ShopNotFoundError) return 'SHOP_NOT_FOUND';
+  if (error instanceof ShopAccessDeniedError) return 'SHOP_ACCESS_DENIED';
+  if (error instanceof ShopTimeZoneInvalidError) return 'SHOP_TIMEZONE_INVALID';
+  if (error instanceof CouponNotFoundError) return 'COUPON_NOT_FOUND';
+  if (error instanceof CouponCodeAlreadyExistsError) return 'COUPON_CODE_ALREADY_EXISTS';
+  if (error instanceof InvalidCouponWindowError) return 'COUPON_WINDOW_INVALID';
+  if (error instanceof CouponUsageLimitsInvalidError) return 'COUPON_USAGE_LIMITS_INVALID';
+  if (error instanceof SaleNotFoundError) return 'SALE_NOT_FOUND';
+  if (error instanceof SaleStopNotAllowedError) return 'SALE_STOP_NOT_ALLOWED';
+  if (error instanceof SaleProductScopeInvalidError) return 'SALE_PRODUCT_SCOPE_INVALID';
+  if (error instanceof SaleScheduleInvalidError) return 'SALE_SCHEDULE_INVALID';
+  if (error instanceof SaleTimeZoneInvalidError) return 'SALE_TIMEZONE_INVALID';
+  if (error instanceof SaleEndAfterStartRequiredError) return 'SALE_END_AFTER_START_REQUIRED';
+  if (error instanceof SaleLocalTimeNonexistentError) return 'SALE_LOCAL_TIME_NONEXISTENT';
+  if (error instanceof SaleLocalTimeAmbiguousError) return 'SALE_LOCAL_TIME_AMBIGUOUS';
+  if (error instanceof PromoCodeAlreadyExistsError) return 'PROMO_CODE_ALREADY_EXISTS';
+  if (error instanceof PromoCodeProductScopeInvalidError) return 'PROMO_CODE_PRODUCT_SCOPE_INVALID';
+  if (error instanceof PromoCodeScheduleInvalidError) return 'PROMO_CODE_SCHEDULE_INVALID';
+  if (error instanceof PromoCodeTimeZoneInvalidError) return 'PROMO_CODE_TIMEZONE_INVALID';
+  if (error instanceof PromoCodeEndAfterStartRequiredError) {
+    return 'PROMO_CODE_END_AFTER_START_REQUIRED';
+  }
+  if (error instanceof PromoCodeLocalTimeNonexistentError) {
+    return 'PROMO_CODE_LOCAL_TIME_NONEXISTENT';
+  }
+  if (error instanceof PromoCodeLocalTimeAmbiguousError) return 'PROMO_CODE_LOCAL_TIME_AMBIGUOUS';
+
+  return 'SHOP_INVALID_INPUT';
 }

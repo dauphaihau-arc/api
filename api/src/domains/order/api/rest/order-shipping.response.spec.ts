@@ -102,6 +102,7 @@ function buildOrderSummary(): ShopOrderSummary {
     shippingMinor: 1150,
     totalDiscount: 0,
     discountMinor: 0,
+    saleDiscountMinor: 0,
     total: 29.5,
     totalMinor: 2950,
     shippingQuote: {
@@ -121,6 +122,7 @@ describe('order shipping response', () => {
       subtotalMinor: 1800,
       shippingMinor: 1150,
       discountMinor: 0,
+      saleDiscountMinor: 0,
       totalMinor: 2950,
       expiresAt: new Date('2026-09-22T10:30:00.000Z'),
       items: [],
@@ -131,6 +133,7 @@ describe('order shipping response', () => {
           shopSlug: 'shop-1',
           subtotalMinor: 1800,
           discountMinor: 0,
+          saleDiscountMinor: 0,
           shippingMinor: 1150,
           shippingDiscountMinor: 0,
           totalMinor: 2950,

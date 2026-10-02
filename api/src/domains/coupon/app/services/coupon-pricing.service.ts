@@ -1,18 +1,24 @@
 import { Injectable } from '@nestjs/common';
 import type { FxRateCache } from '~/integrations/currency/fx-rate.service';
-import type { CouponPresentmentAmounts, PricedCartItem } from '../../../order/app/order.types';
-import { computeCouponDiscount } from '../../../order/app/order.types';
+import type {
+  CouponPresentmentAmounts,
+  PricedCartItem,
+  ShippingDiscountProvenance,
+} from '../../../order/app/order.types';
 import type { CheckoutShippingShopQuote } from '../../../shipping/app/shipping.types';
+import { CouponAppliesTo } from '../../domain/enums/coupon-applies-to.enum';
 import { CouponIneligibleReason } from '../../domain/enums/coupon-ineligible-reason.enum';
-import { CouponType } from '../../domain/enums/coupon-type.enum';
+import { CouponMinOrderType } from '../../domain/enums/coupon-min-order-type.enum';
 import { CouponVisibility } from '../../domain/enums/coupon-visibility.enum';
 import type { CouponEntity } from '../../infra/persistence/entities/coupon.entity';
+import type { PromotionCodeOffer } from '../../../promotion/app/ports/promotion-code.reader';
 import {
   CouponCodeNotFoundError,
   CouponCodeNotApplicableError,
   CouponCurrencyConversionUnavailableError,
 } from '../errors/coupon-app.error';
 import { CouponRepository } from '../ports/coupon.repository';
+import { PromotionCodeReader } from '../../../promotion/app/ports/promotion-code.reader';
 import { SaleProjectionReader } from '../../../promotion/app/ports/sale-projection.reader';
 import type {
   AddPromoCouponInput,
@@ -21,11 +27,19 @@ import type {
   CouponPricedShop,
   DiscoverableCoupon,
   ListDiscoverableCouponsInput,
+  ManualPromoOffer,
+} from '../types/coupon.types';
+import {
+  couponToManualOffer,
+  manualTypeToCouponType,
+  promotionCodeOfferToManualOffer,
 } from '../types/coupon.types';
 import { priceItems } from './auto-sale-item-pricing';
 import {
   assertManualCouponSlots,
+  computeManualPromoOfferDiscount,
   evaluateCoupon,
+  evaluateManualPromoOffer,
   nextPromoCodeSelection,
   sortDiscoverableCoupons,
 } from './coupon-eligibility';
@@ -37,6 +51,7 @@ export class CouponPricingService {
     private readonly couponRepository: CouponRepository,
     private readonly couponPresentmentService: CouponPresentmentService,
     private readonly saleProjectionReader: SaleProjectionReader,
+    private readonly promotionCodeReader: PromotionCodeReader,
   ) {}
 
   async applyToCart(input: ApplyCouponToCartInput): Promise<CouponPricedShop[]> {
@@ -46,7 +61,10 @@ export class CouponPricingService {
 
     const selectedItems = input.cart.items.filter((item) => item.isSelectOrder);
     const shopIds = [...new Set(selectedItems.map((item) => item.inventory.shopId))];
-    const coupons = await this.couponRepository.findByShopIds(shopIds);
+    const [coupons, promotionOffers] = await Promise.all([
+      this.couponRepository.findByShopIds(shopIds),
+      this.promotionCodeReader.findActiveCheckoutDiscounts({ shopIds }),
+    ]);
     const couponUsageCounts = await this.loadUserUsageCounts(coupons, input.userId);
     const salesByProductId = await this.saleProjectionReader.findBestSalesForProducts({
       targets: selectedItems.map((item) => ({
@@ -66,6 +84,7 @@ export class CouponPricingService {
         shopId,
         items,
         coupons,
+        promotionOffers,
         promoCodes: shopAdjustments.get(shopId)?.promoCodes ?? [],
         couponUsageCounts,
         checkoutCurrency: input.checkoutCurrency,
@@ -182,21 +201,28 @@ export class CouponPricingService {
    */
   async addPromoCode(input: AddPromoCouponInput): Promise<AppliedCoupon[]> {
     const requestedCode = input.code.trim().toUpperCase();
-    const coupons = await this.couponRepository.findByShopIds([input.shopId]);
-    const couponsByCode = new Map(coupons.map((coupon) => [coupon.code, coupon]));
-    const requested = couponsByCode.get(requestedCode);
+    const [coupons, promotionOffers] = await Promise.all([
+      this.couponRepository.findByShopIds([input.shopId]),
+      this.promotionCodeReader.findActiveCheckoutDiscounts({ shopIds: [input.shopId] }),
+    ]);
+    const offersByCode = this.buildOffersByCode(coupons, promotionOffers);
+    const requested = offersByCode.get(requestedCode);
 
     if (!requested) {
       throw new CouponCodeNotFoundError(requestedCode);
     }
-    if (requested.isAutoSale) {
-      throw new CouponCodeNotApplicableError(requestedCode);
+    if (requested.source === 'coupon') {
+      // Auto-sale Coupons are a pricing mechanism, not manual codes.
+      const requestedCoupon = coupons.find((coupon) => coupon.id === requested.id);
+      if (requestedCoupon?.isAutoSale) {
+        throw new CouponCodeNotApplicableError(requestedCode);
+      }
     }
 
     const nextCodes = nextPromoCodeSelection({
       requested,
       retainedCodes: input.retainedPromoCodes,
-      couponsByCode,
+      offersByCode,
     });
 
     const checkoutCurrency = input.cart.items.find((item) =>
@@ -211,14 +237,14 @@ export class CouponPricingService {
     });
 
     // Validation above rejects any code it cannot resolve, so every remaining
-    // code has a Coupon and its type can be read without a second query.
+    // code has an offer and its type can be read without a second query.
     return nextCodes.map((code) => {
-      const coupon = couponsByCode.get(code);
-      if (!coupon) {
+      const offer = offersByCode.get(code);
+      if (!offer) {
         throw new CouponCodeNotFoundError(code);
       }
 
-      return { code: coupon.code, type: coupon.type };
+      return { code: offer.code, type: manualTypeToCouponType(offer.type) };
     });
   }
 
@@ -234,6 +260,7 @@ export class CouponPricingService {
     shopId: string;
     items: PricedCartItem[];
     coupons: CouponEntity[];
+    promotionOffers: PromotionCodeOffer[];
     promoCodes: string[];
     couponUsageCounts: Map<string, number>;
     checkoutCurrency: string;
@@ -250,94 +277,88 @@ export class CouponPricingService {
       (sum, item) => sum + (item.effectiveUnitPrice * item.quantity),
       0,
     );
-    const couponsByCode = new Map(
-      input.coupons
-        .filter((coupon) => coupon.shop.id === shopId)
-        .map((coupon) => [coupon.code, coupon]),
+    const saleDiscount = items.reduce(
+      (sum, item) => sum + ((item.price - item.effectiveUnitPrice) * item.quantity),
+      0,
     );
-    const requestedCoupons: CouponEntity[] = [];
+    const offersByCode = this.buildOffersByCode(
+      input.coupons.filter((coupon) => coupon.shop.id === shopId),
+      input.promotionOffers.filter((offer) => offer.shopId === shopId),
+    );
+    const requestedOffers: ManualPromoOffer[] = [];
 
     for (const code of promoCodes) {
-      const coupon = couponsByCode.get(code);
-      if (!coupon) {
+      const offer = offersByCode.get(code);
+      if (!offer) {
         if (validatePromoCodes) throw new CouponCodeNotFoundError(code);
         continue;
       }
-      if (coupon.isAutoSale) {
-        if (validatePromoCodes) throw new CouponCodeNotApplicableError(code);
-        continue;
+      if (offer.source === 'coupon') {
+        const coupon = input.coupons.find((entry) => entry.id === offer.id);
+        if (coupon?.isAutoSale) {
+          if (validatePromoCodes) throw new CouponCodeNotApplicableError(code);
+          continue;
+        }
       }
-      requestedCoupons.push(coupon);
+      requestedOffers.push(offer);
     }
 
-    assertManualCouponSlots(requestedCoupons);
+    assertManualCouponSlots(requestedOffers);
 
-    const promoCoupons: CouponEntity[] = [];
+    const promoOffers: ManualPromoOffer[] = [];
     let totalDiscount = 0;
-    let freeShipCoupon: CouponEntity | undefined;
+    let freeShipOffer: ManualPromoOffer | undefined;
     let freeShipAmounts: CouponPresentmentAmounts | undefined;
 
-    for (const coupon of requestedCoupons) {
-      // The coupon's own currency is never assumed to be the checkout
+    for (const offer of requestedOffers) {
+      // The offer's own currency is never assumed to be the checkout
       // currency: without a rate the selection fails rather than charge a
       // wrong total or silently drop the discount the buyer chose.
-      const amounts = await this.couponPresentmentService.resolveForCoupon(
-        coupon,
+      const amounts = await this.couponPresentmentService.resolveForManualPromoOffer(
+        offer,
         checkoutCurrency,
         rateCache,
       );
-      const eligibility = evaluateCoupon({
-        coupon,
+      const eligibility = evaluateManualPromoOffer({
+        offer,
         items,
-        userUsageCount: input.couponUsageCounts.get(coupon.id) ?? 0,
+        userUsageCount: offer.source === 'coupon'
+          ? (input.couponUsageCounts.get(offer.id) ?? 0)
+          : 0,
         amounts,
         now,
       });
 
       if (eligibility.outcome === 'conversion_unavailable') {
         throw new CouponCurrencyConversionUnavailableError(
-          coupon.code,
-          coupon.currency,
+          offer.code,
+          offer.currency,
           checkoutCurrency,
         );
       }
       if (eligibility.outcome === 'ineligible') {
-        if (validatePromoCodes) throw new CouponCodeNotApplicableError(coupon.code);
+        if (validatePromoCodes) throw new CouponCodeNotApplicableError(offer.code);
         continue;
       }
 
-      promoCoupons.push(coupon);
-      if (coupon.type === CouponType.FREE_SHIP) {
-        freeShipCoupon = coupon;
+      promoOffers.push(offer);
+      if (offer.type === 'free_shipping') {
+        freeShipOffer = offer;
         freeShipAmounts = eligibility.amounts;
       }
       else {
         totalDiscount += Math.min(
           eligibility.eligibleSubtotal,
-          computeCouponDiscount(coupon, eligibility.amounts, eligibility.eligibleSubtotal),
+          computeManualPromoOfferDiscount(offer, eligibility.amounts, eligibility.eligibleSubtotal),
         );
       }
     }
 
-    const shippingDiscountMinor = input.shippingShop && freeShipCoupon
+    const shippingDiscountMinor = input.shippingShop && freeShipOffer
       ? input.shippingShop.charge.totalMinor
       : 0;
-    const shippingDiscounts = shippingDiscountMinor > 0 && freeShipCoupon && freeShipAmounts
-      ? [{
-        couponId: freeShipCoupon.id,
-        code: freeShipCoupon.code,
-        type: 'free_ship' as const,
-        appliesTo: freeShipCoupon.appliesTo,
-        appliesProductIds: [...freeShipCoupon.appliesProductIds],
-        minOrderType: freeShipCoupon.minOrderType,
-        minOrderValue: freeShipAmounts.minOrderValue,
-        minProducts: freeShipCoupon.minProducts,
-        maxUses: freeShipCoupon.maxUses,
-        maxUsesPerUser: freeShipCoupon.maxUsesPerUser,
-        usesCount: freeShipCoupon.usesCount,
-        waivedMinor: shippingDiscountMinor,
-        currency: checkoutCurrency,
-      }]
+    const shippingDiscounts = shippingDiscountMinor > 0 && freeShipOffer && freeShipAmounts
+      ? [this.buildShippingDiscountProvenance(freeShipOffer, freeShipAmounts, shippingDiscountMinor, checkoutCurrency)]
       : [];
 
     return {
@@ -345,9 +366,54 @@ export class CouponPricingService {
       items,
       subtotal,
       totalDiscount,
-      promoCoupons,
+      saleDiscount,
+      promoOffers,
       shippingDiscountMinor,
       shippingDiscounts,
+    };
+  }
+
+  private buildOffersByCode(
+    coupons: CouponEntity[],
+    promotionOffers: PromotionCodeOffer[],
+  ): Map<string, ManualPromoOffer> {
+    const offersByCode = new Map<string, ManualPromoOffer>();
+
+    for (const coupon of coupons) {
+      offersByCode.set(coupon.code, couponToManualOffer(coupon));
+    }
+
+    for (const offer of promotionOffers) {
+      offersByCode.set(offer.code, promotionCodeOfferToManualOffer(offer));
+    }
+
+    return offersByCode;
+  }
+
+  private buildShippingDiscountProvenance(
+    offer: ManualPromoOffer,
+    amounts: CouponPresentmentAmounts,
+    waivedMinor: number,
+    currency: string,
+  ): ShippingDiscountProvenance {
+    return {
+      couponId: offer.id,
+      code: offer.code,
+      type: 'free_ship',
+      appliesTo: offer.scope === 'all' ? CouponAppliesTo.ALL : CouponAppliesTo.SPECIFIC,
+      appliesProductIds: [...offer.productIds],
+      minOrderType: offer.minOrderType === 'order_total'
+        ? CouponMinOrderType.ORDER_TOTAL
+        : (offer.minOrderType === 'purchase_quantity'
+          ? CouponMinOrderType.NUMBER_OF_PRODUCTS
+          : CouponMinOrderType.NONE),
+      minOrderValue: amounts.minOrderValue,
+      minProducts: offer.minPurchaseQuantity,
+      maxUses: offer.maxUses ?? 0,
+      maxUsesPerUser: offer.maxUsesPerUser ?? 0,
+      usesCount: offer.usesCount,
+      waivedMinor,
+      currency,
     };
   }
 

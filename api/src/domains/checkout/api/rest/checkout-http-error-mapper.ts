@@ -135,11 +135,13 @@ function buildCheckoutErrorPayload(error: OrderAppError): {
     subtotal_minor: number;
     shipping_minor: number;
     discount_minor: number;
+    sale_discount_minor: number;
     total_minor: number;
     shops: Array<{
       shop_id: string;
       subtotal_minor: number;
       discount_minor: number;
+      sale_discount_minor: number;
       shipping_minor: number;
       total_minor: number;
     }>;
@@ -166,11 +168,13 @@ function buildCheckoutErrorPayload(error: OrderAppError): {
           subtotal_minor: error.refreshedTotals.subtotalMinor,
           shipping_minor: error.refreshedTotals.shippingMinor,
           discount_minor: error.refreshedTotals.discountMinor,
+          sale_discount_minor: error.refreshedTotals.saleDiscountMinor,
           total_minor: error.refreshedTotals.totalMinor,
           shops: error.refreshedTotals.shops.map((shop) => ({
             shop_id: shop.shopId,
             subtotal_minor: shop.subtotalMinor,
             discount_minor: shop.discountMinor,
+            sale_discount_minor: shop.saleDiscountMinor,
             shipping_minor: shop.shippingMinor,
             total_minor: shop.totalMinor,
           })),

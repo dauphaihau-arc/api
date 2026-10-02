@@ -118,6 +118,7 @@ export function toCheckoutQuoteResponse(
     subtotal_minor: result.subtotalMinor,
     shipping_minor: result.shippingMinor,
     discount_minor: result.discountMinor,
+    sale_discount_minor: result.saleDiscountMinor,
     total_minor: result.totalMinor,
     ...(result.shippingAnchorAt
       ? { shipping_anchor_at: result.shippingAnchorAt }
@@ -128,6 +129,7 @@ export function toCheckoutQuoteResponse(
       shop_slug: shop.shopSlug,
       subtotal_minor: shop.subtotalMinor,
       discount_minor: shop.discountMinor,
+      sale_discount_minor: shop.saleDiscountMinor,
       shipping_minor: shop.shippingMinor,
       shipping_discount_minor: shop.shippingDiscountMinor,
       total_minor: shop.totalMinor,

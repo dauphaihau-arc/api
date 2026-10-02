@@ -16,6 +16,7 @@ function buildQuote(): Pick<LoadedCheckoutQuote, 'checkoutCurrency' | 'shops'> {
       shopSlug: 'shop-1',
       subtotalMinor: 1800,
       discountMinor: 200,
+      saleDiscountMinor: 0,
       shippingMinor: 1150,
       shippingDiscountMinor: 0,
       totalMinor: 2750,
@@ -30,15 +31,17 @@ function buildQuote(): Pick<LoadedCheckoutQuote, 'checkoutCurrency' | 'shops'> {
 function buildSummary(overrides?: {
   subtotal?: number;
   totalDiscount?: number;
+  saleDiscount?: number;
   totalShippingFee?: number;
 }): PricedCartSummary {
   const subtotal = overrides?.subtotal ?? 18;
   const totalDiscount = overrides?.totalDiscount ?? 2;
+  const saleDiscount = overrides?.saleDiscount ?? 0;
   const totalShippingFee = overrides?.totalShippingFee ?? 11.5;
 
   return {
     cart: {
-      id: 'cart-1', userId: 'user-1', guestSessionId: null, kind: CartKind.ACTIVE, items: [], 
+      id: 'cart-1', userId: 'user-1', guestSessionId: null, kind: CartKind.ACTIVE, items: [],
     },
     currency: 'USD',
     shops: [{
@@ -47,19 +50,21 @@ function buildSummary(overrides?: {
       items: [],
       subtotal,
       totalDiscount,
+      saleDiscount,
       totalShippingFee,
       total: subtotal - totalDiscount + totalShippingFee,
-      promoCoupons: [],
+      promoOffers: [],
       originCountries: [],
     }],
     subtotalPrice: subtotal,
     totalDiscount,
+    saleDiscount,
     subtotalAfterDiscount: subtotal - totalDiscount,
     totalShippingFee,
     totalPrice: subtotal - totalDiscount + totalShippingFee,
     totalSelectedQuantity: 1,
     totalQuantity: 1,
-  } as PricedCartSummary;
+  };
 }
 
 describe('resolveRefreshedCheckoutTotals', () => {
@@ -78,11 +83,13 @@ describe('resolveRefreshedCheckoutTotals', () => {
       subtotalMinor: 2000,
       shippingMinor: 1150,
       discountMinor: 0,
+      saleDiscountMinor: 0,
       totalMinor: 3150,
       shops: [{
         shopId: 'shop-1',
         subtotalMinor: 2000,
         discountMinor: 0,
+        saleDiscountMinor: 0,
         shippingMinor: 1150,
         totalMinor: 3150,
       }],

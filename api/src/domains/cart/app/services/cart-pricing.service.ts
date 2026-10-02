@@ -58,6 +58,7 @@ export class CartPricingService {
     const shops: PricedCartSummary['shops'] = [];
     let subtotalPrice = 0;
     let totalDiscount = 0;
+    let totalSaleDiscount = 0;
     let totalShippingFee = 0;
 
     for (const couponShop of couponShops) {
@@ -75,6 +76,7 @@ export class CartPricingService {
 
       subtotalPrice += couponShop.subtotal;
       totalDiscount += couponShop.totalDiscount;
+      totalSaleDiscount += couponShop.saleDiscount;
       totalShippingFee += shopShippingFee;
 
       shops.push({
@@ -83,10 +85,11 @@ export class CartPricingService {
         items: couponShop.items,
         subtotal: couponShop.subtotal,
         totalDiscount: couponShop.totalDiscount,
+        saleDiscount: couponShop.saleDiscount,
         totalShippingFee: shopShippingFee,
         total,
         note: input.shopAdjustments?.find((entry) => entry.shopId === couponShop.shopId)?.note,
-        promoCoupons: couponShop.promoCoupons,
+        promoOffers: couponShop.promoOffers,
         originCountries: uniqueOriginCountries,
         ...(shopShipping ? { shipping: shopShipping } : {}),
         shippingDiscountMinor: couponShop.shippingDiscountMinor,
@@ -100,6 +103,7 @@ export class CartPricingService {
       currency: checkoutCurrency,
       subtotalPrice,
       totalDiscount,
+      saleDiscount: totalSaleDiscount,
       subtotalAfterDiscount: Math.max(0, subtotalPrice - totalDiscount),
       totalShippingFee,
       totalPrice: Math.max(0, subtotalPrice - totalDiscount + totalShippingFee),

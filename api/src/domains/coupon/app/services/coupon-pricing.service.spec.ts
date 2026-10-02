@@ -97,6 +97,9 @@ function buildService(
   const saleProjectionReader = {
     findBestSalesForProducts: jest.fn().mockResolvedValue(salesByProductId),
   };
+  const promotionCodeReader = {
+    findActiveCheckoutDiscounts: jest.fn().mockResolvedValue([]),
+  };
   const entityManager = {
     fork: jest.fn().mockReturnValue({
       getRepository: jest.fn((entity: { name?: string }) =>
@@ -108,6 +111,7 @@ function buildService(
       new MikroOrmCouponRepository(entityManager),
       new CouponPresentmentService(buildMoneyConversionService(rates)),
       saleProjectionReader as never,
+      promotionCodeReader as never,
     ),
     couponRepository,
   };
@@ -234,7 +238,7 @@ describe('CouponPricingService', () => {
       validatePromoCodes: true,
     });
 
-    expect(shop?.promoCoupons.map((coupon) => coupon.code).sort()).toEqual(['FREESHIP', 'SAVE10']);
+    expect(shop?.promoOffers.map((offer) => offer.code).sort()).toEqual(['FREESHIP', 'SAVE10']);
   });
 
   it('returns discoverable public coupons and hides code_only and auto-sale coupons', async () => {
@@ -535,7 +539,7 @@ describe('CouponPricingService', () => {
       validatePromoCodes: true,
     });
 
-    expect(shop?.promoCoupons.map((coupon) => coupon.code)).toEqual(['JPYMIN']);
+    expect(shop?.promoOffers.map((offer) => offer.code)).toEqual(['JPYMIN']);
   });
 
   it('fails a requested coupon whose currency has no rate instead of treating it as the checkout currency', async () => {

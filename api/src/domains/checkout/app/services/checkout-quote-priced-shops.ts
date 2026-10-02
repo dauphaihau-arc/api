@@ -22,6 +22,7 @@ export function parsePricedShops(
     shop_slug: string;
     subtotal_minor: number;
     discount_minor: number;
+    sale_discount_minor?: number;
     shipping_minor: number;
     shipping_discount_minor?: number;
     total_minor: number;
@@ -71,6 +72,7 @@ export function parsePricedShops(
     shopSlug: shop.shop_slug,
     subtotalMinor: shop.subtotal_minor,
     discountMinor: shop.discount_minor,
+    saleDiscountMinor: shop.sale_discount_minor ?? 0,
     shippingMinor: shop.shipping_minor,
     shippingDiscountMinor: shop.shipping_discount_minor ?? 0,
     totalMinor: shop.total_minor,
@@ -128,6 +130,7 @@ export function toPersistedPricedShops(
     shop_slug: shop.shopSlug,
     subtotal_minor: shop.subtotalMinor,
     discount_minor: shop.discountMinor,
+    sale_discount_minor: shop.saleDiscountMinor,
     shipping_minor: shop.shippingMinor,
     shipping_discount_minor: shop.shippingDiscountMinor,
     total_minor: shop.totalMinor,

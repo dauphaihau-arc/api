@@ -206,6 +206,7 @@ describe('CartController', () => {
       currency: 'USD',
       subtotalPrice: 15,
       totalDiscount: 0,
+      saleDiscount: 0,
       subtotalAfterDiscount: 15,
       totalShippingFee: 0,
       totalPrice: 15,

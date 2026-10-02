@@ -2604,6 +2604,22 @@
           "enumItems": [],
           "mappedType": "integer"
         },
+        "sale_discount_minor": {
+          "name": "sale_discount_minor",
+          "type": "int4",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": false,
+          "length": null,
+          "precision": 32,
+          "scale": 0,
+          "default": "0",
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "integer"
+        },
         "total_minor": {
           "name": "total_minor",
           "type": "int4",
@@ -7274,6 +7290,22 @@
           "precision": 32,
           "scale": 0,
           "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "integer"
+        },
+        "sale_discount_minor": {
+          "name": "sale_discount_minor",
+          "type": "int4",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": false,
+          "length": null,
+          "precision": 32,
+          "scale": 0,
+          "default": "0",
           "comment": null,
           "enumItems": [],
           "mappedType": "integer"

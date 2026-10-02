@@ -21,6 +21,8 @@ import { CartPricingService } from '../../../cart/app/services/cart-pricing.serv
 import { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
 import { CouponUsageEntity } from '../../../coupon/infra/persistence/entities/coupon-usage.entity';
 import { CouponEntity } from '../../../coupon/infra/persistence/entities/coupon.entity';
+import { PromotionUsageEntity } from '../../../promotion/infra/persistence/entities/promotion-usage.entity';
+import { PromotionCodeEntity } from '../../../promotion/infra/persistence/entities/promotion-code.entity';
 import { ProductEntity } from '../../../product/infra/persistence/mikro-orm/entities/product.entity';
 import { ProductInventoryEntity } from '../../../product/infra/persistence/mikro-orm/entities/product-inventory.entity';
 import { OrderEventActorType } from '../../domain/enums/order-event-actor-type.enum';
@@ -61,6 +63,8 @@ import type {
   ShippingAddressInput,
   ShopAdjustmentInput,
 } from '../order.types';
+import type { ManualPromoOffer } from '../../../coupon/app/types/manual-promo-offer.mapper';
+import { couponToManualOffer, promotionCodeEntityToManualOffer } from '../../../coupon/app/types/manual-promo-offer.mapper';
 import { OrderCartCleanupRepository } from '../ports/order-cart-cleanup.repository';
 import { OrderInventoryQueryRepository } from '../ports/order-inventory-query.repository';
 import { OrderShopQueryRepository } from '../ports/order-shop-query.repository';
@@ -152,6 +156,7 @@ export class OrderCheckoutService {
       const orderRepository = entityManager.getRepository(OrderEntity);
       const orderItemRepository = entityManager.getRepository(OrderItemEntity);
       const usageRepository = entityManager.getRepository(CouponUsageEntity);
+      const promotionUsageRepository = entityManager.getRepository(PromotionUsageEntity);
       const createdOrders: OrderEntity[] = [];
       const orderItemsByOrderId = new Map<string, OrderItemEntity[]>();
       let checkoutOutboxEventId: string | undefined;
@@ -235,6 +240,9 @@ export class OrderCheckoutService {
         const discountMinor = quoteShop
           ? quoteShop.discountMinor
           : toMinorUnits(pricedShop!.totalDiscount, currency);
+        const saleDiscountMinor = quoteShop
+          ? quoteShop.saleDiscountMinor
+          : toMinorUnits(pricedShop!.saleDiscount, currency);
         // Order money is owned in minor units: the persisted row, the
         // payment-provider charge, and the accepted quote then agree exactly.
         const orderTotalMinor = subtotalMinor - discountMinor + shippingMinor;
@@ -271,12 +279,13 @@ export class OrderCheckoutService {
           shippingMinor,
           totalDiscount: fromMinorUnits(discountMinor, currency),
           discountMinor,
+          saleDiscountMinor,
           total: fromMinorUnits(orderTotalMinor, currency),
           totalMinor: orderTotalMinor,
           note: shop.note,
           promoCodes: quoteShop
             ? quoteShop.promoCodes
-            : pricedShop!.promoCoupons.map((coupon) => coupon.code),
+            : pricedShop!.promoOffers.map((offer) => offer.code),
           shippingAddress: toPersistedShippingAddress(input.shippingAddress),
           shippingOriginCountries: shop.originCountries,
           shippingToCountry: input.shippingAddress.country,
@@ -409,29 +418,52 @@ export class OrderCheckoutService {
           });
         }
 
-        // Coupon usage and provenance are preserved for both the quoted and the
-        // directly-priced path: every accepted code increments its usage and
-        // records an order-scoped usage row.
-        const appliedCoupons = pricedShop
-          ? pricedShop.promoCoupons
-          : quoteShop && quoteShop.promoCodes.length > 0
-            ? await entityManager.getRepository(CouponEntity).find({
-              shop: shopEntity.id,
-              code: { $in: quoteShop.promoCodes },
-            })
-            : [];
+        // Coupon and Promotion usage are preserved for both the quoted and the
+        // directly-priced path: every accepted code records an order-scoped
+        // usage row. Promotion redemptions are idempotent by the unique
+        // (promotion, order) constraint; legacy coupon usage keeps working.
+        const appliedOffers = pricedShop
+          ? pricedShop.promoOffers
+          : await this.resolveAppliedOffers(entityManager, shopEntity.id, quoteShop?.promoCodes ?? []);
 
-        for (const coupon of appliedCoupons) {
-          coupon.usesCount += 1;
-          const usage = usageRepository.create({
-            coupon,
-            ...(actor.type === 'user'
-              ? { user: entityManager.getReference(UserEntity, actor.userId) }
-              : {}),
-            orderId: order.id,
-            code: coupon.code,
-          });
-          entityManager.persist(usage);
+        for (const offer of appliedOffers) {
+          if (offer.source === 'coupon') {
+            const coupon = await entityManager.getRepository(CouponEntity).findOne({
+              shop: shopEntity.id,
+              code: offer.code,
+            });
+
+            if (coupon) {
+              coupon.usesCount += 1;
+              const usage = usageRepository.create({
+                coupon,
+                ...(actor.type === 'user'
+                  ? { user: entityManager.getReference(UserEntity, actor.userId) }
+                  : {}),
+                orderId: order.id,
+                code: coupon.code,
+              });
+              entityManager.persist(usage);
+            }
+          }
+          else {
+            const promotionCode = await entityManager.getRepository(PromotionCodeEntity).findOne(
+              { shopId: shopEntity.id, code: offer.code },
+              { populate: ['promotion'] },
+            );
+
+            if (promotionCode) {
+              const usage = promotionUsageRepository.create({
+                promotion: promotionCode.promotion,
+                ...(actor.type === 'user'
+                  ? { userId: actor.userId }
+                  : {}),
+                orderId: order.id,
+                code: promotionCode.code,
+              });
+              entityManager.persist(usage);
+            }
+          }
         }
 
         orderItemsByOrderId.set(order.id, createdOrderItems);
@@ -663,6 +695,42 @@ export class OrderCheckoutService {
     if (unavailable.length > 0) {
       throw new CheckoutShippingUnavailableError(unavailable);
     }
+  }
+
+  private async resolveAppliedOffers(
+    entityManager: EntityManager,
+    shopId: string,
+    promoCodes: string[],
+  ): Promise<ManualPromoOffer[]> {
+    if (promoCodes.length === 0) {
+      return [];
+    }
+
+    const codes = [...new Set(promoCodes.map((code) => code.trim().toUpperCase()))];
+    const [coupons, promotionCodes] = await Promise.all([
+      entityManager.getRepository(CouponEntity).find({
+        shop: shopId,
+        code: { $in: codes },
+      }),
+      entityManager.getRepository(PromotionCodeEntity).find(
+        { shopId, code: { $in: codes } },
+        { populate: ['promotion', 'promotion.products'] },
+      ),
+    ]);
+
+    // One code resolves to exactly one offer, matching how pricing builds its
+    // per-code lookup: a Promotion-backed code wins over a legacy Coupon
+    // carrying the same normalized code, so a collision can neither apply nor
+    // redeem both offers.
+    const promotionOffers = promotionCodes.map(promotionCodeEntityToManualOffer);
+    const promotionCodesByCode = new Set(promotionOffers.map((offer) => offer.code));
+
+    return [
+      ...promotionOffers,
+      ...coupons
+        .filter((coupon) => !promotionCodesByCode.has(coupon.code))
+        .map(couponToManualOffer),
+    ];
   }
 
   private async loadInventoryById(

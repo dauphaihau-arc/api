@@ -125,6 +125,7 @@ function toMinorTotals(input: {
   shippingMinor?: number;
   totalDiscount: number;
   discountMinor?: number;
+  saleDiscountMinor?: number;
   total: number;
   totalMinor?: number;
 }) {
@@ -133,6 +134,7 @@ function toMinorTotals(input: {
     subtotal_minor: input.subtotalMinor ?? toMinorUnits(input.subtotal, input.currency),
     shipping_minor: input.shippingMinor ?? toMinorUnits(input.totalShippingFee, input.currency),
     discount_minor: input.discountMinor ?? toMinorUnits(input.totalDiscount, input.currency),
+    sale_discount_minor: input.saleDiscountMinor ?? 0,
     total_minor: input.totalMinor ?? toMinorUnits(input.total, input.currency),
   };
 }
