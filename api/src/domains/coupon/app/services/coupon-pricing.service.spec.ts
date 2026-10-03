@@ -91,6 +91,8 @@ function buildService(
   rates: Record<string, string> = {},
   userUsages: object[] = [],
   salesByProductId: Map<string, { promotionId: string; percentOff: number }> = new Map(),
+  promotionOffers: object[] = [],
+  promotionUserUsages: Map<string, number> = new Map(),
 ) {
   const couponRepository = { find: jest.fn().mockResolvedValue(coupons) };
   const usageRepository = { find: jest.fn().mockResolvedValue(userUsages) };
@@ -98,7 +100,8 @@ function buildService(
     findBestSalesForProducts: jest.fn().mockResolvedValue(salesByProductId),
   };
   const promotionCodeReader = {
-    findActiveCheckoutDiscounts: jest.fn().mockResolvedValue([]),
+    findActiveCheckoutDiscounts: jest.fn().mockResolvedValue(promotionOffers),
+    countUsagesByUser: jest.fn().mockResolvedValue(promotionUserUsages),
   };
   const entityManager = {
     fork: jest.fn().mockReturnValue({
@@ -158,6 +161,37 @@ function buildPromo(overrides: Record<string, unknown>) {
   };
 }
 
+/**
+ * A Promotion-backed Checkout Discount offer, shaped exactly as the read port
+ * returns it: the real reader already filtered the schedule, cancellation and
+ * end state, so a test only varies what discovery should react to.
+ */
+function buildPromotionOffer(overrides: Record<string, unknown> = {}) {
+  return {
+    promotionId: `promotion-${String(overrides.code ?? 'OFFER')}`,
+    shopId: 'shop-1',
+    code: 'OFFER10',
+    benefitType: 'percentage',
+    percentOff: 10,
+    amountOff: 0,
+    currency: 'USD',
+    visibility: 'public',
+    productScope: 'all',
+    productIds: [],
+    minOrderType: 'none',
+    minOrderValue: 0,
+    minPurchaseQuantity: 0,
+    maxRedemptions: null,
+    maxRedemptionsPerBuyer: null,
+    usesCount: 0,
+    startAt: new Date('2026-01-01T00:00:00.000Z'),
+    endAt: new Date('2027-01-01T00:00:00.000Z'),
+    timezone: 'UTC',
+    ...overrides,
+  };
+}
+
+// eslint-disable-next-line max-lines-per-function
 describe('CouponPricingService', () => {
   it('prices eligible items with the active automatic sale', async () => {
     const { service } = buildService([activePercentSale]);
@@ -418,6 +452,121 @@ describe('CouponPricingService', () => {
 
     expect(coupons.map((coupon) => coupon.code)).toEqual(['ALPHA', 'ZED', 'AMBER', 'BETA']);
     expect(coupons.map((coupon) => coupon.isEligible)).toEqual([true, true, false, false]);
+  });
+
+  it('lists active public Promotion-backed codes and excludes code_only and globally exhausted ones', async () => {
+    const { service } = buildService([], {}, [], new Map(), [
+      buildPromotionOffer({ code: 'PUBLIC10' }),
+      buildPromotionOffer({ code: 'HIDDEN10', visibility: 'code_only' }),
+      buildPromotionOffer({ code: 'MAXED10', maxRedemptions: 1, usesCount: 1 }),
+    ]);
+
+    const codes = await service.listDiscoverableCoupons({
+      cart: buildCart(),
+      shopId: 'shop-1',
+      checkoutCurrency: 'USD',
+    });
+
+    expect(codes.map((coupon) => coupon.code)).toEqual(['PUBLIC10']);
+    expect(codes[0]).toMatchObject({
+      code: 'PUBLIC10',
+      type: 'percentage',
+      appliesTo: 'all',
+      percentOff: 10,
+      currency: 'USD',
+      isEligible: true,
+      ineligibleReason: null,
+    });
+  });
+
+  it('flags a Promotion-backed code scoped away from the cart with product_scope', async () => {
+    const { service } = buildService([], {}, [], new Map(), [
+      buildPromotionOffer({
+        code: 'MUGONLY',
+        productScope: 'specific',
+        productIds: ['product-2'],
+      }),
+    ]);
+
+    const codes = await service.listDiscoverableCoupons({
+      cart: buildCart(),
+      shopId: 'shop-1',
+      checkoutCurrency: 'USD',
+    });
+
+    expect(codes[0]).toMatchObject({
+      code: 'MUGONLY',
+      isEligible: false,
+      ineligibleReason: 'product_scope',
+    });
+  });
+
+  it('flags a Promotion-backed code the buyer has already used with user_usage_limit_reached', async () => {
+    const { service } = buildService([], {}, [], new Map(), [
+      buildPromotionOffer({
+        code: 'LIMME',
+        promotionId: 'promotion-LIMME',
+        maxRedemptionsPerBuyer: 1,
+      }),
+    ], new Map([['promotion-LIMME', 1]]));
+
+    const codes = await service.listDiscoverableCoupons({
+      userId: 'user-1',
+      cart: buildCart(),
+      shopId: 'shop-1',
+      checkoutCurrency: 'USD',
+    });
+
+    expect(codes[0]).toMatchObject({
+      code: 'LIMME',
+      isEligible: false,
+      ineligibleReason: 'user_usage_limit_reached',
+    });
+  });
+
+  it('flags a code that rounds to no saving and rejects it on apply', async () => {
+    const { service } = buildService([], {}, [], new Map(), [
+      buildPromotionOffer({ code: 'ZERO', percentOff: 0 }),
+    ]);
+
+    const codes = await service.listDiscoverableCoupons({
+      cart: buildCart(),
+      shopId: 'shop-1',
+      checkoutCurrency: 'USD',
+    });
+    expect(codes[0]).toMatchObject({
+      code: 'ZERO',
+      isEligible: false,
+      ineligibleReason: 'zero_benefit',
+    });
+
+    // The apply path rejects the same offer, so nothing is ever consumed.
+    await expect(service.applyToCart({
+      cart: buildCart(),
+      checkoutCurrency: 'USD',
+      shopAdjustments: [{ shopId: 'shop-1', promoCodes: ['ZERO'] }],
+      validatePromoCodes: true,
+    })).rejects.toBeInstanceOf(CouponCodeNotApplicableError);
+  });
+
+  it('replaces a Promotion-backed product code in the discount slot', async () => {
+    const { service } = buildService([], {}, [], new Map(), [
+      buildPromotionOffer({ code: 'FIRST10', promotionId: 'promotion-FIRST10' }),
+      buildPromotionOffer({
+        code: 'SECOND20',
+        promotionId: 'promotion-SECOND20',
+        percentOff: 20,
+      }),
+    ]);
+
+    const codes = await service.addPromoCode({
+      cart: buildCart(),
+      shopId: 'shop-1',
+      code: 'second20',
+      retainedPromoCodes: ['FIRST10'],
+    });
+
+    expect(codes).toEqual([{ code: 'SECOND20', type: 'percentage' }]);
   });
 
   it('lists nothing for a shop with no selected items', async () => {

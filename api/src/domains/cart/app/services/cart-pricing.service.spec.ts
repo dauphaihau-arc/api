@@ -32,7 +32,10 @@ function buildCouponPricingService(entityManager: EntityManager): CouponPricingS
     new MikroOrmCouponRepository(entityManager),
     new CouponPresentmentService(new MoneyConversionService(fxRateService as never, new RoundingPolicyService())),
     { findBestSalesForProducts: jest.fn().mockResolvedValue(new Map()) } as never,
-    { findActiveCheckoutDiscounts: jest.fn().mockResolvedValue([]) } as never,
+    {
+      findActiveCheckoutDiscounts: jest.fn().mockResolvedValue([]),
+      countUsagesByUser: jest.fn().mockResolvedValue(new Map()),
+    } as never,
   );
 }
 

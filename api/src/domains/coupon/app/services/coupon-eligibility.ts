@@ -1,4 +1,5 @@
 import type { CouponPresentmentAmounts, PricedCartItem } from '../../../order/app/order.types';
+import { toMinorUnits } from '../../../../platform/money/money';
 import {
   MAX_MANUAL_COUPONS_PER_SHOP,
   type ManualCouponSlot,
@@ -41,10 +42,11 @@ export function evaluateManualPromoOffer(input: {
   items: PricedCartItem[];
   userUsageCount: number;
   amounts: CouponPresentmentAmounts | undefined;
+  checkoutCurrency: string;
   now: Date;
 }): CouponEligibility {
   const {
-    offer, items, userUsageCount, amounts, now,
+    offer, items, userUsageCount, amounts, checkoutCurrency, now,
   } = input;
 
   if (!isManualPromoOfferActive(offer, now)) {
@@ -104,6 +106,20 @@ export function evaluateManualPromoOffer(input: {
     return { outcome: 'ineligible', reason: CouponIneligibleReason.MIN_PRODUCTS };
   }
 
+  // A code that grants no saving after pricing and rounding is not a usable
+  // offer: it must not consume an allowance or look selectable. Free shipping
+  // is judged against the shop's Shipping Charge elsewhere, so it is exempt.
+  if (offer.type !== 'free_shipping') {
+    const discount = Math.min(
+      eligibleSubtotal,
+      computeManualPromoOfferDiscount(offer, amounts, eligibleSubtotal),
+    );
+
+    if (toMinorUnits(discount, checkoutCurrency) <= 0) {
+      return { outcome: 'ineligible', reason: CouponIneligibleReason.ZERO_BENEFIT };
+    }
+  }
+
   return {
     outcome: 'eligible', amounts, eligibleSubtotal, eligibleQuantity,
   };
@@ -117,6 +133,7 @@ export function evaluateCoupon(input: {
   items: PricedCartItem[];
   userUsageCount: number;
   amounts: CouponPresentmentAmounts | undefined;
+  checkoutCurrency: string;
   now: Date;
 }): CouponEligibility {
   return evaluateManualPromoOffer({

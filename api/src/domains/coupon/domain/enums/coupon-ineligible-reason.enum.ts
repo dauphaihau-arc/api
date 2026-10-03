@@ -26,4 +26,9 @@ export enum CouponIneligibleReason {
   MIN_ORDER_VALUE = 'min_order_value',
   /** The eligible quantity is below the Coupon's product-count minimum. */
   MIN_PRODUCTS = 'min_products',
+  /**
+   * The Coupon grants no monetary saving on the current cart after pricing and
+   * rounding, so applying it would consume an allowance for nothing.
+   */
+  ZERO_BENEFIT = 'zero_benefit',
 }

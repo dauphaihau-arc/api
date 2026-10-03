@@ -7,10 +7,12 @@ import {
   type PromotionCodeOffer,
 } from '../../../app/ports/promotion-code.reader';
 import { PromotionApplicationKind } from '../../../domain/enums/promotion-application-kind.enum';
+import { PromotionMinOrderType } from '../../../domain/enums/promotion-min-order-type.enum';
 import { PromotionProductScope } from '../../../domain/enums/promotion-product-scope.enum';
 import { PromotionVisibility } from '../../../domain/enums/promotion-visibility.enum';
 import { PromotionCodeEntity } from '../entities/promotion-code.entity';
 import { PromotionEntity } from '../entities/promotion.entity';
+import { PromotionUsageEntity } from '../entities/promotion-usage.entity';
 
 @Injectable()
 export class MikroOrmPromotionCodeReader extends PromotionCodeReader {
@@ -43,10 +45,46 @@ export class MikroOrmPromotionCodeReader extends PromotionCodeReader {
       { populate: ['promotion', 'promotion.products'] },
     );
 
-    return codes.map((code) => this.toOffer(code));
+    const promotionIds = codes.map((code) => (code.promotion as PromotionEntity).id);
+    const usageCounts = await this.countUsagesByPromotion(promotionIds, {});
+
+    return codes.map((code) => this.toOffer(code, usageCounts));
   }
 
-  private toOffer(code: PromotionCodeEntity): PromotionCodeOffer {
+  async countUsagesByUser(
+    promotionIds: string[],
+    userId: string,
+  ): Promise<Map<string, number>> {
+    return this.countUsagesByPromotion(promotionIds, { userId });
+  }
+
+  private async countUsagesByPromotion(
+    promotionIds: string[],
+    filter: { userId?: string },
+  ): Promise<Map<string, number>> {
+    const counts = new Map<string, number>();
+
+    if (promotionIds.length === 0) {
+      return counts;
+    }
+
+    const usages = await this.entityManager.fork().getRepository(PromotionUsageEntity).find({
+      promotion: { $in: [...new Set(promotionIds)] },
+      ...(filter.userId ? { userId: filter.userId } : {}),
+    });
+
+    for (const usage of usages) {
+      const promotionId = usage.promotion.id;
+      counts.set(promotionId, (counts.get(promotionId) ?? 0) + 1);
+    }
+
+    return counts;
+  }
+
+  private toOffer(
+    code: PromotionCodeEntity,
+    usageCounts: Map<string, number>,
+  ): PromotionCodeOffer {
     const promotion = code.promotion as PromotionEntity;
     const productIds = promotion.productScope === PromotionProductScope.ALL
       ? []
@@ -63,6 +101,12 @@ export class MikroOrmPromotionCodeReader extends PromotionCodeReader {
       visibility: promotion.visibility ?? PromotionVisibility.CODE_ONLY,
       productScope: promotion.productScope,
       productIds,
+      minOrderType: promotion.minOrderType ?? PromotionMinOrderType.NONE,
+      minOrderValue: promotion.minOrderValue == null ? 0 : Number(promotion.minOrderValue),
+      minPurchaseQuantity: promotion.minPurchaseQuantity ?? 0,
+      maxRedemptions: promotion.maxRedemptions ?? null,
+      maxRedemptionsPerBuyer: promotion.maxRedemptionsPerBuyer ?? null,
+      usesCount: usageCounts.get(promotion.id) ?? 0,
       startAt: promotion.startAt,
       endAt: promotion.endAt,
       timezone: promotion.timezone,

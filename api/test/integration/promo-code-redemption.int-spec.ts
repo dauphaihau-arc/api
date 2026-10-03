@@ -75,6 +75,7 @@ function utcLocalDateTime(date: Date): string {
   return date.toISOString().slice(0, 16);
 }
 
+// eslint-disable-next-line max-lines-per-function
 describe('Promo code redemption (integration)', () => {
   let app: INestApplication<App>;
   let originalEnv: NodeJS.ProcessEnv;
@@ -399,14 +400,40 @@ describe('Promo code redemption (integration)', () => {
     buyer: TestBuyer,
     shopId: string,
     code: string,
+    promoCodes: string[] = [],
   ): Promise<{ promo_codes: string[]; applied_coupons: Array<{ code: string; type: string }> }> {
     const response = await buyer.agent
       .post(`${API_PREFIX}/cart/coupons/apply`)
       .set('Idempotency-Key', randomUUID())
-      .send({ shop_id: shopId, code })
+      .send({ shop_id: shopId, code, promo_codes: promoCodes })
       .expect(201);
 
     return response.body;
+  }
+
+  type DiscoverableCoupon = {
+    code: string;
+    type: string;
+    applies_to: string;
+    percent_off: number | null;
+    amount_off: number | null;
+    min_order_type: string;
+    end_date: string;
+    currency: string;
+    is_eligible: boolean;
+    ineligible_reason: string | null;
+  };
+
+  async function listDiscoverableCoupons(
+    buyer: TestBuyer,
+    shopId: string,
+  ): Promise<DiscoverableCoupon[]> {
+    const response = await buyer.agent
+      .get(`${API_PREFIX}/cart/coupons`)
+      .query({ shop_id: shopId })
+      .expect(200);
+
+    return response.body.coupons as DiscoverableCoupon[];
   }
 
   async function createSale(
@@ -534,5 +561,262 @@ describe('Promo code redemption (integration)', () => {
       [orderShopId],
     );
     expect(Number(usagesAfterCommit.rows[0].count)).toBe(1);
+  });
+
+  function activeWindow() {
+    return {
+      timezone: 'UTC',
+      start_now: true,
+      end_local: utcLocalDateTime(new Date(testNow.getTime() + TWO_DAYS_MS)),
+    };
+  }
+
+  it('discovers only active public promo codes and flags an ineligible offer with a reason', async () => {
+    const seller = await registerSeller('promo-discovery');
+    const profile = await createActiveProfile(seller);
+    const product = await createPublishedProduct({
+      seller,
+      shippingProfileId: profile,
+      title: 'Discovery Mug',
+      sku: 'DISC-MUG-1',
+      amountMinor: 10_000,
+    });
+    const otherProduct = await createPublishedProduct({
+      seller,
+      shippingProfileId: profile,
+      title: 'Discovery Shirt',
+      sku: 'DISC-SHIRT-1',
+      amountMinor: 5_000,
+    });
+
+    await createPromoCode(seller, {
+      name: 'Public ten', code: 'PUB10', percent_off: 10, visibility: 'public', product_scope: 'all', ...activeWindow(),
+    });
+    await createPromoCode(seller, {
+      name: 'Hidden ten', code: 'HIDDEN10', percent_off: 10, visibility: 'code_only', product_scope: 'all', ...activeWindow(),
+    });
+    await createPromoCode(seller, {
+      name: 'Future ten',
+      code: 'FUTURE10',
+      percent_off: 10,
+      visibility: 'public',
+      product_scope: 'all',
+      timezone: 'UTC',
+      start_local: utcLocalDateTime(new Date(testNow.getTime() + TWO_DAYS_MS)),
+      end_local: utcLocalDateTime(new Date(testNow.getTime() + (4 * DAY_MS))),
+    });
+    await createPromoCode(seller, {
+      name: 'Ended ten',
+      code: 'ENDED10',
+      percent_off: 10,
+      visibility: 'public',
+      product_scope: 'all',
+      timezone: 'UTC',
+      start_local: utcLocalDateTime(new Date(testNow.getTime() - (4 * DAY_MS))),
+      end_local: utcLocalDateTime(new Date(testNow.getTime() - TWO_DAYS_MS)),
+    });
+    await createPromoCode(seller, {
+      name: 'Shirt only',
+      code: 'SHIRTONLY',
+      percent_off: 10,
+      visibility: 'public',
+      product_scope: 'specific',
+      product_ids: [otherProduct.productId],
+      ...activeWindow(),
+    });
+
+    // Cancelled via its retained stop state (no seller endpoint for promo
+    // codes yet) and globally exhausted via a committed redemption.
+    const cancelledPromo = await createPromoCode(seller, {
+      name: 'Cancelled ten', code: 'CANCEL10', percent_off: 10, visibility: 'public', product_scope: 'all', ...activeWindow(),
+    });
+    await sql.query('update "promotions" set "cancelled_at" = now() where "id" = $1', [cancelledPromo.id]);
+
+    const exhaustedPromo = await createPromoCode(seller, {
+      name: 'Exhausted ten', code: 'EXHAUST10', percent_off: 10, visibility: 'public', product_scope: 'all', ...activeWindow(),
+    });
+    await sql.query('update "promotions" set "max_redemptions" = 1 where "id" = $1', [exhaustedPromo.id]);
+    await sql.query(
+      `insert into "promotion_usages" ("id","created_at","updated_at","promotion_id","order_id","code")
+       values ($1, now(), now(), $2, $3, $4)`,
+      [randomUUID(), exhaustedPromo.id, randomUUID(), 'EXHAUST10'],
+    );
+
+    const buyer = await registerBuyer('promo-discovery');
+    await addCartItem(buyer, product.inventoryId, 1);
+
+    const coupons = await listDiscoverableCoupons(buyer, seller.shopId);
+    const byCode = new Map(coupons.map((coupon) => [coupon.code, coupon]));
+
+    expect(byCode.get('PUB10')).toMatchObject({
+      is_eligible: true,
+      ineligible_reason: null,
+      percent_off: 10,
+      currency: 'USD',
+    });
+    expect(byCode.get('SHIRTONLY')).toMatchObject({
+      is_eligible: false,
+      ineligible_reason: 'product_scope',
+    });
+    expect(byCode.has('HIDDEN10')).toBe(false);
+    expect(byCode.has('FUTURE10')).toBe(false);
+    expect(byCode.has('ENDED10')).toBe(false);
+    expect(byCode.has('CANCEL10')).toBe(false);
+    expect(byCode.has('EXHAUST10')).toBe(false);
+  });
+
+  it('resolves discovery and manual entry with the same rule and replaces the discount slot', async () => {
+    const seller = await registerSeller('promo-equivalence');
+    const profile = await createActiveProfile(seller);
+    const product = await createPublishedProduct({
+      seller,
+      shippingProfileId: profile,
+      title: 'Equivalence Mug',
+      sku: 'EQ-MUG-1',
+      amountMinor: 10_000,
+    });
+    const otherProduct = await createPublishedProduct({
+      seller,
+      shippingProfileId: profile,
+      title: 'Equivalence Shirt',
+      sku: 'EQ-SHIRT-1',
+      amountMinor: 5_000,
+    });
+
+    await createPromoCode(seller, {
+      name: 'Ten', code: 'EQTEN', percent_off: 10, visibility: 'public', product_scope: 'all', ...activeWindow(),
+    });
+    await createPromoCode(seller, {
+      name: 'Twenty', code: 'EQTWENTY', percent_off: 20, visibility: 'public', product_scope: 'all', ...activeWindow(),
+    });
+    await createPromoCode(seller, {
+      name: 'Shirt only',
+      code: 'EQSHIRT',
+      percent_off: 10,
+      visibility: 'public',
+      product_scope: 'specific',
+      product_ids: [otherProduct.productId],
+      ...activeWindow(),
+    });
+
+    const buyer = await registerBuyer('promo-equivalence');
+    await addCartItem(buyer, product.inventoryId, 1);
+
+    const coupons = await listDiscoverableCoupons(buyer, seller.shopId);
+    expect(coupons.find((coupon) => coupon.code === 'EQTEN')).toMatchObject({
+      is_eligible: true,
+      percent_off: 10,
+    });
+
+    // Picker selection and manual entry both resolve through the apply rule.
+    const manual = await applyPromoCode(buyer, seller.shopId, 'eqten');
+    expect(manual.applied_coupons).toEqual([{ code: 'EQTEN', type: 'percentage' }]);
+
+    // An eligible replacement replaces the product-discount slot code.
+    const replaced = await applyPromoCode(buyer, seller.shopId, 'eqtwenty', manual.promo_codes);
+    expect(replaced.promo_codes).toEqual(['EQTWENTY']);
+
+    // An invalid replacement is rejected and leaves the previous selection intact.
+    await buyer.agent
+      .post(`${API_PREFIX}/cart/coupons/apply`)
+      .set('Idempotency-Key', randomUUID())
+      .send({ shop_id: seller.shopId, code: 'eqshirt', promo_codes: replaced.promo_codes })
+      .expect(422);
+
+    const quote = await createQuote(buyer, [{
+      shop_id: seller.shopId,
+      promo_codes: replaced.promo_codes,
+    }]);
+    const quoteShop = quote.shops.find((shop) => shop.shop_id === seller.shopId);
+    expect(quoteShop?.promo_codes).toEqual(['EQTWENTY']);
+    expect(quoteShop?.discount_minor).toBe(2000);
+  });
+
+  it('rejects a public code that rounds to no saving and consumes no redemption', async () => {
+    const seller = await registerSeller('promo-zero');
+    const profile = await createActiveProfile(seller);
+    const product = await createPublishedProduct({
+      seller,
+      shippingProfileId: profile,
+      title: 'Penny Mug',
+      sku: 'ZERO-MUG-1',
+      amountMinor: 1,
+    });
+
+    await createPromoCode(seller, {
+      name: 'One percent', code: 'ONEPCT', percent_off: 1, visibility: 'public', product_scope: 'all', ...activeWindow(),
+    });
+
+    const buyer = await registerBuyer('promo-zero');
+    await addCartItem(buyer, product.inventoryId, 1);
+
+    const coupons = await listDiscoverableCoupons(buyer, seller.shopId);
+    expect(coupons.find((coupon) => coupon.code === 'ONEPCT')).toMatchObject({
+      is_eligible: false,
+      ineligible_reason: 'zero_benefit',
+    });
+
+    await buyer.agent
+      .post(`${API_PREFIX}/cart/coupons/apply`)
+      .set('Idempotency-Key', randomUUID())
+      .send({ shop_id: seller.shopId, code: 'onepct', promo_codes: [] })
+      .expect(422);
+
+    const usages = await sql.query(
+      'select count(*) as count from "promotion_usages" where "code" = $1',
+      ['ONEPCT'],
+    );
+    expect(Number(usages.rows[0].count)).toBe(0);
+  });
+
+  it('rechecks eligibility at Order commitment so a now-ineligible code consumes nothing', async () => {
+    const seller = await registerSeller('promo-recheck');
+    const profile = await createActiveProfile(seller);
+    const product = await createPublishedProduct({
+      seller,
+      shippingProfileId: profile,
+      title: 'Recheck Mug',
+      sku: 'RECHECK-MUG-1',
+      amountMinor: 10_000,
+    });
+
+    const promo = await createPromoCode(seller, {
+      name: 'Limitable', code: 'LIMITED10', percent_off: 10, visibility: 'code_only', product_scope: 'all', ...activeWindow(),
+    });
+
+    // Cap the offer at a single global redemption, as a later ticket's limits will.
+    await sql.query('update "promotions" set "max_redemptions" = 1 where "id" = $1', [promo.id]);
+
+    const buyer = await registerBuyer('promo-recheck');
+    await addCartItem(buyer, product.inventoryId, 1);
+
+    const applied = await applyPromoCode(buyer, seller.shopId, 'limited10');
+    const quote = await createQuote(buyer, [{
+      shop_id: seller.shopId,
+      promo_codes: applied.promo_codes,
+    }]);
+    const quoteShop = quote.shops.find((shop) => shop.shop_id === seller.shopId);
+    expect(quoteShop?.discount_minor).toBe(1000);
+
+    // Another buyer takes the last redemption between quote and commitment.
+    await sql.query(
+      `insert into "promotion_usages" ("id","created_at","updated_at","promotion_id","order_id","code")
+       values ($1, now(), now(), $2, $3, $4)`,
+      [randomUUID(), promo.id, randomUUID(), 'LIMITED10'],
+    );
+
+    await submitCashOrder(buyer, quote.quote_id).expect(409);
+
+    const orders = await sql.query(
+      'select count(*) as count from "orders" where "user_id" = $1',
+      [buyer.userId],
+    );
+    expect(Number(orders.rows[0].count)).toBe(0);
+
+    const usages = await sql.query(
+      'select count(*) as count from "promotion_usages" where "promotion_id" = $1',
+      [promo.id],
+    );
+    expect(Number(usages.rows[0].count)).toBe(1);
   });
 });

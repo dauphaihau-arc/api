@@ -12,6 +12,7 @@ import { CouponMinOrderType } from '../../domain/enums/coupon-min-order-type.enu
 import { CouponVisibility } from '../../domain/enums/coupon-visibility.enum';
 import type { CouponEntity } from '../../infra/persistence/entities/coupon.entity';
 import type { PromotionCodeOffer } from '../../../promotion/app/ports/promotion-code.reader';
+import { PromotionVisibility } from '../../../promotion/domain/enums/promotion-visibility.enum';
 import {
   CouponCodeNotFoundError,
   CouponCodeNotApplicableError,
@@ -31,6 +32,7 @@ import type {
 } from '../types/coupon.types';
 import {
   couponToManualOffer,
+  manualMinOrderTypeToCoupon,
   manualTypeToCouponType,
   promotionCodeOfferToManualOffer,
 } from '../types/coupon.types';
@@ -66,6 +68,10 @@ export class CouponPricingService {
       this.promotionCodeReader.findActiveCheckoutDiscounts({ shopIds }),
     ]);
     const couponUsageCounts = await this.loadUserUsageCounts(coupons, input.userId);
+    const promotionUsageCounts = await this.loadPromotionUsageCounts(
+      promotionOffers,
+      input.userId,
+    );
     const salesByProductId = await this.saleProjectionReader.findBestSalesForProducts({
       targets: selectedItems.map((item) => ({
         shopId: item.inventory.shopId,
@@ -87,6 +93,7 @@ export class CouponPricingService {
         promotionOffers,
         promoCodes: shopAdjustments.get(shopId)?.promoCodes ?? [],
         couponUsageCounts,
+        promotionUsageCounts,
         checkoutCurrency: input.checkoutCurrency,
         shippingShop: input.shippingShops?.find((entry) => entry.shopId === shopId),
         validatePromoCodes: input.validatePromoCodes === true,
@@ -99,24 +106,24 @@ export class CouponPricingService {
   }
 
   /**
-   * The discoverable Coupons for the selected items of one shop: the public,
-   * manually redeemed Coupons the buyer can see in the coupon listing. The only
-   * visibility exclusion is `code_only`; automatic sale Coupons are also absent
-   * because they are not manual codes and the apply path rejects them, and
-   * expired Coupons are absent because a dead code is not a usable offer.
+   * The discoverable promo codes for the selected items of one shop: the public
+   * offers the buyer can see in the checkout picker. Legacy Coupons and
+   * Promotion-backed Checkout Discounts are merged behind the one evaluator the
+   * pricing path uses, so an offer flagged ineligible in the listing is exactly
+   * the one a redemption rejects and vice versa.
    *
-   * A public Coupon the current cart cannot redeem is still returned, flagged
-   * with the first failing `CouponIneligibleReason`, so the buyer sees why it is
-   * unavailable instead of the listing silently hiding it. `expired` never
-   * appears as a flag because those Coupons are excluded outright; the apply
-   * path still rejects them. Eligibility comes from the same evaluator the
-   * pricing path uses, so the two can never disagree.
+   * A public offer the current cart or buyer cannot redeem is still returned,
+   * flagged with the first failing `CouponIneligibleReason`, so the buyer sees
+   * why it is unavailable instead of the listing silently hiding it. Offers that
+   * are not discoverable at all are excluded outright: `code_only` visibility,
+   * automatic sale Coupons, a Promotion that has not started, ended, been
+   * cancelled, or reached its global redemption limit, and any offer whose
+   * money cannot be expressed in the checkout currency. A Promotion-backed code
+   * wins over a legacy Coupon carrying the same normalized code, matching the
+   * apply path.
    *
-   * Amounts are converted into `checkoutCurrency`. A Coupon whose monetary
-   * fields cannot be expressed in that currency is not listed at all, because
-   * showing its native amount as if it were the checkout currency would offer
-   * a discount that checkout then rejects. Eligible Coupons come first, then
-   * ineligible ones, each group ordered by `code`.
+   * Amounts are converted into `checkoutCurrency`. Eligible offers come first,
+   * then ineligible ones, each group ordered by `code`.
    */
   async listDiscoverableCoupons(
     input: ListDiscoverableCouponsInput,
@@ -128,8 +135,15 @@ export class CouponPricingService {
       return [];
     }
 
-    const coupons = await this.couponRepository.findByShopIds([input.shopId]);
+    const [coupons, promotionOffers] = await Promise.all([
+      this.couponRepository.findByShopIds([input.shopId]),
+      this.promotionCodeReader.findActiveCheckoutDiscounts({ shopIds: [input.shopId] }),
+    ]);
     const couponUsageCounts = await this.loadUserUsageCounts(coupons, input.userId);
+    const promotionUsageCounts = await this.loadPromotionUsageCounts(
+      promotionOffers,
+      input.userId,
+    );
     const salesByProductId = await this.saleProjectionReader.findBestSalesForProducts({
       targets: selectedItems.map((item) => ({
         shopId: item.inventory.shopId,
@@ -141,8 +155,72 @@ export class CouponPricingService {
     const now = new Date();
 
     const discoverable: DiscoverableCoupon[] = [];
+    const promotionCodes = new Set(promotionOffers.map((offer) => offer.code));
+
+    for (const offer of promotionOffers) {
+      if (offer.visibility !== PromotionVisibility.PUBLIC) {
+        continue;
+      }
+
+      const manualOffer = promotionCodeOfferToManualOffer(offer);
+      const amounts = await this.couponPresentmentService.resolveForManualPromoOffer(
+        manualOffer,
+        input.checkoutCurrency,
+        rateCache,
+      );
+      if (!amounts) {
+        continue;
+      }
+
+      const eligibility = evaluateManualPromoOffer({
+        offer: manualOffer,
+        items,
+        userUsageCount: promotionUsageCounts.get(offer.promotionId) ?? 0,
+        amounts,
+        checkoutCurrency: input.checkoutCurrency,
+        now,
+      });
+
+      // A Promotion that is not active or is globally exhausted is never
+      // advertised: it is not a usable offer at all. A per-buyer limit is a
+      // buyer-specific condition, so it stays visible as a disabled reason.
+      if (
+        eligibility.outcome === 'ineligible'
+        && (
+          eligibility.reason === CouponIneligibleReason.NOT_STARTED
+          || eligibility.reason === CouponIneligibleReason.EXPIRED
+          || eligibility.reason === CouponIneligibleReason.USAGE_LIMIT_REACHED
+        )
+      ) {
+        continue;
+      }
+
+      discoverable.push({
+        code: offer.code,
+        type: manualTypeToCouponType(manualOffer.type),
+        appliesTo: offer.productScope === 'all'
+          ? CouponAppliesTo.ALL
+          : CouponAppliesTo.SPECIFIC,
+        amountOff: amounts.amountOff,
+        percentOff: offer.percentOff,
+        minOrderType: manualMinOrderTypeToCoupon(manualOffer.minOrderType),
+        minOrderValue: amounts.minOrderValue,
+        minProducts: offer.minPurchaseQuantity,
+        endDate: offer.endAt,
+        currency: input.checkoutCurrency,
+        isEligible: eligibility.outcome === 'eligible',
+        ineligibleReason: eligibility.outcome === 'ineligible'
+          ? eligibility.reason
+          : null,
+      });
+    }
+
     for (const coupon of coupons) {
-      if (coupon.isAutoSale || coupon.visibility !== CouponVisibility.PUBLIC) {
+      if (
+        coupon.isAutoSale
+        || coupon.visibility !== CouponVisibility.PUBLIC
+        || promotionCodes.has(coupon.code)
+      ) {
         continue;
       }
 
@@ -160,6 +238,7 @@ export class CouponPricingService {
         items,
         userUsageCount: couponUsageCounts.get(coupon.id) ?? 0,
         amounts,
+        checkoutCurrency: input.checkoutCurrency,
         now,
       });
 
@@ -263,6 +342,7 @@ export class CouponPricingService {
     promotionOffers: PromotionCodeOffer[];
     promoCodes: string[];
     couponUsageCounts: Map<string, number>;
+    promotionUsageCounts: Map<string, number>;
     checkoutCurrency: string;
     shippingShop: CheckoutShippingShopQuote | undefined;
     validatePromoCodes: boolean;
@@ -324,8 +404,9 @@ export class CouponPricingService {
         items,
         userUsageCount: offer.source === 'coupon'
           ? (input.couponUsageCounts.get(offer.id) ?? 0)
-          : 0,
+          : (input.promotionUsageCounts.get(offer.id) ?? 0),
         amounts,
+        checkoutCurrency,
         now,
       });
 
@@ -427,6 +508,20 @@ export class CouponPricingService {
 
     return this.couponRepository.countUsagesByUser(
       coupons.map((coupon) => coupon.id),
+      userId,
+    );
+  }
+
+  private async loadPromotionUsageCounts(
+    offers: PromotionCodeOffer[],
+    userId?: string,
+  ): Promise<Map<string, number>> {
+    if (offers.length === 0 || !userId) {
+      return new Map();
+    }
+
+    return this.promotionCodeReader.countUsagesByUser(
+      offers.map((offer) => offer.promotionId),
       userId,
     );
   }
