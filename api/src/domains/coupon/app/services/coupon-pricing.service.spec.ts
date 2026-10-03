@@ -275,6 +275,80 @@ describe('CouponPricingService', () => {
     expect(shop?.promoOffers.map((offer) => offer.code).sort()).toEqual(['FREESHIP', 'SAVE10']);
   });
 
+  it('waives the quoted Shipping Charge for an eligible free-shipping promo code', async () => {
+    const { service } = buildService([], {}, [], new Map(), [
+      buildPromotionOffer({ code: 'FREESHIPQ', benefitType: 'free_shipping', percentOff: 0 }),
+    ]);
+
+    const [shop] = await service.applyToCart({
+      cart: buildCart(),
+      checkoutCurrency: 'USD',
+      shopAdjustments: [{ shopId: 'shop-1', promoCodes: ['FREESHIPQ'] }],
+      validatePromoCodes: true,
+      shippingShops: [{
+        shopId: 'shop-1',
+        currency: 'USD',
+        charge: { totalMinor: 500 },
+        estimate: {},
+        units: [],
+      }] as never,
+    });
+
+    expect(shop?.shippingDiscountMinor).toBe(500);
+    expect(shop?.shippingDiscounts).toEqual([
+      expect.objectContaining({ code: 'FREESHIPQ', waivedMinor: 500, type: 'free_ship' }),
+    ]);
+    expect(shop?.totalDiscount).toBe(0);
+  });
+
+  it('treats an already-free quoted Shipping Charge as zero benefit', async () => {
+    const { service } = buildService([], {}, [], new Map(), [
+      buildPromotionOffer({ code: 'FREEFREE', benefitType: 'free_shipping', percentOff: 0 }),
+    ]);
+    const shippingShops = [{
+      shopId: 'shop-1',
+      currency: 'USD',
+      charge: { totalMinor: 0 },
+      estimate: {},
+      units: [],
+    }] as never;
+
+    await expect(service.applyToCart({
+      cart: buildCart(),
+      checkoutCurrency: 'USD',
+      shopAdjustments: [{ shopId: 'shop-1', promoCodes: ['FREEFREE'] }],
+      validatePromoCodes: true,
+      shippingShops,
+    })).rejects.toBeInstanceOf(CouponCodeNotApplicableError);
+
+    const [shop] = await service.applyToCart({
+      cart: buildCart(),
+      checkoutCurrency: 'USD',
+      shopAdjustments: [{ shopId: 'shop-1', promoCodes: ['FREEFREE'] }],
+      shippingShops,
+    });
+
+    expect(shop?.promoOffers).toEqual([]);
+    expect(shop?.shippingDiscountMinor).toBe(0);
+    expect(shop?.shippingDiscounts).toEqual([]);
+  });
+
+  it('accepts a free-shipping code before a Shipping Charge is quoted', async () => {
+    const { service } = buildService([], {}, [], new Map(), [
+      buildPromotionOffer({ code: 'FREEYET', benefitType: 'free_shipping', percentOff: 0 }),
+    ]);
+
+    const [shop] = await service.applyToCart({
+      cart: buildCart(),
+      checkoutCurrency: 'USD',
+      shopAdjustments: [{ shopId: 'shop-1', promoCodes: ['FREEYET'] }],
+      validatePromoCodes: true,
+    });
+
+    expect(shop?.promoOffers.map((offer) => offer.code)).toEqual(['FREEYET']);
+    expect(shop?.shippingDiscountMinor).toBe(0);
+  });
+
   it('returns discoverable public coupons and hides code_only and auto-sale coupons', async () => {
     const { service } = buildService([
       buildPromo({ code: 'SAVE10', visibility: 'public' }),

@@ -272,7 +272,10 @@ describe('Promo code redemption (integration)', () => {
     return categoryId;
   }
 
-  async function createActiveProfile(seller: TestSeller): Promise<string> {
+  async function createActiveProfile(
+    seller: TestSeller,
+    oneItemFeeMinor = 599,
+  ): Promise<string> {
     const response = await seller.agent
       .post(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles`)
       .set('Idempotency-Key', randomUUID())
@@ -287,7 +290,7 @@ describe('Promo code redemption (integration)', () => {
           {
             destination_scope: 'country',
             destination_country: 'US',
-            one_item_fee_minor: 599,
+            one_item_fee_minor: oneItemFeeMinor,
             additional_item_fee_minor: 199,
             delivery_time_min_days: 3,
             delivery_time_max_days: 5,
@@ -374,6 +377,7 @@ describe('Promo code redemption (integration)', () => {
     subtotal_minor: number;
     discount_minor: number;
     sale_discount_minor: number;
+    shipping_minor: number;
     total_minor: number;
     items: Array<{
       inventory_id: string;
@@ -385,6 +389,9 @@ describe('Promo code redemption (integration)', () => {
       subtotal_minor: number;
       discount_minor: number;
       sale_discount_minor: number;
+      shipping_minor: number;
+      shipping_discount_minor: number;
+      shipping_discounts: Array<{ code: string; waived_minor: number; type: string }>;
       total_minor: number;
       promo_codes: string[];
     }>;
@@ -457,7 +464,14 @@ describe('Promo code redemption (integration)', () => {
   async function createPromoCode(
     seller: TestSeller,
     body: Record<string, unknown>,
-  ): Promise<{ id: string; code: string; percent_off: number }> {
+  ): Promise<{
+    id: string;
+    code: string;
+    benefit_type: string;
+    percent_off: number;
+    amount_off: number | null;
+    product_scope: string;
+  }> {
     const response = await seller.agent
       .post(`${API_PREFIX}/shops/${seller.shopId}/promo-codes`)
       .set('Idempotency-Key', randomUUID())
@@ -1360,5 +1374,336 @@ describe('Promo code redemption (integration)', () => {
       .set('Idempotency-Key', randomUUID())
       .send({ shop_id: eurSeller.shopId, code: 'min10eur', promo_codes: [] })
       .expect(422);
+  });
+
+  it('creates a shop-wide free-shipping code and waives only the owning shop Shipping Charge', async () => {
+    const sellerA = await registerSeller('promo-free-a');
+    const profileA = await createActiveProfile(sellerA);
+    const sellerB = await registerSeller('promo-free-b');
+    const profileB = await createActiveProfile(sellerB, 1_200);
+    const productA = await createPublishedProduct({
+      seller: sellerA,
+      shippingProfileId: profileA,
+      title: 'Free A',
+      sku: 'FREE-A-1',
+      amountMinor: 4_000,
+    });
+    const productB = await createPublishedProduct({
+      seller: sellerB,
+      shippingProfileId: profileB,
+      title: 'Free B',
+      sku: 'FREE-B-1',
+      amountMinor: 5_000,
+    });
+
+    const promo = await createPromoCode(sellerA, {
+      name: 'Free delivery A',
+      code: 'FREEA',
+      benefit_type: 'free_shipping',
+      visibility: 'public',
+      product_scope: 'all',
+      min_order_type: 'none',
+      ...activeWindow(),
+    });
+    expect(promo.benefit_type).toBe('free_shipping');
+    expect(promo.product_scope).toBe('all');
+    expect(promo.percent_off).toBe(0);
+    expect(promo.amount_off).toBeNull();
+
+    const buyer = await registerBuyer('promo-free');
+    await addCartItem(buyer, productA.inventoryId, 1);
+    await addCartItem(buyer, productB.inventoryId, 1);
+
+    const applied = await applyPromoCode(buyer, sellerA.shopId, 'freea');
+    expect(applied.applied_coupons).toEqual(expect.arrayContaining([
+      expect.objectContaining({ code: 'FREEA', type: 'free_ship' }),
+    ]));
+
+    const quote = await createQuote(buyer, [{
+      shop_id: sellerA.shopId,
+      promo_codes: applied.promo_codes,
+    }]);
+    const shopA = quote.shops.find((shop) => shop.shop_id === sellerA.shopId)!;
+    const shopB = quote.shops.find((shop) => shop.shop_id === sellerB.shopId)!;
+
+    expect(shopA.shipping_minor).toBe(0);
+    expect(shopA.shipping_discount_minor).toBe(599);
+    expect(shopA.shipping_discounts).toEqual([
+      expect.objectContaining({ code: 'FREEA', waived_minor: 599, type: 'free_ship' }),
+    ]);
+    expect(shopA.discount_minor).toBe(0);
+
+    // The other shop's Shipping Charge is untouched.
+    expect(shopB.shipping_minor).toBe(1_200);
+    expect(shopB.shipping_discount_minor).toBe(0);
+    expect(quote.shipping_minor).toBe(1_200);
+
+    const orderResponse = await submitCashOrder(buyer, quote.quote_id).expect(201);
+    const orderA = (orderResponse.body.order_shops as Array<{
+      id: string;
+      shop: { id: string };
+    }>).find((order) => order.shop.id === sellerA.shopId)!;
+    const orderRow = await sql.query(
+      'select "shipping_minor", "shipping_quote_snapshot", "promo_codes" from "orders" where "id" = $1',
+      [orderA.id],
+    );
+    expect(Number(orderRow.rows[0].shipping_minor)).toBe(0);
+    expect(orderRow.rows[0].shipping_quote_snapshot.shipping_discount_minor).toBe(599);
+    expect(orderRow.rows[0].promo_codes).toContain('FREEA');
+
+    const usages = await sql.query(
+      'select count(*) as count from "promotion_usages" where "promotion_id" = $1',
+      [promo.id],
+    );
+    expect(Number(usages.rows[0].count)).toBe(1);
+  });
+
+  it('rejects a free-shipping code that targets products or carries a benefit value', async () => {
+    const seller = await registerSeller('promo-free-invalid');
+    const base = {
+      name: 'Invalid free shipping',
+      visibility: 'code_only',
+      timezone: 'UTC',
+      start_now: true,
+      end_local: utcLocalDateTime(new Date(testNow.getTime() + TWO_DAYS_MS)),
+    };
+    const create = (body: Record<string, unknown>) =>
+      seller.agent
+        .post(`${API_PREFIX}/shops/${seller.shopId}/promo-codes`)
+        .set('Idempotency-Key', randomUUID())
+        .send(body);
+
+    // Free shipping is shop-wide, so it cannot select Products.
+    await create({
+      ...base,
+      code: 'FREESPEC',
+      benefit_type: 'free_shipping',
+      product_scope: 'specific',
+      product_ids: [randomUUID()],
+    }).expect(400);
+
+    // A free-shipping code carries no percentage.
+    await create({
+      ...base,
+      code: 'FREEPCT',
+      benefit_type: 'free_shipping',
+      product_scope: 'all',
+      percent_off: 10,
+    }).expect(400);
+
+    // ...and no fixed amount.
+    await create({
+      ...base,
+      code: 'FREEAMT',
+      benefit_type: 'free_shipping',
+      product_scope: 'all',
+      amount_off: 5,
+    }).expect(400);
+  });
+
+  it('stacks one free-shipping code with one product code and replaces within the shipping slot', async () => {
+    const seller = await registerSeller('promo-free-stack');
+    const profile = await createActiveProfile(seller);
+    const product = await createPublishedProduct({
+      seller,
+      shippingProfileId: profile,
+      title: 'Stack Mug',
+      sku: 'STACK-MUG-1',
+      amountMinor: 10_000,
+    });
+
+    await createPromoCode(seller, {
+      name: 'Ten off',
+      code: 'PCT10',
+      benefit_type: 'percentage',
+      percent_off: 10,
+      visibility: 'code_only',
+      product_scope: 'all',
+      min_order_type: 'none',
+      ...activeWindow(),
+    });
+    await createPromoCode(seller, {
+      name: 'Free one',
+      code: 'FREE1',
+      benefit_type: 'free_shipping',
+      visibility: 'code_only',
+      product_scope: 'all',
+      min_order_type: 'none',
+      ...activeWindow(),
+    });
+    await createPromoCode(seller, {
+      name: 'Free two',
+      code: 'FREE2',
+      benefit_type: 'free_shipping',
+      visibility: 'code_only',
+      product_scope: 'all',
+      min_order_type: 'none',
+      ...activeWindow(),
+    });
+
+    const buyer = await registerBuyer('promo-free-stack');
+    await addCartItem(buyer, product.inventoryId, 1);
+
+    const productCode = await applyPromoCode(buyer, seller.shopId, 'PCT10');
+    const withFree = await applyPromoCode(buyer, seller.shopId, 'FREE1', productCode.promo_codes);
+
+    // The product code and the free-shipping code occupy separate slots.
+    expect(withFree.promo_codes).toEqual(expect.arrayContaining(['PCT10', 'FREE1']));
+    expect(withFree.applied_coupons).toEqual(expect.arrayContaining([
+      expect.objectContaining({ code: 'PCT10', type: 'percentage' }),
+      expect.objectContaining({ code: 'FREE1', type: 'free_ship' }),
+    ]));
+
+    const quote = await createQuote(buyer, [{
+      shop_id: seller.shopId,
+      promo_codes: withFree.promo_codes,
+    }]);
+    const quoteShop = quote.shops.find((shop) => shop.shop_id === seller.shopId)!;
+    expect(quoteShop.discount_minor).toBe(1_000);
+    expect(quoteShop.shipping_minor).toBe(0);
+    expect(quoteShop.shipping_discount_minor).toBe(599);
+
+    // A second free-shipping code replaces the first in the shipping slot only.
+    const replaced = await applyPromoCode(buyer, seller.shopId, 'FREE2', withFree.promo_codes);
+    expect(replaced.promo_codes).toContain('FREE2');
+    expect(replaced.promo_codes).toContain('PCT10');
+    expect(replaced.promo_codes).not.toContain('FREE1');
+
+    // An invalid replacement is rejected and leaves the selection alone.
+    await buyer.agent
+      .post(`${API_PREFIX}/cart/coupons/apply`)
+      .set('Idempotency-Key', randomUUID())
+      .send({ shop_id: seller.shopId, code: 'NOPE', promo_codes: replaced.promo_codes })
+      .expect(404);
+
+    const retained = await applyPromoCode(buyer, seller.shopId, 'FREE2', replaced.promo_codes);
+    expect(retained.promo_codes).toEqual(replaced.promo_codes);
+  });
+
+  it('evaluates a free-shipping minimum on after-Sale merchandise and eligible units', async () => {
+    const seller = await registerSeller('promo-free-min');
+    const profile = await createActiveProfile(seller);
+    const product = await createPublishedProduct({
+      seller,
+      shippingProfileId: profile,
+      title: 'Minimum Mug',
+      sku: 'FREE-MIN-1',
+      amountMinor: 4_000,
+    });
+
+    await createSale(seller, {
+      name: 'Half off',
+      percent_off: 50,
+      product_scope: 'all',
+      timezone: 'UTC',
+      start_now: true,
+      end_local: utcLocalDateTime(new Date(testNow.getTime() + TWO_DAYS_MS)),
+    });
+
+    await createPromoCode(seller, {
+      name: 'Fifty minimum',
+      code: 'MIN50FREE',
+      benefit_type: 'free_shipping',
+      visibility: 'public',
+      product_scope: 'all',
+      min_order_type: 'order_total',
+      min_order_value: 50,
+      ...activeWindow(),
+    });
+    await createPromoCode(seller, {
+      name: 'Thirty minimum',
+      code: 'MIN30FREE',
+      benefit_type: 'free_shipping',
+      visibility: 'public',
+      product_scope: 'all',
+      min_order_type: 'order_total',
+      min_order_value: 30,
+      ...activeWindow(),
+    });
+    await createPromoCode(seller, {
+      name: 'Three units',
+      code: 'QTY3FREE',
+      benefit_type: 'free_shipping',
+      visibility: 'public',
+      product_scope: 'all',
+      min_order_type: 'purchase_quantity',
+      min_purchase_quantity: 3,
+      ...activeWindow(),
+    });
+
+    const buyer = await registerBuyer('promo-free-min');
+    // Two 40.00 units are 80.00 regular, 40.00 after the 50% Sale.
+    await addCartItem(buyer, product.inventoryId, 2);
+
+    const discoverable = await listDiscoverableCoupons(buyer, seller.shopId);
+    const find = (code: string) => discoverable.find((coupon) => coupon.code === code)!;
+
+    // The 50.00 minimum is measured after the Sale: the regular 80.00 would
+    // qualify, but the 40.00 eligible subtotal does not.
+    expect(find('MIN50FREE')).toMatchObject({ is_eligible: false, ineligible_reason: 'min_order_value' });
+    expect(find('MIN30FREE')).toMatchObject({ is_eligible: true, ineligible_reason: null });
+    // Two eligible units are below the three-unit minimum.
+    expect(find('QTY3FREE')).toMatchObject({ is_eligible: false, ineligible_reason: 'min_products' });
+
+    const applied = await applyPromoCode(buyer, seller.shopId, 'min30free');
+    const quote = await createQuote(buyer, [{
+      shop_id: seller.shopId,
+      promo_codes: applied.promo_codes,
+    }]);
+    const quoteShop = quote.shops.find((shop) => shop.shop_id === seller.shopId)!;
+    expect(quoteShop.sale_discount_minor).toBe(4_000);
+    expect(quoteShop.shipping_minor).toBe(0);
+    // Two units: 599 base + 199 additional item fee.
+    expect(quoteShop.shipping_discount_minor).toBe(798);
+  });
+
+  it('treats an already-free Shipping Charge as zero benefit and consumes no redemption', async () => {
+    const seller = await registerSeller('promo-free-already');
+    const profile = await createActiveProfile(seller, 0);
+    const product = await createPublishedProduct({
+      seller,
+      shippingProfileId: profile,
+      title: 'Already Free Mug',
+      sku: 'ALREADY-FREE-1',
+      amountMinor: 4_000,
+    });
+
+    const promo = await createPromoCode(seller, {
+      name: 'Free but already free',
+      code: 'FREEZERO',
+      benefit_type: 'free_shipping',
+      visibility: 'code_only',
+      product_scope: 'all',
+      min_order_type: 'none',
+      ...activeWindow(),
+    });
+
+    const buyer = await registerBuyer('promo-free-already');
+    await addCartItem(buyer, product.inventoryId, 1);
+
+    // Applying at cart level cannot yet judge shipping, so the code is kept.
+    const applied = await applyPromoCode(buyer, seller.shopId, 'freezero');
+    expect(applied.promo_codes).toContain('FREEZERO');
+
+    // Quoting prices shipping at zero, so the code grants nothing and is dropped.
+    const quote = await createQuote(buyer, [{
+      shop_id: seller.shopId,
+      promo_codes: applied.promo_codes,
+    }]);
+    const quoteShop = quote.shops.find((shop) => shop.shop_id === seller.shopId)!;
+    expect(quoteShop.shipping_minor).toBe(0);
+    expect(quoteShop.shipping_discount_minor).toBe(0);
+    expect(quoteShop.shipping_discounts).toEqual([]);
+    expect(quoteShop.promo_codes).not.toContain('FREEZERO');
+    expect(quote.discount_minor).toBe(0);
+
+    const orderResponse = await submitCashOrder(buyer, quote.quote_id).expect(201);
+    expect(orderResponse.body.order_shops).toHaveLength(1);
+
+    const usages = await sql.query(
+      'select count(*) as count from "promotion_usages" where "promotion_id" = $1',
+      [promo.id],
+    );
+    expect(Number(usages.rows[0].count)).toBe(0);
   });
 });

@@ -64,6 +64,21 @@ export class CreateShopPromoCodeUseCase {
 
     const benefit = this.resolveBenefitAndCondition(body);
 
+    // Free shipping waives a shop's Shipping Charge, so it is inherently
+    // shop-wide: it never targets selected Products.
+    if (
+      benefit.benefitType === PromotionBenefitType.FREE_SHIPPING
+      && body.product_scope === PromotionProductScope.SPECIFIC
+    ) {
+      throw new PromoCodeProductScopeInvalidError(
+        'A free-shipping promo code is always shop-wide',
+      );
+    }
+
+    const productScope = benefit.benefitType === PromotionBenefitType.FREE_SHIPPING
+      ? PromotionProductScope.ALL
+      : body.product_scope;
+
     if (!isValidTimeZone(body.timezone)) {
       throw new PromoCodeTimeZoneInvalidError(body.timezone);
     }
@@ -78,7 +93,7 @@ export class CreateShopPromoCodeUseCase {
       throw new PromoCodeEndAfterStartRequiredError();
     }
 
-    const productIds = body.product_scope === PromotionProductScope.SPECIFIC
+    const productIds = productScope === PromotionProductScope.SPECIFIC
       ? await this.resolveProductScope(entityManager, shopId, body.product_ids ?? [])
       : [];
 
@@ -100,7 +115,7 @@ export class CreateShopPromoCodeUseCase {
       currency: shop.currency,
       percentOff: benefit.percentOff,
       amountOff: benefit.amountOff,
-      productScope: body.product_scope,
+      productScope,
       visibility: body.visibility,
       minOrderType: benefit.minOrderType,
       minOrderValue: benefit.minOrderValue,
@@ -133,8 +148,9 @@ export class CreateShopPromoCodeUseCase {
    * Normalizes the benefit and qualifying condition into the exact fields the
    * Promotion persists, rejecting contradictory combinations the DTO cannot
    * express on a single field. A percentage code never carries a fixed amount
-   * (or vice versa), and only the value matching the selected minimum type is
-   * accepted, so a zero-value or mismatched condition can never be stored.
+   * (or vice versa), a free-shipping code carries neither, and only the value
+   * matching the selected minimum type is accepted, so a zero-value or
+   * mismatched condition can never be stored.
    */
   private resolveBenefitAndCondition(body: CreateShopPromoCodeDto): {
     benefitType: PromotionBenefitType;
@@ -156,6 +172,18 @@ export class CreateShopPromoCodeUseCase {
       }
       if (amountOff == null || amountOff <= 0) {
         throw new PromoCodeBenefitInvalidError('A fixed-amount promo code needs a positive amount');
+      }
+    }
+    else if (benefitType === PromotionBenefitType.FREE_SHIPPING) {
+      if (percentOff != null) {
+        throw new PromoCodeBenefitInvalidError(
+          'A free-shipping promo code cannot also have a percentage',
+        );
+      }
+      if (amountOff != null) {
+        throw new PromoCodeBenefitInvalidError(
+          'A free-shipping promo code cannot also have a fixed amount',
+        );
       }
     }
     else {

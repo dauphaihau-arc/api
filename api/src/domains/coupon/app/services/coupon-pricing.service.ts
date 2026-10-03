@@ -418,6 +418,7 @@ export class CouponPricingService {
         amounts,
         checkoutCurrency,
         now,
+        shippingChargeMinor: input.shippingShop?.charge.totalMinor,
       });
 
       if (eligibility.outcome === 'conversion_unavailable') {

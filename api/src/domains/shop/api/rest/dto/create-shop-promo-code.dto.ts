@@ -27,11 +27,13 @@ const LOCAL_DATE_TIME_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
 
 /**
  * The seller-facing Promo Code form's payload: an ordinary internal name, a
- * normalized redemption code, a positive percentage or fixed-amount benefit,
- * an optional qualifying condition (minimum spend or minimum eligible
+ * normalized redemption code, a percentage, fixed-amount or free-shipping
+ * benefit, an optional qualifying condition (minimum spend or minimum eligible
  * quantity), public or code-only visibility, an all-or-selected Product Scope,
  * and an explicit schedule authored as local wall-clock times in a chosen IANA
- * timezone.
+ * timezone. Free shipping is always shop-wide, so it carries no percentage or
+ * fixed amount and never selects Products; the use case rejects that
+ * combination even though the DTO cannot express it on a single field.
  *
  * The benefit and condition fields are shape-validated here: the value that a
  * selected `benefit_type` or `min_order_type` requires must be present and
@@ -56,17 +58,25 @@ export class CreateShopPromoCodeDto {
   @ApiProperty()
   code!: string;
 
-  @IsIn([PromotionBenefitType.PERCENTAGE, PromotionBenefitType.FIXED_AMOUNT])
+  @IsIn([
+    PromotionBenefitType.PERCENTAGE,
+    PromotionBenefitType.FIXED_AMOUNT,
+    PromotionBenefitType.FREE_SHIPPING,
+  ])
   @IsOptional()
   @ApiProperty({
     name: 'benefit_type',
-    enum: [PromotionBenefitType.PERCENTAGE, PromotionBenefitType.FIXED_AMOUNT],
+    enum: [
+      PromotionBenefitType.PERCENTAGE,
+      PromotionBenefitType.FIXED_AMOUNT,
+      PromotionBenefitType.FREE_SHIPPING,
+    ],
     default: PromotionBenefitType.PERCENTAGE,
   })
   benefit_type: PromotionBenefitType = PromotionBenefitType.PERCENTAGE;
 
   @ValidateIf((dto: CreateShopPromoCodeDto) =>
-    dto.benefit_type !== PromotionBenefitType.FIXED_AMOUNT)
+    dto.benefit_type === PromotionBenefitType.PERCENTAGE)
   @Type(() => Number)
   @IsInt()
   @Min(1)

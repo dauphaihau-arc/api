@@ -44,9 +44,16 @@ export function evaluateManualPromoOffer(input: {
   amounts: CouponPresentmentAmounts | undefined;
   checkoutCurrency: string;
   now: Date;
+  /**
+   * The owning shop's Shipping Charge in checkout minor units, when the caller
+   * has already quoted shipping. A free-shipping code needs it to tell a real
+   * waiver from an already-free charge; callers that have not quoted shipping
+   * (cart-level apply or discovery) omit it and cannot yet judge that case.
+   */
+  shippingChargeMinor?: number;
 }): CouponEligibility {
   const {
-    offer, items, userUsageCount, amounts, checkoutCurrency, now,
+    offer, items, userUsageCount, amounts, checkoutCurrency, now, shippingChargeMinor,
   } = input;
 
   if (!isManualPromoOfferActive(offer, now)) {
@@ -107,9 +114,16 @@ export function evaluateManualPromoOffer(input: {
   }
 
   // A code that grants no saving after pricing and rounding is not a usable
-  // offer: it must not consume an allowance or look selectable. Free shipping
-  // is judged against the shop's Shipping Charge elsewhere, so it is exempt.
-  if (offer.type !== 'free_shipping') {
+  // offer: it must not consume an allowance or look selectable. A free-shipping
+  // code is judged against the owning shop's Shipping Charge instead of
+  // merchandise: an already-free charge leaves nothing to waive, so it is
+  // zero-benefit too.
+  if (offer.type === 'free_shipping') {
+    if (shippingChargeMinor !== undefined && shippingChargeMinor <= 0) {
+      return { outcome: 'ineligible', reason: CouponIneligibleReason.ZERO_BENEFIT };
+    }
+  }
+  else {
     const discount = Math.min(
       eligibleSubtotal,
       computeManualPromoOfferDiscount(offer, amounts, eligibleSubtotal),
@@ -135,6 +149,7 @@ export function evaluateCoupon(input: {
   amounts: CouponPresentmentAmounts | undefined;
   checkoutCurrency: string;
   now: Date;
+  shippingChargeMinor?: number;
 }): CouponEligibility {
   return evaluateManualPromoOffer({
     ...input,
