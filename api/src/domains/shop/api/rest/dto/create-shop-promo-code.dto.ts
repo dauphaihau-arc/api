@@ -5,7 +5,9 @@ import {
   IsArray,
   IsBoolean,
   IsEnum,
+  IsIn,
   IsInt,
+  IsNumber,
   IsOptional,
   IsString,
   IsUUID,
@@ -16,6 +18,8 @@ import {
   MinLength,
   ValidateIf,
 } from 'class-validator';
+import { PromotionBenefitType } from '~/domains/promotion/domain/enums/promotion-benefit-type.enum';
+import { PromotionMinOrderType } from '~/domains/promotion/domain/enums/promotion-min-order-type.enum';
 import { PromotionProductScope } from '~/domains/promotion/domain/enums/promotion-product-scope.enum';
 import { PromotionVisibility } from '~/domains/promotion/domain/enums/promotion-visibility.enum';
 
@@ -23,9 +27,16 @@ const LOCAL_DATE_TIME_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
 
 /**
  * The seller-facing Promo Code form's payload: an ordinary internal name, a
- * normalized redemption code, a positive percentage, public or code-only
- * visibility, an all-or-selected Product Scope, and an explicit schedule
- * authored as local wall-clock times in a chosen IANA timezone.
+ * normalized redemption code, a positive percentage or fixed-amount benefit,
+ * an optional qualifying condition (minimum spend or minimum eligible
+ * quantity), public or code-only visibility, an all-or-selected Product Scope,
+ * and an explicit schedule authored as local wall-clock times in a chosen IANA
+ * timezone.
+ *
+ * The benefit and condition fields are shape-validated here: the value that a
+ * selected `benefit_type` or `min_order_type` requires must be present and
+ * positive, while the fields for the other shapes are rejected by the use case
+ * so no zero-value or contradictory combination can be persisted.
  *
  * `start_now` starts the code immediately; otherwise `start_local` carries the
  * chosen wall clock. The optional offsets let a caller explicitly disambiguate
@@ -45,12 +56,56 @@ export class CreateShopPromoCodeDto {
   @ApiProperty()
   code!: string;
 
+  @IsIn([PromotionBenefitType.PERCENTAGE, PromotionBenefitType.FIXED_AMOUNT])
+  @IsOptional()
+  @ApiProperty({
+    name: 'benefit_type',
+    enum: [PromotionBenefitType.PERCENTAGE, PromotionBenefitType.FIXED_AMOUNT],
+    default: PromotionBenefitType.PERCENTAGE,
+  })
+  benefit_type: PromotionBenefitType = PromotionBenefitType.PERCENTAGE;
+
+  @ValidateIf((dto: CreateShopPromoCodeDto) =>
+    dto.benefit_type !== PromotionBenefitType.FIXED_AMOUNT)
   @Type(() => Number)
   @IsInt()
   @Min(1)
   @Max(99)
-  @ApiProperty({ name: 'percent_off', minimum: 1, maximum: 99 })
-  percent_off!: number;
+  @ApiPropertyOptional({ name: 'percent_off', minimum: 1, maximum: 99 })
+  percent_off?: number;
+
+  @ValidateIf((dto: CreateShopPromoCodeDto) =>
+    dto.benefit_type === PromotionBenefitType.FIXED_AMOUNT)
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0.01)
+  @ApiPropertyOptional({ name: 'amount_off', minimum: 0.01 })
+  amount_off?: number;
+
+  @IsEnum(PromotionMinOrderType)
+  @IsOptional()
+  @ApiProperty({
+    name: 'min_order_type',
+    enum: PromotionMinOrderType,
+    default: PromotionMinOrderType.NONE,
+  })
+  min_order_type: PromotionMinOrderType = PromotionMinOrderType.NONE;
+
+  @ValidateIf((dto: CreateShopPromoCodeDto) =>
+    dto.min_order_type === PromotionMinOrderType.ORDER_TOTAL)
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0.01)
+  @ApiPropertyOptional({ name: 'min_order_value', minimum: 0.01 })
+  min_order_value?: number;
+
+  @ValidateIf((dto: CreateShopPromoCodeDto) =>
+    dto.min_order_type === PromotionMinOrderType.PURCHASE_QUANTITY)
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @ApiPropertyOptional({ name: 'min_purchase_quantity', minimum: 1 })
+  min_purchase_quantity?: number;
 
   @IsEnum(PromotionVisibility)
   @IsOptional()

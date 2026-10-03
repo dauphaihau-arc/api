@@ -4,6 +4,7 @@ import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import { ProductEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product.entity';
 import { PromotionApplicationKind } from '~/domains/promotion/domain/enums/promotion-application-kind.enum';
 import { PromotionBenefitType } from '~/domains/promotion/domain/enums/promotion-benefit-type.enum';
+import { PromotionMinOrderType } from '~/domains/promotion/domain/enums/promotion-min-order-type.enum';
 import { PromotionProductScope } from '~/domains/promotion/domain/enums/promotion-product-scope.enum';
 import { isValidTimeZone } from '~/domains/promotion/domain/local-date-time';
 import {
@@ -19,6 +20,8 @@ import { Clock } from '~/platform/time/clock';
 import { ShopEntity } from '../../../infra/persistence/entities/shop.entity';
 import {
   PromoCodeAlreadyExistsError,
+  PromoCodeBenefitInvalidError,
+  PromoCodeConditionInvalidError,
   PromoCodeEndAfterStartRequiredError,
   PromoCodeLocalTimeAmbiguousError,
   PromoCodeLocalTimeNonexistentError,
@@ -59,6 +62,8 @@ export class CreateShopPromoCodeUseCase {
       throw new ShopAccessDeniedError();
     }
 
+    const benefit = this.resolveBenefitAndCondition(body);
+
     if (!isValidTimeZone(body.timezone)) {
       throw new PromoCodeTimeZoneInvalidError(body.timezone);
     }
@@ -91,14 +96,15 @@ export class CreateShopPromoCodeUseCase {
       shop,
       name: body.name.trim(),
       applicationKind: PromotionApplicationKind.CHECKOUT_DISCOUNT,
-      benefitType: PromotionBenefitType.PERCENTAGE,
+      benefitType: benefit.benefitType,
       currency: shop.currency,
-      percentOff: body.percent_off,
+      percentOff: benefit.percentOff,
+      amountOff: benefit.amountOff,
       productScope: body.product_scope,
       visibility: body.visibility,
-      minOrderType: null,
-      minOrderValue: 0,
-      minPurchaseQuantity: 0,
+      minOrderType: benefit.minOrderType,
+      minOrderValue: benefit.minOrderValue,
+      minPurchaseQuantity: benefit.minPurchaseQuantity,
       maxRedemptions: null,
       maxRedemptionsPerBuyer: null,
       startAt,
@@ -121,6 +127,90 @@ export class CreateShopPromoCodeUseCase {
     await entityManager.persist([promotion, code, ...targets]).flush();
 
     return toShopPromoCodeSummary(promotion, code.code, productIds, now);
+  }
+
+  /**
+   * Normalizes the benefit and qualifying condition into the exact fields the
+   * Promotion persists, rejecting contradictory combinations the DTO cannot
+   * express on a single field. A percentage code never carries a fixed amount
+   * (or vice versa), and only the value matching the selected minimum type is
+   * accepted, so a zero-value or mismatched condition can never be stored.
+   */
+  private resolveBenefitAndCondition(body: CreateShopPromoCodeDto): {
+    benefitType: PromotionBenefitType;
+    percentOff: number | null;
+    amountOff: number | null;
+    minOrderType: PromotionMinOrderType;
+    minOrderValue: number;
+    minPurchaseQuantity: number;
+  } {
+    const benefitType = body.benefit_type;
+    const percentOff = body.percent_off;
+    const amountOff = body.amount_off;
+
+    if (benefitType === PromotionBenefitType.FIXED_AMOUNT) {
+      if (percentOff != null) {
+        throw new PromoCodeBenefitInvalidError(
+          'A fixed-amount promo code cannot also have a percentage',
+        );
+      }
+      if (amountOff == null || amountOff <= 0) {
+        throw new PromoCodeBenefitInvalidError('A fixed-amount promo code needs a positive amount');
+      }
+    }
+    else {
+      if (amountOff != null) {
+        throw new PromoCodeBenefitInvalidError(
+          'A percentage promo code cannot also have a fixed amount',
+        );
+      }
+      if (percentOff == null || percentOff < 1 || percentOff > 99) {
+        throw new PromoCodeBenefitInvalidError('A percentage promo code needs a percentage from 1 to 99');
+      }
+    }
+
+    const minOrderType = body.min_order_type;
+    const minOrderValue = body.min_order_value;
+    const minPurchaseQuantity = body.min_purchase_quantity;
+
+    if (minOrderType === PromotionMinOrderType.ORDER_TOTAL) {
+      if (minPurchaseQuantity != null) {
+        throw new PromoCodeConditionInvalidError(
+          'A minimum-spend condition cannot also set a minimum quantity',
+        );
+      }
+      if (minOrderValue == null || minOrderValue <= 0) {
+        throw new PromoCodeConditionInvalidError('A minimum-spend condition needs a positive amount');
+      }
+    }
+    else if (minOrderType === PromotionMinOrderType.PURCHASE_QUANTITY) {
+      if (minOrderValue != null) {
+        throw new PromoCodeConditionInvalidError(
+          'A minimum-quantity condition cannot also set a minimum spend',
+        );
+      }
+      if (minPurchaseQuantity == null || minPurchaseQuantity < 1) {
+        throw new PromoCodeConditionInvalidError('A minimum-quantity condition needs a positive quantity');
+      }
+    }
+    else if (minOrderValue != null || minPurchaseQuantity != null) {
+      throw new PromoCodeConditionInvalidError(
+        'A no-minimum promo code cannot set a minimum spend or quantity',
+      );
+    }
+
+    return {
+      benefitType,
+      percentOff: benefitType === PromotionBenefitType.PERCENTAGE ? percentOff ?? null : null,
+      amountOff: benefitType === PromotionBenefitType.FIXED_AMOUNT ? amountOff ?? null : null,
+      minOrderType,
+      minOrderValue: minOrderType === PromotionMinOrderType.ORDER_TOTAL
+        ? minOrderValue ?? 0
+        : 0,
+      minPurchaseQuantity: minOrderType === PromotionMinOrderType.PURCHASE_QUANTITY
+        ? minPurchaseQuantity ?? 0
+        : 0,
+    };
   }
 
   private resolveBoundary(

@@ -192,7 +192,7 @@ describe('Promo code redemption (integration)', () => {
     }
   });
 
-  async function registerSeller(prefix: string): Promise<TestSeller> {
+  async function registerSeller(prefix: string, currency = 'USD'): Promise<TestSeller> {
     const agent = request.agent(app.getHttpServer());
     const email = `${prefix}-${Date.now()}-${Math.floor(Math.random() * 10_000)}@example.com`;
 
@@ -215,7 +215,7 @@ describe('Promo code redemption (integration)', () => {
       .set('Idempotency-Key', randomUUID())
       .send({
         shop_name: `promo${Date.now().toString().slice(-6)}${Math.floor(Math.random() * 100)}`,
-        currency: 'USD',
+        currency,
       })
       .expect(201);
 
@@ -375,6 +375,11 @@ describe('Promo code redemption (integration)', () => {
     discount_minor: number;
     sale_discount_minor: number;
     total_minor: number;
+    items: Array<{
+      inventory_id: string;
+      line_total_minor: number;
+      promo_discount_minor: number;
+    }>;
     shops: Array<{
       shop_id: string;
       subtotal_minor: number;
@@ -818,5 +823,542 @@ describe('Promo code redemption (integration)', () => {
       [promo.id],
     );
     expect(Number(usages.rows[0].count)).toBe(1);
+  });
+
+  it('applies a fixed amount once across eligible items without touching untargeted items or shipping', async () => {
+    const seller = await registerSeller('promo-fixed');
+    const profile = await createActiveProfile(seller);
+    const shirt = await createPublishedProduct({
+      seller,
+      shippingProfileId: profile,
+      title: 'Fixed Shirt',
+      sku: 'FIX-SHIRT-1',
+      amountMinor: 6_000,
+    });
+    const shoes = await createPublishedProduct({
+      seller,
+      shippingProfileId: profile,
+      title: 'Fixed Shoes',
+      sku: 'FIX-SHOES-1',
+      amountMinor: 4_000,
+    });
+
+    await createPromoCode(seller, {
+      name: 'Fixed fifty',
+      code: 'FIX50',
+      benefit_type: 'fixed_amount',
+      amount_off: 50,
+      visibility: 'code_only',
+      product_scope: 'specific',
+      product_ids: [shirt.productId],
+      min_order_type: 'none',
+      ...activeWindow(),
+    });
+
+    const buyer = await registerBuyer('promo-fixed');
+    await addCartItem(buyer, shirt.inventoryId, 2);
+    await addCartItem(buyer, shoes.inventoryId, 1);
+
+    const applied = await applyPromoCode(buyer, seller.shopId, 'fix50');
+    expect(applied.applied_coupons).toEqual(expect.arrayContaining([
+      expect.objectContaining({ code: 'FIX50', type: 'fixed_amount' }),
+    ]));
+
+    // Accepting the code on the cart page prices the cart and returns the
+    // per-shop discount, so the shop's own summary shows the same saving as the
+    // overall Summary Order before checkout.
+    const pricedCart = await buyer.agent
+      .patch(`${API_PREFIX}/cart/items`)
+      .set('Idempotency-Key', randomUUID())
+      .send({
+        addition_info_shop_carts: [{
+          shop_id: seller.shopId,
+          promo_codes: applied.promo_codes,
+        }],
+      })
+      .expect(200);
+    const pricedGroup = (pricedCart.body.cart.shop_groups as Array<{
+      shop: { id: string };
+      discount_minor: number;
+    }>).find((group) => group.shop.id === seller.shopId);
+    expect(pricedGroup?.discount_minor).toBe(5_000);
+
+    const quote = await createQuote(buyer, [{
+      shop_id: seller.shopId,
+      promo_codes: applied.promo_codes,
+    }]);
+    const quoteShop = quote.shops.find((shop) => shop.shop_id === seller.shopId);
+
+    // 2 shirts (12000 eligible) + 1 pair of shoes (4000 untargeted). The fixed
+    // 50.00 is granted once, not per eligible item or per unit.
+    expect(quoteShop?.subtotal_minor).toBe(16_000);
+    expect(quoteShop?.discount_minor).toBe(5_000);
+
+    // The allocation lands only on eligible lines and reconciles exactly.
+    const allocatedTotal = quote.items.reduce(
+      (total, item) => total + item.promo_discount_minor,
+      0,
+    );
+    expect(allocatedTotal).toBe(5_000);
+    expect(quote.items.find((item) => item.inventory_id === shirt.inventoryId)?.promo_discount_minor)
+      .toBe(5_000);
+    expect(quote.items.find((item) => item.inventory_id === shoes.inventoryId)?.promo_discount_minor)
+      .toBe(0);
+  });
+
+  it('caps a fixed amount at the eligible merchandise value and never discounts shipping', async () => {
+    const seller = await registerSeller('promo-cap');
+    const profile = await createActiveProfile(seller);
+    const product = await createPublishedProduct({
+      seller,
+      shippingProfileId: profile,
+      title: 'Cap Mug',
+      sku: 'CAP-MUG-1',
+      amountMinor: 6_000,
+    });
+
+    await createPromoCode(seller, {
+      name: 'Huge fixed',
+      code: 'HUGE200',
+      benefit_type: 'fixed_amount',
+      amount_off: 200,
+      visibility: 'code_only',
+      product_scope: 'specific',
+      product_ids: [product.productId],
+      min_order_type: 'none',
+      ...activeWindow(),
+    });
+
+    const buyer = await registerBuyer('promo-cap');
+    await addCartItem(buyer, product.inventoryId, 1);
+
+    const applied = await applyPromoCode(buyer, seller.shopId, 'huge200');
+    const quote = await createQuote(buyer, [{
+      shop_id: seller.shopId,
+      promo_codes: applied.promo_codes,
+    }]);
+    const quoteShop = quote.shops.find((shop) => shop.shop_id === seller.shopId);
+
+    // The 200.00 benefit is capped at the 60.00 eligible subtotal; the single
+    // item's Shipping Charge (599) is untouched and the total cannot go negative.
+    expect(quoteShop?.subtotal_minor).toBe(6_000);
+    expect(quoteShop?.discount_minor).toBe(6_000);
+    expect(quoteShop?.total_minor).toBe(599);
+  });
+
+  it('uses the eligible merchandise subtotal for a minimum spend and ignores untargeted items', async () => {
+    const seller = await registerSeller('promo-minspend');
+    const profile = await createActiveProfile(seller);
+    const shirt = await createPublishedProduct({
+      seller,
+      shippingProfileId: profile,
+      title: 'Minimum Shirt',
+      sku: 'MIN-SHIRT-1',
+      amountMinor: 6_000,
+    });
+    const shoes = await createPublishedProduct({
+      seller,
+      shippingProfileId: profile,
+      title: 'Minimum Shoes',
+      sku: 'MIN-SHOES-1',
+      amountMinor: 4_000,
+    });
+
+    await createPromoCode(seller, {
+      name: 'Ten over hundred',
+      code: 'MIN100',
+      benefit_type: 'percentage',
+      percent_off: 10,
+      visibility: 'code_only',
+      product_scope: 'specific',
+      product_ids: [shirt.productId],
+      min_order_type: 'order_total',
+      min_order_value: 100,
+      ...activeWindow(),
+    });
+
+    const buyer = await registerBuyer('promo-minspend');
+    await addCartItem(buyer, shirt.inventoryId, 1);
+    await addCartItem(buyer, shoes.inventoryId, 1);
+
+    // The cart total is 100.00 but only the 60.00 of targeted shirts is eligible.
+    await buyer.agent
+      .post(`${API_PREFIX}/cart/coupons/apply`)
+      .set('Idempotency-Key', randomUUID())
+      .send({ shop_id: seller.shopId, code: 'min100', promo_codes: [] })
+      .expect(422);
+
+    await addCartItem(buyer, shirt.inventoryId, 1);
+
+    const applied = await applyPromoCode(buyer, seller.shopId, 'min100');
+    const quote = await createQuote(buyer, [{
+      shop_id: seller.shopId,
+      promo_codes: applied.promo_codes,
+    }]);
+    const quoteShop = quote.shops.find((shop) => shop.shop_id === seller.shopId);
+
+    // Eligible subtotal is now 120.00, so 10% of the targeted shirts applies.
+    expect(quoteShop?.subtotal_minor).toBe(16_000);
+    expect(quoteShop?.discount_minor).toBe(1_200);
+  });
+
+  it('counts eligible units, not distinct products, for a minimum quantity', async () => {
+    const seller = await registerSeller('promo-minqty');
+    const profile = await createActiveProfile(seller);
+    const shirt = await createPublishedProduct({
+      seller,
+      shippingProfileId: profile,
+      title: 'Quantity Shirt',
+      sku: 'QTY-SHIRT-1',
+      amountMinor: 6_000,
+    });
+    const shoes = await createPublishedProduct({
+      seller,
+      shippingProfileId: profile,
+      title: 'Quantity Shoes',
+      sku: 'QTY-SHOES-1',
+      amountMinor: 4_000,
+    });
+
+    await createPromoCode(seller, {
+      name: 'Three shirts',
+      code: 'QTY3',
+      benefit_type: 'fixed_amount',
+      amount_off: 5,
+      visibility: 'code_only',
+      product_scope: 'specific',
+      product_ids: [shirt.productId],
+      min_order_type: 'purchase_quantity',
+      min_purchase_quantity: 3,
+      ...activeWindow(),
+    });
+
+    const buyer = await registerBuyer('promo-minqty');
+    await addCartItem(buyer, shirt.inventoryId, 2);
+    await addCartItem(buyer, shoes.inventoryId, 5);
+
+    // Seven units are in the cart, but only two are eligible shirts.
+    await buyer.agent
+      .post(`${API_PREFIX}/cart/coupons/apply`)
+      .set('Idempotency-Key', randomUUID())
+      .send({ shop_id: seller.shopId, code: 'qty3', promo_codes: [] })
+      .expect(422);
+
+    await addCartItem(buyer, shirt.inventoryId, 1);
+
+    const applied = await applyPromoCode(buyer, seller.shopId, 'qty3');
+    const quote = await createQuote(buyer, [{
+      shop_id: seller.shopId,
+      promo_codes: applied.promo_codes,
+    }]);
+    const quoteShop = quote.shops.find((shop) => shop.shop_id === seller.shopId);
+
+    expect(quoteShop?.discount_minor).toBe(500);
+  });
+
+  it('converts a fixed amount from its Promotion Currency and rejects a missing rate', async () => {
+    await sql.query(
+      `insert into "exchange_rates"
+         ("id", "created_at", "updated_at", "from_currency", "to_currency", "rate",
+          "effective_at", "expires_at", "source", "source_timestamp")
+       values ($1, now(), now(), 'USD', 'VND', '24803.0000000000',
+          now() - interval '1 day', null, 'integration-test', null)`,
+      [randomUUID()],
+    );
+
+    const usdSeller = await registerSeller('promo-fx');
+    const usdProfile = await createActiveProfile(usdSeller);
+    const usdProduct = await createPublishedProduct({
+      seller: usdSeller,
+      shippingProfileId: usdProfile,
+      title: 'Fx Bowl',
+      sku: 'FX-BOWL-PROMO',
+      amountMinor: 500_000,
+    });
+    await sql.query(
+      'update "variant_prices" set "currency" = $2 where "product_inventory_id" = $1',
+      [usdProduct.inventoryId, 'VND'],
+    );
+
+    await createPromoCode(usdSeller, {
+      name: 'Twelve dollars',
+      code: 'FX12USD',
+      benefit_type: 'fixed_amount',
+      amount_off: 12,
+      visibility: 'code_only',
+      product_scope: 'all',
+      min_order_type: 'none',
+      ...activeWindow(),
+    });
+
+    const usdBuyer = await registerBuyer('promo-fx');
+    await addCartItem(usdBuyer, usdProduct.inventoryId, 1);
+
+    const applied = await applyPromoCode(usdBuyer, usdSeller.shopId, 'fx12usd');
+    const quote = await createQuote(usdBuyer, [{
+      shop_id: usdSeller.shopId,
+      promo_codes: applied.promo_codes,
+    }]);
+    const quoteShop = quote.shops.find((shop) => shop.shop_id === usdSeller.shopId);
+
+    // 12 USD at the seeded USD->VND rate, applied to VND merchandise.
+    expect(quoteShop?.discount_minor).toBe(297_636);
+
+    // A fixed amount whose currency has no rate cannot be reinterpreted: the
+    // offer is rejected instead of charging its face value.
+    const eurSeller = await registerSeller('promo-fx-missing', 'EUR');
+    const eurProfile = await createActiveProfile(eurSeller);
+    const eurProduct = await createPublishedProduct({
+      seller: eurSeller,
+      shippingProfileId: eurProfile,
+      title: 'No Rate Bowl',
+      sku: 'FX-NORATE-PROMO',
+      amountMinor: 500_000,
+    });
+    await sql.query(
+      'update "variant_prices" set "currency" = $2 where "product_inventory_id" = $1',
+      [eurProduct.inventoryId, 'VND'],
+    );
+
+    await createPromoCode(eurSeller, {
+      name: 'Ten euros',
+      code: 'FX10EUR',
+      benefit_type: 'fixed_amount',
+      amount_off: 10,
+      visibility: 'code_only',
+      product_scope: 'all',
+      min_order_type: 'none',
+      ...activeWindow(),
+    });
+
+    const eurBuyer = await registerBuyer('promo-fx-missing');
+    await addCartItem(eurBuyer, eurProduct.inventoryId, 1);
+
+    await eurBuyer.agent
+      .post(`${API_PREFIX}/cart/coupons/apply`)
+      .set('Idempotency-Key', randomUUID())
+      .send({ shop_id: eurSeller.shopId, code: 'fx10eur', promo_codes: [] })
+      .expect(422);
+  });
+
+  it('rejects zero-value and contradictory benefit or condition combinations', async () => {
+    const seller = await registerSeller('promo-invalid');
+    const base = {
+      name: 'Invalid promo',
+      visibility: 'code_only',
+      product_scope: 'all',
+      timezone: 'UTC',
+      start_now: true,
+      end_local: utcLocalDateTime(new Date(testNow.getTime() + TWO_DAYS_MS)),
+    };
+    const create = (body: Record<string, unknown>) =>
+      seller.agent
+        .post(`${API_PREFIX}/shops/${seller.shopId}/promo-codes`)
+        .set('Idempotency-Key', randomUUID())
+        .send(body);
+
+    // A fixed amount must be positive.
+    await create({
+      ...base, code: 'BADFIXED', benefit_type: 'fixed_amount', amount_off: 0,
+    }).expect(400);
+
+    // A percentage and a fixed amount cannot coexist.
+    await create({
+      ...base, code: 'BADBOTH', benefit_type: 'percentage', percent_off: 10, amount_off: 5,
+    }).expect(400);
+
+    // A minimum spend must be positive.
+    await create({
+      ...base,
+      code: 'BADMINSPEND',
+      benefit_type: 'percentage',
+      percent_off: 10,
+      min_order_type: 'order_total',
+      min_order_value: 0,
+    }).expect(400);
+
+    // A selected minimum type cannot carry the other minimum's value.
+    await create({
+      ...base,
+      code: 'BADMINNONE',
+      benefit_type: 'percentage',
+      percent_off: 10,
+      min_order_type: 'none',
+      min_order_value: 10,
+    }).expect(400);
+
+    // A minimum quantity must be at least one.
+    await create({
+      ...base,
+      code: 'BADMINQTY',
+      benefit_type: 'percentage',
+      percent_off: 10,
+      min_order_type: 'purchase_quantity',
+      min_purchase_quantity: 0,
+    }).expect(400);
+  });
+
+  it('measures a minimum spend on eligible merchandise after a Sale, not on the regular price', async () => {
+    const seller = await registerSeller('promo-minspend-sale');
+    const profile = await createActiveProfile(seller);
+    const shirt = await createPublishedProduct({
+      seller,
+      shippingProfileId: profile,
+      title: 'Discounted Shirt',
+      sku: 'MINSALE-SHIRT-1',
+      amountMinor: 4_000,
+    });
+
+    await createSale(seller, {
+      name: 'Half off',
+      percent_off: 50,
+      product_scope: 'specific',
+      product_ids: [shirt.productId],
+      timezone: 'UTC',
+      start_now: true,
+      end_local: utcLocalDateTime(new Date(testNow.getTime() + TWO_DAYS_MS)),
+    });
+
+    await createPromoCode(seller, {
+      name: 'Ten over fifty',
+      code: 'MINSALE50',
+      benefit_type: 'percentage',
+      percent_off: 10,
+      visibility: 'code_only',
+      product_scope: 'specific',
+      product_ids: [shirt.productId],
+      min_order_type: 'order_total',
+      min_order_value: 50,
+      ...activeWindow(),
+    });
+
+    const buyer = await registerBuyer('promo-minspend-sale');
+    await addCartItem(buyer, shirt.inventoryId, 2);
+
+    // Two shirts cost 80.00 at the regular price but only 40.00 after the 50%
+    // Sale, which is below the 50.00 minimum.
+    await buyer.agent
+      .post(`${API_PREFIX}/cart/coupons/apply`)
+      .set('Idempotency-Key', randomUUID())
+      .send({ shop_id: seller.shopId, code: 'minsale50', promo_codes: [] })
+      .expect(422);
+
+    await addCartItem(buyer, shirt.inventoryId, 1);
+
+    const applied = await applyPromoCode(buyer, seller.shopId, 'minsale50');
+    const quote = await createQuote(buyer, [{
+      shop_id: seller.shopId,
+      promo_codes: applied.promo_codes,
+    }]);
+    const quoteShop = quote.shops.find((shop) => shop.shop_id === seller.shopId);
+
+    // Three shirts are 60.00 after the Sale, so 10% of the post-Sale eligible
+    // subtotal applies.
+    expect(quoteShop?.sale_discount_minor).toBe(6_000);
+    expect(quoteShop?.discount_minor).toBe(600);
+  });
+
+  it('converts a minimum spend from its Promotion Currency and rejects a missing rate', async () => {
+    await sql.query(
+      `insert into "exchange_rates"
+         ("id", "created_at", "updated_at", "from_currency", "to_currency", "rate",
+          "effective_at", "expires_at", "source", "source_timestamp")
+       values ($1, now(), now(), 'USD', 'VND', '24803.0000000000',
+          now() - interval '1 day', null, 'integration-test', null)`,
+      [randomUUID()],
+    );
+
+    const usdSeller = await registerSeller('promo-min-fx');
+    const usdProfile = await createActiveProfile(usdSeller);
+    const usdProduct = await createPublishedProduct({
+      seller: usdSeller,
+      shippingProfileId: usdProfile,
+      title: 'Fx Minimum Bowl',
+      sku: 'FX-MIN-BOWL',
+      amountMinor: 500_000,
+    });
+    await sql.query(
+      'update "variant_prices" set "currency" = $2 where "product_inventory_id" = $1',
+      [usdProduct.inventoryId, 'VND'],
+    );
+
+    // 12 USD is about 297,636 VND, below the 500,000 VND cart; 120 USD is about
+    // 2,976,360 VND, above it. A raw USD comparison would invert both verdicts.
+    await createPromoCode(usdSeller, {
+      name: 'Twelve min',
+      code: 'MIN12USD',
+      benefit_type: 'percentage',
+      percent_off: 10,
+      visibility: 'code_only',
+      product_scope: 'all',
+      min_order_type: 'order_total',
+      min_order_value: 12,
+      ...activeWindow(),
+    });
+    await createPromoCode(usdSeller, {
+      name: 'One twenty min',
+      code: 'MIN120USD',
+      benefit_type: 'percentage',
+      percent_off: 10,
+      visibility: 'code_only',
+      product_scope: 'all',
+      min_order_type: 'order_total',
+      min_order_value: 120,
+      ...activeWindow(),
+    });
+
+    const usdBuyer = await registerBuyer('promo-min-fx');
+    await addCartItem(usdBuyer, usdProduct.inventoryId, 1);
+
+    await usdBuyer.agent
+      .post(`${API_PREFIX}/cart/coupons/apply`)
+      .set('Idempotency-Key', randomUUID())
+      .send({ shop_id: usdSeller.shopId, code: 'min120usd', promo_codes: [] })
+      .expect(422);
+
+    const applied = await applyPromoCode(usdBuyer, usdSeller.shopId, 'min12usd');
+    const quote = await createQuote(usdBuyer, [{
+      shop_id: usdSeller.shopId,
+      promo_codes: applied.promo_codes,
+    }]);
+    const quoteShop = quote.shops.find((shop) => shop.shop_id === usdSeller.shopId);
+    expect(quoteShop?.discount_minor).toBe(50_000);
+
+    // A minimum whose currency has no rate rejects the offer rather than
+    // comparing its face value against the checkout currency.
+    const eurSeller = await registerSeller('promo-min-fx-missing', 'EUR');
+    const eurProfile = await createActiveProfile(eurSeller);
+    const eurProduct = await createPublishedProduct({
+      seller: eurSeller,
+      shippingProfileId: eurProfile,
+      title: 'No Rate Minimum Bowl',
+      sku: 'FX-MIN-NORATE-BOWL',
+      amountMinor: 500_000,
+    });
+    await sql.query(
+      'update "variant_prices" set "currency" = $2 where "product_inventory_id" = $1',
+      [eurProduct.inventoryId, 'VND'],
+    );
+
+    await createPromoCode(eurSeller, {
+      name: 'Ten euro min',
+      code: 'MIN10EUR',
+      benefit_type: 'percentage',
+      percent_off: 10,
+      visibility: 'code_only',
+      product_scope: 'all',
+      min_order_type: 'order_total',
+      min_order_value: 10,
+      ...activeWindow(),
+    });
+
+    const eurBuyer = await registerBuyer('promo-min-fx-missing');
+    await addCartItem(eurBuyer, eurProduct.inventoryId, 1);
+
+    await eurBuyer.agent
+      .post(`${API_PREFIX}/cart/coupons/apply`)
+      .set('Idempotency-Key', randomUUID())
+      .send({ shop_id: eurSeller.shopId, code: 'min10eur', promo_codes: [] })
+      .expect(422);
   });
 });

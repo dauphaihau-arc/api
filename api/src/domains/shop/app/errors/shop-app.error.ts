@@ -141,6 +141,20 @@ export class PromoCodeProductScopeInvalidError extends ShopAppError {
   }
 }
 
+/** The requested benefit is not a valid Promo Code benefit. */
+export class PromoCodeBenefitInvalidError extends ShopAppError {
+  constructor(message: string) {
+    super(message);
+  }
+}
+
+/** The requested qualifying condition is not a valid Promo Code condition. */
+export class PromoCodeConditionInvalidError extends ShopAppError {
+  constructor(message: string) {
+    super(message);
+  }
+}
+
 export class PromoCodeScheduleInvalidError extends ShopAppError {
   constructor(message: string) {
     super(message);

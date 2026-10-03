@@ -21,6 +21,7 @@ import {
 } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { resolveOrThrow } from '~/platform/application/result';
+import { toMinorUnits } from '~/platform/money/money';
 import {
   CHECKOUT_CONFIG,
   getMaxOrderTotalMinor,
@@ -272,6 +273,7 @@ export class CartController {
             totalQuantity: priced.totalQuantity,
           }
           : undefined,
+        priced ? { shopDiscounts: this.toShopDiscounts(priced) } : undefined,
       );
     }
 
@@ -303,6 +305,8 @@ export class CartController {
       totalPrice: priced.totalPrice,
       totalSelectedQuantity: priced.totalSelectedQuantity,
       totalQuantity: priced.totalQuantity,
+    }, {
+      shopDiscounts: this.toShopDiscounts(priced),
     });
   }
 
@@ -328,6 +332,14 @@ export class CartController {
       ownerType: actor.type,
       requiresSignInForCheckout: false,
     });
+  }
+
+  private toShopDiscounts(priced: PricedCartSummary) {
+    return priced.shops.map((shop) => ({
+      shopId: shop.shopId,
+      discountMinor: toMinorUnits(shop.totalDiscount, priced.currency),
+      saleDiscountMinor: toMinorUnits(shop.saleDiscount, priced.currency),
+    }));
   }
 
   private buildResponse(

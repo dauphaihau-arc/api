@@ -105,6 +105,13 @@ export interface CartShopGroupResponse {
   items: CartProductItemResponse[];
   currency: string;
   total_minor: number;
+  /**
+   * Merchandise discount applied to this shop's selected items by its accepted
+   * promo codes, in minor units. Zero until the cart is priced with codes.
+   */
+  discount_minor: number;
+  /** Sale reduction already reflected in the shop's effective item prices. */
+  sale_discount_minor: number;
   shipping_minor: number;
 }
 
@@ -212,6 +219,12 @@ export function buildCartResponse(
     ownerType?: CartOwnerType;
     requiresSignInForCheckout?: boolean;
     maxOrderTotalMinor?: number;
+    /** Per-shop discount when the caller priced the cart with its promo codes. */
+    shopDiscounts?: ReadonlyArray<{
+      shopId: string;
+      discountMinor: number;
+      saleDiscountMinor: number;
+    }>;
   },
 ): CartResponse {
   const currency = resolveCartCurrency(cart);
@@ -272,6 +285,8 @@ export function buildCartResponse(
       items: [],
       currency: item.inventory.currency,
       total_minor: 0,
+      discount_minor: 0,
+      sale_discount_minor: 0,
       shipping_minor: 0,
     };
 
@@ -314,12 +329,26 @@ export function buildCartResponse(
     groupedByShop.set(item.inventory.shopId, existingShopGroup);
   }
 
+  const shopDiscountById = new Map(
+    (options?.shopDiscounts ?? []).map((entry) => [entry.shopId, entry]),
+  );
+
   return {
     cart: {
       id: cart.id,
       user_id: cart.userId ?? '',
       is_temp: cart.kind === CartKind.BUY_NOW,
-      shop_groups: Array.from(groupedByShop.values()),
+      shop_groups: Array.from(groupedByShop.values()).map((group) => {
+        const shopDiscount = shopDiscountById.get(group.shop.id);
+
+        return shopDiscount
+          ? {
+            ...group,
+            discount_minor: shopDiscount.discountMinor,
+            sale_discount_minor: shopDiscount.saleDiscountMinor,
+          }
+          : group;
+      }),
       recent_items: sortedItems.slice(0, 6).map((item) => ({
         item_id: item.id,
         product: {

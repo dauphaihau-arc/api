@@ -73,6 +73,12 @@ export interface CheckoutQuoteItemSummary {
   unitPriceMinor: number;
   originalAmountMinor?: number;
   lineTotalMinor: number;
+  /**
+   * The product-discount amount allocated to this line, in minor units of the
+   * checkout currency. Across a shop's eligible lines these allocations sum
+   * exactly to the shop's merchandise discount.
+   */
+  promoDiscountMinor: number;
   currency: string;
   sourcePriceId?: string;
   sourceType?: 'market_override' | 'base_native' | 'base_fx';
@@ -441,6 +447,12 @@ export interface PricedCartItem {
   fxEffectiveAt?: Date;
   fxSourceTimestamp?: Date;
   autoSaleCoupon?: CouponEntity;
+  /**
+   * The accepted product-discount amount allocated to this item, in minor units
+   * of the checkout currency. It is set by the coupon/promotion pricing path and
+   * never exceeds the item's own line total.
+   */
+  promoDiscountMinor?: number;
 }
 
 export interface ShippingDiscountProvenance {

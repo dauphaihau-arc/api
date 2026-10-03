@@ -160,6 +160,7 @@ export function toCheckoutQuoteResponse(
       unit_price_checkout_minor: item.unitPriceCheckoutMinor,
       line_total_checkout_minor: item.lineTotalCheckoutMinor,
       original_amount_minor: item.originalAmountMinor,
+      promo_discount_minor: item.promoDiscountMinor,
       currency: item.checkoutCurrency,
       source_type: item.sourceType,
       fx_rate: item.fxRate,

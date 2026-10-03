@@ -1,4 +1,6 @@
 import type { MarketplaceCurrency } from '~/platform/config/marketplace.config';
+import type { PromotionBenefitType } from '../../promotion/domain/enums/promotion-benefit-type.enum';
+import type { PromotionMinOrderType } from '../../promotion/domain/enums/promotion-min-order-type.enum';
 
 export interface ShopSummary {
   id: string;
@@ -85,11 +87,16 @@ export interface ShopPromoCodeSummary {
   shopId: string;
   name: string;
   code: string;
+  benefitType: PromotionBenefitType;
   percentOff: number;
+  amountOff: number | null;
   currency: string;
   visibility: string;
   productScope: string;
   productIds: string[];
+  minOrderType: PromotionMinOrderType;
+  minOrderValue: number;
+  minPurchaseQuantity: number;
   startAt: Date;
   endAt: Date;
   timezone: string;

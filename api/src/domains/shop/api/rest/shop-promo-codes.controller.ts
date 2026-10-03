@@ -44,7 +44,7 @@ export class ShopPromoCodesController {
   ) {}
 
   @Post()
-  @ApiOperation({ summary: 'Create a percentage promo code' })
+  @ApiOperation({ summary: 'Create a percentage or fixed-amount promo code' })
   @ApiParam({ name: 'shop_id', type: String })
   @ApiOkResponse({
     description: 'Created promo code.',

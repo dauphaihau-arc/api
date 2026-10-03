@@ -127,3 +127,40 @@ export function fromMinorUnitsExact(amountMinor: number, currency: string): Deci
 export function fromMinorUnits(amountMinor: number, currency: string): number {
   return fromMinorUnitsExact(amountMinor, currency).toNumber();
 }
+
+/**
+ * Distributes `totalMinor` across `weights` so every part is a whole minor unit
+ * and the parts sum exactly to `totalMinor`. Each proportional share is floored
+ * and the whole-unit remainder is handed out one unit at a time, largest
+ * fractional part first, ties broken by index so the result is deterministic.
+ * A non-positive total, an empty weight list, or a zero weight sum yields all
+ * zeros, so callers can allocate a capped discount without inventing money.
+ */
+export function allocateMinorUnits(totalMinor: number, weights: number[]): number[] {
+  if (!Number.isSafeInteger(totalMinor) || totalMinor <= 0 || weights.length === 0) {
+    return weights.map(() => 0);
+  }
+
+  const safeWeights = weights.map((weight) =>
+    (Number.isFinite(weight) && weight > 0 ? weight : 0));
+  const weightSum = safeWeights.reduce((sum, weight) => sum + weight, 0);
+
+  if (weightSum <= 0) {
+    return weights.map(() => 0);
+  }
+
+  const exact = safeWeights.map((weight) => (totalMinor * weight) / weightSum);
+  const result = exact.map((share) => Math.floor(share));
+  let remaining = totalMinor - result.reduce((sum, share) => sum + share, 0);
+
+  const byFraction = exact
+    .map((share, index) => ({ index, fraction: share - Math.floor(share) }))
+    .sort((left, right) => (right.fraction - left.fraction) || (left.index - right.index));
+
+  for (let i = 0; i < byFraction.length && remaining > 0; i += 1) {
+    result[byFraction[i].index] += 1;
+    remaining -= 1;
+  }
+
+  return result;
+}

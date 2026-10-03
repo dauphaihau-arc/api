@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { FxRateCache } from '~/integrations/currency/fx-rate.service';
+import { allocateMinorUnits, fromMinorUnits, toMinorUnits } from '../../../../platform/money/money';
 import type {
   CouponPresentmentAmounts,
   PricedCartItem,
@@ -42,6 +43,7 @@ import {
   computeManualPromoOfferDiscount,
   evaluateCoupon,
   evaluateManualPromoOffer,
+  manualPromoOfferAppliesToProduct,
   nextPromoCodeSelection,
   sortDiscoverableCoupons,
 } from './coupon-eligibility';
@@ -63,22 +65,28 @@ export class CouponPricingService {
 
     const selectedItems = input.cart.items.filter((item) => item.isSelectOrder);
     const shopIds = [...new Set(selectedItems.map((item) => item.inventory.shopId))];
+
     const [coupons, promotionOffers] = await Promise.all([
       this.couponRepository.findByShopIds(shopIds),
       this.promotionCodeReader.findActiveCheckoutDiscounts({ shopIds }),
     ]);
+
     const couponUsageCounts = await this.loadUserUsageCounts(coupons, input.userId);
+
     const promotionUsageCounts = await this.loadPromotionUsageCounts(
       promotionOffers,
       input.userId,
     );
+
     const salesByProductId = await this.saleProjectionReader.findBestSalesForProducts({
       targets: selectedItems.map((item) => ({
         shopId: item.inventory.shopId,
         productId: item.inventory.productId,
       })),
     });
+
     const pricedItemsByShop = priceItems(selectedItems, coupons, salesByProductId);
+
     // One rate cache per pricing call, so repeated lookups for the same pair
     // are resolved once and the whole cart prices from one FX snapshot.
     const rateCache: FxRateCache = new Map();
@@ -389,6 +397,8 @@ export class CouponPricingService {
     let totalDiscount = 0;
     let freeShipOffer: ManualPromoOffer | undefined;
     let freeShipAmounts: CouponPresentmentAmounts | undefined;
+    let productDiscountOffer: ManualPromoOffer | undefined;
+    let productDiscountMinor = 0;
 
     for (const offer of requestedOffers) {
       // The offer's own currency is never assumed to be the checkout
@@ -428,11 +438,41 @@ export class CouponPricingService {
         freeShipAmounts = eligibility.amounts;
       }
       else {
-        totalDiscount += Math.min(
-          eligibility.eligibleSubtotal,
-          computeManualPromoOfferDiscount(offer, eligibility.amounts, eligibility.eligibleSubtotal),
+        const grantedMinor = toMinorUnits(
+          Math.min(
+            eligibility.eligibleSubtotal,
+            computeManualPromoOfferDiscount(
+              offer,
+              eligibility.amounts,
+              eligibility.eligibleSubtotal,
+            ),
+          ),
+          checkoutCurrency,
         );
+        totalDiscount += fromMinorUnits(grantedMinor, checkoutCurrency);
+        productDiscountOffer = offer;
+        productDiscountMinor = grantedMinor;
       }
+    }
+
+    // The granted product discount is allocated across the eligible items in
+    // whole minor units and reconciles exactly to the shop's merchandise
+    // discount; untargeted items are never allocated any part of it.
+    if (productDiscountOffer && productDiscountMinor > 0) {
+      const appliedOffer = productDiscountOffer;
+
+      const eligibleItems = items.filter((item) =>
+        manualPromoOfferAppliesToProduct(appliedOffer, item.productId));
+
+      const allocations = allocateMinorUnits(
+        productDiscountMinor,
+        eligibleItems.map((item) =>
+          toMinorUnits(item.effectiveUnitPrice * item.quantity, checkoutCurrency)),
+      );
+
+      eligibleItems.forEach((item, index) => {
+        item.promoDiscountMinor = allocations[index];
+      });
     }
 
     const shippingDiscountMinor = input.shippingShop && freeShipOffer

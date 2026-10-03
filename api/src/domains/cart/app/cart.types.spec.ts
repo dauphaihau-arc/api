@@ -124,6 +124,8 @@ describe('buildCartResponse', () => {
             ],
             currency: 'USD',
             total_minor: 3000,
+            discount_minor: 0,
+            sale_discount_minor: 0,
             shipping_minor: 0,
           },
         ],
@@ -175,6 +177,14 @@ describe('buildCartResponse', () => {
         total_selected_quantity: 2,
         total_quantity: 3,
       },
+    });
+
+    const discounted = buildCartResponse(cart, undefined, {
+      shopDiscounts: [{ shopId: 'shop-1', discountMinor: 500, saleDiscountMinor: 200 }],
+    });
+    expect(discounted.cart?.shop_groups[0]).toMatchObject({
+      discount_minor: 500,
+      sale_discount_minor: 200,
     });
   });
 

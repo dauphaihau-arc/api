@@ -12,6 +12,8 @@ import {
   CouponUsageLimitsInvalidError,
   InvalidCouponWindowError,
   PromoCodeAlreadyExistsError,
+  PromoCodeBenefitInvalidError,
+  PromoCodeConditionInvalidError,
   PromoCodeEndAfterStartRequiredError,
   PromoCodeLocalTimeAmbiguousError,
   PromoCodeLocalTimeNonexistentError,
@@ -61,6 +63,8 @@ export type ShopHttpErrorCode =
   | 'SALE_LOCAL_TIME_NONEXISTENT'
   | 'SALE_LOCAL_TIME_AMBIGUOUS'
   | 'PROMO_CODE_ALREADY_EXISTS'
+  | 'PROMO_CODE_BENEFIT_INVALID'
+  | 'PROMO_CODE_CONDITION_INVALID'
   | 'PROMO_CODE_PRODUCT_SCOPE_INVALID'
   | 'PROMO_CODE_SCHEDULE_INVALID'
   | 'PROMO_CODE_TIMEZONE_INVALID'
@@ -128,6 +132,8 @@ export function getShopErrorCode(error: ShopAppError): ShopHttpErrorCode {
   if (error instanceof SaleLocalTimeNonexistentError) return 'SALE_LOCAL_TIME_NONEXISTENT';
   if (error instanceof SaleLocalTimeAmbiguousError) return 'SALE_LOCAL_TIME_AMBIGUOUS';
   if (error instanceof PromoCodeAlreadyExistsError) return 'PROMO_CODE_ALREADY_EXISTS';
+  if (error instanceof PromoCodeBenefitInvalidError) return 'PROMO_CODE_BENEFIT_INVALID';
+  if (error instanceof PromoCodeConditionInvalidError) return 'PROMO_CODE_CONDITION_INVALID';
   if (error instanceof PromoCodeProductScopeInvalidError) return 'PROMO_CODE_PRODUCT_SCOPE_INVALID';
   if (error instanceof PromoCodeScheduleInvalidError) return 'PROMO_CODE_SCHEDULE_INVALID';
   if (error instanceof PromoCodeTimeZoneInvalidError) return 'PROMO_CODE_TIMEZONE_INVALID';

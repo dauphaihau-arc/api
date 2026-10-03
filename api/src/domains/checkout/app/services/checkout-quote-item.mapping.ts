@@ -98,6 +98,7 @@ export function createCheckoutQuoteItem(args: {
       unitPriceMinor: entity.unitPriceMinor,
       originalAmountMinor: entity.originalAmountMinor,
       lineTotalMinor: entity.lineTotalMinor,
+      promoDiscountMinor: item.promoDiscountMinor ?? 0,
       currency: entity.currency,
       sourcePriceId: entity.sourcePriceId,
       sourceType: entity.sourceType,

@@ -51,6 +51,7 @@ export function parsePricedShops(
       unit_price_minor: number;
       original_amount_minor?: number;
       line_total_minor: number;
+      promo_discount_minor?: number;
       currency: string;
       source_price_id?: string;
       source_type?: 'market_override' | 'base_native' | 'base_fx';
@@ -102,6 +103,7 @@ export function parsePricedShops(
       unitPriceMinor: item.unit_price_minor,
       originalAmountMinor: item.original_amount_minor,
       lineTotalMinor: item.line_total_minor,
+      promoDiscountMinor: item.promo_discount_minor ?? 0,
       currency: item.currency,
       sourcePriceId: item.source_price_id,
       sourceType: item.source_type,
@@ -159,6 +161,7 @@ export function toPersistedPricedShops(
       unit_price_minor: item.unitPriceMinor,
       original_amount_minor: item.originalAmountMinor,
       line_total_minor: item.lineTotalMinor,
+      promo_discount_minor: item.promoDiscountMinor,
       currency: item.currency,
       source_price_id: item.sourcePriceId,
       source_type: item.sourceType,
