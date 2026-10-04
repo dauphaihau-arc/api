@@ -125,6 +125,8 @@ export async function seedPromotions(
     promotion.startAt = new Date(seed.startAt);
     promotion.endAt = new Date(seed.endAt);
     promotion.timezone = seed.timezone;
+    promotion.cancelledAt = seed.lifecycle === 'cancelled' ? new Date(seed.lifecycleAt as string) : null;
+    promotion.endedAt = seed.lifecycle === 'ended' ? new Date(seed.lifecycleAt as string) : null;
 
     em.persist(promotion);
 

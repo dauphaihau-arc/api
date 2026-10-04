@@ -1,70 +1,74 @@
-shop_slug	name	application_kind	code	benefit_type	currency	product_scope	amount_off	percent_off	max_redemptions	max_redemptions_per_buyer	min_order_type	min_order_value	min_purchase_quantity	visibility	timezone	period	start_date	end_date
-olive-atelier	OLIVE-FS	checkout_discount	OLIVE-FS	free_shipping	USD	all			150	2	purchase_quantity		2	public	UTC	now..3mo		
-olive-atelier	OLIVE-FA	checkout_discount	OLIVE-FA	fixed_amount	USD	specific	12		60	1	order_total	75		code_only	UTC		2026-04-10T00:00:00.000Z	2026-05-12T23:59:59.000Z
-olive-atelier	OLIVE-PC11	checkout_discount	OLIVE-PC11	percentage	USD	all		15	90	2	order_total	120		public	UTC	now..3mo		
-olive-atelier	OLIVE-PC	sale		percentage	USD	all		18							UTC	now..3mo		
-olive-atelier	OLIVE-PC-OIS	sale		percentage	USD	specific		22							UTC		2026-07-03T00:00:00.000Z	2026-07-07T23:59:59.000Z
-reed-workshop	REED-FS	checkout_discount	REED-FS	free_shipping	EUR	all			90	2	purchase_quantity		2	code_only	UTC		2026-02-06T00:00:00.000Z	2026-02-22T23:59:59.000Z
-reed-workshop	REED-FA	checkout_discount	REED-FA	fixed_amount	EUR	specific	35		40	1	order_total	250		code_only	UTC	now..3mo		
-reed-workshop	REED-PC11	checkout_discount	REED-PC11	percentage	EUR	all		10	70	2	order_total	300		code_only	UTC		2026-06-20T00:00:00.000Z	2026-07-04T23:59:59.000Z
-reed-workshop	REED-PC	sale		percentage	EUR	all		14							UTC		2026-08-14T00:00:00.000Z	2026-08-18T23:59:59.000Z
-reed-workshop	REED-PC-OIS	sale		percentage	EUR	specific		17							UTC		2026-11-27T00:00:00.000Z	2026-11-30T23:59:59.000Z
-sage-studio	SAGE-FS	checkout_discount	SAGE-FS	free_shipping	JPY	all			110	2	purchase_quantity		2	code_only	UTC		2026-03-12T00:00:00.000Z	2026-04-02T23:59:59.000Z
-sage-studio	SAGE-FA	checkout_discount	SAGE-FA	fixed_amount	JPY	specific	18		55	1	order_total	95		code_only	UTC		2026-04-18T00:00:00.000Z	2026-05-09T23:59:59.000Z
-sage-studio	SAGE-PC11	checkout_discount	SAGE-PC11	percentage	JPY	all		12	85	2	order_total	140		code_only	UTC		2026-09-01T00:00:00.000Z	2026-09-21T23:59:59.000Z
-sage-studio	SAGE-PC	sale		percentage	JPY	all		16							UTC		2026-10-09T00:00:00.000Z	2026-10-13T23:59:59.000Z
-sage-studio	SAGE-PC-OIS	sale		percentage	JPY	specific		20							UTC		2026-12-03T00:00:00.000Z	2026-12-07T23:59:59.000Z
-hazel-home	HAZEL-PC	sale		percentage	CAD	all		13							UTC	now..6mo		
-hazel-home	HAZEL-FS	checkout_discount	HAZEL-FS	free_shipping	CAD	all			80	2	purchase_quantity		2	code_only	UTC		2026-07-01T00:00:00.000Z	2026-07-20T23:59:59.000Z
-juno-console	JUNO-PC	sale		percentage	AUD	all		15							UTC	now..1y		
-juno-console	JUNO-FA	checkout_discount	JUNO-FA	fixed_amount	AUD	all	20		60	1	order_total	180		code_only	UTC		2026-09-10T00:00:00.000Z	2026-09-24T23:59:59.000Z
-bulk-catalog-lab	BCL-01	checkout_discount	BCL-01	percentage	SGD	all		8	180	2	none			code_only	UTC		2026-01-05T00:00:00.000Z	2026-02-02T23:59:59.000Z
-bulk-catalog-lab	BCL-02	checkout_discount	BCL-02	fixed_amount	SGD	all	10		140	2	order_total	45		code_only	UTC		2026-01-12T00:00:00.000Z	2026-02-16T23:59:59.000Z
-bulk-catalog-lab	BCL-03	checkout_discount	BCL-03	free_shipping	SGD	all			220	3	none			code_only	UTC		2026-02-01T00:00:00.000Z	2026-02-28T23:59:59.000Z
-bulk-catalog-lab	BCL-04	checkout_discount	BCL-04	percentage	SGD	all		12	175	2	order_total	60		code_only	UTC		2026-02-10T00:00:00.000Z	2026-03-10T23:59:59.000Z
-bulk-catalog-lab	BCL-05	checkout_discount	BCL-05	fixed_amount	SGD	all	15		130	2	none			code_only	UTC		2026-03-01T00:00:00.000Z	2026-03-31T23:59:59.000Z
-bulk-catalog-lab	BCL-06	checkout_discount	BCL-06	free_shipping	SGD	all			210	3	order_total	50		code_only	UTC		2026-03-12T00:00:00.000Z	2026-04-08T23:59:59.000Z
-bulk-catalog-lab	BCL-07	checkout_discount	BCL-07	percentage	SGD	all		18	160	2	none			code_only	UTC		2026-04-01T00:00:00.000Z	2026-04-30T23:59:59.000Z
-bulk-catalog-lab	BCL-08	checkout_discount	BCL-08	fixed_amount	SGD	all	20		120	1	order_total	80		code_only	UTC		2026-04-09T00:00:00.000Z	2026-05-06T23:59:59.000Z
-bulk-catalog-lab	BCL-09	checkout_discount	BCL-09	free_shipping	SGD	all			240	3	none			code_only	UTC		2026-05-01T00:00:00.000Z	2026-05-31T23:59:59.000Z
-bulk-catalog-lab	BCL-10	checkout_discount	BCL-10	percentage	SGD	all		15	170	2	order_total	95		code_only	UTC		2026-05-12T00:00:00.000Z	2026-06-09T23:59:59.000Z
-bulk-catalog-lab	BCL-11	checkout_discount	BCL-11	fixed_amount	SGD	all	8		150	2	none			code_only	UTC		2026-06-01T00:00:00.000Z	2026-06-30T23:59:59.000Z
-bulk-catalog-lab	BCL-12	checkout_discount	BCL-12	free_shipping	SGD	all			200	2	order_total	120		code_only	UTC		2026-06-10T00:00:00.000Z	2026-07-15T23:59:59.000Z
-bulk-catalog-lab	BCL-13	checkout_discount	BCL-13	percentage	SGD	all		20	145	1	none			code_only	UTC		2026-07-01T00:00:00.000Z	2026-07-31T23:59:59.000Z
-bulk-catalog-lab	BCL-14	checkout_discount	BCL-14	fixed_amount	SGD	all	12		155	2	order_total	70		code_only	UTC		2026-07-08T00:00:00.000Z	2026-08-05T23:59:59.000Z
-bulk-catalog-lab	BCL-15	checkout_discount	BCL-15	free_shipping	SGD	all			260	3	none			code_only	UTC		2026-08-01T00:00:00.000Z	2026-08-31T23:59:59.000Z
-bulk-catalog-lab	BCL-16	checkout_discount	BCL-16	percentage	SGD	all		22	135	1	order_total	110		code_only	UTC		2026-08-14T00:00:00.000Z	2026-09-10T23:59:59.000Z
-bulk-catalog-lab	BCL-17	checkout_discount	BCL-17	fixed_amount	SGD	all	18		125	1	none			code_only	UTC		2026-09-01T00:00:00.000Z	2026-09-30T23:59:59.000Z
-bulk-catalog-lab	BCL-18	checkout_discount	BCL-18	free_shipping	SGD	all			205	2	order_total	65		code_only	UTC		2026-09-12T00:00:00.000Z	2026-10-08T23:59:59.000Z
-bulk-catalog-lab	BCL-19	checkout_discount	BCL-19	percentage	SGD	all		25	115	1	none			code_only	UTC		2026-10-01T00:00:00.000Z	2026-10-31T23:59:59.000Z
-bulk-catalog-lab	BCL-20	checkout_discount	BCL-20	fixed_amount	SGD	all	10		165	2	order_total	55		code_only	UTC		2026-10-10T00:00:00.000Z	2026-11-06T23:59:59.000Z
-bulk-catalog-lab	BCL-21	checkout_discount	BCL-21	free_shipping	SGD	all			230	3	none			code_only	UTC		2026-11-01T00:00:00.000Z	2026-11-30T23:59:59.000Z
-bulk-catalog-lab	BCL-22	checkout_discount	BCL-22	percentage	SGD	all		9	185	2	order_total	40		code_only	UTC		2026-11-09T00:00:00.000Z	2026-12-05T23:59:59.000Z
-bulk-catalog-lab	BCL-23	checkout_discount	BCL-23	fixed_amount	SGD	all	14		150	2	none			code_only	UTC		2026-11-20T00:00:00.000Z	2026-12-24T23:59:59.000Z
-bulk-catalog-lab	BCL-24	checkout_discount	BCL-24	free_shipping	SGD	all			250	3	order_total	85		code_only	UTC		2026-12-01T00:00:00.000Z	2026-12-31T23:59:59.000Z
-bulk-catalog-lab	BCL-25	checkout_discount	BCL-25	percentage	SGD	all		11	175	2	none			code_only	UTC		2026-01-15T00:00:00.000Z	2026-02-15T23:59:59.000Z
-bulk-catalog-lab	BCL-26	checkout_discount	BCL-26	fixed_amount	SGD	all	16		135	1	order_total	100		code_only	UTC		2026-02-18T00:00:00.000Z	2026-03-20T23:59:59.000Z
-bulk-catalog-lab	BCL-27	checkout_discount	BCL-27	free_shipping	SGD	all			215	3	none			code_only	UTC		2026-03-20T00:00:00.000Z	2026-04-20T23:59:59.000Z
-bulk-catalog-lab	BCL-28	checkout_discount	BCL-28	percentage	SGD	all		13	165	2	order_total	75		code_only	UTC		2026-04-22T00:00:00.000Z	2026-05-22T23:59:59.000Z
-bulk-catalog-lab	BCL-29	checkout_discount	BCL-29	fixed_amount	SGD	all	9		170	2	none			code_only	UTC		2026-05-20T00:00:00.000Z	2026-06-20T23:59:59.000Z
-bulk-catalog-lab	BCL-30	checkout_discount	BCL-30	free_shipping	SGD	all			225	3	order_total	90		code_only	UTC		2026-06-22T00:00:00.000Z	2026-07-20T23:59:59.000Z
-bulk-catalog-lab	BCL-31	checkout_discount	BCL-31	percentage	SGD	all		17	155	2	none			code_only	UTC		2026-07-20T00:00:00.000Z	2026-08-20T23:59:59.000Z
-bulk-catalog-lab	BCL-32	checkout_discount	BCL-32	fixed_amount	SGD	all	11		145	2	order_total	60		code_only	UTC		2026-08-22T00:00:00.000Z	2026-09-18T23:59:59.000Z
-bulk-catalog-lab	BCL-33	checkout_discount	BCL-33	free_shipping	SGD	all			235	3	none			code_only	UTC		2026-09-20T00:00:00.000Z	2026-10-20T23:59:59.000Z
-bulk-catalog-lab	BCL-34	checkout_discount	BCL-34	percentage	SGD	all		19	125	1	order_total	125		code_only	UTC		2026-10-22T00:00:00.000Z	2026-11-22T23:59:59.000Z
-bulk-catalog-lab	BCL-35	checkout_discount	BCL-35	fixed_amount	SGD	all	13		140	1	none			code_only	UTC		2026-11-24T00:00:00.000Z	2026-12-20T23:59:59.000Z
-bulk-catalog-lab	BCL-36	checkout_discount	BCL-36	free_shipping	SGD	all			205	2	order_total	48		code_only	UTC		2026-01-25T00:00:00.000Z	2026-02-25T23:59:59.000Z
-bulk-catalog-lab	BCL-37	checkout_discount	BCL-37	percentage	SGD	all		21	120	1	none			code_only	UTC		2026-02-26T00:00:00.000Z	2026-03-26T23:59:59.000Z
-bulk-catalog-lab	BCL-38	checkout_discount	BCL-38	fixed_amount	SGD	all	17		130	1	order_total	105		code_only	UTC		2026-03-28T00:00:00.000Z	2026-04-28T23:59:59.000Z
-bulk-catalog-lab	BCL-39	checkout_discount	BCL-39	free_shipping	SGD	all			210	3	none			code_only	UTC		2026-04-30T00:00:00.000Z	2026-05-30T23:59:59.000Z
-bulk-catalog-lab	BCL-40	checkout_discount	BCL-40	percentage	SGD	all		7	190	2	order_total	35		code_only	UTC		2026-05-28T00:00:00.000Z	2026-06-25T23:59:59.000Z
-bulk-catalog-lab	BCL-41	checkout_discount	BCL-41	fixed_amount	SGD	all	6		180	2	none			code_only	UTC		2026-06-26T00:00:00.000Z	2026-07-26T23:59:59.000Z
-bulk-catalog-lab	BCL-42	checkout_discount	BCL-42	free_shipping	SGD	all			220	3	order_total	72		code_only	UTC		2026-07-28T00:00:00.000Z	2026-08-26T23:59:59.000Z
-bulk-catalog-lab	BCL-43	checkout_discount	BCL-43	percentage	SGD	all		10	175	2	none			code_only	UTC		2026-08-28T00:00:00.000Z	2026-09-28T23:59:59.000Z
-bulk-catalog-lab	BCL-44	checkout_discount	BCL-44	fixed_amount	SGD	all	12		150	2	order_total	88		code_only	UTC		2026-09-29T00:00:00.000Z	2026-10-27T23:59:59.000Z
-bulk-catalog-lab	BCL-45	checkout_discount	BCL-45	free_shipping	SGD	all			240	3	none			code_only	UTC		2026-10-29T00:00:00.000Z	2026-11-28T23:59:59.000Z
-bulk-catalog-lab	BCL-46	checkout_discount	BCL-46	percentage	SGD	all		14	165	2	order_total	98		code_only	UTC		2026-11-27T00:00:00.000Z	2026-12-27T23:59:59.000Z
-bulk-catalog-lab	BCL-47	checkout_discount	BCL-47	fixed_amount	SGD	all	15		145	2	none			code_only	UTC		2026-12-05T00:00:00.000Z	2026-12-31T23:59:59.000Z
-bulk-catalog-lab	BCL-48	checkout_discount	BCL-48	free_shipping	SGD	all			215	2	order_total	130		code_only	UTC		2026-06-15T00:00:00.000Z	2026-07-05T23:59:59.000Z
-bulk-catalog-lab	BCL-49	checkout_discount	BCL-49	percentage	SGD	all		16	150	2	none			code_only	UTC		2026-09-05T00:00:00.000Z	2026-09-19T23:59:59.000Z
-bulk-catalog-lab	BCL-50	checkout_discount	BCL-50	fixed_amount	SGD	all	9		160	2	order_total	58		code_only	UTC		2026-04-15T00:00:00.000Z	2026-05-15T23:59:59.000Z
+shop_slug	name	application_kind	code	benefit_type	currency	product_scope	amount_off	percent_off	max_redemptions	max_redemptions_per_buyer	min_order_type	min_order_value	min_purchase_quantity	visibility	timezone	period	start_date	end_date	lifecycle
+olive-atelier	OLIVE-FS	checkout_discount	OLIVE-FS	free_shipping	USD	all			150	2	purchase_quantity		2	public	America/New_York	now..3mo			
+olive-atelier	OLIVE-FA	checkout_discount	OLIVE-FA	fixed_amount	USD	specific	12		60	1	order_total	75		code_only	America/New_York		2026-04-10T00:00:00.000Z	2026-05-12T23:59:59.000Z	
+olive-atelier	OLIVE-PC11	checkout_discount	OLIVE-PC11	percentage	USD	all		15	90	2	order_total	120		public	America/New_York	now..3mo			
+olive-atelier	OLIVE-PC	sale		percentage	USD	all		18							America/New_York	now..3mo			
+olive-atelier	OLIVE-PC-OIS	sale		percentage	USD	specific		22							America/New_York		2026-07-03T00:00:00.000Z	2026-07-07T23:59:59.000Z	
+reed-workshop	REED-FS	checkout_discount	REED-FS	free_shipping	EUR	all			90	2	purchase_quantity		2	code_only	Europe/Berlin		2026-02-06T00:00:00.000Z	2026-02-22T23:59:59.000Z	
+reed-workshop	REED-FA	checkout_discount	REED-FA	fixed_amount	EUR	specific	35		40	1	order_total	250		code_only	Europe/Berlin	now..3mo			
+reed-workshop	REED-PC11	checkout_discount	REED-PC11	percentage	EUR	all		10	70	2	order_total	300		code_only	Europe/Berlin		2026-06-20T00:00:00.000Z	2026-07-04T23:59:59.000Z	
+reed-workshop	REED-PC	sale		percentage	EUR	all		14							Europe/Berlin		2026-08-14T00:00:00.000Z	2026-08-18T23:59:59.000Z	
+reed-workshop	REED-PC-OIS	sale		percentage	EUR	specific		17							Europe/Berlin		2026-11-27T00:00:00.000Z	2026-11-30T23:59:59.000Z	
+sage-studio	SAGE-FS	checkout_discount	SAGE-FS	free_shipping	JPY	all			110	2	purchase_quantity		2	code_only	Asia/Tokyo		2026-03-12T00:00:00.000Z	2026-04-02T23:59:59.000Z	
+sage-studio	SAGE-FA	checkout_discount	SAGE-FA	fixed_amount	JPY	specific	18		55	1	order_total	95		code_only	Asia/Tokyo		2026-04-18T00:00:00.000Z	2026-05-09T23:59:59.000Z	
+sage-studio	SAGE-PC11	checkout_discount	SAGE-PC11	percentage	JPY	all		12	85	2	order_total	140		code_only	Asia/Tokyo		2026-09-01T00:00:00.000Z	2026-09-21T23:59:59.000Z	
+sage-studio	SAGE-PC	sale		percentage	JPY	all		16							Asia/Tokyo		2026-10-09T00:00:00.000Z	2026-10-13T23:59:59.000Z	
+sage-studio	SAGE-PC-OIS	sale		percentage	JPY	specific		20							Asia/Tokyo		2026-12-03T00:00:00.000Z	2026-12-07T23:59:59.000Z	
+hazel-home	HAZEL-PC	sale		percentage	CAD	all		13							America/Toronto	now..6mo			
+hazel-home	HAZEL-FS	checkout_discount	HAZEL-FS	free_shipping	CAD	all			80	2	purchase_quantity		2	code_only	America/Toronto		2026-07-01T00:00:00.000Z	2026-07-20T23:59:59.000Z	
+juno-console	JUNO-PC	sale		percentage	AUD	all		15							Australia/Sydney	now..1y			
+juno-console	JUNO-FA	checkout_discount	JUNO-FA	fixed_amount	AUD	all	20		60	1	order_total	180		code_only	Australia/Sydney		2026-09-10T00:00:00.000Z	2026-09-24T23:59:59.000Z	
+bulk-catalog-lab	BCL-01	checkout_discount	BCL-01	percentage	SGD	all		8	180	2	none			code_only	Asia/Singapore		2026-01-05T00:00:00.000Z	2026-02-02T23:59:59.000Z	
+bulk-catalog-lab	BCL-02	checkout_discount	BCL-02	fixed_amount	SGD	all	10		140	2	order_total	45		code_only	Asia/Singapore		2026-01-12T00:00:00.000Z	2026-02-16T23:59:59.000Z	
+bulk-catalog-lab	BCL-03	checkout_discount	BCL-03	free_shipping	SGD	all			220	3	none			code_only	Asia/Singapore		2026-02-01T00:00:00.000Z	2026-02-28T23:59:59.000Z	
+bulk-catalog-lab	BCL-04	checkout_discount	BCL-04	percentage	SGD	all		12	175	2	order_total	60		code_only	Asia/Singapore		2026-02-10T00:00:00.000Z	2026-03-10T23:59:59.000Z	
+bulk-catalog-lab	BCL-05	checkout_discount	BCL-05	fixed_amount	SGD	all	15		130	2	none			code_only	Asia/Singapore		2026-03-01T00:00:00.000Z	2026-03-31T23:59:59.000Z	
+bulk-catalog-lab	BCL-06	checkout_discount	BCL-06	free_shipping	SGD	all			210	3	order_total	50		code_only	Asia/Singapore		2026-03-12T00:00:00.000Z	2026-04-08T23:59:59.000Z	
+bulk-catalog-lab	BCL-07	checkout_discount	BCL-07	percentage	SGD	all		18	160	2	none			code_only	Asia/Singapore		2026-04-01T00:00:00.000Z	2026-04-30T23:59:59.000Z	
+bulk-catalog-lab	BCL-08	checkout_discount	BCL-08	fixed_amount	SGD	all	20		120	1	order_total	80		code_only	Asia/Singapore		2026-04-09T00:00:00.000Z	2026-05-06T23:59:59.000Z	
+bulk-catalog-lab	BCL-09	checkout_discount	BCL-09	free_shipping	SGD	all			240	3	none			code_only	Asia/Singapore		2026-05-01T00:00:00.000Z	2026-05-31T23:59:59.000Z	
+bulk-catalog-lab	BCL-10	checkout_discount	BCL-10	percentage	SGD	all		15	170	2	order_total	95		code_only	Asia/Singapore		2026-05-12T00:00:00.000Z	2026-06-09T23:59:59.000Z	
+bulk-catalog-lab	BCL-11	checkout_discount	BCL-11	fixed_amount	SGD	all	8		150	2	none			code_only	Asia/Singapore		2026-06-01T00:00:00.000Z	2026-06-30T23:59:59.000Z	
+bulk-catalog-lab	BCL-12	checkout_discount	BCL-12	free_shipping	SGD	all			200	2	order_total	120		code_only	Asia/Singapore		2026-06-10T00:00:00.000Z	2026-07-15T23:59:59.000Z	
+bulk-catalog-lab	BCL-13	checkout_discount	BCL-13	percentage	SGD	all		20	145	1	none			code_only	Asia/Singapore		2026-07-01T00:00:00.000Z	2026-07-31T23:59:59.000Z	
+bulk-catalog-lab	BCL-14	checkout_discount	BCL-14	fixed_amount	SGD	all	12		155	2	order_total	70		code_only	Asia/Singapore		2026-07-08T00:00:00.000Z	2026-08-05T23:59:59.000Z	
+bulk-catalog-lab	BCL-15	checkout_discount	BCL-15	free_shipping	SGD	all			260	3	none			code_only	Asia/Singapore		2026-08-01T00:00:00.000Z	2026-08-31T23:59:59.000Z	
+bulk-catalog-lab	BCL-16	checkout_discount	BCL-16	percentage	SGD	all		22	135	1	order_total	110		code_only	Asia/Singapore		2026-08-14T00:00:00.000Z	2026-09-10T23:59:59.000Z	
+bulk-catalog-lab	BCL-17	checkout_discount	BCL-17	fixed_amount	SGD	all	18		125	1	none			code_only	Asia/Singapore		2026-09-01T00:00:00.000Z	2026-09-30T23:59:59.000Z	
+bulk-catalog-lab	BCL-18	checkout_discount	BCL-18	free_shipping	SGD	all			205	2	order_total	65		code_only	Asia/Singapore		2026-09-12T00:00:00.000Z	2026-10-08T23:59:59.000Z	
+bulk-catalog-lab	BCL-19	checkout_discount	BCL-19	percentage	SGD	all		25	115	1	none			code_only	Asia/Singapore		2026-10-01T00:00:00.000Z	2026-10-31T23:59:59.000Z	
+bulk-catalog-lab	BCL-20	checkout_discount	BCL-20	fixed_amount	SGD	all	10		165	2	order_total	55		code_only	Asia/Singapore		2026-10-10T00:00:00.000Z	2026-11-06T23:59:59.000Z	
+bulk-catalog-lab	BCL-21	checkout_discount	BCL-21	free_shipping	SGD	all			230	3	none			code_only	Asia/Singapore		2026-11-01T00:00:00.000Z	2026-11-30T23:59:59.000Z	
+bulk-catalog-lab	BCL-22	checkout_discount	BCL-22	percentage	SGD	all		9	185	2	order_total	40		code_only	Asia/Singapore		2026-11-09T00:00:00.000Z	2026-12-05T23:59:59.000Z	
+bulk-catalog-lab	BCL-23	checkout_discount	BCL-23	fixed_amount	SGD	all	14		150	2	none			code_only	Asia/Singapore		2026-11-20T00:00:00.000Z	2026-12-24T23:59:59.000Z	
+bulk-catalog-lab	BCL-24	checkout_discount	BCL-24	free_shipping	SGD	all			250	3	order_total	85		code_only	Asia/Singapore		2026-12-01T00:00:00.000Z	2026-12-31T23:59:59.000Z	
+bulk-catalog-lab	BCL-25	checkout_discount	BCL-25	percentage	SGD	all		11	175	2	none			code_only	Asia/Singapore		2026-01-15T00:00:00.000Z	2026-02-15T23:59:59.000Z	
+bulk-catalog-lab	BCL-26	checkout_discount	BCL-26	fixed_amount	SGD	all	16		135	1	order_total	100		code_only	Asia/Singapore		2026-02-18T00:00:00.000Z	2026-03-20T23:59:59.000Z	
+bulk-catalog-lab	BCL-27	checkout_discount	BCL-27	free_shipping	SGD	all			215	3	none			code_only	Asia/Singapore		2026-03-20T00:00:00.000Z	2026-04-20T23:59:59.000Z	
+bulk-catalog-lab	BCL-28	checkout_discount	BCL-28	percentage	SGD	all		13	165	2	order_total	75		code_only	Asia/Singapore		2026-04-22T00:00:00.000Z	2026-05-22T23:59:59.000Z	
+bulk-catalog-lab	BCL-29	checkout_discount	BCL-29	fixed_amount	SGD	all	9		170	2	none			code_only	Asia/Singapore		2026-05-20T00:00:00.000Z	2026-06-20T23:59:59.000Z	
+bulk-catalog-lab	BCL-30	checkout_discount	BCL-30	free_shipping	SGD	all			225	3	order_total	90		code_only	Asia/Singapore		2026-06-22T00:00:00.000Z	2026-07-20T23:59:59.000Z	
+bulk-catalog-lab	BCL-31	checkout_discount	BCL-31	percentage	SGD	all		17	155	2	none			code_only	Asia/Singapore		2026-07-20T00:00:00.000Z	2026-08-20T23:59:59.000Z	
+bulk-catalog-lab	BCL-32	checkout_discount	BCL-32	fixed_amount	SGD	all	11		145	2	order_total	60		code_only	Asia/Singapore		2026-08-22T00:00:00.000Z	2026-09-18T23:59:59.000Z	
+bulk-catalog-lab	BCL-33	checkout_discount	BCL-33	free_shipping	SGD	all			235	3	none			code_only	Asia/Singapore		2026-09-20T00:00:00.000Z	2026-10-20T23:59:59.000Z	
+bulk-catalog-lab	BCL-34	checkout_discount	BCL-34	percentage	SGD	all		19	125	1	order_total	125		code_only	Asia/Singapore		2026-10-22T00:00:00.000Z	2026-11-22T23:59:59.000Z	
+bulk-catalog-lab	BCL-35	checkout_discount	BCL-35	fixed_amount	SGD	all	13		140	1	none			code_only	Asia/Singapore		2026-11-24T00:00:00.000Z	2026-12-20T23:59:59.000Z	
+bulk-catalog-lab	BCL-36	checkout_discount	BCL-36	free_shipping	SGD	all			205	2	order_total	48		code_only	Asia/Singapore		2026-01-25T00:00:00.000Z	2026-02-25T23:59:59.000Z	
+bulk-catalog-lab	BCL-37	checkout_discount	BCL-37	percentage	SGD	all		21	120	1	none			code_only	Asia/Singapore		2026-02-26T00:00:00.000Z	2026-03-26T23:59:59.000Z	
+bulk-catalog-lab	BCL-38	checkout_discount	BCL-38	fixed_amount	SGD	all	17		130	1	order_total	105		code_only	Asia/Singapore		2026-03-28T00:00:00.000Z	2026-04-28T23:59:59.000Z	
+bulk-catalog-lab	BCL-39	checkout_discount	BCL-39	free_shipping	SGD	all			210	3	none			code_only	Asia/Singapore		2026-04-30T00:00:00.000Z	2026-05-30T23:59:59.000Z	
+bulk-catalog-lab	BCL-40	checkout_discount	BCL-40	percentage	SGD	all		7	190	2	order_total	35		code_only	Asia/Singapore		2026-05-28T00:00:00.000Z	2026-06-25T23:59:59.000Z	
+bulk-catalog-lab	BCL-41	checkout_discount	BCL-41	fixed_amount	SGD	all	6		180	2	none			code_only	Asia/Singapore		2026-06-26T00:00:00.000Z	2026-07-26T23:59:59.000Z	
+bulk-catalog-lab	BCL-42	checkout_discount	BCL-42	free_shipping	SGD	all			220	3	order_total	72		code_only	Asia/Singapore		2026-07-28T00:00:00.000Z	2026-08-26T23:59:59.000Z	
+bulk-catalog-lab	BCL-43	checkout_discount	BCL-43	percentage	SGD	all		10	175	2	none			code_only	Asia/Singapore		2026-08-28T00:00:00.000Z	2026-09-28T23:59:59.000Z	
+bulk-catalog-lab	BCL-44	checkout_discount	BCL-44	fixed_amount	SGD	all	12		150	2	order_total	88		code_only	Asia/Singapore		2026-09-29T00:00:00.000Z	2026-10-27T23:59:59.000Z	
+bulk-catalog-lab	BCL-45	checkout_discount	BCL-45	free_shipping	SGD	all			240	3	none			code_only	Asia/Singapore		2026-10-29T00:00:00.000Z	2026-11-28T23:59:59.000Z	
+bulk-catalog-lab	BCL-46	checkout_discount	BCL-46	percentage	SGD	all		14	165	2	order_total	98		code_only	Asia/Singapore		2026-11-27T00:00:00.000Z	2026-12-27T23:59:59.000Z	
+bulk-catalog-lab	BCL-47	checkout_discount	BCL-47	fixed_amount	SGD	all	15		145	2	none			code_only	Asia/Singapore		2026-12-05T00:00:00.000Z	2026-12-31T23:59:59.000Z	
+bulk-catalog-lab	BCL-48	checkout_discount	BCL-48	free_shipping	SGD	all			215	2	order_total	130		code_only	Asia/Singapore		2026-06-15T00:00:00.000Z	2026-07-05T23:59:59.000Z	
+bulk-catalog-lab	BCL-49	checkout_discount	BCL-49	percentage	SGD	all		16	150	2	none			code_only	Asia/Singapore		2026-09-05T00:00:00.000Z	2026-09-19T23:59:59.000Z	
+bulk-catalog-lab	BCL-50	checkout_discount	BCL-50	fixed_amount	SGD	all	9		160	2	order_total	58		code_only	Asia/Singapore		2026-04-15T00:00:00.000Z	2026-05-15T23:59:59.000Z	
+olive-atelier	OLIVE-FA-PUB	checkout_discount	OLIVE-FA-PUB	fixed_amount	USD	all	15				none			public	America/New_York	now..3mo			
+olive-atelier	OLIVE-CANCELLED	sale		percentage	USD	all		10			none				America/New_York	90d..180d			cancelled
+olive-atelier	OLIVE-ENDED	sale		percentage	USD	all		25			none				America/New_York	now..3mo			ended
+reed-workshop	REED-CANCELLED-CODE	checkout_discount	REED-CANCELLED-CODE	percentage	EUR	all		30	120	2	order_total	200		code_only	Europe/Berlin	60d..120d			cancelled

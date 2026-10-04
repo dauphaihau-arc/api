@@ -46,6 +46,49 @@ Reset local DB, seed full fake/demo data, then clear and re-upload seeded assets
 just seed-full
 ```
 
+Reset only the disposable Promotion dataset (Sales and Promo Codes), leaving
+Orders, Order Items, Fulfillment, Products, Shops, Users, and every unrelated
+table intact, then rebuild the seeded Promotions and their coordinated demo
+commerce fixtures:
+
+```sh
+just db-reset-promotions
+just db-seed-demo
+```
+
+## Promotion reset boundary
+
+`just db-reset-promotions` runs `pnpm db:reset:promotions`, a scoped reset of the
+disposable Promotion data in a development database. It is not a blanket reset.
+
+The boundary follows the actual schema dependencies, not the retired coupon
+model:
+
+- `promotion_products`, `promotion_codes`, and `promotion_usages` reference
+  `promotions` with `on delete cascade`. They are deleted explicitly, in child
+  order, so the row count for each is observable.
+- A committed Order keeps Promotion facts in two forms: copied values
+  (`orders.promo_codes`, per-line discount amounts, and the frozen
+  shipping-quote snapshot) and the committed-redemption rows in
+  `promotion_usages`, which foreign-key into `promotions`. Deleting a Promotion
+  would cascade those usage rows away and leave a retained Order without its
+  committed Promotion identity, so the coordinated dependents are inside the
+  boundary: every Order that carries Promotion provenance (`promo_codes`
+  non-empty or a `promotion_usages` row) is deleted together with the rows that
+  hang off it — Fulfillment Groups (and their cascading Shipments, Shipment
+  Items, Shipment Updates, and Group Items), Order Items, Order Events,
+  inventory reservations, and `promotion_usages`.
+- Nothing else is touched: Products, Shops, Users, carts, catalog data, and
+  Orders that never applied a Promotion stay intact.
+- `db:seed:demo` rebuilds the seeded Promotions and the demo commerce fixtures
+  that apply them, so a reset followed by a reseed returns a consistent,
+  representative dataset. A plain `db:seed:demo` alone is already an idempotent
+  upsert keyed by `shop slug + internal name`; the scoped reset additionally
+  removes Promotions that a seed row no longer names.
+
+Use `just db-fresh-demo` (clear schema, migrate, seed) when a full, clean
+development database is required.
+
 Upload seeded assets to object storage:
 
 ```sh

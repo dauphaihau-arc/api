@@ -183,6 +183,11 @@ sync-catalog-indexes-infisical project_id *env_name:
 db-clear environment='':
   just _api-with-env "pnpm db:clear" "{{ environment }}"
 
+# Deletes only the disposable Promotion tables, then leaves Orders and every
+# unrelated table intact. Run `just db-seed-demo` afterwards.
+db-reset-promotions environment='':
+  just _api-with-env "pnpm db:reset:promotions" "{{ environment }}"
+
 db-clear-infisical project_id *env_name:
   just _api-with-infisical "{{ project_id }}" "{{ env_name }}" "pnpm db:clear"
 

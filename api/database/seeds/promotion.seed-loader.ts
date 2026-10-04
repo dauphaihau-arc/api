@@ -36,8 +36,18 @@ export type PromotionSeed = {
   timezone: string;
   startAt: string;
   endAt: string;
+  /**
+   * Retained stop state for a seeded Promotion. `cancelled` sets
+   * `cancelled_at`; `ended` sets `ended_at`. Absent for a Promotion that only
+   * has a Promotion Period.
+   */
+  lifecycle?: PromotionSeedLifecycle;
+  /** ISO instant shared by every seeded stop state in one seed run. */
+  lifecycleAt?: string;
   appliesProductTitles?: string[];
 };
+
+export type PromotionSeedLifecycle = 'cancelled' | 'ended';
 
 type PromotionRow = {
   shop_slug: string;
@@ -56,6 +66,7 @@ type PromotionRow = {
   min_purchase_quantity: string;
   visibility: string;
   timezone: string;
+  lifecycle: string;
   period: string;
   start_date: string;
   end_date: string;
@@ -138,6 +149,19 @@ function parseVisibility(value: string, promotionKey: string): PromotionVisibili
   throw new Error(`Invalid visibility "${value}" for promotion seed ${promotionKey}`);
 }
 
+function parseLifecycle(value: string, promotionKey: string): PromotionSeedLifecycle | undefined {
+  const normalized = value.trim().toLowerCase();
+
+  if (!normalized) {
+    return undefined;
+  }
+  if (normalized === 'cancelled' || normalized === 'ended') {
+    return normalized;
+  }
+
+  throw new Error(`Invalid lifecycle "${value}" for promotion seed ${promotionKey}`);
+}
+
 function parseMinOrderType(value: string, promotionKey: string): PromotionMinOrderType {
   if (value.trim() === '') {
     return PromotionMinOrderType.NONE;
@@ -187,6 +211,7 @@ function resolvePeriodDate(seededAt: Date, value: string, promotionKey: string):
 function resolvePromotionWindow(
   row: PromotionRow,
   promotionKey: string,
+  seededAt: Date,
 ): { startAt: string; endAt: string } {
   const period = row.period.trim();
   const startDate = row.start_date.trim();
@@ -215,7 +240,6 @@ function resolvePromotionWindow(
     );
   }
 
-  const seededAt = new Date();
   const resolvedStart = resolvePeriodDate(seededAt, startOffsetRaw, promotionKey);
   const resolvedEnd = resolvePeriodDate(seededAt, endOffsetRaw, promotionKey);
 
@@ -227,6 +251,9 @@ function resolvePromotionWindow(
 }
 
 function loadPromotionSeeds(): PromotionSeed[] {
+  // One instant for the whole dataset: period offsets and retained stop states
+  // share the same anchor, so every row is consistent within a seed run.
+  const seededAt = new Date();
   const promotionRows = readTsvRows<PromotionRow>(PROMOTIONS_TSV_PATH);
   const promotionProductRows = readTsvRows<PromotionProductRow>(PROMOTION_PRODUCTS_TSV_PATH);
   const productTitlesByKey = new Map<string, string[]>();
@@ -247,9 +274,10 @@ function loadPromotionSeeds(): PromotionSeed[] {
   return promotionRows.map((row, index) => {
     const promotionKey = `${row.shop_slug}::${row.name}#${index + 2}`;
     const key = `${row.shop_slug.trim()}::${row.name.trim()}`;
-    const window = resolvePromotionWindow(row, promotionKey);
+    const window = resolvePromotionWindow(row, promotionKey, seededAt);
     const code = row.code.trim();
     const applicationKind = parseApplicationKind(row.application_kind.trim(), promotionKey);
+    const lifecycle = parseLifecycle(row.lifecycle, promotionKey);
 
     if (applicationKind === PromotionApplicationKind.SALE && code) {
       throw new Error(`Sale promotion seed ${promotionKey} must not define a code`);
@@ -303,6 +331,7 @@ function loadPromotionSeeds(): PromotionSeed[] {
       timezone: row.timezone.trim(),
       startAt: window.startAt,
       endAt: window.endAt,
+      ...(lifecycle ? { lifecycle, lifecycleAt: seededAt.toISOString() } : {}),
       appliesProductTitles: productTitlesByKey.get(key),
     };
   });
