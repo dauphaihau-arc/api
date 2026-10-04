@@ -9,15 +9,12 @@ import { OrderCancellationService } from './order-cancellation.service';
 import { OrderRefundService } from './order-refund.service';
 
 describe('OrderCancellationService', () => {
-  it('restores stock and coupon usage for paid orders', async () => {
+  it('restores stock for paid orders', async () => {
     const inventory = { id: 'inventory-1', stock: 2 };
     const orderItem = {
       product: { id: 'product-1' },
       inventory: { id: 'inventory-1' },
       quantity: 3,
-    };
-    const couponUsage = {
-      coupon: { usesCount: 4 },
     };
     const order = {
       id: 'order-1',
@@ -44,8 +41,6 @@ describe('OrderCancellationService', () => {
         switch (entity?.name) {
           case 'OrderItemEntity':
             return { find: jest.fn().mockResolvedValue([orderItem]) };
-          case 'CouponUsageEntity':
-            return { find: jest.fn().mockResolvedValue([couponUsage]) };
           default:
             return {};
         }
@@ -107,8 +102,6 @@ describe('OrderCancellationService', () => {
         reservationId: undefined,
       },
     );
-    expect(couponUsage.coupon.usesCount).toBe(3);
-    expect(remove).toHaveBeenCalledWith(couponUsage);
     expect(order.paymentDetails).toEqual({
       type: 'card',
       cancellation: {

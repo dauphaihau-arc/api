@@ -50,7 +50,7 @@ export function toAdminOrderDetail(
       currency: order.currency,
       sku: item.sku,
       selectedOptions: item.selectedOptions ?? [],
-      percentCouponPercent: item.percentCouponPercent ?? null,
+
     })),
     promoCodes: order.promoCodes,
     fulfillment: buildOrderFulfillmentSummary(order, fulfillmentView),

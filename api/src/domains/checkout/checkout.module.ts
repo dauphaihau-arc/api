@@ -12,8 +12,6 @@ import {
 import { AuthModule } from '../auth/auth.module';
 import { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
 import { CartModule } from '../cart/cart.module';
-import { CouponModule } from '../coupon/coupon.module';
-import { CouponUsageEntity } from '../coupon/infra/persistence/entities/coupon-usage.entity';
 import { FulfillmentModule } from '../fulfillment/fulfillment.module';
 import { OrderModule } from '../order/order.module';
 import { ProductModule } from '../product/product.module';
@@ -70,7 +68,6 @@ import { OrderItemEntity } from '../order/infra/persistence/entities/order-item.
     forwardRef(() => OrderModule),
     FulfillmentModule,
     CartModule,
-    CouponModule,
     ProductModule,
     PaymentModule,
     NotificationModule,
@@ -84,7 +81,6 @@ import { OrderItemEntity } from '../order/infra/persistence/entities/order-item.
       CheckoutQuoteItemEntity,
       OrderEntity,
       OrderItemEntity,
-      CouponUsageEntity,
       UserEntity,
       ShopEntity,
       ProductEntity,

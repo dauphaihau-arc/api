@@ -4,8 +4,10 @@ import { buildDatabaseConfig } from '~/platform/config/database.config';
 import { CategoryAttributeOptionEntity } from '~/domains/category/infra/persistence/entities/category-attribute-option.entity';
 import { CategoryAttributeEntity } from '~/domains/category/infra/persistence/entities/category-attribute.entity';
 import { CategoryEntity } from '~/domains/category/infra/persistence/entities/category.entity';
-import { CouponUsageEntity } from '~/domains/coupon/infra/persistence/entities/coupon-usage.entity';
-import { CouponEntity } from '~/domains/coupon/infra/persistence/entities/coupon.entity';
+import { PromotionCodeEntity } from '~/domains/promotion/infra/persistence/entities/promotion-code.entity';
+import { PromotionProductEntity } from '~/domains/promotion/infra/persistence/entities/promotion-product.entity';
+import { PromotionUsageEntity } from '~/domains/promotion/infra/persistence/entities/promotion-usage.entity';
+import { PromotionEntity } from '~/domains/promotion/infra/persistence/entities/promotion.entity';
 import { UserCredentialEntity } from '~/domains/auth/infra/persistence/entities/user-credential.entity';
 import { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
 import { CartEntity } from '~/domains/cart/infra/persistence/entities/cart.entity';
@@ -45,7 +47,7 @@ import { VariantPriceEntity } from '~/domains/product/infra/persistence/mikro-or
 import { seedAuth } from './seeds/auth.seed';
 import { seedCategories } from './seeds/category.seed';
 import { seedChat } from './seeds/chat.seed';
-import { seedCoupons } from './seeds/coupon.seed';
+import { seedPromotions } from './seeds/promotion.seed';
 import { seedExchangeRates } from './seeds/exchange-rate.seed';
 import { seedLocalOrderScenarios } from './seeds/local-order-scenario.seed';
 import { seedBulkOrderDemo } from './seeds/order-bulk.seed';
@@ -99,8 +101,10 @@ async function main() {
       CategoryEntity,
       CategoryAttributeEntity,
       CategoryAttributeOptionEntity,
-      CouponEntity,
-      CouponUsageEntity,
+      PromotionEntity,
+      PromotionProductEntity,
+      PromotionCodeEntity,
+      PromotionUsageEntity,
       OrderEntity,
       OrderItemEntity,
       ShopEntity,
@@ -148,7 +152,7 @@ async function main() {
     await runSeedStep('Seeding product view history', async () =>
       seedProductViewHistory(em, usersByEmail),
     );
-    await runSeedStep('Seeding coupons', async () => seedCoupons(em, shopsBySlug));
+    await runSeedStep('Seeding promotions', async () => seedPromotions(em, shopsBySlug));
     await runSeedStep('Seeding demo orders and carts', async () =>
       seedOrderCartDemo(em, usersByEmail),
     );

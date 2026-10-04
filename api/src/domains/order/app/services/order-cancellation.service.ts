@@ -3,7 +3,6 @@ import { Injectable } from '@nestjs/common';
 import {
   buildProductInventoryUpdatedSseEvent,
 } from '../../../product/app/events/product-inventory-sse.event';
-import { CouponUsageEntity } from '../../../coupon/infra/persistence/entities/coupon-usage.entity';
 import { OrderStatus } from '../../domain/enums/order-status.enum';
 import { OrderEntity } from '../../infra/persistence/entities/order.entity';
 import { OrderItemEntity } from '../../infra/persistence/entities/order-item.entity';
@@ -93,10 +92,6 @@ export class OrderCancellationService {
       { order: order.id },
       { populate: ['inventory', 'product'] },
     );
-    const couponUsages = await entityManager.getRepository(CouponUsageEntity).find(
-      { orderId: order.id },
-      { populate: ['coupon'] },
-    );
 
     const reservationId = typeof order.paymentDetails?.reservation_id === 'string'
       ? order.paymentDetails.reservation_id
@@ -115,11 +110,6 @@ export class OrderCancellationService {
         reservationId,
       },
     );
-
-    for (const usage of couponUsages) {
-      usage.coupon.usesCount = Math.max(0, usage.coupon.usesCount - 1);
-      entityManager.remove(usage);
-    }
 
     return inventoryEvents;
   }

@@ -221,9 +221,6 @@ export function toCheckoutOrderListResponse(result: OrderListResult) {
         inventory: {
           sku: product.sku,
         },
-        percent_coupon: product.percentCouponPercent
-          ? { percent_off: product.percentCouponPercent }
-          : null,
         id: product.id,
         title: product.title,
         image_url: product.imageUrl,
@@ -232,7 +229,7 @@ export function toCheckoutOrderListResponse(result: OrderListResult) {
         original_amount_minor: product.originalAmountMinor,
         currency: product.currency,
       })),
-      promo_coupons: orderShop.promoCodes.map((code) => ({
+      promo_codes: orderShop.promoCodes.map((code) => ({
         id: code,
         code,
       })),

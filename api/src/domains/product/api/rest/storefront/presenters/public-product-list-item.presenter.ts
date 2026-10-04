@@ -50,7 +50,7 @@ export const toPublicProductListItemResponse = (
       ...(product.pricing.autoSale
         ? {
           auto_sale: {
-            coupon_id: product.pricing.autoSale.couponId,
+            promotion_id: product.pricing.autoSale.promotionId,
             percent_off: product.pricing.autoSale.percentOff,
           },
         }

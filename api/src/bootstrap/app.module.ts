@@ -14,7 +14,6 @@ import { buildDatabaseConfig } from '~/platform/config/database.config';
 import { AuthModule } from '~/domains/auth/auth.module';
 import { CartModule } from '~/domains/cart/cart.module';
 import { CategoryModule } from '~/domains/category/category.module';
-import { CouponModule } from '~/domains/coupon/coupon.module';
 import { CheckoutModule } from '~/domains/checkout/checkout.module';
 import { FulfillmentModule } from '~/domains/fulfillment/fulfillment.module';
 import { OrderModule } from '~/domains/order/order.module';
@@ -78,7 +77,6 @@ import { WsModule } from '~/platform/ws/ws.module';
     CategoryModule,
     ProductModule,
     PromotionModule,
-    CouponModule,
     CartModule,
     CheckoutModule,
     FulfillmentModule,

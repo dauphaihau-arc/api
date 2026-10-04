@@ -392,7 +392,7 @@ describe('Promo code redemption (integration)', () => {
       sale_discount_minor: number;
       shipping_minor: number;
       shipping_discount_minor: number;
-      shipping_discounts: Array<{ code: string; waived_minor: number; type: string }>;
+      shipping_discounts: Array<{ code: string; waived_minor: number; benefit_type: string }>;
       total_minor: number;
       promo_codes: string[];
     }>;
@@ -414,9 +414,9 @@ describe('Promo code redemption (integration)', () => {
     shopId: string,
     code: string,
     promoCodes: string[] = [],
-  ): Promise<{ promo_codes: string[]; applied_coupons: Array<{ code: string; type: string }> }> {
+  ): Promise<{ promo_codes: string[]; applied_promo_codes: Array<{ code: string; type: string }> }> {
     const response = await buyer.agent
-      .post(`${API_PREFIX}/cart/coupons/apply`)
+      .post(`${API_PREFIX}/cart/promo-codes/apply`)
       .set('Idempotency-Key', randomUUID())
       .send({ shop_id: shopId, code, promo_codes: promoCodes })
       .expect(201);
@@ -424,29 +424,30 @@ describe('Promo code redemption (integration)', () => {
     return response.body;
   }
 
-  type DiscoverableCoupon = {
+  type DiscoverablePromoCode = {
     code: string;
-    type: string;
-    applies_to: string;
+    benefit_type: string;
+    product_scope: string;
     percent_off: number | null;
     amount_off: number | null;
     min_order_type: string;
+    min_purchase_quantity: number | null;
     end_date: string;
     currency: string;
     is_eligible: boolean;
     ineligible_reason: string | null;
   };
 
-  async function listDiscoverableCoupons(
+  async function listDiscoverablePromoCodes(
     buyer: TestBuyer,
     shopId: string,
-  ): Promise<DiscoverableCoupon[]> {
+  ): Promise<DiscoverablePromoCode[]> {
     const response = await buyer.agent
-      .get(`${API_PREFIX}/cart/coupons`)
+      .get(`${API_PREFIX}/cart/promo-codes`)
       .query({ shop_id: shopId })
       .expect(200);
 
-    return response.body.coupons as DiscoverableCoupon[];
+    return response.body.promo_codes as DiscoverablePromoCode[];
   }
 
   async function createSale(
@@ -538,8 +539,8 @@ describe('Promo code redemption (integration)', () => {
 
     const applyResponse = await applyPromoCode(buyer, seller.shopId, 'oct10');
     expect(applyResponse.promo_codes).toContain('OCT10');
-    expect(applyResponse.applied_coupons).toEqual(expect.arrayContaining([
-      expect.objectContaining({ code: 'OCT10', type: 'percentage' }),
+    expect(applyResponse.applied_promo_codes).toEqual(expect.arrayContaining([
+      expect.objectContaining({ code: 'OCT10', benefit_type: 'percentage' }),
     ]));
 
     // Applying a code must not consume a redemption.
@@ -612,8 +613,8 @@ describe('Promo code redemption (integration)', () => {
     const buyer = await registerBuyer('promo-stop');
     await addCartItem(buyer, product.inventoryId, 1);
 
-    const discoveredBefore = await listDiscoverableCoupons(buyer, seller.shopId);
-    expect(discoveredBefore.map(coupon => coupon.code)).toContain('STOP10');
+    const discoveredBefore = await listDiscoverablePromoCodes(buyer, seller.shopId);
+    expect(discoveredBefore.map(promoCode => promoCode.code)).toContain('STOP10');
 
     const applied = await applyPromoCode(buyer, seller.shopId, 'STOP10');
     const quote = await createQuote(buyer, [{
@@ -639,11 +640,11 @@ describe('Promo code redemption (integration)', () => {
     expect(ended.body.promo_code.redemption_count).toBe(1);
 
     // The stopped code is gone from public discovery and can no longer be applied.
-    const discoveredAfter = await listDiscoverableCoupons(buyer, seller.shopId);
-    expect(discoveredAfter.map(coupon => coupon.code)).not.toContain('STOP10');
+    const discoveredAfter = await listDiscoverablePromoCodes(buyer, seller.shopId);
+    expect(discoveredAfter.map(promoCode => promoCode.code)).not.toContain('STOP10');
 
     await buyer.agent
-      .post(`${API_PREFIX}/cart/coupons/apply`)
+      .post(`${API_PREFIX}/cart/promo-codes/apply`)
       .set('Idempotency-Key', randomUUID())
       .send({ shop_id: seller.shopId, code: 'STOP10', promo_codes: [] })
       .expect(404);
@@ -758,8 +759,8 @@ describe('Promo code redemption (integration)', () => {
     const buyer = await registerBuyer('promo-discovery');
     await addCartItem(buyer, product.inventoryId, 1);
 
-    const coupons = await listDiscoverableCoupons(buyer, seller.shopId);
-    const byCode = new Map(coupons.map((coupon) => [coupon.code, coupon]));
+    const promoCodes = await listDiscoverablePromoCodes(buyer, seller.shopId);
+    const byCode = new Map(promoCodes.map((promoCode) => [promoCode.code, promoCode]));
 
     expect(byCode.get('PUB10')).toMatchObject({
       is_eligible: true,
@@ -815,15 +816,15 @@ describe('Promo code redemption (integration)', () => {
     const buyer = await registerBuyer('promo-equivalence');
     await addCartItem(buyer, product.inventoryId, 1);
 
-    const coupons = await listDiscoverableCoupons(buyer, seller.shopId);
-    expect(coupons.find((coupon) => coupon.code === 'EQTEN')).toMatchObject({
+    const promoCodes = await listDiscoverablePromoCodes(buyer, seller.shopId);
+    expect(promoCodes.find((promoCode) => promoCode.code === 'EQTEN')).toMatchObject({
       is_eligible: true,
       percent_off: 10,
     });
 
     // Picker selection and manual entry both resolve through the apply rule.
     const manual = await applyPromoCode(buyer, seller.shopId, 'eqten');
-    expect(manual.applied_coupons).toEqual([{ code: 'EQTEN', type: 'percentage' }]);
+    expect(manual.applied_promo_codes).toEqual([{ code: 'EQTEN', benefit_type: 'percentage' }]);
 
     // An eligible replacement replaces the product-discount slot code.
     const replaced = await applyPromoCode(buyer, seller.shopId, 'eqtwenty', manual.promo_codes);
@@ -831,7 +832,7 @@ describe('Promo code redemption (integration)', () => {
 
     // An invalid replacement is rejected and leaves the previous selection intact.
     await buyer.agent
-      .post(`${API_PREFIX}/cart/coupons/apply`)
+      .post(`${API_PREFIX}/cart/promo-codes/apply`)
       .set('Idempotency-Key', randomUUID())
       .send({ shop_id: seller.shopId, code: 'eqshirt', promo_codes: replaced.promo_codes })
       .expect(422);
@@ -863,14 +864,14 @@ describe('Promo code redemption (integration)', () => {
     const buyer = await registerBuyer('promo-zero');
     await addCartItem(buyer, product.inventoryId, 1);
 
-    const coupons = await listDiscoverableCoupons(buyer, seller.shopId);
-    expect(coupons.find((coupon) => coupon.code === 'ONEPCT')).toMatchObject({
+    const promoCodes = await listDiscoverablePromoCodes(buyer, seller.shopId);
+    expect(promoCodes.find((promoCode) => promoCode.code === 'ONEPCT')).toMatchObject({
       is_eligible: false,
       ineligible_reason: 'zero_benefit',
     });
 
     await buyer.agent
-      .post(`${API_PREFIX}/cart/coupons/apply`)
+      .post(`${API_PREFIX}/cart/promo-codes/apply`)
       .set('Idempotency-Key', randomUUID())
       .send({ shop_id: seller.shopId, code: 'onepct', promo_codes: [] })
       .expect(422);
@@ -1145,7 +1146,7 @@ describe('Promo code redemption (integration)', () => {
 
     await addCartItem(buyer, product.inventoryId, 1);
     const secondApply = await buyer.agent
-      .post(`${API_PREFIX}/cart/coupons/apply`)
+      .post(`${API_PREFIX}/cart/promo-codes/apply`)
       .set('Idempotency-Key', randomUUID())
       .send({ shop_id: seller.shopId, code: 'ONEPERBUYER', promo_codes: [] });
 
@@ -1193,7 +1194,7 @@ describe('Promo code redemption (integration)', () => {
     await addCartItem(second, product.inventoryId, 1);
 
     const rejected = await second.agent
-      .post(`${API_PREFIX}/cart/coupons/apply`)
+      .post(`${API_PREFIX}/cart/promo-codes/apply`)
       .set('Idempotency-Key', randomUUID())
       .send({ shop_id: seller.shopId, code: 'NOIRLIMIT', promo_codes: [] })
       .expect(422);
@@ -1249,8 +1250,8 @@ describe('Promo code redemption (integration)', () => {
     await addCartItem(buyer, shoes.inventoryId, 1);
 
     const applied = await applyPromoCode(buyer, seller.shopId, 'fix50');
-    expect(applied.applied_coupons).toEqual(expect.arrayContaining([
-      expect.objectContaining({ code: 'FIX50', type: 'fixed_amount' }),
+    expect(applied.applied_promo_codes).toEqual(expect.arrayContaining([
+      expect.objectContaining({ code: 'FIX50', benefit_type: 'fixed_amount' }),
     ]));
 
     // Accepting the code on the cart page prices the cart and returns the
@@ -1372,7 +1373,7 @@ describe('Promo code redemption (integration)', () => {
 
     // The cart total is 100.00 but only the 60.00 of targeted shirts is eligible.
     await buyer.agent
-      .post(`${API_PREFIX}/cart/coupons/apply`)
+      .post(`${API_PREFIX}/cart/promo-codes/apply`)
       .set('Idempotency-Key', randomUUID())
       .send({ shop_id: seller.shopId, code: 'min100', promo_codes: [] })
       .expect(422);
@@ -1428,7 +1429,7 @@ describe('Promo code redemption (integration)', () => {
 
     // Seven units are in the cart, but only two are eligible shirts.
     await buyer.agent
-      .post(`${API_PREFIX}/cart/coupons/apply`)
+      .post(`${API_PREFIX}/cart/promo-codes/apply`)
       .set('Idempotency-Key', randomUUID())
       .send({ shop_id: seller.shopId, code: 'qty3', promo_codes: [] })
       .expect(422);
@@ -1524,7 +1525,7 @@ describe('Promo code redemption (integration)', () => {
     await addCartItem(eurBuyer, eurProduct.inventoryId, 1);
 
     await eurBuyer.agent
-      .post(`${API_PREFIX}/cart/coupons/apply`)
+      .post(`${API_PREFIX}/cart/promo-codes/apply`)
       .set('Idempotency-Key', randomUUID())
       .send({ shop_id: eurSeller.shopId, code: 'fx10eur', promo_codes: [] })
       .expect(422);
@@ -1627,7 +1628,7 @@ describe('Promo code redemption (integration)', () => {
     // Two shirts cost 80.00 at the regular price but only 40.00 after the 50%
     // Sale, which is below the 50.00 minimum.
     await buyer.agent
-      .post(`${API_PREFIX}/cart/coupons/apply`)
+      .post(`${API_PREFIX}/cart/promo-codes/apply`)
       .set('Idempotency-Key', randomUUID())
       .send({ shop_id: seller.shopId, code: 'minsale50', promo_codes: [] })
       .expect(422);
@@ -1700,7 +1701,7 @@ describe('Promo code redemption (integration)', () => {
     await addCartItem(usdBuyer, usdProduct.inventoryId, 1);
 
     await usdBuyer.agent
-      .post(`${API_PREFIX}/cart/coupons/apply`)
+      .post(`${API_PREFIX}/cart/promo-codes/apply`)
       .set('Idempotency-Key', randomUUID())
       .send({ shop_id: usdSeller.shopId, code: 'min120usd', promo_codes: [] })
       .expect(422);
@@ -1745,7 +1746,7 @@ describe('Promo code redemption (integration)', () => {
     await addCartItem(eurBuyer, eurProduct.inventoryId, 1);
 
     await eurBuyer.agent
-      .post(`${API_PREFIX}/cart/coupons/apply`)
+      .post(`${API_PREFIX}/cart/promo-codes/apply`)
       .set('Idempotency-Key', randomUUID())
       .send({ shop_id: eurSeller.shopId, code: 'min10eur', promo_codes: [] })
       .expect(422);
@@ -1790,8 +1791,8 @@ describe('Promo code redemption (integration)', () => {
     await addCartItem(buyer, productB.inventoryId, 1);
 
     const applied = await applyPromoCode(buyer, sellerA.shopId, 'freea');
-    expect(applied.applied_coupons).toEqual(expect.arrayContaining([
-      expect.objectContaining({ code: 'FREEA', type: 'free_ship' }),
+    expect(applied.applied_promo_codes).toEqual(expect.arrayContaining([
+      expect.objectContaining({ code: 'FREEA', benefit_type: 'free_shipping' }),
     ]));
 
     const quote = await createQuote(buyer, [{
@@ -1804,7 +1805,7 @@ describe('Promo code redemption (integration)', () => {
     expect(shopA.shipping_minor).toBe(0);
     expect(shopA.shipping_discount_minor).toBe(599);
     expect(shopA.shipping_discounts).toEqual([
-      expect.objectContaining({ code: 'FREEA', waived_minor: 599, type: 'free_ship' }),
+      expect.objectContaining({ code: 'FREEA', waived_minor: 599, benefit_type: 'free_shipping' }),
     ]);
     expect(shopA.discount_minor).toBe(0);
 
@@ -1924,9 +1925,9 @@ describe('Promo code redemption (integration)', () => {
 
     // The product code and the free-shipping code occupy separate slots.
     expect(withFree.promo_codes).toEqual(expect.arrayContaining(['PCT10', 'FREE1']));
-    expect(withFree.applied_coupons).toEqual(expect.arrayContaining([
-      expect.objectContaining({ code: 'PCT10', type: 'percentage' }),
-      expect.objectContaining({ code: 'FREE1', type: 'free_ship' }),
+    expect(withFree.applied_promo_codes).toEqual(expect.arrayContaining([
+      expect.objectContaining({ code: 'PCT10', benefit_type: 'percentage' }),
+      expect.objectContaining({ code: 'FREE1', benefit_type: 'free_shipping' }),
     ]));
 
     const quote = await createQuote(buyer, [{
@@ -1946,7 +1947,7 @@ describe('Promo code redemption (integration)', () => {
 
     // An invalid replacement is rejected and leaves the selection alone.
     await buyer.agent
-      .post(`${API_PREFIX}/cart/coupons/apply`)
+      .post(`${API_PREFIX}/cart/promo-codes/apply`)
       .set('Idempotency-Key', randomUUID())
       .send({ shop_id: seller.shopId, code: 'NOPE', promo_codes: replaced.promo_codes })
       .expect(404);
@@ -2010,8 +2011,8 @@ describe('Promo code redemption (integration)', () => {
     // Two 40.00 units are 80.00 regular, 40.00 after the 50% Sale.
     await addCartItem(buyer, product.inventoryId, 2);
 
-    const discoverable = await listDiscoverableCoupons(buyer, seller.shopId);
-    const find = (code: string) => discoverable.find((coupon) => coupon.code === code)!;
+    const discoverable = await listDiscoverablePromoCodes(buyer, seller.shopId);
+    const find = (code: string) => discoverable.find((promoCode) => promoCode.code === code)!;
 
     // The 50.00 minimum is measured after the Sale: the regular 80.00 would
     // qualify, but the 40.00 eligible subtotal does not.

@@ -37,7 +37,7 @@ describe('CreateCheckoutQuoteService', () => {
       fork: jest.fn(() => forkedEntityManager),
       transactional: jest.fn(),
     } as unknown as EntityManager;
-    const couponPricingService = {
+    const cartPricingService = {
       buildPricedCartSummary: jest.fn().mockResolvedValue({
         shops: [
           {
@@ -108,7 +108,7 @@ describe('CreateCheckoutQuoteService', () => {
     const service = new CreateCheckoutQuoteService(
       entityManager,
       checkoutQuoteRepository,
-      couponPricingService,
+      cartPricingService,
       storefrontMarketContextService,
       orderTotalPolicyService,
       checkoutStockReservationService,
@@ -224,7 +224,7 @@ describe('CreateCheckoutQuoteService', () => {
       transactional: jest.fn(async (work: (em: EntityManager) => Promise<unknown>) =>
         work(transactionalEntityManager as unknown as EntityManager)),
     } as unknown as EntityManager;
-    const couponPricingService = {
+    const cartPricingService = {
       buildPricedCartSummary: jest.fn().mockResolvedValue({
         shops: [
           {
@@ -254,10 +254,9 @@ describe('CreateCheckoutQuoteService', () => {
             total: 16,
             note: undefined,
             promoOffers: [{
-              id: 'coupon-1',
+              id: 'promo-1',
               shopId: 'shop-1',
               code: 'SAVE10',
-              source: 'coupon',
               type: 'percentage',
               currency: 'USD',
               percentOff: 10,
@@ -308,7 +307,7 @@ describe('CreateCheckoutQuoteService', () => {
     const service = new CreateCheckoutQuoteService(
       entityManager,
       checkoutQuoteRepository,
-      couponPricingService,
+      cartPricingService,
       storefrontMarketContextService,
       orderTotalPolicyService,
       checkoutStockReservationService,
@@ -402,7 +401,7 @@ describe('CreateCheckoutQuoteService', () => {
       transactional: jest.fn(async (work: (em: EntityManager) => Promise<unknown>) =>
         work(transactionalEntityManager as unknown as EntityManager)),
     } as unknown as EntityManager;
-    const couponPricingService = {
+    const cartPricingService = {
       buildPricedCartSummary: jest.fn().mockResolvedValue({
         shops: [
           {
@@ -471,7 +470,7 @@ describe('CreateCheckoutQuoteService', () => {
     const service = new CreateCheckoutQuoteService(
       entityManager,
       checkoutQuoteRepository,
-      couponPricingService,
+      cartPricingService,
       storefrontMarketContextService,
       orderTotalPolicyService,
       checkoutStockReservationService,
@@ -532,7 +531,7 @@ describe('CreateCheckoutQuoteService', () => {
     const checkoutQuoteRepository = {
       findReusable: jest.fn(),
     } as unknown as jest.Mocked<CheckoutQuoteRepository>;
-    const couponPricingService = {
+    const cartPricingService = {
       buildPricedCartSummary: jest.fn().mockResolvedValue({
         cart: {
           id: 'cart-1', userId: 'user-1', guestSessionId: null, kind: CartKind.ACTIVE, items: [], 
@@ -598,7 +597,7 @@ describe('CreateCheckoutQuoteService', () => {
     const service = new CreateCheckoutQuoteService(
       entityManager,
       checkoutQuoteRepository,
-      couponPricingService,
+      cartPricingService,
       storefrontMarketContextService,
       orderTotalPolicyService,
       checkoutStockReservationService,

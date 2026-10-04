@@ -50,7 +50,7 @@ function toOrderProducts(
     selectedOptions: item.selectedOptions ?? [],
     productId: item.product.id,
     shopSlug: item.product.shop.slug,
-    percentCouponPercent: item.percentCouponPercent ?? null,
+
   }));
 }
 

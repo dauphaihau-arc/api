@@ -17,7 +17,7 @@ import {
 } from '../../errors/shop-app.error';
 import type { ShopSaleSummary } from '../../shop.types';
 import { toShopSaleSummary } from '../../sale-summary';
-import { dispatchShopProjection } from '../shop-coupon-catalog-projection';
+import { dispatchShopProjection } from '../shop-promotion-catalog-projection';
 
 /**
  * The irreversible stops a seller can apply to a Sale. Cancelling retires a

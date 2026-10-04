@@ -80,7 +80,7 @@ describe('UpdateAdminOrderRefundUseCase', () => {
       price: 25,
       unitPriceMinor: 2500,
       salePrice: undefined,
-      percentCouponPercent: null,
+
     };
     const fakeEntityManager = {
       getRepository: jest.fn((entity: { name?: string }) => {

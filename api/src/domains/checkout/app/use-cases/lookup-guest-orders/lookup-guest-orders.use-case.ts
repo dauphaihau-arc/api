@@ -137,7 +137,7 @@ export class LookupGuestOrdersUseCase {
           promoDiscountMinor: item.promoDiscountMinor ?? 0,
           currency: order.currency,
           selectedOptions: item.selectedOptions ?? [],
-          percentCouponPercent: item.percentCouponPercent ?? null,
+
         })),
         promoCodes: order.promoCodes,
         fulfillment: buildOrderFulfillmentSummary(order, fulfillmentViews.get(order.id)),

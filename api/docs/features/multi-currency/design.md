@@ -77,17 +77,18 @@ Current implementation notes:
 - Indexed storefront prices are generated only for configured market/currency pairs.
 - Non-indexed pairs continue to resolve from canonical pricing at request time.
 
-### Coupon Currency
+### Promotion Currency
 
-Coupons store their monetary fields in one canonical currency.
+Promotions store their monetary fields in one Promotion Currency.
 
 Current shape:
 
 ```ts
-coupons
+promotions
 - shop_id
-- code
-- type
+- name
+- application_kind
+- benefit_type
 - currency
 - amount_off
 - min_order_value
@@ -96,16 +97,16 @@ coupons
 
 Semantics:
 
-- `currency` is the owning Shop's currency snapshotted when the Coupon is created. A later Shop currency change does not rewrite it, and sellers cannot override it; the Coupon creation DTO has no currency input.
-- `amount_off` and `min_order_value` are major units in that canonical currency. They are never rewritten when a buyer checks out in another currency.
+- `currency` is the owning Shop's currency snapshotted when the Promotion is created. A later Shop currency change does not rewrite it, and sellers cannot override it; the Promo Code creation DTO has no currency input.
+- `amount_off` and `min_order_value` are major units in that Promotion Currency. They are never rewritten when a buyer checks out in another currency.
 - Percentage discounts and quantity minimums are currency-neutral and never use these amounts.
 
 Resolution rules:
 
-- Every eligibility check, discount calculation, and shopper-facing projection converts the canonical amounts into the checkout currency through `MoneyConversionService` (with `calculationType: 'discount'`) before comparing or displaying them.
+- Every eligibility check, discount calculation, and shopper-facing projection converts the Promotion Currency amounts into the checkout currency through `MoneyConversionService` (with `calculationType: 'discount'`) before comparing or displaying them.
 - The buyer's checkout currency comes from the priced cart items, identical to catalog and shipping pricing.
 - A fixed-amount discount is converted and then capped by the eligible subtotal, so it can never exceed the merchandise it applies to.
-- A missing rate never falls back to the native amount: the shopper-facing coupon listing omits that Coupon, and a checkout or `validatePromoCodes` request that explicitly asks for it fails with `CouponCurrencyConversionUnavailableError` (HTTP 422) rather than charging a wrong total or silently dropping the discount.
+- A missing rate never falls back to the native amount: the shopper-facing Promo Code listing omits that code, and a checkout or `validatePromoCodes` request that explicitly asks for it fails with `PromotionCurrencyConversionUnavailableError` (HTTP 422) rather than charging a wrong total or silently dropping the discount.
 
 ### Checkout Quote
 
@@ -257,17 +258,17 @@ Boundary:
 - Catalog pricing mutation should not be mixed with stock mutation.
 - Catalog pricing mutation should not be mixed with SKU mutation.
 
-### Coupon API
+### Promo Code API
 
-Coupon monetary amounts cross the API in two currencies on purpose: the seller
-sees the canonical Coupon currency, the buyer sees checkout money.
+Promo Code monetary amounts cross the API in two currencies on purpose: the
+seller sees the Promotion Currency, the buyer sees checkout money.
 
 Current behavior:
 
-- `POST /shops/:shop_id/coupons` takes no currency input; the persisted `currency` is the owning Shop's currency. Sending a `currency` field is rejected by request whitelisting.
-- Seller coupon create and list responses include `currency`; `amount_off` and `min_order_value` are major units in that canonical currency.
-- The shopper coupon listing returns `amount_off` and `min_order_value` as major units already converted into the response `currency` (the buyer's checkout currency). Clients must not convert again.
-- The shopper coupon listing also returns Coupons the current cart cannot redeem, flagged with `is_eligible` and an `ineligible_reason`. Only `code_only`, automatic sale, and expired Coupons are absent, plus any Coupon whose amounts have no rate into the checkout currency.
+- `POST /shops/:shop_id/promo-codes` takes no currency input; the persisted `currency` is the owning Shop's currency. Sending a `currency` field is rejected by request whitelisting.
+- Seller Promo Code create and list responses include `currency`; `amount_off` and `min_order_value` are major units in that Promotion Currency.
+- The shopper Promo Code listing returns `amount_off` and `min_order_value` as major units already converted into the response `currency` (the buyer's checkout currency). Clients must not convert again.
+- The shopper Promo Code listing also returns codes the current cart cannot redeem, flagged with `is_eligible` and an `ineligible_reason`. Only `code_only`, not-started, expired, globally exhausted, and unconvertible codes are absent.
 
 ### Checkout Quote API
 

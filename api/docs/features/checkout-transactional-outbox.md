@@ -40,7 +40,7 @@ No outbox is needed because no external payment session must be created.
 
 For `CARD` payments:
 
-1. create orders, reserve inventory, and persist coupon usage inside a transaction
+1. create orders, reserve inventory, and persist Promo Code redemptions inside a transaction
 2. write an outbox record in the same transaction
 3. commit
 4. a worker reads the outbox record and creates the Stripe checkout session
@@ -131,7 +131,7 @@ The worker should operate from the persisted checkout snapshot.
 In [order-checkout.service.ts](../../src/domains/order/app/services/order-checkout.service.ts):
 
 - keep pricing before the transaction if needed
-- create orders, inventory reservations, and coupon usages inside the transaction
+- create orders, inventory reservations, and promotion redemptions inside the transaction
 - for `CARD`, create orders with `CHECKOUT_PENDING`
 - persist an outbox event in the same transaction
 - remove direct `paymentGateway.createStripeCheckoutSession(...)` calls from the transaction

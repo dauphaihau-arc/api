@@ -1,9 +1,14 @@
 import type { EntityManager } from '@mikro-orm/postgresql';
-import { CouponUsageEntity } from '~/domains/coupon/infra/persistence/entities/coupon-usage.entity';
-import { CouponEntity } from '~/domains/coupon/infra/persistence/entities/coupon.entity';
-import { CouponAppliesTo } from '~/domains/coupon/domain/enums/coupon-applies-to.enum';
-import { CouponMinOrderType } from '~/domains/coupon/domain/enums/coupon-min-order-type.enum';
-import { CouponType } from '~/domains/coupon/domain/enums/coupon-type.enum';
+import { PromotionUsageEntity } from '~/domains/promotion/infra/persistence/entities/promotion-usage.entity';
+import { PromotionCodeEntity } from '~/domains/promotion/infra/persistence/entities/promotion-code.entity';
+import type { PromotionEntity } from '~/domains/promotion/infra/persistence/entities/promotion.entity';
+import { PromotionBenefitType } from '~/domains/promotion/domain/enums/promotion-benefit-type.enum';
+import { PromotionMinOrderType } from '~/domains/promotion/domain/enums/promotion-min-order-type.enum';
+import { PromotionProductScope } from '~/domains/promotion/domain/enums/promotion-product-scope.enum';
+import {
+  promotionCodeEntityToPromoOffer,
+  type PromoOffer,
+} from '~/domains/promotion/app/types/promo-offer.mapper';
 import { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
 import { OrderShippingStatus } from '~/domains/order/domain/enums/order-shipping-status.enum';
 import { OrderStatus } from '~/domains/order/domain/enums/order-status.enum';
@@ -41,7 +46,8 @@ type ShopBucket = {
   shopSlug: string;
   currency: string;
   candidates: SeedProductCandidate[];
-  coupons: CouponEntity[];
+  promoOffers: PromoOffer[];
+  promoById: Map<string, PromotionEntity>;
 };
 
 type SelectedOrderItem = {
@@ -111,7 +117,7 @@ const ORDER_LIFECYCLE_PATTERN: readonly OrderLifecycle[] = [
   {
     status: OrderStatus.COMPLETED,
     shippingStatus: OrderShippingStatus.DELIVERED,
-    note: 'Local seed order completed after coupon redemption.',
+    note: 'Local seed order completed after promo code redemption.',
     shipmentNote: 'Delivered on the estimated date.',
   },
 ] as const;
@@ -204,13 +210,20 @@ async function loadShopBuckets(em: EntityManager): Promise<ShopBucket[]> {
       ],
     },
   );
-  const coupons = await em.find(CouponEntity, {}, { populate: ['shop'] });
-  const couponsByShopSlug = new Map<string, CouponEntity[]>();
+  const promotionCodes = await em.find(
+    PromotionCodeEntity,
+    {},
+    { populate: ['promotion', 'promotion.shop', 'promotion.products'] },
+  );
+  const promoOffersByShopSlug = new Map<string, PromoOffer[]>();
+  const promoById = new Map<string, PromotionEntity>();
 
-  coupons.forEach((coupon) => {
-    const bucket = couponsByShopSlug.get(coupon.shop.slug) ?? [];
-    bucket.push(coupon);
-    couponsByShopSlug.set(coupon.shop.slug, bucket);
+  promotionCodes.forEach((promotionCode) => {
+    const shopSlug = promotionCode.promotion.shop.slug;
+    const bucket = promoOffersByShopSlug.get(shopSlug) ?? [];
+    bucket.push(promotionCodeEntityToPromoOffer(promotionCode));
+    promoOffersByShopSlug.set(shopSlug, bucket);
+    promoById.set(promotionCode.promotion.id, promotionCode.promotion);
   });
 
   const buckets = new Map<string, ShopBucket>();
@@ -233,7 +246,8 @@ async function loadShopBuckets(em: EntityManager): Promise<ShopBucket[]> {
         shopSlug: candidate.product.shop.slug,
         currency: candidate.currency,
         candidates: [],
-        coupons: couponsByShopSlug.get(candidate.product.shop.slug) ?? [],
+        promoOffers: promoOffersByShopSlug.get(candidate.product.shop.slug) ?? [],
+        promoById,
       };
       existing.candidates.push(candidate);
       buckets.set(key, existing);
@@ -290,59 +304,56 @@ function roundCurrency(value: number, currency: string): number {
   return Number(value.toFixed(getCurrencyDecimals(currency) === 0 ? 0 : 2));
 }
 
-function couponAppliesToOrder(coupon: CouponEntity, items: SelectedOrderItem[], subtotal: number): boolean {
-  if (coupon.minProducts > 0 && items.length < coupon.minProducts) {
+function promoOfferAppliesToOrder(offer: PromoOffer, items: SelectedOrderItem[], subtotal: number): boolean {
+  if (offer.minPurchaseQuantity > 0 && items.length < offer.minPurchaseQuantity) {
     return false;
   }
 
-  if (coupon.minOrderType === CouponMinOrderType.ORDER_TOTAL && subtotal < Number(coupon.minOrderValue)) {
+  if (offer.minOrderType === PromotionMinOrderType.ORDER_TOTAL && subtotal < offer.minOrderValue) {
     return false;
   }
 
-  if (
-    coupon.minOrderType === CouponMinOrderType.NUMBER_OF_PRODUCTS
-    && items.length < Number(coupon.minOrderValue)
-  ) {
+  if (offer.minOrderType === PromotionMinOrderType.PURCHASE_QUANTITY && items.length < offer.minPurchaseQuantity) {
     return false;
   }
 
-  if (coupon.appliesTo !== CouponAppliesTo.SPECIFIC) {
+  if (offer.productScope !== PromotionProductScope.SPECIFIC) {
     return true;
   }
 
   const productIds = new Set(items.map((item) => item.candidate.product.id));
-  return coupon.appliesProductIds.some((productId) => productIds.has(productId));
+  return offer.productIds.some((productId) => productIds.has(productId));
 }
 
-function pickCoupon(
+function pickPromoOffer(
   bucket: ShopBucket,
   items: SelectedOrderItem[],
   subtotal: number,
   orderIndex: number,
-): CouponEntity | undefined {
+): PromoOffer | undefined {
   if (orderIndex % 3 !== 0) {
     return undefined;
   }
 
-  return bucket.coupons.find((coupon) => couponAppliesToOrder(coupon, items, subtotal));
+  return bucket.promoOffers.find((offer) => promoOfferAppliesToOrder(offer, items, subtotal));
 }
 
-function calculateCouponDiscount(
-  coupon: CouponEntity | undefined,
+function calculatePromoDiscount(
+  offer: PromoOffer | undefined,
   subtotal: number,
   shippingFee: number,
   currency: string,
 ): number {
-  if (!coupon) {
+  if (!offer) {
     return 0;
   }
 
-  if (coupon.type === CouponType.FIXED_AMOUNT) {
-    return roundCurrency(Math.min(subtotal, Number(coupon.amountOff)), currency);
+  if (offer.benefitType === PromotionBenefitType.FIXED_AMOUNT) {
+    return roundCurrency(Math.min(subtotal, offer.amountOff), currency);
   }
 
-  if (coupon.type === CouponType.PERCENTAGE) {
-    return roundCurrency((subtotal * coupon.percentOff) / 100, currency);
+  if (offer.benefitType === PromotionBenefitType.PERCENTAGE) {
+    return roundCurrency((subtotal * offer.percentOff) / 100, currency);
   }
 
   return roundCurrency(shippingFee, currency);
@@ -477,7 +488,7 @@ export async function seedLocalOrderScenarios(em: EntityManager): Promise<void> 
 
   if (localOrdersToDelete.length > 0) {
     const orderIds = localOrdersToDelete.map((order) => order.id);
-    await em.nativeDelete(CouponUsageEntity, { orderId: { $in: orderIds } });
+    await em.nativeDelete(PromotionUsageEntity, { orderId: { $in: orderIds } });
     await em.nativeDelete(OrderItemEntity, { order: { $in: orderIds } });
     await em.nativeDelete(OrderEntity, { id: { $in: orderIds } });
   }
@@ -507,8 +518,8 @@ export async function seedLocalOrderScenarios(em: EntityManager): Promise<void> 
         0,
       );
       const subtotal = fromMinor(subtotalMinor, bucket.currency);
-      const coupon = pickCoupon(bucket, items, subtotal, orderIndex + scenarioIndex);
-      const totalDiscount = calculateCouponDiscount(coupon, subtotal, baseShippingFee, bucket.currency);
+      const promoOffer = pickPromoOffer(bucket, items, subtotal, orderIndex + scenarioIndex);
+      const totalDiscount = calculatePromoDiscount(promoOffer, subtotal, baseShippingFee, bucket.currency);
       const total = roundCurrency(Math.max(subtotal + baseShippingFee - totalDiscount, 0), bucket.currency);
       const timeline = buildTimeline(createdAt, lifecycle);
       const checkoutSessionId = `${LOCAL_ORDER_CHECKOUT_SESSION_PREFIX}${scenarioIndex + 1}-${orderIndex + 1}`;
@@ -530,7 +541,7 @@ export async function seedLocalOrderScenarios(em: EntityManager): Promise<void> 
         total,
         totalMinor: toMinor(total, bucket.currency),
         note: lifecycle.note,
-        promoCodes: coupon ? [coupon.code] : [],
+        promoCodes: promoOffer ? [promoOffer.code] : [],
         shippingAddress: buildShippingAddress(user.email.toString(), orderIndex),
         shippingOriginCountries: [bucket.currency === 'GBP' ? 'GB' : bucket.currency === 'VND' ? 'VN' : 'US'],
         shippingToCountry: 'VN',
@@ -573,20 +584,21 @@ export async function seedLocalOrderScenarios(em: EntityManager): Promise<void> 
           lineTotalMinor,
           currency: bucket.currency,
           sourceType: 'base_native',
-          percentCouponCode: coupon?.type === CouponType.PERCENTAGE ? coupon.code : undefined,
-          percentCouponPercent: coupon?.type === CouponType.PERCENTAGE ? coupon.percentOff : undefined,
           createdAt,
           updatedAt: createdAt,
         }));
       });
 
-      if (coupon) {
-        em.persist(em.create(CouponUsageEntity, {
-          coupon,
-          user,
-          orderId: order.id,
-          code: coupon.code,
-        }));
+      if (promoOffer) {
+        const promotion = bucket.promoById.get(promoOffer.id);
+        if (promotion) {
+          em.persist(em.create(PromotionUsageEntity, {
+            promotion,
+            userId: user.id,
+            orderId: order.id,
+            code: promoOffer.code,
+          }));
+        }
       }
 
       createdOrderCount += 1;

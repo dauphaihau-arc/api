@@ -50,7 +50,7 @@ export interface CatalogSearchDocument {
     originalMinAmountMinor?: number;
     originalMaxAmountMinor?: number;
     autoSale?: {
-      couponId: string;
+      promotionId: string;
       percentOff: number;
     };
   };

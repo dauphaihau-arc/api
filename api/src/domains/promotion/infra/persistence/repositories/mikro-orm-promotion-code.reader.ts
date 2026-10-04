@@ -106,7 +106,7 @@ export class MikroOrmPromotionCodeReader extends PromotionCodeReader {
       minPurchaseQuantity: promotion.minPurchaseQuantity ?? 0,
       maxRedemptions: promotion.maxRedemptions ?? null,
       maxRedemptionsPerBuyer: promotion.maxRedemptionsPerBuyer ?? null,
-      usesCount: usageCounts.get(promotion.id) ?? 0,
+      redemptionCount: usageCounts.get(promotion.id) ?? 0,
       startAt: promotion.startAt,
       endAt: promotion.endAt,
       timezone: promotion.timezone,

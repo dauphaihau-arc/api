@@ -97,7 +97,7 @@ export class RequestOrderSupportUseCase {
         promoDiscountMinor: item.promoDiscountMinor ?? 0,
         currency: order.currency,
         selectedOptions: item.selectedOptions ?? [],
-        percentCouponPercent: item.percentCouponPercent ?? null,
+
       })),
       promoCodes: order.promoCodes,
       fulfillment: buildOrderFulfillmentSummary(order, fulfillmentView),

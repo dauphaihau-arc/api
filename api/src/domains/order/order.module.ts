@@ -8,8 +8,6 @@ import {
   buildRabbitMqConfig,
 } from '~/platform/config/rabbitmq.config';
 import { AuthModule } from '../auth/auth.module';
-import { CouponModule } from '../coupon/coupon.module';
-import { CouponUsageEntity } from '../coupon/infra/persistence/entities/coupon-usage.entity';
 import { AdminOrderController } from './api/rest/admin-order.controller';
 import { MeOrderController } from './api/rest/me-order.controller';
 import { OrderWebhookController } from './api/rest/order-webhook.controller';
@@ -93,7 +91,6 @@ import { UpdateShopOrderRefundUseCase } from './app/use-cases/update-shop-order-
     forwardRef(() => AuthModule),
     CartModule,
     forwardRef(() => CheckoutModule),
-    CouponModule,
     ProductModule,
     PaymentModule,
     NotificationModule,
@@ -110,7 +107,6 @@ import { UpdateShopOrderRefundUseCase } from './app/use-cases/update-shop-order-
       OrderEntity,
       OrderExportEntity,
       OrderItemEntity,
-      CouponUsageEntity,
     ]),
   ],
   controllers: [

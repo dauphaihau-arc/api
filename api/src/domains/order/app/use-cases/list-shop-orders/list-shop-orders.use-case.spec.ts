@@ -259,7 +259,7 @@ describe('ListShopOrdersUseCase', () => {
           quantity: 1,
           unitPriceMinor: 1000,
           originalAmountMinor: null,
-          percentCouponPercent: null,
+
           product: {
             id: 'product-1',
             slug: 'product-1',

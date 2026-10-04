@@ -89,17 +89,17 @@ export interface PersistedShippingQuote {
 }
 
 export interface PersistedShippingDiscount {
-  coupon_id: string;
+  promotion_id: string;
   code: string;
-  type: 'free_ship';
-  applies_to: ShippingDiscountProvenance['appliesTo'];
-  applies_product_ids: string[];
+  benefit_type: 'free_shipping';
+  product_scope: ShippingDiscountProvenance['productScope'];
+  product_ids: string[];
   min_order_type: ShippingDiscountProvenance['minOrderType'];
   min_order_value: number;
-  min_products: number;
-  max_uses: number;
-  max_uses_per_user: number;
-  uses_count: number;
+  min_purchase_quantity: number;
+  max_redemptions: number;
+  max_redemptions_per_buyer: number;
+  redemption_count: number;
   waived_minor: number;
   currency: string;
 }
@@ -187,17 +187,17 @@ export function toPersistedShippingDiscount(
   discount: ShippingDiscountProvenance,
 ): PersistedShippingDiscount {
   return {
-    coupon_id: discount.couponId,
+    promotion_id: discount.promotionId,
     code: discount.code,
-    type: discount.type,
-    applies_to: discount.appliesTo,
-    applies_product_ids: discount.appliesProductIds,
+    benefit_type: discount.benefitType,
+    product_scope: discount.productScope,
+    product_ids: discount.productIds,
     min_order_type: discount.minOrderType,
     min_order_value: discount.minOrderValue,
-    min_products: discount.minProducts,
-    max_uses: discount.maxUses,
-    max_uses_per_user: discount.maxUsesPerUser,
-    uses_count: discount.usesCount,
+    min_purchase_quantity: discount.minPurchaseQuantity,
+    max_redemptions: discount.maxRedemptions,
+    max_redemptions_per_buyer: discount.maxRedemptionsPerBuyer,
+    redemption_count: discount.redemptionCount,
     waived_minor: discount.waivedMinor,
     currency: discount.currency,
   };
@@ -280,17 +280,17 @@ export function parsePersistedShippingDiscount(
   discount: PersistedShippingDiscount,
 ): ShippingDiscountProvenance {
   return {
-    couponId: discount.coupon_id,
+    promotionId: discount.promotion_id,
     code: discount.code,
-    type: discount.type,
-    appliesTo: discount.applies_to,
-    appliesProductIds: discount.applies_product_ids ?? [],
+    benefitType: discount.benefit_type,
+    productScope: discount.product_scope,
+    productIds: discount.product_ids,
     minOrderType: discount.min_order_type,
     minOrderValue: discount.min_order_value,
-    minProducts: discount.min_products,
-    maxUses: discount.max_uses,
-    maxUsesPerUser: discount.max_uses_per_user,
-    usesCount: discount.uses_count,
+    minPurchaseQuantity: discount.min_purchase_quantity,
+    maxRedemptions: discount.max_redemptions,
+    maxRedemptionsPerBuyer: discount.max_redemptions_per_buyer,
+    redemptionCount: discount.redemption_count,
     waivedMinor: discount.waived_minor,
     currency: discount.currency,
   };

@@ -64,7 +64,7 @@ describe('shop-order-read-model', () => {
           }],
         },
       },
-      percentCouponPercent: null,
+
     } as unknown as OrderItemEntity;
 
     const detail = toShopOrderDetail(order, [item], []);

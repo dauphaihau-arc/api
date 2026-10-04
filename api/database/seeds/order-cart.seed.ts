@@ -3,9 +3,14 @@ import type { UserEntity } from '~/domains/user/infra/persistence/entities/user.
 import { CartKind } from '~/domains/cart/domain/enums/cart-kind.enum';
 import { CartEntity } from '~/domains/cart/infra/persistence/entities/cart.entity';
 import { CartItemEntity } from '~/domains/cart/infra/persistence/entities/cart-item.entity';
-import { CouponUsageEntity } from '~/domains/coupon/infra/persistence/entities/coupon-usage.entity';
-import { CouponEntity } from '~/domains/coupon/infra/persistence/entities/coupon.entity';
-import { CouponType } from '~/domains/coupon/domain/enums/coupon-type.enum';
+import { PromotionUsageEntity } from '~/domains/promotion/infra/persistence/entities/promotion-usage.entity';
+import { PromotionCodeEntity } from '~/domains/promotion/infra/persistence/entities/promotion-code.entity';
+import type { PromotionEntity } from '~/domains/promotion/infra/persistence/entities/promotion.entity';
+import { PromotionBenefitType } from '~/domains/promotion/domain/enums/promotion-benefit-type.enum';
+import {
+  promotionCodeEntityToPromoOffer,
+  type PromoOffer,
+} from '~/domains/promotion/app/types/promo-offer.mapper';
 import { OrderShippingStatus } from '~/domains/order/domain/enums/order-shipping-status.enum';
 import { OrderStatus } from '~/domains/order/domain/enums/order-status.enum';
 import { PaymentType } from '~/domains/order/domain/enums/payment-type.enum';
@@ -18,7 +23,7 @@ import { toMinorUnits } from '~/platform/money/money';
 type OrderSeed = {
   inventoryId: string;
   quantity: number;
-  couponCode?: string;
+  promoCode?: string;
   shippingFee: number;
   note: string;
 };
@@ -34,14 +39,14 @@ const ORDER_SEEDS: OrderSeed[] = [
   {
     inventoryId: 'olive-tote',
     quantity: 1,
-    couponCode: 'OLIVE-FA',
+    promoCode: 'OLIVE-FA',
     shippingFee: 6,
     note: 'Leave at the front desk.',
   },
   {
     inventoryId: 'reed-headphones',
     quantity: 1,
-    couponCode: 'REED-PC',
+    promoCode: 'REED-PC',
     shippingFee: 0,
     note: 'Call on arrival.',
   },
@@ -115,14 +120,22 @@ async function loadInventories(em: EntityManager): Promise<Map<string, SeedInven
   ]);
 }
 
-async function loadCoupons(em: EntityManager): Promise<Map<string, CouponEntity>> {
-  const coupons = await em.find(
-    CouponEntity,
+async function loadPromoCodes(
+  em: EntityManager,
+): Promise<Map<string, { offer: PromoOffer; promotion: PromotionEntity }>> {
+  const promotionCodes = await em.find(
+    PromotionCodeEntity,
     { code: { $in: ['OLIVE-FA', 'REED-PC'] } },
-    { populate: ['shop'] },
+    { populate: ['promotion', 'promotion.products'] },
   );
 
-  return new Map(coupons.map((coupon) => [coupon.code, coupon]));
+  return new Map(promotionCodes.map((promotionCode) => [
+    promotionCode.code,
+    {
+      offer: promotionCodeEntityToPromoOffer(promotionCode),
+      promotion: promotionCode.promotion,
+    },
+  ]));
 }
 
 async function resetDemoCommerceData(em: EntityManager, user: UserEntity): Promise<void> {
@@ -130,7 +143,7 @@ async function resetDemoCommerceData(em: EntityManager, user: UserEntity): Promi
   const carts = await em.find(CartEntity, { user });
 
   if (orders.length > 0) {
-    await em.nativeDelete(CouponUsageEntity, { user, orderId: { $in: orders.map((order) => order.id) } });
+    await em.nativeDelete(PromotionUsageEntity, { userId: user.id, orderId: { $in: orders.map((order) => order.id) } });
     await em.nativeDelete(OrderItemEntity, { order: { $in: orders.map((order) => order.id) } });
     await em.nativeDelete(OrderEntity, { id: { $in: orders.map((order) => order.id) } });
   }
@@ -154,7 +167,7 @@ export async function seedOrderCartDemo(
   await resetDemoCommerceData(em, user);
 
   const inventories = await loadInventories(em);
-  const couponsByCode = await loadCoupons(em);
+  const promoCodesByCode = await loadPromoCodes(em);
 
   console.log(
     `[seed][demo-commerce] Building ${CART_ITEMS.length} cart items and ${ORDER_SEEDS.length} demo orders`,
@@ -200,12 +213,13 @@ export async function seedOrderCartDemo(
     const pricing = getInventoryPricingSnapshot(inventory);
     const unitPrice = calculateUnitPrice(inventory);
     const subtotal = unitPrice * orderSeed.quantity;
-    const coupon = orderSeed.couponCode ? couponsByCode.get(orderSeed.couponCode) : undefined;
+    const promoEntry = orderSeed.promoCode ? promoCodesByCode.get(orderSeed.promoCode) : undefined;
+    const promoOffer = promoEntry?.offer;
     const totalDiscount =
-      coupon?.type === CouponType.FIXED_AMOUNT
-        ? Number(coupon.amountOff)
-        : coupon?.type === CouponType.PERCENTAGE
-          ? Number(((subtotal * coupon.percentOff) / 100).toFixed(2))
+      promoOffer?.benefitType === PromotionBenefitType.FIXED_AMOUNT
+        ? Number(promoOffer.amountOff)
+        : promoOffer?.benefitType === PromotionBenefitType.PERCENTAGE
+          ? Number(((subtotal * promoOffer.percentOff) / 100).toFixed(2))
           : 0;
     const total = Number((subtotal + orderSeed.shippingFee - totalDiscount).toFixed(2));
     const subtotalMinor = toMinorUnits(subtotal, 'USD');
@@ -231,7 +245,7 @@ export async function seedOrderCartDemo(
       total,
       totalMinor,
       note: orderSeed.note,
-      promoCodes: coupon ? [coupon.code] : [],
+      promoCodes: promoOffer ? [promoOffer.code] : [],
       shippingAddress: buildShippingAddress(),
       shippingOriginCountries: ['US'],
       shippingToCountry: 'US',
@@ -261,26 +275,21 @@ export async function seedOrderCartDemo(
         unitPriceMinor,
         quantity: orderSeed.quantity,
         lineTotalMinor: unitPriceMinor * orderSeed.quantity,
-        currency: 'USD',
-        percentCouponCode: coupon?.type === CouponType.PERCENTAGE ? coupon.code : undefined,
-        percentCouponPercent:
-          coupon?.type === CouponType.PERCENTAGE ? coupon.percentOff : undefined,
+        sourceType: 'base_native',
       }),
     );
 
-    if (coupon) {
-      coupon.usesCount += 1;
+    if (promoEntry) {
       em.persist(
-        em.create(CouponUsageEntity, {
-          coupon,
-          user,
+        em.create(PromotionUsageEntity, {
+          promotion: promoEntry.promotion,
+          userId: user.id,
           orderId: order.id,
-          code: coupon.code,
+          code: promoEntry.offer.code,
           createdAt,
           updatedAt: createdAt,
         }),
       );
-      em.persist(coupon);
     }
 
     await em.flush();

@@ -5,7 +5,7 @@ import { CART_CONFIG, buildCartConfig } from '~/platform/config/cart.config';
 import { CHECKOUT_CONFIG, buildCheckoutConfig } from '~/platform/config/checkout.config';
 import { StorageModule } from '~/integrations/storage/storage.module';
 import { AuthModule } from '../auth/auth.module';
-import { CouponModule } from '../coupon/coupon.module';
+import { PromotionModule } from '../promotion/promotion.module';
 import { ProductModule } from '../product/product.module';
 import { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
 import { ProductImageEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-image.entity';
@@ -18,9 +18,9 @@ import { CartUpdatePricingService } from './app/services/cart-update-pricing.ser
 import { CartPricingService } from './app/services/cart-pricing.service';
 import { ShippingModule } from '../shipping/shipping.module';
 import { AddCartItemUseCase } from './app/use-cases/add-cart-item/add-cart-item.use-case';
-import { ApplyCouponUseCase } from './app/use-cases/apply-coupon/apply-coupon.use-case';
+import { ApplyPromoCodeUseCase } from './app/use-cases/apply-promo-code/apply-promo-code.use-case';
 import { GetCartUseCase } from './app/use-cases/get-cart/get-cart.use-case';
-import { ListDiscoverableCouponsUseCase } from './app/use-cases/list-discoverable-coupons/list-discoverable-coupons.use-case';
+import { ListDiscoverablePromoCodesUseCase } from './app/use-cases/list-discoverable-promo-codes/list-discoverable-promo-codes.use-case';
 import { MergeGuestCartUseCase } from './app/use-cases/merge-guest-cart/merge-guest-cart.use-case';
 import { RemoveCartItemUseCase } from './app/use-cases/remove-cart-item/remove-cart-item.use-case';
 import { UpdateCartItemUseCase } from './app/use-cases/update-cart-item/update-cart-item.use-case';
@@ -34,7 +34,7 @@ import { CartItemEntity } from './infra/persistence/entities/cart-item.entity';
   imports: [
     ConfigModule,
     forwardRef(() => AuthModule),
-    CouponModule,
+    PromotionModule,
     ShippingModule,
     ProductModule,
     StorageModule,
@@ -72,8 +72,8 @@ import { CartItemEntity } from './infra/persistence/entities/cart-item.entity';
     AddCartItemUseCase,
     UpdateCartItemUseCase,
     RemoveCartItemUseCase,
-    ListDiscoverableCouponsUseCase,
-    ApplyCouponUseCase,
+    ListDiscoverablePromoCodesUseCase,
+    ApplyPromoCodeUseCase,
     GuestCartSessionService,
   ],
   exports: [

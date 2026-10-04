@@ -8,12 +8,12 @@ import type {
 } from '../../../order/app/order.types';
 import { ShippingQuoteService } from '../../../shipping/app/services/shipping-quote.service';
 import { CheckoutShippingUnavailableError } from '../../../order/app/errors/order-app.error';
-import { CouponPricingService } from '../../../coupon/app/services/coupon-pricing.service';
+import { PromotionPricingService } from '../../../promotion/app/services/promotion-pricing.service';
 
 @Injectable()
 export class CartPricingService {
   constructor(
-    private readonly couponPricingService: CouponPricingService,
+    private readonly promotionPricingService: PromotionPricingService,
     private readonly shippingQuoteService: ShippingQuoteService,
   ) {}
 
@@ -46,7 +46,7 @@ export class CartPricingService {
       throw new CheckoutShippingUnavailableError(shippingQuote.unavailable);
     }
 
-    const couponShops = await this.couponPricingService.applyToCart({
+    const promoShops = await this.promotionPricingService.applyToCart({
       userId: input.userId,
       cart: input.cart,
       shopAdjustments: input.shopAdjustments,
@@ -61,39 +61,39 @@ export class CartPricingService {
     let totalSaleDiscount = 0;
     let totalShippingFee = 0;
 
-    for (const couponShop of couponShops) {
+    for (const promoShop of promoShops) {
       const uniqueOriginCountries = await this.shippingQuoteService.listOriginCountries(
-        couponShop.items.map((item) => item.productId),
+        promoShop.items.map((item) => item.productId),
       );
-      const shopShipping = shippingQuote?.shops.find((entry) => entry.shopId === couponShop.shopId);
+      const shopShipping = shippingQuote?.shops.find((entry) => entry.shopId === promoShop.shopId);
       const shippingCharge = fromMinorUnits(
         shopShipping?.charge.totalMinor ?? 0,
         checkoutCurrency,
       );
-      const shippingDiscount = fromMinorUnits(couponShop.shippingDiscountMinor, checkoutCurrency);
+      const shippingDiscount = fromMinorUnits(promoShop.shippingDiscountMinor, checkoutCurrency);
       const shopShippingFee = Math.max(0, shippingCharge - shippingDiscount);
-      const total = Math.max(0, couponShop.subtotal - couponShop.totalDiscount + shopShippingFee);
+      const total = Math.max(0, promoShop.subtotal - promoShop.totalDiscount + shopShippingFee);
 
-      subtotalPrice += couponShop.subtotal;
-      totalDiscount += couponShop.totalDiscount;
-      totalSaleDiscount += couponShop.saleDiscount;
+      subtotalPrice += promoShop.subtotal;
+      totalDiscount += promoShop.totalDiscount;
+      totalSaleDiscount += promoShop.saleDiscount;
       totalShippingFee += shopShippingFee;
 
       shops.push({
-        shopId: couponShop.shopId,
-        shopName: couponShop.items[0]?.shopName ?? '',
-        items: couponShop.items,
-        subtotal: couponShop.subtotal,
-        totalDiscount: couponShop.totalDiscount,
-        saleDiscount: couponShop.saleDiscount,
+        shopId: promoShop.shopId,
+        shopName: promoShop.items[0]?.shopName ?? '',
+        items: promoShop.items,
+        subtotal: promoShop.subtotal,
+        totalDiscount: promoShop.totalDiscount,
+        saleDiscount: promoShop.saleDiscount,
         totalShippingFee: shopShippingFee,
         total,
-        note: input.shopAdjustments?.find((entry) => entry.shopId === couponShop.shopId)?.note,
-        promoOffers: couponShop.promoOffers,
+        note: input.shopAdjustments?.find((entry) => entry.shopId === promoShop.shopId)?.note,
+        promoOffers: promoShop.promoOffers,
         originCountries: uniqueOriginCountries,
         ...(shopShipping ? { shipping: shopShipping } : {}),
-        shippingDiscountMinor: couponShop.shippingDiscountMinor,
-        shippingDiscounts: couponShop.shippingDiscounts,
+        shippingDiscountMinor: promoShop.shippingDiscountMinor,
+        shippingDiscounts: promoShop.shippingDiscounts,
       });
     }
 

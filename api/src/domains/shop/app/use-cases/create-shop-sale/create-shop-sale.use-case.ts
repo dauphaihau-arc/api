@@ -30,7 +30,7 @@ import {
 import type { CreateShopSaleDto } from '../../../api/rest/dto/create-shop-sale.dto';
 import type { ShopSaleSummary } from '../../shop.types';
 import { toShopSaleSummary } from '../../sale-summary';
-import { dispatchShopProjection } from '../shop-coupon-catalog-projection';
+import { scheduleShopPromotionCatalogProjection } from '../shop-promotion-catalog-projection';
 
 @Injectable()
 export class CreateShopSaleUseCase {
@@ -178,41 +178,9 @@ export class CreateShopSaleUseCase {
    */
   private async scheduleSaleProjection(
     promotion: PromotionEntity,
-    productIds: string[],
-    now: Date,
+    _productIds: string[],
+    _now: Date,
   ): Promise<void> {
-    const startAt = promotion.startAt.getTime();
-    const endAt = promotion.endAt.getTime();
-    const nowMs = now.getTime();
-    const targetProductIds = productIds.length > 0 ? productIds : undefined;
-
-    if (startAt <= nowMs && endAt > nowMs) {
-      await dispatchShopProjection(
-        this.jobDispatcher,
-        promotion.shop.id,
-        targetProductIds,
-        `sale-${promotion.id}-now`,
-      );
-    }
-
-    if (startAt > nowMs) {
-      await dispatchShopProjection(
-        this.jobDispatcher,
-        promotion.shop.id,
-        targetProductIds,
-        `sale-${promotion.id}-start-${startAt}`,
-        startAt - nowMs,
-      );
-    }
-
-    if (endAt > nowMs) {
-      await dispatchShopProjection(
-        this.jobDispatcher,
-        promotion.shop.id,
-        targetProductIds,
-        `sale-${promotion.id}-end-${endAt}`,
-        endAt - nowMs,
-      );
-    }
+    await scheduleShopPromotionCatalogProjection(this.jobDispatcher, promotion);
   }
 }

@@ -142,7 +142,7 @@ export class ListOrdersUseCase {
           currency: order.currency,
           sku: item.sku,
           selectedOptions: item.selectedOptions ?? [],
-          percentCouponPercent: item.percentCouponPercent ?? null,
+
           myReview: reviewMap.get(item.product.id),
         })),
         promoCodes: order.promoCodes,

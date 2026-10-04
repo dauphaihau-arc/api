@@ -339,7 +339,7 @@ export interface PublicProductListItem {
     originalMaxAmountMinor?: number;
     currency?: string;
     autoSale?: {
-      couponId: string;
+      promotionId: string;
       percentOff: number;
     };
   };
@@ -378,7 +378,7 @@ export interface PublicProductInventorySummary {
   originalAmountMinor?: number;
   currency?: string;
   autoSale?: {
-    couponId: string;
+    promotionId: string;
     percentOff: number;
   };
 }

@@ -2,15 +2,15 @@ import { NotFoundException, UnprocessableEntityException } from '@nestjs/common'
 import { CartController } from './cart.controller';
 import type { GuestCartSessionService } from './guest-cart-session.service';
 import {
-  CouponCodeNotFoundError,
-  CouponSlotConflictError,
-} from '~/domains/coupon/app/errors/coupon-app.error';
+  PromotionCodeNotFoundError,
+  PromotionSlotConflictError,
+} from '~/domains/promotion/app/errors/promotion-app.error';
 import type { CartUpdatePricingService } from '../../app/services/cart-update-pricing.service';
 import type { CartSnapshot } from '../../app/cart.types';
 import type { AddCartItemUseCase } from '../../app/use-cases/add-cart-item/add-cart-item.use-case';
-import type { ApplyCouponUseCase } from '../../app/use-cases/apply-coupon/apply-coupon.use-case';
+import type { ApplyPromoCodeUseCase } from '../../app/use-cases/apply-promo-code/apply-promo-code.use-case';
 import type { GetCartUseCase } from '../../app/use-cases/get-cart/get-cart.use-case';
-import type { ListDiscoverableCouponsUseCase } from '../../app/use-cases/list-discoverable-coupons/list-discoverable-coupons.use-case';
+import type { ListDiscoverablePromoCodesUseCase } from '../../app/use-cases/list-discoverable-promo-codes/list-discoverable-promo-codes.use-case';
 import type { MergeGuestCartUseCase } from '../../app/use-cases/merge-guest-cart/merge-guest-cart.use-case';
 import type { RemoveCartItemUseCase } from '../../app/use-cases/remove-cart-item/remove-cart-item.use-case';
 import type { UpdateCartItemUseCase } from '../../app/use-cases/update-cart-item/update-cart-item.use-case';
@@ -46,12 +46,12 @@ describe('CartController', () => {
     const removeCartItemUseCase = {
       execute: jest.fn(),
     } as unknown as jest.Mocked<RemoveCartItemUseCase>;
-    const listDiscoverableCouponsUseCase = {
+    const listDiscoverablePromoCodesUseCase = {
       execute: jest.fn(),
-    } as unknown as jest.Mocked<ListDiscoverableCouponsUseCase>;
-    const applyCouponUseCase = {
+    } as unknown as jest.Mocked<ListDiscoverablePromoCodesUseCase>;
+    const applyPromoCodeUseCase = {
       execute: jest.fn(),
-    } as unknown as jest.Mocked<ApplyCouponUseCase>;
+    } as unknown as jest.Mocked<ApplyPromoCodeUseCase>;
 
     const controller = new CartController(
       checkoutConfig as never,
@@ -62,8 +62,8 @@ describe('CartController', () => {
       addCartItemUseCase,
       updateCartItemUseCase,
       removeCartItemUseCase,
-      listDiscoverableCouponsUseCase,
-      applyCouponUseCase,
+      listDiscoverablePromoCodesUseCase,
+      applyPromoCodeUseCase,
     );
 
     return {
@@ -73,8 +73,8 @@ describe('CartController', () => {
       addCartItemUseCase,
       getCartUseCase,
       mergeGuestCartUseCase,
-      listDiscoverableCouponsUseCase,
-      applyCouponUseCase,
+      listDiscoverablePromoCodesUseCase,
+      applyPromoCodeUseCase,
     };
   }
 
@@ -165,7 +165,7 @@ describe('CartController', () => {
     expect(result.requires_sign_in_for_checkout).toBe(false);
   });
 
-  it('prices buy-now coupon updates from temp cart promo codes', async () => {
+  it('prices buy-now Promo Code updates from temp cart promo codes', async () => {
     const { controller, getCartUseCase, cartUpdatePricingService } = buildController();
     const cart: CartSnapshot = {
       id: 'cart-1',
@@ -236,7 +236,7 @@ describe('CartController', () => {
     });
   });
 
-  it('maps rejected promo code pricing to a coupon response error', async () => {
+  it('maps rejected Promo Code pricing to a promotion response error', async () => {
     const { controller, getCartUseCase, cartUpdatePricingService } = buildController();
     const cart: CartSnapshot = {
       id: 'cart-1',
@@ -272,7 +272,7 @@ describe('CartController', () => {
     };
     getCartUseCase.execute.mockResolvedValue(cart);
     cartUpdatePricingService.buildPricedCartSummary.mockRejectedValue(
-      new CouponCodeNotFoundError('MISSING'),
+      new PromotionCodeNotFoundError('MISSING'),
     );
 
     await expect(controller.updateItem(
@@ -287,82 +287,82 @@ describe('CartController', () => {
     )).rejects.toBeInstanceOf(NotFoundException);
   });
 
-  it('returns an empty coupon list when no auth user or guest cookie exists', async () => {
+  it('returns an empty promo code list when no auth user or guest cookie exists', async () => {
     const { controller, guestCartSessionService } = buildController();
     guestCartSessionService.extractSessionId.mockReturnValue(null);
 
-    const response = await controller.coupons(
+    const response = await controller.promoCodes(
       {} as never,
       { shopId: 'shop-1' } as never,
     );
 
-    expect(response).toEqual({ coupons: [] });
+    expect(response).toEqual({ promo_codes: [] });
   });
 
-  it('maps discoverable coupons to the shopper wire shape with eligibility flags', async () => {
-    const { controller, guestCartSessionService, listDiscoverableCouponsUseCase } = buildController();
+  it('maps discoverable promo codes to the shopper wire shape with eligibility flags', async () => {
+    const { controller, guestCartSessionService, listDiscoverablePromoCodesUseCase } = buildController();
     guestCartSessionService.extractSessionId.mockReturnValue('guest-session-1');
-    listDiscoverableCouponsUseCase.execute.mockResolvedValue([{
+    listDiscoverablePromoCodesUseCase.execute.mockResolvedValue([{
       code: 'SAVE10',
-      type: 'percentage' as never,
-      appliesTo: 'all' as never,
+      benefitType: 'percentage' as never,
+      productScope: 'all' as never,
       amountOff: 0,
       percentOff: 10,
       minOrderType: 'none' as never,
       minOrderValue: 0,
-      minProducts: 0,
+      minPurchaseQuantity: 0,
       endDate: new Date('2027-01-01T00:00:00.000Z'),
       currency: 'USD',
       isEligible: true,
       ineligibleReason: null,
     }, {
       code: 'MUGONLY',
-      type: 'percentage' as never,
-      appliesTo: 'specific' as never,
+      benefitType: 'percentage' as never,
+      productScope: 'specific' as never,
       amountOff: 0,
       percentOff: 5,
       minOrderType: 'none' as never,
       minOrderValue: 0,
-      minProducts: 0,
+      minPurchaseQuantity: 0,
       endDate: new Date('2027-01-01T00:00:00.000Z'),
       currency: 'USD',
       isEligible: false,
       ineligibleReason: 'product_scope' as never,
     }]);
 
-    const response = await controller.coupons(
+    const response = await controller.promoCodes(
       {} as never,
       { shopId: 'shop-1' } as never,
     );
 
-    expect(listDiscoverableCouponsUseCase.execute).toHaveBeenCalledWith({
+    expect(listDiscoverablePromoCodesUseCase.execute).toHaveBeenCalledWith({
       actor: { type: 'guest', guestSessionId: 'guest-session-1' },
       cartId: undefined,
       shopId: 'shop-1',
     });
     expect(response).toEqual({
-      coupons: [{
+      promo_codes: [{
         code: 'SAVE10',
-        type: 'percentage',
-        applies_to: 'all',
+        benefit_type: 'percentage',
+        product_scope: 'all',
         amount_off: 0,
         percent_off: 10,
         min_order_type: 'none',
         min_order_value: 0,
-        min_products: 0,
+        min_purchase_quantity: 0,
         end_date: new Date('2027-01-01T00:00:00.000Z'),
         currency: 'USD',
         is_eligible: true,
         ineligible_reason: null,
       }, {
         code: 'MUGONLY',
-        type: 'percentage',
-        applies_to: 'specific',
+        benefit_type: 'percentage',
+        product_scope: 'specific',
         amount_off: 0,
         percent_off: 5,
         min_order_type: 'none',
         min_order_value: 0,
-        min_products: 0,
+        min_purchase_quantity: 0,
         end_date: new Date('2027-01-01T00:00:00.000Z'),
         currency: 'USD',
         is_eligible: false,
@@ -371,17 +371,17 @@ describe('CartController', () => {
     });
   });
 
-  it('returns promo codes after a coupon selection', async () => {
-    const { controller, applyCouponUseCase } = buildController();
-    applyCouponUseCase.execute.mockResolvedValue({
+  it('returns promo codes after a promo code selection', async () => {
+    const { controller, applyPromoCodeUseCase } = buildController();
+    applyPromoCodeUseCase.execute.mockResolvedValue({
       promoCodes: ['FREESHIP', 'SAVE10'],
-      appliedCoupons: [
-        { code: 'FREESHIP', type: 'free_ship' as never },
-        { code: 'SAVE10', type: 'percentage' as never },
+      appliedPromoCodes: [
+        { code: 'FREESHIP', benefitType: 'free_shipping' as never },
+        { code: 'SAVE10', benefitType: 'percentage' as never },
       ],
     });
 
-    const response = await controller.applyCoupon(
+    const response = await controller.applyPromoCode(
       { user: { userId: 'user-1' } } as never,
       {
         shopId: 'shop-1',
@@ -390,7 +390,7 @@ describe('CartController', () => {
       } as never,
     );
 
-    expect(applyCouponUseCase.execute).toHaveBeenCalledWith({
+    expect(applyPromoCodeUseCase.execute).toHaveBeenCalledWith({
       actor: { type: 'user', userId: 'user-1' },
       cartId: undefined,
       shopId: 'shop-1',
@@ -399,18 +399,18 @@ describe('CartController', () => {
     });
     expect(response).toEqual({
       promo_codes: ['FREESHIP', 'SAVE10'],
-      applied_coupons: [
-        { code: 'FREESHIP', type: 'free_ship' },
-        { code: 'SAVE10', type: 'percentage' },
+      applied_promo_codes: [
+        { code: 'FREESHIP', benefit_type: 'free_shipping' },
+        { code: 'SAVE10', benefit_type: 'percentage' },
       ],
     });
   });
 
-  it('rejects a conflicting coupon selection without side effects', async () => {
-    const { controller, applyCouponUseCase } = buildController();
-    applyCouponUseCase.execute.mockRejectedValue(new CouponSlotConflictError('SAVE10'));
+  it('rejects a conflicting promo code selection without side effects', async () => {
+    const { controller, applyPromoCodeUseCase } = buildController();
+    applyPromoCodeUseCase.execute.mockRejectedValue(new PromotionSlotConflictError('SAVE10'));
 
-    await expect(controller.applyCoupon(
+    await expect(controller.applyPromoCode(
       { user: { userId: 'user-1' } } as never,
       {
         shopId: 'shop-1',

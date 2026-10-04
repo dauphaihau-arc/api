@@ -69,7 +69,7 @@ describe('GetMyOrderByIdUseCase', () => {
         currency: 'USD',
         price: 50,
         salePrice: 47.5,
-        percentCouponPercent: 5,
+
       },
     ];
 

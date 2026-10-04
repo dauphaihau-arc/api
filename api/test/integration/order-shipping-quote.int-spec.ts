@@ -709,34 +709,36 @@ describe('Order accepted shipping facts (integration)', () => {
     expect(rows.reduce((total, row) => total + row.total_minor, 0)).toBe(quote.total_minor);
   });
 
-  it('waives the shipping charge once for an eligible free-shipping coupon', async () => {
-    const seller = await registerSeller('ord-coupon');
+  it('waives the shipping charge once for an eligible free-shipping Promo Code', async () => {
+    const seller = await registerSeller('ord-promo');
     const profile = await createActiveProfile(seller, { oneItemFeeMinor: 900 });
     const product = await createPublishableProduct({
       seller,
       shippingProfileId: profile.id,
-      title: 'Coupon Mug',
-      sku: 'COUPON-1',
+      title: 'Promo Mug',
+      sku: 'PROMO-1',
       amountMinor: 2500,
     });
 
     const code = `FREE${Date.now().toString().slice(-6)}`;
     await seller.agent
-      .post(`${API_PREFIX}/shops/${seller.shopId}/coupons`)
+      .post(`${API_PREFIX}/shops/${seller.shopId}/promo-codes`)
       .set('Idempotency-Key', randomUUID())
       .send({
+        name: 'Free shipping',
         code,
-        type: 'free_ship',
-        applies_to: 'all',
-        start_date: new Date(Date.now() - 86_400_000).toISOString(),
-        end_date: new Date(Date.now() + 86_400_000).toISOString(),
-        max_uses: 100,
-        max_uses_per_user: 5,
+        benefit_type: 'free_shipping',
+        product_scope: 'all',
+        start_local: new Date(Date.now() - 86_400_000).toISOString().slice(0, 16),
+        end_local: new Date(Date.now() + 86_400_000).toISOString().slice(0, 16),
+        timezone: 'UTC',
+        max_redemptions: 100,
+        max_redemptions_per_buyer: 5,
         min_order_type: 'none',
       })
       .expect(201);
 
-    const buyer = await registerBuyer('ord-coupon');
+    const buyer = await registerBuyer('ord-promo');
     await addCartItem(buyer, product.inventoryId, 1);
 
     const quote = await createQuote(buyer, { promoCode: code, shopId: seller.shopId });
@@ -746,7 +748,7 @@ describe('Order accepted shipping facts (integration)', () => {
     expect(quoteShop.shipping_minor).toBe(0);
     expect(quoteShop.shipping_discount_minor).toBe(900);
     expect(quoteShop.shipping_discounts).toEqual([
-      expect.objectContaining({ code, waived_minor: 900, type: 'free_ship' }),
+      expect.objectContaining({ code, waived_minor: 900, benefit_type: 'free_shipping' }),
     ]);
     expect(quote.discount_minor).toBe(0);
     expect(quote.shipping_minor).toBe(0);
@@ -762,7 +764,7 @@ describe('Order accepted shipping facts (integration)', () => {
     expect(orderRow.shipping_quote_snapshot.shipping.charge.total_minor).toBe(900);
 
     const usages = await sql.query(
-      'select count(*)::int as "count" from "coupon_usages" where "order_id" = $1 and "code" = $2',
+      'select count(*)::int as "count" from "promotion_usages" where "order_id" = $1 and "code" = $2',
       [orderId, code],
     );
     expect(usages.rows[0].count).toBe(1);

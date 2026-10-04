@@ -1,12 +1,10 @@
 import type { CartSnapshot } from '../../cart/app/cart.types';
-import type { ManualPromoOffer } from '../../coupon/app/types/manual-promo-offer.mapper';
-import type { CouponEntity } from '../../coupon/infra/persistence/entities/coupon.entity';
+import type { PromoOffer } from '../../promotion/app/types/promotion.types';
+import type { PromotionMinOrderType } from '../../promotion/domain/enums/promotion-min-order-type.enum';
+import type { PromotionProductScope } from '../../promotion/domain/enums/promotion-product-scope.enum';
 import type { FulfillmentAggregateStatus } from '../../fulfillment/domain/enums/fulfillment-aggregate-status.enum';
 import type { FulfillmentProgressSnapshot } from '../../fulfillment/domain/fulfillment-progress';
 import type { FulfillmentGroupView } from '../../fulfillment/app/fulfillment.types';
-import { CouponAppliesTo } from '../../coupon/domain/enums/coupon-applies-to.enum';
-import { CouponMinOrderType } from '../../coupon/domain/enums/coupon-min-order-type.enum';
-import { CouponType } from '../../coupon/domain/enums/coupon-type.enum';
 import type { CheckoutShippingShopQuote } from '../../shipping/app/shipping.types';
 
 export interface ShippingAddressInput {
@@ -141,7 +139,6 @@ export interface OrderListProduct {
   selectedOptions?: SelectedOptionSnapshot[];
   productId: string;
   shopSlug: string;
-  percentCouponPercent: number | null;
   myReview?: {
     id: string;
     rating: number;
@@ -447,29 +444,28 @@ export interface PricedCartItem {
   fxSource?: string;
   fxEffectiveAt?: Date;
   fxSourceTimestamp?: Date;
-  autoSaleCoupon?: CouponEntity;
   /**
    * The accepted product-discount amount allocated to this item, in minor units
-   * of the checkout currency. It is set by the coupon/promotion pricing path and
+   * of the checkout currency. It is set by the promotion pricing path and
    * never exceeds the item's own line total.
    */
   promoDiscountMinor?: number;
 }
 
 export interface ShippingDiscountProvenance {
-  couponId: string;
+  promotionId: string;
   code: string;
-  type: 'free_ship';
-  appliesTo: CouponAppliesTo;
-  appliesProductIds: string[];
-  minOrderType: CouponMinOrderType;
+  benefitType: 'free_shipping';
+  productScope: PromotionProductScope;
+  productIds: string[];
+  minOrderType: PromotionMinOrderType;
   /** Order-total minimum in major units of `currency` (the checkout currency). */
   minOrderValue: number;
-  minProducts: number;
-  maxUses: number;
-  maxUsesPerUser: number;
-  usesCount: number;
-  /** Shipping money waived by this coupon; never negative, never merchandise. */
+  minPurchaseQuantity: number;
+  maxRedemptions: number;
+  maxRedemptionsPerBuyer: number;
+  redemptionCount: number;
+  /** Shipping money waived by this promotion; never negative, never merchandise. */
   waivedMinor: number;
   currency: string;
 }
@@ -484,7 +480,7 @@ export interface PricedShopCart {
   totalShippingFee: number;
   total: number;
   note?: string;
-  promoOffers: ManualPromoOffer[];
+  promoOffers: PromoOffer[];
   originCountries: string[];
   /** Per-shop shipping quote: charge, base-unit calculation, and estimate. */
   shipping?: CheckoutShippingShopQuote;
@@ -508,64 +504,19 @@ export interface PricedCartSummary {
   shippingAnchorAt?: Date;
 }
 
-export function isCouponActive(coupon: CouponEntity, now = new Date()): boolean {
-  return coupon.isActive && coupon.startDate <= now && coupon.endDate >= now;
-}
-
-export function couponAppliesToProduct(
-  coupon: CouponEntity,
-  productId: string,
-): boolean {
-  return coupon.appliesTo === CouponAppliesTo.ALL
-    || coupon.appliesProductIds.includes(productId);
-}
-
 /**
- * A Coupon's monetary fields resolved into the buyer's presentment currency.
+ * A Promotion's monetary fields resolved into the buyer's presentment currency.
  *
- * A Coupon stores `amountOff` and `minOrderValue` in its own canonical
+ * A Promotion stores `amountOff` and `minOrderValue` in its own canonical
  * `currency` (the owning Shop's currency). Every eligibility check, discount
  * calculation, and display projection compares those amounts against money in
  * the checkout currency, so callers must resolve them through the currency
  * conversion seam first. Percentage and quantity rules are currency-neutral
  * and never use these values.
  */
-export interface CouponPresentmentAmounts {
+export interface PromotionPresentmentAmounts {
   /** Fixed discount in major units of the presentment currency. */
   amountOff: number;
   /** Order-total minimum in major units of the presentment currency. */
   minOrderValue: number;
-}
-
-export function couponMeetsMinimum(
-  coupon: CouponEntity,
-  amounts: CouponPresentmentAmounts,
-  subtotal: number,
-  quantity: number,
-): boolean {
-  if (coupon.minOrderType === CouponMinOrderType.ORDER_TOTAL) {
-    return subtotal >= amounts.minOrderValue;
-  }
-
-  if (coupon.minOrderType === CouponMinOrderType.NUMBER_OF_PRODUCTS) {
-    return quantity >= coupon.minProducts;
-  }
-
-  return true;
-}
-
-export function computeCouponDiscount(
-  coupon: CouponEntity,
-  amounts: CouponPresentmentAmounts,
-  subtotal: number,
-): number {
-  if (coupon.type === CouponType.PERCENTAGE) {
-    return subtotal * (coupon.percentOff / 100);
-  }
-
-  if (coupon.type === CouponType.FIXED_AMOUNT) {
-    return amounts.amountOff;
-  }
-
-  return 0;
 }

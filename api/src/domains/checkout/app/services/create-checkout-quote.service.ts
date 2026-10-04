@@ -333,7 +333,7 @@ function flattenQuoteItems(pricedShops: Record<string, unknown>[]): CheckoutQuot
  * The price- and estimate-affecting surface of every shop's shipping quote.
  * Any change to a profile/rate identity or version, the chosen base unit, a
  * component fee, a Processing/Delivery range, the combined estimate, or the
- * coupon waiver produces a new fingerprint and therefore a new quote.
+ * Promo Code waiver produces a new fingerprint and therefore a new quote.
  */
 function buildShippingFingerprint(shops: PricedShopCart[]): unknown {
   return [...shops]

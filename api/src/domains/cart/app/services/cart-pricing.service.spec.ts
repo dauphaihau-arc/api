@@ -1,43 +1,8 @@
-import type { EntityManager } from '@mikro-orm/postgresql';
-import { MoneyConversionService } from '~/integrations/currency/money-conversion.service';
-import { RoundingPolicyService } from '~/integrations/currency/rounding-policy.service';
 import { CartKind } from '../../domain/enums/cart-kind.enum';
 import type { CartSnapshot } from '../cart.types';
-import { CouponPricingService } from '../../../coupon/app/services/coupon-pricing.service';
-import { CouponPresentmentService } from '../../../coupon/app/services/coupon-presentment.service';
-import { MikroOrmCouponRepository } from '../../../coupon/infra/persistence/repositories/mikro-orm-coupon.repository';
 import { CheckoutShippingUnavailableError } from '../../../order/app/errors/order-app.error';
+import type { PromotionPricingService } from '../../../promotion/app/services/promotion-pricing.service';
 import { CartPricingService } from './cart-pricing.service';
-
-/**
- * Coupon pricing over an identity-only conversion seam: these cases price USD
- * coupons in a USD cart, so any cross-currency lookup means the fixture is
- * wrong and should fail rather than silently pass.
- */
-function buildCouponPricingService(entityManager: EntityManager): CouponPricingService {
-  const fxRateService = {
-    getLatestRate: jest.fn(async (input: { fromCurrency: string; toCurrency: string }) =>
-      input.fromCurrency === input.toCurrency
-        ? {
-          fromCurrency: input.fromCurrency,
-          toCurrency: input.toCurrency,
-          rate: '1',
-          effectiveAt: new Date(),
-          source: 'identity',
-        }
-        : null),
-  };
-
-  return new CouponPricingService(
-    new MikroOrmCouponRepository(entityManager),
-    new CouponPresentmentService(new MoneyConversionService(fxRateService as never, new RoundingPolicyService())),
-    { findBestSalesForProducts: jest.fn().mockResolvedValue(new Map()) } as never,
-    {
-      findActiveCheckoutDiscounts: jest.fn().mockResolvedValue([]),
-      countUsagesByUser: jest.fn().mockResolvedValue(new Map()),
-    } as never,
-  );
-}
 
 const cart: CartSnapshot = {
   id: 'cart-1',
@@ -70,14 +35,18 @@ const cart: CartSnapshot = {
   }],
 };
 
+function buildPromotionPricingService(overrides?: {
+  applyToCart?: jest.Mocked<PromotionPricingService>['applyToCart'];
+}): jest.Mocked<PromotionPricingService> {
+  return {
+    applyToCart: overrides?.applyToCart ?? jest.fn().mockResolvedValue([]),
+    listDiscoverablePromoCodes: jest.fn(),
+    addPromoCode: jest.fn(),
+  } as unknown as jest.Mocked<PromotionPricingService>;
+}
+
 describe('CartPricingService', () => {
   it('adds the destination-specific shipping quote to the cart total', async () => {
-    const couponRepository = { find: jest.fn().mockResolvedValue([]) };
-    const entityManager = {
-      fork: jest.fn().mockReturnValue({
-        getRepository: jest.fn(() => couponRepository),
-      }),
-    } as unknown as EntityManager;
     const shippingQuote = {
       anchorAt: new Date('2026-09-22T10:00:00.000Z'),
       unavailable: [],
@@ -90,8 +59,28 @@ describe('CartPricingService', () => {
       quoteForCheckout: jest.fn().mockResolvedValue(shippingQuote),
       listOriginCountries: jest.fn().mockResolvedValue(['US']),
     };
+    const promotionPricingService = buildPromotionPricingService({
+      applyToCart: jest.fn().mockResolvedValue([{
+        shopId: 'shop-1',
+        items: cart.items.map((item) => ({
+          ...item,
+          unitPriceMinor: item.inventory.pricing.amountMinor,
+          originalAmountMinor: item.inventory.pricing.amountMinor,
+          price: 10,
+          baseUnitPrice: 10,
+          effectiveUnitPrice: 10,
+          promoDiscountMinor: 0,
+        })),
+        subtotal: 10,
+        totalDiscount: 0,
+        saleDiscount: 0,
+        promoOffers: [],
+        shippingDiscountMinor: 0,
+        shippingDiscounts: [],
+      }]),
+    });
     const service = new CartPricingService(
-      buildCouponPricingService(entityManager),
+      promotionPricingService,
       shippingQuoteService as never,
     );
 
@@ -112,34 +101,8 @@ describe('CartPricingService', () => {
     expect(priced.totalPrice).toBe(15);
     expect(priced.shippingAnchorAt).toEqual(shippingQuote.anchorAt);
   });
+
   it('waives quoted shipping with an eligible free-shipping code', async () => {
-    const freeShipCoupon = {
-      id: 'coupon-free',
-      code: 'FREESHIP',
-      shop: { id: 'shop-1' },
-      isActive: true,
-      isAutoSale: false,
-      startDate: new Date('2026-01-01T00:00:00.000Z'),
-      endDate: new Date('2027-01-01T00:00:00.000Z'),
-      maxUses: 100,
-      maxUsesPerUser: 3,
-      usesCount: 0,
-      appliesTo: 'all',
-      appliesProductIds: [],
-      minOrderType: 'order_total',
-      minOrderValue: 0,
-      minProducts: 0,
-      type: 'free_ship',
-      percentOff: 0,
-      amountOff: 0,
-      currency: 'USD',
-    };
-    const couponRepository = { find: jest.fn().mockResolvedValue([freeShipCoupon]) };
-    const entityManager = {
-      fork: jest.fn().mockReturnValue({
-        getRepository: jest.fn(() => couponRepository),
-      }),
-    } as unknown as EntityManager;
     const shippingQuoteService = {
       quoteForCheckout: jest.fn().mockResolvedValue({
         anchorAt: new Date('2026-09-22T10:00:00.000Z'),
@@ -148,8 +111,61 @@ describe('CartPricingService', () => {
       }),
       listOriginCountries: jest.fn().mockResolvedValue(['US']),
     };
+    const promotionPricingService = buildPromotionPricingService({
+      applyToCart: jest.fn().mockResolvedValue([{
+        shopId: 'shop-1',
+        items: cart.items.map((item) => ({
+          ...item,
+          unitPriceMinor: item.inventory.pricing.amountMinor,
+          originalAmountMinor: item.inventory.pricing.amountMinor,
+          price: 10,
+          baseUnitPrice: 10,
+          effectiveUnitPrice: 10,
+          promoDiscountMinor: 0,
+        })),
+        subtotal: 10,
+        totalDiscount: 0,
+        saleDiscount: 0,
+        promoOffers: [{
+          id: 'promo-1',
+          shopId: 'shop-1',
+          code: 'FREESHIP',
+          type: 'free_shipping',
+          currency: 'USD',
+          percentOff: 0,
+          amountOff: 0,
+          scope: 'all',
+          productIds: [],
+          startAt: new Date('2026-01-01T00:00:00.000Z'),
+          endAt: new Date('2027-01-01T00:00:00.000Z'),
+          isActive: true,
+          minOrderType: 'none',
+          minOrderValue: 0,
+          minPurchaseQuantity: 0,
+          maxUses: null,
+          maxUsesPerUser: null,
+          usesCount: 0,
+        }],
+        shippingDiscountMinor: 500,
+        shippingDiscounts: [{
+          promotionId: 'promo-1',
+          code: 'FREESHIP',
+          type: 'free_shipping',
+          appliesTo: 'all',
+          appliesProductIds: [],
+          minOrderType: 'none',
+          minOrderValue: 0,
+          minProducts: 0,
+          maxUses: 0,
+          maxUsesPerUser: 0,
+          usesCount: 0,
+          waivedMinor: 500,
+          currency: 'USD',
+        }],
+      }]),
+    });
     const service = new CartPricingService(
-      buildCouponPricingService(entityManager),
+      promotionPricingService,
       shippingQuoteService as never,
     );
 
@@ -174,11 +190,6 @@ describe('CartPricingService', () => {
   });
 
   it('rejects pricing when the destination cannot be served', async () => {
-    const entityManager = {
-      fork: jest.fn().mockReturnValue({
-        getRepository: jest.fn(() => ({ find: jest.fn().mockResolvedValue([]) })),
-      }),
-    } as unknown as EntityManager;
     const shippingQuoteService = {
       quoteForCheckout: jest.fn().mockResolvedValue({
         anchorAt: new Date('2026-09-22T10:00:00.000Z'),
@@ -188,7 +199,7 @@ describe('CartPricingService', () => {
       listOriginCountries: jest.fn(),
     };
     const service = new CartPricingService(
-      buildCouponPricingService(entityManager),
+      buildPromotionPricingService(),
       shippingQuoteService as never,
     );
 

@@ -7,10 +7,6 @@ import {
 } from '@nestjs/common';
 import { ShopAppError } from '../../app/errors/shop-app.error';
 import {
-  CouponCodeAlreadyExistsError,
-  CouponNotFoundError,
-  CouponUsageLimitsInvalidError,
-  InvalidCouponWindowError,
   PromoCodeAlreadyExistsError,
   PromoCodeBenefitInvalidError,
   PromoCodeConditionInvalidError,
@@ -52,10 +48,6 @@ export type ShopHttpErrorCode =
   | 'SHOP_NOT_FOUND'
   | 'SHOP_ACCESS_DENIED'
   | 'SHOP_TIMEZONE_INVALID'
-  | 'COUPON_NOT_FOUND'
-  | 'COUPON_CODE_ALREADY_EXISTS'
-  | 'COUPON_WINDOW_INVALID'
-  | 'COUPON_USAGE_LIMITS_INVALID'
   | 'SALE_NOT_FOUND'
   | 'SALE_STOP_NOT_ALLOWED'
   | 'SALE_PRODUCT_SCOPE_INVALID'
@@ -88,7 +80,6 @@ export function mapShopAppErrorToHttpException(
 
   if (
     error instanceof ShopNotFoundError
-    || error instanceof CouponNotFoundError
     || error instanceof SaleNotFoundError
     || error instanceof PromoCodeNotFoundError
   ) {
@@ -125,10 +116,6 @@ export function getShopErrorCode(error: ShopAppError): ShopHttpErrorCode {
   if (error instanceof ShopNotFoundError) return 'SHOP_NOT_FOUND';
   if (error instanceof ShopAccessDeniedError) return 'SHOP_ACCESS_DENIED';
   if (error instanceof ShopTimeZoneInvalidError) return 'SHOP_TIMEZONE_INVALID';
-  if (error instanceof CouponNotFoundError) return 'COUPON_NOT_FOUND';
-  if (error instanceof CouponCodeAlreadyExistsError) return 'COUPON_CODE_ALREADY_EXISTS';
-  if (error instanceof InvalidCouponWindowError) return 'COUPON_WINDOW_INVALID';
-  if (error instanceof CouponUsageLimitsInvalidError) return 'COUPON_USAGE_LIMITS_INVALID';
   if (error instanceof SaleNotFoundError) return 'SALE_NOT_FOUND';
   if (error instanceof SaleStopNotAllowedError) return 'SALE_STOP_NOT_ALLOWED';
   if (error instanceof SaleProductScopeInvalidError) return 'SALE_PRODUCT_SCOPE_INVALID';

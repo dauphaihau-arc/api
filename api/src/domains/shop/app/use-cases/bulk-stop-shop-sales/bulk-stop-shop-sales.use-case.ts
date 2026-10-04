@@ -12,7 +12,7 @@ import { ShopEntity } from '../../../infra/persistence/entities/shop.entity';
 import { ShopAccessDeniedError, ShopNotFoundError } from '../../errors/shop-app.error';
 import type { ShopSaleSummary } from '../../shop.types';
 import { toShopSaleSummary } from '../../sale-summary';
-import { dispatchShopProjection } from '../shop-coupon-catalog-projection';
+import { dispatchShopProjection } from '../shop-promotion-catalog-projection';
 
 export interface BulkStopShopSalesFailure {
   id: string;

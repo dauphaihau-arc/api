@@ -5,7 +5,7 @@ import { CartUpdatePricingService } from './cart-update-pricing.service';
 
 describe('CartUpdatePricingService', () => {
   it('maps buy-now temp cart promo codes to selected shop pricing adjustments', async () => {
-    const couponPricingService = {
+    const cartPricingService = {
       buildPricedCartSummary: jest.fn().mockResolvedValue({}),
     } as unknown as jest.Mocked<CartPricingService>;
     const cart: CartSnapshot = {
@@ -41,7 +41,7 @@ describe('CartUpdatePricingService', () => {
       ],
     };
 
-    await new CartUpdatePricingService(couponPricingService).buildPricedCartSummary({
+    await new CartUpdatePricingService(cartPricingService).buildPricedCartSummary({
       actor: { type: 'user', userId: 'user-1' },
       cart,
       additionInfoTempCart: {
@@ -49,7 +49,7 @@ describe('CartUpdatePricingService', () => {
       },
     });
 
-    expect(couponPricingService.buildPricedCartSummary).toHaveBeenCalledWith({
+    expect(cartPricingService.buildPricedCartSummary).toHaveBeenCalledWith({
       userId: 'user-1',
       cart,
       shopAdjustments: [

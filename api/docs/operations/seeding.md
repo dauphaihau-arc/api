@@ -7,7 +7,7 @@ This project has two seed modes:
   Includes roles, permissions, and category taxonomy.
 - `db:seed:demo`
   Seeds the full fake/demo dataset.
-  Includes demo users, passwords, shops, products, coupons, and reference data.
+  Includes demo users, passwords, shops, products, promotions, and reference data.
 
 ## When to use which
 

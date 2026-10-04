@@ -110,7 +110,7 @@ export const toPublicProductDetailResponse = (
       ...(inventory.autoSale
         ? {
           auto_sale: {
-            coupon_id: inventory.autoSale.couponId,
+            promotion_id: inventory.autoSale.promotionId,
             percent_off: inventory.autoSale.percentOff,
           },
         }

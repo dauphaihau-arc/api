@@ -5,9 +5,9 @@ import type { PromotionVisibility } from '../../domain/enums/promotion-visibilit
 
 /**
  * A Checkout Discount offer reachable through its single Promo Code. This is
- * the shape the coupon-pricing path consumes: it carries the Promotion's
- * benefit, scope, schedule, conditions, allowance and the normalized code
- * identity in one place, so listing and redemption evaluate the same facts.
+ * the shape the pricing path consumes: it carries the Promotion's benefit,
+ * scope, schedule, conditions, allowance and the normalized code identity in
+ * one place, so listing and redemption evaluate the same facts.
  */
 export interface PromotionCodeOffer {
   promotionId: string;
@@ -26,7 +26,7 @@ export interface PromotionCodeOffer {
   maxRedemptions: number | null;
   maxRedemptionsPerBuyer: number | null;
   /** Global redemptions already consumed by committed Orders. */
-  usesCount: number;
+  redemptionCount: number;
   startAt: Date;
   endAt: Date;
   timezone: string;
@@ -40,8 +40,7 @@ export interface FindActiveCheckoutDiscountsInput {
 /**
  * Read port for checkout discount resolution. Returns every active Checkout
  * Discount (one code each) for the requested shops so the pricing path can
- * match buyer-entered codes case-insensitively against both legacy Coupons and
- * Promotion-backed codes.
+ * match buyer-entered codes case-insensitively.
  */
 export abstract class PromotionCodeReader {
   abstract findActiveCheckoutDiscounts(

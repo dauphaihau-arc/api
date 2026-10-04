@@ -12,16 +12,10 @@ import {
 } from '~/integrations/currency/money-conversion.service';
 import type { ProductInventoryEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-inventory.entity';
 import {
-  CouponAutoSaleProjectionReader,
-} from '~/domains/coupon/app/ports/coupon-auto-sale-projection.reader';
-import {
   SaleProjectionReader,
   type SaleProjection,
 } from '~/domains/promotion/app/ports/sale-projection.reader';
-import {
-  applyPercentageReduction,
-  pickHighestPercentOff,
-} from '~/platform/pricing/percentage-reduction';
+import { applyPercentageReduction } from '~/platform/pricing/percentage-reduction';
 import {
   getActiveBasePrice,
   getActiveMarketPrice,
@@ -59,7 +53,6 @@ export class ResolvedStorefrontPriceService {
     private readonly optionalCacheService: OptionalCacheService,
     private readonly storefrontMarketContextService: StorefrontMarketContextService,
     private readonly moneyConversionService: MoneyConversionService,
-    private readonly couponAutoSaleProjectionReader: CouponAutoSaleProjectionReader,
     private readonly saleProjectionReader: SaleProjectionReader,
   ) {}
 
@@ -144,17 +137,10 @@ export class ResolvedStorefrontPriceService {
       await this.saleProjectionReader.findBestSalesForProducts({
         targets: [{ shopId: inventory.shop.id, productId: inventory.product.id }],
       });
-    const couponAutoSale = await this.couponAutoSaleProjectionReader.findBestAutoSaleForProduct({
-      shopId: inventory.shop.id,
-      productId: inventory.product.id,
-    });
     const reduced = applyPercentageReduction(
       price.amountMinor,
       price.currency,
-      pickHighestPercentOff(
-        couponAutoSale?.percentOff,
-        sales.get(inventory.product.id)?.percentOff,
-      ),
+      sales.get(inventory.product.id)?.percentOff,
     );
 
     return reduced

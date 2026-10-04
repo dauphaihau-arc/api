@@ -99,7 +99,6 @@ describe('OrderCheckoutService', () => {
     processResult?: { id: string; url: string } | undefined;
     purchaseEligibilityResult?: { eligible: boolean; failures: Array<Record<string, unknown>> };
     shippingResolutions?: Array<Record<string, unknown>>;
-    coupons?: Array<Record<string, unknown>>;
     pricedCartSummary?: PricedCartSummary;
   }) {
     const orders: Array<Record<string, unknown>> = [];
@@ -130,17 +129,6 @@ describe('OrderCheckoutService', () => {
     const orderItemRepository = {
       create: jest.fn((input: Record<string, unknown>) => input),
     };
-    const usageRepository = {
-      create: jest.fn((input: Record<string, unknown>) => input),
-    };
-    const couponRepository = {
-      find: jest.fn().mockResolvedValue(options?.coupons ?? []),
-      findOne: jest.fn().mockImplementation(async (filter: { code?: string }) => {
-        const code = filter?.code;
-        return options?.coupons?.find((coupon) => coupon.code === code) ?? null;
-      }),
-    };
-
     const fakeEntityManager = {
       getRepository: jest.fn((entity: { name?: string }) => {
         switch (entity?.name) {
@@ -153,10 +141,6 @@ describe('OrderCheckoutService', () => {
             return orderRepository;
           case 'OrderItemEntity':
             return orderItemRepository;
-          case 'CouponUsageEntity':
-            return usageRepository;
-          case 'CouponEntity':
-            return couponRepository;
           case 'PromotionCodeEntity':
             return { find: jest.fn().mockResolvedValue([]) };
           default:
@@ -177,7 +161,7 @@ describe('OrderCheckoutService', () => {
       transactional: jest.fn(async (callback: (em: EntityManager) => Promise<unknown>) =>
         callback(fakeEntityManager as unknown as EntityManager)),
     } as unknown as EntityManager;
-    const couponPricingService: jest.Mocked<CartPricingService> = {
+    const cartPricingService: jest.Mocked<CartPricingService> = {
       buildPricedCartSummary: jest.fn().mockResolvedValue(options?.pricedCartSummary ?? pricedCartSummary),
     } as unknown as jest.Mocked<CartPricingService>;
 
@@ -269,7 +253,7 @@ describe('OrderCheckoutService', () => {
 
     const service = new OrderCheckoutService(
       entityManager,
-      couponPricingService,
+      cartPricingService,
       checkoutStockReservationService,
       orderCheckoutOutboxService,
       orderInventoryOutboxService,
@@ -306,8 +290,6 @@ describe('OrderCheckoutService', () => {
       purchaseEligibilityService,
       promotionRedemptionService,
       fulfillmentService,
-      couponRepository,
-      usageRepository,
     };
   }
 
@@ -1068,58 +1050,6 @@ describe('OrderCheckoutService', () => {
         destination: { countryCode: 'US' },
       });
       expect(orderRepository.create).not.toHaveBeenCalled();
-    });
-
-    it('records coupon usage for a quoted checkout', async () => {
-      const coupon = {
-        id: 'coupon-free',
-        code: 'FREESHIP',
-        usesCount: 4,
-        shop: { id: 'shop-1' },
-        type: 'free_ship',
-        currency: 'USD',
-        percentOff: 0,
-        amountOff: 0,
-        appliesTo: 'all',
-        appliesProductIds: [],
-        startDate: new Date('2026-01-01T00:00:00.000Z'),
-        endDate: new Date('2027-01-01T00:00:00.000Z'),
-        minOrderType: 'none',
-        minOrderValue: 0,
-        minProducts: 0,
-        maxUses: 100,
-        maxUsesPerUser: 100,
-        isActive: true,
-      };
-      const quote = buildQuotedCheckout();
-      const { service, usageRepository, couponRepository } = buildService({
-        coupons: [coupon],
-        pricedCartSummary: buildPricedCartSummaryMatchingQuote(quote),
-      });
-      quote.shops[0]!.promoCodes = ['FREESHIP'];
-
-      await service.createOrders(
-        { type: 'user', userId: 'user-1', email: 'member@example.com' },
-        'cart-1',
-        cart,
-        {
-          paymentType: PaymentType.CASH,
-          shippingAddress,
-          quote: quote as never,
-          isTempCart: false,
-        },
-      );
-
-      expect(couponRepository.find).toHaveBeenCalledWith({
-        shop: 'shop-1',
-        code: { $in: ['FREESHIP'] },
-      });
-      expect(coupon.usesCount).toBe(5);
-      expect(usageRepository.create).toHaveBeenCalledWith(expect.objectContaining({
-        coupon,
-        orderId: 'order-1',
-        code: 'FREESHIP',
-      }));
     });
 
     it('charges the provider exactly the persisted order money', async () => {

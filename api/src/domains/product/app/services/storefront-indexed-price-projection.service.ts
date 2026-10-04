@@ -9,20 +9,14 @@ import { MoneyConversionService } from '~/integrations/currency/money-conversion
 import type { ProductEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product.entity';
 import type { ProductInventoryEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-inventory.entity';
 import type { VariantPriceEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/variant-price.entity';
-import {
-  CouponAutoSaleProjectionReader,
-  type ProductAutoSaleProjection,
-} from '~/domains/coupon/app/ports/coupon-auto-sale-projection.reader';
 import { SaleProjectionReader } from '~/domains/promotion/app/ports/sale-projection.reader';
-import {
-  applyPercentageReduction,
-  pickHighestPercentOff,
-} from '~/platform/pricing/percentage-reduction';
+import { applyPercentageReduction } from '~/platform/pricing/percentage-reduction';
 import {
   getActiveBasePrice,
   getActiveMarketPrice,
 } from '../../infra/persistence/mikro-orm/reads/variant-price-read';
 import type {
+  StorefrontIndexedAutoSale,
   StorefrontIndexedInventoryPrice,
   StorefrontIndexedInventoryPricingMatrix,
   StorefrontIndexedPriceSummary,
@@ -41,7 +35,6 @@ export class StorefrontIndexedPriceProjectionService {
     @Inject(STOREFRONT_PRICING_CONFIG)
     private readonly storefrontPricingConfig: StorefrontPricingConfig,
     private readonly moneyConversionService: MoneyConversionService,
-    private readonly couponAutoSaleProjectionReader: CouponAutoSaleProjectionReader,
     private readonly saleProjectionReader: SaleProjectionReader,
   ) {}
 
@@ -53,25 +46,15 @@ export class StorefrontIndexedPriceProjectionService {
     const rateCache: FxRateCache = new Map();
     const inventoryPricingById = new Map<string, ProductInventoryPricingProjection>();
 
-    const [couponAutoSale, salesByProductId] = await Promise.all([
-      this.couponAutoSaleProjectionReader.findBestAutoSaleForProduct({
-        shopId: product.shop.id,
-        productId: product.id,
-      }),
-      this.saleProjectionReader.findBestSalesForProducts({
-        targets: [{ shopId: product.shop.id, productId: product.id }],
-      }),
-    ]);
+    const salesByProductId = await this.saleProjectionReader.findBestSalesForProducts({
+      targets: [{ shopId: product.shop.id, productId: product.id }],
+    });
     const saleProjection = salesByProductId.get(product.id);
-    const percentOff = pickHighestPercentOff(couponAutoSale?.percentOff, saleProjection?.percentOff);
-    let sale: ProductAutoSaleProjection | undefined;
+    const percentOff = saleProjection?.percentOff;
+    let sale: StorefrontIndexedAutoSale | undefined;
 
-    if (percentOff != null) {
-      sale = couponAutoSale?.percentOff === percentOff
-        ? { couponId: couponAutoSale.couponId, percentOff }
-        : saleProjection
-          ? { couponId: saleProjection.promotionId, percentOff }
-          : undefined;
+    if (percentOff != null && saleProjection) {
+      sale = { promotionId: saleProjection.promotionId, percentOff };
     }
 
     await Promise.all(
@@ -102,7 +85,7 @@ export class StorefrontIndexedPriceProjectionService {
   private async projectInventory(
     inventory: ProductInventoryEntity,
     rateCache: FxRateCache,
-    autoSale?: ProductAutoSaleProjection,
+    autoSale?: StorefrontIndexedAutoSale,
   ): Promise<ProductInventoryPricingProjection> {
     const resolvedByMarket: StorefrontIndexedInventoryPricingMatrix = {};
     const basePrice = applyAutoSale(toBaseInventoryPrice(inventory), autoSale);
@@ -205,7 +188,7 @@ function toInventoryPrice(price: VariantPriceEntity): StorefrontIndexedInventory
 
 function applyAutoSale(
   price: StorefrontIndexedInventoryPrice | undefined,
-  autoSale?: ProductAutoSaleProjection,
+  autoSale?: StorefrontIndexedAutoSale,
 ): StorefrontIndexedInventoryPrice | undefined {
   if (!price || !autoSale || price.amountMinor == null) {
     return price;
@@ -226,7 +209,7 @@ function applyAutoSale(
     amountMinor: reduced.amountMinor,
     originalAmountMinor: reduced.originalAmountMinor,
     autoSale: {
-      couponId: autoSale.couponId,
+      promotionId: autoSale.promotionId,
       percentOff: autoSale.percentOff,
     },
   };
@@ -234,7 +217,7 @@ function applyAutoSale(
 
 function getMarketOverrides(
   prices: VariantPriceEntity[],
-  autoSale?: ProductAutoSaleProjection,
+  autoSale?: StorefrontIndexedAutoSale,
 ): StorefrontIndexedInventoryPricingMatrix {
   const marketOverrides: StorefrontIndexedInventoryPricingMatrix = {};
 
@@ -262,7 +245,7 @@ function isSameInventoryPrice(
   return left.currency === right.currency
     && left.amountMinor === right.amountMinor
     && left.originalAmountMinor === right.originalAmountMinor
-    && left.autoSale?.couponId === right.autoSale?.couponId
+    && left.autoSale?.promotionId === right.autoSale?.promotionId
     && left.autoSale?.percentOff === right.autoSale?.percentOff;
 }
 

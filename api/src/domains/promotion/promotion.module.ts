@@ -1,8 +1,12 @@
 import { MikroOrmModule } from '@mikro-orm/nestjs';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { CurrencyModule } from '~/integrations/currency/currency.module';
 import { PromotionCodeReader } from './app/ports/promotion-code.reader';
 import { SaleProjectionReader } from './app/ports/sale-projection.reader';
+
+import { PromotionPricingService } from './app/services/promotion-pricing.service';
+import { PromotionPresentmentService } from './app/services/promotion-presentment.service';
 import { PromotionRedemptionService } from './app/services/promotion-redemption.service';
 import { PromotionCodeEntity } from './infra/persistence/entities/promotion-code.entity';
 import { PromotionProductEntity } from './infra/persistence/entities/promotion-product.entity';
@@ -14,6 +18,7 @@ import { MikroOrmSaleProjectionReader } from './infra/persistence/repositories/m
 @Module({
   imports: [
     ConfigModule,
+    CurrencyModule,
     MikroOrmModule.forFeature([
       PromotionEntity,
       PromotionProductEntity,
@@ -33,7 +38,15 @@ import { MikroOrmSaleProjectionReader } from './infra/persistence/repositories/m
       provide: PromotionCodeReader,
       useExisting: MikroOrmPromotionCodeReader,
     },
+    PromotionPresentmentService,
+    PromotionPricingService,
   ],
-  exports: [SaleProjectionReader, PromotionCodeReader, PromotionRedemptionService],
+  exports: [
+    SaleProjectionReader,
+    PromotionCodeReader,
+    PromotionRedemptionService,
+    PromotionPresentmentService,
+    PromotionPricingService,
+  ],
 })
 export class PromotionModule {}

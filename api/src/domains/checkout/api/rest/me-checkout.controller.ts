@@ -21,9 +21,9 @@ import { JwtAuthGuard } from '~/domains/auth/api/guard/jwt-auth.guard';
 import { PermissionsGuard } from '~/domains/auth/api/guard/permissions.guard';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import {
-  isCouponAppError,
-  mapCouponAppErrorToHttpException,
-} from '~/domains/coupon/api/rest/coupon-http-error-mapper';
+  isPromotionAppError,
+  mapPromotionAppErrorToHttpException,
+} from '~/domains/promotion/api/rest/promotion-http-error-mapper';
 import {
   isCheckoutAppError,
   mapCheckoutAppErrorToHttpException,
@@ -189,8 +189,8 @@ export class MeCheckoutController {
       throw mapCheckoutAppErrorToHttpException(error);
     }
 
-    if (isCouponAppError(error)) {
-      throw mapCouponAppErrorToHttpException(error);
+    if (isPromotionAppError(error)) {
+      throw mapPromotionAppErrorToHttpException(error);
     }
 
     throw error;

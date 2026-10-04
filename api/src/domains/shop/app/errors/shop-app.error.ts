@@ -49,30 +49,6 @@ export class ShopTimeZoneInvalidError extends ShopAppError {
   }
 }
 
-export class CouponNotFoundError extends ShopAppError {
-  constructor() {
-    super('Coupon not found');
-  }
-}
-
-export class CouponCodeAlreadyExistsError extends ShopAppError {
-  constructor() {
-    super('Coupon code already exists');
-  }
-}
-
-export class InvalidCouponWindowError extends ShopAppError {
-  constructor() {
-    super('endDate must be after startDate');
-  }
-}
-
-export class CouponUsageLimitsInvalidError extends ShopAppError {
-  constructor() {
-    super('maxUsesPerUser must be less than or equal to maxUses');
-  }
-}
-
 /**
  * The selected Products of a Sale are not a valid Product Scope: a target does
  * not exist, belongs to another shop, or is listed twice.

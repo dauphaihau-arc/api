@@ -71,7 +71,7 @@ export type PublicProductDetailResponse = {
     original_amount_minor?: number;
     currency?: string;
     auto_sale?: {
-      coupon_id: string;
+      promotion_id: string;
       percent_off: number;
     };
   }>;

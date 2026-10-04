@@ -1,30 +1,6 @@
 import { fromMinorUnitsExact, toMinorUnits } from '../money/money';
 
 /**
- * The winning reduction percentage out of the sources that can reduce a
- * Product's price: a legacy automatic-sale Coupon and a Promotion Sale.
- *
- * Overlapping reductions never compound — the biggest percentage wins — and a
- * tie keeps the automatic-sale Coupon, the source that has always won it.
- * Catalog projection, checkout pricing, and the resolved storefront price all
- * decide the winner here so they cannot drift apart.
- */
-export function pickHighestPercentOff(
-  couponAutoSalePercentOff: number | undefined,
-  salePercentOff: number | undefined,
-): number | undefined {
-  if (couponAutoSalePercentOff == null) {
-    return salePercentOff;
-  }
-
-  if (salePercentOff == null) {
-    return couponAutoSalePercentOff;
-  }
-
-  return Math.max(couponAutoSalePercentOff, salePercentOff);
-}
-
-/**
  * Applies a percentage reduction to a regular price at the shared money
  * precision.
  *

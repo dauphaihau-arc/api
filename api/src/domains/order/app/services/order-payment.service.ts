@@ -5,7 +5,6 @@ import {
   PRODUCT_INVENTORY_UPDATED_SSE_EVENT,
 } from '../../../product/app/events/product-inventory-sse.event';
 import { JobDispatcher } from '../../../../integrations/queue/app/ports/job-dispatcher';
-import { CouponUsageEntity } from '../../../coupon/infra/persistence/entities/coupon-usage.entity';
 import { OrderEventActorType } from '../../domain/enums/order-event-actor-type.enum';
 import { OrderEventType } from '../../domain/enums/order-event-type.enum';
 import { OrderStatus } from '../../domain/enums/order-status.enum';
@@ -187,10 +186,6 @@ export class OrderPaymentService {
         { order: { $in: orderIds } },
         { populate: ['inventory', 'product'] },
       );
-      const couponUsages = await entityManager.getRepository(CouponUsageEntity).find(
-        { orderId: { $in: orderIds } },
-        { populate: ['coupon'] },
-      );
 
       const restockedInventoryEvents = quoteId
         ? []
@@ -213,11 +208,6 @@ export class OrderPaymentService {
           quoteId,
           expiredAt,
         );
-      }
-
-      for (const usage of couponUsages) {
-        usage.coupon.usesCount = Math.max(0, usage.coupon.usesCount - 1);
-        entityManager.remove(usage);
       }
 
       for (const order of actionableOrders) {

@@ -72,7 +72,7 @@ describe('LookupGuestOrdersUseCase', () => {
       currency: 'USD',
       price: 10,
       salePrice: null,
-      percentCouponPercent: null,
+
       inventory: {},
     }];
 

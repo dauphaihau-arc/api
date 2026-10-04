@@ -247,9 +247,6 @@ export function toOrderListResponse(result: OrderListResult) {
         inventory: {
           sku: product.sku,
         },
-        percent_coupon: product.percentCouponPercent
-          ? { percent_off: product.percentCouponPercent }
-          : null,
         id: product.id,
         title: product.title,
         image_url: product.imageUrl,
@@ -261,7 +258,7 @@ export function toOrderListResponse(result: OrderListResult) {
         currency: product.currency,
         ...(product.myReview ? { my_review: toMyReviewResponse(product.myReview) } : {}),
       })),
-      promo_coupons: orderShop.promoCodes.map((code) => ({
+      promo_codes: orderShop.promoCodes.map((code) => ({
         id: code,
         code,
       })),
@@ -305,9 +302,6 @@ function toShopOrderProductResponse(orderShop: ShopOrderSummary) {
         value: selection.value,
       })),
     },
-    percent_coupon: product.percentCouponPercent
-      ? { percent_off: product.percentCouponPercent }
-      : null,
     ...(product.myReview ? { my_review: toMyReviewResponse(product.myReview) } : {}),
   }));
 }
@@ -419,7 +413,7 @@ export function toShopOrderSummaryResponse(orderShop: ShopOrderSummary) {
     payment: toPaymentResponse(orderShop),
     status: orderShop.status,
     products: toShopOrderProductResponse(orderShop),
-    promo_coupons: orderShop.promoCodes.map((code) => ({
+    promo_codes: orderShop.promoCodes.map((code) => ({
       id: code,
       code,
     })),
@@ -510,9 +504,6 @@ export function toShopOrderDetailResponse(order: ShopOrderDetail) {
             value: selection.value,
           })),
         },
-        percent_coupon: product.percentCouponPercent
-          ? { percent_off: product.percentCouponPercent }
-          : null,
       })),
       shipping_address: {
         full_name: order.shippingAddress.fullName,
@@ -570,9 +561,6 @@ export function toMyOrderDetailResponse(order: MyOrderDetail) {
         inventory: {
           sku: product.sku,
         },
-        percent_coupon: product.percentCouponPercent
-          ? { percent_off: product.percentCouponPercent }
-          : null,
         id: product.id,
         title: product.title,
         image_url: product.imageUrl,
@@ -584,7 +572,7 @@ export function toMyOrderDetailResponse(order: MyOrderDetail) {
         currency: product.currency,
         ...(product.myReview ? { my_review: toMyReviewResponse(product.myReview) } : {}),
       })),
-      promo_coupons: order.promoCodes.map((code) => ({
+      promo_codes: order.promoCodes.map((code) => ({
         id: code,
         code,
       })),
@@ -647,9 +635,6 @@ export function toAdminOrderDetailResponse(order: AdminOrderDetail) {
         inventory: {
           sku: product.sku,
         },
-        percent_coupon: product.percentCouponPercent
-          ? { percent_off: product.percentCouponPercent }
-          : null,
         id: product.id,
         title: product.title,
         image_url: product.imageUrl,
@@ -659,7 +644,7 @@ export function toAdminOrderDetailResponse(order: AdminOrderDetail) {
         promo_discount_minor: product.promoDiscountMinor,
         currency: product.currency,
       })),
-      promo_coupons: order.promoCodes.map((code) => ({
+      promo_codes: order.promoCodes.map((code) => ({
         id: code,
         code,
       })),

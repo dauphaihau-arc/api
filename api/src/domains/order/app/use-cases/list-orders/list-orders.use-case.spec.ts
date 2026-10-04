@@ -61,7 +61,7 @@ function buildOrderItem(input: {
     quantity: 1,
     unitPriceMinor: 1200,
     originalAmountMinor: null,
-    percentCouponPercent: null,
+
     product: {
       id: `${input.id}-product`,
       slug: input.title.toLowerCase().replaceAll(' ', '-'),

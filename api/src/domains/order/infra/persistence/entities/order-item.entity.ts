@@ -95,10 +95,4 @@ export class OrderItemEntity extends AbstractBaseEntity {
 
   @Property({ fieldName: 'fx_source_timestamp', nullable: true })
   fxSourceTimestamp?: Date;
-
-  @Property({ fieldName: 'percent_coupon_code', length: 12, nullable: true })
-  percentCouponCode?: string;
-
-  @Property({ fieldName: 'percent_coupon_percent', nullable: true })
-  percentCouponPercent?: number;
 }

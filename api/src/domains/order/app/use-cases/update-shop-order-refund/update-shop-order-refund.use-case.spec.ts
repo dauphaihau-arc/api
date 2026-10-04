@@ -91,7 +91,7 @@ describe('UpdateShopOrderRefundUseCase', () => {
       quantity: 1,
       price: 25,
       salePrice: undefined,
-      percentCouponPercent: null,
+
     };
     const fakeEntityManager = {
       getRepository: jest.fn((entity: { name?: string }) => {

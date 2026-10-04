@@ -5,28 +5,22 @@ import { AuthModule } from '../auth/auth.module';
 import { CacheModule } from '~/integrations/cache/cache.module';
 import { IdempotencyModule } from '~/platform/idempotency/idempotency.module';
 import { QueueModule } from '~/integrations/queue/queue.module';
-import { CouponEntity } from '../coupon/infra/persistence/entities/coupon.entity';
 import { PromotionCodeEntity } from '../promotion/infra/persistence/entities/promotion-code.entity';
 import { PromotionProductEntity } from '../promotion/infra/persistence/entities/promotion-product.entity';
 import { PromotionEntity } from '../promotion/infra/persistence/entities/promotion.entity';
 import { ShopRepository } from './app/ports/shop.repository';
 import { ShopAccessService } from './app/services/shop-access.service';
-import { BulkDeleteShopCouponsUseCase } from './app/use-cases/bulk-delete-shop-coupons/bulk-delete-shop-coupons.use-case';
 import { BulkStopShopPromoCodesUseCase } from './app/use-cases/bulk-stop-shop-promo-codes/bulk-stop-shop-promo-codes.use-case';
 import { BulkStopShopSalesUseCase } from './app/use-cases/bulk-stop-shop-sales/bulk-stop-shop-sales.use-case';
-import { CreateShopCouponUseCase } from './app/use-cases/create-shop-coupon/create-shop-coupon.use-case';
 import { CreateShopPromoCodeUseCase } from './app/use-cases/create-shop-promo-code/create-shop-promo-code.use-case';
 import { CreateShopSaleUseCase } from './app/use-cases/create-shop-sale/create-shop-sale.use-case';
 import { CreateShopUseCase } from './app/use-cases/create-shop/create-shop.use-case';
-import { DeleteShopCouponUseCase } from './app/use-cases/delete-shop-coupon/delete-shop-coupon.use-case';
 import { GetMyShopUseCase } from './app/use-cases/get-my-shop/get-my-shop.use-case';
-import { ListShopCouponsUseCase } from './app/use-cases/list-shop-coupons/list-shop-coupons.use-case';
 import { ListShopPromoCodesUseCase } from './app/use-cases/list-shop-promo-codes/list-shop-promo-codes.use-case';
 import { ListShopSalesUseCase } from './app/use-cases/list-shop-sales/list-shop-sales.use-case';
 import { UpdateShopSettingsUseCase } from './app/use-cases/update-shop-settings/update-shop-settings.use-case';
 import { StopShopSaleUseCase } from './app/use-cases/stop-shop-sale/stop-shop-sale.use-case';
 import { StopShopPromoCodeUseCase } from './app/use-cases/stop-shop-promo-code/stop-shop-promo-code.use-case';
-import { ShopCouponsController } from './api/rest/shop-coupons.controller';
 import { ShopPromoCodesController } from './api/rest/shop-promo-codes.controller';
 import { ShopSalesController } from './api/rest/shop-sales.controller';
 import { ShopController } from './api/rest/shop.controller';
@@ -42,7 +36,6 @@ import { ShopEntity } from './infra/persistence/entities/shop.entity';
     QueueModule,
     MikroOrmModule.forFeature([
       ShopEntity,
-      CouponEntity,
       PromotionEntity,
       PromotionProductEntity,
       PromotionCodeEntity,
@@ -50,7 +43,6 @@ import { ShopEntity } from './infra/persistence/entities/shop.entity';
   ],
   controllers: [
     ShopController,
-    ShopCouponsController,
     ShopSalesController,
     ShopPromoCodesController,
   ],
@@ -62,10 +54,6 @@ import { ShopEntity } from './infra/persistence/entities/shop.entity';
     ShopAccessService,
     CreateShopUseCase,
     GetMyShopUseCase,
-    CreateShopCouponUseCase,
-    ListShopCouponsUseCase,
-    BulkDeleteShopCouponsUseCase,
-    DeleteShopCouponUseCase,
     CreateShopSaleUseCase,
     ListShopSalesUseCase,
     CreateShopPromoCodeUseCase,

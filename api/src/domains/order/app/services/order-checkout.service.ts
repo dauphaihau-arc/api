@@ -19,8 +19,6 @@ import { NotifyUserUseCase } from '../../../../domains/notification/app/use-case
 import type { CartSnapshot } from '../../../cart/app/cart.types';
 import { CartPricingService } from '../../../cart/app/services/cart-pricing.service';
 import { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
-import { CouponUsageEntity } from '../../../coupon/infra/persistence/entities/coupon-usage.entity';
-import { CouponEntity } from '../../../coupon/infra/persistence/entities/coupon.entity';
 import { PromotionCodeEntity } from '../../../promotion/infra/persistence/entities/promotion-code.entity';
 import { PromotionRedemptionService } from '../../../promotion/app/services/promotion-redemption.service';
 import {
@@ -70,8 +68,8 @@ import type {
   ShippingAddressInput,
   ShopAdjustmentInput,
 } from '../order.types';
-import type { ManualPromoOffer } from '../../../coupon/app/types/manual-promo-offer.mapper';
-import { couponToManualOffer, promotionCodeEntityToManualOffer } from '../../../coupon/app/types/manual-promo-offer.mapper';
+import type { PromoOffer } from '../../../promotion/app/types/promo-offer.mapper';
+import { promotionCodeEntityToPromoOffer } from '../../../promotion/app/types/promo-offer.mapper';
 import { OrderCartCleanupRepository } from '../ports/order-cart-cleanup.repository';
 import { OrderInventoryQueryRepository } from '../ports/order-inventory-query.repository';
 import { OrderShopQueryRepository } from '../ports/order-shop-query.repository';
@@ -163,7 +161,6 @@ export class OrderCheckoutService {
     const result = await this.entityManager.transactional(async (entityManager) => {
       const orderRepository = entityManager.getRepository(OrderEntity);
       const orderItemRepository = entityManager.getRepository(OrderItemEntity);
-      const usageRepository = entityManager.getRepository(CouponUsageEntity);
       const createdOrders: OrderEntity[] = [];
       const orderItemsByOrderId = new Map<string, OrderItemEntity[]>();
       let checkoutOutboxEventId: string | undefined;
@@ -401,8 +398,6 @@ export class OrderCheckoutService {
             fxSource: quoteItem?.fxSource ?? pricedItem?.fxSource,
             fxEffectiveAt: quoteItem?.fxEffectiveAt ?? pricedItem?.fxEffectiveAt,
             fxSourceTimestamp: quoteItem?.fxSourceTimestamp ?? pricedItem?.fxSourceTimestamp,
-            percentCouponCode: pricedItem?.autoSaleCoupon?.code,
-            percentCouponPercent: pricedItem?.autoSaleCoupon?.percentOff,
           });
           entityManager.persist(orderItem);
           createdOrderItems.push(orderItem);
@@ -426,45 +421,18 @@ export class OrderCheckoutService {
           });
         }
 
-        // Coupon and Promotion usage are preserved for both the quoted and the
+        // Promotion usage is preserved for both the quoted and the
         // directly-priced path: every accepted code records an order-scoped
-        // usage row. Promotion redemptions go through the owning domain, which
+        // redemption. Promotion redemptions go through the owning domain, which
         // locks the allowance, rejects an exhausted code inside this same
-        // transaction, and stays idempotent per order; legacy coupon usage keeps
-        // working.
+        // transaction, and stays idempotent per order.
         const appliedOffers = pricedShop
           ? pricedShop.promoOffers
           : await this.resolveAppliedOffers(entityManager, shopEntity.id, quoteShop?.promoCodes ?? []);
 
-        for (const offer of appliedOffers) {
-          if (offer.source !== 'coupon') {
-            continue;
-          }
-
-          const coupon = await entityManager.getRepository(CouponEntity).findOne({
-            shop: shopEntity.id,
-            code: offer.code,
-          });
-
-          if (coupon) {
-            coupon.usesCount += 1;
-            const usage = usageRepository.create({
-              coupon,
-              ...(actor.type === 'user'
-                ? { user: entityManager.getReference(UserEntity, actor.userId) }
-                : {}),
-              orderId: order.id,
-              code: coupon.code,
-            });
-            entityManager.persist(usage);
-          }
-        }
-
         await this.promotionRedemptionService.consumeForOrder(entityManager, {
           shopId: shopEntity.id,
-          codes: appliedOffers
-            .filter((offer) => offer.source === 'promotion')
-            .map((offer) => offer.code),
+          codes: appliedOffers.map((offer) => offer.code),
           orderId: order.id,
           ...(actor.type === 'user' ? { userId: actor.userId } : {}),
         });
@@ -751,36 +719,18 @@ export class OrderCheckoutService {
     entityManager: EntityManager,
     shopId: string,
     promoCodes: string[],
-  ): Promise<ManualPromoOffer[]> {
+  ): Promise<PromoOffer[]> {
     if (promoCodes.length === 0) {
       return [];
     }
 
     const codes = [...new Set(promoCodes.map((code) => code.trim().toUpperCase()))];
-    const [coupons, promotionCodes] = await Promise.all([
-      entityManager.getRepository(CouponEntity).find({
-        shop: shopId,
-        code: { $in: codes },
-      }),
-      entityManager.getRepository(PromotionCodeEntity).find(
-        { shopId, code: { $in: codes } },
-        { populate: ['promotion', 'promotion.products'] },
-      ),
-    ]);
+    const promotionCodes = await entityManager.getRepository(PromotionCodeEntity).find(
+      { shopId, code: { $in: codes } },
+      { populate: ['promotion', 'promotion.products'] },
+    );
 
-    // One code resolves to exactly one offer, matching how pricing builds its
-    // per-code lookup: a Promotion-backed code wins over a legacy Coupon
-    // carrying the same normalized code, so a collision can neither apply nor
-    // redeem both offers.
-    const promotionOffers = promotionCodes.map(promotionCodeEntityToManualOffer);
-    const promotionCodesByCode = new Set(promotionOffers.map((offer) => offer.code));
-
-    return [
-      ...promotionOffers,
-      ...coupons
-        .filter((coupon) => !promotionCodesByCode.has(coupon.code))
-        .map(couponToManualOffer),
-    ];
+    return promotionCodes.map(promotionCodeEntityToPromoOffer);
   }
 
   private async loadInventoryById(

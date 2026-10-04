@@ -1,14 +1,9 @@
 import {
-  BadRequestException,
   ConflictException,
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
 import {
-  CouponCodeAlreadyExistsError,
-  CouponNotFoundError,
-  CouponUsageLimitsInvalidError,
-  InvalidCouponWindowError,
   ShopAccessDeniedError,
   ShopNameAlreadyTakenError,
   ShopNotFoundError,
@@ -18,16 +13,8 @@ import { isShopAppError, mapShopAppErrorToHttpException } from './shop-http-erro
 describe('mapShopAppErrorToHttpException', () => {
   it.each([
     [new ShopNotFoundError(), NotFoundException, 'Shop not found'],
-    [new CouponNotFoundError(), NotFoundException, 'Coupon not found'],
     [new ShopAccessDeniedError(), ForbiddenException, 'You do not own this shop'],
     [new ShopNameAlreadyTakenError(), ConflictException, 'Shop name is already taken'],
-    [new CouponCodeAlreadyExistsError(), BadRequestException, 'Coupon code already exists'],
-    [new InvalidCouponWindowError(), BadRequestException, 'endDate must be after startDate'],
-    [
-      new CouponUsageLimitsInvalidError(),
-      BadRequestException,
-      'maxUsesPerUser must be less than or equal to maxUses',
-    ],
   ])('maps the shop application error to its HTTP response', (error, ExceptionClass, message) => {
     const exception = mapShopAppErrorToHttpException(error);
 

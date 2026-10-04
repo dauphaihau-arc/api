@@ -4,8 +4,6 @@ import type { JobDispatcher } from '~/integrations/queue/app/ports/job-dispatche
 import type { CheckoutStockReservationPort } from '../../../checkout/app/ports/checkout-stock-reservation.port';
 import type { FulfillmentService } from '../../../fulfillment/app/services/fulfillment.service';
 import { OrderStatus } from '../../domain/enums/order-status.enum';
-import { CouponUsageEntity } from '../../../coupon/infra/persistence/entities/coupon-usage.entity';
-import { OrderItemEntity } from '../../infra/persistence/entities/order-item.entity';
 import type { OrderCartCleanupRepository } from '../ports/order-cart-cleanup.repository';
 import type { OrderCheckoutSessionRepository } from '../ports/order-checkout-session.repository';
 import type { OrderEventsService } from './order-events.service';
@@ -182,16 +180,10 @@ function buildService() {
   const orderItemRepository = {
     find: jest.fn().mockResolvedValue([orderItem]),
   };
-  const couponUsageRepository = {
-    find: jest.fn().mockResolvedValue([]),
-  };
   const fakeEntityManager = {
-    getRepository: jest.fn((entity: unknown) => {
-      if (entity === OrderItemEntity) {
+    getRepository: jest.fn((entity: { name?: string }) => {
+      if (entity?.name === 'OrderItemEntity') {
         return orderItemRepository;
-      }
-      if (entity === CouponUsageEntity) {
-        return couponUsageRepository;
       }
       throw new Error('Unexpected repository');
     }),

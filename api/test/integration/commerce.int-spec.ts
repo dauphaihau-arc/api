@@ -751,74 +751,78 @@ describe('Commerce flow (integration)', () => {
     expect(updatedCartResponse.body.cart.shop_groups[0].items[0].quantity)
       .toBe(3);
 
-    const couponWindow = {
-      start_date: '2026-01-01T00:00:00.000Z',
-      end_date: '2027-01-01T00:00:00.000Z',
-      max_uses: 100,
-      max_uses_per_user: 3,
+    const promoWindow = {
+      start_local: '2026-01-01T00:00',
+      end_local: '2027-01-01T00:00',
+      timezone: 'UTC',
+      max_redemptions: 100,
+      max_redemptions_per_buyer: 3,
     };
 
-    const couponBase = {
-      applies_to: 'all',
+    const promoBase = {
+      product_scope: 'all',
       min_order_type: 'none',
-      ...couponWindow,
+      ...promoWindow,
     };
 
-    const publicCouponResponse = await agent
-      .post(`${API_PREFIX}/shops/${shopBody.id}/coupons`)
+    const publicPromoResponse = await agent
+      .post(`${API_PREFIX}/shops/${shopBody.id}/promo-codes`)
       .send({
+        name: 'Save 10',
         code: 'SAVE10',
-        type: 'percentage',
+        benefit_type: 'percentage',
         percent_off: 10,
         visibility: 'public',
-        ...couponBase,
+        ...promoBase,
       })
       .expect(201);
-    expect(publicCouponResponse.body.coupon.visibility).toBe('public');
+    expect(publicPromoResponse.body.promo_code.visibility).toBe('public');
 
-    const shippingCouponResponse = await agent
-      .post(`${API_PREFIX}/shops/${shopBody.id}/coupons`)
+    const shippingPromoResponse = await agent
+      .post(`${API_PREFIX}/shops/${shopBody.id}/promo-codes`)
       .send({
+        name: 'Free shipping',
         code: 'FREESHIP',
-        type: 'free_ship',
+        benefit_type: 'free_shipping',
         visibility: 'public',
-        ...couponBase,
+        ...promoBase,
       })
       .expect(201);
-    expect(shippingCouponResponse.body.coupon.visibility).toBe('public');
+    expect(shippingPromoResponse.body.promo_code.visibility).toBe('public');
 
-    const codeOnlyCouponResponse = await agent
-      .post(`${API_PREFIX}/shops/${shopBody.id}/coupons`)
+    const codeOnlyPromoResponse = await agent
+      .post(`${API_PREFIX}/shops/${shopBody.id}/promo-codes`)
       .send({
+        name: 'Hidden 5',
         code: 'HIDDEN5',
-        type: 'fixed_amount',
+        benefit_type: 'fixed_amount',
         amount_off: 5,
-        ...couponBase,
+        ...promoBase,
       })
       .expect(201);
-    expect(codeOnlyCouponResponse.body.coupon.visibility).toBe('code_only');
+    expect(codeOnlyPromoResponse.body.promo_code.visibility).toBe('code_only');
 
-    const listCouponsResponse = await agent
-      .get(`${API_PREFIX}/cart/coupons`)
+    const listPromoResponse = await agent
+      .get(`${API_PREFIX}/cart/promo-codes`)
       .query({ shop_id: shopBody.id })
       .expect(200);
 
-    const listedCodes = (listCouponsResponse.body.coupons as Array<{ code: string }>)
-      .map((coupon) => coupon.code)
+    const listedCodes = (listPromoResponse.body.promo_codes as Array<{ code: string }>)
+      .map((promoCode) => promoCode.code)
       .sort();
     expect(listedCodes).toEqual(['FREESHIP', 'SAVE10']);
-    expect(listCouponsResponse.body.coupons).toContainEqual(
+    expect(listPromoResponse.body.promo_codes).toContainEqual(
       expect.objectContaining({
         code: 'SAVE10',
-        type: 'percentage',
-        applies_to: 'all',
+        benefit_type: 'percentage',
+        product_scope: 'all',
         percent_off: 10,
         currency: 'USD',
       }),
     );
 
     const codeOnlyApplyResponse = await agent
-      .post(`${API_PREFIX}/cart/coupons/apply`)
+      .post(`${API_PREFIX}/cart/promo-codes/apply`)
       .send({
         shop_id: shopBody.id,
         code: 'HIDDEN5',
@@ -828,11 +832,11 @@ describe('Commerce flow (integration)', () => {
 
     expect(codeOnlyApplyResponse.body).toEqual({
       promo_codes: ['HIDDEN5'],
-      applied_coupons: [{ code: 'HIDDEN5', type: 'fixed_amount' }],
+      applied_promo_codes: [{ code: 'HIDDEN5', benefit_type: 'fixed_amount' }],
     });
 
     await agent
-      .post(`${API_PREFIX}/cart/coupons/apply`)
+      .post(`${API_PREFIX}/cart/promo-codes/apply`)
       .send({
         shop_id: shopBody.id,
         code: 'FREESHIP',
@@ -841,7 +845,7 @@ describe('Commerce flow (integration)', () => {
       .expect(422);
 
     const stackedApplyResponse = await agent
-      .post(`${API_PREFIX}/cart/coupons/apply`)
+      .post(`${API_PREFIX}/cart/promo-codes/apply`)
       .send({
         shop_id: shopBody.id,
         code: 'FREESHIP',
@@ -851,9 +855,9 @@ describe('Commerce flow (integration)', () => {
 
     expect(stackedApplyResponse.body).toEqual({
       promo_codes: ['SAVE10', 'FREESHIP'],
-      applied_coupons: [
-        { code: 'SAVE10', type: 'percentage' },
-        { code: 'FREESHIP', type: 'free_ship' },
+      applied_promo_codes: [
+        { code: 'SAVE10', benefit_type: 'percentage' },
+        { code: 'FREESHIP', benefit_type: 'free_shipping' },
       ],
     });
 
@@ -909,8 +913,8 @@ describe('Commerce flow (integration)', () => {
     });
   });
 
-  it('resolves coupon money in the shop currency against a VND checkout currency', async () => {
-    const email = `coupon-fx-${Date.now()}@example.com`;
+  it('resolves Promo Code money in the Promotion Currency against a VND checkout currency', async () => {
+    const email = `promo-code-fx-${Date.now()}@example.com`;
     const agent = request.agent(app.getHttpServer());
 
     const registerResponse = await agent
@@ -920,14 +924,14 @@ describe('Commerce flow (integration)', () => {
       .send({
         email,
         password: VALID_TEST_PASSWORD,
-        displayName: 'Coupon Fx Buyer',
+        displayName: 'Promo Code Fx Buyer',
       })
       .expect(201);
     const registerBody = registerResponse.body as unknown as AuthUserResponse;
     await grantSellerRole(registerBody.user.id);
 
-    // The shop's currency is the Coupon's canonical currency; the buyer's cart
-    // is priced in VND, so every Coupon amount below must be converted before it
+    // The Promotion Currency is the shop's currency; the buyer's cart
+    // is priced in VND, so every Promo Code amount below must be converted before it
     // is compared with or subtracted from VND money.
     const shopResponse = await agent
       .post(`${API_PREFIX}/shops`)
@@ -981,7 +985,7 @@ describe('Commerce flow (integration)', () => {
 
     expect(fxInventoryId).toEqual(expect.any(String));
 
-    // 500,000 VND is about 20 USD, far below every coupon minimum below.
+    // 500,000 VND is about 20 USD, far below every Promo Code minimum below.
     await seedPublishableInventory(sql, {
       shopId: fxShopBody.id,
       inventoryId: fxInventoryId,
@@ -1003,61 +1007,65 @@ describe('Commerce flow (integration)', () => {
       .send({ inventory_id: fxInventoryId, quantity: 1 })
       .expect(201);
 
-    const couponWindow = {
-      start_date: '2026-01-01T00:00:00.000Z',
-      end_date: '2027-01-01T00:00:00.000Z',
-      max_uses: 100,
-      max_uses_per_user: 3,
-      applies_to: 'all',
+    const promoWindow = {
+      start_local: '2026-01-01T00:00',
+      end_local: '2027-01-01T00:00',
+      timezone: 'UTC',
+      max_redemptions: 100,
+      max_redemptions_per_buyer: 3,
+      product_scope: 'all',
     };
 
     // 120 USD is about 2,976,360 VND. A raw comparison would wrongly accept it
-    // for a 500,000 VND cart, so this Coupon must not be offered at all.
+    // for a 500,000 VND cart, so this Promo Code must not be offered at all.
     await agent
-      .post(`${API_PREFIX}/shops/${fxShopBody.id}/coupons`)
+      .post(`${API_PREFIX}/shops/${fxShopBody.id}/promo-codes`)
       .send({
+        name: 'Min 120 USD',
         code: 'MIN120USD',
-        type: 'percentage',
+        benefit_type: 'percentage',
         percent_off: 15,
         visibility: 'public',
         min_order_type: 'order_total',
         min_order_value: 120,
-        ...couponWindow,
+        ...promoWindow,
       })
       .expect(201);
 
     await agent
-      .post(`${API_PREFIX}/shops/${fxShopBody.id}/coupons`)
+      .post(`${API_PREFIX}/shops/${fxShopBody.id}/promo-codes`)
       .send({
+        name: 'Min 10 USD',
         code: 'MIN10USD',
-        type: 'percentage',
+        benefit_type: 'percentage',
         percent_off: 10,
         visibility: 'public',
         min_order_type: 'order_total',
         min_order_value: 10,
-        ...couponWindow,
+        ...promoWindow,
       })
       .expect(201);
 
     await agent
-      .post(`${API_PREFIX}/shops/${fxShopBody.id}/coupons`)
+      .post(`${API_PREFIX}/shops/${fxShopBody.id}/promo-codes`)
       .send({
+        name: 'Save 12 USD',
         code: 'SAVE12USD',
-        type: 'fixed_amount',
+        benefit_type: 'fixed_amount',
         amount_off: 12,
         visibility: 'public',
         min_order_type: 'none',
-        ...couponWindow,
+        ...promoWindow,
       })
       .expect(201);
 
-    const listCouponsResponse = await agent
-      .get(`${API_PREFIX}/cart/coupons`)
+    const listPromoResponse = await agent
+      .get(`${API_PREFIX}/cart/promo-codes`)
       .query({ shop_id: fxShopBody.id })
       .expect(200);
 
-    const listCouponsPayload = listCouponsResponse.body as {
-      coupons: Array<{
+    const listPromoPayload = listPromoResponse.body as {
+      promo_codes: Array<{
         code: string;
         amount_off: number;
         min_order_value: number;
@@ -1066,30 +1074,30 @@ describe('Commerce flow (integration)', () => {
         ineligible_reason: string | null;
       }>;
     };
-    const listedCoupons = listCouponsPayload.coupons;
+    const listedPromoCodes = listPromoPayload.promo_codes;
 
     // MIN120USD is discoverable but unaffordable for this cart: it is listed
-    // after the eligible Coupons, flagged with the rule it fails.
-    expect(listedCoupons.map((coupon) => coupon.code))
+    // after the eligible Promo Codes, flagged with the rule it fails.
+    expect(listedPromoCodes.map((promoCode) => promoCode.code))
       .toEqual(['MIN10USD', 'SAVE12USD', 'MIN120USD']);
 
     // The offered amounts are the converted VND values the redemption path
     // enforces, labelled with the VND checkout currency.
-    expect(listedCoupons).toContainEqual(expect.objectContaining({
+    expect(listedPromoCodes).toContainEqual(expect.objectContaining({
       code: 'MIN10USD',
       min_order_value: 248_030,
       currency: 'VND',
       is_eligible: true,
       ineligible_reason: null,
     }));
-    expect(listedCoupons).toContainEqual(expect.objectContaining({
+    expect(listedPromoCodes).toContainEqual(expect.objectContaining({
       code: 'SAVE12USD',
       amount_off: 297_636,
       currency: 'VND',
       is_eligible: true,
       ineligible_reason: null,
     }));
-    expect(listedCoupons).toContainEqual(expect.objectContaining({
+    expect(listedPromoCodes).toContainEqual(expect.objectContaining({
       code: 'MIN120USD',
       min_order_value: 2_976_360,
       currency: 'VND',
@@ -1097,10 +1105,10 @@ describe('Commerce flow (integration)', () => {
       ineligible_reason: 'min_order_value',
     }));
 
-    // Redemption re-checks the converted minimum, so the unaffordable Coupon is
-    // rejected rather than applied at its USD face value.
+    // Redemption re-checks the converted minimum, so the unaffordable Promo
+    // Code is rejected rather than applied at its USD face value.
     await agent
-      .post(`${API_PREFIX}/cart/coupons/apply`)
+      .post(`${API_PREFIX}/cart/promo-codes/apply`)
       .send({ shop_id: fxShopBody.id, code: 'MIN120USD', promo_codes: [] })
       .expect(422);
 
