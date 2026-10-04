@@ -105,6 +105,7 @@ export class CouponPricingService {
         checkoutCurrency: input.checkoutCurrency,
         shippingShop: input.shippingShops?.find((entry) => entry.shopId === shopId),
         validatePromoCodes: input.validatePromoCodes === true,
+        authenticatedUserId: input.userId,
         rateCache,
         now,
       }));
@@ -187,6 +188,7 @@ export class CouponPricingService {
         amounts,
         checkoutCurrency: input.checkoutCurrency,
         now,
+        authenticatedUserId: input.userId,
       });
 
       // A Promotion that is not active or is globally exhausted is never
@@ -354,6 +356,7 @@ export class CouponPricingService {
     checkoutCurrency: string;
     shippingShop: CheckoutShippingShopQuote | undefined;
     validatePromoCodes: boolean;
+    authenticatedUserId?: string;
     rateCache: FxRateCache;
     now: Date;
   }): Promise<CouponPricedShop> {
@@ -419,6 +422,7 @@ export class CouponPricingService {
         checkoutCurrency,
         now,
         shippingChargeMinor: input.shippingShop?.charge.totalMinor,
+        authenticatedUserId: input.authenticatedUserId,
       });
 
       if (eligibility.outcome === 'conversion_unavailable') {
@@ -429,7 +433,7 @@ export class CouponPricingService {
         );
       }
       if (eligibility.outcome === 'ineligible') {
-        if (validatePromoCodes) throw new CouponCodeNotApplicableError(offer.code);
+        if (validatePromoCodes) throw new CouponCodeNotApplicableError(offer.code, eligibility.reason);
         continue;
       }
 

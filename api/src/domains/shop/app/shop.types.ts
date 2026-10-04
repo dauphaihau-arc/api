@@ -97,6 +97,14 @@ export interface ShopPromoCodeSummary {
   minOrderType: PromotionMinOrderType;
   minOrderValue: number;
   minPurchaseQuantity: number;
+  maxRedemptions: number | null;
+  maxRedemptionsPerBuyer: number | null;
+  redemptionCount: number;
+  /**
+   * Whether the code's allowance is spent. Kept separate from `status`:
+   * exhaustion is an allowance indicator, never a lifecycle state.
+   */
+  exhausted: boolean;
   startAt: Date;
   endAt: Date;
   timezone: string;

@@ -45,6 +45,12 @@ export function evaluateManualPromoOffer(input: {
   checkoutCurrency: string;
   now: Date;
   /**
+   * The authenticated buyer's id, when there is one. A Promo Code with a
+   * per-buyer limit can only be judged against a real account: a cart session,
+   * browser identity, or unverified email never satisfies it.
+   */
+  authenticatedUserId?: string;
+  /**
    * The owning shop's Shipping Charge in checkout minor units, when the caller
    * has already quoted shipping. A free-shipping code needs it to tell a real
    * waiver from an already-free charge; callers that have not quoted shipping
@@ -54,6 +60,7 @@ export function evaluateManualPromoOffer(input: {
 }): CouponEligibility {
   const {
     offer, items, userUsageCount, amounts, checkoutCurrency, now, shippingChargeMinor,
+    authenticatedUserId,
   } = input;
 
   if (!isManualPromoOfferActive(offer, now)) {
@@ -72,6 +79,14 @@ export function evaluateManualPromoOffer(input: {
   const userLimitOk = userUsageCount < maxUsesPerUser;
   const eligibleItems = items.filter((item) => manualPromoOfferAppliesToProduct(offer, item.productId));
   const scopeOk = eligibleItems.length > 0;
+
+  // A per-buyer Promo Code limit is a buyer-specific condition that only an
+  // authenticated account can satisfy. This is evaluated with the other
+  // buyer-specific reasons, ahead of conversion, so a signed-out buyer is told
+  // to sign in rather than that the money could not be converted.
+  if (offer.source === 'promotion' && offer.maxUsesPerUser != null && !authenticatedUserId) {
+    return { outcome: 'ineligible', reason: CouponIneligibleReason.AUTHENTICATION_REQUIRED };
+  }
 
   if (!amounts) {
     if (userLimitOk && scopeOk) {

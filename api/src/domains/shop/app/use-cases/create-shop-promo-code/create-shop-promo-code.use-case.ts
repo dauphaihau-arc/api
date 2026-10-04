@@ -120,8 +120,8 @@ export class CreateShopPromoCodeUseCase {
       minOrderType: benefit.minOrderType,
       minOrderValue: benefit.minOrderValue,
       minPurchaseQuantity: benefit.minPurchaseQuantity,
-      maxRedemptions: null,
-      maxRedemptionsPerBuyer: null,
+      maxRedemptions: body.max_redemptions ?? null,
+      maxRedemptionsPerBuyer: body.max_redemptions_per_buyer ?? null,
       startAt,
       endAt,
       timezone: body.timezone,
@@ -141,7 +141,7 @@ export class CreateShopPromoCodeUseCase {
 
     await entityManager.persist([promotion, code, ...targets]).flush();
 
-    return toShopPromoCodeSummary(promotion, code.code, productIds, now);
+    return toShopPromoCodeSummary(promotion, code.code, productIds, now, 0);
   }
 
   /**

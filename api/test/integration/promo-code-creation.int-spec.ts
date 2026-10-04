@@ -56,6 +56,10 @@ type ShopPromoCodeResponse = {
   end_at: string;
   timezone: string;
   status: string;
+  max_redemptions: number | null;
+  max_redemptions_per_buyer: number | null;
+  redemption_count: number;
+  exhausted: boolean;
   cancelled_at?: string | null;
   ended_at?: string | null;
   created_at: string;
@@ -364,6 +368,65 @@ describe('Shop promo code creation (integration)', () => {
 
     // Untargeted product is not in scope.
     expect(listed[0].product_ids).not.toContain(untargeted.productId);
+  });
+
+  it('creates a promo code with redemption limits and lists its allowance', async () => {
+    const seller = await registerSeller('promo-limits');
+
+    const createResponse = await createPromoCode(seller, {
+      name: 'Limited Promo',
+      code: 'LIMITED25',
+      percent_off: 25,
+      timezone: 'UTC',
+      start_now: true,
+      end_local: utcLocalDateTime(new Date(testNow.getTime() + DAY_MS)),
+      max_redemptions: 3,
+      max_redemptions_per_buyer: 1,
+    }).expect(201);
+
+    const promoCode = createResponse.body.promo_code as ShopPromoCodeResponse;
+    expect(promoCode.max_redemptions).toBe(3);
+    expect(promoCode.max_redemptions_per_buyer).toBe(1);
+    expect(promoCode.redemption_count).toBe(0);
+    expect(promoCode.exhausted).toBe(false);
+
+    const listed = await listPromoCodes(seller);
+    expect(listed[0].max_redemptions).toBe(3);
+    expect(listed[0].max_redemptions_per_buyer).toBe(1);
+    expect(listed[0].redemption_count).toBe(0);
+    expect(listed[0].exhausted).toBe(false);
+  });
+
+  it('leaves both redemption dimensions unlimited when they are omitted', async () => {
+    const seller = await registerSeller('promo-unlimited');
+
+    await createPromoCode(seller, {
+      name: 'Unlimited Promo',
+      code: 'FREEDOM10',
+      percent_off: 10,
+      timezone: 'UTC',
+      start_now: true,
+      end_local: utcLocalDateTime(new Date(testNow.getTime() + DAY_MS)),
+    }).expect(201);
+
+    const [listed] = await listPromoCodes(seller);
+    expect(listed.max_redemptions).toBeNull();
+    expect(listed.max_redemptions_per_buyer).toBeNull();
+    expect(listed.exhausted).toBe(false);
+  });
+
+  it('rejects a non-positive redemption limit', async () => {
+    const seller = await registerSeller('promo-bad-limit');
+
+    await createPromoCode(seller, {
+      name: 'Bad Limit',
+      code: 'BADLIMIT',
+      percent_off: 10,
+      timezone: 'UTC',
+      start_now: true,
+      end_local: utcLocalDateTime(new Date(testNow.getTime() + DAY_MS)),
+      max_redemptions: 0,
+    }).expect(400);
   });
 
   it('rejects a duplicate promo code differing only in case with 409', async () => {

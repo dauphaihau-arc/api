@@ -553,6 +553,19 @@ describe('CouponPricingService', () => {
     });
   });
 
+  it('attaches the evaluator reason when an exhausted Promotion-backed code is rejected', async () => {
+    const { service } = buildService([], {}, [], new Map(), [
+      buildPromotionOffer({ code: 'MAXED10', maxRedemptions: 1, usesCount: 1 }),
+    ]);
+
+    await expect(service.applyToCart({
+      cart: buildCart(),
+      checkoutCurrency: 'USD',
+      shopAdjustments: [{ shopId: 'shop-1', promoCodes: ['MAXED10'] }],
+      validatePromoCodes: true,
+    })).rejects.toMatchObject({ reason: 'usage_limit_reached' });
+  });
+
   it('flags a Promotion-backed code scoped away from the cart with product_scope', async () => {
     const { service } = buildService([], {}, [], new Map(), [
       buildPromotionOffer({
@@ -595,6 +608,28 @@ describe('CouponPricingService', () => {
       code: 'LIMME',
       isEligible: false,
       ineligibleReason: 'user_usage_limit_reached',
+    });
+  });
+
+  it('flags a per-buyer Promotion-backed code for a signed-out buyer with authentication_required', async () => {
+    const { service } = buildService([], {}, [], new Map(), [
+      buildPromotionOffer({
+        code: 'LIMGUEST',
+        promotionId: 'promotion-LIMGUEST',
+        maxRedemptionsPerBuyer: 1,
+      }),
+    ]);
+
+    const codes = await service.listDiscoverableCoupons({
+      cart: buildCart(),
+      shopId: 'shop-1',
+      checkoutCurrency: 'USD',
+    });
+
+    expect(codes[0]).toMatchObject({
+      code: 'LIMGUEST',
+      isEligible: false,
+      ineligibleReason: 'authentication_required',
     });
   });
 

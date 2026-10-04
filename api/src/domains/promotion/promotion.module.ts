@@ -3,6 +3,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { PromotionCodeReader } from './app/ports/promotion-code.reader';
 import { SaleProjectionReader } from './app/ports/sale-projection.reader';
+import { PromotionRedemptionService } from './app/services/promotion-redemption.service';
 import { PromotionCodeEntity } from './infra/persistence/entities/promotion-code.entity';
 import { PromotionProductEntity } from './infra/persistence/entities/promotion-product.entity';
 import { PromotionUsageEntity } from './infra/persistence/entities/promotion-usage.entity';
@@ -21,6 +22,7 @@ import { MikroOrmSaleProjectionReader } from './infra/persistence/repositories/m
     ]),
   ],
   providers: [
+    PromotionRedemptionService,
     MikroOrmSaleProjectionReader,
     {
       provide: SaleProjectionReader,
@@ -32,6 +34,6 @@ import { MikroOrmSaleProjectionReader } from './infra/persistence/repositories/m
       useExisting: MikroOrmPromotionCodeReader,
     },
   ],
-  exports: [SaleProjectionReader, PromotionCodeReader],
+  exports: [SaleProjectionReader, PromotionCodeReader, PromotionRedemptionService],
 })
 export class PromotionModule {}

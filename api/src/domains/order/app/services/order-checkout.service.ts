@@ -21,8 +21,12 @@ import { CartPricingService } from '../../../cart/app/services/cart-pricing.serv
 import { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
 import { CouponUsageEntity } from '../../../coupon/infra/persistence/entities/coupon-usage.entity';
 import { CouponEntity } from '../../../coupon/infra/persistence/entities/coupon.entity';
-import { PromotionUsageEntity } from '../../../promotion/infra/persistence/entities/promotion-usage.entity';
 import { PromotionCodeEntity } from '../../../promotion/infra/persistence/entities/promotion-code.entity';
+import { PromotionRedemptionService } from '../../../promotion/app/services/promotion-redemption.service';
+import {
+  PromotionRedemptionLimitReachedError,
+  PromotionRedemptionRequiresAuthenticatedBuyerError,
+} from '../../../promotion/domain/promotion-redemption';
 import { ProductEntity } from '../../../product/infra/persistence/mikro-orm/entities/product.entity';
 import { ProductInventoryEntity } from '../../../product/infra/persistence/mikro-orm/entities/product-inventory.entity';
 import { OrderEventActorType } from '../../domain/enums/order-event-actor-type.enum';
@@ -44,7 +48,10 @@ import {
   CheckoutQuoteReservationUnavailableError,
   CheckoutShippingUnavailableError,
 } from '../errors/order-app.error';
-import { resolveRefreshedCheckoutTotals } from '../../../checkout/app/services/checkout-quote-price-freshness';
+import {
+  buildRefreshedCheckoutTotals,
+  resolveRefreshedCheckoutTotals,
+} from '../../../checkout/app/services/checkout-quote-price-freshness';
 import {
   toPersistedOrderShippingSnapshot,
 } from '../../../checkout/app/checkout-shipping-snapshot.contract';
@@ -91,6 +98,7 @@ export class OrderCheckoutService {
     private readonly orderInventoryQueryRepository: OrderInventoryQueryRepository,
     private readonly orderShopQueryRepository: OrderShopQueryRepository,
     private readonly purchaseEligibilityService: PurchaseEligibilityService,
+    private readonly promotionRedemptionService: PromotionRedemptionService,
     private readonly fulfillmentService: FulfillmentService,
     private readonly shippingQuoteService: ShippingQuoteService,
   ) {}
@@ -156,7 +164,6 @@ export class OrderCheckoutService {
       const orderRepository = entityManager.getRepository(OrderEntity);
       const orderItemRepository = entityManager.getRepository(OrderItemEntity);
       const usageRepository = entityManager.getRepository(CouponUsageEntity);
-      const promotionUsageRepository = entityManager.getRepository(PromotionUsageEntity);
       const createdOrders: OrderEntity[] = [];
       const orderItemsByOrderId = new Map<string, OrderItemEntity[]>();
       let checkoutOutboxEventId: string | undefined;
@@ -420,51 +427,46 @@ export class OrderCheckoutService {
 
         // Coupon and Promotion usage are preserved for both the quoted and the
         // directly-priced path: every accepted code records an order-scoped
-        // usage row. Promotion redemptions are idempotent by the unique
-        // (promotion, order) constraint; legacy coupon usage keeps working.
+        // usage row. Promotion redemptions go through the owning domain, which
+        // locks the allowance, rejects an exhausted code inside this same
+        // transaction, and stays idempotent per order; legacy coupon usage keeps
+        // working.
         const appliedOffers = pricedShop
           ? pricedShop.promoOffers
           : await this.resolveAppliedOffers(entityManager, shopEntity.id, quoteShop?.promoCodes ?? []);
 
         for (const offer of appliedOffers) {
-          if (offer.source === 'coupon') {
-            const coupon = await entityManager.getRepository(CouponEntity).findOne({
-              shop: shopEntity.id,
-              code: offer.code,
-            });
-
-            if (coupon) {
-              coupon.usesCount += 1;
-              const usage = usageRepository.create({
-                coupon,
-                ...(actor.type === 'user'
-                  ? { user: entityManager.getReference(UserEntity, actor.userId) }
-                  : {}),
-                orderId: order.id,
-                code: coupon.code,
-              });
-              entityManager.persist(usage);
-            }
+          if (offer.source !== 'coupon') {
+            continue;
           }
-          else {
-            const promotionCode = await entityManager.getRepository(PromotionCodeEntity).findOne(
-              { shopId: shopEntity.id, code: offer.code },
-              { populate: ['promotion'] },
-            );
 
-            if (promotionCode) {
-              const usage = promotionUsageRepository.create({
-                promotion: promotionCode.promotion,
-                ...(actor.type === 'user'
-                  ? { userId: actor.userId }
-                  : {}),
-                orderId: order.id,
-                code: promotionCode.code,
-              });
-              entityManager.persist(usage);
-            }
+          const coupon = await entityManager.getRepository(CouponEntity).findOne({
+            shop: shopEntity.id,
+            code: offer.code,
+          });
+
+          if (coupon) {
+            coupon.usesCount += 1;
+            const usage = usageRepository.create({
+              coupon,
+              ...(actor.type === 'user'
+                ? { user: entityManager.getReference(UserEntity, actor.userId) }
+                : {}),
+              orderId: order.id,
+              code: coupon.code,
+            });
+            entityManager.persist(usage);
           }
         }
+
+        await this.promotionRedemptionService.consumeForOrder(entityManager, {
+          shopId: shopEntity.id,
+          codes: appliedOffers
+            .filter((offer) => offer.source === 'promotion')
+            .map((offer) => offer.code),
+          orderId: order.id,
+          ...(actor.type === 'user' ? { userId: actor.userId } : {}),
+        });
 
         orderItemsByOrderId.set(order.id, createdOrderItems);
         createdOrders.push(order);
@@ -567,7 +569,14 @@ export class OrderCheckoutService {
           ownerUserId: getSellerOrderNotificationRecipientId(order),
         })),
       };
-    });
+    })
+      .catch(async (error: unknown) => this.remapRedemptionFailure(error, {
+        quote,
+        cart,
+        userId: actor.type === 'user' ? actor.userId : undefined,
+        shippingAddress: input.shippingAddress,
+        shopAdjustments: input.shopAdjustments,
+      }));
 
     const checkoutSession = result.checkoutOutboxEventId
       ? await this.tryProcessCheckoutSessionRequest(result.checkoutOutboxEventId)
@@ -588,6 +597,46 @@ export class OrderCheckoutService {
       checkoutSessionUrl: checkoutSession?.url,
       orderShops: result.orderShops,
     };
+  }
+
+  /**
+   * A redemption-limit failure discovered inside the commit transaction means
+   * the accepted quote can no longer be honoured: the code that priced it is
+   * exhausted or no longer available to this buyer. The order rolls back, the
+   * cart is re-priced without the failed code, and the buyer receives the
+   * refreshed totals to accept before retrying.
+   */
+  private async remapRedemptionFailure(
+    error: unknown,
+    context: {
+      quote?: LoadedCheckoutQuote;
+      cart: CartSnapshot;
+      userId?: string;
+      shippingAddress: ShippingAddressInput;
+      shopAdjustments?: ShopAdjustmentInput[];
+    },
+  ): Promise<never> {
+    if (
+      !(error instanceof PromotionRedemptionLimitReachedError)
+      && !(error instanceof PromotionRedemptionRequiresAuthenticatedBuyerError)
+    ) {
+      throw error;
+    }
+
+    if (!context.quote) {
+      throw error;
+    }
+
+    const refreshedSummary = await this.cartPricingService.buildPricedCartSummary({
+      userId: context.userId,
+      cart: context.cart,
+      shippingAddress: context.shippingAddress,
+      shopAdjustments: context.shopAdjustments,
+    });
+
+    throw new CheckoutQuotePricesChangedError(
+      buildRefreshedCheckoutTotals(context.quote, refreshedSummary),
+    );
   }
 
   private async tryProcessCheckoutSessionRequest(

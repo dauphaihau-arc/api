@@ -4,6 +4,7 @@ import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import { PromotionApplicationKind } from '~/domains/promotion/domain/enums/promotion-application-kind.enum';
 import { PromotionCodeEntity } from '~/domains/promotion/infra/persistence/entities/promotion-code.entity';
 import { PromotionEntity } from '~/domains/promotion/infra/persistence/entities/promotion.entity';
+import { PromotionUsageEntity } from '~/domains/promotion/infra/persistence/entities/promotion-usage.entity';
 import { Clock } from '~/platform/time/clock';
 import { ShopEntity } from '../../../infra/persistence/entities/shop.entity';
 import { ShopAccessDeniedError, ShopNotFoundError } from '../../errors/shop-app.error';
@@ -64,6 +65,21 @@ export class ListShopPromoCodesUseCase {
       codeByPromotionId.set(code.promotion.id, code);
     }
 
+    const usages = promotionIds.length > 0
+      ? await entityManager.getRepository(PromotionUsageEntity).find({
+        promotion: { $in: promotionIds },
+      })
+      : [];
+    const redemptionCountByPromotionId = new Map<string, number>();
+
+    for (const usage of usages) {
+      const promotionId = usage.promotion.id;
+      redemptionCountByPromotionId.set(
+        promotionId,
+        (redemptionCountByPromotionId.get(promotionId) ?? 0) + 1,
+      );
+    }
+
     const now = this.clock.now();
 
     return {
@@ -76,6 +92,7 @@ export class ListShopPromoCodesUseCase {
           code?.code ?? '',
           productIds,
           now,
+          redemptionCountByPromotionId.get(promotion.id) ?? 0,
         );
       }),
       page: query.page,

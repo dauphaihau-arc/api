@@ -12,6 +12,7 @@ export function toShopPromoCodeSummary(
   code: string,
   productIds: string[],
   now: Date,
+  redemptionCount: number,
 ): ShopPromoCodeSummary {
   return {
     id: promotion.id,
@@ -28,6 +29,10 @@ export function toShopPromoCodeSummary(
     minOrderType: promotion.minOrderType ?? PromotionMinOrderType.NONE,
     minOrderValue: promotion.minOrderValue == null ? 0 : Number(promotion.minOrderValue),
     minPurchaseQuantity: promotion.minPurchaseQuantity ?? 0,
+    maxRedemptions: promotion.maxRedemptions ?? null,
+    maxRedemptionsPerBuyer: promotion.maxRedemptionsPerBuyer ?? null,
+    redemptionCount,
+    exhausted: promotion.maxRedemptions != null && redemptionCount >= promotion.maxRedemptions,
     startAt: promotion.startAt,
     endAt: promotion.endAt,
     timezone: promotion.timezone,

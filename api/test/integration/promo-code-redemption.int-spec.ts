@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { setTimeout as delay } from 'node:timers/promises';
 import { mkdtemp, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -837,6 +838,287 @@ describe('Promo code redemption (integration)', () => {
       [promo.id],
     );
     expect(Number(usages.rows[0].count)).toBe(1);
+  });
+
+  it('serializes concurrent commitments so a total limit is never oversubscribed', async () => {
+    const seller = await registerSeller('promo-concurrent');
+    const profile = await createActiveProfile(seller);
+    const product = await createPublishedProduct({
+      seller,
+      shippingProfileId: profile,
+      title: 'Race Mug',
+      sku: 'RACE-MUG-1',
+      amountMinor: 10_000,
+    });
+
+    const promo = await createPromoCode(seller, {
+      name: 'Last One',
+      code: 'LASTONE',
+      percent_off: 10,
+      visibility: 'code_only',
+      product_scope: 'all',
+      max_redemptions: 1,
+      ...activeWindow(),
+    });
+
+    const buyerA = await registerBuyer('promo-race-a');
+    const buyerB = await registerBuyer('promo-race-b');
+    const quoteIds: string[] = [];
+
+    for (const buyer of [buyerA, buyerB]) {
+      await addCartItem(buyer, product.inventoryId, 1);
+      const applied = await applyPromoCode(buyer, seller.shopId, 'LASTONE');
+      const quote = await createQuote(buyer, [{
+        shop_id: seller.shopId,
+        promo_codes: applied.promo_codes,
+      }]);
+      quoteIds.push(quote.quote_id);
+    }
+
+    // Hold the Promotion row so both commitments pass their pre-commit recheck,
+    // enter their transaction, and block on the same allowance lock. Releasing
+    // it serializes them: one consumes the single allowance, the other must
+    // observe it and roll back without creating an Order.
+    const barrier = new Client({
+      host: testDb.rootConfig.host,
+      port: testDb.rootConfig.port,
+      user: testDb.rootConfig.user,
+      password: testDb.rootConfig.password,
+      database: testDb.dbName,
+    });
+    await barrier.connect();
+    await barrier.query('begin');
+    await barrier.query(
+      'select "id" from "promotions" where "id" = $1 for update',
+      [promo.id],
+    );
+
+    const pending = [
+      submitCashOrder(buyerA, quoteIds[0]),
+      submitCashOrder(buyerB, quoteIds[1]),
+    ];
+
+    await delay(500);
+
+    await barrier.query('commit');
+    await barrier.end();
+
+    const responses = await Promise.all(pending);
+    expect(responses.map((response) => response.status).sort()).toEqual([201, 409]);
+
+    const rejected = responses.find((response) => response.status === 409)!;
+    expect(rejected.body.code).toBe('CHECKOUT_QUOTE_PRICES_CHANGED');
+    expect(rejected.body.refreshed_totals.discount_minor).toBe(0);
+
+    const usages = await sql.query(
+      'select count(*) as count from "promotion_usages" where "promotion_id" = $1',
+      [promo.id],
+    );
+    expect(Number(usages.rows[0].count)).toBe(1);
+
+    const orders = await sql.query(
+      'select count(*) as count from "orders" where "shop_id" = $1',
+      [seller.shopId],
+    );
+    expect(Number(orders.rows[0].count)).toBe(1);
+  });
+
+  it('does not consume a second redemption when the same committed submission is retried', async () => {
+    const seller = await registerSeller('promo-retry');
+    const profile = await createActiveProfile(seller);
+    const product = await createPublishedProduct({
+      seller,
+      shippingProfileId: profile,
+      title: 'Retry Mug',
+      sku: 'RETRY-MUG-1',
+      amountMinor: 10_000,
+    });
+
+    await createPromoCode(seller, {
+      name: 'Retry Once',
+      code: 'RETRYONCE',
+      percent_off: 10,
+      visibility: 'code_only',
+      product_scope: 'all',
+      max_redemptions: 1,
+      ...activeWindow(),
+    });
+
+    const buyer = await registerBuyer('promo-retry');
+    await addCartItem(buyer, product.inventoryId, 1);
+    const applied = await applyPromoCode(buyer, seller.shopId, 'RETRYONCE');
+    const quote = await createQuote(buyer, [{
+      shop_id: seller.shopId,
+      promo_codes: applied.promo_codes,
+    }]);
+
+    await submitCashOrder(buyer, quote.quote_id).expect(201);
+
+    const retry = await submitCashOrder(buyer, quote.quote_id);
+    expect(retry.status).toBeGreaterThanOrEqual(400);
+
+    const usages = await sql.query(
+      'select count(*) as count from "promotion_usages" where "code" = $1',
+      ['RETRYONCE'],
+    );
+    expect(Number(usages.rows[0].count)).toBe(1);
+  });
+
+  it('does not restore a consumed redemption when the committed order is cancelled', async () => {
+    const seller = await registerSeller('promo-cancel');
+    const profile = await createActiveProfile(seller);
+    const product = await createPublishedProduct({
+      seller,
+      shippingProfileId: profile,
+      title: 'Cancel Mug',
+      sku: 'CANCEL-MUG-1',
+      amountMinor: 10_000,
+    });
+
+    await createPromoCode(seller, {
+      name: 'Cancel Once',
+      code: 'CANCELONCE',
+      percent_off: 10,
+      visibility: 'code_only',
+      product_scope: 'all',
+      max_redemptions: 1,
+      ...activeWindow(),
+    });
+
+    const buyer = await registerBuyer('promo-cancel');
+    await addCartItem(buyer, product.inventoryId, 1);
+    const applied = await applyPromoCode(buyer, seller.shopId, 'CANCELONCE');
+    const quote = await createQuote(buyer, [{
+      shop_id: seller.shopId,
+      promo_codes: applied.promo_codes,
+    }]);
+
+    const orderResponse = await submitCashOrder(buyer, quote.quote_id).expect(201);
+    const orderShopId = orderResponse.body.order_shops[0].id as string;
+
+    await buyer.agent
+      .patch(`${API_PREFIX}/me/orders/${orderShopId}/cancel-request`)
+      .set('Idempotency-Key', randomUUID())
+      .send({ cancel_reason: 'changed my mind' })
+      .expect(200);
+
+    const usages = await sql.query(
+      'select count(*) as count from "promotion_usages" where "code" = $1',
+      ['CANCELONCE'],
+    );
+    expect(Number(usages.rows[0].count)).toBe(1);
+
+    const list = await seller.agent
+      .get(`${API_PREFIX}/shops/${seller.shopId}/promo-codes`)
+      .query({ limit: 100 })
+      .expect(200);
+    const listed = list.body.results.find(
+      (entry: { code: string }) => entry.code === 'CANCELONCE',
+    );
+    expect(listed.redemption_count).toBe(1);
+    expect(listed.exhausted).toBe(true);
+  });
+
+  it('enforces an authenticated per-buyer limit against the same buyer', async () => {
+    const seller = await registerSeller('promo-per-buyer');
+    const profile = await createActiveProfile(seller);
+    const product = await createPublishedProduct({
+      seller,
+      shippingProfileId: profile,
+      title: 'Per Buyer Mug',
+      sku: 'PERBUYER-MUG-1',
+      amountMinor: 10_000,
+    });
+
+    await createPromoCode(seller, {
+      name: 'One Per Buyer',
+      code: 'ONEPERBUYER',
+      percent_off: 10,
+      visibility: 'code_only',
+      product_scope: 'all',
+      max_redemptions_per_buyer: 1,
+      ...activeWindow(),
+    });
+
+    const buyer = await registerBuyer('promo-per-buyer');
+    await addCartItem(buyer, product.inventoryId, 1);
+    const applied = await applyPromoCode(buyer, seller.shopId, 'ONEPERBUYER');
+    const quote = await createQuote(buyer, [{
+      shop_id: seller.shopId,
+      promo_codes: applied.promo_codes,
+    }]);
+
+    await submitCashOrder(buyer, quote.quote_id).expect(201);
+
+    await addCartItem(buyer, product.inventoryId, 1);
+    const secondApply = await buyer.agent
+      .post(`${API_PREFIX}/cart/coupons/apply`)
+      .set('Idempotency-Key', randomUUID())
+      .send({ shop_id: seller.shopId, code: 'ONEPERBUYER', promo_codes: [] });
+
+    expect(secondApply.status).toBe(422);
+    expect(secondApply.body.reason).toBe('user_usage_limit_reached');
+
+    const usages = await sql.query(
+      'select count(*) as count from "promotion_usages" where "code" = $1',
+      ['ONEPERBUYER'],
+    );
+    expect(Number(usages.rows[0].count)).toBe(1);
+  });
+
+  it('rejects an exhausted code at apply with the usage-limit reason', async () => {
+    const seller = await registerSeller('promo-apply-exhausted');
+    const profile = await createActiveProfile(seller);
+    const product = await createPublishedProduct({
+      seller,
+      shippingProfileId: profile,
+      title: 'Exhausted Mug',
+      sku: 'EXHAUSTED-MUG-1',
+      amountMinor: 10_000,
+    });
+
+    await createPromoCode(seller, {
+      name: 'Single Use Only',
+      code: 'NOIRLIMIT',
+      percent_off: 10,
+      visibility: 'public',
+      product_scope: 'all',
+      max_redemptions: 1,
+      ...activeWindow(),
+    });
+
+    const first = await registerBuyer('promo-apply-first');
+    await addCartItem(first, product.inventoryId, 1);
+    const firstApply = await applyPromoCode(first, seller.shopId, 'NOIRLIMIT');
+    const firstQuote = await createQuote(first, [{
+      shop_id: seller.shopId,
+      promo_codes: firstApply.promo_codes,
+    }]);
+    await submitCashOrder(first, firstQuote.quote_id).expect(201);
+
+    const second = await registerBuyer('promo-apply-second');
+    await addCartItem(second, product.inventoryId, 1);
+
+    const rejected = await second.agent
+      .post(`${API_PREFIX}/cart/coupons/apply`)
+      .set('Idempotency-Key', randomUUID())
+      .send({ shop_id: seller.shopId, code: 'NOIRLIMIT', promo_codes: [] })
+      .expect(422);
+
+    expect(rejected.body.reason).toBe('usage_limit_reached');
+    expect(rejected.body.message).toMatch(/cannot be applied/i);
+
+    const usages = await sql.query(
+      'select count(*) as count from "promotion_usages" where "code" = $1',
+      ['NOIRLIMIT'],
+    );
+    expect(Number(usages.rows[0].count)).toBe(1);
+
+    const orders = await sql.query(
+      'select count(*) as count from "orders" where "user_id" = $1',
+      [second.userId],
+    );
+    expect(Number(orders.rows[0].count)).toBe(0);
   });
 
   it('applies a fixed amount once across eligible items without touching untargeted items or shipping', async () => {

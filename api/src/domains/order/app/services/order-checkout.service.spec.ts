@@ -6,6 +6,7 @@ import { CartKind } from '../../../cart/domain/enums/cart-kind.enum';
 import type { OrderCheckoutOutboxService } from './order-checkout-outbox.service';
 import type { CheckoutStockReservationPort } from '../../../checkout/app/ports/checkout-stock-reservation.port';
 import type { FulfillmentService } from '../../../fulfillment/app/services/fulfillment.service';
+import type { PromotionRedemptionService } from '../../../promotion/app/services/promotion-redemption.service';
 import type { OrderInventoryOutboxService } from './order-inventory-outbox.service';
 import { OrderCheckoutService } from './order-checkout.service';
 import type { CartSnapshot } from '../../../cart/app/cart.types';
@@ -245,6 +246,9 @@ describe('OrderCheckoutService', () => {
         options?.purchaseEligibilityResult ?? { eligible: true, failures: [] },
       ),
     } as unknown as jest.Mocked<PurchaseEligibilityService>;
+    const promotionRedemptionService = {
+      consumeForOrder: jest.fn().mockResolvedValue(undefined),
+    } as unknown as jest.Mocked<PromotionRedemptionService>;
     const fulfillmentService = {
       getDispatchState: jest.fn().mockResolvedValue({ hasGroups: true, hasDispatched: false }),
       voidUndispatchedShipments: jest.fn().mockResolvedValue(undefined),
@@ -278,6 +282,7 @@ describe('OrderCheckoutService', () => {
       orderInventoryQueryRepository,
       orderShopQueryRepository,
       purchaseEligibilityService,
+      promotionRedemptionService,
       fulfillmentService,
       shippingQuoteService,
     );
@@ -299,6 +304,7 @@ describe('OrderCheckoutService', () => {
       orderInventoryQueryRepository,
       orderShopQueryRepository,
       purchaseEligibilityService,
+      promotionRedemptionService,
       fulfillmentService,
       couponRepository,
       usageRepository,

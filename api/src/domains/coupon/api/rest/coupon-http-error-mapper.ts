@@ -25,5 +25,15 @@ export function mapCouponAppErrorToHttpException(error: CouponAppError): HttpExc
     return new NotFoundException('Coupon code not found');
   }
 
+  // The evaluator's reason travels with the rejection so the client can say why
+  // precisely (exhausted, wrong products, minimum not met) instead of the
+  // one-size message, which cannot tell them apart.
+  if (error instanceof CouponCodeNotApplicableError && error.reason) {
+    return new UnprocessableEntityException({
+      message: error.message,
+      reason: error.reason,
+    });
+  }
+
   return new UnprocessableEntityException(error.message);
 }

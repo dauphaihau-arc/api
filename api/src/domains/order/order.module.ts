@@ -80,6 +80,7 @@ import { FulfillmentModule } from '../fulfillment/fulfillment.module';
 import { ShopModule } from '../shop/shop.module';
 import { ShippingModule } from '../shipping/shipping.module';
 import { ProductModule } from '../product/product.module';
+import { PromotionModule } from '../promotion/promotion.module';
 import { ApplyOrderFulfillmentListener } from './listeners/apply-order-fulfillment.listener';
 import { ForwardOrderUpdatedToSseListener } from './listeners/forward-order-updated-to-sse.listener';
 import { ForwardOrderExportToSseListener } from './listeners/forward-order-export-to-sse.listener';
@@ -102,6 +103,7 @@ import { UpdateShopOrderRefundUseCase } from './app/use-cases/update-shop-order-
     ShopModule,
     ShippingModule,
     FulfillmentModule,
+    PromotionModule,
     MikroOrmModule.forFeature([
       OutboxEventEntity,
       OrderEventEntity,

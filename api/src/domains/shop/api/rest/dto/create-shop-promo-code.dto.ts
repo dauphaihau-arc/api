@@ -117,6 +117,28 @@ export class CreateShopPromoCodeDto {
   @ApiPropertyOptional({ name: 'min_purchase_quantity', minimum: 1 })
   min_purchase_quantity?: number;
 
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @ApiPropertyOptional({
+    name: 'max_redemptions',
+    minimum: 1,
+    description: 'Optional total redemption limit; omitted means unlimited.',
+  })
+  max_redemptions?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @ApiPropertyOptional({
+    name: 'max_redemptions_per_buyer',
+    minimum: 1,
+    description: 'Optional per-authenticated-buyer redemption limit; omitted means unlimited.',
+  })
+  max_redemptions_per_buyer?: number;
+
   @IsEnum(PromotionVisibility)
   @IsOptional()
   @ApiProperty({ name: 'visibility', enum: PromotionVisibility, default: PromotionVisibility.CODE_ONLY })

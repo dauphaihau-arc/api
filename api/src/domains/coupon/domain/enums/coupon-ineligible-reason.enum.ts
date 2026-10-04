@@ -20,6 +20,11 @@ export enum CouponIneligibleReason {
   USAGE_LIMIT_REACHED = 'usage_limit_reached',
   /** The buyer has reached the Coupon's per-user redemption limit. */
   USER_USAGE_LIMIT_REACHED = 'user_usage_limit_reached',
+  /**
+   * The Promo Code carries a per-buyer limit, which only an authenticated
+   * buyer account can satisfy.
+   */
+  AUTHENTICATION_REQUIRED = 'authentication_required',
   /** No selected cart item matches the Coupon's product scope. */
   PRODUCT_SCOPE = 'product_scope',
   /** The eligible subtotal is below the Coupon's converted order-total minimum. */

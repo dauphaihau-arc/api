@@ -1,3 +1,5 @@
+import type { CouponIneligibleReason } from '../../domain/enums/coupon-ineligible-reason.enum';
+
 /**
  * Application errors for the coupon apply/pricing workflows. They describe why
  * a use case could not proceed (lookup, policy, slot conflict, missing rate),
@@ -12,7 +14,15 @@ export class CouponCodeNotFoundError extends Error {
 }
 
 export class CouponCodeNotApplicableError extends Error {
-  constructor(code: string) {
+  constructor(
+    code: string,
+    /**
+     * Why the shared evaluator rejected the code, when that is known. The
+     * transport layer returns it so a client can render its own precise copy
+     * instead of the fallback message, which cannot distinguish the reasons.
+     */
+    readonly reason?: CouponIneligibleReason,
+  ) {
     super(`Coupon code ${code} cannot be applied to this cart`);
   }
 }

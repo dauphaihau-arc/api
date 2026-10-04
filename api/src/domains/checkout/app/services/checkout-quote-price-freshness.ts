@@ -7,20 +7,19 @@ import type { LoadedCheckoutQuote } from '../../../order/app/services/load-check
 import type { RefreshedCheckoutTotals } from '../../../order/app/errors/order-app.error';
 
 /**
- * The money a quote's accepted totals are compared against, recomputed from the
- * current regular prices, active Sales, applied Promo Codes and Shipping
- * Charges. Quoting is the only place prices are frozen for acceptance; a cart
- * never reserves a Sale price, so commitment re-derives the totals and refuses
- * to charge something the buyer never accepted.
+ * The current money a quote's accepted totals are compared against, recomputed
+ * from the current regular prices, active Sales, applied Promo Codes and
+ * Shipping Charges. Quoting is the only place prices are frozen for acceptance;
+ * a cart never reserves a Sale price, so commitment re-derives the totals.
  *
- * Comparison is per shop, because that is the granularity the committed Order
+ * Totals are per shop, because that is the granularity the committed Order
  * money is derived from: each shop's subtotal, discount and Shipping Charge
  * must still equal what the buyer accepted.
  */
-export function resolveRefreshedCheckoutTotals(
+export function buildRefreshedCheckoutTotals(
   quote: Pick<LoadedCheckoutQuote, 'checkoutCurrency' | 'shops'>,
   summary: PricedCartSummary,
-): RefreshedCheckoutTotals | undefined {
+): RefreshedCheckoutTotals {
   const currency = quote.checkoutCurrency;
 
   const shops = summary.shops.map((shop) => {
@@ -50,8 +49,22 @@ export function resolveRefreshedCheckoutTotals(
   };
   refreshed.totalMinor = refreshed.subtotalMinor - refreshed.discountMinor + refreshed.shippingMinor;
 
+  return refreshed;
+}
+
+/**
+ * The refreshed totals when they differ from what the buyer accepted, or
+ * `undefined` when the accepted quote still holds. Commitment re-derives the
+ * totals and refuses to charge an amount the buyer never accepted.
+ */
+export function resolveRefreshedCheckoutTotals(
+  quote: Pick<LoadedCheckoutQuote, 'checkoutCurrency' | 'shops'>,
+  summary: PricedCartSummary,
+): RefreshedCheckoutTotals | undefined {
+  const refreshed = buildRefreshedCheckoutTotals(quote, summary);
+
   return matchesAcceptedQuote(quote, refreshed)
-      && acceptedLinesStillMatch(quote, summary, currency)
+      && acceptedLinesStillMatch(quote, summary, quote.checkoutCurrency)
     ? undefined
     : refreshed;
 }
