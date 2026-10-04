@@ -1,4 +1,5 @@
 import type { ShopPromoCodeListResult, ShopPromoCodeSummary } from '../../app/shop.types';
+import type { BulkStopShopPromoCodesResult } from '../../app/use-cases/bulk-stop-shop-promo-codes/bulk-stop-shop-promo-codes.use-case';
 
 export function toShopPromoCodeResponse(promoCode: ShopPromoCodeSummary) {
   return {
@@ -38,5 +39,19 @@ export function toShopPromoCodeListResponse(result: ShopPromoCodeListResult) {
     limit: result.limit,
     total_pages: result.totalPages,
     total_results: result.totalResults,
+  };
+}
+
+export function toShopPromoCodeStopListResponse(
+  result: BulkStopShopPromoCodesResult,
+) {
+  return {
+    results: result.results.map(toShopPromoCodeResponse),
+    succeeded_ids: result.succeededIds,
+    failed: result.failed.map((failure) => ({
+      id: failure.id,
+      code: failure.code,
+      reason: failure.reason,
+    })),
   };
 }

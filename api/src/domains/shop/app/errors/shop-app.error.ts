@@ -196,3 +196,22 @@ export class PromoCodeAlreadyExistsError extends ShopAppError {
     super('Promo code already exists');
   }
 }
+
+export class PromoCodeNotFoundError extends ShopAppError {
+  constructor() {
+    super('Promo code not found');
+  }
+}
+
+/**
+ * The Promo Code's lifecycle state does not admit the requested irreversible
+ * stop. A scheduled Promo Code can only be cancelled and an active one only
+ * ended; one that already reached either state is final.
+ */
+export class PromoCodeStopNotAllowedError extends ShopAppError {
+  constructor(action: 'cancel' | 'end', status: string) {
+    super(action === 'cancel'
+      ? `Only a scheduled promo code can be cancelled; this promo code is ${status}`
+      : `Only an active promo code can be ended early; this promo code is ${status}`);
+  }
+}

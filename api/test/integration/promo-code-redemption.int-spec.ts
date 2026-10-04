@@ -583,6 +583,90 @@ describe('Promo code redemption (integration)', () => {
     expect(Number(usagesAfterCommit.rows[0].count)).toBe(1);
   });
 
+  it('ends a running promo code: discovery and application stop while usages and order facts remain', async () => {
+    const seller = await registerSeller('promo-stop');
+    const profile = await createActiveProfile(seller);
+    const product = await createPublishedProduct({
+      seller,
+      shippingProfileId: profile,
+      title: 'Stop Promo Mug',
+      sku: 'STOP-PROMO-1',
+      amountMinor: 10_000,
+    });
+
+    const created = await createPromoCode(seller, {
+      name: 'Stoppable ten',
+      code: 'STOP10',
+      percent_off: 10,
+      visibility: 'public',
+      product_scope: 'all',
+      ...activeWindow(),
+    });
+
+    const buyer = await registerBuyer('promo-stop');
+    await addCartItem(buyer, product.inventoryId, 1);
+
+    const discoveredBefore = await listDiscoverableCoupons(buyer, seller.shopId);
+    expect(discoveredBefore.map(coupon => coupon.code)).toContain('STOP10');
+
+    const applied = await applyPromoCode(buyer, seller.shopId, 'STOP10');
+    const quote = await createQuote(buyer, [{
+      shop_id: seller.shopId,
+      promo_codes: applied.promo_codes,
+    }]);
+    expect(quote.shops.find(shop => shop.shop_id === seller.shopId)?.discount_minor).toBe(1000);
+
+    const orderResponse = await submitCashOrder(buyer, quote.quote_id).expect(201);
+    const orderShopId = orderResponse.body.order_shops[0].id as string;
+    const usagesAfterCommit = await sql.query(
+      'select count(*) as count from "promotion_usages" where "promotion_id" = $1',
+      [created.id],
+    );
+    expect(Number(usagesAfterCommit.rows[0].count)).toBe(1);
+
+    // The seller irreversibly ends the running code.
+    const ended = await seller.agent
+      .post(`${API_PREFIX}/shops/${seller.shopId}/promo-codes/${created.id}/end`)
+      .set('Idempotency-Key', randomUUID())
+      .expect(201);
+    expect(ended.body.promo_code.status).toBe('ended');
+    expect(ended.body.promo_code.redemption_count).toBe(1);
+
+    // The stopped code is gone from public discovery and can no longer be applied.
+    const discoveredAfter = await listDiscoverableCoupons(buyer, seller.shopId);
+    expect(discoveredAfter.map(coupon => coupon.code)).not.toContain('STOP10');
+
+    await buyer.agent
+      .post(`${API_PREFIX}/cart/coupons/apply`)
+      .set('Idempotency-Key', randomUUID())
+      .send({ shop_id: seller.shopId, code: 'STOP10', promo_codes: [] })
+      .expect(404);
+
+    // Retained evidence: the code identity, its consumed redemption and the
+    // committed Order reference survive the stop.
+    const usageRows = await sql.query(
+      'select "order_id", "code" from "promotion_usages" where "promotion_id" = $1',
+      [created.id],
+    );
+    expect(usageRows.rows).toHaveLength(1);
+    expect(usageRows.rows[0].order_id).toBe(orderShopId);
+    expect(usageRows.rows[0].code).toBe('STOP10');
+
+    const orderRow = await sql.query(
+      'select "promo_codes" from "orders" where "id" = $1',
+      [orderShopId],
+    );
+    expect(orderRow.rows[0].promo_codes).toContain('STOP10');
+
+    // The seller list still explains the stopped offer rather than removing it.
+    const listed = await seller.agent
+      .get(`${API_PREFIX}/shops/${seller.shopId}/promo-codes`)
+      .expect(200);
+    const listedEntry = (listed.body.results as Array<{ id: string, status: string, code: string }>)
+      .find(entry => entry.id === created.id);
+    expect(listedEntry).toMatchObject({ code: 'STOP10', status: 'ended' });
+  });
+
   function activeWindow() {
     return {
       timezone: 'UTC',
@@ -645,12 +729,15 @@ describe('Promo code redemption (integration)', () => {
       ...activeWindow(),
     });
 
-    // Cancelled via its retained stop state (no seller endpoint for promo
-    // codes yet) and globally exhausted via a committed redemption.
-    const cancelledPromo = await createPromoCode(seller, {
-      name: 'Cancelled ten', code: 'CANCEL10', percent_off: 10, visibility: 'public', product_scope: 'all', ...activeWindow(),
+    // Stopped through the seller endpoint: a running code that stops being
+    // discoverable the moment it is irreversibly ended.
+    const stoppedPromo = await createPromoCode(seller, {
+      name: 'Stopped ten', code: 'STOPPED10', percent_off: 10, visibility: 'public', product_scope: 'all', ...activeWindow(),
     });
-    await sql.query('update "promotions" set "cancelled_at" = now() where "id" = $1', [cancelledPromo.id]);
+    await seller.agent
+      .post(`${API_PREFIX}/shops/${seller.shopId}/promo-codes/${stoppedPromo.id}/end`)
+      .set('Idempotency-Key', randomUUID())
+      .expect(201);
 
     const exhaustedPromo = await createPromoCode(seller, {
       name: 'Exhausted ten', code: 'EXHAUST10', percent_off: 10, visibility: 'public', product_scope: 'all', ...activeWindow(),
@@ -681,7 +768,7 @@ describe('Promo code redemption (integration)', () => {
     expect(byCode.has('HIDDEN10')).toBe(false);
     expect(byCode.has('FUTURE10')).toBe(false);
     expect(byCode.has('ENDED10')).toBe(false);
-    expect(byCode.has('CANCEL10')).toBe(false);
+    expect(byCode.has('STOPPED10')).toBe(false);
     expect(byCode.has('EXHAUST10')).toBe(false);
   });
 

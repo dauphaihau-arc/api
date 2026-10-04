@@ -17,8 +17,10 @@ import {
   PromoCodeEndAfterStartRequiredError,
   PromoCodeLocalTimeAmbiguousError,
   PromoCodeLocalTimeNonexistentError,
+  PromoCodeNotFoundError,
   PromoCodeProductScopeInvalidError,
   PromoCodeScheduleInvalidError,
+  PromoCodeStopNotAllowedError,
   PromoCodeTimeZoneInvalidError,
   SaleEndAfterStartRequiredError,
   SaleLocalTimeAmbiguousError,
@@ -63,6 +65,8 @@ export type ShopHttpErrorCode =
   | 'SALE_LOCAL_TIME_NONEXISTENT'
   | 'SALE_LOCAL_TIME_AMBIGUOUS'
   | 'PROMO_CODE_ALREADY_EXISTS'
+  | 'PROMO_CODE_NOT_FOUND'
+  | 'PROMO_CODE_STOP_NOT_ALLOWED'
   | 'PROMO_CODE_BENEFIT_INVALID'
   | 'PROMO_CODE_CONDITION_INVALID'
   | 'PROMO_CODE_PRODUCT_SCOPE_INVALID'
@@ -86,6 +90,7 @@ export function mapShopAppErrorToHttpException(
     error instanceof ShopNotFoundError
     || error instanceof CouponNotFoundError
     || error instanceof SaleNotFoundError
+    || error instanceof PromoCodeNotFoundError
   ) {
     return new NotFoundException(payload);
   }
@@ -101,6 +106,7 @@ export function mapShopAppErrorToHttpException(
     error instanceof ShopNameAlreadyTakenError
     || error instanceof ShopSlugAlreadyTakenError
     || error instanceof SaleStopNotAllowedError
+    || error instanceof PromoCodeStopNotAllowedError
     || error instanceof PromoCodeAlreadyExistsError
   ) {
     return new ConflictException(payload);
@@ -132,6 +138,8 @@ export function getShopErrorCode(error: ShopAppError): ShopHttpErrorCode {
   if (error instanceof SaleLocalTimeNonexistentError) return 'SALE_LOCAL_TIME_NONEXISTENT';
   if (error instanceof SaleLocalTimeAmbiguousError) return 'SALE_LOCAL_TIME_AMBIGUOUS';
   if (error instanceof PromoCodeAlreadyExistsError) return 'PROMO_CODE_ALREADY_EXISTS';
+  if (error instanceof PromoCodeNotFoundError) return 'PROMO_CODE_NOT_FOUND';
+  if (error instanceof PromoCodeStopNotAllowedError) return 'PROMO_CODE_STOP_NOT_ALLOWED';
   if (error instanceof PromoCodeBenefitInvalidError) return 'PROMO_CODE_BENEFIT_INVALID';
   if (error instanceof PromoCodeConditionInvalidError) return 'PROMO_CODE_CONDITION_INVALID';
   if (error instanceof PromoCodeProductScopeInvalidError) return 'PROMO_CODE_PRODUCT_SCOPE_INVALID';

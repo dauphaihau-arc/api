@@ -317,6 +317,25 @@ describe('Shop promo code creation (integration)', () => {
     return response.body.results as ShopPromoCodeResponse[];
   }
 
+  function cancelPromoCode(seller: TestSeller, promoCodeId: string) {
+    return seller.agent
+      .post(`${API_PREFIX}/shops/${seller.shopId}/promo-codes/${promoCodeId}/cancel`)
+      .set('Idempotency-Key', randomUUID());
+  }
+
+  function endPromoCode(seller: TestSeller, promoCodeId: string) {
+    return seller.agent
+      .post(`${API_PREFIX}/shops/${seller.shopId}/promo-codes/${promoCodeId}/end`)
+      .set('Idempotency-Key', randomUUID());
+  }
+
+  function bulkStopPromoCodes(seller: TestSeller, ids: string[]) {
+    return seller.agent
+      .post(`${API_PREFIX}/shops/${seller.shopId}/promo-codes/bulk-stop`)
+      .set('Idempotency-Key', randomUUID())
+      .send({ ids });
+  }
+
   it('creates a percentage promo code with selected products and lists it', async () => {
     const seller = await registerSeller('promo-create');
     const targeted = await createProduct({
@@ -573,5 +592,160 @@ describe('Shop promo code creation (integration)', () => {
       start_now: true,
       end_local: utcLocalDateTime(new Date(testNow.getTime() + DAY_MS)),
     }).expect(400);
+  });
+
+  it('cancels scheduled promo codes and ends active ones individually and in bulk, keeping definitions and allowance', async () => {
+    const seller = await registerSeller('promo-lifecycle');
+
+    const scheduled = (await createPromoCode(seller, {
+      name: 'Scheduled stop',
+      code: 'SCHEDSTOP',
+      percent_off: 10,
+      visibility: 'public',
+      timezone: 'UTC',
+      start_local: utcLocalDateTime(new Date(testNow.getTime() + DAY_MS)),
+      end_local: utcLocalDateTime(new Date(testNow.getTime() + (2 * DAY_MS))),
+    }).expect(201)).body.promo_code as ShopPromoCodeResponse;
+
+    const active = (await createPromoCode(seller, {
+      name: 'Active stop',
+      code: 'ACTIVESTOP',
+      percent_off: 20,
+      visibility: 'public',
+      timezone: 'UTC',
+      start_now: true,
+      end_local: utcLocalDateTime(new Date(testNow.getTime() + DAY_MS)),
+      max_redemptions: 1,
+    }).expect(201)).body.promo_code as ShopPromoCodeResponse;
+
+    // Consumed allowance is an indicator separate from lifecycle: this active
+    // code is already exhausted before it is stopped.
+    await sql.query(
+      `insert into "promotion_usages" ("id","created_at","updated_at","promotion_id","order_id","code")
+       values ($1, now(), now(), $2, $3, $4)`,
+      [randomUUID(), active.id, randomUUID(), 'ACTIVESTOP'],
+    );
+
+    const beforeStop = await listPromoCodes(seller);
+    expect(beforeStop.find(entry => entry.id === active.id)).toMatchObject({
+      status: 'active',
+      redemption_count: 1,
+      exhausted: true,
+    });
+
+    const cancelled = await cancelPromoCode(seller, scheduled.id).expect(201);
+    expect(cancelled.body.promo_code).toMatchObject({
+      id: scheduled.id,
+      status: 'cancelled',
+      name: 'Scheduled stop',
+      percent_off: 10,
+      timezone: 'UTC',
+      redemption_count: 0,
+      exhausted: false,
+    });
+    expect(cancelled.body.promo_code.cancelled_at).not.toBeNull();
+
+    // The stop is irreversible and state-specific: neither action can run again,
+    // and a scheduled code cannot be ended.
+    await cancelPromoCode(seller, scheduled.id).expect(409);
+    await endPromoCode(seller, scheduled.id).expect(409);
+
+    const ended = await endPromoCode(seller, active.id).expect(201);
+    expect(ended.body.promo_code).toMatchObject({
+      id: active.id,
+      status: 'ended',
+      redemption_count: 1,
+      exhausted: true,
+    });
+    expect(ended.body.promo_code.ended_at).not.toBeNull();
+    await endPromoCode(seller, active.id).expect(409);
+
+    // Bulk uses the same state rules and reports the ones it cannot stop.
+    const scheduledTwo = (await createPromoCode(seller, {
+      name: 'Scheduled two',
+      code: 'BULKSCHED',
+      percent_off: 15,
+      timezone: 'UTC',
+      start_local: utcLocalDateTime(new Date(testNow.getTime() + (3 * DAY_MS))),
+      end_local: utcLocalDateTime(new Date(testNow.getTime() + (4 * DAY_MS))),
+    }).expect(201)).body.promo_code as ShopPromoCodeResponse;
+    const activeTwo = (await createPromoCode(seller, {
+      name: 'Active two',
+      code: 'BULKACTIVE',
+      percent_off: 25,
+      timezone: 'UTC',
+      start_now: true,
+      end_local: utcLocalDateTime(new Date(testNow.getTime() + DAY_MS)),
+    }).expect(201)).body.promo_code as ShopPromoCodeResponse;
+
+    const missingId = randomUUID();
+    const bulk = await bulkStopPromoCodes(seller, [
+      scheduledTwo.id,
+      activeTwo.id,
+      scheduled.id,
+      missingId,
+    ]).expect(201);
+
+    expect(bulk.body.succeeded_ids).toEqual([scheduledTwo.id, activeTwo.id]);
+    expect(bulk.body.failed).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: scheduled.id, code: 'NotStoppable' }),
+      expect.objectContaining({ id: missingId, code: 'NotFound' }),
+    ]));
+
+    // Stopping retains the definition, schedule, timezone and allowance, so the
+    // seller list still explains every offer.
+    const listed = await listPromoCodes(seller);
+    const stoppedIds = [scheduled.id, active.id, scheduledTwo.id, activeTwo.id];
+    expect(listed.map(entry => entry.id).sort()).toEqual(expect.arrayContaining([...stoppedIds].sort()));
+    expect(listed.find(entry => entry.id === scheduled.id)).toMatchObject({
+      name: 'Scheduled stop',
+      code: 'SCHEDSTOP',
+      percent_off: 10,
+      status: 'cancelled',
+    });
+    expect(listed.find(entry => entry.id === activeTwo.id)).toMatchObject({
+      name: 'Active two',
+      code: 'BULKACTIVE',
+      percent_off: 25,
+      status: 'ended',
+    });
+  });
+
+  it('never lets a stopped or expired promo code be reused', async () => {
+    const seller = await registerSeller('promo-reuse');
+
+    const scheduled = (await createPromoCode(seller, {
+      name: 'Reuse source',
+      code: 'REUSE10',
+      percent_off: 10,
+      timezone: 'UTC',
+      start_local: utcLocalDateTime(new Date(testNow.getTime() + DAY_MS)),
+      end_local: utcLocalDateTime(new Date(testNow.getTime() + (2 * DAY_MS))),
+    }).expect(201)).body.promo_code as ShopPromoCodeResponse;
+
+    await cancelPromoCode(seller, scheduled.id).expect(201);
+
+    // A cancelled code identity is permanently unavailable, even for a
+    // differently-cased reuse attempt.
+    const reusedResponse = await createPromoCode(seller, {
+      name: 'Reuse attempt',
+      code: 'reuse10',
+      percent_off: 15,
+      timezone: 'UTC',
+      start_now: true,
+      end_local: utcLocalDateTime(new Date(testNow.getTime() + DAY_MS)),
+    }).expect(409);
+    expect(reusedResponse.body.code).toBe('PROMO_CODE_ALREADY_EXISTS');
+
+    // The same code is still free in another shop.
+    const otherSeller = await registerSeller('promo-reuse-other');
+    await createPromoCode(otherSeller, {
+      name: 'Reuse elsewhere',
+      code: 'REUSE10',
+      percent_off: 5,
+      timezone: 'UTC',
+      start_now: true,
+      end_local: utcLocalDateTime(new Date(testNow.getTime() + DAY_MS)),
+    }).expect(201);
   });
 });
