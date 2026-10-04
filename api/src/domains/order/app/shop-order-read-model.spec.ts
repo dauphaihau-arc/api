@@ -45,6 +45,7 @@ describe('shop-order-read-model', () => {
       unitPriceMinor: 673,
       originalAmountMinor: 774,
       lineTotalMinor: 673,
+      promoDiscountMinor: 55,
       currency: 'HKD',
       product: {
         id: 'product-1',
@@ -77,6 +78,7 @@ describe('shop-order-read-model', () => {
         sku: 'SKU-PURCHASED',
         amountMinor: 673,
         originalAmountMinor: 774,
+        promoDiscountMinor: 55,
         currency: 'HKD',
       }),
     );

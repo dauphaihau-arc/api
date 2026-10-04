@@ -69,6 +69,9 @@ export class OrderItemEntity extends AbstractBaseEntity {
   @Property({ fieldName: 'line_total_minor' })
   lineTotalMinor!: number;
 
+  @Property({ fieldName: 'promo_discount_minor', default: 0 })
+  promoDiscountMinor = 0;
+
   @Property({ fieldName: 'currency', length: 3, nullable: true })
   currency?: string;
 

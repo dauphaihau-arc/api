@@ -364,6 +364,7 @@ describe('OrderCheckoutService', () => {
         unitPriceMinor: 900,
         originalAmountMinor: 1000,
         lineTotalMinor: 1800,
+        promoDiscountMinor: 0,
       }),
     );
     expect(checkoutStockReservationService.allocateInventoryForOrderItems).toHaveBeenCalledWith(
@@ -676,6 +677,7 @@ describe('OrderCheckoutService', () => {
         unitPriceMinor: 900,
         originalAmountMinor: 1000,
         lineTotalMinor: 1800,
+        promoDiscountMinor: 0,
         currency: 'USD',
         sourcePriceId: 'price-1',
         sourceType: 'base_fx',

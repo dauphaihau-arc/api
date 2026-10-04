@@ -44,6 +44,7 @@ function toOrderProducts(
     quantity: item.quantity,
     amountMinor: getOrderItemAmountMinor(item, currency),
     originalAmountMinor: getOrderItemOriginalAmountMinor(item),
+    promoDiscountMinor: item.promoDiscountMinor ?? 0,
     currency,
     sku: item.sku,
     selectedOptions: item.selectedOptions ?? [],

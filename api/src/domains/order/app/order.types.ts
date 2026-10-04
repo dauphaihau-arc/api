@@ -135,6 +135,7 @@ export interface OrderListProduct {
   quantity: number;
   amountMinor: number;
   originalAmountMinor: number | null;
+  promoDiscountMinor: number;
   currency: string;
   sku?: string;
   selectedOptions?: SelectedOptionSnapshot[];

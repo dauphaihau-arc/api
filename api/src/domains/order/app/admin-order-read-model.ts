@@ -46,6 +46,7 @@ export function toAdminOrderDetail(
       quantity: item.quantity,
       amountMinor: getOrderItemAmountMinor(item, order.currency),
       originalAmountMinor: getOrderItemOriginalAmountMinor(item),
+      promoDiscountMinor: item.promoDiscountMinor ?? 0,
       currency: order.currency,
       sku: item.sku,
       selectedOptions: item.selectedOptions ?? [],

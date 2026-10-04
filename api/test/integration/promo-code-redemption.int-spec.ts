@@ -462,6 +462,12 @@ describe('Promo code redemption (integration)', () => {
     return response.body.sale;
   }
 
+  function endSale(seller: TestSeller, saleId: string) {
+    return seller.agent
+      .post(`${API_PREFIX}/shops/${seller.shopId}/sales/${saleId}/end`)
+      .set('Idempotency-Key', randomUUID());
+  }
+
   async function createPromoCode(
     seller: TestSeller,
     body: Record<string, unknown>,
@@ -2074,5 +2080,248 @@ describe('Promo code redemption (integration)', () => {
       [promo.id],
     );
     expect(Number(usages.rows[0].count)).toBe(0);
+  });
+
+  /**
+   * Changes the regular price of an Inventory Item. This writes the same base
+   * `variant_prices` row the seller price-edit path owns, so the next quote and
+   * the next Sale projection both read the new regular price.
+   */
+  async function setRegularPriceMinor(
+    inventoryId: string,
+    amountMinor: number,
+  ): Promise<void> {
+    await sql.query(
+      `update "variant_prices"
+       set "amount_minor" = $2, "updated_at" = now()
+       where "product_inventory_id" = $1 and "market_code" is null and "active_to" is null`,
+      [inventoryId, amountMinor],
+    );
+  }
+
+  it('persists per-line promo discount and reconciles it to the committed shop discount', async () => {
+    const seller = await registerSeller('promo-allocation');
+    const profile = await createActiveProfile(seller);
+    const product = await createPublishedProduct({
+      seller,
+      shippingProfileId: profile,
+      title: 'Allocation Mug',
+      sku: 'ALLOC-MUG-1',
+      amountMinor: 10_000,
+    });
+
+    const sale = await createSale(seller, {
+      name: 'Allocation Sale',
+      percent_off: 20,
+      product_scope: 'specific',
+      product_ids: [product.productId],
+      timezone: 'UTC',
+      start_now: true,
+      end_local: utcLocalDateTime(new Date(testNow.getTime() + TWO_DAYS_MS)),
+    });
+
+    const productPromo = await createPromoCode(seller, {
+      name: 'Allocation ten',
+      code: 'ALLOC10',
+      benefit_type: 'percentage',
+      percent_off: 10,
+      visibility: 'code_only',
+      product_scope: 'specific',
+      product_ids: [product.productId],
+      min_order_type: 'none',
+      ...activeWindow(),
+    });
+
+    const shippingPromo = await createPromoCode(seller, {
+      name: 'Allocation free ship',
+      code: 'ALLOCFREE',
+      benefit_type: 'free_shipping',
+      visibility: 'code_only',
+      product_scope: 'all',
+      min_order_type: 'none',
+      ...activeWindow(),
+    });
+
+    const buyer = await registerBuyer('promo-allocation');
+    await addCartItem(buyer, product.inventoryId, 1);
+
+    const applied = await applyPromoCode(buyer, seller.shopId, 'ALLOC10');
+    const withShipping = await applyPromoCode(buyer, seller.shopId, 'ALLOCFREE', applied.promo_codes);
+    expect(withShipping.promo_codes).toEqual(expect.arrayContaining(['ALLOC10', 'ALLOCFREE']));
+
+    const quote = await createQuote(buyer, [{
+      shop_id: seller.shopId,
+      promo_codes: withShipping.promo_codes,
+    }]);
+    const quoteShop = quote.shops.find((shop) => shop.shop_id === seller.shopId)!;
+
+    // 100.00 regular -> 20% Sale = 80.00; 10% product code on 80.00 = 8.00 off.
+    expect(quoteShop.subtotal_minor).toBe(8_000);
+    expect(quoteShop.sale_discount_minor).toBe(2_000);
+    expect(quoteShop.discount_minor).toBe(800);
+    expect(quoteShop.shipping_minor).toBe(0);
+    expect(quoteShop.shipping_discount_minor).toBe(599);
+    expect(quoteShop.total_minor).toBe(7_200);
+
+    const orderResponse = await submitCashOrder(buyer, quote.quote_id).expect(201);
+    const orderShopId = orderResponse.body.order_shops[0].id as string;
+
+    const detail = await buyer.agent
+      .get(`${API_PREFIX}/me/orders/${orderShopId}`)
+      .expect(200);
+
+    const orderShop = detail.body.order_shop as {
+      discount_minor: number;
+      sale_discount_minor: number;
+      shipping_minor: number;
+      shipping_discount_minor: number;
+      total_minor: number;
+      products: Array<{
+        promo_discount_minor: number;
+        amount_minor: number;
+        original_amount_minor: number | null;
+      }>;
+    };
+
+    expect(orderShop.products).toHaveLength(1);
+    const [line] = orderShop.products;
+    expect(line.promo_discount_minor).toBe(800);
+    expect(line.amount_minor).toBe(8_000);
+    expect(line.original_amount_minor).toBe(10_000);
+
+    const productPromoSum = orderShop.products.reduce(
+      (sum, p) => sum + p.promo_discount_minor,
+      0,
+    );
+    expect(productPromoSum).toBe(orderShop.discount_minor);
+    expect(orderShop.discount_minor).toBe(800);
+    expect(orderShop.sale_discount_minor).toBe(2_000);
+    expect(orderShop.shipping_discount_minor).toBe(599);
+    expect(orderShop.shipping_minor).toBe(0);
+    expect(orderShop.total_minor).toBe(7_200);
+
+    // The seller's view of the same committed Order exposes the same facts and
+    // never reconstructs them from the live Promotion either.
+    const sellerDetail = await seller.agent
+      .get(`${API_PREFIX}/shops/${seller.shopId}/orders/${orderShopId}`)
+      .expect(200);
+    const sellerOrder = sellerDetail.body.order as typeof orderShop;
+    expect(sellerOrder.products[0].promo_discount_minor).toBe(line.promo_discount_minor);
+    expect(sellerOrder.discount_minor).toBe(orderShop.discount_minor);
+    expect(sellerOrder.sale_discount_minor).toBe(orderShop.sale_discount_minor);
+    expect(sellerOrder.shipping_discount_minor).toBe(orderShop.shipping_discount_minor);
+    expect(sellerOrder.shipping_minor).toBe(orderShop.shipping_minor);
+    expect(sellerOrder.total_minor).toBe(orderShop.total_minor);
+
+    // The allocation is also stored on the persisted row.
+    const itemRow = await sql.query(
+      'select "promo_discount_minor", "unit_price_minor", "line_total_minor" from "order_items" where "order_id" = $1',
+      [orderShopId],
+    );
+    expect(Number(itemRow.rows[0].promo_discount_minor)).toBe(800);
+    expect(Number(itemRow.rows[0].unit_price_minor)).toBe(8_000);
+    expect(Number(itemRow.rows[0].line_total_minor)).toBe(8_000);
+
+    // (b) Mutate everything that influenced the original quote and re-read the
+    // SAME committed order: values must remain byte-for-byte unchanged.
+    await setRegularPriceMinor(product.inventoryId, 15_000);
+    await endSale(seller, sale.id).expect(201);
+    await seller.agent
+      .post(`${API_PREFIX}/shops/${seller.shopId}/promo-codes/${productPromo.id}/end`)
+      .set('Idempotency-Key', randomUUID())
+      .expect(201);
+    await seller.agent
+      .post(`${API_PREFIX}/shops/${seller.shopId}/promo-codes/${shippingPromo.id}/end`)
+      .set('Idempotency-Key', randomUUID())
+      .expect(201);
+    // Exhaust the product code by capping its allowance at the already consumed count.
+    await sql.query(
+      'update "promotions" set "max_redemptions" = (select count(*) from "promotion_usages" where "promotion_id" = $1) where "id" = $1',
+      [productPromo.id],
+    );
+
+    const detailAfter = await buyer.agent
+      .get(`${API_PREFIX}/me/orders/${orderShopId}`)
+      .expect(200);
+    const orderShopAfter = detailAfter.body.order_shop as typeof orderShop;
+
+    expect(orderShopAfter.products[0].promo_discount_minor).toBe(line.promo_discount_minor);
+    expect(orderShopAfter.products[0].amount_minor).toBe(line.amount_minor);
+    expect(orderShopAfter.products[0].original_amount_minor).toBe(line.original_amount_minor);
+    expect(orderShopAfter.discount_minor).toBe(orderShop.discount_minor);
+    expect(orderShopAfter.sale_discount_minor).toBe(orderShop.sale_discount_minor);
+    expect(orderShopAfter.shipping_discount_minor).toBe(orderShop.shipping_discount_minor);
+    expect(orderShopAfter.shipping_minor).toBe(orderShop.shipping_minor);
+    expect(orderShopAfter.total_minor).toBe(orderShop.total_minor);
+
+    const sellerDetailAfter = await seller.agent
+      .get(`${API_PREFIX}/shops/${seller.shopId}/orders/${orderShopId}`)
+      .expect(200);
+    const sellerOrderAfter = sellerDetailAfter.body.order as typeof orderShop;
+    expect(sellerOrderAfter.products[0].promo_discount_minor).toBe(line.promo_discount_minor);
+    expect(sellerOrderAfter.discount_minor).toBe(orderShop.discount_minor);
+    expect(sellerOrderAfter.sale_discount_minor).toBe(orderShop.sale_discount_minor);
+    expect(sellerOrderAfter.shipping_discount_minor).toBe(orderShop.shipping_discount_minor);
+    expect(sellerOrderAfter.shipping_minor).toBe(orderShop.shipping_minor);
+    expect(sellerOrderAfter.total_minor).toBe(orderShop.total_minor);
+
+    const itemRowAfter = await sql.query(
+      'select "promo_discount_minor", "unit_price_minor", "line_total_minor" from "order_items" where "order_id" = $1',
+      [orderShopId],
+    );
+    expect(itemRowAfter.rows[0]).toEqual(itemRow.rows[0]);
+  });
+
+  it('rejects a stale accepted quote when the applied promo code becomes ineligible', async () => {
+    const seller = await registerSeller('promo-stale');
+    const profile = await createActiveProfile(seller);
+    const product = await createPublishedProduct({
+      seller,
+      shippingProfileId: profile,
+      title: 'Stale Promo Mug',
+      sku: 'STALE-PROMO-1',
+      amountMinor: 10_000,
+    });
+
+    const productPromo = await createPromoCode(seller, {
+      name: 'Stale ten',
+      code: 'STALE10',
+      benefit_type: 'percentage',
+      percent_off: 10,
+      visibility: 'code_only',
+      product_scope: 'specific',
+      product_ids: [product.productId],
+      min_order_type: 'none',
+      ...activeWindow(),
+    });
+
+    const buyer = await registerBuyer('promo-stale');
+    await addCartItem(buyer, product.inventoryId, 1);
+
+    const applied = await applyPromoCode(buyer, seller.shopId, 'STALE10');
+    const quote = await createQuote(buyer, [{
+      shop_id: seller.shopId,
+      promo_codes: applied.promo_codes,
+    }]);
+    expect(quote.discount_minor).toBe(1_000);
+
+    // The promo code becomes ineligible before the buyer commits.
+    await seller.agent
+      .post(`${API_PREFIX}/shops/${seller.shopId}/promo-codes/${productPromo.id}/end`)
+      .set('Idempotency-Key', randomUUID())
+      .expect(201);
+
+    const rejected = await submitCashOrder(buyer, quote.quote_id).expect(409);
+    expect(rejected.body.code).toBe('CHECKOUT_QUOTE_PRICES_CHANGED');
+    expect(rejected.body.refreshed_totals).toMatchObject({
+      checkout_currency: 'USD',
+      discount_minor: 0,
+    });
+
+    const ordersAfterRejection = await sql.query(
+      'select count(*)::int as count from "orders" where "user_id" = $1',
+      [buyer.userId],
+    );
+    expect(ordersAfterRejection.rows[0].count).toBe(0);
   });
 });

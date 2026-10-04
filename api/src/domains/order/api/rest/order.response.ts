@@ -257,6 +257,7 @@ export function toOrderListResponse(result: OrderListResult) {
         quantity: product.quantity,
         amount_minor: product.amountMinor,
         original_amount_minor: product.originalAmountMinor,
+        promo_discount_minor: product.promoDiscountMinor,
         currency: product.currency,
         ...(product.myReview ? { my_review: toMyReviewResponse(product.myReview) } : {}),
       })),
@@ -286,6 +287,7 @@ function toShopOrderProductResponse(orderShop: ShopOrderSummary) {
     quantity: product.quantity,
     amount_minor: product.amountMinor,
     original_amount_minor: product.originalAmountMinor,
+    promo_discount_minor: product.promoDiscountMinor,
     currency: product.currency,
     inventory: {
       sku: product.sku,
@@ -490,6 +492,7 @@ export function toShopOrderDetailResponse(order: ShopOrderDetail) {
         quantity: product.quantity,
         amount_minor: product.amountMinor,
         original_amount_minor: product.originalAmountMinor,
+        promo_discount_minor: product.promoDiscountMinor,
         currency: product.currency,
         inventory: {
           sku: product.sku,
@@ -577,6 +580,7 @@ export function toMyOrderDetailResponse(order: MyOrderDetail) {
         quantity: product.quantity,
         amount_minor: product.amountMinor,
         original_amount_minor: product.originalAmountMinor,
+        promo_discount_minor: product.promoDiscountMinor,
         currency: product.currency,
         ...(product.myReview ? { my_review: toMyReviewResponse(product.myReview) } : {}),
       })),
@@ -652,6 +656,7 @@ export function toAdminOrderDetailResponse(order: AdminOrderDetail) {
         quantity: product.quantity,
         amount_minor: product.amountMinor,
         original_amount_minor: product.originalAmountMinor,
+        promo_discount_minor: product.promoDiscountMinor,
         currency: product.currency,
       })),
       promo_coupons: order.promoCodes.map((code) => ({

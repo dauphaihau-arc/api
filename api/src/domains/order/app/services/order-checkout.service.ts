@@ -392,6 +392,7 @@ export class OrderCheckoutService {
             lineTotalMinor: quoteItem
               ? quoteItem.lineTotalCheckoutMinor
               : toMinorUnits(pricedItem!.effectiveUnitPrice, currency) * item.quantity,
+            promoDiscountMinor: quoteItem?.promoDiscountMinor ?? pricedItem?.promoDiscountMinor ?? 0,
             currency,
             sourcePriceId: quoteItem?.sourcePriceId ?? pricedItem?.sourcePriceId,
             sourceType: quoteItem?.sourceType ?? pricedItem?.sourceType,
