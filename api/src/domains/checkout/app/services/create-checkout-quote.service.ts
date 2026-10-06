@@ -23,7 +23,6 @@ import {
 } from '../../../order/app/errors/order-app.error';
 import type {
   CheckoutQuoteResult,
-  CheckoutQuoteShopSummary,
   PricedCartItem,
   PricedShopCart,
   ShippingAddressInput,
@@ -35,6 +34,11 @@ import {
   toPersistedPricedShops,
 } from './checkout-quote-priced-shops';
 import { createCheckoutQuoteItem } from './checkout-quote-item.mapping';
+import {
+  buildQuoteShopSummaries,
+  toCheckoutQuoteResult,
+  type PricedShopMoney,
+} from './checkout-quote-view';
 
 const QUOTE_TTL_MS = ms('30m');
 
@@ -90,7 +94,7 @@ export class CreateCheckoutQuoteService {
     // subtotal minus discount plus shipping, and the quote total is the sum of
     // the shop totals, so the payment charge and the confirmed Orders can agree
     // exactly without rounding drift.
-    const shopMoney = pricedCartSummary.shops.map((shop) => {
+    const shopMoney: PricedShopMoney[] = pricedCartSummary.shops.map((shop) => {
       const shopSubtotalMinor = toMinorUnits(shop.subtotal, checkoutCurrency);
       const shopDiscountMinor = toMinorUnits(shop.totalDiscount, checkoutCurrency);
       const shopSaleDiscountMinor = toMinorUnits(shop.saleDiscount, checkoutCurrency);
@@ -154,7 +158,7 @@ export class CreateCheckoutQuoteService {
 
     const {
       quote: persistedQuote,
-      items: persistedItems,
+      shops,
     } = await this.entityManager.transactional(async (entityManager) => {
       const quoteRepository = entityManager.getRepository(CheckoutQuoteEntity);
       const quoteItemRepository = entityManager.getRepository(CheckoutQuoteItemEntity);
@@ -172,7 +176,7 @@ export class CreateCheckoutQuoteService {
       if (existingQuote) {
         return {
           quote: existingQuote,
-          items: flattenQuoteItems(existingQuote.pricedShops),
+          shops: parsePricedShops(existingQuote.pricedShops),
         };
       }
 
@@ -233,53 +237,17 @@ export class CreateCheckoutQuoteService {
         return summary;
       });
 
-      const shops: CheckoutQuoteShopSummary[] = shopMoney.map((entry) => ({
-        shopId: entry.shop.shopId,
-        shopName: entry.shop.shopName,
-        shopSlug: entry.shop.items[0]?.shopSlug ?? '',
-        subtotalMinor: entry.subtotalMinor,
-        discountMinor: entry.discountMinor,
-        saleDiscountMinor: entry.saleDiscountMinor,
-        shippingMinor: entry.shippingMinor,
-        shippingDiscountMinor: entry.shop.shippingDiscountMinor ?? 0,
-        totalMinor: entry.totalMinor,
-        note: entry.shop.note,
-        promoCodes: entry.shop.promoOffers.map((offer) => offer.code),
-        originCountries: entry.shop.originCountries,
-        shipping: entry.shop.shipping,
-        shippingDiscounts: entry.shop.shippingDiscounts ?? [],
-        items: quoteItems.filter((item) => item.shopId === entry.shop.shopId),
-      }));
+      const quoteShops = buildQuoteShopSummaries(shopMoney, quoteItems);
 
-      checkoutQuote.pricedShops = toPersistedPricedShops(shops);
+      checkoutQuote.pricedShops = toPersistedPricedShops(quoteShops);
 
       await entityManager.flush();
 
-      return { quote: checkoutQuote, items: quoteItems };
+      return { quote: checkoutQuote, shops: quoteShops };
     });
 
-    const shops = parsePricedShops(persistedQuote.pricedShops);
-    const shippingAnchorAt = shops.find((shop) => shop.shipping)?.shipping?.estimate.anchorAt;
-
-    return {
-      quoteId: persistedQuote.id,
-      presentmentCurrency,
-      checkoutCurrency: persistedQuote.checkoutCurrency,
-      subtotalMinor: persistedQuote.subtotalMinor,
-      shippingMinor: persistedQuote.shippingMinor,
-      discountMinor: persistedQuote.discountMinor,
-      saleDiscountMinor: persistedQuote.saleDiscountMinor,
-      totalMinor: persistedQuote.totalMinor,
-      ...(shippingAnchorAt ? { shippingAnchorAt } : {}),
-      expiresAt: persistedQuote.expiresAt,
-      shops,
-      items: persistedItems,
-    };
+    return toCheckoutQuoteResult({ quote: persistedQuote, shops, presentmentCurrency });
   }
-}
-
-function flattenQuoteItems(pricedShops: Record<string, unknown>[]): CheckoutQuoteResult['items'] {
-  return parsePricedShops(pricedShops).flatMap((shop) => shop.items);
 }
 
 /**
