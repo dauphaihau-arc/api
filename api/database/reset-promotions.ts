@@ -65,7 +65,6 @@ async function main() {
       'fulfillment_groups',
       'order_items',
       'order_events',
-      'product_inventory_reservations',
       'promotion_usages',
     ]) {
       const result = await client.query(

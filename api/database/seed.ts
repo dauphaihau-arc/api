@@ -24,7 +24,6 @@ import { UserPreferenceEntity } from '~/domains/auth/infra/persistence/entities/
 import { UserSessionEntity } from '~/domains/auth/infra/persistence/entities/user-session.entity';
 import { ProductAttributeValueEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-attribute-value.entity';
 import { ProductImageEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-image.entity';
-import { ProductInventoryReservationEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-inventory-reservation.entity';
 import { ProductOptionEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-option.entity';
 import { ProductOptionValueEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-option-value.entity';
 import { ProductVariantOptionValueEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-variant-option-value.entity';
@@ -118,7 +117,6 @@ async function main() {
       ProductInventoryEntity,
       ProductStockPoolEntity,
       VariantPriceEntity,
-      ProductInventoryReservationEntity,
       ProductReviewEntity,
       OutboxEventEntity,
       ProductReviewImageEntity,

@@ -11,7 +11,6 @@ import {
 import { AbstractBaseEntity } from '~/platform/database/abstract-base.entity';
 import { ShopEntity } from '~/domains/shop/infra/persistence/entities/shop.entity';
 import { ProductEntity } from './product.entity';
-import { ProductInventoryReservationEntity } from './product-inventory-reservation.entity';
 import { ProductStockPoolEntity } from './product-stock-pool.entity';
 import { ProductVariantEntity } from './product-variant.entity';
 import { VariantPriceEntity } from './variant-price.entity';
@@ -72,12 +71,6 @@ export class ProductInventoryEntity extends AbstractBaseEntity {
 
   @Property({ fieldName: 'removed_at', nullable: true })
   removedAt?: Date;
-
-  @OneToMany(
-    () => ProductInventoryReservationEntity,
-    (reservation) => reservation.productInventory,
-  )
-  reservations = new Collection<ProductInventoryReservationEntity>(this);
 
   @OneToMany(() => ProductStockPoolEntity, (stockPool) => stockPool.inventory)
   stockPools = new Collection<ProductStockPoolEntity>(this);

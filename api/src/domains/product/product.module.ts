@@ -124,7 +124,6 @@ import { CatalogMongoAccess } from './infra/catalog/mongo/access/catalog-mongo.a
 import { ProductAttributeValueEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-attribute-value.entity';
 import { ProductImageEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-image.entity';
 import { ProductImageVariantEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-image-variant.entity';
-import { ProductInventoryReservationEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-inventory-reservation.entity';
 import { ProductInventoryEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-inventory.entity';
 import { ProductStockPoolEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-stock-pool.entity';
 import { ProductReviewEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-review.entity';
@@ -179,7 +178,6 @@ import { STOREFRONT_PRICING_CONFIG, buildStorefrontPricingConfig } from '~/platf
       ProductReviewImageEntity,
       ProductReviewImageVariantEntity,
       VariantPriceEntity,
-      ProductInventoryReservationEntity,
     ]),
   ],
   controllers: [

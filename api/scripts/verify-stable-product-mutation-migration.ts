@@ -174,11 +174,6 @@ async function main(): Promise<void> {
           and "expires_at" > now()
         group by "inventory_id"
         union all
-        select "product_inventory_id" as "inventory_id", sum("quantity")::integer as "reserved_quantity"
-        from "product_inventory_reservations"
-        where "released_at" is null
-        group by "product_inventory_id"
-        union all
         select item."inventory_id", sum(item."quantity")::integer as "reserved_quantity"
         from "inventory_reservation_items" item
         join "inventory_reservations" reservation

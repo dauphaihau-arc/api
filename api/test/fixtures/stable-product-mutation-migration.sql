@@ -276,36 +276,8 @@ insert into "checkout_stock_reservations" (
     null
   ) on conflict ("id") do nothing;
 
-insert into "product_inventory_reservations" (
-  "id",
-  "created_at",
-  "updated_at",
-  "product_inventory_id",
-  "order_id",
-  "quantity",
-  "reserved_at",
-  "released_at"
-) values
-  (
-    '90000000-0000-4000-8000-000000000001',
-    now(),
-    now(),
-    '50000000-0000-4000-8000-000000000001',
-    '91000000-0000-4000-8000-000000000001',
-    2,
-    now() - interval '1 day',
-    null
-  ),
-  (
-    '90000000-0000-4000-8000-000000000002',
-    now(),
-    now(),
-    '50000000-0000-4000-8000-000000000001',
-    '91000000-0000-4000-8000-000000000002',
-    7,
-    now() - interval '1 day',
-    now()
-  ) on conflict ("id") do nothing;
+-- The legacy `product_inventory_reservations` table is dropped after the cutover,
+-- so it contributes no active reservations to the expected totals below.
 
 insert into "inventory_reservations" (
   "id",
@@ -474,7 +446,7 @@ insert into "_stable_product_mutation_migration_expectations" (
 ) values (
   '50000000-0000-4000-8000-000000000001',
   4,
-  6,
+  4,
   'c0000000-0000-4000-8000-000000000001',
   true,
   true
