@@ -11,7 +11,6 @@ describe('buildOrderCreatedInventoryEvent', () => {
       eventId: 'event-1',
       occurredAt: new Date('2026-08-12T05:31:19.013Z'),
       orderIds: ['order-1', 'order-2'],
-      quoteId: 'quote-1',
       reservationId: 'reservation-1',
       items: [
         {
@@ -29,7 +28,6 @@ describe('buildOrderCreatedInventoryEvent', () => {
       producer: ORDER_CREATED_INVENTORY_PRODUCER,
       payload: {
         orderIds: ['order-1', 'order-2'],
-        quoteId: 'quote-1',
         reservationId: 'reservation-1',
         items: [
           {

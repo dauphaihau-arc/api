@@ -1,4 +1,3 @@
-import type { EventEmitter2 } from '@nestjs/event-emitter';
 import type { EntityManager } from '@mikro-orm/postgresql';
 import type { NotifyUserUseCase } from '../../../../domains/notification/app/use-cases/notify-user/notify-user.use-case';
 import type { CartPricingService } from '../../../cart/app/services/cart-pricing.service';
@@ -19,8 +18,11 @@ import type { OrderInventoryQueryRepository } from '../ports/order-inventory-que
 import type { OrderShopQueryRepository } from '../ports/order-shop-query.repository';
 import type { PurchaseEligibilityService } from '../../../product/app/services/purchase-eligibility.service';
 import type { ShippingQuoteService } from '../../../shipping/app/services/shipping-quote.service';
+import ms from 'ms';
+import type { PaymentConfig } from '../../../../platform/config/payment.config';
 import {
   CheckoutShippingUnavailableError,
+  OrderNoItemsError,
   OrderTotalLimitExceededError,
 } from '../errors/order-app.error';
 
@@ -100,6 +102,7 @@ describe('OrderCheckoutService', () => {
     purchaseEligibilityResult?: { eligible: boolean; failures: Array<Record<string, unknown>> };
     shippingResolutions?: Array<Record<string, unknown>>;
     pricedCartSummary?: PricedCartSummary;
+    checkoutSessionTtlMs?: number;
   }) {
     const orders: Array<Record<string, unknown>> = [];
     const inventory = {
@@ -179,28 +182,12 @@ describe('OrderCheckoutService', () => {
       } as never),
     } as unknown as jest.Mocked<OrderInventoryOutboxService>;
     const checkoutStockReservationService = {
-      consumeReservationsForQuote: jest.fn().mockResolvedValue(undefined),
-      allocateInventoryForOrderItems: jest.fn().mockResolvedValue({
-        inventoryById: new Map([[
-          'inventory-1',
-          {
-            id: 'inventory-1',
-            stock: 3,
-          },
-        ]]),
-        inventoryEvents: [
-          {
-            productId: 'product-1',
-            inventoryId: 'inventory-1',
-            stock: 3,
-          },
-        ],
+      reserveForOrder: jest.fn().mockResolvedValue({
+        reservationId: 'reservation-1',
       }),
+      consumeReservationsForOrder: jest.fn().mockResolvedValue(undefined),
     } as unknown as jest.Mocked<CheckoutStockReservationPort>;
 
-    const eventEmitter: Pick<jest.Mocked<EventEmitter2>, 'emit'> = {
-      emit: jest.fn(),
-    };
     const jobDispatcher = {
       dispatch: jest.fn().mockResolvedValue(undefined),
     };
@@ -251,6 +238,10 @@ describe('OrderCheckoutService', () => {
       listOriginCountries: jest.fn().mockResolvedValue([]),
     } as unknown as ShippingQuoteService;
 
+    const paymentConfig: PaymentConfig = {
+      checkoutSessionTtlMs: options?.checkoutSessionTtlMs ?? ms('60m'),
+    } as PaymentConfig;
+
     const service = new OrderCheckoutService(
       entityManager,
       cartPricingService,
@@ -259,7 +250,6 @@ describe('OrderCheckoutService', () => {
       orderInventoryOutboxService,
       orderEventsService as never,
       notifyUserUseCase,
-      eventEmitter as unknown as EventEmitter2,
       jobDispatcher as never,
       orderTotalPolicyService as unknown as OrderTotalPolicyService,
       orderCartCleanupRepository,
@@ -269,11 +259,11 @@ describe('OrderCheckoutService', () => {
       promotionRedemptionService,
       fulfillmentService,
       shippingQuoteService,
+      paymentConfig,
     );
 
     return {
       service,
-      eventEmitter,
       jobDispatcher,
       notifyUserUseCase,
       orderTotalPolicyService,
@@ -293,10 +283,56 @@ describe('OrderCheckoutService', () => {
     };
   }
 
+  it('holds stock past the payment session expiry so a late payment can still be settled', async () => {
+    const {
+      service,
+      checkoutStockReservationService,
+      jobDispatcher,
+    } = buildService({ checkoutSessionTtlMs: ms('60m') });
+    const now = new Date('2026-06-04T10:00:00.000Z');
+    const dateNowSpy = jest.spyOn(Date, 'now').mockReturnValue(now.getTime());
+
+    try {
+      await service.createOrders(
+        {
+          type: 'user',
+          userId: 'user-1',
+          email: 'member@example.com',
+        },
+        'cart-1',
+        cart,
+        {
+          paymentType: PaymentType.CARD,
+          shippingAddress,
+          isTempCart: false,
+        },
+      );
+    }
+    finally {
+      dateNowSpy.mockRestore();
+    }
+
+    // 60m session + the fixed release grace: the reservation must never expire
+    // while Stripe can still complete the session, or the paid Order would be
+    // left unreservable.
+    const expectedHoldMs = ms('60m') + ms('5m');
+
+    expect(checkoutStockReservationService.reserveForOrder).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        expiresAt: new Date(now.getTime() + expectedHoldMs),
+      }),
+    );
+    expect(jobDispatcher.dispatch).toHaveBeenCalledWith(
+      'order.cleanup-expired-order-reservations',
+      { orderId: 'order-1', reservationId: 'reservation-1' },
+      expect.objectContaining({ delayMs: expectedHoldMs }),
+    );
+  });
+
   it('writes a checkout outbox event and returns the inline checkout session when ready', async () => {
     const {
       service,
-      eventEmitter,
       notifyUserUseCase,
       orderTotalPolicyService,
       orderRepository,
@@ -305,6 +341,7 @@ describe('OrderCheckoutService', () => {
       orderInventoryOutboxService,
       checkoutStockReservationService,
       fulfillmentService,
+      jobDispatcher,
     } = buildService({
       processResult: {
         id: 'cs_test_1',
@@ -349,27 +386,34 @@ describe('OrderCheckoutService', () => {
         promoDiscountMinor: 0,
       }),
     );
-    expect(checkoutStockReservationService.allocateInventoryForOrderItems).toHaveBeenCalledWith(
+    expect(checkoutStockReservationService.reserveForOrder).toHaveBeenCalledWith(
       expect.anything(),
-      [{
-        inventoryId: 'inventory-1',
-        productId: 'product-1',
-        quantity: 2,
-        title: 'Product 1',
-      }],
-      { commandId: 'cart-1:allocate' },
+      expect.objectContaining({
+        orderId: 'order-1',
+        cartId: 'cart-1',
+        expiresAt: expect.any(Date),
+        items: [{
+          inventoryId: 'inventory-1',
+          quantity: 2,
+          title: 'Product 1',
+        }],
+      }),
     );
+    expect(checkoutStockReservationService.consumeReservationsForOrder).not.toHaveBeenCalled();
     expect(
       orderCheckoutOutboxService.createCheckoutSessionRequestedEvent,
     ).toHaveBeenCalled();
     expect(orderInventoryOutboxService.createOrderCreatedEvent).not.toHaveBeenCalled();
-    expect(checkoutStockReservationService.consumeReservationsForQuote).not.toHaveBeenCalled();
     expect(orderCheckoutOutboxService.processEventById).toHaveBeenCalledWith('outbox-1');
     expect(fulfillmentService.assignSellerGroupToOrder).not.toHaveBeenCalled();
+    expect(jobDispatcher.dispatch).toHaveBeenCalledWith(
+      'order.cleanup-expired-order-reservations',
+      { orderId: 'order-1', reservationId: 'reservation-1' },
+      expect.objectContaining({ delayMs: expect.any(Number) }),
+    );
 
     await waitForDeferredCheckoutSideEffects();
 
-    expect(eventEmitter.emit).toHaveBeenCalled();
     expect(notifyUserUseCase.execute).toHaveBeenCalledWith(expect.objectContaining({
       userId: 'seller-1',
       type: 'seller.order.created',
@@ -387,7 +431,14 @@ describe('OrderCheckoutService', () => {
   });
 
   it('returns checkout pending while checkout session is prepared by the worker', async () => {
-    const { service, orderTotalPolicyService, orderCheckoutOutboxService } = buildService();
+    const {
+      service,
+      orderTotalPolicyService,
+      orderCheckoutOutboxService,
+      checkoutStockReservationService,
+      orderInventoryOutboxService,
+      jobDispatcher,
+    } = buildService();
 
     const result = await service.createOrders(
       {
@@ -408,6 +459,26 @@ describe('OrderCheckoutService', () => {
       totalMinor: 1600,
       currency: 'USD',
     });
+    expect(checkoutStockReservationService.reserveForOrder).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        orderId: 'order-1',
+        cartId: 'cart-1',
+        expiresAt: expect.any(Date),
+        items: [{
+          inventoryId: 'inventory-1',
+          quantity: 2,
+          title: 'Product 1',
+        }],
+      }),
+    );
+    expect(checkoutStockReservationService.consumeReservationsForOrder).not.toHaveBeenCalled();
+    expect(orderInventoryOutboxService.createOrderCreatedEvent).not.toHaveBeenCalled();
+    expect(jobDispatcher.dispatch).toHaveBeenCalledWith(
+      'order.cleanup-expired-order-reservations',
+      { orderId: 'order-1', reservationId: 'reservation-1' },
+      expect.objectContaining({ delayMs: expect.any(Number) }),
+    );
     expect(orderCheckoutOutboxService.processEventById).toHaveBeenCalledWith('outbox-1');
     expect(result.checkoutSessionUrl).toBeUndefined();
     expect(result.checkoutPending).toBe(true);
@@ -419,6 +490,7 @@ describe('OrderCheckoutService', () => {
       orderRepository,
       orderCheckoutOutboxService,
       orderInventoryOutboxService,
+      checkoutStockReservationService,
       fulfillmentService,
     } = buildService();
 
@@ -442,10 +514,40 @@ describe('OrderCheckoutService', () => {
         status: OrderStatus.PENDING,
       }),
     );
+    expect(checkoutStockReservationService.reserveForOrder).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        orderId: 'order-1',
+        cartId: 'cart-1',
+        expiresAt: expect.any(Date),
+        items: [{
+          inventoryId: 'inventory-1',
+          quantity: 2,
+          title: 'Product 1',
+        }],
+      }),
+    );
+    expect(checkoutStockReservationService.consumeReservationsForOrder).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        orderId: 'order-1',
+        reservationId: 'reservation-1',
+        items: [{
+          inventoryId: 'inventory-1',
+          quantity: 2,
+        }],
+      }),
+    );
     expect(
       orderCheckoutOutboxService.createCheckoutSessionRequestedEvent,
     ).not.toHaveBeenCalled();
-    expect(orderInventoryOutboxService.createOrderCreatedEvent).not.toHaveBeenCalled();
+    expect(orderInventoryOutboxService.createOrderCreatedEvent).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        orderIds: ['order-1'],
+        reservationId: 'reservation-1',
+      }),
+    );
     expect(orderCheckoutOutboxService.processEventById).not.toHaveBeenCalled();
     expect(fulfillmentService.assignSellerGroupToOrder).toHaveBeenCalledWith(
       expect.anything(),
@@ -539,7 +641,6 @@ describe('OrderCheckoutService', () => {
         quote: {
           id: 'quote-1',
           cartId: 'cart-1',
-          reservationId: 'reservation-remote-1',
           marketCode: 'US',
           presentmentCurrency: 'USD',
           checkoutCurrency: 'USD',
@@ -648,8 +749,20 @@ describe('OrderCheckoutService', () => {
       totalMinor: 1800,
       currency: 'USD',
     });
-    expect(checkoutStockReservationService.consumeReservationsForQuote).not.toHaveBeenCalled();
-    expect(checkoutStockReservationService.allocateInventoryForOrderItems).not.toHaveBeenCalled();
+    expect(checkoutStockReservationService.reserveForOrder).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        orderId: 'order-1',
+        cartId: 'cart-1',
+        expiresAt: expect.any(Date),
+        items: [{
+          inventoryId: 'inventory-1',
+          quantity: 2,
+          title: 'Product 1',
+        }],
+      }),
+    );
+    expect(checkoutStockReservationService.consumeReservationsForOrder).not.toHaveBeenCalled();
     expect(orderItemRepository.create).toHaveBeenCalledWith(
       expect.objectContaining({
         title: 'Product 1',
@@ -714,12 +827,44 @@ describe('OrderCheckoutService', () => {
           quantity: 2,
           title: 'Product 1',
         }],
-        requireAvailableQuantity: true,
       },
       expect.anything(),
     );
-    expect(checkoutStockReservationService.allocateInventoryForOrderItems).not.toHaveBeenCalled();
-    expect(checkoutStockReservationService.consumeReservationsForQuote).not.toHaveBeenCalled();
+    expect(checkoutStockReservationService.reserveForOrder).not.toHaveBeenCalled();
+    expect(checkoutStockReservationService.consumeReservationsForOrder).not.toHaveBeenCalled();
+    expect(orderRepository.create).not.toHaveBeenCalled();
+  });
+
+  it('rejects commitment when the priced cart has no selected items', async () => {
+    const {
+      service,
+      orderRepository,
+      orderTotalPolicyService,
+    } = buildService({
+      pricedCartSummary: {
+        ...pricedCartSummary,
+        shops: [],
+      },
+    });
+
+    await expect(
+      service.createOrders(
+        {
+          type: 'user',
+          userId: 'user-1',
+          email: 'member@example.com',
+        },
+        'cart-1',
+        cart,
+        {
+          paymentType: PaymentType.CARD,
+          shippingAddress,
+          isTempCart: false,
+        },
+      ),
+    ).rejects.toThrow(OrderNoItemsError);
+
+    expect(orderTotalPolicyService.assertWithinLimit).not.toHaveBeenCalled();
     expect(orderRepository.create).not.toHaveBeenCalled();
   });
 
@@ -879,7 +1024,6 @@ describe('OrderCheckoutService', () => {
     return {
       id: 'quote-1',
       cartId: 'cart-1',
-      reservationId: 'reservation-remote-1',
       marketCode: 'US',
       presentmentCurrency: 'USD',
       checkoutCurrency: 'USD',

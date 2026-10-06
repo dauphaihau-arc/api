@@ -27,7 +27,6 @@ import { QueueModule } from '~/integrations/queue/queue.module';
 import { StorageModule } from '~/integrations/storage/storage.module';
 import { CheckoutController } from './api/rest/checkout.controller';
 import { MeCheckoutController } from './api/rest/me-checkout.controller';
-import { CheckoutInventoryQueryRepository } from './app/ports/checkout-inventory-query.repository';
 import { CheckoutQuoteRepository } from './app/ports/checkout-quote.repository';
 import { CheckoutStockReservationCommandRepository } from './app/ports/checkout-stock-reservation-command.repository';
 import { CheckoutStockReservationPort } from './app/ports/checkout-stock-reservation.port';
@@ -51,7 +50,6 @@ import { LookupGuestOrdersUseCase } from './app/use-cases/lookup-guest-orders/lo
 import { CheckoutQuoteEntity } from './infra/persistence/entities/checkout-quote.entity';
 import { CheckoutQuoteItemEntity } from './infra/persistence/entities/checkout-quote-item.entity';
 import { CheckoutStockReservationEntity } from './infra/persistence/entities/checkout-stock-reservation.entity';
-import { MikroOrmCheckoutInventoryQueryRepository } from './infra/persistence/repositories/mikro-orm-checkout-inventory-query.repository';
 import { MikroOrmCheckoutQuoteRepository } from './infra/persistence/repositories/mikro-orm-checkout-quote.repository';
 import { MikroOrmCheckoutStockReservationCommandRepository } from './infra/persistence/repositories/mikro-orm-checkout-stock-reservation-command.repository';
 import {
@@ -108,10 +106,6 @@ import { OrderItemEntity } from '../order/infra/persistence/entities/order-item.
     {
       provide: CheckoutQuoteRepository,
       useClass: MikroOrmCheckoutQuoteRepository,
-    },
-    {
-      provide: CheckoutInventoryQueryRepository,
-      useClass: MikroOrmCheckoutInventoryQueryRepository,
     },
     {
       provide: CheckoutStockReservationCommandRepository,

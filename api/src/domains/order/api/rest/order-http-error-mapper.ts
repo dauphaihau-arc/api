@@ -25,7 +25,10 @@ import {
   OrderAppError,
   OrderExportNotFoundError,
   OrderExportNotReadyError,
+  OrderInventoryNotFoundError,
+  OrderNoItemsError,
   OrderNotFoundError,
+  OrderShopNotFoundError,
   OrderTotalLimitExceededError,
   SellerRefundActionNotAllowedError,
   SellerRefundNotAllowedError,
@@ -51,6 +54,9 @@ type OrderHttpErrorCode =
   | 'CHECKOUT_QUOTE_RESERVATION_OUT_OF_STOCK'
   | 'CHECKOUT_QUOTE_CART_CHANGED'
   | 'ORDER_TOTAL_LIMIT_EXCEEDED'
+  | 'ORDER_NO_ITEMS'
+  | 'SHOP_NOT_FOUND'
+  | 'PRODUCT_INVENTORY_NOT_FOUND'
   | 'ORDER_NOT_FOUND'
   | 'ORDER_EXPORT_NOT_FOUND'
   | 'ORDER_EXPORT_NOT_READY'
@@ -82,6 +88,8 @@ export function mapOrderAppErrorToHttpException(
     || error instanceof CheckoutSessionNotFoundError
     || error instanceof CheckoutSessionExpiredError
     || error instanceof CheckoutQuoteNotFoundError
+    || error instanceof OrderShopNotFoundError
+    || error instanceof OrderInventoryNotFoundError
   ) {
     return new NotFoundException(buildOrderErrorPayload(error));
   }
@@ -109,6 +117,7 @@ export function mapOrderAppErrorToHttpException(
     || error instanceof CheckoutQuoteExpiredError
     || error instanceof CheckoutQuoteReservationUnavailableError
     || error instanceof CheckoutQuoteReservationOutOfStockError
+    || error instanceof OrderNoItemsError
     || error instanceof OrderTotalLimitExceededError
   ) {
     return new BadRequestException(buildOrderErrorPayload(error));
@@ -157,6 +166,15 @@ function getOrderErrorCode(error: OrderAppError): OrderHttpErrorCode {
   }
   if (error instanceof OrderTotalLimitExceededError) {
     return 'ORDER_TOTAL_LIMIT_EXCEEDED';
+  }
+  if (error instanceof OrderNoItemsError) {
+    return 'ORDER_NO_ITEMS';
+  }
+  if (error instanceof OrderShopNotFoundError) {
+    return 'SHOP_NOT_FOUND';
+  }
+  if (error instanceof OrderInventoryNotFoundError) {
+    return 'PRODUCT_INVENTORY_NOT_FOUND';
   }
   if (error instanceof OrderNotFoundError) {
     return 'ORDER_NOT_FOUND';

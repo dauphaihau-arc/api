@@ -1,9 +1,5 @@
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
-import { EventEmitter2 } from '@nestjs/event-emitter';
-import {
-  PRODUCT_INVENTORY_UPDATED_SSE_EVENT,
-} from '../../../product/app/events/product-inventory-sse.event';
 import { JobDispatcher } from '../../../../integrations/queue/app/ports/job-dispatcher';
 import { OrderEventActorType } from '../../domain/enums/order-event-actor-type.enum';
 import { OrderEventType } from '../../domain/enums/order-event-type.enum';
@@ -25,7 +21,6 @@ import { OrderInventoryOutboxService } from './order-inventory-outbox.service';
 export class OrderPaymentService {
   constructor(
     private readonly entityManager: EntityManager,
-    private readonly eventEmitter: EventEmitter2,
     private readonly jobDispatcher: JobDispatcher,
     private readonly checkoutStockReservationService: CheckoutStockReservationPort,
     private readonly orderInventoryOutboxService: OrderInventoryOutboxService,
@@ -71,31 +66,35 @@ export class OrderPaymentService {
       }
 
       const orderIds = actionableOrders.map((order) => order.id);
+
       const orderItems = await entityManager.getRepository(OrderItemEntity).find(
         { order: { $in: orderIds } },
         { populate: ['inventory', 'product', 'order'] },
       );
-      const firstPaymentDetails = actionableOrders[0]?.paymentDetails ?? {};
-      const quoteId = typeof firstPaymentDetails.quote_id === 'string'
-        ? firstPaymentDetails.quote_id
-        : undefined;
-      const reservationId = typeof firstPaymentDetails.reservation_id === 'string'
-        ? firstPaymentDetails.reservation_id
-        : undefined;
 
-      if (quoteId) {
-        const reservedItems = orderItems.map((item) => ({
-          inventoryId: item.inventory.id,
-          quantity: item.quantity,
-        }));
+      // Each paid Order consumes its own hold and records its own
+      // `order.created`, so the inventory-service moves exactly that Order's
+      // reservation to SOLD.
+      for (const order of actionableOrders) {
+        const reservationId = typeof order.paymentDetails?.reservation_id === 'string'
+          ? order.paymentDetails.reservation_id
+          : undefined;
 
-        await this.checkoutStockReservationService.consumeReservationsForQuote(entityManager, {
-          quoteId,
+        const reservedItems = orderItems
+          .filter((item) => item.order.id === order.id)
+          .map((item) => ({
+            inventoryId: item.inventory.id,
+            quantity: item.quantity,
+          }));
+
+        await this.checkoutStockReservationService.consumeReservationsForOrder(entityManager, {
+          orderId: order.id,
+          ...(reservationId ? { reservationId } : {}),
           items: reservedItems,
         });
+
         await this.orderInventoryOutboxService.createOrderCreatedEvent(entityManager, {
-          orderIds,
-          quoteId,
+          orderIds: [order.id],
           reservationId,
           items: reservedItems,
         });
@@ -103,6 +102,7 @@ export class OrderPaymentService {
 
       for (const order of actionableOrders) {
         const previousStatus = order.status;
+
         order.status = OrderStatus.PAID;
         order.paymentDetails = {
           ...order.paymentDetails,
@@ -111,6 +111,7 @@ export class OrderPaymentService {
           payment_status: input.paymentStatus ?? 'paid',
           paid_at: input.completedAt?.toISOString() ?? new Date().toISOString(),
         };
+
         await this.orderEventsService.record(entityManager, {
           order,
           type: OrderEventType.PAYMENT_SUCCEEDED,
@@ -125,6 +126,7 @@ export class OrderPaymentService {
             checkout_session_id: sessionId,
           },
         });
+
         const fulfillmentItems = orderItems
           .filter((item) => item.order.id === order.id)
           .map((item) => ({
@@ -144,6 +146,7 @@ export class OrderPaymentService {
 
       const cartId = String(actionableOrders[0]?.paymentDetails?.cart_id ?? '');
       const isTempCart = Boolean(actionableOrders[0]?.paymentDetails?.is_temp_cart);
+
       const quotedInventoryIds = Array.isArray(actionableOrders[0]?.paymentDetails?.quoted_inventory_ids)
         ? actionableOrders[0]?.paymentDetails?.quoted_inventory_ids as string[]
         : undefined;
@@ -166,7 +169,7 @@ export class OrderPaymentService {
     sessionId: string,
     expiredAt?: Date,
   ): Promise<void> {
-    const inventoryEvents = await this.entityManager.transactional(async (entityManager) => {
+    await this.entityManager.transactional(async (entityManager) => {
       const orders = await this.orderCheckoutSessionRepository.findOrdersByCheckoutSession(
         sessionId,
         { entityManager },
@@ -174,51 +177,35 @@ export class OrderPaymentService {
       const actionableOrders = orders.filter((order) => order.status === OrderStatus.AWAITING_PAYMENT);
 
       if (actionableOrders.length === 0) {
-        return [];
+        return;
       }
 
-      const orderIds = actionableOrders.map((order) => order.id);
-      const firstPaymentDetails = actionableOrders[0]?.paymentDetails ?? {};
-      const quoteId = typeof firstPaymentDetails.quote_id === 'string'
-        ? firstPaymentDetails.quote_id
-        : undefined;
-      const orderItems = await entityManager.getRepository(OrderItemEntity).find(
-        { order: { $in: orderIds } },
-        { populate: ['inventory', 'product'] },
-      );
+      for (const order of actionableOrders) {
+        const reservationId = typeof order.paymentDetails?.reservation_id === 'string'
+          ? order.paymentDetails.reservation_id
+          : undefined;
 
-      const restockedInventoryEvents = quoteId
-        ? []
-        : await this.checkoutStockReservationService.restoreInventoryForOrderItems(
+        await this.checkoutStockReservationService.releaseReservationsForOrder(
           entityManager,
-          orderItems.map((item) => ({
-            inventoryId: item.inventory.id,
-            productId: item.product.id,
-            quantity: item.quantity,
-          })),
+          order.id,
           {
-            commandId: `${orderIds.join(',')}:expiry-restore`,
-            cause: 'payment_expired',
+            ...(expiredAt ? { releasedAt: expiredAt } : {}),
+            ...(reservationId ? { reservationId } : {}),
           },
-        );
-
-      if (quoteId) {
-        await this.checkoutStockReservationService.releaseReservationsForQuote(
-          entityManager,
-          quoteId,
-          expiredAt,
         );
       }
 
       for (const order of actionableOrders) {
         const previousStatus = order.status;
         order.status = OrderStatus.EXPIRED;
+
         order.paymentDetails = {
           ...order.paymentDetails,
           checkout_session_id: sessionId,
           payment_status: 'expired',
           expired_at: expiredAt?.toISOString() ?? new Date().toISOString(),
         };
+
         await this.orderEventsService.record(entityManager, {
           order,
           type: OrderEventType.PAYMENT_EXPIRED,
@@ -234,12 +221,7 @@ export class OrderPaymentService {
       }
 
       await entityManager.flush();
-      return restockedInventoryEvents;
     });
-
-    for (const inventoryEvent of inventoryEvents) {
-      this.eventEmitter.emit(PRODUCT_INVENTORY_UPDATED_SSE_EVENT, inventoryEvent);
-    }
   }
 
 }

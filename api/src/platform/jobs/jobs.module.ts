@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { AuthModule } from '~/domains/auth/auth.module';
 import { SendPasswordResetEmailJob } from '~/domains/auth/jobs/send-password-reset-email.job';
 import { CheckoutModule } from '~/domains/checkout/checkout.module';
-import { CleanupExpiredCheckoutQuoteReservationsJob } from '~/domains/checkout/jobs/cleanup-expired-checkout-quote-reservations.job';
+import { CleanupExpiredOrderReservationsJob } from '~/domains/checkout/jobs/cleanup-expired-order-reservations.job';
 import { NotificationModule } from '~/domains/notification/notification.module';
 import { SendWebPushNotificationJob } from '~/domains/notification/jobs/send-web-push-notification.job';
 import { OrderModule } from '~/domains/order/order.module';
@@ -61,7 +61,7 @@ import { JobRunner } from './job-runner';
     ProjectCatalogProductJob,
     ProjectShopCatalogProductsJob,
     CleanupPendingReviewImageJob,
-    CleanupExpiredCheckoutQuoteReservationsJob,
+    CleanupExpiredOrderReservationsJob,
     RefreshBestSellerRankingsJob,
   ],
   exports: [AppJobRunner, JobRunner],

@@ -15,6 +15,6 @@ export const appJobName = {
   projectShopCatalogProducts: 'catalog.project-shop-products',
   cleanupPendingReviewImage: 'product.cleanup-pending-review-image',
   processProductImport: 'product.process-import',
-  cleanupExpiredCheckoutQuoteReservations: 'order.cleanup-expired-checkout-quote-reservations',
+  cleanupExpiredOrderReservations: 'order.cleanup-expired-order-reservations',
   refreshBestSellerRankings: 'product.refresh-best-seller-rankings',
 } as const;

@@ -657,10 +657,10 @@ export function defineInventoryLifecycleSuite(
       await outboxPublisher.processPendingEvents();
     }
 
-    async function readQuoteReservationId(quoteId: string): Promise<string | undefined> {
+    async function readOrderReservationId(orderId: string): Promise<string | undefined> {
       const rows = await sql.query(
-        'select "reservation_id" from "checkout_quotes" where "id" = $1',
-        [quoteId],
+        'select "payment_details"->>\'reservation_id\' as "reservation_id" from "orders" where "id" = $1',
+        [orderId],
       );
 
       return rows.rows[0]?.reservation_id as string | undefined;
@@ -723,9 +723,6 @@ export function defineInventoryLifecycleSuite(
         .expect(201);
 
       const quoteId = quoteResponse.body.quote_id as string;
-      const reservationId = mode === 'remote'
-        ? await readQuoteReservationId(quoteId)
-        : undefined;
 
       const orderResponse = await agent
         .post(`${API_PREFIX}/checkout/buy-now`)
@@ -738,18 +735,21 @@ export function defineInventoryLifecycleSuite(
         .expect(201);
 
       const orderId = (orderResponse.body.order_shops[0] as OrderShop).id;
+      const reservationId = mode === 'remote'
+        ? await readOrderReservationId(orderId)
+        : undefined;
       const sessionId = input.paymentType === 'card'
         ? await readOrderSessionId(orderId)
         : undefined;
 
       if (input.paymentType === 'cash') {
-        // Cash consumption is applied by the remote authority through the
-        // order.created outbox; local mode consumes inline during order creation.
+        // Remote cash consumption is driven by the order.created outbox;
+        // local mode consumes inline during order creation.
         await publishOrderCreatedOutbox();
       }
 
       return {
-        orderId, quoteId, reservationId, sessionId, 
+        orderId, quoteId, reservationId, sessionId,
       };
     }
 
@@ -1006,7 +1006,7 @@ export function defineInventoryLifecycleSuite(
       const seller = await createSeller();
       const { inventoryId } = await seedPublishedProduct({ seller, stock: 3, priceMinor: 1999 });
 
-      const { orderId, reservationId, quoteId } = await placeGuestOrder({
+      const { orderId, reservationId } = await placeGuestOrder({
         inventoryId,
         quantity: 1,
         paymentType: 'card',
@@ -1023,13 +1023,12 @@ export function defineInventoryLifecycleSuite(
         );
         expect(item.rows[0]?.stock_pool_id).toBe(pool.id);
         expect(await readReservationStatus(reservationId!)).toBe('ACTIVE');
-        expect(quoteId).toBeTruthy();
       }
       else {
         const rows = await sql.query(
           `select "stock_pool_id" from "checkout_stock_reservations"
-           where "quote_id" = $1`,
-          [quoteId],
+           where "order_id" = $1`,
+          [orderId],
         );
         expect(rows.rows[0]?.stock_pool_id).toBe(pool.id);
         expect(await readLocalReservationStatus(inventoryId)).toBe('active');

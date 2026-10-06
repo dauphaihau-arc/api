@@ -1,17 +1,13 @@
 import { EntityManager } from '@mikro-orm/postgresql';
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import {
   INVENTORY_RESERVATION_CONFIG,
   type InventoryReservationConfig,
 } from '~/platform/config/inventory-reservation.config';
 import type { ProductInventoryUpdatedSseEventPayload } from '../../../product/app/events/product-inventory-sse.event';
-import { ProductInventoryEntity } from '../../../product/infra/persistence/mikro-orm/entities/product-inventory.entity';
 import {
   CheckoutQuoteReservationUnavailableError,
 } from '../../../order/app/errors/order-app.error';
-import type { CheckoutQuoteEntity } from '../../infra/persistence/entities/checkout-quote.entity';
-import { CheckoutInventoryQueryRepository } from '../ports/checkout-inventory-query.repository';
-import { CheckoutQuoteRepository } from '../ports/checkout-quote.repository';
 import { CheckoutStockReservationPort } from '../ports/checkout-stock-reservation.port';
 import type { InventoryMutationOptions } from '../ports/checkout-stock-reservation.port';
 import { RemoteInventoryReservationClient } from '../ports/remote-inventory-reservation.client';
@@ -26,36 +22,7 @@ implements CheckoutStockReservationPort {
     private readonly localReservationService: CheckoutStockReservationService,
     private readonly remoteReservationClient: RemoteInventoryReservationClient,
     private readonly entityManager: EntityManager,
-    private readonly checkoutQuoteRepository: CheckoutQuoteRepository,
-    private readonly checkoutInventoryQueryRepository: CheckoutInventoryQueryRepository,
   ) {}
-
-  async allocateInventoryForOrderItems(
-    entityManager: EntityManager,
-    items: Array<{
-      inventoryId: string;
-      productId: string;
-      quantity: number;
-      title: string;
-    }>,
-    options: InventoryMutationOptions = {},
-  ): Promise<{
-    inventoryById: Map<string, ProductInventoryEntity>;
-    inventoryEvents: ProductInventoryUpdatedSseEventPayload[];
-  }> {
-    if (this.isLocal()) {
-      return this.localReservationService.allocateInventoryForOrderItems(
-        entityManager,
-        items,
-        options,
-      );
-    }
-
-    return {
-      inventoryById: await this.loadInventoryById(entityManager, items),
-      inventoryEvents: [],
-    };
-  }
 
   async restoreInventoryForOrderItems(
     entityManager: EntityManager,
@@ -93,10 +60,10 @@ implements CheckoutStockReservationPort {
     return [];
   }
 
-  async reserveForQuote(
+  async reserveForOrder(
     transactionalEntityManager: EntityManager,
     input: {
-      quoteId: string;
+      orderId: string;
       cartId: string;
       expiresAt: Date;
       items: Array<{
@@ -105,16 +72,16 @@ implements CheckoutStockReservationPort {
     },
   ): Promise<{ reservationId?: string } | void> {
     if (this.isLocal()) {
-      return this.localReservationService.reserveForQuote(
+      return this.localReservationService.reserveForOrder(
         transactionalEntityManager,
         input,
       );
     }
 
-    const result = await this.remoteReservationClient.reserveQuote({
-      quoteId: input.quoteId,
+    const result = await this.remoteReservationClient.reserveOrder({
+      orderId: input.orderId,
       cartId: input.cartId,
-      idempotencyKey: buildReservationIdempotencyKey(input.quoteId),
+      idempotencyKey: buildReservationIdempotencyKey(input.orderId),
       expiresAt: input.expiresAt,
       items: input.items,
     });
@@ -122,29 +89,33 @@ implements CheckoutStockReservationPort {
     return { reservationId: result.reservationId };
   }
 
-  async consumeReservationsForQuote(
+  async consumeReservationsForOrder(
     entityManager: EntityManager,
     input: {
-      quoteId: string;
+      orderId: string;
+      reservationId?: string;
       items: Array<{ inventoryId: string; quantity: number }>;
       consumedAt?: Date;
     },
   ): Promise<void> {
     if (this.isLocal()) {
-      return this.localReservationService.consumeReservationsForQuote(
+      return this.localReservationService.consumeReservationsForOrder(
         entityManager,
         input,
       );
     }
 
-    const quote = await this.loadQuote(entityManager, input.quoteId);
-    if (!quote?.reservationId) {
+    // The inventory-service consumes the hold to SOLD when it processes the
+    // Order's `order.created` event. Before the Order is marked paid, confirm
+    // the hold is still active so a released or expired reservation fails the
+    // commitment instead of overselling.
+    if (!input.reservationId) {
       throw new CheckoutQuoteReservationUnavailableError();
     }
 
     const result = await this.remoteReservationClient.validateReservation({
-      quoteId: input.quoteId,
-      reservationId: quote.reservationId,
+      orderId: input.orderId,
+      reservationId: input.reservationId,
       items: input.items,
     });
 
@@ -153,100 +124,77 @@ implements CheckoutStockReservationPort {
     }
   }
 
-  async expireReservationsForQuote(
+  async expireReservationsForOrder(
     entityManager: EntityManager,
-    quoteId: string,
-    expiredAt?: Date,
+    orderId: string,
+    options?: { expiredAt?: Date; reservationId?: string },
   ): Promise<number> {
     if (this.isLocal()) {
-      return this.localReservationService.expireReservationsForQuote(
+      return this.localReservationService.expireReservationsForOrder(
         entityManager,
-        quoteId,
-        expiredAt,
+        orderId,
+        options,
       );
     }
 
-    const quote = await this.loadQuote(entityManager, quoteId);
-    if (!quote?.reservationId) {
+    if (!options?.reservationId) {
       return 0;
     }
 
     await this.remoteReservationClient.releaseReservation({
-      quoteId,
-      reservationId: quote.reservationId,
-      reason: 'quote_expired',
-      idempotencyKey: buildReleaseIdempotencyKey(quoteId, 'quote_expired'),
+      orderId,
+      reservationId: options.reservationId,
+      reason: 'order_expired',
+      idempotencyKey: buildReleaseIdempotencyKey(orderId, 'order_expired'),
     });
 
     return 1;
   }
 
-  async releaseReservationsForQuote(
+  async releaseReservationsForOrder(
     entityManager: EntityManager,
-    quoteId: string,
-    releasedAt?: Date,
+    orderId: string,
+    options?: { releasedAt?: Date; reservationId?: string },
   ): Promise<number> {
     if (this.isLocal()) {
-      return this.localReservationService.releaseReservationsForQuote(
+      return this.localReservationService.releaseReservationsForOrder(
         entityManager,
-        quoteId,
-        releasedAt,
+        orderId,
+        options,
       );
     }
 
-    const quote = await this.loadQuote(entityManager, quoteId);
-    if (!quote?.reservationId) {
+    if (!options?.reservationId) {
       return 0;
     }
 
     await this.remoteReservationClient.releaseReservation({
-      quoteId,
-      reservationId: quote.reservationId,
-      reason: 'checkout_abandoned',
-      idempotencyKey: buildReleaseIdempotencyKey(quoteId, 'checkout_abandoned'),
+      orderId,
+      reservationId: options.reservationId,
+      reason: 'order_session_expired',
+      idempotencyKey: buildReleaseIdempotencyKey(orderId, 'order_session_expired'),
     });
 
     return 1;
   }
 
-  async cleanupExpiredForQuote(quoteId: string, now = new Date()): Promise<number> {
+  async cleanupExpiredForOrder(
+    orderId: string,
+    options?: { now?: Date; reservationId?: string },
+  ): Promise<number> {
     if (this.isLocal()) {
-      return this.localReservationService.cleanupExpiredForQuote(quoteId, now);
+      return this.localReservationService.cleanupExpiredForOrder(orderId, options);
     }
 
     return this.entityManager.transactional(async (entityManager) =>
-      this.expireReservationsForQuote(entityManager, quoteId, now));
+      this.expireReservationsForOrder(entityManager, orderId, {
+        expiredAt: options?.now,
+        reservationId: options?.reservationId,
+      }));
   }
 
   private isLocal(): boolean {
     return this.inventoryReservationConfig.driver === 'local';
-  }
-
-  private async loadInventoryById(
-    entityManager: EntityManager,
-    items: Array<{ inventoryId: string }>,
-  ): Promise<Map<string, ProductInventoryEntity>> {
-    const sortedItems = sortItemsByInventoryId(items);
-
-    const inventoryById = await this.checkoutInventoryQueryRepository.findByIds(
-      sortedItems.map((item) => item.inventoryId),
-      { entityManager },
-    );
-
-    for (const item of sortedItems) {
-      if (!inventoryById.has(item.inventoryId)) {
-        throw new NotFoundException('Inventory not found');
-      }
-    }
-
-    return inventoryById;
-  }
-
-  private async loadQuote(
-    entityManager: EntityManager,
-    quoteId: string,
-  ): Promise<CheckoutQuoteEntity | null> {
-    return this.checkoutQuoteRepository.findById(quoteId, { entityManager });
   }
 }
 
@@ -256,8 +204,4 @@ function buildReservationIdempotencyKey(quoteId: string): string {
 
 function buildReleaseIdempotencyKey(quoteId: string, reason: string): string {
   return `${quoteId}:release:${reason}:v1`;
-}
-
-function sortItemsByInventoryId<T extends { inventoryId: string }>(items: T[]): T[] {
-  return items.slice().sort((left, right) => left.inventoryId.localeCompare(right.inventoryId));
 }

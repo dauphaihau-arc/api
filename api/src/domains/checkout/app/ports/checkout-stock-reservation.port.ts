@@ -1,6 +1,5 @@
 import type { EntityManager } from '@mikro-orm/postgresql';
 import type { ProductInventoryUpdatedSseEventPayload } from '../../../product/app/events/product-inventory-sse.event';
-import type { ProductInventoryEntity } from '../../../product/infra/persistence/mikro-orm/entities/product-inventory.entity';
 
 export interface InventoryMutationOptions {
   /**
@@ -17,20 +16,6 @@ export interface InventoryMutationOptions {
 }
 
 export abstract class CheckoutStockReservationPort {
-  abstract allocateInventoryForOrderItems(
-    entityManager: EntityManager,
-    items: Array<{
-      inventoryId: string;
-      productId: string;
-      quantity: number;
-      title: string;
-    }>,
-    options?: InventoryMutationOptions,
-  ): Promise<{
-    inventoryById: Map<string, ProductInventoryEntity>;
-    inventoryEvents: ProductInventoryUpdatedSseEventPayload[];
-  }>;
-
   abstract restoreInventoryForOrderItems(
     entityManager: EntityManager,
     items: Array<{
@@ -41,10 +26,15 @@ export abstract class CheckoutStockReservationPort {
     options?: InventoryMutationOptions,
   ): Promise<ProductInventoryUpdatedSseEventPayload[]>;
 
-  abstract reserveForQuote(
+  /**
+   * Creates the order-owned hold. `reservationId` is returned only by an
+   * authority that assigns one (the remote inventory-service); the local
+   * implementation records the hold rows and returns nothing.
+   */
+  abstract reserveForOrder(
     transactionalEntityManager: EntityManager,
     input: {
-      quoteId: string;
+      orderId: string;
       cartId: string;
       expiresAt: Date;
       items: Array<{
@@ -55,26 +45,35 @@ export abstract class CheckoutStockReservationPort {
     },
   ): Promise<{ reservationId?: string } | void>;
 
-  abstract consumeReservationsForQuote(
+  abstract consumeReservationsForOrder(
     entityManager: EntityManager,
     input: {
-      quoteId: string;
+      orderId: string;
+      /**
+       * Remote-authority reservation identity. The local implementation
+       * ignores it; the remote implementation validates the hold before the
+       * Order is marked paid and lets `order.created` consume it.
+       */
+      reservationId?: string;
       items: Array<{ inventoryId: string; quantity: number }>;
       consumedAt?: Date;
     },
   ): Promise<void>;
 
-  abstract expireReservationsForQuote(
+  abstract expireReservationsForOrder(
     entityManager: EntityManager,
-    quoteId: string,
-    expiredAt?: Date,
+    orderId: string,
+    options?: { expiredAt?: Date; reservationId?: string },
   ): Promise<number>;
 
-  abstract releaseReservationsForQuote(
+  abstract releaseReservationsForOrder(
     entityManager: EntityManager,
-    quoteId: string,
-    releasedAt?: Date,
+    orderId: string,
+    options?: { releasedAt?: Date; reservationId?: string },
   ): Promise<number>;
 
-  abstract cleanupExpiredForQuote(quoteId: string, now?: Date): Promise<number>;
+  abstract cleanupExpiredForOrder(
+    orderId: string,
+    options?: { now?: Date; reservationId?: string },
+  ): Promise<number>;
 }

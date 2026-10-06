@@ -116,6 +116,27 @@ export class OrderTotalLimitExceededError extends OrderAppError {
   }
 }
 
+/** Raised when Order commitment is attempted without any selected cart items. */
+export class OrderNoItemsError extends OrderAppError {
+  constructor() {
+    super('No selected cart items to order');
+  }
+}
+
+/** Raised when a checkout Order references a shop that no longer exists. */
+export class OrderShopNotFoundError extends OrderAppError {
+  constructor() {
+    super('Shop not found');
+  }
+}
+
+/** Raised when a checkout Order references inventory that no longer exists. */
+export class OrderInventoryNotFoundError extends OrderAppError {
+  constructor() {
+    super('Inventory not found');
+  }
+}
+
 export class OrderNotFoundError extends OrderAppError {
   constructor() {
     super('Order was not found');

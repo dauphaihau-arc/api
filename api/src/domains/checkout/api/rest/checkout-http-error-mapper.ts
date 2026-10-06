@@ -25,7 +25,10 @@ import {
   CheckoutSessionIdRequiredError,
   CheckoutSessionNotFoundError,
   OrderAppError,
+  OrderInventoryNotFoundError,
+  OrderNoItemsError,
   OrderNotFoundError,
+  OrderShopNotFoundError,
   OrderTotalLimitExceededError,
   SellerRefundActionNotAllowedError,
   SellerRefundNotAllowedError,
@@ -53,6 +56,9 @@ type CheckoutHttpErrorCode =
   | 'CHECKOUT_QUOTE_PRICES_CHANGED'
   | 'CHECKOUT_SHIPPING_UNAVAILABLE'
   | 'ORDER_TOTAL_LIMIT_EXCEEDED'
+  | 'ORDER_NO_ITEMS'
+  | 'SHOP_NOT_FOUND'
+  | 'PRODUCT_INVENTORY_NOT_FOUND'
   | 'ORDER_NOT_FOUND'
   | 'CHECKOUT_SESSION_ID_REQUIRED'
   | 'CHECKOUT_SESSION_NOT_FOUND'
@@ -81,6 +87,8 @@ export function mapCheckoutAppErrorToHttpException(
     || error instanceof CheckoutSessionNotFoundError
     || error instanceof CheckoutSessionExpiredError
     || error instanceof CheckoutQuoteNotFoundError
+    || error instanceof OrderShopNotFoundError
+    || error instanceof OrderInventoryNotFoundError
   ) {
     return new NotFoundException(buildCheckoutErrorPayload(error));
   }
@@ -112,6 +120,7 @@ export function mapCheckoutAppErrorToHttpException(
     || error instanceof CheckoutQuoteExpiredError
     || error instanceof CheckoutQuoteReservationUnavailableError
     || error instanceof CheckoutQuoteReservationOutOfStockError
+    || error instanceof OrderNoItemsError
     || error instanceof OrderTotalLimitExceededError
   ) {
     return new BadRequestException(buildCheckoutErrorPayload(error));
@@ -220,6 +229,15 @@ function getCheckoutErrorCode(error: OrderAppError): CheckoutHttpErrorCode {
   }
   if (error instanceof OrderTotalLimitExceededError) {
     return 'ORDER_TOTAL_LIMIT_EXCEEDED';
+  }
+  if (error instanceof OrderNoItemsError) {
+    return 'ORDER_NO_ITEMS';
+  }
+  if (error instanceof OrderShopNotFoundError) {
+    return 'SHOP_NOT_FOUND';
+  }
+  if (error instanceof OrderInventoryNotFoundError) {
+    return 'PRODUCT_INVENTORY_NOT_FOUND';
   }
   if (error instanceof OrderNotFoundError) {
     return 'ORDER_NOT_FOUND';

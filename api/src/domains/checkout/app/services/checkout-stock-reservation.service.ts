@@ -1,19 +1,13 @@
 import { EntityManager } from '@mikro-orm/postgresql';
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import {
   buildProductInventoryUpdatedSseEvent,
   type ProductInventoryUpdatedSseEventPayload,
 } from '../../../product/app/events/product-inventory-sse.event';
-import type { ProductInventoryEntity } from '../../../product/infra/persistence/mikro-orm/entities/product-inventory.entity';
 import {
   CheckoutQuoteReservationUnavailableError,
   CheckoutQuoteReservationOutOfStockError,
 } from '../../../order/app/errors/order-app.error';
-import { CheckoutInventoryQueryRepository } from '../ports/checkout-inventory-query.repository';
 import { CheckoutStockReservationCommandRepository } from '../ports/checkout-stock-reservation-command.repository';
 import {
   CheckoutStockReservationPort,
@@ -34,57 +28,8 @@ import {
 export class CheckoutStockReservationService implements CheckoutStockReservationPort {
   constructor(
     private readonly entityManager: EntityManager,
-    private readonly checkoutInventoryQueryRepository: CheckoutInventoryQueryRepository,
     private readonly stockReservationCommandRepository: CheckoutStockReservationCommandRepository,
   ) {}
-
-  async allocateInventoryForOrderItems(
-    entityManager: EntityManager,
-    items: Array<{
-      inventoryId: string;
-      productId: string;
-      quantity: number;
-      title: string;
-    }>,
-    options: InventoryMutationOptions = {},
-  ): Promise<{
-    inventoryById: Map<string, ProductInventoryEntity>;
-    inventoryEvents: ProductInventoryUpdatedSseEventPayload[];
-  }> {
-    const requestedItems = aggregateByInventoryId(items);
-    const inventoryById = await this.loadInventoryById(entityManager, requestedItems);
-
-    const balances = await this.stockReservationCommandRepository.applySaleForOrderItems(
-      entityManager,
-      requestedItems,
-      {
-        commandId: options.commandId ?? `allocate:${requestedItems.map((item) => item.inventoryId).join(',')}`,
-        cause: options.cause ?? 'order_created',
-      },
-    );
-
-    const inventoryEvents: ProductInventoryUpdatedSseEventPayload[] = [];
-
-    for (const item of requestedItems) {
-      const balance = balances.get(item.inventoryId);
-
-      if (!balance) {
-        throw new BadRequestException(`Insufficient stock for ${item.title}`);
-      }
-
-      const inventory = inventoryById.get(item.inventoryId)!;
-      inventory.onHandQuantity = balance.onHandQuantity;
-      inventory.reservedQuantity = balance.reservedQuantity;
-      inventory.stock = Math.max(0, balance.onHandQuantity - balance.reservedQuantity);
-      inventoryEvents.push(buildProductInventoryUpdatedSseEvent({
-        productId: item.productId,
-        inventoryId: inventory.id,
-        stock: inventory.availableQuantity,
-      }));
-    }
-
-    return { inventoryById, inventoryEvents };
-  }
 
   async restoreInventoryForOrderItems(
     entityManager: EntityManager,
@@ -125,10 +70,10 @@ export class CheckoutStockReservationService implements CheckoutStockReservation
     return inventoryEvents;
   }
 
-  async reserveForQuote(
+  async reserveForOrder(
     transactionalEntityManager: EntityManager,
     input: {
-      quoteId: string;
+      orderId: string;
       cartId: string;
       expiresAt: Date;
       items: Array<{
@@ -142,10 +87,10 @@ export class CheckoutStockReservationService implements CheckoutStockReservation
 
     await transactionalEntityManager.flush();
 
-    const { reservedCount } = await this.stockReservationCommandRepository.reserveForQuote(
+    const { reservedCount } = await this.stockReservationCommandRepository.reserveForOrder(
       transactionalEntityManager,
       {
-        quoteId: input.quoteId,
+        orderId: input.orderId,
         cartId: input.cartId,
         expiresAt: input.expiresAt,
         items: requestedItems,
@@ -159,10 +104,10 @@ export class CheckoutStockReservationService implements CheckoutStockReservation
     }
   }
 
-  async consumeReservationsForQuote(
+  async consumeReservationsForOrder(
     entityManager: EntityManager,
     input: {
-      quoteId: string;
+      orderId: string;
       items: Array<{ inventoryId: string; quantity: number }>;
       consumedAt?: Date;
     },
@@ -170,10 +115,10 @@ export class CheckoutStockReservationService implements CheckoutStockReservation
     const now = input.consumedAt ?? new Date();
     const requestedItems = aggregateByInventoryId(input.items);
 
-    const { consumedCount } = await this.stockReservationCommandRepository.consumeReservationsForQuote(
+    const { consumedCount } = await this.stockReservationCommandRepository.consumeReservationsForOrder(
       entityManager,
       {
-        quoteId: input.quoteId,
+        orderId: input.orderId,
         consumedAt: now,
         items: requestedItems,
       },
@@ -184,16 +129,16 @@ export class CheckoutStockReservationService implements CheckoutStockReservation
     }
   }
 
-  async expireReservationsForQuote(
+  async expireReservationsForOrder(
     entityManager: EntityManager,
-    quoteId: string,
-    expiredAt?: Date,
+    orderId: string,
+    options?: { expiredAt?: Date; reservationId?: string },
   ): Promise<number> {
-    const now = expiredAt ?? new Date();
-    const { releasedCount } = await this.stockReservationCommandRepository.expireActiveReservationsForQuote(
+    const now = options?.expiredAt ?? new Date();
+    const { releasedCount } = await this.stockReservationCommandRepository.expireActiveReservationsForOrder(
       entityManager,
       {
-        quoteId,
+        orderId,
         expiresAtOrBefore: now,
         releasedAt: now,
       },
@@ -202,16 +147,16 @@ export class CheckoutStockReservationService implements CheckoutStockReservation
     return releasedCount;
   }
 
-  async releaseReservationsForQuote(
+  async releaseReservationsForOrder(
     entityManager: EntityManager,
-    quoteId: string,
-    releasedAt?: Date,
+    orderId: string,
+    options?: { releasedAt?: Date; reservationId?: string },
   ): Promise<number> {
-    const now = releasedAt ?? new Date();
-    const { releasedCount } = await this.stockReservationCommandRepository.releaseActiveReservationsForQuote(
+    const now = options?.releasedAt ?? new Date();
+    const { releasedCount } = await this.stockReservationCommandRepository.releaseActiveReservationsForOrder(
       entityManager,
       {
-        quoteId,
+        orderId,
         releasedAt: now,
       },
     );
@@ -219,27 +164,15 @@ export class CheckoutStockReservationService implements CheckoutStockReservation
     return releasedCount;
   }
 
-  async cleanupExpiredForQuote(quoteId: string, now = new Date()): Promise<number> {
+  async cleanupExpiredForOrder(
+    orderId: string,
+    options?: { now?: Date; reservationId?: string },
+  ): Promise<number> {
     return this.entityManager.transactional(async (entityManager) =>
-      this.expireReservationsForQuote(entityManager, quoteId, now));
-  }
-
-  private async loadInventoryById(
-    entityManager: EntityManager,
-    items: Array<{ inventoryId: string }>,
-  ): Promise<Map<string, ProductInventoryEntity>> {
-    const inventoryById = await this.checkoutInventoryQueryRepository.findByIds(
-      items.map((item) => item.inventoryId),
-      { entityManager },
-    );
-
-    for (const item of items) {
-      if (!inventoryById.has(item.inventoryId)) {
-        throw new NotFoundException('Inventory not found');
-      }
-    }
-
-    return inventoryById;
+      this.expireReservationsForOrder(entityManager, orderId, {
+        expiredAt: options?.now,
+        reservationId: options?.reservationId,
+      }));
   }
 }
 

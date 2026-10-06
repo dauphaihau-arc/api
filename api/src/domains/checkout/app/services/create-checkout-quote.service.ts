@@ -2,8 +2,6 @@ import { createHash } from 'node:crypto';
 import { EntityManager } from '@mikro-orm/postgresql';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import ms from 'ms';
-import { appJobDeduplicationKey } from '../../../../platform/jobs/app-job-deduplication';
-import { appJobName } from '../../../../platform/jobs/app-job.names';
 import { toMinorUnits } from '../../../../platform/money/money';
 import { MARKETPLACE_CURRENCIES } from '../../../../platform/config/marketplace.config';
 import { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
@@ -11,15 +9,12 @@ import type { CartSnapshot } from '../../../cart/app/cart.types';
 import { CartPricingService } from '../../../cart/app/services/cart-pricing.service';
 import { StorefrontMarketContextService } from '../../../product/app/services/storefront-market-context.service';
 import { ProductInventoryEntity } from '../../../product/infra/persistence/mikro-orm/entities/product-inventory.entity';
-import { dispatchCatalogProductProjections } from '../../../product/app/catalog-product-projection-dispatch';
 import { PurchaseEligibilityService } from '../../../product/app/services/purchase-eligibility.service';
-import { JobDispatcher } from '../../../../integrations/queue/app/ports/job-dispatcher';
 import {
   CheckoutQuoteActorType,
   CheckoutQuoteEntity,
 } from '../../infra/persistence/entities/checkout-quote.entity';
 import { CheckoutQuoteItemEntity } from '../../infra/persistence/entities/checkout-quote-item.entity';
-import { CheckoutStockReservationPort } from '../ports/checkout-stock-reservation.port';
 import { CheckoutQuoteRepository } from '../ports/checkout-quote.repository';
 import {
   CheckoutQuoteNoItemsError,
@@ -51,9 +46,7 @@ export class CreateCheckoutQuoteService {
     private readonly cartPricingService: CartPricingService,
     private readonly storefrontMarketContextService: StorefrontMarketContextService,
     private readonly orderTotalPolicyService: OrderTotalPolicyService,
-    private readonly checkoutStockReservationService: CheckoutStockReservationPort,
     private readonly purchaseEligibilityService: PurchaseEligibilityService,
-    private readonly jobDispatcher: JobDispatcher,
   ) {}
 
   async createFromCart(input: {
@@ -160,7 +153,6 @@ export class CreateCheckoutQuoteService {
     }
 
     const {
-      createdNewQuote,
       quote: persistedQuote,
       items: persistedItems,
     } = await this.entityManager.transactional(async (entityManager) => {
@@ -172,7 +164,6 @@ export class CreateCheckoutQuoteService {
         actor: input.actor,
         cartId: input.cart.id,
         quoteFingerprint,
-        reservationCount: allItems.length,
         now,
       }, {
         entityManager,
@@ -180,7 +171,6 @@ export class CreateCheckoutQuoteService {
 
       if (existingQuote) {
         return {
-          createdNewQuote: false,
           quote: existingQuote,
           items: flattenQuoteItems(existingQuote.pricedShops),
         };
@@ -229,22 +219,6 @@ export class CreateCheckoutQuoteService {
       });
       entityManager.persist(checkoutQuote);
 
-      const reservationResult = await this.checkoutStockReservationService.reserveForQuote(entityManager, {
-        quoteId: checkoutQuote.id,
-        cartId: input.cart.id,
-        expiresAt,
-        items: allItems.map((item) => ({
-          inventoryId: item.inventoryId,
-          quantity: item.quantity,
-          title: item.title,
-        })),
-      });
-
-      const reservationId = getReservationId(reservationResult);
-      if (reservationId) {
-        checkoutQuote.reservationId = reservationId;
-      }
-
       const quoteItems = allItems.map((item) => {
         const { entity, summary } = createCheckoutQuoteItem({
           repository: quoteItemRepository,
@@ -281,32 +255,11 @@ export class CreateCheckoutQuoteService {
 
       await entityManager.flush();
 
-      return { createdNewQuote: true, quote: checkoutQuote, items: quoteItems };
+      return { quote: checkoutQuote, items: quoteItems };
     });
 
     const shops = parsePricedShops(persistedQuote.pricedShops);
     const shippingAnchorAt = shops.find((shop) => shop.shipping)?.shipping?.estimate.anchorAt;
-
-    if (createdNewQuote) {
-      await this.jobDispatcher.dispatch(
-        appJobName.cleanupExpiredCheckoutQuoteReservations,
-        {
-          quoteId: persistedQuote.id,
-          productIds: allItems.map((item) => item.productId),
-        },
-        {
-          deduplicationKey: appJobDeduplicationKey.cleanupExpiredCheckoutQuoteReservations(
-            persistedQuote.id,
-          ),
-          delayMs: Math.max(persistedQuote.expiresAt.getTime() - Date.now(), 0),
-        },
-      );
-
-      await dispatchCatalogProductProjections(
-        this.jobDispatcher,
-        allItems.map((item) => item.productId),
-      );
-    }
 
     return {
       quoteId: persistedQuote.id,
@@ -468,17 +421,4 @@ function resolveCheckoutCurrency(
   }
 
   return currency;
-}
-
-function getReservationId(result: unknown): string | undefined {
-  if (
-    result
-    && typeof result === 'object'
-    && 'reservationId' in result
-    && typeof result.reservationId === 'string'
-  ) {
-    return result.reservationId;
-  }
-
-  return undefined;
 }

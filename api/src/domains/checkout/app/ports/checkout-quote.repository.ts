@@ -11,17 +11,9 @@ export interface FindReusableCheckoutQuoteInput {
     | { type: 'guest'; guestSessionId: string };
   cartId: string;
   quoteFingerprint: string;
-  reservationCount: number;
   now: Date;
 }
 
-
-export interface InvalidateQuotesForProductLifecycleInput {
-  productId: string;
-  productVariantId?: string;
-  reason: string;
-  invalidatedAt: Date;
-}
 
 export abstract class CheckoutQuoteRepository {
   abstract findById(
@@ -43,9 +35,4 @@ export abstract class CheckoutQuoteRepository {
     input: FindReusableCheckoutQuoteInput,
     context?: CheckoutRepositoryContext
   ): Promise<CheckoutQuoteEntity | null>;
-
-  abstract invalidateUnpaidForProductLifecycle(
-    input: InvalidateQuotesForProductLifecycleInput,
-    context?: CheckoutRepositoryContext
-  ): Promise<string[]>;
 }

@@ -61,9 +61,9 @@ export interface AppJobPayloadMap {
   'product.process-import': {
     importId: string;
   };
-  'order.cleanup-expired-checkout-quote-reservations': {
-    quoteId: string;
-    productIds?: string[];
+  'order.cleanup-expired-order-reservations': {
+    orderId: string;
+    reservationId?: string;
   };
   'product.refresh-best-seller-rankings': {
     windowDays: number;

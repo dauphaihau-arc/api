@@ -1,13 +1,11 @@
 import type { EntityManager } from '@mikro-orm/postgresql';
 import { OrderTotalLimitExceededError } from '../../../order/app/errors/order-app.error';
-import type { CheckoutStockReservationPort } from '../ports/checkout-stock-reservation.port';
 import type { CheckoutQuoteRepository } from '../ports/checkout-quote.repository';
 import { CreateCheckoutQuoteService } from './create-checkout-quote.service';
 import type { CartPricingService } from '../../../cart/app/services/cart-pricing.service';
 import type { StorefrontMarketContextService } from '../../../product/app/services/storefront-market-context.service';
 import type { OrderTotalPolicyService } from '../../../order/app/services/order-total-policy.service';
 import type { PurchaseEligibilityService } from '../../../product/app/services/purchase-eligibility.service';
-import type { JobDispatcher } from '../../../../integrations/queue/app/ports/job-dispatcher';
 import { CartKind } from '../../../cart/domain/enums/cart-kind.enum';
 
 describe('CreateCheckoutQuoteService', () => {
@@ -90,20 +88,12 @@ describe('CreateCheckoutQuoteService', () => {
         throw new OrderTotalLimitExceededError('VND');
       }),
     } as unknown as jest.Mocked<OrderTotalPolicyService>;
-    const checkoutStockReservationService = {
-      reserveForQuote: jest.fn().mockResolvedValue({
-        reservationId: 'reservation-remote-1',
-      }),
-    } as unknown as jest.Mocked<CheckoutStockReservationPort>;
     const purchaseEligibilityService = {
       evaluate: jest.fn().mockResolvedValue({ eligible: true, failures: [] }),
     } as unknown as jest.Mocked<PurchaseEligibilityService>;
     const checkoutQuoteRepository = {
       findReusable: jest.fn(),
     } as unknown as jest.Mocked<CheckoutQuoteRepository>;
-    const jobDispatcher = {
-      dispatch: jest.fn(),
-    } as unknown as jest.Mocked<JobDispatcher>;
 
     const service = new CreateCheckoutQuoteService(
       entityManager,
@@ -111,9 +101,7 @@ describe('CreateCheckoutQuoteService', () => {
       cartPricingService,
       storefrontMarketContextService,
       orderTotalPolicyService,
-      checkoutStockReservationService,
       purchaseEligibilityService,
-      jobDispatcher,
     );
 
     await expect(
@@ -292,17 +280,9 @@ describe('CreateCheckoutQuoteService', () => {
     const orderTotalPolicyService = {
       assertWithinLimit: jest.fn(),
     } as unknown as jest.Mocked<OrderTotalPolicyService>;
-    const checkoutStockReservationService = {
-      reserveForQuote: jest.fn().mockResolvedValue({
-        reservationId: 'reservation-remote-1',
-      }),
-    } as unknown as jest.Mocked<CheckoutStockReservationPort>;
     const purchaseEligibilityService = {
       evaluate: jest.fn().mockResolvedValue({ eligible: true, failures: [] }),
     } as unknown as jest.Mocked<PurchaseEligibilityService>;
-    const jobDispatcher = {
-      dispatch: jest.fn(),
-    } as unknown as jest.Mocked<JobDispatcher>;
 
     const service = new CreateCheckoutQuoteService(
       entityManager,
@@ -310,9 +290,7 @@ describe('CreateCheckoutQuoteService', () => {
       cartPricingService,
       storefrontMarketContextService,
       orderTotalPolicyService,
-      checkoutStockReservationService,
       purchaseEligibilityService,
-      jobDispatcher,
     );
 
     const result = await service.createFromCart({
@@ -353,13 +331,11 @@ describe('CreateCheckoutQuoteService', () => {
         ],
       }),
     );
+    expect(result).not.toHaveProperty('reservationId');
     expect(quoteRepository.create).not.toHaveBeenCalled();
-    expect(checkoutStockReservationService.reserveForQuote).not.toHaveBeenCalled();
-    expect(jobDispatcher.dispatch).not.toHaveBeenCalled();
     expect(checkoutQuoteRepository.findReusable).toHaveBeenCalledWith(
       expect.objectContaining({
         cartId: 'cart-1',
-        reservationCount: 1,
       }),
       { entityManager: transactionalEntityManager },
     );
@@ -377,9 +353,6 @@ describe('CreateCheckoutQuoteService', () => {
     const quoteItemRepository = {
       create: jest.fn((input: Record<string, unknown>) => input),
     };
-    const reservationRepository = {
-      count: jest.fn().mockResolvedValue(0),
-    };
     const transactionalEntityManager = {
       getRepository: jest.fn((entity: { name?: string }) => {
         switch (entity?.name) {
@@ -387,8 +360,6 @@ describe('CreateCheckoutQuoteService', () => {
             return quoteRepository;
           case 'CheckoutQuoteItemEntity':
             return quoteItemRepository;
-          case 'CheckoutStockReservationEntity':
-            return reservationRepository;
           default:
             return {};
         }
@@ -452,20 +423,12 @@ describe('CreateCheckoutQuoteService', () => {
     const orderTotalPolicyService = {
       assertWithinLimit: jest.fn(),
     } as unknown as jest.Mocked<OrderTotalPolicyService>;
-    const checkoutStockReservationService = {
-      reserveForQuote: jest.fn().mockResolvedValue({
-        reservationId: 'reservation-remote-1',
-      }),
-    } as unknown as jest.Mocked<CheckoutStockReservationPort>;
     const purchaseEligibilityService = {
       evaluate: jest.fn().mockResolvedValue({ eligible: true, failures: [] }),
     } as unknown as jest.Mocked<PurchaseEligibilityService>;
     const checkoutQuoteRepository = {
       findReusable: jest.fn().mockResolvedValue(null),
     } as unknown as jest.Mocked<CheckoutQuoteRepository>;
-    const jobDispatcher = {
-      dispatch: jest.fn(),
-    } as unknown as jest.Mocked<JobDispatcher>;
 
     const service = new CreateCheckoutQuoteService(
       entityManager,
@@ -473,9 +436,7 @@ describe('CreateCheckoutQuoteService', () => {
       cartPricingService,
       storefrontMarketContextService,
       orderTotalPolicyService,
-      checkoutStockReservationService,
       purchaseEligibilityService,
-      jobDispatcher,
     );
 
     await expect(
@@ -507,21 +468,8 @@ describe('CreateCheckoutQuoteService', () => {
         quoteId: 'quote-2',
       }),
     );
-    expect((quoteRepository.create as jest.Mock).mock.results[0]?.value).toEqual(
-      expect.objectContaining({
-        reservationId: 'reservation-remote-1',
-      }),
-    );
-    expect(jobDispatcher.dispatch).toHaveBeenCalledWith(
-      'order.cleanup-expired-checkout-quote-reservations',
-      {
-        quoteId: 'quote-2',
-        productIds: ['product-1'],
-      },
-      expect.objectContaining({
-        deduplicationKey: 'order-cleanup-expired-checkout-quote-reservations--quote-2',
-      }),
-    );
+    const createdQuote = (quoteRepository.create as jest.Mock).mock.results[0]?.value as Record<string, unknown>;
+    expect(createdQuote).not.toHaveProperty('reservationId');
   });
 
   it('rejects quote creation when stale cart data is no longer purchase eligible', async () => {
@@ -580,9 +528,6 @@ describe('CreateCheckoutQuoteService', () => {
     const orderTotalPolicyService = {
       assertWithinLimit: jest.fn(),
     } as unknown as jest.Mocked<OrderTotalPolicyService>;
-    const checkoutStockReservationService = {
-      reserveForQuote: jest.fn(),
-    } as unknown as jest.Mocked<CheckoutStockReservationPort>;
     const purchaseEligibilityService = {
       evaluate: jest.fn().mockResolvedValue({
         eligible: false,
@@ -600,9 +545,7 @@ describe('CreateCheckoutQuoteService', () => {
       cartPricingService,
       storefrontMarketContextService,
       orderTotalPolicyService,
-      checkoutStockReservationService,
       purchaseEligibilityService,
-      { dispatch: jest.fn() } as unknown as JobDispatcher,
     );
 
     await expect(
@@ -628,7 +571,6 @@ describe('CreateCheckoutQuoteService', () => {
     ).rejects.toThrow('reservation is no longer available');
 
     expect(entityManager.transactional).not.toHaveBeenCalled();
-    expect(checkoutStockReservationService.reserveForQuote).not.toHaveBeenCalled();
   });
 });
 
@@ -773,9 +715,7 @@ function buildQuoteCreationService(pricedSummary: ReturnType<typeof buildPricedS
     { buildPricedCartSummary: jest.fn().mockResolvedValue(pricedSummary) } as unknown as CartPricingService,
     { resolveCurrentRequest: jest.fn().mockResolvedValue({ currency: 'USD', marketCode: 'US' }) } as unknown as StorefrontMarketContextService,
     { assertWithinLimit: jest.fn() } as unknown as OrderTotalPolicyService,
-    { reserveForQuote: jest.fn().mockResolvedValue({ reservationId: 'reservation-1' }) } as unknown as CheckoutStockReservationPort,
     { evaluate: jest.fn().mockResolvedValue({ eligible: true, failures: [] }) } as unknown as PurchaseEligibilityService,
-    { dispatch: jest.fn() } as unknown as JobDispatcher,
   );
 
   return { service, quoteRepository, checkoutQuoteRepository };

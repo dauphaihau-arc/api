@@ -2,10 +2,10 @@ import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
 import {
   CheckoutStockReservationCommandRepository,
-  type ConsumeReservationsForQuoteInput,
-  type ExpireQuoteReservationsInput,
-  type QuoteReservationReleaseInput,
-  type ReserveForQuoteInput,
+  type ConsumeReservationsForOrderInput,
+  type ExpireOrderReservationsInput,
+  type OrderReservationReleaseInput,
+  type ReserveForOrderInput,
   type StockBalanceAfterMutation,
   type StockItemQuantity,
   type StockMutationCommand,
@@ -36,114 +36,6 @@ type StockBalanceRow = {
 @Injectable()
 export class MikroOrmCheckoutStockReservationCommandRepository
 implements CheckoutStockReservationCommandRepository {
-  async applySaleForOrderItems(
-    entityManager: EntityManager,
-    items: StockItemQuantity[],
-    command: StockMutationCommand,
-  ): Promise<Map<string, StockBalanceAfterMutation>> {
-    if (items.length === 0) {
-      return new Map();
-    }
-
-    const requestedValues = items.map(() => '(?::uuid, ?::int)').join(', ');
-    const params: Array<string | number> = items.flatMap((item) => [
-      item.inventoryId,
-      item.quantity,
-    ]);
-    params.push(command.commandId, command.cause, command.commandId);
-
-    const rows = await entityManager.execute<StockBalanceRow[]>(
-      `
-        with requested(inventory_id, quantity) as (
-          values ${requestedValues}
-        ),
-        locked_inventory as (
-          select inventory.id
-          from product_inventory inventory
-          join requested on requested.inventory_id = inventory.id
-          order by inventory.id
-          for update
-        ),
-        locked_pool as (
-          select pool.id as stock_pool_id,
-                 pool.inventory_id,
-                 pool.on_hand_quantity,
-                 pool.reserved_quantity,
-                 requested.quantity
-          from product_stock_pool pool
-          join requested on requested.inventory_id = pool.inventory_id
-          join locked_inventory on locked_inventory.id = pool.inventory_id
-          where pool.is_default = true
-            and pool.custody = 'seller'
-          order by pool.id
-          for update
-        ),
-        sale_check as (
-          select (select count(*) from locked_pool) = (select count(*) from requested)
-             and not exists (
-               select 1 from locked_pool
-               where greatest(on_hand_quantity - reserved_quantity, 0) < quantity
-             ) as can_sell
-        ),
-        updated_pool as (
-          update product_stock_pool
-          set on_hand_quantity = product_stock_pool.on_hand_quantity - locked_pool.quantity,
-              stock = greatest((product_stock_pool.on_hand_quantity - locked_pool.quantity) - product_stock_pool.reserved_quantity, 0),
-              updated_at = now()
-          from locked_pool
-          where (select can_sell from sale_check)
-            and product_stock_pool.id = locked_pool.stock_pool_id
-            and not exists (
-              select 1
-              from inventory_movements movement
-              where movement.command_id = ?::text
-                and movement.stock_pool_id = locked_pool.stock_pool_id
-                and movement.movement_kind = 'sale'
-            )
-          returning product_stock_pool.id as stock_pool_id,
-                    product_stock_pool.inventory_id,
-                    product_stock_pool.on_hand_quantity,
-                    product_stock_pool.reserved_quantity
-        ),
-        movements as (
-          insert into inventory_movements (
-            inventory_id,
-            stock_pool_id,
-            movement_kind,
-            quantity_delta,
-            on_hand_before,
-            on_hand_after,
-            reserved_before,
-            reserved_after,
-            cause,
-            command_id
-          )
-          select locked_pool.inventory_id,
-                 locked_pool.stock_pool_id,
-                 'sale',
-                 -locked_pool.quantity,
-                 updated_pool.on_hand_quantity + locked_pool.quantity,
-                 updated_pool.on_hand_quantity,
-                 updated_pool.reserved_quantity,
-                 updated_pool.reserved_quantity,
-                 ?::text,
-                 ?::text
-          from locked_pool
-          join updated_pool on updated_pool.stock_pool_id = locked_pool.stock_pool_id
-          on conflict (command_id, stock_pool_id, movement_kind) where command_id is not null do nothing
-        )
-        select stock_pool_id, inventory_id, on_hand_quantity, reserved_quantity
-        from updated_pool
-      `,
-      params,
-    );
-
-    return new Map(rows.map((row) => [row.inventory_id, {
-      onHandQuantity: row.on_hand_quantity,
-      reservedQuantity: row.reserved_quantity,
-    }]));
-  }
-
   async correctSaleForOrderItems(
     entityManager: EntityManager,
     items: StockItemQuantity[],
@@ -264,9 +156,9 @@ implements CheckoutStockReservationCommandRepository {
     }]));
   }
 
-  async reserveForQuote(
+  async reserveForOrder(
     entityManager: EntityManager,
-    input: ReserveForQuoteInput,
+    input: ReserveForOrderInput,
   ): Promise<{ reservedCount: number }> {
     if (input.items.length === 0) {
       return { reservedCount: 0 };
@@ -277,7 +169,7 @@ implements CheckoutStockReservationCommandRepository {
       item.inventoryId,
       item.quantity,
     ]);
-    params.push(input.quoteId, input.cartId, input.expiresAt, `${input.quoteId}:reserve`);
+    params.push(input.orderId, input.cartId, input.expiresAt, `${input.orderId}:reserve`);
 
     const rows = await entityManager.execute<Array<{ reserved_count: string | number }>>(
       `
@@ -339,7 +231,7 @@ implements CheckoutStockReservationCommandRepository {
           insert into checkout_stock_reservations (
             created_at,
             updated_at,
-            quote_id,
+            order_id,
             inventory_id,
             stock_pool_id,
             cart_id,
@@ -381,7 +273,7 @@ implements CheckoutStockReservationCommandRepository {
             updated_pool.on_hand_quantity,
             updated_pool.reserved_quantity - locked_pool.quantity,
             updated_pool.reserved_quantity,
-            'checkout_quote',
+            'checkout_order',
             ?::text
           from locked_pool
           join updated_pool on updated_pool.stock_pool_id = locked_pool.stock_pool_id
@@ -396,9 +288,9 @@ implements CheckoutStockReservationCommandRepository {
     return { reservedCount: Number(rows[0]?.reserved_count ?? 0) };
   }
 
-  async consumeReservationsForQuote(
+  async consumeReservationsForOrder(
     entityManager: EntityManager,
-    input: ConsumeReservationsForQuoteInput,
+    input: ConsumeReservationsForOrderInput,
   ): Promise<{ consumedCount: number }> {
     if (input.items.length === 0) {
       return { consumedCount: 0 };
@@ -409,7 +301,7 @@ implements CheckoutStockReservationCommandRepository {
       item.inventoryId,
       item.quantity,
     ]);
-    params.push(input.quoteId, input.consumedAt, input.consumedAt, `${input.quoteId}:consume`);
+    params.push(input.orderId, input.consumedAt, input.consumedAt, `${input.orderId}:consume`);
 
     const rows = await entityManager.execute<Array<{ consumed_count: string | number }>>(
       `
@@ -426,7 +318,7 @@ implements CheckoutStockReservationCommandRepository {
             reservation.inventory_id,
             reservation.quantity
           from checkout_stock_reservations reservation
-          where reservation.quote_id = ?
+          where reservation.order_id = ?
             and reservation.status = 'active'
             and reservation.expires_at > ?
           order by reservation.stock_pool_id
@@ -526,29 +418,29 @@ implements CheckoutStockReservationCommandRepository {
     return { consumedCount: Number(rows[0]?.consumed_count ?? 0) };
   }
 
-  async expireActiveReservationsForQuote(
+  async expireActiveReservationsForOrder(
     entityManager: EntityManager,
-    input: ExpireQuoteReservationsInput,
+    input: ExpireOrderReservationsInput,
   ): Promise<{ releasedCount: number }> {
-    return this.releaseQuoteReservations(entityManager, {
-      quoteId: input.quoteId,
+    return this.releaseReservations(entityManager, {
+      ownerId: input.orderId,
       releasedAt: input.releasedAt,
-      commandId: `${input.quoteId}:expire`,
-      cause: 'quote_expired',
+      commandId: `${input.orderId}:expire`,
+      cause: 'order_expired',
       nextStatus: CheckoutStockReservationStatus.EXPIRED,
       expiresAtOrBefore: input.expiresAtOrBefore,
     });
   }
 
-  async releaseActiveReservationsForQuote(
+  async releaseActiveReservationsForOrder(
     entityManager: EntityManager,
-    input: QuoteReservationReleaseInput,
+    input: OrderReservationReleaseInput,
   ): Promise<{ releasedCount: number }> {
-    return this.releaseQuoteReservations(entityManager, {
-      quoteId: input.quoteId,
+    return this.releaseReservations(entityManager, {
+      ownerId: input.orderId,
       releasedAt: input.releasedAt,
-      commandId: `${input.quoteId}:release`,
-      cause: 'quote_released',
+      commandId: `${input.orderId}:release`,
+      cause: 'order_released',
       nextStatus: CheckoutStockReservationStatus.RELEASED,
     });
   }
@@ -559,10 +451,10 @@ implements CheckoutStockReservationCommandRepository {
    * released rows are aggregated per Stock Pool before the pool balance and the
    * Inventory Movement are written.
    */
-  private async releaseQuoteReservations(
+  private async releaseReservations(
     entityManager: EntityManager,
     input: {
-      quoteId: string;
+      ownerId: string;
       releasedAt: Date;
       commandId: string;
       cause: string;
@@ -573,7 +465,7 @@ implements CheckoutStockReservationCommandRepository {
     const params: Array<string | number | Date> = [
       input.nextStatus,
       input.releasedAt,
-      input.quoteId,
+      input.ownerId,
       CheckoutStockReservationStatus.ACTIVE,
     ];
 
@@ -590,7 +482,7 @@ implements CheckoutStockReservationCommandRepository {
         with released as (
           update checkout_stock_reservations
           set status = ?, released_at = ?, updated_at = now()
-          where quote_id = ?
+          where order_id = ?
             and status = ?
             ${expiresPredicate}
           returning stock_pool_id, inventory_id, quantity

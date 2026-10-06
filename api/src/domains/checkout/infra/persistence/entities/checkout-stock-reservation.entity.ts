@@ -9,7 +9,6 @@ import {
 import { AbstractBaseEntity } from '~/platform/database/abstract-base.entity';
 import { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
 import { ProductInventoryEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-inventory.entity';
-import { CheckoutQuoteEntity } from './checkout-quote.entity';
 
 export enum CheckoutStockReservationStatus {
   ACTIVE = 'active',
@@ -18,17 +17,18 @@ export enum CheckoutStockReservationStatus {
   EXPIRED = 'expired',
 }
 
+/**
+ * A Checkout Stock Reservation is owned by the Order that holds the stock: one
+ * row per Inventory Item, identified by `(order_id, inventory_id)`.
+ */
 @Entity({ tableName: 'checkout_stock_reservations' })
 @Index({ properties: ['inventory', 'status', 'expiresAt'] })
-@Index({ properties: ['quote'] })
+@Index({ properties: ['orderId'] })
 @Index({ properties: ['cartId'] })
-@Unique({ properties: ['quote', 'inventory'] })
+@Unique({ properties: ['orderId', 'inventory'] })
 export class CheckoutStockReservationEntity extends AbstractBaseEntity {
-  @ManyToOne(() => CheckoutQuoteEntity, {
-    fieldName: 'quote_id',
-    deleteRule: 'cascade',
-  })
-  quote!: CheckoutQuoteEntity;
+  @Property({ fieldName: 'order_id', columnType: 'uuid' })
+  orderId!: string;
 
   @ManyToOne(() => ProductInventoryEntity, {
     fieldName: 'inventory_id',

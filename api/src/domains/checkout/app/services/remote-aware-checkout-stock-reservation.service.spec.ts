@@ -1,70 +1,66 @@
 import type { EntityManager } from '@mikro-orm/postgresql';
 import { CheckoutQuoteReservationUnavailableError } from '../../../order/app/errors/order-app.error';
-import type { ProductInventoryEntity } from '../../../product/infra/persistence/mikro-orm/entities/product-inventory.entity';
 import type { InventoryReservationConfig } from '~/platform/config/inventory-reservation.config';
-import type { CheckoutInventoryQueryRepository } from '../ports/checkout-inventory-query.repository';
-import type { CheckoutQuoteRepository } from '../ports/checkout-quote.repository';
 import type { RemoteInventoryReservationClient } from '../ports/remote-inventory-reservation.client';
 import type { CheckoutStockReservationService } from './checkout-stock-reservation.service';
 import { RemoteAwareCheckoutStockReservationService } from './remote-aware-checkout-stock-reservation.service';
 
 describe('RemoteAwareCheckoutStockReservationService', () => {
-  it('delegates to the local reservation service when local driver is enabled', async () => {
+  it('delegates reserveForOrder to the local reservation service when local driver is enabled', async () => {
     const localReservationService = buildLocalReservationService();
-    localReservationService.reserveForQuote.mockResolvedValue(undefined);
+    localReservationService.reserveForOrder.mockResolvedValue(undefined);
     const { service, remoteReservationClient } = buildService({
       config: { driver: 'local', serviceBaseUrl: 'http://inventory-service:8080' },
       localReservationService,
     });
-
-    await service.reserveForQuote({} as EntityManager, {
-      quoteId: 'quote-1',
+    const transactionalEntityManager = {} as EntityManager;
+    const input = {
+      orderId: 'order-1',
       cartId: 'cart-1',
       expiresAt: new Date('2026-08-12T05:31:19.013Z'),
-      items: [{
-        inventoryId: 'inventory-1', quantity: 1, title: 'Product', 
-      }],
-    });
+      items: [{ inventoryId: 'inventory-1', quantity: 1, title: 'Product' }],
+    };
 
-    expect(localReservationService.reserveForQuote).toHaveBeenCalled();
-    expect(remoteReservationClient.reserveQuote).not.toHaveBeenCalled();
+    await service.reserveForOrder(transactionalEntityManager, input);
+
+    expect(localReservationService.reserveForOrder).toHaveBeenCalledWith(
+      transactionalEntityManager,
+      input,
+    );
+    expect(remoteReservationClient.reserveOrder).not.toHaveBeenCalled();
   });
 
-  it('reserves quotes through the remote inventory service', async () => {
+  it('reserves orders through the remote inventory service', async () => {
     const { service, remoteReservationClient } = buildService({
       config: { driver: 'remote', serviceBaseUrl: 'http://inventory-service:8080' },
     });
-    remoteReservationClient.reserveQuote.mockResolvedValue({
+    remoteReservationClient.reserveOrder.mockResolvedValue({
       reservationId: 'reservation-1',
       status: 'ACTIVE',
       items: [],
     });
-
-    const result = await service.reserveForQuote({} as EntityManager, {
-      quoteId: 'quote-1',
+    const input = {
+      orderId: 'order-1',
       cartId: 'cart-1',
       expiresAt: new Date('2026-08-12T05:31:19.013Z'),
-      items: [{
-        inventoryId: 'inventory-1', quantity: 1, title: 'Product', 
-      }],
-    });
+      items: [{ inventoryId: 'inventory-1', quantity: 1, title: 'Product' }],
+    };
 
-    expect(remoteReservationClient.reserveQuote).toHaveBeenCalledWith({
-      quoteId: 'quote-1',
+    const result = await service.reserveForOrder({} as EntityManager, input);
+
+    expect(remoteReservationClient.reserveOrder).toHaveBeenCalledWith({
+      orderId: 'order-1',
       cartId: 'cart-1',
-      idempotencyKey: 'quote-1:reservation:v1',
+      idempotencyKey: 'order-1:reservation:v1',
       expiresAt: new Date('2026-08-12T05:31:19.013Z'),
-      items: [{
-        inventoryId: 'inventory-1', quantity: 1, title: 'Product', 
-      }],
+      items: [{ inventoryId: 'inventory-1', quantity: 1, title: 'Product' }],
     });
     expect(result).toEqual({ reservationId: 'reservation-1' });
   });
 
-  it('validates a stored remote reservation during quote consumption', async () => {
-    const { service, remoteReservationClient, checkoutQuoteRepository } = buildService({
+  it('validates a stored remote reservation during order consumption', async () => {
+    const { service, remoteReservationClient } = buildService({
       config: { driver: 'remote', serviceBaseUrl: 'http://inventory-service:8080' },
-      quote: { id: 'quote-1', reservationId: 'reservation-1' },
     });
     const entityManager = {} as EntityManager;
     remoteReservationClient.validateReservation.mockResolvedValue({
@@ -72,26 +68,22 @@ describe('RemoteAwareCheckoutStockReservationService', () => {
       status: 'ACTIVE',
     });
 
-    await service.consumeReservationsForQuote(entityManager, {
-      quoteId: 'quote-1',
+    await service.consumeReservationsForOrder(entityManager, {
+      orderId: 'order-1',
+      reservationId: 'reservation-1',
       items: [{ inventoryId: 'inventory-1', quantity: 1 }],
     });
 
     expect(remoteReservationClient.validateReservation).toHaveBeenCalledWith({
-      quoteId: 'quote-1',
+      orderId: 'order-1',
       reservationId: 'reservation-1',
       items: [{ inventoryId: 'inventory-1', quantity: 1 }],
     });
-    expect(checkoutQuoteRepository.findById).toHaveBeenCalledWith(
-      'quote-1',
-      { entityManager },
-    );
   });
 
-  it('rejects quote consumption when the remote reservation is not active', async () => {
+  it('rejects order consumption when the remote reservation is not active', async () => {
     const { service, remoteReservationClient } = buildService({
       config: { driver: 'remote', serviceBaseUrl: 'http://inventory-service:8080' },
-      quote: { id: 'quote-1', reservationId: 'reservation-1' },
     });
     const entityManager = {} as EntityManager;
     remoteReservationClient.validateReservation.mockResolvedValue({
@@ -99,40 +91,56 @@ describe('RemoteAwareCheckoutStockReservationService', () => {
       status: 'EXPIRED',
     });
 
-    await expect(service.consumeReservationsForQuote(entityManager, {
-      quoteId: 'quote-1',
-      items: [{ inventoryId: 'inventory-1', quantity: 1 }],
-    })).rejects.toThrow(CheckoutQuoteReservationUnavailableError);
+    await expect(
+      service.consumeReservationsForOrder(entityManager, {
+        orderId: 'order-1',
+        reservationId: 'reservation-1',
+        items: [{ inventoryId: 'inventory-1', quantity: 1 }],
+      }),
+    ).rejects.toThrow(CheckoutQuoteReservationUnavailableError);
   });
 
-  it('loads inventory references without mutating stock in remote mode', async () => {
-    const inventory = { id: 'inventory-1', stock: 5 };
-    const { service, checkoutInventoryQueryRepository } = buildService({
+  it('rejects order consumption when no reservation id is provided', async () => {
+    const { service } = buildService({
       config: { driver: 'remote', serviceBaseUrl: 'http://inventory-service:8080' },
-      inventoryById: new Map([['inventory-1', inventory as ProductInventoryEntity]]),
     });
     const entityManager = {} as EntityManager;
 
-    const result = await service.allocateInventoryForOrderItems(entityManager, [{
-      inventoryId: 'inventory-1',
-      productId: 'product-1',
-      quantity: 2,
-      title: 'Product',
-    }]);
-
-    expect(inventory.stock).toBe(5);
-    expect(result.inventoryById.get('inventory-1')).toBe(inventory);
-    expect(result.inventoryEvents).toEqual([]);
-    expect(checkoutInventoryQueryRepository.findByIds).toHaveBeenCalledWith(
-      ['inventory-1'],
-      { entityManager },
-    );
+    await expect(
+      service.consumeReservationsForOrder(entityManager, {
+        orderId: 'order-1',
+        items: [{ inventoryId: 'inventory-1', quantity: 1 }],
+      }),
+    ).rejects.toThrow(CheckoutQuoteReservationUnavailableError);
   });
 
-  it('releases a remote reservation when a quote expires', async () => {
+  it('releases a remote reservation when an order expires', async () => {
     const { service, remoteReservationClient } = buildService({
       config: { driver: 'remote', serviceBaseUrl: 'http://inventory-service:8080' },
-      quote: { id: 'quote-1', reservationId: 'reservation-1' },
+    });
+    const entityManager = {} as EntityManager;
+    remoteReservationClient.releaseReservation.mockResolvedValue({
+      reservationId: 'reservation-1',
+      status: 'EXPIRED',
+    });
+
+    const releasedCount = await service.expireReservationsForOrder(entityManager, 'order-1', {
+      reservationId: 'reservation-1',
+      expiredAt: new Date('2026-08-12T05:31:19.013Z'),
+    });
+
+    expect(releasedCount).toBe(1);
+    expect(remoteReservationClient.releaseReservation).toHaveBeenCalledWith({
+      orderId: 'order-1',
+      reservationId: 'reservation-1',
+      reason: 'order_expired',
+      idempotencyKey: 'order-1:release:order_expired:v1',
+    });
+  });
+
+  it('releases a remote reservation when an order session expires', async () => {
+    const { service, remoteReservationClient } = buildService({
+      config: { driver: 'remote', serviceBaseUrl: 'http://inventory-service:8080' },
     });
     const entityManager = {} as EntityManager;
     remoteReservationClient.releaseReservation.mockResolvedValue({
@@ -140,71 +148,98 @@ describe('RemoteAwareCheckoutStockReservationService', () => {
       status: 'RELEASED',
     });
 
-    const releasedCount = await service.expireReservationsForQuote(
-      entityManager,
-      'quote-1',
-      new Date('2026-08-12T05:31:19.013Z'),
-    );
+    const releasedCount = await service.releaseReservationsForOrder(entityManager, 'order-1', {
+      reservationId: 'reservation-1',
+      releasedAt: new Date('2026-08-12T05:31:19.013Z'),
+    });
 
     expect(releasedCount).toBe(1);
     expect(remoteReservationClient.releaseReservation).toHaveBeenCalledWith({
-      quoteId: 'quote-1',
+      orderId: 'order-1',
       reservationId: 'reservation-1',
-      reason: 'quote_expired',
-      idempotencyKey: 'quote-1:release:quote_expired:v1',
+      reason: 'order_session_expired',
+      idempotencyKey: 'order-1:release:order_session_expired:v1',
     });
   });
+
+  it('returns 0 when releasing an order reservation without a reservation id', async () => {
+    const { service, remoteReservationClient } = buildService({
+      config: { driver: 'remote', serviceBaseUrl: 'http://inventory-service:8080' },
+    });
+    const entityManager = {} as EntityManager;
+
+    const releasedCount = await service.expireReservationsForOrder(entityManager, 'order-1');
+
+    expect(releasedCount).toBe(0);
+    expect(remoteReservationClient.releaseReservation).not.toHaveBeenCalled();
+  });
+
+  it('cleanupExpiredForOrder wraps expireReservationsForOrder in a transaction', async () => {
+    const { service, rootEntityManager, remoteReservationClient } = buildService({
+      config: { driver: 'remote', serviceBaseUrl: 'http://inventory-service:8080' },
+    });
+    remoteReservationClient.releaseReservation.mockResolvedValue({
+      reservationId: 'reservation-1',
+      status: 'EXPIRED',
+    });
+    const now = new Date('2026-08-12T05:31:19.013Z');
+
+    const releasedCount = await service.cleanupExpiredForOrder('order-1', {
+      now,
+      reservationId: 'reservation-1',
+    });
+
+    expect(releasedCount).toBe(1);
+    expect(rootEntityManager.transactional).toHaveBeenCalled();
+    expect(remoteReservationClient.releaseReservation).toHaveBeenCalledWith({
+      orderId: 'order-1',
+      reservationId: 'reservation-1',
+      reason: 'order_expired',
+      idempotencyKey: 'order-1:release:order_expired:v1',
+    });
+  });
+
 });
 
 function buildService(input: {
   config: InventoryReservationConfig;
   localReservationService?: jest.Mocked<CheckoutStockReservationService>;
-  quote?: { id: string; reservationId?: string };
-  inventoryById?: Map<string, ProductInventoryEntity>;
 }) {
   const localReservationService =
     input.localReservationService ?? buildLocalReservationService();
   const remoteReservationClient = {
-    reserveQuote: jest.fn(),
+    reserveOrder: jest.fn(),
     validateReservation: jest.fn(),
     releaseReservation: jest.fn(),
   } as unknown as jest.Mocked<RemoteInventoryReservationClient>;
   const rootEntityManager = {
     transactional: jest.fn(async (work: (em: EntityManager) => Promise<number>) =>
-      work({} as EntityManager)),
+      work({} as EntityManager),
+    ),
   } as unknown as EntityManager;
-  const checkoutQuoteRepository = {
-    findById: jest.fn().mockResolvedValue(input.quote ?? null),
-  } as unknown as jest.Mocked<CheckoutQuoteRepository>;
-  const checkoutInventoryQueryRepository = {
-    findByIds: jest.fn().mockResolvedValue(input.inventoryById ?? new Map()),
-  } as unknown as jest.Mocked<CheckoutInventoryQueryRepository>;
 
   const service = new RemoteAwareCheckoutStockReservationService(
     input.config,
     localReservationService,
     remoteReservationClient,
     rootEntityManager,
-    checkoutQuoteRepository,
-    checkoutInventoryQueryRepository,
   );
 
   return {
     service,
     localReservationService,
     remoteReservationClient,
-    checkoutQuoteRepository,
-    checkoutInventoryQueryRepository,
+    rootEntityManager,
   };
 }
 
 function buildLocalReservationService(): jest.Mocked<CheckoutStockReservationService> {
   return {
-    allocateInventoryForOrderItems: jest.fn(),
     restoreInventoryForOrderItems: jest.fn(),
-    reserveForQuote: jest.fn(),
-    consumeReservationsForQuote: jest.fn(),
-    expireReservationsForQuote: jest.fn(),
-    cleanupExpiredForQuote: jest.fn(),
+    reserveForOrder: jest.fn(),
+    consumeReservationsForOrder: jest.fn(),
+    expireReservationsForOrder: jest.fn(),
+    releaseReservationsForOrder: jest.fn(),
+    cleanupExpiredForOrder: jest.fn(),
   } as unknown as jest.Mocked<CheckoutStockReservationService>;
 }

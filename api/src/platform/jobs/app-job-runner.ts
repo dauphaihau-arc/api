@@ -13,7 +13,7 @@ import { ProjectCatalogProductJob } from '~/domains/product/jobs/project-catalog
 import { ProjectShopCatalogProductsJob } from '~/domains/product/jobs/project-shop-catalog-products.job';
 import { CleanupPendingReviewImageJob } from '~/domains/product/jobs/cleanup-pending-review-image.job';
 import { ProcessProductImportJob } from '~/domains/product/jobs/process-product-import.job';
-import { CleanupExpiredCheckoutQuoteReservationsJob } from '~/domains/checkout/jobs/cleanup-expired-checkout-quote-reservations.job';
+import { CleanupExpiredOrderReservationsJob } from '~/domains/checkout/jobs/cleanup-expired-order-reservations.job';
 import { RefreshBestSellerRankingsJob } from '~/domains/product/jobs/refresh-best-seller-rankings.job';
 import { ProcessOrderRefundJob } from '~/domains/order/jobs/process-order-refund.job';
 import { ProcessShopOrderExportJob } from '~/domains/order/jobs/process-shop-order-export.job';
@@ -47,7 +47,7 @@ export class AppJobRunner extends JobRunner {
     private readonly projectCatalogProductJob: ProjectCatalogProductJob,
     private readonly projectShopCatalogProductsJob: ProjectShopCatalogProductsJob,
     private readonly cleanupPendingReviewImageJob: CleanupPendingReviewImageJob,
-    private readonly cleanupExpiredCheckoutQuoteReservationsJob: CleanupExpiredCheckoutQuoteReservationsJob,
+    private readonly cleanupExpiredOrderReservationsJob: CleanupExpiredOrderReservationsJob,
     private readonly refreshBestSellerRankingsJob: RefreshBestSellerRankingsJob,
   ) {
     super();
@@ -149,9 +149,9 @@ export class AppJobRunner extends JobRunner {
               payload as AppJobPayloadMap[typeof appJobName.processProductImport],
             );
             return;
-          case appJobName.cleanupExpiredCheckoutQuoteReservations:
-            await this.cleanupExpiredCheckoutQuoteReservationsJob.run(
-              payload as AppJobPayloadMap[typeof appJobName.cleanupExpiredCheckoutQuoteReservations],
+          case appJobName.cleanupExpiredOrderReservations:
+            await this.cleanupExpiredOrderReservationsJob.run(
+              payload as AppJobPayloadMap[typeof appJobName.cleanupExpiredOrderReservations],
             );
             return;
           case appJobName.refreshBestSellerRankings:

@@ -1,5 +1,4 @@
 import type { EntityManager } from '@mikro-orm/postgresql';
-import type { EventEmitter2 } from '@nestjs/event-emitter';
 import type { JobDispatcher } from '~/integrations/queue/app/ports/job-dispatcher';
 import type { CheckoutStockReservationPort } from '../../../checkout/app/ports/checkout-stock-reservation.port';
 import type { FulfillmentService } from '../../../fulfillment/app/services/fulfillment.service';
@@ -27,10 +26,11 @@ describe('OrderPaymentService', () => {
       completedAt: new Date('2026-09-09T07:00:00.000Z'),
     });
 
-    expect(checkoutStockReservationService.consumeReservationsForQuote).toHaveBeenCalledWith(
+    expect(checkoutStockReservationService.consumeReservationsForOrder).toHaveBeenCalledWith(
       expect.anything(),
       {
-        quoteId: 'quote-1',
+        orderId: 'order-1',
+        reservationId: 'reservation-1',
         items: [{ inventoryId: 'inventory-1', quantity: 2 }],
       },
     );
@@ -38,7 +38,6 @@ describe('OrderPaymentService', () => {
       expect.anything(),
       {
         orderIds: ['order-1'],
-        quoteId: 'quote-1',
         reservationId: 'reservation-1',
         items: [{ inventoryId: 'inventory-1', quantity: 2 }],
       },
@@ -87,7 +86,7 @@ describe('OrderPaymentService', () => {
     expect(order.totalMinor).toBe(2950);
     expect(order.shippingEstimatedDelivery).toEqual(new Date('2026-09-30T00:00:00.000Z'));
     expect(order.shippingQuoteSnapshot.shipping.charge.total_minor).toBe(1150);
-    expect(checkoutStockReservationService.consumeReservationsForQuote).toHaveBeenCalledTimes(1);
+    expect(checkoutStockReservationService.consumeReservationsForOrder).toHaveBeenCalledTimes(1);
   });
 
   it('releases quoted reservations without restoring already-held stock', async () => {
@@ -100,10 +99,13 @@ describe('OrderPaymentService', () => {
 
     await service.markCheckoutSessionExpired('cs_123', expiredAt);
 
-    expect(checkoutStockReservationService.releaseReservationsForQuote).toHaveBeenCalledWith(
+    expect(checkoutStockReservationService.releaseReservationsForOrder).toHaveBeenCalledWith(
       fakeEntityManager,
-      'quote-1',
-      expiredAt,
+      'order-1',
+      {
+        releasedAt: expiredAt,
+        reservationId: 'reservation-1',
+      },
     );
     expect(checkoutStockReservationService.restoreInventoryForOrderItems).not.toHaveBeenCalled();
   });
@@ -194,16 +196,12 @@ function buildService() {
     transactional: jest.fn(async (callback: (em: EntityManager) => Promise<unknown>) =>
       callback(fakeEntityManager as unknown as EntityManager)),
   } as unknown as EntityManager;
-  const eventEmitter = {
-    emit: jest.fn(),
-  } as unknown as EventEmitter2;
   const jobDispatcher = {
     dispatch: jest.fn().mockResolvedValue(undefined),
   } as unknown as jest.Mocked<JobDispatcher>;
   const checkoutStockReservationService = {
-    consumeReservationsForQuote: jest.fn().mockResolvedValue(undefined),
-    expireReservationsForQuote: jest.fn().mockResolvedValue(1),
-    releaseReservationsForQuote: jest.fn().mockResolvedValue(1),
+    consumeReservationsForOrder: jest.fn().mockResolvedValue(undefined),
+    releaseReservationsForOrder: jest.fn().mockResolvedValue(undefined),
     restoreInventoryForOrderItems: jest.fn().mockResolvedValue([]),
   } as unknown as jest.Mocked<CheckoutStockReservationPort>;
   const orderInventoryOutboxService = {
@@ -224,7 +222,6 @@ function buildService() {
 
   const service = new OrderPaymentService(
     entityManager,
-    eventEmitter,
     jobDispatcher,
     checkoutStockReservationService,
     orderInventoryOutboxService,

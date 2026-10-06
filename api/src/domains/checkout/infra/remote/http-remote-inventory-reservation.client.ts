@@ -11,7 +11,7 @@ import {
   RemoteInventoryReservationClient,
   type RemoteReleaseReservationInput,
   type RemoteReleaseReservationResult,
-  type RemoteReserveQuoteInput,
+  type RemoteReserveOrderInput,
   type RemoteReserveQuoteResult,
   type RemoteRestoreSaleInput,
   type RemoteRestoreSaleResult,
@@ -45,8 +45,8 @@ implements RemoteInventoryReservationClient {
     private readonly fetchFn: FetchLike = fetch,
   ) {}
 
-  async reserveQuote(
-    input: RemoteReserveQuoteInput,
+  async reserveOrder(
+    input: RemoteReserveOrderInput,
   ): Promise<RemoteReserveQuoteResult> {
     return this.post<RemoteReserveQuoteResult>(
       '/inventory/reservations/quote',

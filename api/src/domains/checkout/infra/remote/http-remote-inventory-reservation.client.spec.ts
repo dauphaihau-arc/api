@@ -17,10 +17,10 @@ describe('HttpRemoteInventoryReservationClient', () => {
       serviceBaseUrl: 'http://inventory-service:8080',
     }, jest.fn());
 
-    await expect(client.reserveQuote({
-      quoteId: 'quote-1',
+    await expect(client.reserveOrder({
+      orderId: 'order-1',
       cartId: 'cart-1',
-      idempotencyKey: 'quote-1:reservation:v1',
+      idempotencyKey: 'order-1:reservation:v1',
       expiresAt: new Date('2026-08-12T05:31:19.013Z'),
       items: [{ inventoryId: 'inventory-1', quantity: 1, title: 'Product' }],
     })).rejects.toThrow('Remote inventory reservation client called while INVENTORY_RESERVATION_DRIVER is local');
@@ -38,10 +38,10 @@ describe('HttpRemoteInventoryReservationClient', () => {
     }));
     const client = new HttpRemoteInventoryReservationClient(remoteConfig, fetchFn);
 
-    const result = await client.reserveQuote({
-      quoteId: 'quote-1',
+    const result = await client.reserveOrder({
+      orderId: 'order-1',
       cartId: 'cart-1',
-      idempotencyKey: 'quote-1:reservation:v1',
+      idempotencyKey: 'order-1:reservation:v1',
       expiresAt: new Date('2026-08-12T05:31:19.013Z'),
       items: [{ inventoryId: 'inventory-1', quantity: 1, title: 'Product' }],
     });
@@ -55,9 +55,9 @@ describe('HttpRemoteInventoryReservationClient', () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          quoteId: 'quote-1',
+          orderId: 'order-1',
           cartId: 'cart-1',
-          idempotencyKey: 'quote-1:reservation:v1',
+          idempotencyKey: 'order-1:reservation:v1',
           expiresAt: '2026-08-12T05:31:19.013Z',
           items: [{ inventoryId: 'inventory-1', quantity: 1, title: 'Product' }],
         }),
@@ -74,7 +74,7 @@ describe('HttpRemoteInventoryReservationClient', () => {
     const client = new HttpRemoteInventoryReservationClient(remoteConfig, fetchFn);
 
     await expect(client.validateReservation({
-      quoteId: 'quote-1',
+      orderId: 'order-1',
       reservationId: 'reservation-1',
       items: [{ inventoryId: 'inventory-1', quantity: 1 }],
     })).resolves.toEqual({
@@ -96,10 +96,10 @@ describe('HttpRemoteInventoryReservationClient', () => {
     const client = new HttpRemoteInventoryReservationClient(remoteConfig, fetchFn);
 
     await expect(client.releaseReservation({
-      quoteId: 'quote-1',
+      orderId: 'order-1',
       reservationId: 'reservation-1',
       reason: 'manual_release',
-      idempotencyKey: 'quote-1:release:v1',
+      idempotencyKey: 'order-1:release:v1',
     })).resolves.toEqual({
       reservationId: 'reservation-1',
       status: 'RELEASED',
@@ -115,10 +115,10 @@ describe('HttpRemoteInventoryReservationClient', () => {
     const fetchFn = jest.fn().mockResolvedValue(rejectionResponse(400, 'insufficient stock'));
     const client = new HttpRemoteInventoryReservationClient(remoteConfig, fetchFn);
 
-    await expect(client.reserveQuote({
-      quoteId: 'quote-1',
+    await expect(client.reserveOrder({
+      orderId: 'order-1',
       cartId: 'cart-1',
-      idempotencyKey: 'quote-1:reservation:v1',
+      idempotencyKey: 'order-1:reservation:v1',
       expiresAt: new Date('2026-08-12T05:31:19.013Z'),
       items: [{ inventoryId: 'inventory-1', quantity: 1, title: 'Product' }],
     })).rejects.toBeInstanceOf(CheckoutQuoteReservationOutOfStockError);
@@ -128,10 +128,10 @@ describe('HttpRemoteInventoryReservationClient', () => {
     const fetchFn = jest.fn().mockResolvedValue(rejectionResponse(409, 'conflict'));
     const client = new HttpRemoteInventoryReservationClient(remoteConfig, fetchFn);
 
-    await expect(client.reserveQuote({
-      quoteId: 'quote-1',
+    await expect(client.reserveOrder({
+      orderId: 'order-1',
       cartId: 'cart-1',
-      idempotencyKey: 'quote-1:reservation:v1',
+      idempotencyKey: 'order-1:reservation:v1',
       expiresAt: new Date('2026-08-12T05:31:19.013Z'),
       items: [{ inventoryId: 'inventory-1', quantity: 1, title: 'Product' }],
     })).rejects.toBeInstanceOf(CheckoutQuoteReservationUnavailableError);
@@ -142,7 +142,7 @@ describe('HttpRemoteInventoryReservationClient', () => {
     const client = new HttpRemoteInventoryReservationClient(remoteConfig, fetchFn);
 
     await expect(client.validateReservation({
-      quoteId: 'quote-1',
+      orderId: 'order-1',
       reservationId: 'reservation-1',
       items: [{ inventoryId: 'inventory-1', quantity: 1 }],
     })).rejects.toBeInstanceOf(CheckoutQuoteReservationUnavailableError);

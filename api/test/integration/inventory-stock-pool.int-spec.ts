@@ -1,6 +1,5 @@
 import { randomUUID } from 'node:crypto';
 import { MikroORM, type EntityManager } from '@mikro-orm/postgresql';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { buildDatabaseConfig } from '~/platform/config/database.config';
 import { UserStatus } from '~/domains/auth/domain/enums/user-status.enum';
 import { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
@@ -17,7 +16,6 @@ import { ProductWhoMade } from '~/domains/product/domain/enums/product-who-made.
 import { MikroOrmInventoryStockPoolRepository } from '~/domains/product/infra/persistence/mikro-orm/repositories/mikro-orm-inventory-stock-pool.repository';
 import { StockPoolVersionConflictError } from '~/domains/product/app/errors/product-app.error';
 import { CheckoutStockReservationService } from '~/domains/checkout/app/services/checkout-stock-reservation.service';
-import { MikroOrmCheckoutInventoryQueryRepository } from '~/domains/checkout/infra/persistence/repositories/mikro-orm-checkout-inventory-query.repository';
 import { MikroOrmCheckoutStockReservationCommandRepository } from '~/domains/checkout/infra/persistence/repositories/mikro-orm-checkout-stock-reservation-command.repository';
 import {
   createTestDatabase,
@@ -140,19 +138,6 @@ describe('Inventory stock pool authority (integration)', () => {
     });
 
     return inventory;
-  }
-
-  async function insertQuote(quoteId: string): Promise<void> {
-    await em.execute(
-      `
-        insert into checkout_quotes (
-          id, actor_type, cart_id, checkout_currency, subtotal_minor, total_minor,
-          shipping_address, expires_at, created_at, updated_at, priced_shops
-        )
-        values (?::uuid, 'guest', ?, 'USD', 0, 0, '{}', now() + interval '30 minutes', now(), now(), '[]')
-      `,
-      [quoteId, randomUUID()],
-    );
   }
 
   async function readPool(inventoryId: string): Promise<PoolRow> {
@@ -301,15 +286,13 @@ describe('Inventory stock pool authority (integration)', () => {
     const inventory = await createInventory(5);
     const reservations = new CheckoutStockReservationService(
       orm.em,
-      new MikroOrmCheckoutInventoryQueryRepository(orm.em),
       new MikroOrmCheckoutStockReservationCommandRepository(),
     );
-    const quoteId = randomUUID();
-    await insertQuote(quoteId);
+    const orderId = randomUUID();
 
     await orm.em.fork().transactional(async (manager) =>
-      reservations.reserveForQuote(manager, {
-        quoteId,
+      reservations.reserveForOrder(manager, {
+        orderId,
         cartId: randomUUID(),
         expiresAt: new Date(Date.now() + (30 * 60 * 1000)),
         items: [{
@@ -325,8 +308,8 @@ describe('Inventory stock pool authority (integration)', () => {
     expect(pool.on_hand_version).toBe(1);
 
     const reservationRows = await em.execute<Array<{ stock_pool_id: string }>>(
-      'select stock_pool_id from checkout_stock_reservations where quote_id = ?::uuid',
-      [quoteId],
+      'select stock_pool_id from checkout_stock_reservations where order_id = ?::uuid',
+      [orderId],
     );
     expect(reservationRows[0].stock_pool_id).toBe(pool.id);
 
@@ -335,8 +318,8 @@ describe('Inventory stock pool authority (integration)', () => {
     expect(aggregate.on_hand_version).toBe(1);
 
     await orm.em.fork().transactional(async (manager) =>
-      reservations.consumeReservationsForQuote(manager, {
-        quoteId,
+      reservations.consumeReservationsForOrder(manager, {
+        orderId,
         items: [{ inventoryId: inventory.id, quantity: 2 }],
       }));
 
@@ -406,15 +389,13 @@ describe('Inventory stock pool authority (integration)', () => {
     const inventory = await createInventory(4);
     const reservations = new CheckoutStockReservationService(
       orm.em,
-      new MikroOrmCheckoutInventoryQueryRepository(orm.em),
       new MikroOrmCheckoutStockReservationCommandRepository(),
     );
-    const quoteId = randomUUID();
-    await insertQuote(quoteId);
+    const orderId = randomUUID();
 
     await orm.em.fork().transactional(async (manager) =>
-      reservations.reserveForQuote(manager, {
-        quoteId,
+      reservations.reserveForOrder(manager, {
+        orderId,
         cartId: randomUUID(),
         expiresAt: new Date(Date.now() - 60_000),
         items: [{
@@ -425,7 +406,7 @@ describe('Inventory stock pool authority (integration)', () => {
       }));
 
     const released = await orm.em.fork().transactional(async (manager) =>
-      reservations.expireReservationsForQuote(manager, quoteId));
+      reservations.expireReservationsForOrder(manager, orderId));
     expect(released).toBe(1);
 
     const pool = await readPool(inventory.id);
@@ -445,66 +426,4 @@ describe('Inventory stock pool authority (integration)', () => {
     expect(releaseMovement[0].quantity_delta).toBe(3);
   });
 
-  it('sells directly for an order, applies the command exactly once, and refuses an uncovered item', async () => {
-    const inventory = await createInventory(5);
-    const reservations = new CheckoutStockReservationService(
-      orm.em,
-      new MikroOrmCheckoutInventoryQueryRepository(orm.em),
-      new MikroOrmCheckoutStockReservationCommandRepository(),
-    );
-    const allocate = (inventoryId: string, quantity: number, title = 'Product') =>
-      orm.em.fork().transactional(async (manager) =>
-        reservations.allocateInventoryForOrderItems(
-          manager,
-          [{
-            inventoryId,
-            productId: inventory.product.id,
-            quantity,
-            title,
-          }],
-          { commandId: `${inventoryId}:allocate` },
-        ));
-
-    const { inventoryById, inventoryEvents } = await allocate(inventory.id, 2);
-
-    const pool = await readPool(inventory.id);
-    expect(pool.on_hand_quantity).toBe(3);
-    expect(pool.reserved_quantity).toBe(0);
-
-    const returned = inventoryById.get(inventory.id);
-    expect(returned?.onHandQuantity).toBe(3);
-    expect(returned?.stock).toBe(3);
-    expect(inventoryEvents).toEqual([expect.objectContaining({
-      inventoryId: inventory.id,
-      productId: inventory.product.id,
-      stock: 3,
-    })]);
-    expect(await readInventory(inventory.id)).toEqual({
-      on_hand_quantity: 3,
-      reserved_quantity: 0,
-      on_hand_version: 1,
-      stock: 3,
-    });
-
-    // The idempotency guard is the recorded movement, so a replayed command
-    // cannot sell the quantity twice: it finds the movement and fails the item
-    // instead of applying a second sale.
-    await expect(allocate(inventory.id, 2)).rejects.toBeInstanceOf(BadRequestException);
-    expect((await readPool(inventory.id)).on_hand_quantity).toBe(3);
-
-    await expect(allocate(inventory.id, 4)).rejects.toBeInstanceOf(BadRequestException);
-    expect((await readPool(inventory.id)).on_hand_quantity).toBe(3);
-
-    await expect(allocate(randomUUID(), 1)).rejects.toBeInstanceOf(NotFoundException);
-
-    const sales = await em.execute<Array<{ quantity_delta: number }>>(
-      `
-        select quantity_delta
-        from inventory_movements
-        where stock_pool_id = ?::uuid and movement_kind = 'sale'
-      `,
-      [pool.id],
-    );
-    expect(sales).toEqual([{ quantity_delta: -2 }]);
-  });
 });

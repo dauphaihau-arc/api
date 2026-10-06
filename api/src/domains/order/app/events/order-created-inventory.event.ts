@@ -9,7 +9,6 @@ export interface OrderCreatedInventoryEventItem {
 
 export interface OrderCreatedInventoryEventPayload {
   orderIds: string[];
-  quoteId: string;
   reservationId?: string;
   items: OrderCreatedInventoryEventItem[];
 }
@@ -26,7 +25,6 @@ export function buildOrderCreatedInventoryEvent(input: {
   eventId: string;
   occurredAt?: Date;
   orderIds: string[];
-  quoteId: string;
   reservationId?: string;
   items: OrderCreatedInventoryEventItem[];
 }): OrderCreatedInventoryEvent {
@@ -37,7 +35,6 @@ export function buildOrderCreatedInventoryEvent(input: {
     producer: ORDER_CREATED_INVENTORY_PRODUCER,
     payload: {
       orderIds: input.orderIds,
-      quoteId: input.quoteId,
       ...(input.reservationId ? { reservationId: input.reservationId } : {}),
       items: input.items,
     },

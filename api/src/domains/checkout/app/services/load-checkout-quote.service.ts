@@ -1,15 +1,10 @@
-import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
 import type { CheckoutQuoteEntity } from '../../infra/persistence/entities/checkout-quote.entity';
 import {
   CheckoutQuoteExpiredError,
   CheckoutQuoteNotFoundError,
-  CheckoutQuoteReservationUnavailableError,
 } from '../../../order/app/errors/order-app.error';
-import { CheckoutStockReservationPort } from '../ports/checkout-stock-reservation.port';
 import { CheckoutQuoteRepository } from '../ports/checkout-quote.repository';
-import { dispatchCatalogProductProjections } from '../../../product/app/catalog-product-projection-dispatch';
-import { JobDispatcher } from '~/integrations/queue/app/ports/job-dispatcher';
 import { parsePricedShops } from './checkout-quote-priced-shops';
 import type {
   CheckoutQuoteItemSummary,
@@ -21,7 +16,6 @@ import type {
 export interface LoadedCheckoutQuote {
   id: string;
   cartId: string;
-  reservationId?: string;
   marketCode?: string;
   presentmentCurrency?: string;
   checkoutCurrency: string;
@@ -39,10 +33,7 @@ export interface LoadedCheckoutQuote {
 @Injectable()
 export class LoadCheckoutQuoteService {
   constructor(
-    private readonly entityManager: EntityManager,
     private readonly checkoutQuoteRepository: CheckoutQuoteRepository,
-    private readonly checkoutStockReservationService: CheckoutStockReservationPort,
-    private readonly jobDispatcher: JobDispatcher,
   ) {}
 
   async loadForUser(userId: string, quoteId: string): Promise<LoadedCheckoutQuote> {
@@ -71,23 +62,7 @@ export class LoadCheckoutQuoteService {
       throw new CheckoutQuoteNotFoundError();
     }
 
-
-    if (quote.invalidatedAt) {
-      throw new CheckoutQuoteReservationUnavailableError();
-    }
     if (quote.expiresAt.getTime() < Date.now()) {
-      await this.entityManager.transactional(async (entityManager) => {
-        await this.checkoutStockReservationService.expireReservationsForQuote(
-          entityManager,
-          quote.id,
-          quote.expiresAt,
-        );
-      });
-      await dispatchCatalogProductProjections(
-        this.jobDispatcher,
-        parsePricedShops(quote.pricedShops).flatMap((shop) =>
-          shop.items.map((item) => item.productId)),
-      );
       throw new CheckoutQuoteExpiredError();
     }
 
@@ -115,7 +90,6 @@ export class LoadCheckoutQuoteService {
     return {
       id: quote.id,
       cartId: quote.cartId,
-      reservationId: quote.reservationId,
       marketCode: quote.marketCode,
       presentmentCurrency: quote.presentmentCurrency,
       checkoutCurrency: quote.checkoutCurrency,

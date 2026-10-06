@@ -10,8 +10,8 @@ export interface RemoteInventoryReservationQuoteItemInput
   title: string;
 }
 
-export interface RemoteReserveQuoteInput {
-  quoteId: string;
+export interface RemoteReserveOrderInput {
+  orderId: string;
   cartId: string;
   idempotencyKey: string;
   expiresAt: Date;
@@ -29,7 +29,7 @@ export interface RemoteReserveQuoteResult {
 }
 
 export interface RemoteValidateReservationInput {
-  quoteId: string;
+  orderId: string;
   reservationId: string;
   items: RemoteInventoryReservationItemInput[];
 }
@@ -40,13 +40,13 @@ export interface RemoteValidateReservationResult {
 }
 
 export type RemoteReleaseReservationReason =
-  | 'quote_expired'
-  | 'cart_changed'
-  | 'checkout_abandoned'
+  | 'order_expired'
+  | 'order_session_expired'
+  | 'order_cancelled'
   | 'manual_release';
 
 export interface RemoteReleaseReservationInput {
-  quoteId: string;
+  orderId: string;
   reservationId: string;
   reason: RemoteReleaseReservationReason;
   idempotencyKey: string;
@@ -78,8 +78,8 @@ export interface RemoteRestoreSaleResult {
 }
 
 export abstract class RemoteInventoryReservationClient {
-  abstract reserveQuote(
-    input: RemoteReserveQuoteInput
+  abstract reserveOrder(
+    input: RemoteReserveOrderInput
   ): Promise<RemoteReserveQuoteResult>;
 
   abstract validateReservation(

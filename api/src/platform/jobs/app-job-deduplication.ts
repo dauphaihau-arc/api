@@ -85,10 +85,10 @@ export const appJobDeduplicationKey = {
       importId,
     );
   },
-  cleanupExpiredCheckoutQuoteReservations(quoteId: string): string {
+  cleanupExpiredOrderReservations(orderId: string): string {
     return buildJobDeduplicationKey(
-      appJobName.cleanupExpiredCheckoutQuoteReservations,
-      quoteId,
+      appJobName.cleanupExpiredOrderReservations,
+      orderId,
     );
   },
   refreshBestSellerRankings(windowDays: number): string {

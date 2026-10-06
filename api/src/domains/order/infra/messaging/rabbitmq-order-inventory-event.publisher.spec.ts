@@ -31,7 +31,6 @@ describe('RabbitMqOrderInventoryEventPublisher', () => {
       producer: 'arc-api',
       payload: {
         orderIds: ['order-1'],
-        quoteId: 'quote-1',
         reservationId: 'reservation-1',
         items: [{ inventoryId: 'inventory-1', quantity: 1 }],
       },

@@ -1,17 +1,17 @@
 import { EntityManager } from '@mikro-orm/postgresql';
 import {
-  BadRequestException,
+  Inject,
   Injectable,
   Logger,
-  NotFoundException,
 } from '@nestjs/common';
-import { EventEmitter2 } from '@nestjs/event-emitter';
 import { fromMinorUnits, toMinorUnits } from '../../../../platform/money/money';
 import { MARKETPLACE_CURRENCIES } from '../../../../platform/config/marketplace.config';
+import { appJobDeduplicationKey } from '../../../../platform/jobs/app-job-deduplication';
+import { appJobName } from '../../../../platform/jobs/app-job.names';
 import {
-  PRODUCT_INVENTORY_UPDATED_SSE_EVENT,
-  type ProductInventoryUpdatedSseEventPayload,
-} from '../../../product/app/events/product-inventory-sse.event';
+  PAYMENT_CONFIG,
+  type PaymentConfig,
+} from '../../../../platform/config/payment.config';
 import { dispatchCatalogProductProjections } from '../../../product/app/catalog-product-projection-dispatch';
 import { PurchaseEligibilityService } from '../../../product/app/services/purchase-eligibility.service';
 import { JobDispatcher } from '~/integrations/queue/app/ports/job-dispatcher';
@@ -45,6 +45,9 @@ import {
   CheckoutQuoteReservationOutOfStockError,
   CheckoutQuoteReservationUnavailableError,
   CheckoutShippingUnavailableError,
+  OrderInventoryNotFoundError,
+  OrderNoItemsError,
+  OrderShopNotFoundError,
 } from '../errors/order-app.error';
 import {
   buildRefreshedCheckoutTotals,
@@ -76,10 +79,20 @@ import { OrderShopQueryRepository } from '../ports/order-shop-query.repository';
 import { OrderTotalPolicyService } from './order-total-policy.service';
 
 const CHECKOUT_SESSION_INLINE_TIMEOUT_MS = 1_500;
+// Card Orders hold stock until the payment session resolves; the hold is
+// released by the provider expiry webhook, with this delayed cleanup as the
+// fallback when that webhook never arrives. The hold is the session lifetime
+// plus this grace, so the fallback can never release stock for a session the
+// buyer can still pay.
+const CHECKOUT_HOLD_RELEASE_GRACE_MS = 5 * 60 * 1000;
 
 @Injectable()
 export class OrderCheckoutService {
   private readonly logger = new Logger(OrderCheckoutService.name);
+  // Session lifetime plus the release grace: the Card hold is derived once from
+  // the payment configuration so both the reservation expiry and the fallback
+  // cleanup delay stay in lockstep with the payable window.
+  private readonly checkoutHoldTtlMs: number;
 
   constructor(
     private readonly entityManager: EntityManager,
@@ -89,7 +102,6 @@ export class OrderCheckoutService {
     private readonly orderInventoryOutboxService: OrderInventoryOutboxService,
     private readonly orderEventsService: OrderEventsService,
     private readonly notifyUserUseCase: NotifyUserUseCase,
-    private readonly eventEmitter: EventEmitter2,
     private readonly jobDispatcher: JobDispatcher,
     private readonly orderTotalPolicyService: OrderTotalPolicyService,
     private readonly orderCartCleanupRepository: OrderCartCleanupRepository,
@@ -99,7 +111,11 @@ export class OrderCheckoutService {
     private readonly promotionRedemptionService: PromotionRedemptionService,
     private readonly fulfillmentService: FulfillmentService,
     private readonly shippingQuoteService: ShippingQuoteService,
-  ) {}
+    @Inject(PAYMENT_CONFIG) paymentConfig: PaymentConfig,
+  ) {
+    this.checkoutHoldTtlMs =
+      paymentConfig.checkoutSessionTtlMs + CHECKOUT_HOLD_RELEASE_GRACE_MS;
+  }
 
   async createOrders(
     actor: CheckoutActor,
@@ -150,7 +166,7 @@ export class OrderCheckoutService {
       : toMinorUnits(pricedCartSummary.totalPrice, currency);
 
     if (pricedShops.length === 0) {
-      throw new BadRequestException('No selected cart items to order');
+      throw new OrderNoItemsError();
     }
 
     this.orderTotalPolicyService.assertWithinLimit({
@@ -163,6 +179,9 @@ export class OrderCheckoutService {
       const orderItemRepository = entityManager.getRepository(OrderItemEntity);
       const createdOrders: OrderEntity[] = [];
       const orderItemsByOrderId = new Map<string, OrderItemEntity[]>();
+      const orderReservationIds = new Map<string, string>();
+      const cardHolds: Array<{ orderId: string; reservationId?: string }> = [];
+      const holdExpiresAt = new Date(Date.now() + this.checkoutHoldTtlMs);
       let checkoutOutboxEventId: string | undefined;
 
       const inventoryReservationItems: Array<{
@@ -181,7 +200,6 @@ export class OrderCheckoutService {
       const eligibility = await this.purchaseEligibilityService.evaluate(
         {
           items: inventoryReservationItems,
-          requireAvailableQuantity: !quote,
         },
         { entityManager },
       );
@@ -196,26 +214,13 @@ export class OrderCheckoutService {
         throw new CheckoutQuoteReservationUnavailableError();
       }
 
-      if (quote && input.paymentType === PaymentType.CASH) {
-        await this.checkoutStockReservationService.consumeReservationsForQuote(entityManager, {
-          quoteId: quote.id,
-          items: quote.items.map((item) => ({
-            inventoryId: item.inventoryId,
-            quantity: item.quantity,
-          })),
-        });
-      }
-
-      const { inventoryById, inventoryEvents } = quote
-        ? {
-          inventoryById: await this.loadInventoryById(entityManager, inventoryReservationItems),
-          inventoryEvents: [],
-        }
-        : await this.checkoutStockReservationService.allocateInventoryForOrderItems(
-          entityManager,
-          inventoryReservationItems,
-          { commandId: `${cartId}:allocate` },
-        );
+      // Stock is held by the Order, never by the accepted quote: every Order in
+      // this commitment takes its own hold inside this transaction, and a cash
+      // Order consumes it immediately.
+      const inventoryById = await this.loadInventoryById(
+        entityManager,
+        inventoryReservationItems,
+      );
 
       for (const shop of pricedShops) {
         const quoteShop = quote
@@ -232,7 +237,7 @@ export class OrderCheckoutService {
         );
 
         if (!shopEntity) {
-          throw new NotFoundException('Shop not found');
+          throw new OrderShopNotFoundError();
         }
 
         const subtotalMinor = quoteShop
@@ -247,9 +252,11 @@ export class OrderCheckoutService {
         const saleDiscountMinor = quoteShop
           ? quoteShop.saleDiscountMinor
           : toMinorUnits(pricedShop!.saleDiscount, currency);
+
         // Order money is owned in minor units: the persisted row, the
         // payment-provider charge, and the accepted quote then agree exactly.
         const orderTotalMinor = subtotalMinor - discountMinor + shippingMinor;
+
         const acceptedShipping = quoteShop?.shipping
           ? {
             shipping: quoteShop.shipping,
@@ -310,7 +317,6 @@ export class OrderCheckoutService {
               ? {
                 quote_id: quote.id,
                 quoted_inventory_ids: quote.items.map((item) => item.inventoryId),
-                reservation_id: quote.reservationId,
               }
               : {}),
           },
@@ -320,6 +326,48 @@ export class OrderCheckoutService {
 
         if ('refresh' in entityManager && typeof entityManager.refresh === 'function') {
           await entityManager.refresh(order);
+        }
+
+        const orderInventoryItems = shop.items.map((item) => ({
+          inventoryId: item.inventoryId,
+          quantity: item.quantity,
+          title: item.title,
+        }));
+
+        const reservationResult = await this.checkoutStockReservationService.reserveForOrder(
+          entityManager,
+          {
+            orderId: order.id,
+            cartId,
+            expiresAt: holdExpiresAt,
+            items: orderInventoryItems,
+          },
+        );
+        const reservationId = reservationResult?.reservationId;
+
+        if (reservationId) {
+          orderReservationIds.set(order.id, reservationId);
+          order.paymentDetails = {
+            ...(order.paymentDetails ?? {}),
+            reservation_id: reservationId,
+          };
+        }
+
+        if (input.paymentType === PaymentType.CASH) {
+          await this.checkoutStockReservationService.consumeReservationsForOrder(
+            entityManager,
+            {
+              orderId: order.id,
+              reservationId,
+              items: orderInventoryItems.map((item) => ({
+                inventoryId: item.inventoryId,
+                quantity: item.quantity,
+              })),
+            },
+          );
+        }
+        else {
+          cardHolds.push({ orderId: order.id, reservationId });
         }
 
         await this.orderEventsService.record(entityManager, {
@@ -352,7 +400,7 @@ export class OrderCheckoutService {
           const inventory = inventoryById.get(item.inventoryId);
 
           if (!inventory) {
-            throw new NotFoundException('Inventory not found');
+            throw new OrderInventoryNotFoundError();
           }
 
           const orderItem = orderItemRepository.create({
@@ -508,19 +556,22 @@ export class OrderCheckoutService {
         checkoutOutboxEventId = outboxEvent.id;
       }
 
-      if (quote && input.paymentType === PaymentType.CASH) {
-        await this.orderInventoryOutboxService.createOrderCreatedEvent(
-          entityManager,
-          {
-            orderIds: createdOrders.map((order) => order.id),
-            quoteId: quote.id,
-            reservationId: quote.reservationId,
-            items: quote.items.map((item) => ({
-              inventoryId: item.inventoryId,
-              quantity: item.quantity,
-            })),
-          },
-        );
+      if (input.paymentType === PaymentType.CASH) {
+        // One `order.created` per Order: each Order owns its reservation, so the
+        // inventory-service consumes exactly that Order's hold.
+        for (const order of createdOrders) {
+          await this.orderInventoryOutboxService.createOrderCreatedEvent(
+            entityManager,
+            {
+              orderIds: [order.id],
+              reservationId: orderReservationIds.get(order.id),
+              items: (orderItemsByOrderId.get(order.id) ?? []).map((item) => ({
+                inventoryId: item.inventory.id,
+                quantity: item.quantity,
+              })),
+            },
+          );
+        }
       }
 
       await entityManager.flush();
@@ -528,7 +579,8 @@ export class OrderCheckoutService {
       return {
         checkoutPending: input.paymentType === PaymentType.CARD,
         checkoutOutboxEventId,
-        inventoryEvents,
+        cardHolds,
+        reservedProductIds: [...new Set(inventoryReservationItems.map((item) => item.productId))],
         orderShops: createdOrders.map((order) => ({
           id: order.id,
           orderNumber: getRequiredOrderNumber(order),
@@ -551,12 +603,9 @@ export class OrderCheckoutService {
       ? await this.tryProcessCheckoutSessionRequest(result.checkoutOutboxEventId)
       : undefined;
 
-    this.emitInventoryEventsAfterCheckout(result.inventoryEvents);
+    await dispatchCatalogProductProjections(this.jobDispatcher, result.reservedProductIds);
 
-    await dispatchCatalogProductProjections(
-      this.jobDispatcher,
-      result.inventoryEvents.map((event) => event.productId),
-    );
+    await this.scheduleCardHoldCleanup(result.cardHolds);
 
     this.notifySellersAfterCheckout(result.orderShops);
 
@@ -626,13 +675,28 @@ export class OrderCheckoutService {
     }
   }
 
-  private emitInventoryEventsAfterCheckout(
-    inventoryEvents: ProductInventoryUpdatedSseEventPayload[],
-  ): void {
-    for (const inventoryEvent of inventoryEvents) {
-      setImmediate(() => {
-        this.eventEmitter.emit(PRODUCT_INVENTORY_UPDATED_SSE_EVENT, inventoryEvent);
-      });
+  /**
+   * Fallback release for a card Order's hold when the provider expiry webhook
+   * never arrives: the hold outlives the payment attempt, so it must expire on
+   * its own schedule.
+   */
+  private async scheduleCardHoldCleanup(
+    holds: Array<{ orderId: string; reservationId?: string }>,
+  ): Promise<void> {
+    for (const hold of holds) {
+      await this.jobDispatcher.dispatch(
+        appJobName.cleanupExpiredOrderReservations,
+        {
+          orderId: hold.orderId,
+          ...(hold.reservationId ? { reservationId: hold.reservationId } : {}),
+        },
+        {
+          deduplicationKey: appJobDeduplicationKey.cleanupExpiredOrderReservations(
+            hold.orderId,
+          ),
+          delayMs: this.checkoutHoldTtlMs,
+        },
+      );
     }
   }
 
@@ -745,7 +809,7 @@ export class OrderCheckoutService {
 
     for (const inventoryId of inventoryIds) {
       if (!inventoryById.has(inventoryId)) {
-        throw new NotFoundException('Inventory not found');
+        throw new OrderInventoryNotFoundError();
       }
     }
 

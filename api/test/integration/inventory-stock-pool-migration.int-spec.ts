@@ -98,24 +98,17 @@ describe('Inventory stock pool migration (integration)', () => {
       [inventoryId],
     );
 
-    const quoteId = randomUUID();
-    await sql.query(
-      `insert into "checkout_quotes" (
-         "id", "actor_type", "cart_id", "checkout_currency", "subtotal_minor", "total_minor",
-         "shipping_address", "expires_at", "created_at", "updated_at", "priced_shops"
-       ) values ($1, 'guest', $2, 'USD', 0, 0, '{}', now() + interval '30 minutes', now(), now(), '[]')`,
-      [quoteId, randomUUID()],
-    );
+    const startOrderId = randomUUID();
     await sql.query(
       `insert into "checkout_stock_reservations" (
-         "created_at", "updated_at", "quote_id", "inventory_id", "cart_id", "quantity", "status", "expires_at"
+         "created_at", "updated_at", "order_id", "inventory_id", "cart_id", "quantity", "status", "expires_at"
        ) values (now(), now(), $1, $2, $3, 2, 'active', now() + interval '30 minutes')`,
-      [quoteId, inventoryId, randomUUID()],
+      [startOrderId, inventoryId, randomUUID()],
     );
 
     const remoteReservationId = randomUUID();
     await sql.query(
-      `insert into "inventory_reservations" ("id", "created_at", "updated_at", "quote_id", "cart_id", "status", "expires_at", "idempotency_key")
+      `insert into "inventory_reservations" ("id", "created_at", "updated_at", "order_id", "cart_id", "status", "expires_at", "idempotency_key")
        values ($1, now(), now(), $2, $3, 'SOLD', now() + interval '30 minutes', $4)`,
       [remoteReservationId, randomUUID(), randomUUID(), `legacy-remote-${randomUUID()}`],
     );

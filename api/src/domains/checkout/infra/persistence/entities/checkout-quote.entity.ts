@@ -32,9 +32,6 @@ export class CheckoutQuoteEntity extends AbstractBaseEntity {
   @Property({ fieldName: 'quote_fingerprint', length: 64, nullable: true })
   quoteFingerprint?: string;
 
-  @Property({ fieldName: 'reservation_id', length: 255, nullable: true })
-  reservationId?: string;
-
   @Property({ fieldName: 'presentment_currency', length: 3, nullable: true })
   presentmentCurrency?: string;
 
@@ -70,10 +67,4 @@ export class CheckoutQuoteEntity extends AbstractBaseEntity {
 
   @Property({ fieldName: 'expires_at' })
   expiresAt!: Date;
-
-  @Property({ fieldName: 'invalidated_at', nullable: true })
-  invalidatedAt?: Date;
-
-  @Property({ fieldName: 'invalidated_reason', length: 100, nullable: true })
-  invalidatedReason?: string;
 }

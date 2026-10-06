@@ -24,25 +24,25 @@ export interface StockMutationCommand {
   cause: string;
 }
 
-export interface ReserveForQuoteInput {
-  quoteId: string;
+export interface ReserveForOrderInput {
+  orderId: string;
   cartId: string;
   expiresAt: Date;
   items: StockItemQuantity[];
 }
 
-export interface ConsumeReservationsForQuoteInput {
-  quoteId: string;
+export interface ConsumeReservationsForOrderInput {
+  orderId: string;
   consumedAt: Date;
   items: StockItemQuantity[];
 }
 
-export interface QuoteReservationReleaseInput {
-  quoteId: string;
+export interface OrderReservationReleaseInput {
+  orderId: string;
   releasedAt: Date;
 }
 
-export interface ExpireQuoteReservationsInput extends QuoteReservationReleaseInput {
+export interface ExpireOrderReservationsInput extends OrderReservationReleaseInput {
   expiresAtOrBefore: Date;
 }
 
@@ -58,18 +58,6 @@ export interface ExpireQuoteReservationsInput extends QuoteReservationReleaseInp
  */
 export abstract class CheckoutStockReservationCommandRepository {
   /**
-   * Direct sale: decrements On-hand Quantity without a prior hold. An item
-   * whose default seller pool cannot cover the quantity is absent from the
-   * returned map rather than throwing, because the caller owns the
-   * out-of-stock decision.
-   */
-  abstract applySaleForOrderItems(
-    entityManager: EntityManager,
-    items: StockItemQuantity[],
-    command: StockMutationCommand,
-  ): Promise<Map<string, StockBalanceAfterMutation>>;
-
-  /**
    * Reverses a recorded sale by incrementing On-hand Quantity. Balances are
    * read back from the derived `product_inventory` aggregate, which is what
    * availability reads use.
@@ -80,23 +68,23 @@ export abstract class CheckoutStockReservationCommandRepository {
     command: StockMutationCommand,
   ): Promise<Map<string, StockBalanceAfterMutation>>;
 
-  abstract reserveForQuote(
+  abstract reserveForOrder(
     entityManager: EntityManager,
-    input: ReserveForQuoteInput,
+    input: ReserveForOrderInput,
   ): Promise<{ reservedCount: number }>;
 
-  abstract consumeReservationsForQuote(
+  abstract consumeReservationsForOrder(
     entityManager: EntityManager,
-    input: ConsumeReservationsForQuoteInput,
+    input: ConsumeReservationsForOrderInput,
   ): Promise<{ consumedCount: number }>;
 
-  abstract expireActiveReservationsForQuote(
+  abstract expireActiveReservationsForOrder(
     entityManager: EntityManager,
-    input: ExpireQuoteReservationsInput,
+    input: ExpireOrderReservationsInput,
   ): Promise<{ releasedCount: number }>;
 
-  abstract releaseActiveReservationsForQuote(
+  abstract releaseActiveReservationsForOrder(
     entityManager: EntityManager,
-    input: QuoteReservationReleaseInput,
+    input: OrderReservationReleaseInput,
   ): Promise<{ releasedCount: number }>;
 }

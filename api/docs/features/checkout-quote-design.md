@@ -55,6 +55,7 @@ The checkout quote is not responsible for:
 - acting as a long-term editable cart
 - recalculating prices after it has been persisted
 - letting the client choose arbitrary payment currency after quoting
+- reserving stock or owning an inventory reservation
 
 ## Data Model
 
@@ -109,10 +110,11 @@ The quote model should enforce these rules:
 2. all quoted item amounts are stored in minor units
 3. a quote is created from backend-resolved pricing, not frontend recomputation
 4. a quote must be reloadable without recalculating the charged amounts
-5. order creation must reject expired quotes
-6. order creation must reject cart changes that invalidate the quoted selection
-7. payment creation must use quote-owned amounts, not recomputed mutable totals
-8. shop-level pricing state required for order creation must be persisted with the quote
+5. a quote does not reserve stock and does not own a reservation
+6. order creation must reject expired quotes
+7. order creation must reject cart changes that invalidate the quoted selection
+8. payment creation must use quote-owned amounts, not recomputed mutable totals
+9. shop-level pricing state required for order creation must be persisted with the quote
 
 These are the important trust boundaries:
 
@@ -131,7 +133,8 @@ buyer selects items
 -> quote is persisted with money and provenance snapshots
 -> client submits quote_id for order creation
 -> backend reloads and validates quote
--> backend creates order from quote
+-> backend reserves one stock hold per Order inside the order transaction
+-> backend creates order(s) from quote
 -> quote is consumed or left as an audit record
 ```
 
@@ -207,6 +210,8 @@ The order layer should inherit:
 - quote shop-level totals, promo codes, and notes
 - quote item checkout unit and line totals
 - quote provenance fields that matter for audit and support workflows
+
+The order layer is responsible for reserving stock per Order at order creation; the quote does not hold inventory.
 
 The order layer should not need to:
 
