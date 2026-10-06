@@ -113,6 +113,7 @@ const appEnvBaseSchema = z.object({
   WEB_PUSH_TTL_SECONDS: positiveIntegerString.default('60'),
   STRIPE_SECRET_KEY: z.string().trim().min(1).optional(),
   STRIPE_WEBHOOK_SECRET_KEY: z.string().trim().min(1).optional(),
+  CHECKOUT_SESSION_TTL: z.string().trim().min(1).default('60m'),
   FX_RATE_SYNC_PROVIDER: z
     .enum(['disabled', 'open-exchange-rates'])
     .default('disabled'),

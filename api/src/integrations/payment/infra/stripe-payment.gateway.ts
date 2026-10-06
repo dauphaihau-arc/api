@@ -56,7 +56,9 @@ export class StripePaymentGateway extends PaymentGateway {
         },
       ],
       payment_method_types: ['card'],
-      expires_at: Math.floor(Date.now() / 1000) + (1800 * 2),
+      expires_at:
+        Math.floor(Date.now() / 1000) +
+        Math.floor(this.paymentConfig.checkoutSessionTtlMs / 1000),
       success_url: `${appBaseUrl}${input.successPath ?? '/success'}?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${appBaseUrl}${input.cancelPath ?? ''}`,
     };
