@@ -16,7 +16,7 @@ func NewService(store Store) *Service {
 }
 
 func (s *Service) ReserveQuote(request ReserveQuoteRequest) (ReserveQuoteResponse, error) {
-	if request.QuoteID == "" || request.CartID == "" || request.IdempotencyKey == "" || len(request.Items) == 0 {
+	if request.OrderID == "" || request.CartID == "" || request.IdempotencyKey == "" || len(request.Items) == 0 {
 		return ReserveQuoteResponse{}, ErrInvalidRequest
 	}
 	for _, item := range request.Items {
@@ -27,7 +27,7 @@ func (s *Service) ReserveQuote(request ReserveQuoteRequest) (ReserveQuoteRespons
 
 	reservation := Reservation{
 		ID:             newID(),
-		QuoteID:        request.QuoteID,
+		OrderID:        request.OrderID,
 		CartID:         request.CartID,
 		Status:         StatusActive,
 		Items:          request.Items,
@@ -93,7 +93,7 @@ func (s *Service) RestoreSale(request RestoreSaleRequest) (RestoreSaleResponse, 
 func (s *Service) ValidateReservation(request ValidateReservationRequest) (ValidateReservationResponse, error) {
 	reservation, ok := s.store.FindByID(request.ReservationID)
 
-	if !ok || reservation.QuoteID != request.QuoteID {
+	if !ok || reservation.OrderID != request.OrderID {
 		return ValidateReservationResponse{
 			Valid:  false,
 			Status: StatusExpired,
@@ -111,7 +111,7 @@ func (s *Service) ValidateReservation(request ValidateReservationRequest) (Valid
 func (s *Service) ReleaseReservation(request ReleaseReservationRequest) (ReleaseReservationResponse, error) {
 	reservation, ok := s.store.FindByID(request.ReservationID)
 
-	if !ok || reservation.QuoteID != request.QuoteID {
+	if !ok || reservation.OrderID != request.OrderID {
 		return ReleaseReservationResponse{}, ErrReservationNotFound
 	}
 
@@ -157,7 +157,7 @@ func (s *Service) ConsumeOrderCreated(event OrderCreatedEvent) error {
 		return s.store.Save(reservation)
 	}
 
-	if reservation.Status != StatusActive || reservation.QuoteID != event.Payload.QuoteID {
+	if reservation.Status != StatusActive || !containsOrderID(event.Payload.OrderIDs, reservation.OrderID) {
 		return ErrReservationUnavailable
 	}
 	if !sameItems(reservation.Items, event.Payload.Items) {
@@ -287,4 +287,13 @@ func newID() string {
 		hex.EncodeToString(bytes[6:8]) + "-" +
 		hex.EncodeToString(bytes[8:10]) + "-" +
 		hex.EncodeToString(bytes[10:16])
+}
+
+func containsOrderID(orderIDs []string, orderID string) bool {
+	for _, id := range orderIDs {
+		if id == orderID {
+			return true
+		}
+	}
+	return false
 }

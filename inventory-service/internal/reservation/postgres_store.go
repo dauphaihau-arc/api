@@ -43,7 +43,7 @@ func (s *PostgresStore) CreateReservation(reservation Reservation) (Reservation,
 		return Reservation{}, ErrIdempotencyConflict
 	}
 
-	existing, ok, err = findByQuoteID(ctx, tx, reservation.QuoteID)
+	existing, ok, err = findByOrderID(ctx, tx, reservation.OrderID)
 	if err != nil {
 		return Reservation{}, err
 	}
@@ -147,7 +147,7 @@ func (s *PostgresStore) CreateReservation(reservation Reservation) (Reservation,
 				id,
 				created_at,
 				updated_at,
-				quote_id,
+				order_id,
 				cart_id,
 				status,
 				expires_at,
@@ -156,7 +156,7 @@ func (s *PostgresStore) CreateReservation(reservation Reservation) (Reservation,
 			values ($1, now(), now(), $2, $3, $4, $5, $6)
 		`,
 		reservation.ID,
-		reservation.QuoteID,
+		reservation.OrderID,
 		reservation.CartID,
 		reservation.Status,
 		reservation.ExpiresAt,
@@ -707,8 +707,8 @@ func findByIDForUpdate(ctx context.Context, querier pgxQuerier, id string) (Rese
 	return findOne(ctx, querier, `where reservation.id = $1`, `for update of reservation`, id)
 }
 
-func findByQuoteID(ctx context.Context, querier pgxQuerier, quoteID string) (Reservation, bool, error) {
-	return findOne(ctx, querier, `where reservation.quote_id = $1`, "", quoteID)
+func findByOrderID(ctx context.Context, querier pgxQuerier, orderID string) (Reservation, bool, error) {
+	return findOne(ctx, querier, `where reservation.order_id = $1`, "", orderID)
 }
 
 func findByIdempotencyKey(ctx context.Context, querier pgxQuerier, key string) (Reservation, bool, error) {
@@ -721,7 +721,7 @@ func findOne(ctx context.Context, querier pgxQuerier, where string, lockClause s
 		`
 			select
 				reservation.id::text,
-				reservation.quote_id,
+				reservation.order_id::text,
 				reservation.cart_id,
 				reservation.status,
 				reservation.expires_at,
@@ -755,6 +755,12 @@ func findOne(ctx context.Context, querier pgxQuerier, where string, lockClause s
 
 	for rows.Next() {
 		found = true
+		var id string
+		var orderID string
+		var cartID string
+		var status string
+		var expiresAt time.Time
+		var idempotencyKey string
 		var itemInventoryID *string
 		var itemStockPoolID *string
 		var itemQuantity *int
@@ -763,12 +769,12 @@ func findOne(ctx context.Context, querier pgxQuerier, where string, lockClause s
 		var processedAt *time.Time
 
 		if err := rows.Scan(
-			&reservation.ID,
-			&reservation.QuoteID,
-			&reservation.CartID,
-			&reservation.Status,
-			&reservation.ExpiresAt,
-			&reservation.IdempotencyKey,
+			&id,
+			&orderID,
+			&cartID,
+			&status,
+			&expiresAt,
+			&idempotencyKey,
 			&itemInventoryID,
 			&itemStockPoolID,
 			&itemQuantity,
@@ -777,6 +783,15 @@ func findOne(ctx context.Context, querier pgxQuerier, where string, lockClause s
 			&processedAt,
 		); err != nil {
 			return Reservation{}, false, err
+		}
+
+		reservation = Reservation{
+			ID:             id,
+			OrderID:        orderID,
+			CartID:         cartID,
+			Status:         Status(status),
+			ExpiresAt:      expiresAt,
+			IdempotencyKey: idempotencyKey,
 		}
 
 		if itemInventoryID != nil && itemQuantity != nil {

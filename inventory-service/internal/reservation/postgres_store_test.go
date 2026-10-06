@@ -114,14 +114,14 @@ func applyReservationSchema(t *testing.T, pool *pgxpool.Pool) {
 			id uuid primary key,
 			created_at timestamptz not null default now(),
 			updated_at timestamptz not null default now(),
-			quote_id varchar(255) not null,
+			order_id uuid not null,
 			cart_id varchar(255) not null,
 			status varchar(20) not null,
 			expires_at timestamptz not null,
 			idempotency_key varchar(255) not null
 		)`,
 		`create unique index inventory_reservations_idempotency_key_unique on inventory_reservations (idempotency_key)`,
-		`create unique index inventory_reservations_quote_id_unique on inventory_reservations (quote_id)`,
+		`create unique index inventory_reservations_order_id_unique on inventory_reservations (order_id)`,
 		`create table inventory_reservation_items (
 			reservation_id uuid not null references inventory_reservations(id) on delete cascade,
 			inventory_id uuid not null references product_inventory(id),
@@ -214,20 +214,30 @@ func seedStockPool(t *testing.T, pool *pgxpool.Pool, onHand int) (string, string
 	return inventoryID, poolID
 }
 
+func newTestOrderID(t *testing.T, pool *pgxpool.Pool) string {
+	t.Helper()
+	var id string
+	if err := pool.QueryRow(context.Background(), `select gen_random_uuid()::text`).Scan(&id); err != nil {
+		t.Fatalf("generate order id: %v", err)
+	}
+	return id
+}
+
 func TestPostgresStoreReserveConsumeRestore(t *testing.T) {
 	store, pool := newPostgresStoreHarness(t)
 	service := NewService(store)
 	inventoryID, poolID := seedStockPool(t, pool, 3)
+	orderID := newTestOrderID(t, pool)
 
 	reserved, err := service.ReserveQuote(ReserveQuoteRequest{
-		QuoteID:        "quote-1",
+		OrderID:        orderID,
 		CartID:         "cart-1",
-		IdempotencyKey: "quote-1:reservation:v1",
+		IdempotencyKey: orderID + ":reservation:v1",
 		ExpiresAt:      time.Now().Add(30 * time.Minute),
 		Items:          []Item{{InventoryID: inventoryID, StockPoolID: poolID, Quantity: 1}},
 	})
 	if err != nil {
-		t.Fatalf("reserve quote: %v", err)
+		t.Fatalf("reserve order: %v", err)
 	}
 
 	assertPoolState(t, pool, poolID, 3, 1, 1)
@@ -235,7 +245,7 @@ func TestPostgresStoreReserveConsumeRestore(t *testing.T) {
 	if err := service.ConsumeOrderCreated(OrderCreatedEvent{
 		EventID:   "event-1",
 		EventType: "order.created",
-		Payload:   orderCreatedPayloadForTest("quote-1", reserved.ReservationID, inventoryID, poolID, 1),
+		Payload:   orderCreatedPayloadForTest(orderID, reserved.ReservationID, inventoryID, poolID, 1),
 	}); err != nil {
 		t.Fatalf("consume order created: %v", err)
 	}
@@ -244,7 +254,7 @@ func TestPostgresStoreReserveConsumeRestore(t *testing.T) {
 	first, err := service.RestoreSale(RestoreSaleRequest{
 		ReservationID:  reserved.ReservationID,
 		Reason:         "order_canceled",
-		IdempotencyKey: "order-1:restore",
+		IdempotencyKey: "restore-1",
 	})
 	if err != nil {
 		t.Fatalf("restore sale: %v", err)
@@ -257,7 +267,7 @@ func TestPostgresStoreReserveConsumeRestore(t *testing.T) {
 	if _, err := service.RestoreSale(RestoreSaleRequest{
 		ReservationID:  reserved.ReservationID,
 		Reason:         "order_canceled",
-		IdempotencyKey: "order-1:restore",
+		IdempotencyKey: "restore-1",
 	}); err != nil {
 		t.Fatalf("replayed restore sale: %v", err)
 	}
@@ -277,20 +287,17 @@ func TestPostgresStoreReserveConsumeRestore(t *testing.T) {
 	}
 }
 
-func orderCreatedPayloadForTest(quoteID string, reservationID string, inventoryID string, poolID string, quantity int) struct {
+func orderCreatedPayloadForTest(orderID string, reservationID string, inventoryID string, poolID string, quantity int) struct {
 	OrderIDs      []string `json:"orderIds"`
-	QuoteID       string   `json:"quoteId"`
 	ReservationID string   `json:"reservationId"`
 	Items         []Item   `json:"items"`
 } {
 	return struct {
 		OrderIDs      []string `json:"orderIds"`
-		QuoteID       string   `json:"quoteId"`
 		ReservationID string   `json:"reservationId"`
 		Items         []Item   `json:"items"`
 	}{
-		OrderIDs:      []string{"order-1"},
-		QuoteID:       quoteID,
+		OrderIDs:      []string{orderID},
 		ReservationID: reservationID,
 		Items:         []Item{{InventoryID: inventoryID, StockPoolID: poolID, Quantity: quantity}},
 	}
@@ -371,6 +378,8 @@ func TestPostgresStoreConcurrentReserveKeepsOneWinner(t *testing.T) {
 	store, pool := newPostgresStoreHarness(t)
 	service := NewService(store)
 	inventoryID, poolID := seedStockPool(t, pool, 1)
+	orderID1 := newTestOrderID(t, pool)
+	orderID2 := newTestOrderID(t, pool)
 
 	var waitGroup sync.WaitGroup
 	results := make([]error, 2)
@@ -378,10 +387,14 @@ func TestPostgresStoreConcurrentReserveKeepsOneWinner(t *testing.T) {
 	for index := range results {
 		go func(index int) {
 			defer waitGroup.Done()
+			orderID := orderID1
+			if index == 1 {
+				orderID = orderID2
+			}
 			_, err := service.ReserveQuote(ReserveQuoteRequest{
-				QuoteID:        fmt.Sprintf("quote-%d", index),
+				OrderID:        orderID,
 				CartID:         fmt.Sprintf("cart-%d", index),
-				IdempotencyKey: fmt.Sprintf("quote-%d:reservation:v1", index),
+				IdempotencyKey: fmt.Sprintf("%s:reservation:v1", orderID),
 				ExpiresAt:      time.Now().Add(30 * time.Minute),
 				Items:          []Item{{InventoryID: inventoryID, StockPoolID: poolID, Quantity: 1}},
 			})
@@ -404,4 +417,100 @@ func TestPostgresStoreConcurrentReserveKeepsOneWinner(t *testing.T) {
 		t.Fatalf("expected exactly one successful reservation, got %d", succeeded)
 	}
 	assertPoolState(t, pool, poolID, 1, 1, 1)
+}
+
+func TestPostgresStoreOrderOwnedReservationRoundTrip(t *testing.T) {
+	store, pool := newPostgresStoreHarness(t)
+	service := NewService(store)
+	inventoryID, poolID := seedStockPool(t, pool, 5)
+	ctx := context.Background()
+
+	orderID1 := newTestOrderID(t, pool)
+	orderID2 := newTestOrderID(t, pool)
+
+	first, err := service.ReserveQuote(ReserveQuoteRequest{
+		OrderID:        orderID1,
+		CartID:         "cart-order-1",
+		IdempotencyKey: fmt.Sprintf("%s:reservation:v1", orderID1),
+		ExpiresAt:      time.Now().Add(30 * time.Minute),
+		Items:          []Item{{InventoryID: inventoryID, StockPoolID: poolID, Quantity: 1}},
+	})
+	if err != nil {
+		t.Fatalf("reserve order-owned: %v", err)
+	}
+
+	storedFirst, ok := store.FindByID(first.ReservationID)
+	if !ok {
+		t.Fatalf("expected to find first reservation by id")
+	}
+	if storedFirst.OrderID != orderID1 {
+		t.Fatalf("expected OrderID %q, got %q", orderID1, storedFirst.OrderID)
+	}
+
+	var storedOrderID string
+	err = pool.QueryRow(
+		ctx,
+		`select order_id::text from inventory_reservations where id = $1`,
+		first.ReservationID,
+	).Scan(&storedOrderID)
+	if err != nil {
+		t.Fatalf("read stored order-owned row: %v", err)
+	}
+	if storedOrderID != orderID1 {
+		t.Fatalf("expected stored order_id %q, got %q", orderID1, storedOrderID)
+	}
+
+	second, err := service.ReserveQuote(ReserveQuoteRequest{
+		OrderID:        orderID2,
+		CartID:         "cart-order-2",
+		IdempotencyKey: fmt.Sprintf("%s:reservation:v1", orderID2),
+		ExpiresAt:      time.Now().Add(30 * time.Minute),
+		Items:          []Item{{InventoryID: inventoryID, StockPoolID: poolID, Quantity: 1}},
+	})
+	if err != nil {
+		t.Fatalf("reserve second order-owned: %v", err)
+	}
+
+	storedSecond, ok := store.FindByID(second.ReservationID)
+	if !ok {
+		t.Fatalf("expected to find second reservation by id")
+	}
+	if storedSecond.OrderID != orderID2 {
+		t.Fatalf("expected second OrderID %q, got %q", orderID2, storedSecond.OrderID)
+	}
+
+	var orderOwnedCount int
+	err = pool.QueryRow(
+		ctx,
+		`select count(*) from inventory_reservations where order_id is not null`,
+	).Scan(&orderOwnedCount)
+	if err != nil {
+		t.Fatalf("count order-owned rows: %v", err)
+	}
+	if orderOwnedCount != 2 {
+		t.Fatalf("expected 2 order-owned rows, got %d", orderOwnedCount)
+	}
+
+	if err := service.ConsumeOrderCreated(OrderCreatedEvent{
+		EventID:   "event-match",
+		EventType: "order.created",
+		Payload:   orderCreatedPayloadForTest(orderID1, first.ReservationID, inventoryID, poolID, 1),
+	}); err != nil {
+		t.Fatalf("consume matching order: %v", err)
+	}
+
+	if err := service.ConsumeOrderCreated(OrderCreatedEvent{
+		EventID:   "event-mismatch",
+		EventType: "order.created",
+		Payload:   orderCreatedPayloadForTest(newTestOrderID(t, pool), second.ReservationID, inventoryID, poolID, 1),
+	}); !errors.Is(err, ErrReservationUnavailable) {
+		t.Fatalf("expected unavailable reservation for mismatched order id, got %v", err)
+	}
+
+	storedSecond, _ = store.FindByID(second.ReservationID)
+	if storedSecond.Status != StatusActive {
+		t.Fatalf("expected mismatched reservation to stay active, got %s", storedSecond.Status)
+	}
+
+	assertPoolState(t, pool, poolID, 4, 1, 1)
 }

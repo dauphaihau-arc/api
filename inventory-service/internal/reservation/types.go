@@ -116,7 +116,7 @@ type Item struct {
 
 type Reservation struct {
 	ID             string
-	QuoteID        string
+	OrderID        string
 	CartID         string
 	Status         Status
 	Items          []Item
@@ -126,7 +126,7 @@ type Reservation struct {
 }
 
 type ReserveQuoteRequest struct {
-	QuoteID        string    `json:"quoteId"`
+	OrderID        string    `json:"orderId"`
 	CartID         string    `json:"cartId"`
 	IdempotencyKey string    `json:"idempotencyKey"`
 	ExpiresAt      time.Time `json:"expiresAt"`
@@ -144,7 +144,7 @@ type ReserveQuoteResponse struct {
 }
 
 type ValidateReservationRequest struct {
-	QuoteID       string `json:"quoteId"`
+	OrderID       string `json:"orderId"`
 	ReservationID string `json:"reservationId"`
 	Items         []Item `json:"items"`
 }
@@ -155,7 +155,7 @@ type ValidateReservationResponse struct {
 }
 
 type ReleaseReservationRequest struct {
-	QuoteID        string `json:"quoteId"`
+	OrderID        string `json:"orderId"`
 	ReservationID  string `json:"reservationId"`
 	Reason         string `json:"reason"`
 	IdempotencyKey string `json:"idempotencyKey"`
@@ -173,7 +173,6 @@ type OrderCreatedEvent struct {
 	Producer   string    `json:"producer"`
 	Payload    struct {
 		OrderIDs      []string `json:"orderIds"`
-		QuoteID       string   `json:"quoteId"`
 		ReservationID string   `json:"reservationId"`
 		Items         []Item   `json:"items"`
 	} `json:"payload"`

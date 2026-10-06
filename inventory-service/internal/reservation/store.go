@@ -30,6 +30,7 @@ type MemoryStore struct {
 	mu               sync.Mutex
 	byID             map[string]Reservation
 	byIdempotencyKey map[string]string
+	byOrderID        map[string]string
 	pools            map[string]InventoryBalance
 	defaultPoolByID  map[string]string
 	items            map[string]InventoryItem
@@ -41,6 +42,7 @@ func NewMemoryStore() *MemoryStore {
 	return &MemoryStore{
 		byID:             map[string]Reservation{},
 		byIdempotencyKey: map[string]string{},
+		byOrderID:        map[string]string{},
 		pools:            map[string]InventoryBalance{},
 		defaultPoolByID:  map[string]string{},
 		items:            map[string]InventoryItem{},
@@ -60,6 +62,13 @@ func (s *MemoryStore) CreateReservation(reservation Reservation) (Reservation, e
 		}
 		return Reservation{}, ErrIdempotencyConflict
 	}
+	if existingID, ok := s.byOrderID[reservation.OrderID]; ok {
+		existing := s.byID[existingID]
+		if sameReservation(existing, reservation) {
+			return existing, nil
+		}
+		return Reservation{}, ErrIdempotencyConflict
+	}
 	if err := s.reserveItems(&reservation); err != nil {
 		return Reservation{}, err
 	}
@@ -73,6 +82,13 @@ func (s *MemoryStore) CreateReservationWithoutInventoryMutation(reservation Rese
 	defer s.mu.Unlock()
 
 	if existingID, ok := s.byIdempotencyKey[reservation.IdempotencyKey]; ok {
+		existing := s.byID[existingID]
+		if sameReservation(existing, reservation) {
+			return existing, nil
+		}
+		return Reservation{}, ErrIdempotencyConflict
+	}
+	if existingID, ok := s.byOrderID[reservation.OrderID]; ok {
 		existing := s.byID[existingID]
 		if sameReservation(existing, reservation) {
 			return existing, nil
@@ -446,10 +462,11 @@ func (s *MemoryStore) saveReservationLocked(reservation Reservation) {
 	if reservation.IdempotencyKey != "" {
 		s.byIdempotencyKey[reservation.IdempotencyKey] = reservation.ID
 	}
+	s.byOrderID[reservation.OrderID] = reservation.ID
 }
 
 func sameReservation(left Reservation, right Reservation) bool {
-	return left.QuoteID == right.QuoteID &&
+	return left.OrderID == right.OrderID &&
 		left.CartID == right.CartID &&
 		sameItems(left.Items, right.Items)
 }
