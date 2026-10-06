@@ -141,7 +141,6 @@ describe('CreateGuestOrderForBuyNowUseCase', () => {
         type: 'guest',
         email: 'guest@example.com',
       }),
-      'cart-1',
       expect.any(Object),
       expect.objectContaining({
         quote: expect.objectContaining({

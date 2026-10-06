@@ -38,7 +38,7 @@ export class CreateOrderForBuyNowUseCase {
       type: 'user',
       userId: actor.userId,
       email: actor.email,
-    }, cart.id, cart, {
+    }, cart, {
       paymentType: body.paymentType,
       shippingAddress: quote.shippingAddress,
       shopAdjustments: quote.shopAdjustments,

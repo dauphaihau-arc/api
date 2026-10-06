@@ -129,7 +129,6 @@ describe('CreateOrderFromCartUseCase', () => {
         userId: actor.userId,
         email: actor.email,
       },
-      'cart-1',
       expect.any(Object),
       expect.objectContaining({
         quote: expect.objectContaining({

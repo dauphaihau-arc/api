@@ -37,7 +37,7 @@ export class CreateOrderFromCartUseCase {
       type: 'user',
       userId: actor.userId,
       email: actor.email,
-    }, cart.id, cart, {
+    }, cart, {
       paymentType: body.paymentType,
       shippingAddress: quote.shippingAddress,
       shopAdjustments: quote.shopAdjustments,

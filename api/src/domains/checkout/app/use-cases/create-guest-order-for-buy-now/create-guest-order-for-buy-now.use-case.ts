@@ -48,7 +48,7 @@ export class CreateGuestOrderForBuyNowUseCase {
     const result = await this.orderCheckoutService.createOrders({
       type: 'guest',
       email: body.guest.email,
-    }, cart.id, cart, {
+    }, cart, {
       paymentType: body.paymentType,
       shippingAddress: quote.shippingAddress,
       shopAdjustments: quote.shopAdjustments,

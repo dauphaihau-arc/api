@@ -299,7 +299,6 @@ describe('OrderCheckoutService', () => {
           userId: 'user-1',
           email: 'member@example.com',
         },
-        'cart-1',
         cart,
         {
           paymentType: PaymentType.CARD,
@@ -355,7 +354,6 @@ describe('OrderCheckoutService', () => {
         userId: 'user-1',
         email: 'member@example.com',
       },
-      'cart-1',
       cart,
       {
         paymentType: PaymentType.CARD,
@@ -446,7 +444,6 @@ describe('OrderCheckoutService', () => {
         userId: 'user-1',
         email: 'member@example.com',
       },
-      'cart-1',
       cart,
       {
         paymentType: PaymentType.CARD,
@@ -500,7 +497,6 @@ describe('OrderCheckoutService', () => {
         userId: 'user-1',
         email: 'member@example.com',
       },
-      'cart-1',
       cart,
       {
         paymentType: PaymentType.CASH,
@@ -570,7 +566,6 @@ describe('OrderCheckoutService', () => {
         type: 'guest',
         email: 'guest@example.com',
       },
-      'cart-1',
       {
         ...cart,
         userId: null,
@@ -625,7 +620,6 @@ describe('OrderCheckoutService', () => {
         userId: 'user-1',
         email: 'member@example.com',
       },
-      'cart-1',
       cart,
       {
         paymentType: PaymentType.CARD,
@@ -809,7 +803,6 @@ describe('OrderCheckoutService', () => {
           userId: 'user-1',
           email: 'member@example.com',
         },
-        'cart-1',
         cart,
         {
           paymentType: PaymentType.CARD,
@@ -854,7 +847,6 @@ describe('OrderCheckoutService', () => {
           userId: 'user-1',
           email: 'member@example.com',
         },
-        'cart-1',
         cart,
         {
           paymentType: PaymentType.CARD,
@@ -885,7 +877,6 @@ describe('OrderCheckoutService', () => {
           userId: 'user-1',
           email: 'member@example.com',
         },
-        'cart-1',
         cart,
         {
           paymentType: PaymentType.CARD,
@@ -1115,7 +1106,6 @@ describe('OrderCheckoutService', () => {
 
       await service.createOrders(
         { type: 'user', userId: 'user-1', email: 'member@example.com' },
-        'cart-1',
         cart,
         {
           paymentType: PaymentType.CASH,
@@ -1168,7 +1158,6 @@ describe('OrderCheckoutService', () => {
 
       await expect(service.createOrders(
         { type: 'user', userId: 'user-1', email: 'member@example.com' },
-        'cart-1',
         cart,
         {
           paymentType: PaymentType.CASH,
@@ -1204,7 +1193,6 @@ describe('OrderCheckoutService', () => {
 
       await service.createOrders(
         { type: 'user', userId: 'user-1', email: 'member@example.com' },
-        'cart-1',
         cart,
         {
           paymentType: PaymentType.CARD,
@@ -1239,7 +1227,6 @@ describe('OrderCheckoutService', () => {
 
       await expect(service.createOrders(
         { type: 'user', userId: 'user-1', email: 'member@example.com' },
-        'cart-1',
         cart,
         {
           paymentType: PaymentType.CARD,

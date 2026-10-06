@@ -137,6 +137,20 @@ export class OrderInventoryNotFoundError extends OrderAppError {
   }
 }
 
+/**
+ * Raised when the money the payment provider would be charged disagrees with
+ * the persisted Order rows, or the persisted total disagrees with the accepted
+ * quote. This is an internal invariant breach, never buyer input, so it is
+ * deliberately not an `OrderAppError`: it must surface as a server error
+ * instead of being mapped to a 400.
+ */
+export class CheckoutAmountsAgreementError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = new.target.name;
+  }
+}
+
 export class OrderNotFoundError extends OrderAppError {
   constructor() {
     super('Order was not found');

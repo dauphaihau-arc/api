@@ -130,7 +130,6 @@ describe('CreateOrderForBuyNowUseCase', () => {
         type: 'user',
         userId: actor.userId,
       }),
-      'cart-1',
       expect.any(Object),
       expect.objectContaining({
         quote: expect.objectContaining({
