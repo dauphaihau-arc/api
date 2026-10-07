@@ -588,6 +588,45 @@ describe('Commerce flow (integration)', () => {
     );
   });
 
+  it('answers 404 for malformed shop and product ids instead of 500', async () => {
+    const agent = request.agent(app.getHttpServer());
+
+    const registerResponse = await agent
+      .post(`${API_PREFIX}/auth/register`)
+      .set('X-Forwarded-For', randomForwardedIp())
+      .set('Idempotency-Key', randomUUID())
+      .send({
+        email: `commerce-bad-id-${Date.now()}@example.com`,
+        password: VALID_TEST_PASSWORD,
+        displayName: 'Bad Id Owner',
+      })
+      .expect(201);
+    const registerBody = registerResponse.body as unknown as AuthUserResponse;
+    await grantSellerRole(registerBody.user.id);
+
+    const shopResponse = await agent
+      .post(`${API_PREFIX}/shops`)
+      .send({
+        shop_name: `badid${Date.now().toString().slice(-6)}`,
+        currency: 'USD',
+      })
+      .expect(201);
+    const shopBody = shopResponse.body as { id: string };
+    const shopId = shopBody.id;
+
+    // The reported regression: a non-uuid product id must not reach the uuid
+    // column comparison, which surfaced as an unhandled Postgres 22P02 -> 500.
+    await agent
+      .get(`${API_PREFIX}/shops/${shopId}/products/dbfd762f-33ce-4b74-990b-e06acd3ce8bk`)
+      .expect(404);
+    await agent
+      .get(`${API_PREFIX}/shops/${shopId}/products/${randomUUID()}`)
+      .expect(404);
+    await agent
+      .get(`${API_PREFIX}/shops/not-a-uuid/products`)
+      .expect(404);
+  });
+
   it('supports persistent carts and temp carts through the legacy-compatible user cart contract', async () => {
     const email = `commerce-cart-${Date.now()}@example.com`;
     const agent = request.agent(app.getHttpServer());

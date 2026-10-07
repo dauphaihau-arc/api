@@ -175,6 +175,18 @@ describe('MikroOrmSellerProductQueryRepository (integration)', () => {
     });
   });
 
+  it('treats malformed ids as not found instead of raising a database cast error', async () => {
+    await expect(
+      repository.findById('dbfd762f-33ce-4b74-990b-e06acd3ce8bk'),
+    ).resolves.toBeNull();
+    await expect(
+      repository.findMutationTargetById('dbfd762f-33ce-4b74-990b-e06acd3ce8bk'),
+    ).resolves.toBeNull();
+    await expect(
+      repository.findById('00000000-0000-4000-8000-0000000000ff'),
+    ).resolves.toBeNull();
+  });
+
   async function seedProducts(em: EntityManager): Promise<void> {
     const user = em.create(UserEntity, {
       id: '00000000-0000-4000-8000-000000000001',

@@ -2,6 +2,7 @@ import { LoadStrategy } from '@mikro-orm/core';
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
 import { buildPaginationMeta } from '~/platform/application/pagination';
+import { isUuid } from '~/platform/ids/uuid';
 import { StorageService } from '~/integrations/storage/app/ports/storage.service';
 import { SellerProductQueryRepository } from '../../../../app/ports/seller-product-query.repository';
 import type {
@@ -54,6 +55,10 @@ implements SellerProductQueryRepository {
   ) {}
 
   async findById(id: string): Promise<ProductDraftSummary | null> {
+    if (!isUuid(id)) {
+      return null;
+    }
+
     const repository = this.entityManager.fork().getRepository(ProductEntity);
     const product = await repository.findOne(
       { id },
@@ -67,6 +72,10 @@ implements SellerProductQueryRepository {
   }
 
   async findMutationTargetById(id: string): Promise<ProductMutationTarget | null> {
+    if (!isUuid(id)) {
+      return null;
+    }
+
     const [row] = await this.entityManager.fork().getConnection().execute<Array<{
       id: string
       shop_id: string

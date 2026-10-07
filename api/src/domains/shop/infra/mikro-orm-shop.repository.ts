@@ -1,5 +1,6 @@
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
+import { isUuid } from '~/platform/ids/uuid';
 import { ShopRepository } from '../app/ports/shop.repository';
 import { toShopSummary } from '../app/shop-summary';
 import type { CreateShopInput, ShopSummary } from '../app/shop.types';
@@ -31,6 +32,10 @@ export class MikroOrmShopRepository implements ShopRepository {
   }
 
   async findById(id: string): Promise<ShopSummary | null> {
+    if (!isUuid(id)) {
+      return null;
+    }
+
     const repository = this.entityManager.fork().getRepository(ShopEntity);
     const shop = await repository.findOne({ id }, { populate: ['ownerUser'] });
 
@@ -71,6 +76,10 @@ export class MikroOrmShopRepository implements ShopRepository {
     id: string,
     ownerUserId: string,
   ): Promise<ShopSummary | null> {
+    if (!isUuid(id)) {
+      return null;
+    }
+
     const repository = this.entityManager.fork().getRepository(ShopEntity);
     const shop = await repository.findOne(
       {
