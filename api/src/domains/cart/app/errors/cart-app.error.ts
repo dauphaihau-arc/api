@@ -35,3 +35,9 @@ export class CartQuantityExceedsStockError extends CartAppError {
     super('Quantity of product exceeds stock');
   }
 }
+
+export class CartItemProductMismatchError extends CartAppError {
+  constructor() {
+    super('Replacement inventory does not belong to the same product as the cart item');
+  }
+}

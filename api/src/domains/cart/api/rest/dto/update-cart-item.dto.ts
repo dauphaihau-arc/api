@@ -60,6 +60,13 @@ export class UpdateCartItemDto {
   inventoryId?: string;
 
   @IsOptional()
+  @ApiPropertyOptional({ name: 'replace_with_inventory_id' })
+  @Expose({ name: 'replace_with_inventory_id' })
+  @Transform(({ value, obj: source }) => value ?? source.replace_with_inventory_id)
+  @IsUUID()
+  replaceWithInventoryId?: string;
+
+  @IsOptional()
   @ApiPropertyOptional()
   @Type(() => Number)
   @Min(0)

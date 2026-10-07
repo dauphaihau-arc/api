@@ -11,6 +11,7 @@ import { StorageService } from '~/integrations/storage/app/ports/storage.service
 import {
   CartRepository,
   type DeleteOwnedCartItemInput,
+  type ReplaceOwnedCartItemInput,
   type UpdateOwnedCartItemInput,
 } from '../app/ports/cart.repository';
 import type {
@@ -260,6 +261,67 @@ export class MikroOrmCartRepository implements CartRepository {
       {
         populate: [...MikroOrmCartRepository.cartPopulate],
       },
+    );
+
+    return this.toCartSnapshot(hydratedCart);
+  }
+
+  async replaceCartItem(
+    input: ReplaceOwnedCartItemInput,
+  ): Promise<CartSnapshot | null> {
+    const entityManager = this.entityManager.fork();
+    const cartRepository = entityManager.getRepository(CartEntity);
+    const itemRepository = entityManager.getRepository(CartItemEntity);
+    const inventoryRepository = entityManager.getRepository(ProductInventoryEntity);
+
+    const cart = await this.findCartForMutation(entityManager, input.actor, input.cartId);
+
+    if (!cart) {
+      return null;
+    }
+
+    const sourceItem = await itemRepository.findOne({
+      cart: cart.id,
+      productInventory: input.inventoryId,
+    });
+
+    if (!sourceItem) {
+      return this.toCartSnapshot(
+        await cartRepository.findOneOrFail(
+          { id: cart.id },
+          { populate: [...MikroOrmCartRepository.cartPopulate] },
+        ),
+      );
+    }
+
+    const targetInventory = await inventoryRepository.findOneOrFail(
+      { id: input.targetInventoryId },
+      { populate: ['shop', 'product'] },
+    );
+
+    const mergeTarget = await itemRepository.findOne({
+      cart: cart.id,
+      productInventory: input.targetInventoryId,
+    });
+
+    if (mergeTarget && mergeTarget.id !== sourceItem.id) {
+      mergeTarget.quantity += input.quantity;
+      mergeTarget.isSelectOrder = mergeTarget.isSelectOrder || sourceItem.isSelectOrder;
+      entityManager.remove(sourceItem);
+      cart.items.remove(sourceItem);
+    }
+    else {
+      sourceItem.productInventory = targetInventory;
+      sourceItem.shop = targetInventory.shop;
+      sourceItem.product = targetInventory.product;
+      sourceItem.quantity = input.quantity;
+    }
+
+    await entityManager.flush();
+
+    const hydratedCart = await cartRepository.findOneOrFail(
+      { id: cart.id },
+      { populate: [...MikroOrmCartRepository.cartPopulate] },
     );
 
     return this.toCartSnapshot(hydratedCart);

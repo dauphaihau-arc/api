@@ -18,6 +18,7 @@ describe('CreateGuestCheckoutQuoteFromCartUseCase', () => {
       createBuyNowCart: jest.fn(),
       updateCartItem: jest.fn(),
       deleteCartItem: jest.fn(),
+      replaceCartItem: jest.fn(),
       mergeGuestCartIntoUser: jest.fn(),
     };
     const createCheckoutQuoteService = {

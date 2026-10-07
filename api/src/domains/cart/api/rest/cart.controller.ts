@@ -283,6 +283,7 @@ export class CartController {
         inventoryId: body.inventoryId,
         quantity: body.quantity,
         isSelectOrder: body.isSelected,
+        replaceWithInventoryId: body.replaceWithInventoryId,
       }),
       mapCartAppErrorToHttpException,
     );

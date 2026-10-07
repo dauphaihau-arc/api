@@ -7,6 +7,7 @@ import {
 import type { CartAppError } from '../../app/errors/cart-app.error';
 import {
   CartItemNotFoundError,
+  CartItemProductMismatchError,
   CartNotFoundError,
   CartQuantityExceedsStockError,
   ProductInventoryNotFoundError,
@@ -18,7 +19,8 @@ type CartHttpErrorCode =
   | 'CART_ITEM_NOT_FOUND'
   | 'PRODUCT_INVENTORY_NOT_FOUND'
   | 'CART_QUANTITY_EXCEEDS_STOCK'
-  | 'PRODUCT_UNAVAILABLE_FOR_CART';
+  | 'PRODUCT_UNAVAILABLE_FOR_CART'
+  | 'CART_ITEM_PRODUCT_MISMATCH';
 
 export function mapCartAppErrorToHttpException(
   error: CartAppError,
@@ -64,6 +66,9 @@ function getCartErrorCode(error: CartAppError): CartHttpErrorCode {
   }
   if (error instanceof CartQuantityExceedsStockError) {
     return 'CART_QUANTITY_EXCEEDS_STOCK';
+  }
+  if (error instanceof CartItemProductMismatchError) {
+    return 'CART_ITEM_PRODUCT_MISMATCH';
   }
   return 'PRODUCT_UNAVAILABLE_FOR_CART';
 }

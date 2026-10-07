@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { err, ok, type Result } from '~/platform/application/result';
 import {
   CartItemNotFoundError,
+  CartItemProductMismatchError,
   CartNotFoundError,
   CartQuantityExceedsStockError,
   ProductInventoryNotFoundError,
@@ -17,6 +18,7 @@ export interface UpdateCartItemInput {
   inventoryId: string;
   quantity?: number;
   isSelectOrder?: boolean;
+  replaceWithInventoryId?: string;
 }
 
 @Injectable()
@@ -54,6 +56,17 @@ export class UpdateCartItemUseCase {
       return err(new CartItemNotFoundError());
     }
 
+    if (input.replaceWithInventoryId) {
+      return this.replaceItem(
+        actor,
+        input,
+        existingCart,
+        inventory.productId,
+        existingItem,
+        input.replaceWithInventoryId,
+      );
+    }
+
     const eligibility = await this.purchaseEligibilityService.evaluate({
       items: [{
         inventoryId: input.inventoryId,
@@ -78,6 +91,63 @@ export class UpdateCartItemUseCase {
       inventoryId: input.inventoryId,
       quantity: input.quantity,
       isSelectOrder: input.isSelectOrder,
+    });
+
+    return ok(cart);
+  }
+
+  private async replaceItem(
+    actor: CartActor,
+    input: UpdateCartItemInput,
+    existingCart: CartSnapshot,
+    sourceProductId: string,
+    existingItem: CartSnapshot['items'][number],
+    targetInventoryId: string,
+  ): Promise<Result<CartSnapshot | null, CartAppError>> {
+    const targetInventory = await this.cartRepository.findInventoryCandidateById(
+      targetInventoryId,
+    );
+
+    if (!targetInventory) {
+      return err(new ProductInventoryNotFoundError(targetInventoryId));
+    }
+
+    if (targetInventory.productId !== sourceProductId) {
+      return err(new CartItemProductMismatchError());
+    }
+
+    const requestedQuantity = input.quantity && input.quantity > 0
+      ? input.quantity
+      : existingItem.quantity;
+    const mergeItem = existingCart.items.find(
+      item => item.inventory.inventoryId === targetInventoryId,
+    );
+    const resultingQuantity = mergeItem && mergeItem.id !== existingItem.id
+      ? mergeItem.quantity + requestedQuantity
+      : requestedQuantity;
+
+    const eligibility = await this.purchaseEligibilityService.evaluate({
+      items: [{
+        inventoryId: targetInventoryId,
+        quantity: resultingQuantity,
+        title: targetInventory.title,
+      }],
+    });
+
+    if (!eligibility.eligible) {
+      const reason = eligibility.failures[0]?.reason;
+
+      return err(reason === 'insufficient_available_quantity'
+        ? new CartQuantityExceedsStockError()
+        : new ProductUnavailableForCartError());
+    }
+
+    const cart = await this.cartRepository.replaceCartItem({
+      actor,
+      cartId: input.cartId,
+      inventoryId: input.inventoryId,
+      targetInventoryId,
+      quantity: requestedQuantity,
     });
 
     return ok(cart);

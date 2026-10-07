@@ -18,6 +18,14 @@ export interface DeleteOwnedCartItemInput {
   inventoryId: string;
 }
 
+export interface ReplaceOwnedCartItemInput {
+  actor: CartActor;
+  cartId?: string;
+  inventoryId: string;
+  targetInventoryId: string;
+  quantity: number;
+}
+
 export abstract class CartRepository {
   abstract findInventoryCandidateById(
     inventoryId: string
@@ -44,6 +52,10 @@ export abstract class CartRepository {
 
   abstract updateCartItem(
     input: UpdateOwnedCartItemInput
+  ): Promise<CartSnapshot | null>;
+
+  abstract replaceCartItem(
+    input: ReplaceOwnedCartItemInput
   ): Promise<CartSnapshot | null>;
 
   abstract deleteCartItem(
