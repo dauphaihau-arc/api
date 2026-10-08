@@ -209,9 +209,9 @@ export class OrderRefundService {
         await notifyUserUseCase.execute(
           buildSellerOrderRefundNotification(
             sellerUserId,
-            orderId,
+            order.publicId,
             getRequiredOrderNumber(order),
-            order.shop.id,
+            order.shop.publicId,
             refundStatus,
           ),
         );

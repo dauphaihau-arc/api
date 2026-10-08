@@ -54,7 +54,11 @@ export class MikroOrmSaleProjectionReader extends SaleProjectionReader {
         const current = bestByProductId.get(productId);
 
         if (!current || percentOff > current.percentOff) {
-          bestByProductId.set(productId, { promotionId: promotion.id, percentOff });
+          bestByProductId.set(productId, {
+            promotionId: promotion.id,
+            promotionPublicId: promotion.publicId,
+            percentOff,
+          });
         }
       }
     }

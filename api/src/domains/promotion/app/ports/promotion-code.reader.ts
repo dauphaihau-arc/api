@@ -11,6 +11,7 @@ import type { PromotionVisibility } from '../../domain/enums/promotion-visibilit
  */
 export interface PromotionCodeOffer {
   promotionId: string;
+  promotionPublicId: string;
   shopId: string;
   code: string;
   benefitType: PromotionBenefitType;
@@ -20,6 +21,7 @@ export interface PromotionCodeOffer {
   visibility: PromotionVisibility;
   productScope: PromotionProductScope;
   productIds: string[];
+  productPublicIds: string[];
   minOrderType: PromotionMinOrderType;
   minOrderValue: number;
   minPurchaseQuantity: number;

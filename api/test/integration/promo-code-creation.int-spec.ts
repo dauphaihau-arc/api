@@ -30,7 +30,7 @@ import { RequestContextService } from '~/platform/request-context/request-contex
 import { createTestDatabase, dropTestDatabase } from '../support/test-postgres';
 import type { TestDatabaseContext } from '../support/test-postgres';
 import { seedAuthReferenceData } from '../../database/seeds/auth.seed';
-import { seedPublishableInventory } from '../support/shipping-fixtures';
+import { resolveShopId, seedPublishableInventory } from '../support/shipping-fixtures';
 
 jest.setTimeout(240_000);
 
@@ -40,7 +40,9 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 type TestDatabase = TestDatabaseContext;
 
-type TestSeller = { agent: Agent; email: string; shopId: string };
+type TestSeller = {
+  agent: Agent; email: string; shopId: string; shopPublicId: string 
+};
 
 type ShopPromoCodeResponse = {
   id: string;
@@ -236,7 +238,9 @@ describe('Shop promo code creation (integration)', () => {
       })
       .expect(201);
 
-    return { agent, email, shopId: shopResponse.body.id as string };
+    return {
+      agent, email, shopId: await resolveShopId(sql, shopResponse.body.id as string), shopPublicId: shopResponse.body.id as string,
+    };
   }
 
   async function seedCategory(agent: Agent): Promise<string> {
@@ -262,7 +266,7 @@ describe('Shop promo code creation (integration)', () => {
     amountMinor: number;
   }): Promise<{ productId: string; inventoryId: string }> {
     const productResponse = await input.seller.agent
-      .post(`${API_PREFIX}/shops/${input.seller.shopId}/products`)
+      .post(`${API_PREFIX}/shops/${input.seller.shopPublicId}/products`)
       .set('Idempotency-Key', randomUUID())
       .send({
         category_id: await seedCategory(input.seller.agent),
@@ -273,9 +277,10 @@ describe('Shop promo code creation (integration)', () => {
       })
       .expect(201);
     const productId = productResponse.body.id as string;
+    const productPublicId = productResponse.body.id as string;
 
     await input.seller.agent
-      .put(`${API_PREFIX}/shops/${input.seller.shopId}/products/${productId}/images`)
+      .put(`${API_PREFIX}/shops/${input.seller.shopPublicId}/products/${productPublicId}/images`)
       .attach('images', Buffer.from(`image-${productId}`), {
         filename: `${productId}.jpg`,
         contentType: 'image/jpeg',
@@ -283,12 +288,12 @@ describe('Shop promo code creation (integration)', () => {
       .expect(204);
 
     const detail = await input.seller.agent
-      .get(`${API_PREFIX}/shops/${input.seller.shopId}/products/${productId}`)
+      .get(`${API_PREFIX}/shops/${input.seller.shopPublicId}/products/${productPublicId}`)
       .expect(200);
     const inventoryId = detail.body.inventory[0].id as string;
 
     await seedPublishableInventory(sql, {
-      shopId: input.seller.shopId,
+      shopId: input.seller.shopPublicId,
       inventoryId,
       sku: input.sku,
       stock: 10,
@@ -303,14 +308,14 @@ describe('Shop promo code creation (integration)', () => {
     body: Record<string, unknown>,
   ) {
     return seller.agent
-      .post(`${API_PREFIX}/shops/${seller.shopId}/promo-codes`)
+      .post(`${API_PREFIX}/shops/${seller.shopPublicId}/promo-codes`)
       .set('Idempotency-Key', randomUUID())
       .send(body);
   }
 
   async function listPromoCodes(seller: TestSeller): Promise<ShopPromoCodeResponse[]> {
     const response = await seller.agent
-      .get(`${API_PREFIX}/shops/${seller.shopId}/promo-codes`)
+      .get(`${API_PREFIX}/shops/${seller.shopPublicId}/promo-codes`)
       .query({ limit: 100 })
       .expect(200);
 
@@ -319,19 +324,19 @@ describe('Shop promo code creation (integration)', () => {
 
   function cancelPromoCode(seller: TestSeller, promoCodeId: string) {
     return seller.agent
-      .post(`${API_PREFIX}/shops/${seller.shopId}/promo-codes/${promoCodeId}/cancel`)
+      .post(`${API_PREFIX}/shops/${seller.shopPublicId}/promo-codes/${promoCodeId}/cancel`)
       .set('Idempotency-Key', randomUUID());
   }
 
   function endPromoCode(seller: TestSeller, promoCodeId: string) {
     return seller.agent
-      .post(`${API_PREFIX}/shops/${seller.shopId}/promo-codes/${promoCodeId}/end`)
+      .post(`${API_PREFIX}/shops/${seller.shopPublicId}/promo-codes/${promoCodeId}/end`)
       .set('Idempotency-Key', randomUUID());
   }
 
   function bulkStopPromoCodes(seller: TestSeller, ids: string[]) {
     return seller.agent
-      .post(`${API_PREFIX}/shops/${seller.shopId}/promo-codes/bulk-stop`)
+      .post(`${API_PREFIX}/shops/${seller.shopPublicId}/promo-codes/bulk-stop`)
       .set('Idempotency-Key', randomUUID())
       .send({ ids });
   }
@@ -623,7 +628,7 @@ describe('Shop promo code creation (integration)', () => {
     await sql.query(
       `insert into "promotion_usages" ("id","created_at","updated_at","promotion_id","order_id","code")
        values ($1, now(), now(), $2, $3, $4)`,
-      [randomUUID(), active.id, randomUUID(), 'ACTIVESTOP'],
+      [randomUUID(), (await sql.query<{ id: string }>('select id from promotions where public_id = $1', [active.id])).rows[0]!.id, randomUUID(), 'ACTIVESTOP'],
     );
 
     const beforeStop = await listPromoCodes(seller);
@@ -678,7 +683,7 @@ describe('Shop promo code creation (integration)', () => {
       end_local: utcLocalDateTime(new Date(testNow.getTime() + DAY_MS)),
     }).expect(201)).body.promo_code as ShopPromoCodeResponse;
 
-    const missingId = randomUUID();
+    const missingId = 'prm_000000000000';
     const bulk = await bulkStopPromoCodes(seller, [
       scheduledTwo.id,
       activeTwo.id,

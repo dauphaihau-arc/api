@@ -34,6 +34,7 @@ export interface FulfillmentShipmentUpdateView {
 
 export interface FulfillmentShipmentView {
   id: string;
+  publicId: string;
   groupId: string;
   status: ShipmentStatus;
   carrier?: string;

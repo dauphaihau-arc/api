@@ -6,6 +6,7 @@ describe('SendRefundSucceededEmailJob', () => {
   it('sends a buyer refund success email', async () => {
     const order = {
       id: 'order-1',
+      publicId: 'ord_public1',
       customerEmail: 'buyer@example.com',
       currency: 'USD',
       total: 30,
@@ -28,7 +29,7 @@ describe('SendRefundSucceededEmailJob', () => {
 
     expect(mailSender.send).toHaveBeenCalledWith(expect.objectContaining({
       to: { email: 'buyer@example.com' },
-      subject: 'Refund completed for order order-1',
+      subject: 'Refund completed for order ord_public1',
       tags: ['order-refund-succeeded'],
       text: expect.stringContaining('25 USD'),
     }));

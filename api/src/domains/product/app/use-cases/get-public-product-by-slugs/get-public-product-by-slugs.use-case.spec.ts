@@ -6,8 +6,10 @@ import { GetPublicProductBySlugsUseCase } from './get-public-product-by-slugs.us
 describe('GetPublicProductBySlugsUseCase', () => {
   const product: PublicProductDetail = {
     id: 'product-1',
+    publicId: 'public-product-1',
     shop: {
       id: 'shop-1',
+      publicId: 'public-shop-1',
       shopName: 'owner-shop',
       slug: 'owner-shop',
     },

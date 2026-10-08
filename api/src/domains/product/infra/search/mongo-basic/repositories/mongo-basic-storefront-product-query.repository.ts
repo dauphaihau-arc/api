@@ -236,6 +236,7 @@ implements StorefrontProductQueryRepository {
 
     return documents.map((document) => ({
       id: document.productId,
+      publicId: document.productPublicId,
       title: document.title,
       slug: document.slug,
       shop: {
@@ -437,6 +438,7 @@ function toPublicProductListItemFromSearchDocument(
 
   return {
     id: document.productId,
+    publicId: document.productPublicId,
     shop: {
       id: document.shopId,
       publicId: document.shopPublicId,
@@ -506,6 +508,7 @@ export function toPublicProductDetail(
 
   return {
     id: document.productId,
+    publicId: document.productPublicId,
     shop: {
       id: document.shopId,
       publicId: document.shopPublicId,

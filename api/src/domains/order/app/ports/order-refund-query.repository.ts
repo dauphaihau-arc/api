@@ -11,4 +11,14 @@ export abstract class OrderRefundQueryRepository {
     orderId: string,
     context?: OrderRepositoryContext
   ): Promise<OrderEntity | null>;
+
+  abstract findByPublicId(
+    publicId: string,
+    context?: OrderRepositoryContext
+  ): Promise<string | null>;
+
+  abstract findIdsByPublicIds(
+    publicIds: readonly string[],
+    context?: OrderRepositoryContext
+  ): Promise<ReadonlyMap<string, string>>;
 }

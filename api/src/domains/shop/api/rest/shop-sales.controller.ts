@@ -5,6 +5,7 @@ import {
   Param,
   Post,
   Query,
+  UseFilters,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -18,6 +19,7 @@ import { RequirePermissions } from '~/platform/decorators/require-permissions.de
 import { CurrentUser } from '~/platform/decorators/current-user.decorator';
 import { JwtAuthGuard } from '~/domains/auth/api/guard/jwt-auth.guard';
 import { PermissionsGuard } from '~/domains/auth/api/guard/permissions.guard';
+import { ShopAccessService } from '../../app/services/shop-access.service';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import { CreateShopSaleUseCase } from '../../app/use-cases/create-shop-sale/create-shop-sale.use-case';
 import { ListShopSalesUseCase } from '../../app/use-cases/list-shop-sales/list-shop-sales.use-case';
@@ -26,10 +28,7 @@ import { ShopSaleStopAction, StopShopSaleUseCase } from '../../app/use-cases/sto
 import { BulkStopShopSalesDto } from './dto/bulk-stop-shop-sales.dto';
 import { CreateShopSaleDto } from './dto/create-shop-sale.dto';
 import { ListShopSalesQueryDto } from './dto/list-shop-sales.query.dto';
-import {
-  isShopAppError,
-  mapShopAppErrorToHttpException,
-} from './shop-http-error-mapper';
+import { ShopExceptionsFilter } from './shop-exceptions.filter';
 import {
   toShopSaleListResponse,
   toShopSaleResponse,
@@ -37,6 +36,7 @@ import {
 } from './shop-sale.response';
 
 @Controller('shops/:shop_id/sales')
+@UseFilters(ShopExceptionsFilter)
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @RequirePermissions('shops.manage')
 @ApiTags('Shop Sales')
@@ -47,6 +47,7 @@ export class ShopSalesController {
     private readonly listShopSalesUseCase: ListShopSalesUseCase,
     private readonly stopShopSaleUseCase: StopShopSaleUseCase,
     private readonly bulkStopShopSalesUseCase: BulkStopShopSalesUseCase,
+    private readonly shopAccessService: ShopAccessService,
   ) {}
 
   @Post()
@@ -58,21 +59,13 @@ export class ShopSalesController {
   })
   async create(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('shop_id') shopId: string,
+    @Param('shop_id') shopPublicId: string,
     @Body() body: CreateShopSaleDto,
   ) {
-    try {
-      const sale = await this.createShopSaleUseCase.execute(
-        currentUser,
-        shopId,
-        body,
-      );
+    const shopId = (await this.shopAccessService.resolveManageableShopByPublicId(currentUser, shopPublicId)).id;
+    const sale = await this.createShopSaleUseCase.execute(currentUser, shopId, body);
 
-      return { sale: toShopSaleResponse(sale) };
-    }
-    catch (error) {
-      this.throwMappedShopError(error);
-    }
+    return { sale: toShopSaleResponse(sale) };
   }
 
   @Get()
@@ -84,17 +77,13 @@ export class ShopSalesController {
   })
   async list(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('shop_id') shopId: string,
+    @Param('shop_id') shopPublicId: string,
     @Query() query: ListShopSalesQueryDto,
   ) {
-    try {
-      return toShopSaleListResponse(
-        await this.listShopSalesUseCase.execute(currentUser, shopId, query),
-      );
-    }
-    catch (error) {
-      this.throwMappedShopError(error);
-    }
+    const shopId = (await this.shopAccessService.resolveManageableShopByPublicId(currentUser, shopPublicId)).id;
+    return toShopSaleListResponse(
+      await this.listShopSalesUseCase.execute(currentUser, shopId, query),
+    );
   }
 
   @Post(':sale_id/cancel')
@@ -107,22 +96,12 @@ export class ShopSalesController {
   })
   async cancel(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('shop_id') shopId: string,
-    @Param('sale_id') saleId: string,
+    @Param('shop_id') shopPublicId: string,
+    @Param('sale_id') salePublicId: string,
   ) {
-    try {
-      const sale = await this.stopShopSaleUseCase.execute(
-        currentUser,
-        shopId,
-        saleId,
-        ShopSaleStopAction.CANCEL,
-      );
-
-      return { sale: toShopSaleResponse(sale) };
-    }
-    catch (error) {
-      this.throwMappedShopError(error);
-    }
+    const shopId = (await this.shopAccessService.resolveManageableShopByPublicId(currentUser, shopPublicId)).id;
+    const sale = await this.stopShopSaleUseCase.execute(currentUser, shopId, salePublicId, ShopSaleStopAction.CANCEL);
+    return { sale: toShopSaleResponse(sale) };
   }
 
   @Post(':sale_id/end')
@@ -135,22 +114,12 @@ export class ShopSalesController {
   })
   async end(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('shop_id') shopId: string,
-    @Param('sale_id') saleId: string,
+    @Param('shop_id') shopPublicId: string,
+    @Param('sale_id') salePublicId: string,
   ) {
-    try {
-      const sale = await this.stopShopSaleUseCase.execute(
-        currentUser,
-        shopId,
-        saleId,
-        ShopSaleStopAction.END,
-      );
-
-      return { sale: toShopSaleResponse(sale) };
-    }
-    catch (error) {
-      this.throwMappedShopError(error);
-    }
+    const shopId = (await this.shopAccessService.resolveManageableShopByPublicId(currentUser, shopPublicId)).id;
+    const sale = await this.stopShopSaleUseCase.execute(currentUser, shopId, salePublicId, ShopSaleStopAction.END);
+    return { sale: toShopSaleResponse(sale) };
   }
 
   @Post('bulk-stop')
@@ -164,24 +133,12 @@ export class ShopSalesController {
   })
   async bulkStop(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('shop_id') shopId: string,
+    @Param('shop_id') shopPublicId: string,
     @Body() body: BulkStopShopSalesDto,
   ) {
-    try {
-      return toShopSaleStopListResponse(
-        await this.bulkStopShopSalesUseCase.execute(currentUser, shopId, body.ids),
-      );
-    }
-    catch (error) {
-      this.throwMappedShopError(error);
-    }
-  }
-
-  private throwMappedShopError(error: unknown): never {
-    if (isShopAppError(error)) {
-      throw mapShopAppErrorToHttpException(error);
-    }
-
-    throw error;
+    const shopId = (await this.shopAccessService.resolveManageableShopByPublicId(currentUser, shopPublicId)).id;
+    return toShopSaleStopListResponse(
+      await this.bulkStopShopSalesUseCase.execute(currentUser, shopId, body.ids),
+    );
   }
 }

@@ -6,8 +6,10 @@ import { ShopProductReviewsController } from './shop-product-reviews.controller'
 
 describe('ShopProductReviewsController', () => {
   const shopAccessService = {
+    resolveManageableShopByPublicId: jest.fn(),
     assertCanManageShop: jest.fn(),
   };
+  const productLookupService = { resolveProductPublicId: jest.fn() };
   const listShopProductReviewsUseCase = {
     execute: jest.fn(),
   };
@@ -15,6 +17,7 @@ describe('ShopProductReviewsController', () => {
   const controller = new ShopProductReviewsController(
     shopAccessService as never,
     listShopProductReviewsUseCase as never,
+    productLookupService as never,
   );
 
   const currentUser = {
@@ -28,7 +31,8 @@ describe('ShopProductReviewsController', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    shopAccessService.assertCanManageShop.mockResolvedValue(undefined);
+    shopAccessService.resolveManageableShopByPublicId.mockResolvedValue({ id: 'shop-1' });
+    productLookupService.resolveProductPublicId.mockResolvedValue('product-1');
   });
 
   it('requires shop management permissions', () => {
@@ -49,7 +53,7 @@ describe('ShopProductReviewsController', () => {
       items: [
         {
           id: 'review-1',
-          orderId: 'order-1',
+          orderPublicId: 'ord_review-1',
           orderItemId: 'item-1',
           rating: 5,
           title: 'Great',
@@ -72,6 +76,7 @@ describe('ShopProductReviewsController', () => {
           },
           product: {
             id: 'product-1',
+            publicId: 'prod_review-1',
             title: 'Handmade Bag',
             slug: 'handmade-bag',
           },
@@ -99,14 +104,14 @@ describe('ShopProductReviewsController', () => {
         page: 1,
         limit: 20,
         status: ProductReviewStatus.PUBLISHED,
-        productId: 'product-1',
+        productId: 'prod_review-1',
         sort: 'newest',
       },
     )).resolves.toEqual({
       items: [
         {
           id: 'review-1',
-          order_id: 'order-1',
+          order_id: 'ord_review-1',
           order_item_id: 'item-1',
           rating: 5,
           title: 'Great',
@@ -127,7 +132,7 @@ describe('ShopProductReviewsController', () => {
             email: 'buyer@example.com',
           },
           product: {
-            id: 'product-1',
+            id: 'prod_review-1',
             title: 'Handmade Bag',
             slug: 'handmade-bag',
           },
@@ -147,6 +152,7 @@ describe('ShopProductReviewsController', () => {
         has_previous_page: false,
       },
     });
-    expect(shopAccessService.assertCanManageShop).toHaveBeenCalledWith(currentUser, 'shop-1');
+    expect(shopAccessService.resolveManageableShopByPublicId).toHaveBeenCalledWith(currentUser, 'shop-1');
+    expect(productLookupService.resolveProductPublicId).toHaveBeenCalledWith('prod_review-1');
   });
 });

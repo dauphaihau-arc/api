@@ -71,6 +71,45 @@ implements SellerProductQueryRepository {
     return product ? toProductDraftSummary(product, this.storageService) : null;
   }
 
+  async findByPublicId(publicId: string): Promise<ProductDraftSummary | null> {
+    const repository = this.entityManager.fork().getRepository(ProductEntity);
+    const product = await repository.findOne(
+      { publicId },
+      {
+        populate: [...MikroOrmSellerProductQueryRepository.summaryPopulate],
+        strategy: LoadStrategy.SELECT_IN,
+      },
+    );
+
+    return product ? toProductDraftSummary(product, this.storageService) : null;
+  }
+
+  async findSummariesByPublicIds(
+    publicIds: readonly string[],
+  ): Promise<readonly (ProductDraftSummary | null)[]> {
+    if (publicIds.length === 0) {
+      return [];
+    }
+
+    const repository = this.entityManager.fork().getRepository(ProductEntity);
+    const products = await repository.find(
+      { publicId: { $in: [...new Set(publicIds)] } },
+      {
+        populate: [...MikroOrmSellerProductQueryRepository.summaryPopulate],
+        strategy: LoadStrategy.SELECT_IN,
+      },
+    );
+
+    const summariesByPublicId = new Map(
+      products.map((product) => [
+        product.publicId,
+        toProductDraftSummary(product, this.storageService),
+      ]),
+    );
+
+    return publicIds.map((publicId) => summariesByPublicId.get(publicId) ?? null);
+  }
+
   async findMutationTargetById(id: string): Promise<ProductMutationTarget | null> {
     if (!isUuid(id)) {
       return null;

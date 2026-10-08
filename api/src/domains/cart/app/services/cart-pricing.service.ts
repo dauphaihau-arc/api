@@ -43,7 +43,22 @@ export class CartPricingService {
       : undefined;
 
     if (shippingQuote && shippingQuote.unavailable.length > 0) {
-      throw new CheckoutShippingUnavailableError(shippingQuote.unavailable);
+      const productPublicIds = new Map(
+        selectedItems.map((item) => [
+          item.inventory.productId,
+          item.inventory.productPublicId,
+        ]),
+      );
+
+      throw new CheckoutShippingUnavailableError(
+        shippingQuote.unavailable.map((product) => ({
+          ...product,
+          productPublicId: requirePublicId(
+            productPublicIds.get(product.productId),
+            'Product',
+          ),
+        })),
+      );
     }
 
     const promoShops = await this.promotionPricingService.applyToCart({
@@ -62,6 +77,8 @@ export class CartPricingService {
     let totalShippingFee = 0;
 
     for (const promoShop of promoShops) {
+      const shopPublicId = selectedItems.find((item) => item.inventory.shopId === promoShop.shopId)?.inventory.shopPublicId;
+      if (!shopPublicId) throw new Error('Priced shop public id is required');
       const uniqueOriginCountries = await this.shippingQuoteService.listOriginCountries(
         promoShop.items.map((item) => item.productId),
       );
@@ -81,6 +98,7 @@ export class CartPricingService {
 
       shops.push({
         shopId: promoShop.shopId,
+        shopPublicId,
         shopName: promoShop.items[0]?.shopName ?? '',
         items: promoShop.items,
         subtotal: promoShop.subtotal,
@@ -112,4 +130,12 @@ export class CartPricingService {
       ...(shippingQuote ? { shippingAnchorAt: shippingQuote.anchorAt } : {}),
     };
   }
+}
+
+function requirePublicId(publicId: string | undefined, entityName: string): string {
+  if (!publicId) {
+    throw new Error(`${entityName} public id is required at the checkout boundary`);
+  }
+
+  return publicId;
 }

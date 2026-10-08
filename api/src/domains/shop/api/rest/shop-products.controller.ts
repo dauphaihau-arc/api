@@ -7,7 +7,6 @@ import {
   Headers,
   HttpCode,
   HttpStatus,
-  NotFoundException,
   Param,
   Patch,
   Post,
@@ -37,12 +36,12 @@ import { IdempotencyKeyInterceptor } from '~/platform/interceptors/idempotency-k
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import { JwtAuthGuard } from '~/domains/auth/api/guard/jwt-auth.guard';
 import { PermissionsGuard } from '~/domains/auth/api/guard/permissions.guard';
+import { ShopProductAccessService } from '~/domains/product/app/services/shop-product-access.service';
 import { CreateProductDraftFacadeUseCase } from '~/domains/product/app/use-cases/create-product-draft-facade/create-product-draft-facade.use-case';
 import {
   CreateProductDraftUseCase,
   type CreateProductDraftInput,
 } from '~/domains/product/app/use-cases/create-product-draft/create-product-draft.use-case';
-import { GetProductByIdUseCase } from '~/domains/product/app/use-cases/get-product-by-id/get-product-by-id.use-case';
 import { GenerateProductDescriptionUseCase } from '~/domains/product/app/use-cases/generate-product-description/generate-product-description.use-case';
 import { ListShopProductsUseCase } from '~/domains/product/app/use-cases/list-shop-products/list-shop-products.use-case';
 import { PublishProductUseCase } from '~/domains/product/app/use-cases/publish-product/publish-product.use-case';
@@ -56,9 +55,6 @@ import { AssignProductShippingProfileUseCase } from '~/domains/product/app/use-c
 import { ConfigureProductVariantConfigurationUseCase } from '~/domains/product/app/use-cases/configure-product-variant-configuration/configure-product-variant-configuration.use-case';
 import { UpdateProductDetailsUseCase } from '~/domains/product/app/use-cases/update-product-details/update-product-details.use-case';
 import { BulkMutateShopProductsUseCase } from '~/domains/product/app/use-cases/bulk-mutate-shop-products/bulk-mutate-shop-products.use-case';
-import type {
-  ProductDraftSummary,
-} from '~/domains/product/app/product.types';
 import { BulkMutateShopProductsDto } from '~/domains/shop/api/rest/dto/bulk-mutate-shop-products.dto';
 import { ConfigureProductVariantConfigurationDto } from '~/domains/shop/api/rest/dto/configure-product-variant-configuration.dto';
 import { ShopAccessService } from '~/domains/shop/app/services/shop-access.service';
@@ -95,9 +91,9 @@ const shopProductRouteRateLimits = {
 export class ShopProductsController {
   constructor(
     private readonly shopAccessService: ShopAccessService,
+    private readonly shopProductAccessService: ShopProductAccessService,
     private readonly createProductDraftFacadeUseCase: CreateProductDraftFacadeUseCase,
     private readonly createProductDraftUseCase: CreateProductDraftUseCase,
-    private readonly getProductByIdUseCase: GetProductByIdUseCase,
     private readonly generateProductDescriptionUseCase: GenerateProductDescriptionUseCase,
     private readonly listShopProductsUseCase: ListShopProductsUseCase,
     private readonly publishProductUseCase: PublishProductUseCase,
@@ -119,11 +115,11 @@ export class ShopProductsController {
     schema: { type: 'object' },
   })
   async products(
-    @Param('shop_id') shopId: string,
+    @Param('shop_id') shopPublicId: string,
     @Query() query: ListShopProductsQueryDto,
     @CurrentUser() currentUser: AuthenticatedUser,
   ): Promise<ShopProductListResponse> {
-    await this.shopAccessService.assertCanManageShop(currentUser, shopId);
+    const shopId = (await this.shopAccessService.resolveManageableShopByPublicId(currentUser, shopPublicId)).id;
 
     const result = await this.listShopProductsUseCase.execute({
       shopId,
@@ -147,13 +143,15 @@ export class ShopProductsController {
     schema: { type: 'object' },
   })
   async product(
-    @Param('shop_id') shopId: string,
-    @Param('id') id: string,
+    @Param('shop_id') shopPublicId: string,
+    @Param('id') productPublicId: string,
     @CurrentUser() currentUser: AuthenticatedUser,
   ): Promise<ShopProductDetailResponse> {
-    await this.shopAccessService.assertCanManageShop(currentUser, shopId);
-
-    const product = await this.getProductOrThrow(shopId, id);
+    const product = await this.shopProductAccessService.resolveManageableProduct(
+      currentUser,
+      shopPublicId,
+      productPublicId,
+    );
 
     return toShopProductDetailResponse(product);
   }
@@ -166,21 +164,22 @@ export class ShopProductsController {
     description: 'Created product draft.',
     schema: { type: 'object' },
   })
-  createProductDraft(
-    @Param('shop_id') shopId: string,
+  async createProductDraft(
+    @Param('shop_id') shopPublicId: string,
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() body: CreateProductDto,
   ): Promise<ShopProductDetailResponse> {
+    const shopId = (await this.shopAccessService.resolveManageableShopByPublicId(currentUser, shopPublicId)).id;
     const input: CreateProductDraftInput = {
       ...body,
       shopId,
     };
 
-    return this.createProductDraftUseCase.execute(currentUser, input)
-      .then((result) =>
-        resolveOrThrow(result, mapProductAppErrorToHttpException),
-      )
-      .then(toShopProductDetailResponse);
+    const result = await this.createProductDraftUseCase.execute(currentUser, input);
+
+    return toShopProductDetailResponse(
+      resolveOrThrow(result, mapProductAppErrorToHttpException),
+    );
   }
 
   @Post('drafts')
@@ -195,17 +194,21 @@ export class ShopProductsController {
     description: 'Created product draft.',
     schema: { type: 'object' },
   })
-  createProductDraftFacade(
-    @Param('shop_id') shopId: string,
+  async createProductDraftFacade(
+    @Param('shop_id') shopPublicId: string,
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() body: CreateProductDraftFacadeDto,
   ): Promise<ShopProductDetailResponse> {
-    return this.createProductDraftFacadeUseCase.execute(currentUser, {
+    const shopId = (await this.shopAccessService.resolveManageableShopByPublicId(currentUser, shopPublicId)).id;
+
+    const result = await this.createProductDraftFacadeUseCase.execute(currentUser, {
       shopId,
       ...body,
-    }).then((result) =>
+    });
+
+    return toShopProductDetailResponse(
       resolveOrThrow(result, mapProductAppErrorToHttpException),
-    ).then(toShopProductDetailResponse);
+    );
   }
 
   @Post('ai/generate-description')
@@ -220,11 +223,11 @@ export class ShopProductsController {
     type: GenerateProductDescriptionResponseDto,
   })
   async generateProductDescription(
-    @Param('shop_id') shopId: string,
+    @Param('shop_id') shopPublicId: string,
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() body: GenerateProductDescriptionDto,
   ): Promise<GenerateProductDescriptionResponseDto> {
-    await this.shopAccessService.assertCanManageShop(currentUser, shopId);
+    await this.shopAccessService.resolveManageableShopByPublicId(currentUser, shopPublicId);
 
     return {
       description: await this.generateProductDescriptionUseCase.execute(body),
@@ -242,18 +245,18 @@ export class ShopProductsController {
     schema: { type: 'object' },
   })
   async bulkMutateProducts(
-    @Param('shop_id') shopId: string,
+    @Param('shop_id') shopPublicId: string,
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() body: BulkMutateShopProductsDto,
   ): Promise<{
     succeeded_ids: string[];
     failed: Array<{ id: string; code: string; reason: string }>;
   }> {
-    await this.shopAccessService.assertCanManageShop(currentUser, shopId);
+    const shopId = (await this.shopAccessService.resolveManageableShopByPublicId(currentUser, shopPublicId)).id;
 
     const result = await this.bulkMutateShopProductsUseCase.execute(currentUser, {
       shopId,
-      productIds: body.ids,
+      productPublicIds: body.ids,
       action: body.action,
       idempotencyKey: body.idempotencyKey,
     });
@@ -273,16 +276,22 @@ export class ShopProductsController {
   @ApiParam({ name: 'id', type: String })
   @ApiOkResponse({ description: 'Product details updated.', schema: { type: 'object' } })
   async updateProductDetails(
-    @Param('shop_id') shopId: string,
-    @Param('id') id: string,
+    @Param('shop_id') shopPublicId: string,
+    @Param('id') productPublicId: string,
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() body: UpdateProductDto,
   ): Promise<ShopProductDetailResponse> {
-    await this.assertActorCanManageProductShop(currentUser, shopId, id);
+    const product = await this.shopProductAccessService.resolveManageableProduct(
+      currentUser,
+      shopPublicId,
+      productPublicId,
+    );
 
-    return this.updateProductDetailsUseCase.execute(currentUser, id, body)
-      .then((result) => resolveOrThrow(result, mapProductAppErrorToHttpException))
-      .then(toShopProductDetailResponse);
+    const result = await this.updateProductDetailsUseCase.execute(currentUser, product.id, body);
+
+    return toShopProductDetailResponse(
+      resolveOrThrow(result, mapProductAppErrorToHttpException),
+    );
   }
 
   @Post(':id/publish')
@@ -297,17 +306,21 @@ export class ShopProductsController {
     schema: { type: 'object' },
   })
   async publishProduct(
-    @Param('shop_id') shopId: string,
-    @Param('id') id: string,
+    @Param('shop_id') shopPublicId: string,
+    @Param('id') productPublicId: string,
     @CurrentUser() currentUser: AuthenticatedUser,
   ): Promise<ShopProductDetailResponse> {
-    await this.assertActorCanManageProductShop(currentUser, shopId, id);
+    const product = await this.shopProductAccessService.resolveManageableProduct(
+      currentUser,
+      shopPublicId,
+      productPublicId,
+    );
 
-    return this.publishProductUseCase.execute(currentUser, id)
-      .then((result) =>
-        resolveOrThrow(result, mapProductAppErrorToHttpException),
-      )
-      .then(toShopProductDetailResponse);
+    const result = await this.publishProductUseCase.execute(currentUser, product.id);
+
+    return toShopProductDetailResponse(
+      resolveOrThrow(result, mapProductAppErrorToHttpException),
+    );
   }
 
   @Put(':id/images')
@@ -320,16 +333,20 @@ export class ShopProductsController {
   @ApiParam({ name: 'id', type: String })
   @ApiNoContentResponse({ description: 'Product images updated.' })
   async setProductImages(
-    @Param('shop_id') shopId: string,
-    @Param('id') id: string,
+    @Param('shop_id') shopPublicId: string,
+    @Param('id') productPublicId: string,
     @CurrentUser() currentUser: AuthenticatedUser,
     @UploadedFiles() imageFiles: UploadedProductImageFile[] = [],
     @Body() _body: unknown,
   ): Promise<void> {
-    await this.assertActorCanManageProductShop(currentUser, shopId, id);
+    const product = await this.shopProductAccessService.resolveManageableProduct(
+      currentUser,
+      shopPublicId,
+      productPublicId,
+    );
     this.validateImageFiles(imageFiles);
 
-    const result = await this.setProductImagesUseCase.execute(currentUser, id, {
+    const result = await this.setProductImagesUseCase.execute(currentUser, product.id, {
       files: imageFiles,
     });
     resolveOrThrow(result, mapProductAppErrorToHttpException);
@@ -344,16 +361,22 @@ export class ShopProductsController {
   @ApiParam({ name: 'id', type: String })
   @ApiOkResponse({ description: 'Product images updated.', schema: { type: 'object' } })
   async setProductImagesByKeys(
-    @Param('shop_id') shopId: string,
-    @Param('id') id: string,
+    @Param('shop_id') shopPublicId: string,
+    @Param('id') productPublicId: string,
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() body: SetProductImagesByKeysDto,
   ): Promise<ShopProductDetailResponse> {
-    await this.assertActorCanManageProductShop(currentUser, shopId, id);
+    const product = await this.shopProductAccessService.resolveManageableProduct(
+      currentUser,
+      shopPublicId,
+      productPublicId,
+    );
 
-    return this.setProductImagesByKeysUseCase.execute(currentUser, id, body)
-      .then((result) => resolveOrThrow(result, mapProductAppErrorToHttpException))
-      .then(toShopProductDetailResponse);
+    const result = await this.setProductImagesByKeysUseCase.execute(currentUser, product.id, body);
+
+    return toShopProductDetailResponse(
+      resolveOrThrow(result, mapProductAppErrorToHttpException),
+    );
   }
 
   @Put(':id/attributes')
@@ -365,16 +388,22 @@ export class ShopProductsController {
   @ApiParam({ name: 'id', type: String })
   @ApiOkResponse({ description: 'Product attributes updated.', schema: { type: 'object' } })
   async setProductAttributes(
-    @Param('shop_id') shopId: string,
-    @Param('id') id: string,
+    @Param('shop_id') shopPublicId: string,
+    @Param('id') productPublicId: string,
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() body: SetProductAttributesDto,
   ): Promise<ShopProductDetailResponse> {
-    await this.assertActorCanManageProductShop(currentUser, shopId, id);
+    const product = await this.shopProductAccessService.resolveManageableProduct(
+      currentUser,
+      shopPublicId,
+      productPublicId,
+    );
 
-    return this.setProductAttributesUseCase.execute(currentUser, id, body)
-      .then((result) => resolveOrThrow(result, mapProductAppErrorToHttpException))
-      .then(toShopProductDetailResponse);
+    const result = await this.setProductAttributesUseCase.execute(currentUser, product.id, body);
+
+    return toShopProductDetailResponse(
+      resolveOrThrow(result, mapProductAppErrorToHttpException),
+    );
   }
 
   @Put(':product_id/variant-configuration')
@@ -383,26 +412,34 @@ export class ShopProductsController {
   @Header('Cache-Control', 'private, no-store')
   @ApiOperation({ summary: 'Configure normalized Product Options and Variants atomically' })
   @ApiParam({ name: 'shop_id', type: String })
-  @ApiParam({ name: 'id', type: String })
+  @ApiParam({ name: 'product_id', type: String })
   @ApiOkResponse({ description: 'Product Variant configuration updated.', schema: { type: 'object' } })
   async configureProductVariantConfiguration(
-    @Param('shop_id') shopId: string,
-    @Param('product_id') id: string,
+    @Param('shop_id') shopPublicId: string,
+    @Param('product_id') productPublicId: string,
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() body: ConfigureProductVariantConfigurationDto,
     @Headers('idempotency-key') idempotencyKey?: string,
   ): Promise<ShopProductDetailResponse> {
-    return this.configureProductVariantConfigurationUseCase.execute(currentUser, id, {
+    const product = await this.shopProductAccessService.resolveManageableProduct(
+      currentUser,
+      shopPublicId,
+      productPublicId,
+    );
+
+    const result = await this.configureProductVariantConfigurationUseCase.execute(currentUser, product.id, {
       options: body.options,
       variants: body.variants,
       removedVariantIds: body.removedVariantIds,
       restoreVariantIds: body.restoreVariantIds,
       productVersion: body.productVersion,
-      shopId,
+      shopId: product.shopId,
       idempotencyKey,
-    })
-      .then((result) => resolveOrThrow(result, mapProductAppErrorToHttpException))
-      .then(toShopProductDetailResponse);
+    });
+
+    return toShopProductDetailResponse(
+      resolveOrThrow(result, mapProductAppErrorToHttpException),
+    );
   }
 
   @Put(':id/shipping-profile')
@@ -415,39 +452,21 @@ export class ShopProductsController {
   @ApiParam({ name: 'id', type: String })
   @ApiNoContentResponse({ description: 'Product shipping profile assignment updated.' })
   async assignProductShippingProfile(
-    @Param('shop_id') shopId: string,
-    @Param('id') id: string,
+    @Param('shop_id') shopPublicId: string,
+    @Param('id') productPublicId: string,
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() body: AssignProductShippingProfileDto,
   ): Promise<void> {
-    await this.assertActorCanManageProductShop(currentUser, shopId, id);
+    const product = await this.shopProductAccessService.resolveManageableProduct(
+      currentUser,
+      shopPublicId,
+      productPublicId,
+    );
 
-    const result = await this.assignProductShippingProfileUseCase.execute(currentUser, id, {
+    const result = await this.assignProductShippingProfileUseCase.execute(currentUser, product.id, {
       shippingProfileId: body.shippingProfileId,
     });
     resolveOrThrow(result, mapProductAppErrorToHttpException);
-  }
-
-  private async assertActorCanManageProductShop(
-    currentUser: AuthenticatedUser,
-    shopId: string,
-    productId: string,
-  ): Promise<void> {
-    await this.shopAccessService.assertCanManageShop(currentUser, shopId);
-    await this.getProductOrThrow(shopId, productId);
-  }
-
-  private async getProductOrThrow(
-    shopId: string,
-    productId: string,
-  ): Promise<ProductDraftSummary> {
-    const product = await this.getProductByIdUseCase.execute(productId);
-
-    if (!product || product.shopId !== shopId) {
-      throw new NotFoundException('Product was not found');
-    }
-
-    return product;
   }
 
   private validateImageFiles(files: UploadedProductImageFile[]): void {

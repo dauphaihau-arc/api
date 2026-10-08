@@ -12,9 +12,14 @@ const actor = {
 } as never;
 
 function buildUseCase(find: jest.Mock) {
-  return new GetCheckoutSessionReadinessUseCase({
-    fork: jest.fn(() => ({ find })),
-  } as unknown as EntityManager);
+  return new GetCheckoutSessionReadinessUseCase(
+    {
+      fork: jest.fn(() => ({ find })),
+    } as unknown as EntityManager,
+    {
+      resolveOrderIds: jest.fn(async (publicIds: string[]) => publicIds),
+    } as never,
+  );
 }
 describe('GetCheckoutSessionReadinessUseCase', () => {
   it('returns checkout pending until the worker stores a checkout session URL', async () => {

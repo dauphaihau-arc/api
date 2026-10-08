@@ -50,13 +50,15 @@ export class SendShopChatMessageUseCase {
       return {
         summary: await this.chatCommands.populateMessageSummary(entityManager, message),
         eventPayload: {
-          conversation_id: conversation.id,
+          conversation_id: conversation.publicId,
+          conversation_internal_id: conversation.id,
           message_id: message.id,
           sender_user_id: actor.userId,
           recipient_user_ids: [conversation.buyerUser.id, conversation.shop.ownerUser.id],
           body: message.body,
           message_type: message.messageType,
-          shop_id: conversation.shop.id,
+          shop_id: conversation.shop.publicId,
+          shop_internal_id: conversation.shop.id,
           occurred_at: message.createdAt.toISOString(),
           metadata: input.metadata,
         } satisfies ChatMessageCreatedEventPayload,

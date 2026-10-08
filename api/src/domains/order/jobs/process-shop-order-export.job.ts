@@ -121,8 +121,8 @@ export class ProcessShopOrderExportJob {
         body: `${orderExport.filename} is ready.`,
         data: {
           target: 'order_export_download',
-          export_id: orderExport.id,
-          shop_id: orderExport.shopId,
+          export_id: orderExport.publicId,
+          shop_id: orderExport.shopPublicId,
           filename: orderExport.filename,
         },
         channels: ['in_app'],
@@ -130,7 +130,7 @@ export class ProcessShopOrderExportJob {
 
       this.eventEmitter.emit(ORDER_EXPORT_COMPLETED_SSE_EVENT, {
         userId: orderExport.requestedByUserId,
-        exportId: orderExport.id,
+        exportId: orderExport.publicId,
         status: 'completed',
         processedRows: orderExport.processedRows,
         totalRows: orderExport.totalRows ?? processedRows,
@@ -145,7 +145,7 @@ export class ProcessShopOrderExportJob {
 
       this.eventEmitter.emit(ORDER_EXPORT_FAILED_SSE_EVENT, {
         userId: orderExport.requestedByUserId,
-        exportId: orderExport.id,
+        exportId: orderExport.publicId,
         status: 'failed',
         message: orderExport.errorMessage ?? errorMessage,
         filename: orderExport.filename,
@@ -160,7 +160,7 @@ export class ProcessShopOrderExportJob {
   private publishProgress(orderExport: ShopOrderExportSummary) {
     this.eventEmitter.emit(ORDER_EXPORT_PROGRESS_SSE_EVENT, {
       userId: orderExport.requestedByUserId,
-      exportId: orderExport.id,
+      exportId: orderExport.publicId,
       status: orderExport.status === OrderExportStatus.QUEUED ? 'queued' : 'processing',
       processedRows: orderExport.processedRows,
       totalRows: orderExport.totalRows ?? 0,

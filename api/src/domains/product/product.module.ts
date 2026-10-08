@@ -112,6 +112,11 @@ import { MikroOrmSellerProductQueryRepository } from './infra/persistence/mikro-
 import { MikroOrmProductImportCommandRepository } from './infra/persistence/mikro-orm/repositories/mikro-orm-product-import-command.repository';
 import { MikroOrmProductImportQueryRepository } from './infra/persistence/mikro-orm/repositories/mikro-orm-product-import-query.repository';
 import { MikroOrmProductImportValidationQueryRepository } from './infra/persistence/mikro-orm/repositories/mikro-orm-product-import-validation-query.repository';
+import { ProductLookupRepository } from './app/ports/product-lookup.repository';
+import { MikroOrmProductLookupRepository } from './infra/persistence/mikro-orm/repositories/mikro-orm-product-lookup.repository';
+import { ProductLookupService } from './app/services/product-lookup.service';
+import { ShopProductAccessService } from './app/services/shop-product-access.service';
+import { ProductImportLookupService } from './app/services/product-import-lookup.service';
 import { MongoCatalogProductDocumentRepository } from './infra/catalog/mongo/repositories/mongo-catalog-product-document.repository';
 import { MongoCatalogProductPriceDocumentRepository } from './infra/catalog/mongo/repositories/mongo-catalog-product-price-document.repository';
 import { MongoCatalogSearchDocumentRepository } from './infra/catalog/mongo/repositories/mongo-catalog-search-document.repository';
@@ -293,6 +298,10 @@ import { STOREFRONT_PRICING_CONFIG, buildStorefrontPricingConfig } from '~/platf
       useExisting: MikroOrmProductImportQueryRepository,
     },
     {
+      provide: ProductLookupRepository,
+      useExisting: MikroOrmProductLookupRepository,
+    },
+    {
       provide: ProductImportValidationQueryRepository,
       useExisting: MikroOrmProductImportValidationQueryRepository,
     },
@@ -341,6 +350,7 @@ import { STOREFRONT_PRICING_CONFIG, buildStorefrontPricingConfig } from '~/platf
     MikroOrmProductImportCommandRepository,
     MikroOrmProductImportQueryRepository,
     MikroOrmProductImportValidationQueryRepository,
+    MikroOrmProductLookupRepository,
     MikroOrmLiveProductInventoryStockRepository,
 
     CatalogStatusService,
@@ -388,6 +398,9 @@ import { STOREFRONT_PRICING_CONFIG, buildStorefrontPricingConfig } from '~/platf
     UpsertMyProductReviewUseCase,
     UpdateProductDetailsUseCase,
     ProcessProductImportJob,
+    ProductLookupService,
+    ShopProductAccessService,
+    ProductImportLookupService,
     ForwardProductImportToSseListener,
     ForwardProductInventoryUpdatedToSseListener,
   ],
@@ -441,6 +454,9 @@ import { STOREFRONT_PRICING_CONFIG, buildStorefrontPricingConfig } from '~/platf
     UpsertMyProductReviewUseCase,
     UpdateProductDetailsUseCase,
     ProcessProductImportJob,
+    ProductLookupService,
+    ShopProductAccessService,
+    ProductImportLookupService,
   ],
 })
 export class ProductModule {}

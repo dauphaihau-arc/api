@@ -11,6 +11,7 @@ function buildUseCase(existingProfile: unknown = null) {
     create: jest.fn().mockImplementation(async (input: Record<string, unknown>) => ({
       id: 'profile-1',
       shopId: input.shopId,
+      shopPublicId: 'shop_public-1',
       name: input.name,
       status: input.status,
       version: 1,

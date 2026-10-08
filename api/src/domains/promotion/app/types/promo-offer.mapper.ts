@@ -11,6 +11,7 @@ import { PromotionProductScope } from '~/domains/promotion/domain/enums/promotio
  */
 export interface PromoOffer {
   id: string;
+  promotionPublicId: string;
   shopId: string;
   code: string;
   benefitType: PromotionBenefitType;
@@ -19,6 +20,7 @@ export interface PromoOffer {
   amountOff: number;
   productScope: PromotionProductScope;
   productIds: string[];
+  productPublicIds: string[];
   startAt: Date;
   endAt: Date;
   isActive: boolean;
@@ -35,6 +37,7 @@ export function promotionCodeOfferToPromoOffer(
 ): PromoOffer {
   return {
     id: offer.promotionId,
+    promotionPublicId: offer.promotionPublicId,
     shopId: offer.shopId,
     code: offer.code,
     benefitType: offer.benefitType,
@@ -43,6 +46,7 @@ export function promotionCodeOfferToPromoOffer(
     amountOff: offer.amountOff,
     productScope: offer.productScope,
     productIds: [...offer.productIds],
+    productPublicIds: [...offer.productPublicIds],
     startAt: offer.startAt,
     endAt: offer.endAt,
     isActive: true,
@@ -57,6 +61,7 @@ export function promotionCodeOfferToPromoOffer(
 
 export function promotionCodeEntityToPromoOffer(
   code: PromotionCodeEntity,
+  productPublicIds: string[],
 ): PromoOffer {
   const promotion = code.promotion;
   const productIds = promotion.productScope === PromotionProductScope.ALL
@@ -65,6 +70,7 @@ export function promotionCodeEntityToPromoOffer(
 
   return {
     id: promotion.id,
+    promotionPublicId: promotion.publicId,
     shopId: code.shopId,
     code: code.code,
     benefitType: promotion.benefitType,
@@ -73,6 +79,7 @@ export function promotionCodeEntityToPromoOffer(
     amountOff: promotion.amountOff == null ? 0 : Number(promotion.amountOff),
     productScope: promotion.productScope,
     productIds,
+    productPublicIds,
     startAt: promotion.startAt,
     endAt: promotion.endAt,
     isActive: true,

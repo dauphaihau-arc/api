@@ -1,6 +1,6 @@
 import { Expose, Transform } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsUUID } from 'class-validator';
+import { IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class GetCartPromoCodesQueryDto {
   @IsOptional()
@@ -10,9 +10,9 @@ export class GetCartPromoCodesQueryDto {
   @IsUUID()
   cartId?: string;
 
-  @ApiProperty({ name: 'shop_id' })
+  @ApiProperty({ name: 'shop_id', description: 'Shop public id (shop_…)' })
   @Expose({ name: 'shop_id' })
   @Transform(({ value, obj: source }) => value ?? source.shop_id)
-  @IsUUID()
+  @IsString()
   shopId!: string;
 }

@@ -18,6 +18,7 @@ function buildOrder(input: {
     orderNumber: `ORD-20260527-${input.id.slice(-4).toUpperCase()}`,
     shop: {
       id: `${input.id}-shop`,
+      publicId: `shop_${input.id.slice(-4).toLowerCase()}`,
       shopName: input.shopName,
       slug: input.shopName.toLowerCase().replaceAll(' ', '-'),
     },

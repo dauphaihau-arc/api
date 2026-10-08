@@ -108,6 +108,39 @@ export class MikroOrmChatQueryRepository implements ChatQueryRepository {
     return count > 0;
   }
 
+  async findByPublicId(publicId: string): Promise<{ id: string } | null> {
+    const conversation = await this.entityManager.fork().getRepository(ChatConversationEntity).findOne(
+      { publicId },
+      { fields: ['id'] },
+    );
+
+    return conversation ?? null;
+  }
+
+  async findIdByPublicIdAndBuyer(
+    publicId: string,
+    buyerUserId: string,
+  ): Promise<string | null> {
+    const conversation = await this.entityManager.fork().getRepository(ChatConversationEntity).findOne(
+      { publicId, buyerUser: buyerUserId },
+      { fields: ['id'] },
+    );
+
+    return conversation?.id ?? null;
+  }
+
+  async findIdByPublicIdAndShop(
+    publicId: string,
+    shopId: string,
+  ): Promise<string | null> {
+    const conversation = await this.entityManager.fork().getRepository(ChatConversationEntity).findOne(
+      { publicId, shop: shopId },
+      { fields: ['id'] },
+    );
+
+    return conversation?.id ?? null;
+  }
+
   async listBuyerMessages(
     buyerUserId: string,
     conversationId: string,
@@ -203,20 +236,20 @@ export class MikroOrmChatQueryRepository implements ChatQueryRepository {
   ) {
     const summaries = messages.map(toChatMessageSummary);
 
-    const productIds = [
+    const productPublicIds = [
       ...new Set(
         summaries
           .map((message) => getProductReferenceProductId(message.metadata))
-          .filter((productId): productId is string => productId != null),
+          .filter((productPublicId): productPublicId is string => productPublicId != null),
       ),
     ];
 
-    if (productIds.length === 0) {
+    if (productPublicIds.length === 0) {
       return summaries;
     }
 
     const products = await entityManager.getRepository(ProductEntity).find(
-      { id: { $in: productIds } },
+      { publicId: { $in: productPublicIds } },
       { populate: ['inventoryRecords.prices', 'inventoryRecords.shop', 'inventoryRecords.product'] },
     );
     const displayPrices = await this.resolveProductReferenceDisplayPrices(products, pricingMode);
@@ -263,8 +296,8 @@ export class MikroOrmChatQueryRepository implements ChatQueryRepository {
         continue;
       }
 
-      priceByProductId.set(product.id, {
-        productId: product.id,
+      priceByProductId.set(product.publicId, {
+        productId: product.publicId,
         amountMinor: lowestPrice.amountMinor,
         currency: lowestPrice.currency,
       });

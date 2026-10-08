@@ -10,7 +10,6 @@ import {
   IsNumber,
   IsOptional,
   IsString,
-  IsUUID,
   Matches,
   Max,
   MaxLength,
@@ -153,7 +152,7 @@ export class CreateShopPromoCodeDto {
     dto.product_scope === PromotionProductScope.SPECIFIC)
   @IsArray()
   @ArrayNotEmpty()
-  @IsUUID('4', { each: true })
+  @Matches(/^prod_[0-9a-f]{12}$/, { each: true })
   @ApiPropertyOptional({ name: 'product_ids', type: [String] })
   product_ids?: string[];
 

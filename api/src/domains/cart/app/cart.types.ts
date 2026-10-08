@@ -32,8 +32,10 @@ export interface CartSelectedOptionSnapshot {
 export interface CartInventoryCandidate {
   inventoryId: string;
   productId: string;
+  productPublicId: string;
   productSlug: string;
   shopId: string;
+  shopPublicId: string;
   shopName: string;
   shopSlug: string;
   title: string;
@@ -279,7 +281,7 @@ export function buildCartResponse(
 
     const existingShopGroup = groupedByShop.get(item.inventory.shopId) ?? {
       shop: {
-        id: item.inventory.shopId,
+        id: item.inventory.shopPublicId,
         name: item.inventory.shopName,
       },
       items: [],
@@ -296,7 +298,7 @@ export function buildCartResponse(
       is_selected: item.isSelectOrder,
       unit_price_minor: resolvedPricing.unitPriceMinor,
       product: {
-        id: item.inventory.productId,
+        id: item.inventory.productPublicId,
         slug: item.inventory.productSlug,
         shop: {
           slug: item.inventory.shopSlug,
@@ -338,8 +340,8 @@ export function buildCartResponse(
       id: cart.id,
       user_id: cart.userId ?? '',
       is_temp: cart.kind === CartKind.BUY_NOW,
-      shop_groups: Array.from(groupedByShop.values()).map((group) => {
-        const shopDiscount = shopDiscountById.get(group.shop.id);
+      shop_groups: Array.from(groupedByShop.entries()).map(([shopId, group]) => {
+        const shopDiscount = shopDiscountById.get(shopId);
 
         return shopDiscount
           ? {
@@ -352,7 +354,7 @@ export function buildCartResponse(
       recent_items: sortedItems.slice(0, 6).map((item) => ({
         item_id: item.id,
         product: {
-          id: item.inventory.productId,
+          id: item.inventory.productPublicId,
           slug: item.inventory.productSlug,
           shop: {
             slug: item.inventory.shopSlug,

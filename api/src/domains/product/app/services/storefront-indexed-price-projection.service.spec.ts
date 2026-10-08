@@ -30,7 +30,7 @@ function buildProduct(prices: Array<{
 describe('StorefrontIndexedPriceProjectionService', () => {
   function buildService(input?: {
     indexedPricePairs?: Array<{ marketCode: string; currency: string }>;
-    sale?: { promotionId: string; percentOff: number };
+    sale?: { promotionId: string; promotionPublicId: string; percentOff: number };
   }) {
     const saleProjectionReader = {
       findBestSalesForProducts: jest.fn().mockResolvedValue(
@@ -59,7 +59,7 @@ describe('StorefrontIndexedPriceProjectionService', () => {
 
   it('projects active Sale pricing into base product summaries', async () => {
     const { service, saleProjectionReader } = buildService({
-      sale: { promotionId: 'promotion-1', percentOff: 18 },
+      sale: { promotionId: 'promotion-1', promotionPublicId: 'prm_sale-1', percentOff: 18 },
     });
 
     const result = await service.projectProduct(buildProduct([
@@ -79,7 +79,7 @@ describe('StorefrontIndexedPriceProjectionService', () => {
       originalMinAmountMinor: 10_000,
       originalMaxAmountMinor: 10_000,
       autoSale: {
-        promotionId: 'promotion-1',
+        promotionPublicId: 'prm_sale-1',
         percentOff: 18,
       },
     });
@@ -88,7 +88,7 @@ describe('StorefrontIndexedPriceProjectionService', () => {
       originalAmountMinor: 10_000,
       currency: 'USD',
       autoSale: {
-        promotionId: 'promotion-1',
+        promotionPublicId: 'prm_sale-1',
         percentOff: 18,
       },
     });
@@ -96,7 +96,7 @@ describe('StorefrontIndexedPriceProjectionService', () => {
 
   it('discounts every purchasable inventory item of a selected product', async () => {
     const { service } = buildService({
-      sale: { promotionId: 'promotion-1', percentOff: 50 },
+      sale: { promotionId: 'promotion-1', promotionPublicId: 'prm_sale-1', percentOff: 50 },
     });
 
     const result = await service.projectProduct({
@@ -114,13 +114,13 @@ describe('StorefrontIndexedPriceProjectionService', () => {
       amountMinor: 1000,
       originalAmountMinor: 2000,
       currency: 'USD',
-      autoSale: { promotionId: 'promotion-1', percentOff: 50 },
+      autoSale: { promotionPublicId: 'prm_sale-1', percentOff: 50 },
     });
     expect(result.inventoryPricingById.get('inventory-2')?.basePrice).toEqual({
       amountMinor: 1500,
       originalAmountMinor: 3000,
       currency: 'USD',
-      autoSale: { promotionId: 'promotion-1', percentOff: 50 },
+      autoSale: { promotionPublicId: 'prm_sale-1', percentOff: 50 },
     });
   });
 
@@ -148,7 +148,7 @@ describe('StorefrontIndexedPriceProjectionService', () => {
   it('projects active Sale pricing into indexed market summaries', async () => {
     const { service } = buildService({
       indexedPricePairs: [{ marketCode: 'VN', currency: 'VND' }],
-      sale: { promotionId: 'promotion-1', percentOff: 18 },
+      sale: { promotionId: 'promotion-1', promotionPublicId: 'prm_sale-1', percentOff: 18 },
     });
 
     const result = await service.projectProduct(buildProduct([
@@ -170,7 +170,7 @@ describe('StorefrontIndexedPriceProjectionService', () => {
       originalMinAmountMinor: 250_000,
       originalMaxAmountMinor: 250_000,
       autoSale: {
-        promotionId: 'promotion-1',
+        promotionPublicId: 'prm_sale-1',
         percentOff: 18,
       },
     });

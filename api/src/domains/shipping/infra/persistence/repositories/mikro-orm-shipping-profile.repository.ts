@@ -351,6 +351,7 @@ function toShippingProfileSummary(profile: ShippingProfileEntity): ShippingProfi
   return {
     id: profile.id,
     shopId: profile.shop.id,
+    shopPublicId: profile.shop.publicId,
     name: profile.name,
     status: profile.status,
     version: profile.version,

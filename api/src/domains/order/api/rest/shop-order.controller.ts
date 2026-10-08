@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Query,
+  UseFilters,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -21,8 +22,9 @@ import { JwtAuthGuard } from '~/domains/auth/api/guard/jwt-auth.guard';
 import { PermissionsGuard } from '~/domains/auth/api/guard/permissions.guard';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import { ShopAccessService } from '~/domains/shop/app/services/shop-access.service';
-import { GetShopOrderByIdUseCase } from '../../app/use-cases/get-shop-order-by-id/get-shop-order-by-id.use-case';
+import { OrderPublicIdLookup } from '../../app/services/order-public-id-lookup.service';
 import { ListShopOrdersUseCase } from '../../app/use-cases/list-shop-orders/list-shop-orders.use-case';
+import { GetShopOrderByIdUseCase } from '../../app/use-cases/get-shop-order-by-id/get-shop-order-by-id.use-case';
 import { UpdateShopOrderStatusUseCase } from '../../app/use-cases/update-shop-order-status/update-shop-order-status.use-case';
 import { UpdateShopOrderRefundUseCase } from '../../app/use-cases/update-shop-order-refund/update-shop-order-refund.use-case';
 import { ListShopOrdersQueryDto } from './dto/list-shop-orders.query.dto';
@@ -32,12 +34,10 @@ import {
   toShopOrderDetailResponse,
   toShopOrderListResponse,
 } from './order.response';
-import {
-  isOrderAppError,
-  mapOrderAppErrorToHttpException,
-} from './order-http-error-mapper';
+import { OrderExceptionsFilter } from './order-exceptions.filter';
 
 @Controller('shops/:shop_id/orders')
+@UseFilters(OrderExceptionsFilter)
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @RequirePermissions('shops.manage')
 @ApiTags('Shop Orders')
@@ -45,6 +45,7 @@ import {
 export class ShopOrderController {
   constructor(
     private readonly shopAccessService: ShopAccessService,
+    private readonly orderPublicIdLookup: OrderPublicIdLookup,
     private readonly listShopOrdersUseCase: ListShopOrdersUseCase,
     private readonly getShopOrderByIdUseCase: GetShopOrderByIdUseCase,
     private readonly updateShopOrderStatusUseCase: UpdateShopOrderStatusUseCase,
@@ -61,13 +62,14 @@ export class ShopOrderController {
   })
   async list(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('shop_id') shopId: string,
+    @Param('shop_id') shopPublicId: string,
     @Query() query: ListShopOrdersQueryDto,
   ) {
-    await this.shopAccessService.assertCanManageShop(currentUser, shopId);
+    const shopId = (await this.shopAccessService.resolveManageableShopByPublicId(currentUser, shopPublicId)).id;
 
-    return this.listShopOrdersUseCase.execute(shopId, query)
-      .then(toShopOrderListResponse);
+    return toShopOrderListResponse(
+      await this.listShopOrdersUseCase.execute(shopId, query),
+    );
   }
 
   @Get(':order_id')
@@ -81,19 +83,15 @@ export class ShopOrderController {
   })
   async detail(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('shop_id') shopId: string,
-    @Param('order_id') orderId: string,
+    @Param('shop_id') shopPublicId: string,
+    @Param('order_id') orderPublicId: string,
   ) {
-    await this.shopAccessService.assertCanManageShop(currentUser, shopId);
+    const shopId = (await this.shopAccessService.resolveManageableShopByPublicId(currentUser, shopPublicId)).id;
+    const orderId = await this.orderPublicIdLookup.resolveOrderPublicId(orderPublicId);
 
-    try {
-      return toShopOrderDetailResponse(
-        await this.getShopOrderByIdUseCase.execute(shopId, orderId),
-      );
-    }
-    catch (error) {
-      this.throwMappedOrderError(error);
-    }
+    return toShopOrderDetailResponse(
+      await this.getShopOrderByIdUseCase.execute(shopId, orderId),
+    );
   }
 
   @Patch(':order_id/status')
@@ -107,20 +105,16 @@ export class ShopOrderController {
   })
   async updateStatus(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('shop_id') shopId: string,
-    @Param('order_id') orderId: string,
+    @Param('shop_id') shopPublicId: string,
+    @Param('order_id') orderPublicId: string,
     @Body() body: UpdateShopOrderStatusDto,
   ) {
-    await this.shopAccessService.assertCanManageShop(currentUser, shopId);
+    const shopId = (await this.shopAccessService.resolveManageableShopByPublicId(currentUser, shopPublicId)).id;
+    const orderId = await this.orderPublicIdLookup.resolveOrderPublicId(orderPublicId);
 
-    try {
-      return toShopOrderDetailResponse(
-        await this.updateShopOrderStatusUseCase.execute(shopId, orderId, body),
-      );
-    }
-    catch (error) {
-      this.throwMappedOrderError(error);
-    }
+    return toShopOrderDetailResponse(
+      await this.updateShopOrderStatusUseCase.execute(shopId, orderId, body),
+    );
   }
 
   @Patch(':order_id/refund')
@@ -134,27 +128,15 @@ export class ShopOrderController {
   })
   async updateRefund(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('shop_id') shopId: string,
-    @Param('order_id') orderId: string,
+    @Param('shop_id') shopPublicId: string,
+    @Param('order_id') orderPublicId: string,
     @Body() body: UpdateShopOrderRefundDto,
   ) {
-    await this.shopAccessService.assertCanManageShop(currentUser, shopId);
+    const shopId = (await this.shopAccessService.resolveManageableShopByPublicId(currentUser, shopPublicId)).id;
+    const orderId = await this.orderPublicIdLookup.resolveOrderPublicId(orderPublicId);
 
-    try {
-      return toShopOrderDetailResponse(
-        await this.updateShopOrderRefundUseCase.execute(shopId, orderId, body),
-      );
-    }
-    catch (error) {
-      this.throwMappedOrderError(error);
-    }
-  }
-
-  private throwMappedOrderError(error: unknown): never {
-    if (isOrderAppError(error)) {
-      throw mapOrderAppErrorToHttpException(error);
-    }
-
-    throw error;
+    return toShopOrderDetailResponse(
+      await this.updateShopOrderRefundUseCase.execute(shopId, orderId, body),
+    );
   }
 }

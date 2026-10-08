@@ -11,6 +11,7 @@ import { ClassSerializerInterceptor, ValidationPipe } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { PinoLogger } from 'nestjs-pino';
 import request from 'supertest';
+import type { Agent } from 'supertest';
 import type { App } from 'supertest/types';
 import { GlobalExceptionFilter } from '~/platform/filters/global-exception.filter';
 import { RequestLoggingInterceptor } from '~/platform/interceptors/request-logging.interceptor';
@@ -45,6 +46,13 @@ const VALID_JPEG_BUFFER = Buffer.from(
 function randomForwardedIp() {
   return `203.0.113.${Math.floor(Math.random() * 200) + 1}`;
 }
+
+// HTTP boundary shapes for responses this suite reads. The endpoints do not
+// export response contracts, so the fields used here are named locally.
+type ShopIdBody = { id: string };
+type CategoryIdBody = { id: string };
+type ProductIdBody = { id: string };
+type ProductStateBody = { state: string };
 
 // This integration suite stays in one file because the setup and assertions share state heavily.
 // eslint-disable-next-line max-lines-per-function
@@ -182,10 +190,10 @@ describe('Commerce flow (integration)', () => {
   });
   async function ensureShopShippingProfile(
     agent: ReturnType<typeof request.agent>,
-    shopId: string,
+    shopPublicId: string,
   ): Promise<string> {
     const listResponse = await agent
-      .get(`${API_PREFIX}/shops/${shopId}/shipping-profiles`)
+      .get(`${API_PREFIX}/shops/${shopPublicId}/shipping-profiles`)
       .expect(200);
     const existing = (listResponse.body as { results: Array<{ id: string }> }).results[0];
 
@@ -194,7 +202,7 @@ describe('Commerce flow (integration)', () => {
     }
 
     const createResponse = await agent
-      .post(`${API_PREFIX}/shops/${shopId}/shipping-profiles`)
+      .post(`${API_PREFIX}/shops/${shopPublicId}/shipping-profiles`)
       .set('Idempotency-Key', randomUUID())
       .send({
         name: 'Standard shipping',
@@ -228,13 +236,13 @@ describe('Commerce flow (integration)', () => {
 
   async function assignShippingProfile(
     agent: ReturnType<typeof request.agent>,
-    shopId: string,
-    productId: string,
+    shopPublicId: string,
+    productPublicId: string,
   ): Promise<string> {
-    const shippingProfileId = await ensureShopShippingProfile(agent, shopId);
+    const shippingProfileId = await ensureShopShippingProfile(agent, shopPublicId);
 
     await agent
-      .put(`${API_PREFIX}/shops/${shopId}/products/${productId}/shipping-profile`)
+      .put(`${API_PREFIX}/shops/${shopPublicId}/products/${productPublicId}/shipping-profile`)
       .set('Idempotency-Key', randomUUID())
       .send({ shipping_profile_id: shippingProfileId })
       .expect(204);
@@ -395,15 +403,16 @@ describe('Commerce flow (integration)', () => {
     expect(productBody.variants).toHaveLength(1);
 
     const productId = productBody.id;
+    const productPublicId = productBody.id;
 
     const productBeforeDetailsResponse = await ownerAgent
-      .get(`${API_PREFIX}/shops/${shopBody.id}/products/${productId}`)
+      .get(`${API_PREFIX}/shops/${shopBody.id}/products/${productPublicId}`)
       .expect(200);
     const currentProductVersion = (productBeforeDetailsResponse.body as { product_version: number })
       .product_version;
 
     const updateDetailsResponse = await ownerAgent
-      .patch(`${API_PREFIX}/shops/${shopBody.id}/products/${productId}/details`)
+      .patch(`${API_PREFIX}/shops/${shopBody.id}/products/${productPublicId}/details`)
       .set('Idempotency-Key', randomUUID())
       .send({
         title: 'Better Mug',
@@ -429,7 +438,7 @@ describe('Commerce flow (integration)', () => {
       .expect(404);
 
     await ownerAgent
-      .put(`${API_PREFIX}/shops/${shopBody.id}/products/${productId}/images`)
+      .put(`${API_PREFIX}/shops/${shopBody.id}/products/${productPublicId}/images`)
       .attach('images', VALID_JPEG_BUFFER, {
         filename: 'mug.jpg',
         contentType: 'image/jpeg',
@@ -437,7 +446,7 @@ describe('Commerce flow (integration)', () => {
       .expect(204);
 
     await ownerAgent
-      .put(`${API_PREFIX}/shops/${shopBody.id}/products/${productId}/attributes`)
+      .put(`${API_PREFIX}/shops/${shopBody.id}/products/${productPublicId}/attributes`)
       .set('Idempotency-Key', randomUUID())
       .send({
         attributes: [
@@ -450,7 +459,7 @@ describe('Commerce flow (integration)', () => {
       .expect(200);
 
     const productDraftAfterInventoryResponse = await ownerAgent
-      .get(`${API_PREFIX}/shops/${shopBody.id}/products/${productId}`)
+      .get(`${API_PREFIX}/shops/${shopBody.id}/products/${productPublicId}`)
       .expect(200);
     const productInventoryId = (
       productDraftAfterInventoryResponse.body as {
@@ -469,17 +478,17 @@ describe('Commerce flow (integration)', () => {
       currency: 'USD',
     });
 
-    await assignShippingProfile(ownerAgent, shopBody.id, productId);
+    await assignShippingProfile(ownerAgent, shopBody.id, productPublicId);
 
     const publishResponse = await ownerAgent
-      .post(`${API_PREFIX}/shops/${shopBody.id}/products/${productId}/publish`)
+      .post(`${API_PREFIX}/shops/${shopBody.id}/products/${productPublicId}/publish`)
       .set('Idempotency-Key', randomUUID())
       .expect(201);
 
     expect(publishResponse.body.state).toBe('active');
 
     const getProductResponse = await ownerAgent
-      .get(`${API_PREFIX}/shops/${shopBody.id}/products/${productId}`)
+      .get(`${API_PREFIX}/shops/${shopBody.id}/products/${productPublicId}`)
       .expect(200);
 
     expect(getProductResponse.body).toMatchObject({
@@ -612,19 +621,129 @@ describe('Commerce flow (integration)', () => {
       })
       .expect(201);
     const shopBody = shopResponse.body as { id: string };
-    const shopId = shopBody.id;
+    const shopPublicId = shopBody.id;
 
     // The reported regression: a non-uuid product id must not reach the uuid
     // column comparison, which surfaced as an unhandled Postgres 22P02 -> 500.
     await agent
-      .get(`${API_PREFIX}/shops/${shopId}/products/dbfd762f-33ce-4b74-990b-e06acd3ce8bk`)
+      .get(`${API_PREFIX}/shops/${shopPublicId}/products/dbfd762f-33ce-4b74-990b-e06acd3ce8bk`)
       .expect(404);
     await agent
-      .get(`${API_PREFIX}/shops/${shopId}/products/${randomUUID()}`)
+      .get(`${API_PREFIX}/shops/${shopPublicId}/products/${randomUUID()}`)
       .expect(404);
     await agent
       .get(`${API_PREFIX}/shops/not-a-uuid/products`)
       .expect(404);
+  });
+
+  it('bulk mutates by public id and reports foreign or unknown products per item', async () => {
+    const ownerAgent = request.agent(app.getHttpServer());
+    const ownerEmail = `commerce-bulk-${Date.now()}@example.com`;
+    const ownerRegister = await ownerAgent
+      .post(`${API_PREFIX}/auth/register`)
+      .set('X-Forwarded-For', randomForwardedIp())
+      .set('Idempotency-Key', randomUUID())
+      .send({
+        email: ownerEmail,
+        password: VALID_TEST_PASSWORD,
+        displayName: 'Bulk Owner',
+      })
+      .expect(201);
+    const ownerBody = ownerRegister.body as unknown as AuthUserResponse;
+    await grantSellerRole(ownerBody.user.id);
+
+    const shopResponse = await ownerAgent
+      .post(`${API_PREFIX}/shops`)
+      .send({ shop_name: `bulk${Date.now().toString().slice(-6)}`, currency: 'USD' })
+      .expect(201);
+    const shopBody = shopResponse.body as ShopIdBody;
+    const shopPublicId = shopBody.id;
+
+    const categoryResponse = await ownerAgent
+      .post(`${API_PREFIX}/categories`)
+      .send({ name: `Bulk Mugs ${Date.now()}`, rank: 1 })
+      .expect(201);
+    const categoryBody = categoryResponse.body as CategoryIdBody;
+
+    const createDraft = async (agent: Agent, shopId: string, title: string) => {
+      const response = await agent
+        .post(`${API_PREFIX}/shops/${shopId}/products`)
+        .set('Idempotency-Key', randomUUID())
+        .send({
+          category_id: categoryBody.id,
+          title,
+          description: `${title} description`,
+          who_made: ProductWhoMade.I_DID,
+        })
+        .expect(201);
+      const productBody = response.body as ProductIdBody;
+
+      return productBody.id;
+    };
+
+    const removablePublicId = await createDraft(ownerAgent, shopPublicId, 'Removable Mug');
+
+    // A product of another shop resolves to a real row but must not be reachable
+    // through this shop's route.
+    const foreignAgent = request.agent(app.getHttpServer());
+    const foreignRegister = await foreignAgent
+      .post(`${API_PREFIX}/auth/register`)
+      .set('X-Forwarded-For', randomForwardedIp())
+      .set('Idempotency-Key', randomUUID())
+      .send({
+        email: `commerce-bulk-other-${Date.now()}@example.com`,
+        password: VALID_TEST_PASSWORD,
+        displayName: 'Foreign Bulk Owner',
+      })
+      .expect(201);
+    const foreignOwnerBody = foreignRegister.body as unknown as AuthUserResponse;
+    await grantSellerRole(foreignOwnerBody.user.id);
+
+    const otherShopResponse = await foreignAgent
+      .post(`${API_PREFIX}/shops`)
+      .send({ shop_name: `otherbulk${Date.now().toString().slice(-6)}`, currency: 'USD' })
+      .expect(201);
+    const otherShopBody = otherShopResponse.body as ShopIdBody;
+    const foreignPublicId = await createDraft(
+      foreignAgent,
+      otherShopBody.id,
+      'Foreign Shop Mug',
+    );
+
+    const unknownPublicId = 'prod_000000000000';
+
+    const bulkResponse = await ownerAgent
+      .post(`${API_PREFIX}/shops/${shopPublicId}/products/bulk-mutate`)
+      .set('Idempotency-Key', randomUUID())
+      .send({
+        ids: [removablePublicId, foreignPublicId, unknownPublicId],
+        action: 'remove',
+      })
+      .expect(201);
+    const bulkBody = bulkResponse.body as {
+      succeeded_ids: string[];
+      failed: Array<{ id: string; code: string; reason: string }>;
+    };
+
+    expect(bulkBody.succeeded_ids).toEqual([removablePublicId]);
+    expect(bulkBody.failed).toEqual([
+      expect.objectContaining({ id: foreignPublicId, code: 'ProductNotFoundError' }),
+      expect.objectContaining({ id: unknownPublicId, code: 'ProductNotFoundError' }),
+    ]);
+
+    const removedResponse = await ownerAgent
+      .get(`${API_PREFIX}/shops/${shopPublicId}/products/${removablePublicId}`)
+      .expect(200);
+    const removedBody = removedResponse.body as ProductStateBody;
+
+    expect(removedBody.state).toBe('removed');
+
+    const foreignDetailResponse = await foreignAgent
+      .get(`${API_PREFIX}/shops/${otherShopBody.id}/products/${foreignPublicId}`)
+      .expect(200);
+    const foreignDetailBody = foreignDetailResponse.body as ProductStateBody;
+
+    expect(foreignDetailBody.state).toBe('draft');
   });
 
   it('supports persistent carts and temp carts through the legacy-compatible user cart contract', async () => {
@@ -673,9 +792,10 @@ describe('Commerce flow (integration)', () => {
       })
       .expect(201);
     const productId = productResponse.body.id as string;
+    const productPublicId = productResponse.body.id as string;
 
     await agent
-      .put(`${API_PREFIX}/shops/${shopBody.id}/products/${productId}/images`)
+      .put(`${API_PREFIX}/shops/${shopBody.id}/products/${productPublicId}/images`)
       .attach('images', VALID_JPEG_BUFFER, {
         filename: 'bowl.jpg',
         contentType: 'image/jpeg',
@@ -683,7 +803,7 @@ describe('Commerce flow (integration)', () => {
       .expect(204);
 
     const productDraftResponse = await agent
-      .get(`${API_PREFIX}/shops/${shopBody.id}/products/${productId}`)
+      .get(`${API_PREFIX}/shops/${shopBody.id}/products/${productPublicId}`)
       .expect(200);
     const inventoryId = (
       productDraftResponse.body as { inventory: Array<{ id: string }> }
@@ -700,10 +820,10 @@ describe('Commerce flow (integration)', () => {
       currency: 'USD',
     });
 
-    await assignShippingProfile(agent, shopBody.id, productId);
+    await assignShippingProfile(agent, shopBody.id, productPublicId);
 
     await agent
-      .post(`${API_PREFIX}/shops/${shopBody.id}/products/${productId}/publish`)
+      .post(`${API_PREFIX}/shops/${shopBody.id}/products/${productPublicId}/publish`)
       .set('Idempotency-Key', randomUUID())
       .expect(201);
 
@@ -952,6 +1072,43 @@ describe('Commerce flow (integration)', () => {
     });
   });
 
+  it('answers the cart filter 404 when an authenticated actor targets an unknown cart', async () => {
+    const email = `commerce-cart-missing-${Date.now()}@example.com`;
+    const agent = request.agent(app.getHttpServer());
+
+    const registerResponse = await agent
+      .post(`${API_PREFIX}/auth/register`)
+      .set('X-Forwarded-For', randomForwardedIp())
+      .set('Idempotency-Key', randomUUID())
+      .send({
+        email,
+        password: VALID_TEST_PASSWORD,
+        displayName: 'Cart Owner',
+      })
+      .expect(201);
+    const registerBody = registerResponse.body as unknown as AuthUserResponse;
+    await grantSellerRole(registerBody.user.id);
+
+    const shopResponse = await agent
+      .post(`${API_PREFIX}/shops`)
+      .send({
+        shop_name: `cartmissing${Date.now().toString().slice(-6)}`,
+        currency: 'USD',
+      })
+      .expect(201);
+    const shopBody = shopResponse.body as ShopIdBody;
+    const shopPublicId = shopBody.id;
+
+    // The actor resolves, but the cart id does not: the use case raises the
+    // cart domain's CartNotFoundError and the cart filter keeps its route text.
+    const response = await agent
+      .post(`${API_PREFIX}/cart/promo-codes/apply`)
+      .send({ shop_id: shopPublicId, cart_id: randomUUID(), code: 'FREESHIP' })
+      .expect(404);
+
+    expect(response.body.message).toBe('Cart not found');
+  });
+
   it('resolves Promo Code money in the Promotion Currency against a VND checkout currency', async () => {
     const email = `promo-code-fx-${Date.now()}@example.com`;
     const agent = request.agent(app.getHttpServer());
@@ -1006,10 +1163,10 @@ describe('Commerce flow (integration)', () => {
         who_made: ProductWhoMade.I_DID,
       })
       .expect(201);
-    const fxProductId = productResponse.body.id as string;
+    const fxProductPublicId = productResponse.body.id as string;
 
     await agent
-      .put(`${API_PREFIX}/shops/${fxShopBody.id}/products/${fxProductId}/images`)
+      .put(`${API_PREFIX}/shops/${fxShopBody.id}/products/${fxProductPublicId}/images`)
       .attach('images', VALID_JPEG_BUFFER, {
         filename: 'fx-bowl.jpg',
         contentType: 'image/jpeg',
@@ -1017,7 +1174,7 @@ describe('Commerce flow (integration)', () => {
       .expect(204);
 
     const productDraftResponse = await agent
-      .get(`${API_PREFIX}/shops/${fxShopBody.id}/products/${fxProductId}`)
+      .get(`${API_PREFIX}/shops/${fxShopBody.id}/products/${fxProductPublicId}`)
       .expect(200);
     const fxProductDraft = productDraftResponse.body as { inventory: Array<{ id: string }> };
     const fxInventoryId = fxProductDraft.inventory[0]?.id;
@@ -1034,10 +1191,10 @@ describe('Commerce flow (integration)', () => {
       currency: 'VND',
     });
 
-    await assignShippingProfile(agent, fxShopBody.id, fxProductId);
+    await assignShippingProfile(agent, fxShopBody.id, fxProductPublicId);
 
     await agent
-      .post(`${API_PREFIX}/shops/${fxShopBody.id}/products/${fxProductId}/publish`)
+      .post(`${API_PREFIX}/shops/${fxShopBody.id}/products/${fxProductPublicId}/publish`)
       .set('Idempotency-Key', randomUUID())
       .expect(201);
 

@@ -6,6 +6,7 @@ import {
   Post,
   Put,
   Query,
+  UseFilters,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -21,18 +22,11 @@ import { JwtAuthGuard } from '~/domains/auth/api/guard/jwt-auth.guard';
 import { PermissionsGuard } from '~/domains/auth/api/guard/permissions.guard';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import {
-  isPromotionAppError,
-  mapPromotionAppErrorToHttpException,
-} from '~/domains/promotion/api/rest/promotion-http-error-mapper';
-import {
-  isCheckoutAppError,
-  mapCheckoutAppErrorToHttpException,
-} from './checkout-http-error-mapper';
-import {
   toCheckoutQuoteResponse,
   toCheckoutSessionOrderResponse,
   toCreateOrderResponse,
 } from './checkout.response';
+import { CheckoutPublicIdResolver } from '../../app/services/checkout-public-id.resolver';
 import { CreateCheckoutQuoteForBuyNowUseCase } from '../../app/use-cases/create-checkout-quote-for-buy-now/create-checkout-quote-for-buy-now.use-case';
 import { CreateCheckoutQuoteFromCartUseCase } from '../../app/use-cases/create-checkout-quote-from-cart/create-checkout-quote-from-cart.use-case';
 import { CreateOrderForBuyNowUseCase } from '../../app/use-cases/create-order-for-buy-now/create-order-for-buy-now.use-case';
@@ -43,8 +37,10 @@ import { CreateCheckoutQuoteForBuyNowDto } from './dto/create-checkout-quote-for
 import { CreateCheckoutQuoteFromCartDto } from './dto/create-checkout-quote-from-cart.dto';
 import { CreateOrderForBuyNowDto } from './dto/create-order-for-buy-now.dto';
 import { CreateOrderFromCartDto } from './dto/create-order-from-cart.dto';
+import { CheckoutExceptionsFilter } from './checkout-exceptions.filter';
 
 @Controller('me/checkout')
+@UseFilters(CheckoutExceptionsFilter)
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @ApiTags('My Checkout')
 @ApiCookieAuth('accessCookie')
@@ -58,6 +54,7 @@ export class MeCheckoutController {
     private readonly createOrderForBuyNowUseCase: CreateOrderForBuyNowUseCase,
     private readonly getOrdersByCheckoutSessionUseCase: GetOrdersByCheckoutSessionUseCase,
     private readonly getCheckoutSessionReadinessUseCase: GetCheckoutSessionReadinessUseCase,
+    private readonly checkoutPublicIdResolver: CheckoutPublicIdResolver,
   ) {}
 
   @Post('quote')
@@ -70,15 +67,13 @@ export class MeCheckoutController {
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() body: CreateCheckoutQuoteFromCartDto,
   ) {
-    try {
-      return toCheckoutQuoteResponse(
-        await this.createCheckoutQuoteFromCartUseCase.execute(currentUser, body),
-        this.checkoutConfig,
-      );
-    }
-    catch (error) {
-      this.throwMappedCheckoutError(error);
-    }
+    return toCheckoutQuoteResponse(
+      await this.createCheckoutQuoteFromCartUseCase.execute(
+        currentUser,
+        await this.checkoutPublicIdResolver.resolveCheckoutQuoteShopIds(body),
+      ),
+      this.checkoutConfig,
+    );
   }
 
   @Post('buy-now/quote')
@@ -91,15 +86,10 @@ export class MeCheckoutController {
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() body: CreateCheckoutQuoteForBuyNowDto,
   ) {
-    try {
-      return toCheckoutQuoteResponse(
-        await this.createCheckoutQuoteForBuyNowUseCase.execute(currentUser, body),
-        this.checkoutConfig,
-      );
-    }
-    catch (error) {
-      this.throwMappedCheckoutError(error);
-    }
+    return toCheckoutQuoteResponse(
+      await this.createCheckoutQuoteForBuyNowUseCase.execute(currentUser, body),
+      this.checkoutConfig,
+    );
   }
 
   @Post()
@@ -112,14 +102,9 @@ export class MeCheckoutController {
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() body: CreateOrderFromCartDto,
   ) {
-    try {
-      return toCreateOrderResponse(
-        await this.createOrderFromCartUseCase.execute(currentUser, body),
-      );
-    }
-    catch (error) {
-      this.throwMappedCheckoutError(error);
-    }
+    return toCreateOrderResponse(
+      await this.createOrderFromCartUseCase.execute(currentUser, body),
+    );
   }
 
   @Put('buy-now')
@@ -132,14 +117,9 @@ export class MeCheckoutController {
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() body: CreateOrderForBuyNowDto,
   ) {
-    try {
-      return toCreateOrderResponse(
-        await this.createOrderForBuyNowUseCase.execute(currentUser, body),
-      );
-    }
-    catch (error) {
-      this.throwMappedCheckoutError(error);
-    }
+    return toCreateOrderResponse(
+      await this.createOrderForBuyNowUseCase.execute(currentUser, body),
+    );
   }
 
   @Get('session/readiness')
@@ -174,25 +154,8 @@ export class MeCheckoutController {
     schema: { type: 'object' },
   })
   async getByCheckoutSession(@Query('session_id') sessionId?: string) {
-    try {
-      return toCheckoutSessionOrderResponse(
-        await this.getOrdersByCheckoutSessionUseCase.execute(sessionId ?? ''),
-      );
-    }
-    catch (error) {
-      this.throwMappedCheckoutError(error);
-    }
-  }
-
-  private throwMappedCheckoutError(error: unknown): never {
-    if (isCheckoutAppError(error)) {
-      throw mapCheckoutAppErrorToHttpException(error);
-    }
-
-    if (isPromotionAppError(error)) {
-      throw mapPromotionAppErrorToHttpException(error);
-    }
-
-    throw error;
+    return toCheckoutSessionOrderResponse(
+      await this.getOrdersByCheckoutSessionUseCase.execute(sessionId ?? ''),
+    );
   }
 }

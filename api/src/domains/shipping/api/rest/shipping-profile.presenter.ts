@@ -16,7 +16,7 @@ export function toShippingProfileResponse(
 ): ShippingProfileResponse {
   return {
     id: view.profile.id,
-    shop_id: view.profile.shopId,
+    shop_id: view.profile.shopPublicId,
     name: view.profile.name,
     status: view.profile.status,
     version: view.profile.version,
@@ -58,7 +58,7 @@ export function toShippingRatePreviewResponse(
 ): ShippingRatePreviewResponse {
   return {
     shipping_profile_id: preview.shippingProfileId,
-    shop_id: preview.shopId,
+    shop_id: preview.shopPublicId,
     currency: preview.currency,
     checkout_ready: preview.checkoutReady,
     readiness_issues: preview.readinessIssues,

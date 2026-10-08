@@ -5,6 +5,7 @@ import {
   Param,
   Patch,
   Query,
+  UseFilters,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -18,10 +19,7 @@ import { CurrentUser } from '~/platform/decorators/current-user.decorator';
 import { JwtAuthGuard } from '~/domains/auth/api/guard/jwt-auth.guard';
 import { PermissionsGuard } from '~/domains/auth/api/guard/permissions.guard';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
-import {
-  isOrderAppError,
-  mapOrderAppErrorToHttpException,
-} from './order-http-error-mapper';
+import { OrderPublicIdLookup } from '../../app/services/order-public-id-lookup.service';
 import { GetMyOrderByIdUseCase } from '../../app/use-cases/get-my-order-by-id/get-my-order-by-id.use-case';
 import { ListOrdersUseCase } from '../../app/use-cases/list-orders/list-orders.use-case';
 import { RequestOrderCancelUseCase } from '../../app/use-cases/request-order-cancel/request-order-cancel.use-case';
@@ -33,8 +31,10 @@ import {
   toMyOrderDetailResponse,
   toOrderListResponse,
 } from './order.response';
+import { OrderExceptionsFilter } from './order-exceptions.filter';
 
 @Controller('me/orders')
+@UseFilters(OrderExceptionsFilter)
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @ApiTags('My Orders')
 @ApiCookieAuth('accessCookie')
@@ -44,6 +44,7 @@ export class MeOrderController {
     private readonly getMyOrderByIdUseCase: GetMyOrderByIdUseCase,
     private readonly requestOrderCancelUseCase: RequestOrderCancelUseCase,
     private readonly requestOrderSupportUseCase: RequestOrderSupportUseCase,
+    private readonly orderPublicIdLookup: OrderPublicIdLookup,
   ) {}
 
   @Get()
@@ -56,8 +57,9 @@ export class MeOrderController {
     @CurrentUser() currentUser: AuthenticatedUser,
     @Query() query: ListMyOrdersQueryDto,
   ) {
-    return this.listOrdersUseCase.execute(currentUser, query)
-      .then(toOrderListResponse);
+    return toOrderListResponse(
+      await this.listOrdersUseCase.execute(currentUser, query),
+    );
   }
 
   @Get(':order_id')
@@ -69,16 +71,12 @@ export class MeOrderController {
   })
   async detail(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('order_id') orderId: string,
+    @Param('order_id') publicId: string,
   ) {
-    try {
-      return toMyOrderDetailResponse(
-        await this.getMyOrderByIdUseCase.execute(currentUser, orderId),
-      );
-    }
-    catch (error) {
-      this.throwMappedOrderError(error);
-    }
+    const orderId = await this.orderPublicIdLookup.resolveOrderPublicId(publicId);
+    return toMyOrderDetailResponse(
+      await this.getMyOrderByIdUseCase.execute(currentUser, orderId),
+    );
   }
 
   @Patch(':order_id/cancel-request')
@@ -90,17 +88,13 @@ export class MeOrderController {
   })
   async requestCancel(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('order_id') orderId: string,
+    @Param('order_id') publicId: string,
     @Body() body: RequestOrderCancelDto,
   ) {
-    try {
-      return toMyOrderDetailResponse(
-        await this.requestOrderCancelUseCase.execute(currentUser, orderId, body),
-      );
-    }
-    catch (error) {
-      this.throwMappedOrderError(error);
-    }
+    const orderId = await this.orderPublicIdLookup.resolveOrderPublicId(publicId);
+    return toMyOrderDetailResponse(
+      await this.requestOrderCancelUseCase.execute(currentUser, orderId, body),
+    );
   }
 
   @Patch(':order_id/support-request')
@@ -112,24 +106,12 @@ export class MeOrderController {
   })
   async requestSupport(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('order_id') orderId: string,
+    @Param('order_id') publicId: string,
     @Body() body: RequestOrderSupportDto,
   ) {
-    try {
-      return toMyOrderDetailResponse(
-        await this.requestOrderSupportUseCase.execute(currentUser, orderId, body),
-      );
-    }
-    catch (error) {
-      this.throwMappedOrderError(error);
-    }
-  }
-
-  private throwMappedOrderError(error: unknown): never {
-    if (isOrderAppError(error)) {
-      throw mapOrderAppErrorToHttpException(error);
-    }
-
-    throw error;
+    const orderId = await this.orderPublicIdLookup.resolveOrderPublicId(publicId);
+    return toMyOrderDetailResponse(
+      await this.requestOrderSupportUseCase.execute(currentUser, orderId, body),
+    );
   }
 }

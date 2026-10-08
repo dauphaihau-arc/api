@@ -42,6 +42,24 @@ export class MikroOrmShopRepository implements ShopRepository {
     return shop ? toShopSummary(shop) : null;
   }
 
+  async findByPublicId(publicId: string): Promise<ShopSummary | null> {
+    const repository = this.entityManager.fork().getRepository(ShopEntity);
+    const shop = await repository.findOne(
+      { publicId },
+      { populate: ['ownerUser'] },
+    );
+
+    return shop ? toShopSummary(shop) : null;
+  }
+
+  async findByPublicIds(publicIds: readonly string[]): Promise<readonly (ShopSummary | null)[]> {
+    if (publicIds.length === 0) return [];
+    const repository = this.entityManager.fork().getRepository(ShopEntity);
+    const shops = await repository.find({ publicId: { $in: [...new Set(publicIds)] } }, { populate: ['ownerUser'] });
+    const byPublicId = new Map(shops.map((shop) => [shop.publicId, toShopSummary(shop)]));
+    return publicIds.map((publicId) => byPublicId.get(publicId) ?? null);
+  }
+
   async findByOwnerUserId(ownerUserId: string): Promise<ShopSummary | null> {
     const repository = this.entityManager.fork().getRepository(ShopEntity);
     const shop = await repository.findOne(

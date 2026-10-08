@@ -20,6 +20,7 @@ import { PermissionsGuard } from '~/domains/auth/api/guard/permissions.guard';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import { ListShopProductReviewsUseCase } from '~/domains/product/app/use-cases/list-shop-product-reviews/list-shop-product-reviews.use-case';
 import { ShopAccessService } from '../../app/services/shop-access.service';
+import { ProductLookupService } from '~/domains/product/app/services/product-lookup.service';
 import { ListShopProductReviewsQueryDto } from './dto/list-shop-product-reviews.query.dto';
 import { toShopProductReviewListResponse } from './shop-product-review.presenter';
 import type { ShopProductReviewListResponse } from './shop-product-review.response';
@@ -33,6 +34,7 @@ export class ShopProductReviewsController {
   constructor(
     private readonly shopAccessService: ShopAccessService,
     private readonly listShopProductReviewsUseCase: ListShopProductReviewsUseCase,
+    private readonly productLookupService: ProductLookupService,
   ) {}
 
   @Get()
@@ -45,18 +47,20 @@ export class ShopProductReviewsController {
   })
   async list(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('shop_id') shopId: string,
+    @Param('shop_id') shopPublicId: string,
     @Query() query: ListShopProductReviewsQueryDto,
   ): Promise<ShopProductReviewListResponse> {
-    await this.shopAccessService.assertCanManageShop(currentUser, shopId);
+    const shopId = (await this.shopAccessService.resolveManageableShopByPublicId(currentUser, shopPublicId)).id;
 
-    return this.listShopProductReviewsUseCase.execute({
+    const result = await this.listShopProductReviewsUseCase.execute({
       shopId,
       page: query.page,
       limit: query.limit,
       status: query.status,
-      productId: query.productId,
+      productId: query.productId ? await this.productLookupService.resolveProductPublicId(query.productId) : undefined,
       sort: query.sort,
-    }).then(toShopProductReviewListResponse);
+    });
+
+    return toShopProductReviewListResponse(result);
   }
 }

@@ -9,15 +9,17 @@ describe('ForwardChatMessageToWsListener', () => {
     const listener = new ForwardChatMessageToWsListener(wsPublisher);
 
     listener.handle({
-      conversation_id: 'conversation-1',
+      conversation_id: 'cnv_1',
+      conversation_internal_id: 'conversation-1',
       message_id: 'message-1',
       sender_user_id: 'user-sender',
       recipient_user_ids: ['user-recipient', 'user-sender'],
       body: 'Hello there',
-      message_type: 'text',
-      shop_id: 'shop-1',
+      message_type: 'product_reference',
+      shop_id: 'shop_1',
+      shop_internal_id: 'shop-1',
       occurred_at: '2026-06-03T12:00:00.000Z',
-      metadata: { product_id: 'product-1' },
+      metadata: { product_reference: { product_id: 'prod_1' } },
     });
 
     expect(wsPublisher.publishToChannels).toHaveBeenCalledTimes(1);
@@ -33,15 +35,15 @@ describe('ForwardChatMessageToWsListener', () => {
         type: 'message',
         payload: {
           event_type: 'chat.message.created',
-          conversation_id: 'conversation-1',
-          shop_id: 'shop-1',
+          conversation_id: 'cnv_1',
+          shop_id: 'shop_1',
           message: {
             id: 'message-1',
             body: 'Hello there',
-            message_type: 'text',
+            message_type: 'product_reference',
             sender_user_id: 'user-sender',
             occurred_at: '2026-06-03T12:00:00.000Z',
-            metadata: { product_id: 'product-1' },
+            metadata: { product_reference: { product_id: 'prod_1' } },
           },
         },
       },

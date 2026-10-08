@@ -33,12 +33,12 @@ export class SendRefundFailedEmailJob {
 
     await this.mailSender.send({
       to: { email: order.customerEmail },
-      subject: `Refund update for order ${order.id}`,
+      subject: `Refund update for order ${order.publicId}`,
       text:
-        `We could not complete the refund for order ${order.id} from ${order.shop.shopName}. ` +
+        `We could not complete the refund for order ${order.publicId} from ${order.shop.shopName}. ` +
         `Reason: ${failureReason}. Our support team will follow up if needed.`,
       html:
-        `<p>We could not complete the refund for order <strong>${order.id}</strong> from ${order.shop.shopName}.</p>` +
+        `<p>We could not complete the refund for order <strong>${order.publicId}</strong> from ${order.shop.shopName}.</p>` +
         `<p>Reason: ${failureReason}</p>` +
         '<p>Our support team will follow up if needed.</p>',
       tags: ['order-refund-failed'],

@@ -421,10 +421,12 @@ export class PromotionPricingService {
   ): ShippingDiscountProvenance {
     return {
       promotionId: offer.id,
+      promotionPublicId: offer.promotionPublicId,
       code: offer.code,
       benefitType: 'free_shipping',
       productScope: offer.productScope,
       productIds: [...offer.productIds],
+      productPublicIds: [...offer.productPublicIds],
       minOrderType: offer.minOrderType,
       minOrderValue: amounts.minOrderValue,
       minPurchaseQuantity: offer.minPurchaseQuantity,

@@ -16,11 +16,14 @@ export interface ShopSummary {
 
 export interface ShopSaleSummary {
   id: string;
+  publicId: string;
   shopId: string;
+  shopPublicId: string;
   name: string;
   percentOff: number;
   productScope: string;
   productIds: string[];
+  productPublicIds: string[];
   currency: string;
   startAt: Date;
   endAt: Date;
@@ -42,7 +45,9 @@ export interface ShopSaleListResult {
 
 export interface ShopPromoCodeSummary {
   id: string;
+  publicId: string;
   shopId: string;
+  shopPublicId: string;
   name: string;
   code: string;
   benefitType: PromotionBenefitType;
@@ -52,6 +57,7 @@ export interface ShopPromoCodeSummary {
   visibility: string;
   productScope: string;
   productIds: string[];
+  productPublicIds: string[];
   minOrderType: PromotionMinOrderType;
   minOrderValue: number;
   minPurchaseQuantity: number;

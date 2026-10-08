@@ -117,7 +117,7 @@ implements SellerProductReviewQueryRepository {
 
     const reviewRows = await connection.execute<Array<{
       id: string;
-      order_id: string;
+      order_public_id: string;
       order_item_id: string;
       rating: number;
       title: string | null;
@@ -128,7 +128,7 @@ implements SellerProductReviewQueryRepository {
       user_id: string;
       display_name: string;
       email: string;
-      product_id: string;
+      product_public_id: string;
       product_title: string;
       product_slug: string;
     }>>(
@@ -136,6 +136,7 @@ implements SellerProductReviewQueryRepository {
         select
           pr.id,
           pr.order_id,
+          o.public_id as order_public_id,
           pr.order_item_id,
           pr.rating,
           pr.title,
@@ -147,10 +148,12 @@ implements SellerProductReviewQueryRepository {
           coalesce(nullif(u.display_name, ''), split_part(u.email, '@', 1)) as display_name,
           u.email,
           p.id as product_id,
+          p.public_id as product_public_id,
           p.title as product_title,
           p.slug as product_slug
         from product_reviews pr
         inner join users u on u.id = pr.user_id
+        inner join orders o on o.id = pr.order_id
         inner join products p on p.id = pr.product_id
         where ${whereClause}
         order by ${orderBy}
@@ -188,7 +191,7 @@ implements SellerProductReviewQueryRepository {
     return {
       items: reviewRows.map((row) => ({
         id: row.id,
-        orderId: row.order_id,
+        orderPublicId: row.order_public_id,
         orderItemId: row.order_item_id,
         rating: Number(row.rating),
         title: row.title ?? undefined,
@@ -203,7 +206,7 @@ implements SellerProductReviewQueryRepository {
           email: row.email,
         },
         product: {
-          id: row.product_id,
+          publicId: row.product_public_id,
           title: row.product_title,
           slug: row.product_slug,
         },

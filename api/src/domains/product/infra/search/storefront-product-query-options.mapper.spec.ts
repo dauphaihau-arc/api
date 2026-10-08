@@ -7,7 +7,9 @@ import { toPublicProductDetail as toAtlasPublicProductDetail } from './atlas/rep
 const baseDocument: CatalogProductDocument = {
   _id: 'product-1',
   productId: 'product-1',
+  productPublicId: 'public-product-1',
   shopId: 'shop-1',
+  shopPublicId: 'public-shop-1',
   shopSlug: 'arc-shop',
   shopName: 'Arc Shop',
   slug: 'linen-shirt',

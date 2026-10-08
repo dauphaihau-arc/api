@@ -5,6 +5,7 @@ import {
   Param,
   Post,
   Query,
+  UseFilters,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -18,6 +19,7 @@ import { RequirePermissions } from '~/platform/decorators/require-permissions.de
 import { CurrentUser } from '~/platform/decorators/current-user.decorator';
 import { JwtAuthGuard } from '~/domains/auth/api/guard/jwt-auth.guard';
 import { PermissionsGuard } from '~/domains/auth/api/guard/permissions.guard';
+import { ShopAccessService } from '../../app/services/shop-access.service';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import { CreateShopPromoCodeUseCase } from '../../app/use-cases/create-shop-promo-code/create-shop-promo-code.use-case';
 import { ListShopPromoCodesUseCase } from '../../app/use-cases/list-shop-promo-codes/list-shop-promo-codes.use-case';
@@ -26,10 +28,7 @@ import { ShopPromoCodeStopAction, StopShopPromoCodeUseCase } from '../../app/use
 import { BulkStopShopPromoCodesDto } from './dto/bulk-stop-shop-promo-codes.dto';
 import { CreateShopPromoCodeDto } from './dto/create-shop-promo-code.dto';
 import { ListShopPromoCodesQueryDto } from './dto/list-shop-promo-codes.query.dto';
-import {
-  isShopAppError,
-  mapShopAppErrorToHttpException,
-} from './shop-http-error-mapper';
+import { ShopExceptionsFilter } from './shop-exceptions.filter';
 import {
   toShopPromoCodeListResponse,
   toShopPromoCodeResponse,
@@ -37,6 +36,7 @@ import {
 } from './shop-promo-code.response';
 
 @Controller('shops/:shop_id/promo-codes')
+@UseFilters(ShopExceptionsFilter)
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @RequirePermissions('shops.manage')
 @ApiTags('Shop Promo Codes')
@@ -47,6 +47,7 @@ export class ShopPromoCodesController {
     private readonly listShopPromoCodesUseCase: ListShopPromoCodesUseCase,
     private readonly stopShopPromoCodeUseCase: StopShopPromoCodeUseCase,
     private readonly bulkStopShopPromoCodesUseCase: BulkStopShopPromoCodesUseCase,
+    private readonly shopAccessService: ShopAccessService,
   ) {}
 
   @Post()
@@ -58,21 +59,13 @@ export class ShopPromoCodesController {
   })
   async create(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('shop_id') shopId: string,
+    @Param('shop_id') shopPublicId: string,
     @Body() body: CreateShopPromoCodeDto,
   ) {
-    try {
-      const promoCode = await this.createShopPromoCodeUseCase.execute(
-        currentUser,
-        shopId,
-        body,
-      );
+    const shopId = (await this.shopAccessService.resolveManageableShopByPublicId(currentUser, shopPublicId)).id;
+    const promoCode = await this.createShopPromoCodeUseCase.execute(currentUser, shopId, body);
 
-      return { promo_code: toShopPromoCodeResponse(promoCode) };
-    }
-    catch (error) {
-      this.throwMappedShopError(error);
-    }
+    return { promo_code: toShopPromoCodeResponse(promoCode) };
   }
 
   @Get()
@@ -84,17 +77,13 @@ export class ShopPromoCodesController {
   })
   async list(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('shop_id') shopId: string,
+    @Param('shop_id') shopPublicId: string,
     @Query() query: ListShopPromoCodesQueryDto,
   ) {
-    try {
-      return toShopPromoCodeListResponse(
-        await this.listShopPromoCodesUseCase.execute(currentUser, shopId, query),
-      );
-    }
-    catch (error) {
-      this.throwMappedShopError(error);
-    }
+    const shopId = (await this.shopAccessService.resolveManageableShopByPublicId(currentUser, shopPublicId)).id;
+    return toShopPromoCodeListResponse(
+      await this.listShopPromoCodesUseCase.execute(currentUser, shopId, query),
+    );
   }
 
   @Post(':promo_code_id/cancel')
@@ -107,22 +96,18 @@ export class ShopPromoCodesController {
   })
   async cancel(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('shop_id') shopId: string,
-    @Param('promo_code_id') promoCodeId: string,
+    @Param('shop_id') shopPublicId: string,
+    @Param('promo_code_id') promoCodePublicId: string,
   ) {
-    try {
-      const promoCode = await this.stopShopPromoCodeUseCase.execute(
-        currentUser,
-        shopId,
-        promoCodeId,
-        ShopPromoCodeStopAction.CANCEL,
-      );
+    const shopId = (await this.shopAccessService.resolveManageableShopByPublicId(currentUser, shopPublicId)).id;
+    const promoCode = await this.stopShopPromoCodeUseCase.execute(
+      currentUser,
+      shopId,
+      promoCodePublicId,
+      ShopPromoCodeStopAction.CANCEL,
+    );
 
-      return { promo_code: toShopPromoCodeResponse(promoCode) };
-    }
-    catch (error) {
-      this.throwMappedShopError(error);
-    }
+    return { promo_code: toShopPromoCodeResponse(promoCode) };
   }
 
   @Post(':promo_code_id/end')
@@ -135,22 +120,18 @@ export class ShopPromoCodesController {
   })
   async end(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('shop_id') shopId: string,
-    @Param('promo_code_id') promoCodeId: string,
+    @Param('shop_id') shopPublicId: string,
+    @Param('promo_code_id') promoCodePublicId: string,
   ) {
-    try {
-      const promoCode = await this.stopShopPromoCodeUseCase.execute(
-        currentUser,
-        shopId,
-        promoCodeId,
-        ShopPromoCodeStopAction.END,
-      );
+    const shopId = (await this.shopAccessService.resolveManageableShopByPublicId(currentUser, shopPublicId)).id;
+    const promoCode = await this.stopShopPromoCodeUseCase.execute(
+      currentUser,
+      shopId,
+      promoCodePublicId,
+      ShopPromoCodeStopAction.END,
+    );
 
-      return { promo_code: toShopPromoCodeResponse(promoCode) };
-    }
-    catch (error) {
-      this.throwMappedShopError(error);
-    }
+    return { promo_code: toShopPromoCodeResponse(promoCode) };
   }
 
   @Post('bulk-stop')
@@ -164,24 +145,12 @@ export class ShopPromoCodesController {
   })
   async bulkStop(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('shop_id') shopId: string,
+    @Param('shop_id') shopPublicId: string,
     @Body() body: BulkStopShopPromoCodesDto,
   ) {
-    try {
-      return toShopPromoCodeStopListResponse(
-        await this.bulkStopShopPromoCodesUseCase.execute(currentUser, shopId, body.ids),
-      );
-    }
-    catch (error) {
-      this.throwMappedShopError(error);
-    }
-  }
-
-  private throwMappedShopError(error: unknown): never {
-    if (isShopAppError(error)) {
-      throw mapShopAppErrorToHttpException(error);
-    }
-
-    throw error;
+    const shopId = (await this.shopAccessService.resolveManageableShopByPublicId(currentUser, shopPublicId)).id;
+    return toShopPromoCodeStopListResponse(
+      await this.bulkStopShopPromoCodesUseCase.execute(currentUser, shopId, body.ids),
+    );
   }
 }

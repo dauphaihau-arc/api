@@ -1,12 +1,11 @@
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import type { Cache } from 'cache-manager';
 import type { StorageConfig } from '~/platform/config/storage.config';
-import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
-import { UserStatus } from '~/domains/auth/domain/enums/user-status.enum';
 import type { StorageService } from '~/integrations/storage/app/ports/storage.service';
 import { ProductImageAssetType } from '../../../domain/enums/product-image-asset-type.enum';
-import type { SellerProductQueryRepository } from '../../ports/seller-product-query.repository';
-import type { ShopRepository } from '~/domains/shop/app/ports/shop.repository';
+import { ProductState } from '../../../domain/enums/product-state.enum';
+import { ProductWhoMade } from '../../../domain/enums/product-who-made.enum';
+import type { ProductDraftSummary } from '../../product.types';
 import { IssueProductImageUploadUrlUseCase } from './issue-product-image-upload-url.use-case';
 
 jest.mock('@aws-sdk/s3-request-presigner', () => ({
@@ -14,13 +13,23 @@ jest.mock('@aws-sdk/s3-request-presigner', () => ({
 }));
 
 describe('IssueProductImageUploadUrlUseCase', () => {
-  const actor: AuthenticatedUser = {
-    userId: 'shop-owner-1',
-    email: 'owner@example.com',
-    status: UserStatus.ACTIVE,
-    sessionId: 'session-1',
-    roles: [],
-    permissions: [],
+  const product: ProductDraftSummary = {
+    id: 'product-1',
+    publicId: 'productpub01',
+    shopId: 'shop-1',
+    shopPublicId: 'shoppub0001',
+    categoryId: 'category-1',
+    title: 'Handmade Mug',
+    slug: 'handmade-mug',
+    description: 'Wheel-thrown ceramic mug',
+    state: ProductState.DRAFT,
+    whoMade: ProductWhoMade.I_DID,
+    isDigital: false,
+    nonTaxable: false,
+    images: [],
+    attributes: [],
+    variants: [],
+    inventory: [],
   };
 
   function buildDeps(storageConfig: StorageConfig = {
@@ -35,43 +44,6 @@ describe('IssueProductImageUploadUrlUseCase', () => {
       }),
     } as unknown as Pick<Cache, 'get' | 'set'>;
 
-    const shopRepository: jest.Mocked<ShopRepository> = {
-      create: jest.fn(),
-      findById: jest.fn(),
-      findByOwnerUserId: jest.fn(),
-      findByShopName: jest.fn(),
-      findBySlug: jest.fn(),
-      findOwnedById: jest.fn().mockResolvedValue({
-        id: 'shop-1',
-        publicId: 'shoppub0001',
-        ownerUserId: actor.userId,
-        shopName: 'owner-shop',
-        slug: 'owner-shop',
-        status: 'active',
-      }),
-    };
-
-    const productRepository: Pick<jest.Mocked<SellerProductQueryRepository>, 'findById'> = {
-      findById: jest.fn().mockResolvedValue({
-        id: 'product-1',
-        publicId: 'productpub01',
-        shopId: 'shop-1',
-        shopPublicId: 'shoppub0001',
-        categoryId: 'category-1',
-        title: 'Handmade Mug',
-        slug: 'handmade-mug',
-        description: 'Wheel-thrown ceramic mug',
-        state: 'draft',
-        whoMade: 'i_did',
-        isDigital: false,
-        nonTaxable: false,
-        images: [],
-        attributes: [],
-        variants: [],
-        inventory: [],
-      }),
-    };
-
     const storageService: jest.Mocked<StorageService> = {
       putObject: jest.fn(),
       getObject: jest.fn(),
@@ -83,29 +55,21 @@ describe('IssueProductImageUploadUrlUseCase', () => {
 
     return {
       cacheManager,
-      shopRepository,
-      productRepository,
       storageConfig,
       storageService,
     };
   }
 
   it('issues a local upload ticket when object storage is disabled', async () => {
-    const {
-      cacheManager, shopRepository, productRepository, storageConfig, storageService,
-    } = buildDeps();
+    const { cacheManager, storageConfig, storageService } = buildDeps();
     const useCase = new IssueProductImageUploadUrlUseCase(
       cacheManager as Cache,
-      shopRepository,
-      productRepository as never,
       storageConfig,
       storageService,
     );
 
     const issued = await useCase.execute(
-      actor,
-      'shop-1',
-      'product-1',
+      product,
       'image/webp',
       ProductImageAssetType.ORIGINAL,
     );
@@ -121,9 +85,7 @@ describe('IssueProductImageUploadUrlUseCase', () => {
     const mockedGetSignedUrl = jest.mocked(getSignedUrl);
     mockedGetSignedUrl.mockResolvedValueOnce('http://localhost:9000/bucket/signed');
 
-    const {
-      cacheManager, shopRepository, productRepository, storageConfig, storageService,
-    } = buildDeps({
+    const { cacheManager, storageConfig, storageService } = buildDeps({
       driver: 'minio',
       endpoint: 'http://localhost:9000',
       region: 'us-east-1',
@@ -136,16 +98,12 @@ describe('IssueProductImageUploadUrlUseCase', () => {
 
     const useCase = new IssueProductImageUploadUrlUseCase(
       cacheManager as Cache,
-      shopRepository,
-      productRepository as never,
       storageConfig,
       storageService,
     );
 
     const issued = await useCase.execute(
-      actor,
-      'shop-1',
-      'product-1',
+      product,
       'image/webp',
       ProductImageAssetType.ORIGINAL,
     );

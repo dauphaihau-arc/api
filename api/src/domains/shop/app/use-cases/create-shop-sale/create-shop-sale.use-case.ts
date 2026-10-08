@@ -74,9 +74,10 @@ export class CreateShopSaleUseCase {
       throw new SaleEndAfterStartRequiredError();
     }
 
-    const productIds = body.product_scope === PromotionProductScope.SPECIFIC
+    const products = body.product_scope === PromotionProductScope.SPECIFIC
       ? await this.resolveProductScope(entityManager, shopId, body.product_ids ?? [])
       : [];
+    const productIds = products.map((product) => product.id);
 
     const repository = entityManager.getRepository(PromotionEntity);
     const promotion = repository.create({
@@ -102,7 +103,7 @@ export class CreateShopSaleUseCase {
 
     await this.scheduleSaleProjection(promotion, productIds, now);
 
-    return toShopSaleSummary(promotion, productIds, now);
+    return toShopSaleSummary(promotion, products, now);
   }
 
   /**
@@ -144,31 +145,32 @@ export class CreateShopSaleUseCase {
   private async resolveProductScope(
     entityManager: EntityManager,
     shopId: string,
-    productIds: string[],
-  ): Promise<string[]> {
-    if (new Set(productIds).size !== productIds.length) {
+    productPublicIds: string[],
+  ): Promise<Array<{ id: string; publicId: string }>> {
+    if (productPublicIds.length === 0) return [];
+    if (new Set(productPublicIds).size !== productPublicIds.length) {
       throw new SaleProductScopeInvalidError('Selected products must be unique');
     }
 
     const products = await entityManager.getRepository(ProductEntity).find(
-      { id: { $in: productIds } },
+      { publicId: { $in: productPublicIds } },
       { populate: ['shop'] },
     );
-    const productsById = new Map(products.map((product) => [product.id, product]));
+    const productsByPublicId = new Map(products.map((product) => [product.publicId, product]));
 
-    for (const productId of productIds) {
-      const product = productsById.get(productId);
-
-      if (!product) {
-        throw new SaleProductScopeInvalidError('A selected product was not found');
-      }
-
+    for (const productPublicId of productPublicIds) {
+      const product = productsByPublicId.get(productPublicId);
+      if (!product) throw new SaleProductScopeInvalidError('A selected product was not found');
       if (product.shop.id !== shopId) {
         throw new SaleProductScopeInvalidError('A selected product belongs to another shop');
       }
     }
 
-    return productIds;
+    return productPublicIds.map((productPublicId) => {
+      const product = productsByPublicId.get(productPublicId);
+      if (!product) throw new SaleProductScopeInvalidError('A selected product was not found');
+      return { id: product.id, publicId: product.publicId };
+    });
   }
 
   /**

@@ -26,6 +26,7 @@ describe('UpsertMyProductReviewUseCase', () => {
       title: 'Handmade Bag',
       product: {
         id: 'product-1',
+        publicId: 'prod_product-1',
         slug: 'handmade-bag',
         shop: {
           slug: 'arc-store',
@@ -33,6 +34,7 @@ describe('UpsertMyProductReviewUseCase', () => {
       },
       order: {
         id: 'order-1',
+        publicId: 'ord_order-1',
         status: OrderStatus.COMPLETED,
         fulfillmentStatus: FulfillmentAggregateStatus.DELIVERED,
       },
@@ -141,6 +143,8 @@ describe('UpsertMyProductReviewUseCase', () => {
     expect(result.rating).toBe(5);
     expect(result.title).toBe('Great');
     expect(result.body).toBe('Loved it');
+    expect(result.orderPublicId).toBe('ord_order-1');
+    expect(result.product.publicId).toBe('prod_product-1');
     expect(result.status).toBe(ProductReviewStatus.PUBLISHED);
     expect(result.images).toHaveLength(1);
     expect(catalogProductProjectorService.projectProduct).toHaveBeenCalledWith('product-1');
@@ -163,11 +167,13 @@ describe('UpsertMyProductReviewUseCase', () => {
               id: 'item-1',
               product: {
                 id: 'product-1',
+                publicId: 'prod_product-1',
                 slug: 'handmade-bag',
                 shop: { slug: 'arc-store' },
               },
               order: {
                 id: 'order-1',
+                publicId: 'ord_order-1',
                 status: OrderStatus.PAID,
                 fulfillmentStatus: FulfillmentAggregateStatus.UNFULFILLED,
               },
@@ -222,11 +228,13 @@ describe('UpsertMyProductReviewUseCase', () => {
               title: 'Handmade Bag',
               product: {
                 id: 'product-1',
+                publicId: 'prod_product-1',
                 slug: 'handmade-bag',
                 shop: { slug: 'arc-store' },
               },
               order: {
                 id: 'order-1',
+                publicId: 'ord_order-1',
                 status: OrderStatus.COMPLETED,
                 fulfillmentStatus: FulfillmentAggregateStatus.DELIVERED,
               },
@@ -312,11 +320,13 @@ describe('UpsertMyProductReviewUseCase', () => {
       title: 'Handmade Bag',
       product: {
         id: 'product-1',
+        publicId: 'prod_product-1',
         slug: 'handmade-bag',
         shop: { slug: 'arc-store' },
       },
       order: {
         id: 'order-2',
+        publicId: 'ord_order-2',
         status: OrderStatus.COMPLETED,
         fulfillmentStatus: FulfillmentAggregateStatus.DELIVERED,
       },
@@ -382,6 +392,8 @@ describe('UpsertMyProductReviewUseCase', () => {
     expect(existingReview.order).toBe(orderItem.order);
     expect(existingReview.orderItem).toBe(orderItem);
     expect(result.id).toBe('review-1');
+    expect(result.orderPublicId).toBe('ord_order-2');
+    expect(result.product.publicId).toBe('prod_product-1');
     expect(result.orderItemId).toBe('item-2');
   });
 
@@ -425,11 +437,13 @@ describe('UpsertMyProductReviewUseCase', () => {
       title: 'Handmade Bag',
       product: {
         id: 'product-1',
+        publicId: 'prod_product-1',
         slug: 'handmade-bag',
         shop: { slug: 'arc-store' },
       },
       order: {
         id: 'order-2',
+        publicId: 'ord_order-2',
         status: OrderStatus.COMPLETED,
         fulfillmentStatus: FulfillmentAggregateStatus.DELIVERED,
       },
@@ -523,11 +537,13 @@ describe('UpsertMyProductReviewUseCase', () => {
       title: 'Handmade Bag',
       product: {
         id: 'product-1',
+        publicId: 'prod_product-1',
         slug: 'handmade-bag',
         shop: { slug: 'arc-store' },
       },
       order: {
         id: 'order-2',
+        publicId: 'ord_order-2',
         status: OrderStatus.COMPLETED,
         fulfillmentStatus: FulfillmentAggregateStatus.DELIVERED,
       },

@@ -3,12 +3,12 @@ import type { BulkStopShopSalesResult } from '../../app/use-cases/bulk-stop-shop
 
 export function toShopSaleResponse(sale: ShopSaleSummary) {
   return {
-    id: sale.id,
-    shop: sale.shopId,
+    id: sale.publicId,
+    shop: sale.shopPublicId,
     name: sale.name,
     percent_off: sale.percentOff,
     product_scope: sale.productScope,
-    product_ids: sale.productIds,
+    product_ids: sale.productPublicIds,
     currency: sale.currency,
     start_at: sale.startAt,
     end_at: sale.endAt,

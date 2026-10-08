@@ -1,7 +1,7 @@
 import { MARKETPLACE_MARKETS } from '~/platform/config/marketplace.config';
 
 export interface StorefrontIndexedAutoSale {
-  promotionId: string;
+  promotionPublicId: string;
   percentOff: number;
 }
 

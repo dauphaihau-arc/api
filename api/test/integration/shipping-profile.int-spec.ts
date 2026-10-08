@@ -28,7 +28,7 @@ import { ObservabilityService } from '~/platform/observability/observability.ser
 import { RequestContextService } from '~/platform/request-context/request-context.service';
 import { createTestDatabase, dropTestDatabase } from '../support/test-postgres';
 import { seedAuthReferenceData } from '../../database/seeds/auth.seed';
-import { seedPublishableInventory } from '../support/shipping-fixtures';
+import { resolveShopId, seedPublishableInventory } from '../support/shipping-fixtures';
 
 jest.setTimeout(240_000);
 
@@ -42,7 +42,9 @@ type TestDatabase = {
   };
 };
 
-type TestSeller = { agent: Agent; email: string; shopId: string };
+type TestSeller = {
+  agent: Agent; email: string; shopId: string; shopPublicId: string 
+};
 
 type ShippingProfileResource = {
   id: string;
@@ -234,7 +236,13 @@ describe('Reusable shipping profiles (integration)', () => {
       })
       .expect(201);
 
-    return { agent, email, shopId: shopResponse.body.id as string };
+    const shopPublicId = shopResponse.body.id as string;
+    return {
+      agent,
+      email,
+      shopId: await resolveShopId(sql, shopPublicId),
+      shopPublicId,
+    };
   }
 
   async function seedCategory(agent: Agent): Promise<string> {
@@ -286,7 +294,7 @@ describe('Reusable shipping profiles (integration)', () => {
     name: string,
   ): Promise<ShippingProfileResource> {
     const response = await seller.agent
-      .post(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles`)
+      .post(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles`)
       .set('Idempotency-Key', randomUUID())
       .send(createActiveProfileBody(name))
       .expect(201);
@@ -301,7 +309,7 @@ describe('Reusable shipping profiles (integration)', () => {
     isDigital?: boolean;
   }): Promise<{ productId: string; inventoryId: string }> {
     const productResponse = await input.seller.agent
-      .post(`${API_PREFIX}/shops/${input.seller.shopId}/products`)
+      .post(`${API_PREFIX}/shops/${input.seller.shopPublicId}/products`)
       .set('Idempotency-Key', randomUUID())
       .send({
         category_id: await seedCategory(input.seller.agent),
@@ -314,7 +322,7 @@ describe('Reusable shipping profiles (integration)', () => {
     const productId = productResponse.body.id as string;
 
     await input.seller.agent
-      .put(`${API_PREFIX}/shops/${input.seller.shopId}/products/${productId}/images`)
+      .put(`${API_PREFIX}/shops/${input.seller.shopPublicId}/products/${productId}/images`)
       .attach('images', Buffer.from(`image-${productId}`), {
         filename: `${productId}.jpg`,
         contentType: 'image/jpeg',
@@ -322,12 +330,12 @@ describe('Reusable shipping profiles (integration)', () => {
       .expect(204);
 
     const detail = await input.seller.agent
-      .get(`${API_PREFIX}/shops/${input.seller.shopId}/products/${productId}`)
+      .get(`${API_PREFIX}/shops/${input.seller.shopPublicId}/products/${productId}`)
       .expect(200);
     const inventoryId = detail.body.inventory[0].id as string;
 
     await seedPublishableInventory(sql, {
-      shopId: input.seller.shopId,
+      shopId: input.seller.shopPublicId,
       inventoryId,
       sku: input.sku,
       stock: 5,
@@ -343,7 +351,7 @@ describe('Reusable shipping profiles (integration)', () => {
     shippingProfileId: string | null,
   ) {
     const response = await seller.agent
-      .put(`${API_PREFIX}/shops/${seller.shopId}/products/${productId}/shipping-profile`)
+      .put(`${API_PREFIX}/shops/${seller.shopPublicId}/products/${productId}/shipping-profile`)
       .set('Idempotency-Key', randomUUID())
       .send({ shipping_profile_id: shippingProfileId });
 
@@ -425,7 +433,7 @@ describe('Reusable shipping profiles (integration)', () => {
       const created = await createActiveProfile(seller, 'Standard shipping');
 
       expect(created).toMatchObject({
-        shop_id: seller.shopId,
+        shop_id: seller.shopPublicId,
         name: 'Standard shipping',
         status: 'active',
         version: 1,
@@ -443,13 +451,13 @@ describe('Reusable shipping profiles (integration)', () => {
       ]);
 
       const read = await seller.agent
-        .get(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles/${created.id}`)
+        .get(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles/${created.id}`)
         .expect(200);
 
       expect(read.body.id).toBe(created.id);
 
       const updated = await seller.agent
-        .patch(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles/${created.id}`)
+        .patch(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles/${created.id}`)
         .set('Idempotency-Key', randomUUID())
         .send({
           version: created.version,
@@ -483,7 +491,7 @@ describe('Reusable shipping profiles (integration)', () => {
       });
 
       const archived = await seller.agent
-        .post(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles/${created.id}/archive`)
+        .post(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles/${created.id}/archive`)
         .set('Idempotency-Key', randomUUID())
         .expect(200);
 
@@ -499,7 +507,7 @@ describe('Reusable shipping profiles (integration)', () => {
       await createActiveProfile(seller, 'Standard shipping');
 
       const conflict = await seller.agent
-        .post(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles`)
+        .post(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles`)
         .set('Idempotency-Key', randomUUID())
         .send({ name: '  standard SHIPPING  ', status: 'draft' })
         .expect(409);
@@ -511,7 +519,7 @@ describe('Reusable shipping profiles (integration)', () => {
       const seller = await createSeller('shipping-validation');
 
       const response = await seller.agent
-        .post(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles`)
+        .post(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles`)
         .set('Idempotency-Key', randomUUID())
         .send({ name: 'Incomplete', status: 'active' })
         .expect(422);
@@ -523,7 +531,7 @@ describe('Reusable shipping profiles (integration)', () => {
       const seller = await createSeller('shipping-currency-input');
 
       const rejectedProfileCurrency = await seller.agent
-        .post(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles`)
+        .post(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles`)
         .set('Idempotency-Key', randomUUID())
         .send({
           name: 'Profile currency',
@@ -543,7 +551,7 @@ describe('Reusable shipping profiles (integration)', () => {
       );
 
       const rejectedRateCurrency = await seller.agent
-        .post(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles`)
+        .post(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles`)
         .set('Idempotency-Key', randomUUID())
         .send({
           name: 'Rate currency',
@@ -567,7 +575,7 @@ describe('Reusable shipping profiles (integration)', () => {
       const seller = await createSeller('shipping-draft');
 
       const response = await seller.agent
-        .post(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles`)
+        .post(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles`)
         .set('Idempotency-Key', randomUUID())
         .send({ name: 'Freight shipping' })
         .expect(201);
@@ -586,13 +594,13 @@ describe('Reusable shipping profiles (integration)', () => {
       const created = await createActiveProfile(seller, 'Standard shipping');
 
       await seller.agent
-        .patch(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles/${created.id}`)
+        .patch(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles/${created.id}`)
         .set('Idempotency-Key', randomUUID())
         .send({ version: created.version, name: 'Renamed once' })
         .expect(200);
 
       const conflict = await seller.agent
-        .patch(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles/${created.id}`)
+        .patch(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles/${created.id}`)
         .set('Idempotency-Key', randomUUID())
         .send({ version: created.version, name: 'Renamed twice' })
         .expect(409);
@@ -607,28 +615,28 @@ describe('Reusable shipping profiles (integration)', () => {
       const created = await createActiveProfile(owner, 'Standard shipping');
 
       await stranger.agent
-        .get(`${API_PREFIX}/shops/${owner.shopId}/shipping-profiles`)
+        .get(`${API_PREFIX}/shops/${owner.shopPublicId}/shipping-profiles`)
         .expect(403);
       await stranger.agent
-        .get(`${API_PREFIX}/shops/${owner.shopId}/shipping-profiles/${created.id}`)
+        .get(`${API_PREFIX}/shops/${owner.shopPublicId}/shipping-profiles/${created.id}`)
         .expect(403);
       await stranger.agent
-        .post(`${API_PREFIX}/shops/${owner.shopId}/shipping-profiles`)
+        .post(`${API_PREFIX}/shops/${owner.shopPublicId}/shipping-profiles`)
         .set('Idempotency-Key', randomUUID())
         .send({ name: 'Stolen' })
         .expect(403);
       await stranger.agent
-        .patch(`${API_PREFIX}/shops/${owner.shopId}/shipping-profiles/${created.id}`)
+        .patch(`${API_PREFIX}/shops/${owner.shopPublicId}/shipping-profiles/${created.id}`)
         .set('Idempotency-Key', randomUUID())
         .send({ version: 1, name: 'Stolen' })
         .expect(403);
       await stranger.agent
-        .post(`${API_PREFIX}/shops/${owner.shopId}/shipping-profiles/${created.id}/archive`)
+        .post(`${API_PREFIX}/shops/${owner.shopPublicId}/shipping-profiles/${created.id}/archive`)
         .set('Idempotency-Key', randomUUID())
         .expect(403);
 
       const list = await owner.agent
-        .get(`${API_PREFIX}/shops/${owner.shopId}/shipping-profiles`)
+        .get(`${API_PREFIX}/shops/${owner.shopPublicId}/shipping-profiles`)
         .expect(200);
 
       expect(list.body.results).toHaveLength(1);
@@ -636,7 +644,7 @@ describe('Reusable shipping profiles (integration)', () => {
 
       const anonymous = request(app.getHttpServer());
       await anonymous
-        .get(`${API_PREFIX}/shops/${owner.shopId}/shipping-profiles`)
+        .get(`${API_PREFIX}/shops/${owner.shopPublicId}/shipping-profiles`)
         .expect(401);
     });
 
@@ -647,7 +655,7 @@ describe('Reusable shipping profiles (integration)', () => {
       const third = await createActiveProfile(seller, 'Third profile');
 
       const firstPage = await seller.agent
-        .get(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles?page=1&limit=2`)
+        .get(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles?page=1&limit=2`)
         .expect(200);
 
       expect(firstPage.body).toMatchObject({
@@ -659,7 +667,7 @@ describe('Reusable shipping profiles (integration)', () => {
       expect(firstPage.body.results).toHaveLength(2);
 
       const secondPage = await seller.agent
-        .get(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles?page=2&limit=2`)
+        .get(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles?page=2&limit=2`)
         .expect(200);
 
       expect(secondPage.body.results).toHaveLength(1);
@@ -669,7 +677,7 @@ describe('Reusable shipping profiles (integration)', () => {
 
       // The default page returns the whole shop when it fits.
       const defaults = await seller.agent
-        .get(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles`)
+        .get(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles`)
         .expect(200);
 
       expect(defaults.body).toMatchObject({
@@ -682,17 +690,17 @@ describe('Reusable shipping profiles (integration)', () => {
 
       // A page beyond the last one is empty rather than an error.
       const beyondLastPage = await seller.agent
-        .get(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles?page=4&limit=2`)
+        .get(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles?page=4&limit=2`)
         .expect(200);
 
       expect(beyondLastPage.body.results).toHaveLength(0);
       expect(beyondLastPage.body.total_results).toBe(3);
 
       await seller.agent
-        .get(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles?limit=101`)
+        .get(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles?limit=101`)
         .expect(400);
       await seller.agent
-        .get(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles?page=0`)
+        .get(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles?page=0`)
         .expect(400);
     });
 
@@ -701,26 +709,26 @@ describe('Reusable shipping profiles (integration)', () => {
       const live = await createActiveProfile(seller, 'Live profile');
       await createActiveProfile(seller, 'Second live profile');
       await seller.agent
-        .post(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles`)
+        .post(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles`)
         .set('Idempotency-Key', randomUUID())
         .send({ name: 'Unfinished profile' })
         .expect(201);
 
       const retired = await seller.agent
-        .post(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles`)
+        .post(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles`)
         .set('Idempotency-Key', randomUUID())
         .send({ name: 'Retired profile' })
         .expect(201);
 
       await seller.agent
-        .post(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles/${retired.body.id}/archive`)
+        .post(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles/${retired.body.id}/archive`)
         .set('Idempotency-Key', randomUUID())
         .expect(200);
 
       // The working list is the actionable set: archived profiles are retained
       // but only listed when the caller asks for them.
       const defaults = await seller.agent
-        .get(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles`)
+        .get(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles`)
         .expect(200);
       const defaultIds = defaults.body.results.map((profile: { id: string }) => profile.id);
 
@@ -732,7 +740,7 @@ describe('Reusable shipping profiles (integration)', () => {
       expect(defaultIds).not.toContain(retired.body.id);
 
       const archived = await seller.agent
-        .get(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles?status=archived`)
+        .get(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles?status=archived`)
         .expect(200);
 
       expect(archived.body).toMatchObject({
@@ -744,17 +752,17 @@ describe('Reusable shipping profiles (integration)', () => {
 
       // Repeated and comma-separated filters select the same states.
       const repeated = await seller.agent
-        .get(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles?status=active&status=draft`)
+        .get(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles?status=active&status=draft`)
         .expect(200);
       const commaSeparated = await seller.agent
-        .get(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles?status=active,draft`)
+        .get(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles?status=active,draft`)
         .expect(200);
 
       expect(repeated.body.total_results).toBe(3);
       expect(commaSeparated.body.total_results).toBe(3);
 
       await seller.agent
-        .get(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles?status=retired`)
+        .get(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles?status=retired`)
         .expect(400);
     });
   });
@@ -780,7 +788,7 @@ describe('Reusable shipping profiles (integration)', () => {
       ]);
 
       const read = await seller.agent
-        .get(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles/${created.id}`)
+        .get(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles/${created.id}`)
         .expect(200);
 
       expect(read.body).toMatchObject({
@@ -789,7 +797,7 @@ describe('Reusable shipping profiles (integration)', () => {
       });
 
       const list = await seller.agent
-        .get(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles`)
+        .get(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles`)
         .expect(200);
 
       expect(list.body.results[0]).toMatchObject({
@@ -802,7 +810,7 @@ describe('Reusable shipping profiles (integration)', () => {
       const seller = await createSeller('shipping-zero-days');
 
       const response = await seller.agent
-        .post(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles`)
+        .post(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles`)
         .set('Idempotency-Key', randomUUID())
         .send({
           name: 'Same-day dispatch',
@@ -836,7 +844,7 @@ describe('Reusable shipping profiles (integration)', () => {
       const seller = await createSeller('shipping-duration-validation');
       const post = (body: Record<string, unknown>) =>
         seller.agent
-          .post(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles`)
+          .post(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles`)
           .set('Idempotency-Key', randomUUID())
           .send(body);
       const validRate = {
@@ -922,7 +930,7 @@ describe('Reusable shipping profiles (integration)', () => {
       const seller = await createSeller('shipping-duration-activation');
 
       const missingProcessing = await seller.agent
-        .post(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles`)
+        .post(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles`)
         .set('Idempotency-Key', randomUUID())
         .send({
           name: 'No processing range',
@@ -939,7 +947,7 @@ describe('Reusable shipping profiles (integration)', () => {
       expect(missingProcessing.body.message).toMatch(/processing time/i);
 
       const missingDelivery = await seller.agent
-        .post(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles`)
+        .post(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles`)
         .set('Idempotency-Key', randomUUID())
         .send({
           name: 'No delivery range',
@@ -957,7 +965,7 @@ describe('Reusable shipping profiles (integration)', () => {
 
       // A draft may be saved incomplete so a seller can finish it later.
       const draft = await seller.agent
-        .post(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles`)
+        .post(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles`)
         .set('Idempotency-Key', randomUUID())
         .send({ name: 'Work in progress' })
         .expect(201);
@@ -976,7 +984,7 @@ describe('Reusable shipping profiles (integration)', () => {
       const seller = await createSeller('shipping-large-durations');
 
       const response = await seller.agent
-        .post(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles`)
+        .post(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles`)
         .set('Idempotency-Key', randomUUID())
         .send({
           name: 'Oversized ranges',
@@ -1007,7 +1015,7 @@ describe('Reusable shipping profiles (integration)', () => {
       });
 
       const preview = await seller.agent
-        .post(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles/${response.body.id}/preview`)
+        .post(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles/${response.body.id}/preview`)
         .send({ country_code: 'US', quantity: 1 })
         .expect(200);
 
@@ -1033,7 +1041,7 @@ describe('Reusable shipping profiles (integration)', () => {
       );
 
       const read = await seller.agent
-        .get(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles/${created.id}`)
+        .get(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles/${created.id}`)
         .expect(200);
 
       expect(read.body).toMatchObject({ checkout_ready: false });
@@ -1045,7 +1053,7 @@ describe('Reusable shipping profiles (integration)', () => {
       expect(read.body.rates.every((rate: { delivery_time_min_days?: number }) => rate.delivery_time_min_days === undefined)).toBe(true);
 
       const preview = await seller.agent
-        .post(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles/${created.id}/preview`)
+        .post(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles/${created.id}/preview`)
         .send({ country_code: 'US', quantity: 1 })
         .expect(200);
 
@@ -1061,12 +1069,13 @@ describe('Reusable shipping profiles (integration)', () => {
       const profile = await createActiveProfile(seller, 'Standard shipping');
 
       const country = await seller.agent
-        .post(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles/${profile.id}/preview`)
+        .post(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles/${profile.id}/preview`)
         .send({ country_code: 'us', quantity: 3 })
         .expect(200);
 
       expect(country.body).toMatchObject({
         matched: true,
+        shop_id: seller.shopPublicId,
         checkout_ready: true,
         currency: 'USD',
         quantity: 3,
@@ -1078,7 +1087,7 @@ describe('Reusable shipping profiles (integration)', () => {
       expect(country.body.rate.destination_scope).toBe('country');
 
       const everywhereElse = await seller.agent
-        .post(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles/${profile.id}/preview`)
+        .post(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles/${profile.id}/preview`)
         .send({ country_code: 'DE', quantity: 2 })
         .expect(200);
 
@@ -1097,7 +1106,7 @@ describe('Reusable shipping profiles (integration)', () => {
 
       const previewedAt = new Date();
       const response = await seller.agent
-        .post(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles/${profile.id}/preview`)
+        .post(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles/${profile.id}/preview`)
         .send({ country_code: 'US', quantity: 2 })
         .expect(200);
 
@@ -1136,7 +1145,7 @@ describe('Reusable shipping profiles (integration)', () => {
       const profile = await createActiveProfile(seller, 'Standard shipping');
       const preview = (body: Record<string, unknown>) =>
         seller.agent
-          .post(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles/${profile.id}/preview`)
+          .post(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles/${profile.id}/preview`)
           .send(body);
 
       const unitedStates = await preview({ country_code: 'US', quantity: 1 }).expect(200);
@@ -1153,7 +1162,7 @@ describe('Reusable shipping profiles (integration)', () => {
     it('reports an unsupported destination without inventing a fee', async () => {
       const seller = await createSeller('shipping-unsupported');
       const created = await seller.agent
-        .post(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles`)
+        .post(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles`)
         .set('Idempotency-Key', randomUUID())
         .send({
           name: 'US only',
@@ -1174,7 +1183,7 @@ describe('Reusable shipping profiles (integration)', () => {
         .expect(201);
 
       const response = await seller.agent
-        .post(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles/${created.body.id}/preview`)
+        .post(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles/${created.body.id}/preview`)
         .send({ country_code: 'DE', quantity: 1 })
         .expect(200);
 
@@ -1189,13 +1198,13 @@ describe('Reusable shipping profiles (integration)', () => {
 
       expect(profile.currency).toBe('USD');
 
-      await sql.query('update "shops" set "currency" = $2, "updated_at" = now() where "id" = $1', [
-        seller.shopId,
+      await sql.query('update "shops" set "currency" = $2, "updated_at" = now() where "public_id" = $1', [
+        seller.shopPublicId,
         'EUR',
       ]);
 
       const preview = await seller.agent
-        .post(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles/${profile.id}/preview`)
+        .post(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles/${profile.id}/preview`)
         .send({ country_code: 'US', quantity: 1 })
         .expect(200);
 
@@ -1204,7 +1213,7 @@ describe('Reusable shipping profiles (integration)', () => {
       expect(preview.body.rate.one_item_fee_minor).toBe(599);
 
       const read = await seller.agent
-        .get(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles/${profile.id}`)
+        .get(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles/${profile.id}`)
         .expect(200);
 
       expect(read.body.currency).toBe('EUR');
@@ -1218,7 +1227,7 @@ describe('Reusable shipping profiles (integration)', () => {
     it('flags a draft profile as not checkout-ready while still previewing coverage', async () => {
       const seller = await createSeller('shipping-preview-draft');
       const created = await seller.agent
-        .post(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles`)
+        .post(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles`)
         .set('Idempotency-Key', randomUUID())
         .send({
           name: 'Draft coverage',
@@ -1233,7 +1242,7 @@ describe('Reusable shipping profiles (integration)', () => {
         .expect(201);
 
       const response = await seller.agent
-        .post(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles/${created.body.id}/preview`)
+        .post(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles/${created.body.id}/preview`)
         .send({ country_code: 'US', quantity: 1 })
         .expect(200);
 
@@ -1258,13 +1267,13 @@ describe('Reusable shipping profiles (integration)', () => {
       expect((await assignProfile(seller, second.productId, profile.id)).status).toBe(204);
 
       const profileResponse = await seller.agent
-        .get(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles/${profile.id}`)
+        .get(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles/${profile.id}`)
         .expect(200);
 
       expect(profileResponse.body.assigned_product_count).toBe(2);
 
       const detail = await seller.agent
-        .get(`${API_PREFIX}/shops/${seller.shopId}/products/${first.productId}`)
+        .get(`${API_PREFIX}/shops/${seller.shopPublicId}/products/${first.productId}`)
         .expect(200);
 
       expect(detail.body.shipping).toMatchObject({
@@ -1277,7 +1286,7 @@ describe('Reusable shipping profiles (integration)', () => {
       expect((await assignProfile(seller, first.productId, shared.id)).status).toBe(204);
 
       const reassigned = await seller.agent
-        .get(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles/${profile.id}`)
+        .get(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles/${profile.id}`)
         .expect(200);
 
       expect(reassigned.body.assigned_product_count).toBe(1);
@@ -1285,7 +1294,7 @@ describe('Reusable shipping profiles (integration)', () => {
       expect((await assignProfile(seller, second.productId, null)).status).toBe(204);
 
       const afterClear = await seller.agent
-        .get(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles/${profile.id}`)
+        .get(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles/${profile.id}`)
         .expect(200);
 
       expect(afterClear.body.assigned_product_count).toBe(0);
@@ -1298,12 +1307,12 @@ describe('Reusable shipping profiles (integration)', () => {
 
       expect((await assignProfile(seller, product.productId, profile.id)).status).toBe(204);
       await seller.agent
-        .post(`${API_PREFIX}/shops/${seller.shopId}/products/${product.productId}/publish`)
+        .post(`${API_PREFIX}/shops/${seller.shopPublicId}/products/${product.productId}/publish`)
         .set('Idempotency-Key', randomUUID())
         .expect(201);
 
       const blocked = await seller.agent
-        .post(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles/${profile.id}/archive`)
+        .post(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles/${profile.id}/archive`)
         .set('Idempotency-Key', randomUUID())
         .expect(409);
 
@@ -1313,13 +1322,13 @@ describe('Reusable shipping profiles (integration)', () => {
       });
 
       const draftProfile = await seller.agent
-        .post(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles`)
+        .post(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles`)
         .set('Idempotency-Key', randomUUID())
         .send({ name: 'Retired profile' })
         .expect(201);
 
       await seller.agent
-        .post(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles/${draftProfile.body.id}/archive`)
+        .post(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles/${draftProfile.body.id}/archive`)
         .set('Idempotency-Key', randomUUID())
         .expect(200);
 
@@ -1332,7 +1341,7 @@ describe('Reusable shipping profiles (integration)', () => {
     it('requires a checkout-ready active profile before a product can be published', async () => {
       const seller = await createSeller('shipping-publish-gate');
       const draftProfile = await seller.agent
-        .post(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles`)
+        .post(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles`)
         .set('Idempotency-Key', randomUUID())
         .send({ name: 'Not ready yet' })
         .expect(201);
@@ -1341,14 +1350,14 @@ describe('Reusable shipping profiles (integration)', () => {
       expect((await assignProfile(seller, product.productId, draftProfile.body.id)).status).toBe(204);
 
       const blocked = await seller.agent
-        .post(`${API_PREFIX}/shops/${seller.shopId}/products/${product.productId}/publish`)
+        .post(`${API_PREFIX}/shops/${seller.shopPublicId}/products/${product.productId}/publish`)
         .set('Idempotency-Key', randomUUID())
         .expect(400);
 
       expect(blocked.body.message).toMatch(/draft|rate/i);
 
       const activated = await seller.agent
-        .patch(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles/${draftProfile.body.id}`)
+        .patch(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles/${draftProfile.body.id}`)
         .set('Idempotency-Key', randomUUID())
         .send({
           version: draftProfile.body.version,
@@ -1371,7 +1380,7 @@ describe('Reusable shipping profiles (integration)', () => {
       expect(activated.body).toMatchObject({ status: 'active', checkout_ready: true });
 
       await seller.agent
-        .post(`${API_PREFIX}/shops/${seller.shopId}/products/${product.productId}/publish`)
+        .post(`${API_PREFIX}/shops/${seller.shopPublicId}/products/${product.productId}/publish`)
         .set('Idempotency-Key', randomUUID())
         .expect(201);
     });
@@ -1383,12 +1392,12 @@ describe('Reusable shipping profiles (integration)', () => {
 
       expect((await assignProfile(seller, product.productId, profile.id)).status).toBe(204);
       await seller.agent
-        .post(`${API_PREFIX}/shops/${seller.shopId}/products/${product.productId}/publish`)
+        .post(`${API_PREFIX}/shops/${seller.shopPublicId}/products/${product.productId}/publish`)
         .set('Idempotency-Key', randomUUID())
         .expect(201);
 
       const draftProfile = await seller.agent
-        .post(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles`)
+        .post(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles`)
         .set('Idempotency-Key', randomUUID())
         .send({
           name: 'Not ready yet',
@@ -1411,7 +1420,7 @@ describe('Reusable shipping profiles (integration)', () => {
       expect(rejectedClear.body.message).toMatch(/must keep a checkout-ready/i);
 
       const detail = await seller.agent
-        .get(`${API_PREFIX}/shops/${seller.shopId}/products/${product.productId}`)
+        .get(`${API_PREFIX}/shops/${seller.shopPublicId}/products/${product.productId}`)
         .expect(200);
 
       expect(detail.body.shipping).toMatchObject({
@@ -1435,7 +1444,7 @@ describe('Reusable shipping profiles (integration)', () => {
       expect((await assignProfile(seller, second.productId, profile.id)).status).toBe(204);
 
       await seller.agent
-        .patch(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles/${profile.id}`)
+        .patch(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles/${profile.id}`)
         .set('Idempotency-Key', randomUUID())
         .send({
           version: profile.version,
@@ -1453,7 +1462,7 @@ describe('Reusable shipping profiles (integration)', () => {
 
       for (const productId of [first.productId, second.productId]) {
         const detail = await seller.agent
-          .get(`${API_PREFIX}/shops/${seller.shopId}/products/${productId}`)
+          .get(`${API_PREFIX}/shops/${seller.shopPublicId}/products/${productId}`)
           .expect(200);
 
         expect(detail.body.shipping.profile_id).toBe(profile.id);
@@ -1479,14 +1488,14 @@ describe('Reusable shipping profiles (integration)', () => {
 
       expect((await assignProfile(seller, product.productId, profile.id)).status).toBe(204);
       await seller.agent
-        .post(`${API_PREFIX}/shops/${seller.shopId}/products/${product.productId}/publish`)
+        .post(`${API_PREFIX}/shops/${seller.shopPublicId}/products/${product.productId}/publish`)
         .set('Idempotency-Key', randomUUID())
         .expect(201);
 
       // Removing the range from an Active profile is rejected by
       // configuration validation before it can stop pricing checkouts.
       const blockedByMissingRange = await seller.agent
-        .patch(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles/${profile.id}`)
+        .patch(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles/${profile.id}`)
         .set('Idempotency-Key', randomUUID())
         .send({
           version: profile.version,
@@ -1500,7 +1509,7 @@ describe('Reusable shipping profiles (integration)', () => {
       // Switching a referenced profile to Draft passes value validation but
       // would stop pricing checkouts, so the published-reference guard rejects it.
       const blockedByDraft = await seller.agent
-        .patch(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles/${profile.id}`)
+        .patch(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles/${profile.id}`)
         .set('Idempotency-Key', randomUUID())
         .send({ version: profile.version, status: 'draft' })
         .expect(409);
@@ -1512,7 +1521,7 @@ describe('Reusable shipping profiles (integration)', () => {
 
       // The published Product is untouched and its profile still prices checkouts.
       const detail = await seller.agent
-        .get(`${API_PREFIX}/shops/${seller.shopId}/products/${product.productId}`)
+        .get(`${API_PREFIX}/shops/${seller.shopPublicId}/products/${product.productId}`)
         .expect(200);
 
       expect(detail.body.shipping).toMatchObject({ profile_id: profile.id, checkout_ready: true });
@@ -1526,16 +1535,16 @@ describe('Reusable shipping profiles (integration)', () => {
       });
 
       await seller.agent
-        .post(`${API_PREFIX}/shops/${seller.shopId}/products/${digital.productId}/publish`)
+        .post(`${API_PREFIX}/shops/${seller.shopPublicId}/products/${digital.productId}/publish`)
         .set('Idempotency-Key', randomUUID())
         .expect(201);
 
       const beforeTransition = await seller.agent
-        .get(`${API_PREFIX}/shops/${seller.shopId}/products/${digital.productId}`)
+        .get(`${API_PREFIX}/shops/${seller.shopPublicId}/products/${digital.productId}`)
         .expect(200);
 
       const rejectedWithoutProfile = await seller.agent
-        .patch(`${API_PREFIX}/shops/${seller.shopId}/products/${digital.productId}/details`)
+        .patch(`${API_PREFIX}/shops/${seller.shopPublicId}/products/${digital.productId}/details`)
         .set('Idempotency-Key', randomUUID())
         .send({
           product_version: beforeTransition.body.product_version,
@@ -1550,11 +1559,11 @@ describe('Reusable shipping profiles (integration)', () => {
         seller, title: 'Draft digital', sku: 'DIGI-2', isDigital: true, 
       });
       const draftBefore = await seller.agent
-        .get(`${API_PREFIX}/shops/${seller.shopId}/products/${draftDigital.productId}`)
+        .get(`${API_PREFIX}/shops/${seller.shopPublicId}/products/${draftDigital.productId}`)
         .expect(200);
 
       await seller.agent
-        .patch(`${API_PREFIX}/shops/${seller.shopId}/products/${draftDigital.productId}/details`)
+        .patch(`${API_PREFIX}/shops/${seller.shopPublicId}/products/${draftDigital.productId}/details`)
         .set('Idempotency-Key', randomUUID())
         .send({ product_version: draftBefore.body.product_version, is_digital: false })
         .expect(200);
@@ -1564,11 +1573,11 @@ describe('Reusable shipping profiles (integration)', () => {
       expect((await assignProfile(seller, digital.productId, profile.id)).status).toBe(204);
 
       const readyProduct = await seller.agent
-        .get(`${API_PREFIX}/shops/${seller.shopId}/products/${digital.productId}`)
+        .get(`${API_PREFIX}/shops/${seller.shopPublicId}/products/${digital.productId}`)
         .expect(200);
 
       const transitioned = await seller.agent
-        .patch(`${API_PREFIX}/shops/${seller.shopId}/products/${digital.productId}/details`)
+        .patch(`${API_PREFIX}/shops/${seller.shopPublicId}/products/${digital.productId}/details`)
         .set('Idempotency-Key', randomUUID())
         .send({
           product_version: readyProduct.body.product_version,
@@ -1621,7 +1630,7 @@ describe('Reusable shipping profiles (integration)', () => {
       }
 
       const detail = await seller.agent
-        .get(`${API_PREFIX}/shops/${seller.shopId}/products/${product.productId}`)
+        .get(`${API_PREFIX}/shops/${seller.shopPublicId}/products/${product.productId}`)
         .expect(200);
 
       expect(detail.body.shipping).toBeUndefined();
@@ -1636,18 +1645,18 @@ describe('Reusable shipping profiles (integration)', () => {
 
       const [publishResponse, archiveResponse] = await Promise.all([
         seller.agent
-          .post(`${API_PREFIX}/shops/${seller.shopId}/products/${product.productId}/publish`)
+          .post(`${API_PREFIX}/shops/${seller.shopPublicId}/products/${product.productId}/publish`)
           .set('Idempotency-Key', randomUUID()),
         seller.agent
-          .post(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles/${profile.id}/archive`)
+          .post(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles/${profile.id}/archive`)
           .set('Idempotency-Key', randomUUID()),
       ]);
 
       const profileState = await seller.agent
-        .get(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles/${profile.id}`)
+        .get(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles/${profile.id}`)
         .expect(200);
       const productState = await seller.agent
-        .get(`${API_PREFIX}/shops/${seller.shopId}/products/${product.productId}`)
+        .get(`${API_PREFIX}/shops/${seller.shopPublicId}/products/${product.productId}`)
         .expect(200);
 
       expect(
@@ -1666,7 +1675,7 @@ describe('Reusable shipping profiles (integration)', () => {
   describe('default shipping profile', () => {
     async function listProfiles(seller: TestSeller): Promise<ShippingProfileResource[]> {
       const response = await seller.agent
-        .get(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles`)
+        .get(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles`)
         .expect(200);
 
       return response.body.results as ShippingProfileResource[];
@@ -1674,19 +1683,19 @@ describe('Reusable shipping profiles (integration)', () => {
 
     function setDefault(seller: TestSeller, profileId: string) {
       return seller.agent.put(
-        `${API_PREFIX}/shops/${seller.shopId}/shipping-profiles/${profileId}/default`,
+        `${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles/${profileId}/default`,
       );
     }
 
     function clearDefault(seller: TestSeller, profileId: string) {
       return seller.agent.delete(
-        `${API_PREFIX}/shops/${seller.shopId}/shipping-profiles/${profileId}/default`,
+        `${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles/${profileId}/default`,
       );
     }
 
     async function createDraftProfile(seller: TestSeller, name: string): Promise<ShippingProfileResource> {
       const response = await seller.agent
-        .post(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles`)
+        .post(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles`)
         .set('Idempotency-Key', randomUUID())
         .send({ ...createActiveProfileBody(name), status: 'draft' })
         .expect(201);
@@ -1723,7 +1732,7 @@ describe('Reusable shipping profiles (integration)', () => {
 
       const archived = await createActiveProfile(seller, 'Archived candidate');
       await seller.agent
-        .post(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles/${archived.id}/archive`)
+        .post(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles/${archived.id}/archive`)
         .set('Idempotency-Key', randomUUID())
         .expect(200);
 
@@ -1752,12 +1761,12 @@ describe('Reusable shipping profiles (integration)', () => {
       await setDefault(seller, profile.id).expect(200);
 
       await seller.agent
-        .post(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles/${profile.id}/archive`)
+        .post(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles/${profile.id}/archive`)
         .set('Idempotency-Key', randomUUID())
         .expect(200);
 
       const detail = await seller.agent
-        .get(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles/${profile.id}`)
+        .get(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles/${profile.id}`)
         .expect(200);
 
       expect(detail.body.status).toBe('archived');
@@ -1773,13 +1782,13 @@ describe('Reusable shipping profiles (integration)', () => {
       // Moving back to draft keeps the rates but makes the profile unable to
       // price a checkout, so it cannot stay the shop default.
       await seller.agent
-        .patch(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles/${profile.id}`)
+        .patch(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles/${profile.id}`)
         .set('Idempotency-Key', randomUUID())
         .send({ version: profile.version, status: 'draft' })
         .expect(200);
 
       const detail = await seller.agent
-        .get(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles/${profile.id}`)
+        .get(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles/${profile.id}`)
         .expect(200);
 
       expect(detail.body.checkout_ready).toBe(false);
@@ -1836,7 +1845,7 @@ describe('Reusable shipping profiles (integration)', () => {
       const product = await createProduct({ seller, title: 'Unassigned draft', sku: 'NOFALLBACK-1' });
 
       const detail = await seller.agent
-        .get(`${API_PREFIX}/shops/${seller.shopId}/products/${product.productId}`)
+        .get(`${API_PREFIX}/shops/${seller.shopPublicId}/products/${product.productId}`)
         .expect(200);
 
       expect(detail.body.shipping).toBeUndefined();

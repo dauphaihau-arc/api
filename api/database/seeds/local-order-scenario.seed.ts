@@ -215,13 +215,25 @@ async function loadShopBuckets(em: EntityManager): Promise<ShopBucket[]> {
     {},
     { populate: ['promotion', 'promotion.shop', 'promotion.products'] },
   );
+  const targetProductIds = [...new Set(promotionCodes.flatMap((code) =>
+    code.promotion.products.getItems().map((target) => target.productId)))];
+  const targetProducts = targetProductIds.length > 0
+    ? await em.find(ProductEntity, { id: { $in: targetProductIds } }, { fields: ['id', 'publicId'] })
+    : [];
+  const publicIdByProductId = new Map(targetProducts.map((product) => [product.id, product.publicId]));
   const promoOffersByShopSlug = new Map<string, PromoOffer[]>();
   const promoById = new Map<string, PromotionEntity>();
 
   promotionCodes.forEach((promotionCode) => {
     const shopSlug = promotionCode.promotion.shop.slug;
     const bucket = promoOffersByShopSlug.get(shopSlug) ?? [];
-    bucket.push(promotionCodeEntityToPromoOffer(promotionCode));
+    bucket.push(promotionCodeEntityToPromoOffer(
+      promotionCode,
+      promotionCode.promotion.products.getItems().flatMap((target) => {
+        const publicId = publicIdByProductId.get(target.productId);
+        return publicId ? [publicId] : [];
+      }),
+    ));
     promoOffersByShopSlug.set(shopSlug, bucket);
     promoById.set(promotionCode.promotion.id, promotionCode.promotion);
   });

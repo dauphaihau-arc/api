@@ -11,6 +11,7 @@ import {
   Query,
   Req,
   Res,
+  UseFilters,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -29,12 +30,9 @@ import {
 } from '~/platform/config/checkout.config';
 import { OptionalJwtAuthGuard } from '~/domains/auth/api/guard/optional-jwt-auth.guard';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
-import {
-  isPromotionAppError,
-  mapPromotionAppErrorToHttpException,
-} from '~/domains/promotion/api/rest/promotion-http-error-mapper';
 import type { PricedCartSummary } from '~/domains/order/app/order.types';
 import { CartUpdatePricingService } from '../../app/services/cart-update-pricing.service';
+import { CartPublicShopResolver } from '../../app/services/cart-public-shop-resolver.service';
 import { AddCartItemUseCase } from '../../app/use-cases/add-cart-item/add-cart-item.use-case';
 import { ApplyPromoCodeUseCase } from '../../app/use-cases/apply-promo-code/apply-promo-code.use-case';
 import { GetCartUseCase } from '../../app/use-cases/get-cart/get-cart.use-case';
@@ -49,7 +47,7 @@ import {
   type CartSnapshot,
 } from '../../app/cart.types';
 import { mapCartAppErrorToHttpException } from './cart-http-error-mapper';
-import { CartNotFoundError } from '../../app/errors/cart-app.error';
+import { CartExceptionsFilter } from './cart-exceptions.filter';
 import {
   toCartPromoCodeListResponse,
   toCartPromoCodeApplyResponse,
@@ -65,6 +63,7 @@ import { GuestCartSessionService } from './guest-cart-session.service';
 type CartRequest = Request & { user?: AuthenticatedUser | null };
 
 @Controller('cart')
+@UseFilters(CartExceptionsFilter)
 @UseGuards(OptionalJwtAuthGuard)
 @ApiTags('Cart')
 @ApiCookieAuth('accessCookie')
@@ -74,6 +73,7 @@ export class CartController {
     private readonly checkoutConfig: CheckoutConfig,
     private readonly cartUpdatePricingService: CartUpdatePricingService,
     private readonly guestCartSessionService: GuestCartSessionService,
+    private readonly cartPublicShopResolver: CartPublicShopResolver,
     private readonly getCartUseCase: GetCartUseCase,
     private readonly mergeGuestCartUseCase: MergeGuestCartUseCase,
     private readonly addCartItemUseCase: AddCartItemUseCase,
@@ -121,10 +121,12 @@ export class CartController {
       return toCartPromoCodeListResponse([]);
     }
 
+    const shopId = await this.cartPublicShopResolver.resolveShopId(query.shopId);
+
     const promoCodes = await this.listDiscoverablePromoCodesUseCase.execute({
       actor,
       cartId: query.cartId,
-      shopId: query.shopId,
+      shopId,
     });
 
     return toCartPromoCodeListResponse(promoCodes);
@@ -147,28 +149,17 @@ export class CartController {
       throw new NotFoundException('Cart not found');
     }
 
-    try {
-      const { promoCodes, appliedPromoCodes } = await this.applyPromoCodeUseCase.execute({
-        actor,
-        cartId: body.cartId,
-        shopId: body.shopId,
-        code: body.code,
-        promoCodes: body.promoCodes ?? [],
-      });
+    const shopId = await this.cartPublicShopResolver.resolveShopId(body.shopId);
 
-      return toCartPromoCodeApplyResponse(promoCodes, appliedPromoCodes);
-    }
-    catch (error) {
-      if (error instanceof CartNotFoundError) {
-        throw new NotFoundException('Cart not found');
-      }
+    const { promoCodes, appliedPromoCodes } = await this.applyPromoCodeUseCase.execute({
+      actor,
+      cartId: body.cartId,
+      shopId,
+      code: body.code,
+      promoCodes: body.promoCodes ?? [],
+    });
 
-      if (isPromotionAppError(error)) {
-        throw mapPromotionAppErrorToHttpException(error);
-      }
-
-      throw error;
-    }
+    return toCartPromoCodeApplyResponse(promoCodes, appliedPromoCodes);
   }
 
   @Post('items')
@@ -261,18 +252,7 @@ export class CartController {
 
       return this.buildResponse(
         cart,
-        priced
-          ? {
-            currency: priced.currency,
-            subtotalPrice: priced.subtotalPrice,
-            totalDiscount: priced.totalDiscount,
-            subtotalAfterDiscount: priced.subtotalAfterDiscount,
-            totalShippingFee: priced.totalShippingFee,
-            totalPrice: priced.totalPrice,
-            totalSelectedQuantity: priced.totalSelectedQuantity,
-            totalQuantity: priced.totalQuantity,
-          }
-          : undefined,
+        priced ? this.toPricedSummary(priced) : undefined,
         priced ? { shopDiscounts: this.toShopDiscounts(priced) } : undefined,
       );
     }
@@ -297,16 +277,7 @@ export class CartController {
 
     const priced = await this.buildPricedCartSummary(actor, cart, body);
 
-    return this.buildResponse(cart, {
-      currency: priced.currency,
-      subtotalPrice: priced.subtotalPrice,
-      totalDiscount: priced.totalDiscount,
-      subtotalAfterDiscount: priced.subtotalAfterDiscount,
-      totalShippingFee: priced.totalShippingFee,
-      totalPrice: priced.totalPrice,
-      totalSelectedQuantity: priced.totalSelectedQuantity,
-      totalQuantity: priced.totalQuantity,
-    }, {
+    return this.buildResponse(cart, this.toPricedSummary(priced), {
       shopDiscounts: this.toShopDiscounts(priced),
     });
   }
@@ -333,6 +304,19 @@ export class CartController {
       ownerType: actor.type,
       requiresSignInForCheckout: false,
     });
+  }
+
+  private toPricedSummary(priced: PricedCartSummary) {
+    return {
+      currency: priced.currency,
+      subtotalPrice: priced.subtotalPrice,
+      totalDiscount: priced.totalDiscount,
+      subtotalAfterDiscount: priced.subtotalAfterDiscount,
+      totalShippingFee: priced.totalShippingFee,
+      totalPrice: priced.totalPrice,
+      totalSelectedQuantity: priced.totalSelectedQuantity,
+      totalQuantity: priced.totalQuantity,
+    };
   }
 
   private toShopDiscounts(priced: PricedCartSummary) {
@@ -363,27 +347,23 @@ export class CartController {
     cart: CartSnapshot,
     body: UpdateCartItemDto,
   ): Promise<PricedCartSummary> {
-    try {
-      return await this.cartUpdatePricingService.buildPricedCartSummary({
-        actor,
-        cart,
-        additionInfoTempCart: body.additionInfoTempCart
-          ? {
-            promoCodes: body.additionInfoTempCart.promo_codes,
-            note: body.additionInfoTempCart.note,
-          }
-          : undefined,
-        additionInfoShopCarts: body.additionInfoShopCarts,
-      });
-    }
-    catch (error) {
-      if (isPromotionAppError(error)) {
-        throw mapPromotionAppErrorToHttpException(error);
-      }
+    const additionInfoShopCarts = body.additionInfoShopCarts
+      ? await this.cartPublicShopResolver.resolveShopAdjustments(body.additionInfoShopCarts)
+      : undefined;
 
-      throw error;
-    }
+    return await this.cartUpdatePricingService.buildPricedCartSummary({
+      actor,
+      cart,
+      additionInfoTempCart: body.additionInfoTempCart
+        ? {
+          promoCodes: body.additionInfoTempCart.promo_codes,
+          note: body.additionInfoTempCart.note,
+        }
+        : undefined,
+      additionInfoShopCarts,
+    });
   }
+
 
   private resolveReadActor(request: CartRequest): CartActor | null {
     if (request.user?.userId) {

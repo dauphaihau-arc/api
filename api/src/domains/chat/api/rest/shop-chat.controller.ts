@@ -7,6 +7,7 @@ import {
   Param,
   Post,
   Query,
+  UseFilters,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -21,7 +22,7 @@ import { RequirePermissions } from '~/platform/decorators/require-permissions.de
 import { JwtAuthGuard } from '~/domains/auth/api/guard/jwt-auth.guard';
 import { PermissionsGuard } from '~/domains/auth/api/guard/permissions.guard';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
-import { ShopAccessService } from '~/domains/shop/app/services/shop-access.service';
+import { ChatPublicReferenceService } from '../../app/services/chat-public-reference.service';
 import {
   buildChatConversationListQuery,
   buildChatMessageListQuery,
@@ -40,19 +41,17 @@ import {
   toChatMessageListResponse,
   toChatMessageResponse,
 } from './chat.response';
-import {
-  isChatAppError,
-  mapChatAppErrorToHttpException,
-} from './chat-http-error-mapper';
+import { ChatExceptionsFilter } from './chat-exceptions.filter';
 
 @Controller('shops/:shop_id/chat')
+@UseFilters(ChatExceptionsFilter)
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @RequirePermissions('shops.manage')
 @ApiTags('Shop Chat')
 @ApiCookieAuth('accessCookie')
 export class ShopChatController {
   constructor(
-    private readonly shopAccessService: ShopAccessService,
+    private readonly chatPublicReferenceService: ChatPublicReferenceService,
     private readonly listShopChatConversationsUseCase: ListShopChatConversationsUseCase,
     private readonly getShopChatUnreadCountUseCase: GetShopChatUnreadCountUseCase,
     private readonly getShopChatMessagesUseCase: GetShopChatMessagesUseCase,
@@ -67,10 +66,10 @@ export class ShopChatController {
   @ApiOkResponse({ description: 'Chat conversation list.', schema: { type: 'object' } })
   async listConversations(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('shop_id') shopId: string,
+    @Param('shop_id') shopPublicId: string,
     @Query() query: ListChatConversationsQueryDto,
   ) {
-    await this.shopAccessService.assertCanManageShop(currentUser, shopId);
+    const shopId = await this.chatPublicReferenceService.resolveManageableShop(currentUser, shopPublicId);
 
     return toChatConversationListResponse(
       await this.listShopChatConversationsUseCase.execute(
@@ -87,9 +86,9 @@ export class ShopChatController {
   @ApiOkResponse({ description: 'Unread chat count.', schema: { type: 'object' } })
   async unreadCount(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('shop_id') shopId: string,
+    @Param('shop_id') shopPublicId: string,
   ) {
-    await this.shopAccessService.assertCanManageShop(currentUser, shopId);
+    const shopId = await this.chatPublicReferenceService.resolveManageableShop(currentUser, shopPublicId);
 
     return {
       unread_count: await this.getShopChatUnreadCountUseCase.execute(shopId),
@@ -104,24 +103,22 @@ export class ShopChatController {
   @ApiOkResponse({ description: 'Chat message list.', schema: { type: 'object' } })
   async listMessages(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('shop_id') shopId: string,
-    @Param('conversation_id') conversationId: string,
+    @Param('shop_id') shopPublicId: string,
+    @Param('conversation_id') conversationPublicId: string,
     @Query() query: ListChatMessagesQueryDto,
   ) {
-    await this.shopAccessService.assertCanManageShop(currentUser, shopId);
-
-    try {
-      return toChatMessageListResponse(
-        await this.getShopChatMessagesUseCase.execute(
-          shopId,
-          conversationId,
-          buildChatMessageListQuery(query),
-        ),
-      );
-    }
-    catch (error) {
-      this.throwMappedChatError(error);
-    }
+    const { shopId, conversationId } = await this.chatPublicReferenceService.resolveManageableConversationId(
+      currentUser,
+      shopPublicId,
+      conversationPublicId,
+    );
+    return toChatMessageListResponse(
+      await this.getShopChatMessagesUseCase.execute(
+        shopId,
+        conversationId,
+        buildChatMessageListQuery(query),
+      ),
+    );
   }
 
   @Patch('conversations/:conversation_id/read')
@@ -132,21 +129,19 @@ export class ShopChatController {
   @ApiOkResponse({ description: 'Updated chat conversation.', schema: { type: 'object' } })
   async markConversationRead(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('shop_id') shopId: string,
-    @Param('conversation_id') conversationId: string,
+    @Param('shop_id') shopPublicId: string,
+    @Param('conversation_id') conversationPublicId: string,
   ) {
-    await this.shopAccessService.assertCanManageShop(currentUser, shopId);
-
-    try {
-      return {
-        conversation: toChatConversationResponse(
-          await this.markShopChatConversationReadUseCase.execute(shopId, conversationId),
-        ),
-      };
-    }
-    catch (error) {
-      this.throwMappedChatError(error);
-    }
+    const { shopId, conversationId } = await this.chatPublicReferenceService.resolveManageableConversationId(
+      currentUser,
+      shopPublicId,
+      conversationPublicId,
+    );
+    return {
+      conversation: toChatConversationResponse(
+        await this.markShopChatConversationReadUseCase.execute(shopId, conversationId),
+      ),
+    };
   }
 
   @Post('conversations/:conversation_id/messages')
@@ -157,34 +152,24 @@ export class ShopChatController {
   @ApiOkResponse({ description: 'Created chat message.', schema: { type: 'object' } })
   async sendMessage(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('shop_id') shopId: string,
-    @Param('conversation_id') conversationId: string,
+    @Param('shop_id') shopPublicId: string,
+    @Param('conversation_id') conversationPublicId: string,
     @Body() body: SendChatMessageDto,
   ) {
-    await this.shopAccessService.assertCanManageShop(currentUser, shopId);
-
-    try {
-      return {
-        message: toChatMessageResponse(
-          await this.sendShopChatMessageUseCase.execute(
-            currentUser,
-            shopId,
-            conversationId,
-            body,
-          ),
+    const { shopId, conversationId } = await this.chatPublicReferenceService.resolveManageableConversationId(
+      currentUser,
+      shopPublicId,
+      conversationPublicId,
+    );
+    return {
+      message: toChatMessageResponse(
+        await this.sendShopChatMessageUseCase.execute(
+          currentUser,
+          shopId,
+          conversationId,
+          body,
         ),
-      };
-    }
-    catch (error) {
-      this.throwMappedChatError(error);
-    }
-  }
-
-  private throwMappedChatError(error: unknown): never {
-    if (isChatAppError(error)) {
-      throw mapChatAppErrorToHttpException(error);
-    }
-
-    throw error;
+      ),
+    };
   }
 }

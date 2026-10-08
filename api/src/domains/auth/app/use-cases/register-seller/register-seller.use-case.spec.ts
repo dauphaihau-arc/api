@@ -58,6 +58,8 @@ describe('RegisterSellerUseCase', () => {
         currency: 'USD',
       }),
       findById: jest.fn(),
+      findByPublicId: jest.fn(),
+      findByPublicIds: jest.fn(),
       findByOwnerUserId: jest.fn(),
       findByShopName: jest.fn().mockResolvedValue(null),
       findBySlug: jest.fn().mockResolvedValue(null),

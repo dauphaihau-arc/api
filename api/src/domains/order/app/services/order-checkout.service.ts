@@ -58,7 +58,6 @@ import {
   toPersistedOrderShippingSnapshot,
 } from '../../../checkout/app/checkout-shipping-snapshot.contract';
 import { ShippingQuoteService } from '../../../shipping/app/services/shipping-quote.service';
-import type { ShippingQuoteUnavailableProduct } from '../../../shipping/app/shipping.types';
 import { OrderInventoryOutboxService } from './order-inventory-outbox.service';
 import { OrderEventsService } from './order-events.service';
 import {
@@ -122,8 +121,10 @@ interface CheckoutCommitResult {
   reservedProductIds: string[];
   orderShops: Array<{
     id: string;
+    publicId: string;
     orderNumber: string;
     shopId: string;
+    shopPublicId: string;
     shopName: string;
     shopSlug: string;
     ownerUserId?: string | null;
@@ -471,8 +472,10 @@ export class OrderCheckoutService {
       reservedProductIds: [...new Set(reservationItems.map((item) => item.productId))],
       orderShops: createdOrders.map((order) => ({
         id: order.id,
+        publicId: order.publicId,
         orderNumber: getRequiredOrderNumber(order),
         shopId: order.shop.id,
+        shopPublicId: order.shop.publicId,
         shopName: order.shop.shopName,
         shopSlug: order.shop.slug,
         ownerUserId: getSellerOrderNotificationRecipientId(order),
@@ -795,8 +798,9 @@ export class OrderCheckoutService {
 
   private notifySellersAfterCheckout(orderShops: Array<{
     id: string;
+    publicId: string;
     orderNumber: string;
-    shopId: string;
+    shopPublicId: string;
     ownerUserId?: string | null;
   }>): void {
     for (const orderShop of orderShops) {
@@ -809,13 +813,13 @@ export class OrderCheckoutService {
         void this.notifyUserUseCase.execute(
           buildSellerOrderCreatedNotification(
             ownerUserId,
-            orderShop.id,
+            orderShop.publicId,
             orderShop.orderNumber,
-            orderShop.shopId,
+            orderShop.shopPublicId,
           ),
         ).catch((error) => {
           this.logger.error(
-            `Failed to schedule seller order notification for order ${orderShop.id}`,
+            `Failed to schedule seller order notification for order ${orderShop.publicId}`,
             error instanceof Error ? error.stack : undefined,
           );
         });
@@ -836,6 +840,7 @@ export class OrderCheckoutService {
   ): Promise<void> {
     const units = quote.items.map((item) => ({
       productId: item.productId,
+      productPublicId: item.productPublicId,
       inventoryId: item.inventoryId,
       quantity: item.quantity,
     }));
@@ -849,7 +854,7 @@ export class OrderCheckoutService {
       resolutions.map((resolution) => [resolution.productId, resolution]),
     );
 
-    const unavailable: ShippingQuoteUnavailableProduct[] = [];
+    const unavailable: ConstructorParameters<typeof CheckoutShippingUnavailableError>[0] = [];
 
     for (const unit of units) {
       const resolution = resolutionByProductId.get(unit.productId);
@@ -860,6 +865,7 @@ export class OrderCheckoutService {
 
       unavailable.push({
         productId: unit.productId,
+        productPublicId: unit.productPublicId,
         inventoryId: unit.inventoryId,
         quantity: unit.quantity,
         reason: resolution?.reason ?? 'missing_assignment',
@@ -887,7 +893,20 @@ export class OrderCheckoutService {
       { populate: ['promotion', 'promotion.products'] },
     );
 
-    return promotionCodes.map(promotionCodeEntityToPromoOffer);
+    const productIds = [...new Set(promotionCodes.flatMap((code) =>
+      code.promotion.products.getItems().map((product) => product.productId)))];
+    const products = productIds.length > 0
+      ? await entityManager.getRepository(ProductEntity).find({ id: { $in: productIds } }, { fields: ['id', 'publicId'] })
+      : [];
+    const publicIdByProductId = new Map(products.map((product) => [product.id, product.publicId]));
+    return promotionCodes.map((code) => promotionCodeEntityToPromoOffer(
+      code,
+      code.promotion.products.getItems().map((product) => {
+        const publicId = publicIdByProductId.get(product.productId);
+        if (!publicId) throw new Error('Promotion product public id is required');
+        return publicId;
+      }),
+    ));
   }
 
   private async loadInventoryById(

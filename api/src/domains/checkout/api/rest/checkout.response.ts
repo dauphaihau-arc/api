@@ -7,8 +7,8 @@ import type {
 import type { CheckoutConfig } from '~/platform/config/checkout.config';
 import { getMaxOrderTotalMinor } from '~/platform/config/checkout.config';
 import {
-  toPersistedShippingDiscount,
-  toPersistedShippingQuote,
+  toPublicShippingDiscount,
+  toPublicShippingQuote,
 } from '../../app/checkout-shipping-snapshot.contract';
 import { toOrderShippingResponse } from '../../../order/api/rest/order.response';
 function toCheckoutFulfillmentResponse(fulfillment: OrderFulfillmentSummary) {
@@ -38,7 +38,7 @@ function toCheckoutFulfillmentResponse(fulfillment: OrderFulfillmentSummary) {
       })),
       progress: toProgressResponse(group.progress),
       shipments: group.shipments.map((shipment) => ({
-        id: shipment.id,
+        id: shipment.publicId,
         group_id: shipment.groupId,
         status: shipment.status,
         carrier: shipment.carrier,
@@ -86,10 +86,10 @@ export function toCreateOrderResponse(result: CreateOrderResult) {
     checkout_session_url: result.checkoutSessionUrl,
     checkout_pending: result.checkoutPending ?? false,
     order_shops: result.orderShops.map((orderShop) => ({
-      id: orderShop.id,
+      id: orderShop.publicId,
       order_number: orderShop.orderNumber,
       shop: {
-        id: orderShop.shopId,
+        id: orderShop.shopPublicId,
         shop_name: orderShop.shopName,
         slug: orderShop.shopSlug,
       },
@@ -124,7 +124,7 @@ export function toCheckoutQuoteResponse(
       ? { shipping_anchor_at: result.shippingAnchorAt }
       : {}),
     shops: result.shops.map((shop) => ({
-      shop_id: shop.shopId,
+      shop_id: shop.shopPublicId,
       shop_name: shop.shopName,
       shop_slug: shop.shopSlug,
       subtotal_minor: shop.subtotalMinor,
@@ -136,8 +136,8 @@ export function toCheckoutQuoteResponse(
       note: shop.note,
       promo_codes: shop.promoCodes,
       origin_countries: shop.originCountries,
-      ...(shop.shipping ? { shipping: toPersistedShippingQuote(shop.shipping) } : {}),
-      shipping_discounts: shop.shippingDiscounts.map(toPersistedShippingDiscount),
+      ...(shop.shipping ? { shipping: toPublicShippingQuote(shop.shipping, shop.shopPublicId, shop.items) } : {}),
+      shipping_discounts: shop.shippingDiscounts.map(toPublicShippingDiscount),
     })),
     expires_at: result.expiresAt,
     items: result.items.map((item) => ({
@@ -173,8 +173,10 @@ export function toCheckoutQuoteResponse(
 export function toCheckoutSessionOrderResponse(result: CreateOrderResult) {
   return {
     order_shops: result.orderShops.map((orderShop) => ({
+      id: orderShop.publicId,
       order_number: orderShop.orderNumber,
       shop: {
+        id: orderShop.shopPublicId,
         shop_name: orderShop.shopName,
         slug: orderShop.shopSlug,
       },
@@ -185,10 +187,10 @@ export function toCheckoutSessionOrderResponse(result: CreateOrderResult) {
 export function toCheckoutOrderListResponse(result: OrderListResult) {
   return {
     order_shops: result.orderShops.map((orderShop) => ({
-      id: orderShop.id,
+      id: orderShop.publicId,
       order_number: orderShop.orderNumber,
       shop: {
-        id: orderShop.shopId,
+        id: orderShop.shopPublicId,
         shop_name: orderShop.shopName,
         slug: orderShop.shopSlug,
       },
@@ -205,7 +207,7 @@ export function toCheckoutOrderListResponse(result: OrderListResult) {
       status: orderShop.status,
       products: orderShop.products.map((product) => ({
         product: {
-          id: product.productId,
+          id: product.productPublicId,
           slug: product.slug,
           shop: {
             slug: product.shopSlug,
@@ -241,7 +243,7 @@ export function toCheckoutOrderListResponse(result: OrderListResult) {
       currency: orderShop.currency,
       subtotal_minor: orderShop.subtotalMinor,
       shipping_minor: orderShop.shippingMinor,
-      ...toOrderShippingResponse(orderShop.shippingQuote),
+      ...toOrderShippingResponse(orderShop.shippingQuote, orderShop.shopPublicId, orderShop.products),
       discount_minor: orderShop.discountMinor,
       total_minor: orderShop.totalMinor,
       note: orderShop.note,

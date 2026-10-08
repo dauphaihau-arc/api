@@ -79,10 +79,10 @@ export class ShopShippingProfilesController {
   @ApiOkResponse({ description: 'Shop shipping profiles.', schema: { type: 'object' } })
   async profiles(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('shop_id') shopId: string,
+    @Param('shop_id') shopPublicId: string,
     @Query() query: ListShippingProfilesQueryDto,
   ): Promise<ShippingProfileListResponse> {
-    await this.shopAccessService.assertCanManageShop(currentUser, shopId);
+    const { id: shopId } = await this.shopAccessService.resolveManageableShopByPublicId(currentUser, shopPublicId);
 
     const result = await this.listShippingProfilesUseCase.execute(shopId, {
       page: query.page,
@@ -107,10 +107,10 @@ export class ShopShippingProfilesController {
   @ApiCreatedResponse({ description: 'Created shipping profile.', schema: { type: 'object' } })
   async create(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('shop_id') shopId: string,
+    @Param('shop_id') shopPublicId: string,
     @Body() body: CreateShippingProfileDto,
   ): Promise<ShippingProfileResponse> {
-    await this.shopAccessService.assertCanManageShop(currentUser, shopId);
+    const { id: shopId } = await this.shopAccessService.resolveManageableShopByPublicId(currentUser, shopPublicId);
 
     const result = await this.createShippingProfileUseCase.execute(shopId, {
       name: body.name,
@@ -137,10 +137,10 @@ export class ShopShippingProfilesController {
   @ApiOkResponse({ description: 'Shipping profile.', schema: { type: 'object' } })
   async profile(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('shop_id') shopId: string,
+    @Param('shop_id') shopPublicId: string,
     @Param('shipping_profile_id') shippingProfileId: string,
   ): Promise<ShippingProfileResponse> {
-    await this.shopAccessService.assertCanManageShop(currentUser, shopId);
+    const { id: shopId } = await this.shopAccessService.resolveManageableShopByPublicId(currentUser, shopPublicId);
 
     const result = await this.getShippingProfileUseCase.execute(shopId, shippingProfileId);
 
@@ -161,11 +161,11 @@ export class ShopShippingProfilesController {
   @ApiOkResponse({ description: 'Updated shipping profile.', schema: { type: 'object' } })
   async update(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('shop_id') shopId: string,
+    @Param('shop_id') shopPublicId: string,
     @Param('shipping_profile_id') shippingProfileId: string,
     @Body() body: UpdateShippingProfileDto,
   ): Promise<ShippingProfileResponse> {
-    await this.shopAccessService.assertCanManageShop(currentUser, shopId);
+    const { id: shopId } = await this.shopAccessService.resolveManageableShopByPublicId(currentUser, shopPublicId);
 
     const result = await this.updateShippingProfileUseCase.execute(shopId, shippingProfileId, {
       version: body.version,
@@ -196,10 +196,10 @@ export class ShopShippingProfilesController {
   @ApiOkResponse({ description: 'Archived shipping profile.', schema: { type: 'object' } })
   async archive(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('shop_id') shopId: string,
+    @Param('shop_id') shopPublicId: string,
     @Param('shipping_profile_id') shippingProfileId: string,
   ): Promise<ShippingProfileResponse> {
-    await this.shopAccessService.assertCanManageShop(currentUser, shopId);
+    const { id: shopId } = await this.shopAccessService.resolveManageableShopByPublicId(currentUser, shopPublicId);
 
     const result = await this.archiveShippingProfileUseCase.execute(shopId, shippingProfileId);
 
@@ -219,10 +219,10 @@ export class ShopShippingProfilesController {
   @ApiOkResponse({ description: 'Designated shipping profile.', schema: { type: 'object' } })
   async setDefault(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('shop_id') shopId: string,
+    @Param('shop_id') shopPublicId: string,
     @Param('shipping_profile_id') shippingProfileId: string,
   ): Promise<ShippingProfileResponse> {
-    await this.shopAccessService.assertCanManageShop(currentUser, shopId);
+    const { id: shopId } = await this.shopAccessService.resolveManageableShopByPublicId(currentUser, shopPublicId);
 
     const result = await this.setDefaultShippingProfileUseCase.execute(shopId, shippingProfileId);
 
@@ -242,10 +242,10 @@ export class ShopShippingProfilesController {
   @ApiOkResponse({ description: 'Shipping profile with no default designation.', schema: { type: 'object' } })
   async clearDefault(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('shop_id') shopId: string,
+    @Param('shop_id') shopPublicId: string,
     @Param('shipping_profile_id') shippingProfileId: string,
   ): Promise<ShippingProfileResponse> {
-    await this.shopAccessService.assertCanManageShop(currentUser, shopId);
+    const { id: shopId } = await this.shopAccessService.resolveManageableShopByPublicId(currentUser, shopPublicId);
 
     const result = await this.clearDefaultShippingProfileUseCase.execute(shopId, shippingProfileId);
 
@@ -265,11 +265,11 @@ export class ShopShippingProfilesController {
   @ApiOkResponse({ description: 'Shipping rate preview.', schema: { type: 'object' } })
   async preview(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('shop_id') shopId: string,
+    @Param('shop_id') shopPublicId: string,
     @Param('shipping_profile_id') shippingProfileId: string,
     @Body() body: PreviewShippingProfileDto,
   ): Promise<ShippingRatePreviewResponse> {
-    await this.shopAccessService.assertCanManageShop(currentUser, shopId);
+    const { id: shopId } = await this.shopAccessService.resolveManageableShopByPublicId(currentUser, shopPublicId);
 
     const result = await this.previewShippingProfileUseCase.execute(shopId, shippingProfileId, {
       countryCode: body.countryCode,

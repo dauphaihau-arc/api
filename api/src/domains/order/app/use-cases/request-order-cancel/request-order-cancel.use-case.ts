@@ -141,8 +141,10 @@ export class RequestOrderCancelUseCase {
         refundRequested,
         inventoryEvents,
         id: order.id,
+        publicId: order.publicId,
         orderNumber: getRequiredOrderNumber(order),
         shopId: order.shop.id,
+        shopPublicId: order.shop.publicId,
         sellerUserId: getSellerOrderNotificationRecipientId(order),
         shopName: order.shop.shopName,
         shopSlug: order.shop.slug,
@@ -153,6 +155,7 @@ export class RequestOrderCancelUseCase {
         products: items.map((item) => ({
           id: item.id,
           productId: item.product.id,
+          productPublicId: item.product.publicId,
           slug: item.product.slug,
           shopSlug: item.product.shop.slug,
           title: item.title,
@@ -203,7 +206,7 @@ export class RequestOrderCancelUseCase {
 
     this.eventEmitter.emit(ORDER_UPDATED_SSE_EVENT, {
       userId: actor.userId,
-      orderId: result.id,
+      orderId: result.publicId,
       changed: ['status', 'fulfillment'],
       status: result.status,
     });
@@ -266,9 +269,9 @@ export class RequestOrderCancelUseCase {
       await this.notifyUserUseCase.execute(
         buildSellerOrderCancelRequestedNotification(
           result.sellerUserId,
-          result.id,
+          result.publicId,
           result.orderNumber,
-          result.shopId,
+          result.shopPublicId,
         ),
       );
     }

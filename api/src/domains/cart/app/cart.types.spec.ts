@@ -17,8 +17,10 @@ describe('buildCartResponse', () => {
           inventory: {
             inventoryId: 'inventory-1',
             productId: 'product-1',
+            productPublicId: 'prod_1',
             productSlug: 'mug',
             shopId: 'shop-1',
+            shopPublicId: 'shop_1',
             shopName: 'Clay House',
             shopSlug: 'clay-house',
             title: 'Mug',
@@ -43,8 +45,10 @@ describe('buildCartResponse', () => {
           inventory: {
             inventoryId: 'inventory-2',
             productId: 'product-2',
+            productPublicId: 'prod_2',
             productSlug: 'bowl',
             shopId: 'shop-1',
+            shopPublicId: 'shop_1',
             shopName: 'Clay House',
             shopSlug: 'clay-house',
             title: 'Bowl',
@@ -70,7 +74,7 @@ describe('buildCartResponse', () => {
         shop_groups: [
           {
             shop: {
-              id: 'shop-1',
+              id: 'shop_1',
               name: 'Clay House',
             },
             items: [
@@ -80,7 +84,7 @@ describe('buildCartResponse', () => {
                 is_selected: true,
                 unit_price_minor: 1500,
                 product: {
-                  id: 'product-1',
+                  id: 'prod_1',
                   slug: 'mug',
                   shop: {
                     slug: 'clay-house',
@@ -104,7 +108,7 @@ describe('buildCartResponse', () => {
                 is_selected: false,
                 unit_price_minor: 1800,
                 product: {
-                  id: 'product-2',
+                  id: 'prod_2',
                   slug: 'bowl',
                   shop: {
                     slug: 'clay-house',
@@ -133,7 +137,7 @@ describe('buildCartResponse', () => {
           {
             item_id: 'item-1',
             product: {
-              id: 'product-1',
+              id: 'prod_1',
               slug: 'mug',
               shop: {
                 slug: 'clay-house',
@@ -149,7 +153,7 @@ describe('buildCartResponse', () => {
           {
             item_id: 'item-2',
             product: {
-              id: 'product-2',
+              id: 'prod_2',
               slug: 'bowl',
               shop: {
                 slug: 'clay-house',
@@ -203,8 +207,10 @@ describe('buildCartResponse', () => {
           inventory: {
             inventoryId: 'inventory-3',
             productId: 'product-3',
+            productPublicId: 'prod_3',
             productSlug: 'studio-pullover-hoodie',
             shopId: 'shop-2',
+            shopPublicId: 'shop_2',
             shopName: 'Reed Workshop',
             shopSlug: 'reed-workshop',
             title: 'Studio Pullover Hoodie',
@@ -244,8 +250,10 @@ describe('buildCartResponse', () => {
           inventory: {
             inventoryId: 'inventory-4',
             productId: 'product-4',
+            productPublicId: 'prod_4',
             productSlug: 'travel-mug',
             shopId: 'shop-3',
+            shopPublicId: 'shop_3',
             shopName: 'North Studio',
             shopSlug: 'north-studio',
             title: 'Travel Mug',
@@ -290,8 +298,10 @@ describe('buildCartResponse', () => {
           inventory: {
             inventoryId: 'inventory-5',
             productId: 'product-5',
+            productPublicId: 'prod_5',
             productSlug: 'linen-shirt',
             shopId: 'shop-4',
+            shopPublicId: 'shop_4',
             shopName: 'South Studio',
             shopSlug: 'south-studio',
             title: 'Linen Shirt',
@@ -358,8 +368,10 @@ describe('buildCartResponse', () => {
           inventory: {
             inventoryId: 'inventory-6',
             productId: 'product-6',
+            productPublicId: 'prod_6',
             productSlug: 'canvas-tote',
             shopId: 'shop-5',
+            shopPublicId: 'shop_5',
             shopName: 'West Studio',
             shopSlug: 'west-studio',
             title: 'Canvas Tote',

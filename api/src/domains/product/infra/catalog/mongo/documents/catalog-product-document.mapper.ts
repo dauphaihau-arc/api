@@ -8,8 +8,9 @@ import type { PublicProductShippingDestinationSummary } from '../../../../app/pr
 export interface CatalogProductDocument {
   _id: string;
   productId: string;
+  productPublicId: string;
   shopId: string;
-  shopPublicId?: string;
+  shopPublicId: string;
   shopSlug: string;
   shopName: string;
   categoryId?: string;
@@ -215,6 +216,7 @@ export function toCatalogProductDocument(
   return {
     _id: product.id,
     productId: product.id,
+    productPublicId: product.publicId,
     shopId: product.shop.id,
     shopPublicId: product.shop.publicId,
     shopSlug: product.shop.slug,

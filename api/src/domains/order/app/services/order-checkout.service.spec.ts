@@ -49,6 +49,7 @@ describe('OrderCheckoutService', () => {
     shops: [
       {
         shopId: 'shop-1',
+        shopPublicId: 'shop_public1',
         shopName: 'Shop 1',
         items: [
           {
@@ -111,6 +112,7 @@ describe('OrderCheckoutService', () => {
     };
     const shop = {
       id: 'shop-1',
+      publicId: 'shop_1',
       shopName: 'Shop 1',
       slug: 'shop-1',
       ownerUser: {
@@ -122,6 +124,7 @@ describe('OrderCheckoutService', () => {
       create: jest.fn((input: Record<string, unknown>) => {
         const order = {
           id: `order-${orders.length + 1}`,
+          publicId: `ord_${orders.length + 1}`,
           orderNumber: `ORD-20260604-00000${orders.length + 1}`,
           ...input,
         };
@@ -418,9 +421,9 @@ describe('OrderCheckoutService', () => {
       body: 'Order ORD-20260604-000001 has been placed.',
       data: expect.objectContaining({
         target: 'seller_order_detail',
-        orderId: 'order-1',
+        orderId: 'ord_1',
         orderNumber: 'ORD-20260604-000001',
-        shopId: 'shop-1',
+        shopId: 'shop_1',
       }),
     }));
     expect(result.checkoutSessionUrl).toBe('https://stripe.test/session-1');
@@ -605,6 +608,7 @@ describe('OrderCheckoutService', () => {
       pricedCartSummary: buildPricedCartSummaryMatchingQuote({
         shops: [{
           shopId: 'shop-1',
+          shopPublicId: 'shop_public1',
           shopName: 'Shop 1',
           subtotalMinor: 1800,
           discountMinor: 0,
@@ -647,6 +651,7 @@ describe('OrderCheckoutService', () => {
           shops: [
             {
               shopId: 'shop-1',
+              shopPublicId: 'shop_public1',
               shopName: 'Shop 1',
               shopSlug: 'shop-1',
               subtotalMinor: 1800,
@@ -662,7 +667,9 @@ describe('OrderCheckoutService', () => {
                 {
                   inventoryId: 'inventory-1',
                   productId: 'product-1',
+                  productPublicId: 'prod_public1',
                   shopId: 'shop-1',
+                  shopPublicId: 'shop_public1',
                   shopName: 'Shop 1',
                   shopSlug: 'shop-1',
                   title: 'Product 1',
@@ -696,7 +703,9 @@ describe('OrderCheckoutService', () => {
             {
               inventoryId: 'inventory-1',
               productId: 'product-1',
+              productPublicId: 'prod_public1',
               shopId: 'shop-1',
+              shopPublicId: 'shop_public1',
               shopName: 'Shop 1',
               shopSlug: 'shop-1',
               title: 'Product 1',
@@ -961,6 +970,7 @@ describe('OrderCheckoutService', () => {
     quote: {
       shops: Array<{
         shopId: string;
+        shopPublicId: string;
         shopName: string;
         subtotalMinor: number;
         discountMinor: number;
@@ -975,6 +985,7 @@ describe('OrderCheckoutService', () => {
   ): PricedCartSummary {
     const shops = quote.shops.map((shop) => ({
       shopId: shop.shopId,
+      shopPublicId: shop.shopPublicId,
       shopName: shop.shopName,
       items: shop.items.map((item) => ({
         inventoryId: item.inventoryId,
@@ -1028,6 +1039,7 @@ describe('OrderCheckoutService', () => {
       shops: [
         {
           shopId: 'shop-1',
+          shopPublicId: 'shop_public1',
           shopName: 'Shop 1',
           shopSlug: 'shop-1',
           subtotalMinor: 1800,
@@ -1044,6 +1056,7 @@ describe('OrderCheckoutService', () => {
             {
               inventoryId: 'inventory-1',
               productId: 'product-1',
+              productPublicId: 'prod_public1',
               shopId: 'shop-1',
               shopName: 'Shop 1',
               shopSlug: 'shop-1',
@@ -1072,7 +1085,9 @@ describe('OrderCheckoutService', () => {
         {
           inventoryId: 'inventory-1',
           productId: 'product-1',
+          productPublicId: 'prod_public1',
           shopId: 'shop-1',
+          shopPublicId: 'shop_public1',
           shopName: 'Shop 1',
           shopSlug: 'shop-1',
           title: 'Product 1',
@@ -1091,7 +1106,7 @@ describe('OrderCheckoutService', () => {
           lineTotalMinor: 1800,
           promoDiscountMinor: 0,
           currency: 'USD',
-          selectedOptions: [],
+          selectedOptions: [], 
         },
       ],
     };

@@ -22,7 +22,9 @@ describe('CreateProductDraftFacadeUseCase', () => {
 
   const draft: ProductDraftSummary = {
     id: 'product-1',
+    publicId: 'public-product-1',
     shopId: 'shop-1',
+    shopPublicId: 'public-shop-1',
     categoryId: 'category-1',
     title: 'Handmade Mug',
     slug: 'handmade-mug',

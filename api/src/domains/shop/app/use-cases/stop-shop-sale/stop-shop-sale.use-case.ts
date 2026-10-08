@@ -17,6 +17,7 @@ import {
 } from '../../errors/shop-app.error';
 import type { ShopSaleSummary } from '../../shop.types';
 import { toShopSaleSummary } from '../../sale-summary';
+import { loadProductReferences, selectProductReferences } from '../../product-reference';
 import { dispatchShopProjection } from '../shop-promotion-catalog-projection';
 
 /**
@@ -41,7 +42,7 @@ export class StopShopSaleUseCase {
   async execute(
     actor: AuthenticatedUser,
     shopId: string,
-    saleId: string,
+    salePublicId: string,
     action: ShopSaleStopAction,
   ): Promise<ShopSaleSummary> {
     const entityManager = this.entityManager.fork();
@@ -60,7 +61,7 @@ export class StopShopSaleUseCase {
     }
 
     const promotion = await entityManager.getRepository(PromotionEntity).findOne(
-      { id: saleId, shop: shopId, applicationKind: PromotionApplicationKind.SALE },
+      { publicId: salePublicId, shop: shopId, applicationKind: PromotionApplicationKind.SALE },
       { populate: ['shop', 'products'] },
     );
 
@@ -88,12 +89,14 @@ export class StopShopSaleUseCase {
     await entityManager.flush();
 
     await this.dispatchProjection(promotion, action);
+    const productIds = promotion.products.getItems().map((target) => target.productId);
+    const referencesById = await loadProductReferences(entityManager, productIds);
 
     return toShopSaleSummary(
       promotion,
       promotion.productScope === PromotionProductScope.ALL
         ? []
-        : promotion.products.getItems().map((target) => target.productId),
+        : selectProductReferences(productIds, referencesById),
       now,
     );
   }

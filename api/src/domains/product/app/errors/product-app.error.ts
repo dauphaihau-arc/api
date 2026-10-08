@@ -104,6 +104,7 @@ export class ProductDraftIncompleteError extends ProductAppError {
       | 'inventory'
       | 'shipping',
     message: string,
+    public readonly productPublicId: string,
   ) {
     super(message);
   }

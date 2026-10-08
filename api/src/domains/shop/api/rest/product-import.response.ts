@@ -20,7 +20,7 @@ export function toShopProductImportResponse(
   productImport: ProductImportSummary,
 ): ShopProductImportResponse {
   return {
-    id: productImport.id,
+    id: productImport.publicId,
     status: productImport.status,
     filename: productImport.filename,
     template_version: productImport.templateVersion,

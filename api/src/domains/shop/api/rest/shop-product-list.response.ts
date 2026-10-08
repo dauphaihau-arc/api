@@ -1,9 +1,7 @@
 export type ShopProductListResponse = {
   items: Array<{
     id: string;
-    public_id?: string;
     shop_id: string;
-    shop_public_id?: string;
     category_id?: string;
     title: string;
     slug: string;

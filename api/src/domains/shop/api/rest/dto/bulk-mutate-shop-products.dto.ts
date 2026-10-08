@@ -5,6 +5,7 @@ import {
   IsEnum,
   IsOptional,
   IsString,
+  Matches,
 } from 'class-validator';
 import { BulkMutateShopProductsAction } from '../../../../product/app/use-cases/bulk-mutate-shop-products/bulk-mutate-shop-products.use-case';
 
@@ -12,6 +13,7 @@ export class BulkMutateShopProductsDto {
   @IsArray()
   @ArrayNotEmpty()
   @IsString({ each: true })
+  @Matches(/^prod_[0-9a-f]{12}$/, { each: true })
   @Transform(({ value }) => Array.isArray(value)
     ? value.map(item => typeof item === 'string' ? item.trim() : item)
     : value)

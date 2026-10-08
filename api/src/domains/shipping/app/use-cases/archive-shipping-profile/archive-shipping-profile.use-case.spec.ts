@@ -18,6 +18,7 @@ function buildProfile(
   return {
     id: 'profile-1',
     shopId,
+    shopPublicId: 'shop_public-1',
     name: 'Standard shipping',
     status: ShippingProfileStatus.ACTIVE,
     version: 4,

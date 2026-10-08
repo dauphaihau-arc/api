@@ -27,6 +27,8 @@ describe('CreateShopUseCase', () => {
         currency: 'USD',
       }),
       findById: jest.fn(),
+      findByPublicId: jest.fn(),
+      findByPublicIds: jest.fn(),
       findByOwnerUserId: jest.fn().mockResolvedValue(null),
       findByShopName: jest.fn().mockResolvedValue(null),
       findBySlug: jest.fn().mockResolvedValue(null),

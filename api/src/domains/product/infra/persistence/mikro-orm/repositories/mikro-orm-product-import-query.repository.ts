@@ -12,6 +12,16 @@ import { ProductImportRowEntity } from '../entities/product-import-row.entity';
 export class MikroOrmProductImportQueryRepository implements ProductImportQueryRepository {
   constructor(private readonly entityManager: EntityManager) {}
 
+  async findByPublicId(publicId: string): Promise<string | null> {
+    const productImport = await this.entityManager.fork().findOne(
+      ProductImportEntity,
+      { publicId },
+      { fields: ['id'] },
+    );
+
+    return productImport?.id ?? null;
+  }
+
   async findByShopId(shopId: string, importId: string): Promise<ProductImportSummary | undefined> {
     const productImport = await this.entityManager.fork().findOne(
       ProductImportEntity,
@@ -46,6 +56,7 @@ export class MikroOrmProductImportQueryRepository implements ProductImportQueryR
 function toProductImportSummary(productImport: ProductImportEntity): ProductImportSummary {
   return {
     id: productImport.id,
+    publicId: productImport.publicId,
     shopId: productImport.shop.id,
     requestedByUserId: productImport.requestedBy.id,
     status: productImport.status,

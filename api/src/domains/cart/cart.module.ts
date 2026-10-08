@@ -7,6 +7,7 @@ import { StorageModule } from '~/integrations/storage/storage.module';
 import { AuthModule } from '../auth/auth.module';
 import { PromotionModule } from '../promotion/promotion.module';
 import { ProductModule } from '../product/product.module';
+import { ShopModule } from '../shop/shop.module';
 import { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
 import { ProductImageEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-image.entity';
 import { ProductInventoryEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-inventory.entity';
@@ -16,6 +17,7 @@ import { ShopEntity } from '../shop/infra/persistence/entities/shop.entity';
 import { CartRepository } from './app/ports/cart.repository';
 import { CartUpdatePricingService } from './app/services/cart-update-pricing.service';
 import { CartPricingService } from './app/services/cart-pricing.service';
+import { CartPublicShopResolver } from './app/services/cart-public-shop-resolver.service';
 import { ShippingModule } from '../shipping/shipping.module';
 import { AddCartItemUseCase } from './app/use-cases/add-cart-item/add-cart-item.use-case';
 import { ApplyPromoCodeUseCase } from './app/use-cases/apply-promo-code/apply-promo-code.use-case';
@@ -37,6 +39,7 @@ import { CartItemEntity } from './infra/persistence/entities/cart-item.entity';
     PromotionModule,
     ShippingModule,
     ProductModule,
+    ShopModule,
     StorageModule,
     MikroOrmModule.forFeature([
       CartEntity,
@@ -66,6 +69,7 @@ import { CartItemEntity } from './infra/persistence/entities/cart-item.entity';
       useClass: MikroOrmCartRepository,
     },
     CartUpdatePricingService,
+    CartPublicShopResolver,
     CartPricingService,
     GetCartUseCase,
     MergeGuestCartUseCase,

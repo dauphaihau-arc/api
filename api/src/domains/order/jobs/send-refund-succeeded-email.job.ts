@@ -33,12 +33,12 @@ export class SendRefundSucceededEmailJob {
 
     await this.mailSender.send({
       to: { email: order.customerEmail },
-      subject: `Refund completed for order ${order.id}`,
+      subject: `Refund completed for order ${order.publicId}`,
       text:
-        `Your refund for order ${order.id} from ${order.shop.shopName} has completed. ` +
+        `Your refund for order ${order.publicId} from ${order.shop.shopName} has completed. ` +
         `Refund amount: ${refundAmount} ${order.currency}.`,
       html:
-        `<p>Your refund for order <strong>${order.id}</strong> from ${order.shop.shopName} has completed.</p>` +
+        `<p>Your refund for order <strong>${order.publicId}</strong> from ${order.shop.shopName} has completed.</p>` +
         `<p>Refund amount: <strong>${refundAmount} ${order.currency}</strong>.</p>`,
       tags: ['order-refund-succeeded'],
     });

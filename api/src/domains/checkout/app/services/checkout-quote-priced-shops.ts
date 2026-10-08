@@ -18,6 +18,7 @@ export function parsePricedShops(
 ): CheckoutQuoteShopSummary[] {
   return (pricedShops as Array<{
     shop_id: string;
+    shop_public_id: string;
     shop_name: string;
     shop_slug: string;
     subtotal_minor: number;
@@ -34,7 +35,9 @@ export function parsePricedShops(
     items?: Array<{
       inventory_id: string;
       product_id: string;
+      product_public_id: string;
       shop_id: string;
+      shop_public_id: string;
       shop_name: string;
       shop_slug: string;
       title: string;
@@ -69,6 +72,7 @@ export function parsePricedShops(
     }>;
   }>).map((shop) => ({
     shopId: shop.shop_id,
+    shopPublicId: shop.shop_public_id,
     shopName: shop.shop_name,
     shopSlug: shop.shop_slug,
     subtotalMinor: shop.subtotal_minor,
@@ -85,7 +89,9 @@ export function parsePricedShops(
     items: (shop.items ?? []).map((item) => ({
       inventoryId: item.inventory_id,
       productId: item.product_id,
+      productPublicId: item.product_public_id,
       shopId: item.shop_id,
+      shopPublicId: item.shop_public_id,
       shopName: item.shop_name,
       shopSlug: item.shop_slug,
       title: item.title,
@@ -128,6 +134,7 @@ export function toPersistedPricedShops(
 ): Record<string, unknown>[] {
   return shops.map((shop) => ({
     shop_id: shop.shopId,
+    shop_public_id: shop.shopPublicId,
     shop_name: shop.shopName,
     shop_slug: shop.shopSlug,
     subtotal_minor: shop.subtotalMinor,
@@ -144,7 +151,9 @@ export function toPersistedPricedShops(
     items: shop.items.map((item) => ({
       inventory_id: item.inventoryId,
       product_id: item.productId,
+      product_public_id: item.productPublicId,
       shop_id: item.shopId,
+      shop_public_id: item.shopPublicId,
       shop_name: item.shopName,
       shop_slug: item.shopSlug,
       title: item.title,

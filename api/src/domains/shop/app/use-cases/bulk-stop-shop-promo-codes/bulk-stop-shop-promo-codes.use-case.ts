@@ -13,6 +13,7 @@ import { ShopEntity } from '../../../infra/persistence/entities/shop.entity';
 import { ShopAccessDeniedError, ShopNotFoundError } from '../../errors/shop-app.error';
 import type { ShopPromoCodeSummary } from '../../shop.types';
 import { toShopPromoCodeSummary } from '../../promo-code-summary.mapper';
+import { loadProductReferences, selectProductReferences } from '../../product-reference';
 
 export interface BulkStopShopPromoCodesFailure {
   id: string;
@@ -42,7 +43,7 @@ export class BulkStopShopPromoCodesUseCase {
   async execute(
     actor: AuthenticatedUser,
     shopId: string,
-    promoCodeIds: string[],
+    promoCodePublicIds: string[],
   ): Promise<BulkStopShopPromoCodesResult> {
     const entityManager = this.entityManager.fork();
 
@@ -61,14 +62,18 @@ export class BulkStopShopPromoCodesUseCase {
 
     const promotions = await entityManager.getRepository(PromotionEntity).find(
       {
-        id: { $in: promoCodeIds },
+        publicId: { $in: promoCodePublicIds },
         shop: shopId,
         applicationKind: PromotionApplicationKind.CHECKOUT_DISCOUNT,
       },
       { populate: ['shop', 'products'] },
     );
-    const promotionsById = new Map(promotions.map((promotion) => [promotion.id, promotion]));
+    const promotionsByPublicId = new Map(promotions.map((promotion) => [promotion.publicId, promotion]));
     const promotionIds = promotions.map((promotion) => promotion.id);
+    const referencesById = await loadProductReferences(
+      entityManager,
+      promotions.flatMap((promotion) => promotion.products.getItems().map((target) => target.productId)),
+    );
 
     const codeByPromotionId = new Map<string, string>();
     if (promotionIds.length > 0) {
@@ -99,12 +104,12 @@ export class BulkStopShopPromoCodesUseCase {
     const succeededIds: string[] = [];
     const failed: BulkStopShopPromoCodesFailure[] = [];
 
-    for (const promoCodeId of promoCodeIds) {
-      const promotion = promotionsById.get(promoCodeId);
+    for (const promoCodePublicId of promoCodePublicIds) {
+      const promotion = promotionsByPublicId.get(promoCodePublicId);
 
       if (!promotion) {
         failed.push({
-          id: promoCodeId,
+          id: promoCodePublicId,
           code: 'NotFound',
           reason: 'Promo code not found',
         });
@@ -121,20 +126,20 @@ export class BulkStopShopPromoCodesUseCase {
       }
       else {
         failed.push({
-          id: promoCodeId,
+          id: promoCodePublicId,
           code: 'NotStoppable',
           reason: `This promo code is already ${status}`,
         });
         continue;
       }
-      succeededIds.push(promoCodeId);
+      succeededIds.push(promoCodePublicId);
 
       results.push(toShopPromoCodeSummary(
         promotion,
         codeByPromotionId.get(promotion.id) ?? '',
         promotion.productScope === PromotionProductScope.ALL
           ? []
-          : promotion.products.getItems().map((target) => target.productId),
+          : selectProductReferences(promotion.products.getItems().map((target) => target.productId), referencesById),
         now,
         redemptionCountByPromotionId.get(promotion.id) ?? 0,
       ));

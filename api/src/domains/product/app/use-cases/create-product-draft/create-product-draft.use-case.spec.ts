@@ -30,7 +30,9 @@ describe('CreateProductDraftUseCase', () => {
   }): ProductDraftSummary {
     return {
       id: 'product-1',
+      publicId: 'public-product-1',
       shopId: input.shopId,
+      shopPublicId: 'public-shop-1',
       title: input.title,
       slug: input.slug,
       description: input.description,

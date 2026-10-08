@@ -73,7 +73,7 @@ export class CreateGuestOrderFromCartUseCase {
         appJobName.sendGuestOrderConfirmationEmail,
         {
           email: body.guest.email,
-          orderIds: result.orderShops.map((orderShop) => orderShop.id),
+          orderIds: result.orderShops.map((orderShop) => orderShop.publicId),
           trackingUrl,
           shopNames: result.orderShops.map((orderShop) => orderShop.shopName),
         },

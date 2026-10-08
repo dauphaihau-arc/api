@@ -69,8 +69,10 @@ function buildProductDetail(
 ): PublicProductDetail {
   return {
     id: 'product-1',
+    publicId: 'public-product-1',
     shop: {
       id: 'shop-1',
+      publicId: 'public-shop-1',
       shopName: 'Shop',
       slug: 'shop',
     },

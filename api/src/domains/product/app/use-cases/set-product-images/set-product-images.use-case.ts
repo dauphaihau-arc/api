@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { createPublicId } from '~/platform/ids/public-id';
+import { createStorageId } from '~/platform/ids/public-id';
 import { err, ok, type Result } from '~/platform/application/result';
 import { appJobDeduplicationKey } from '~/platform/jobs/app-job-deduplication';
 import { appJobName } from '~/platform/jobs/app-job.names';
@@ -134,7 +134,7 @@ export class SetProductImagesUseCase {
     productId: string,
     contentType: string,
   ): string {
-    const imageId = createPublicId();
+    const imageId = createStorageId();
 
     return buildStorageObjectKey({
       env: resolveStorageEnvironmentSegment(process.env.NODE_ENV),

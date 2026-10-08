@@ -21,32 +21,32 @@ export function getSellerOrderNotificationRecipientId(input: {
 }
 
 function buildSellerOrderNotificationData(
-  orderId: string,
+  orderPublicId: string,
   orderNumber: string,
-  shopId: string,
+  shopPublicId: string,
   overrides?: Omit<SellerOrderNotificationData, 'target' | 'orderId' | 'orderNumber' | 'shopId'>,
 ): SellerOrderNotificationData {
   return {
     target: 'seller_order_detail',
-    orderId,
+    orderId: orderPublicId,
     orderNumber,
-    shopId,
+    shopId: shopPublicId,
     ...overrides,
   };
 }
 
 export function buildSellerOrderCreatedNotification(
   userId: string,
-  orderId: string,
+  orderPublicId: string,
   orderNumber: string,
-  shopId: string,
+  shopPublicId: string,
 ): NotifyUserInput {
   return {
     userId,
     type: 'seller.order.created',
     title: 'New order received',
     body: `Order ${orderNumber} has been placed.`,
-    data: buildSellerOrderNotificationData(orderId, orderNumber, shopId, {
+    data: buildSellerOrderNotificationData(orderPublicId, orderNumber, shopPublicId, {
       actor: 'buyer',
     }),
     channels: ['in_app'],
@@ -55,16 +55,16 @@ export function buildSellerOrderCreatedNotification(
 
 export function buildSellerOrderCancelRequestedNotification(
   userId: string,
-  orderId: string,
+  orderPublicId: string,
   orderNumber: string,
-  shopId: string,
+  shopPublicId: string,
 ): NotifyUserInput {
   return {
     userId,
     type: 'seller.order.cancel_requested',
     title: 'Cancel request received',
     body: `Customer requested cancellation for order ${orderNumber}.`,
-    data: buildSellerOrderNotificationData(orderId, orderNumber, shopId, {
+    data: buildSellerOrderNotificationData(orderPublicId, orderNumber, shopPublicId, {
       actor: 'buyer',
       status: 'canceled',
     }),
@@ -74,16 +74,16 @@ export function buildSellerOrderCancelRequestedNotification(
 
 export function buildSellerOrderSupportRequestedNotification(
   userId: string,
-  orderId: string,
+  orderPublicId: string,
   orderNumber: string,
-  shopId: string,
+  shopPublicId: string,
 ): NotifyUserInput {
   return {
     userId,
     type: 'seller.order.support_requested',
     title: 'Support request received',
     body: `Customer sent a support request for order ${orderNumber}.`,
-    data: buildSellerOrderNotificationData(orderId, orderNumber, shopId, {
+    data: buildSellerOrderNotificationData(orderPublicId, orderNumber, shopPublicId, {
       actor: 'buyer',
     }),
     channels: ['in_app'],
@@ -92,9 +92,9 @@ export function buildSellerOrderSupportRequestedNotification(
 
 export function buildSellerOrderRefundNotification(
   userId: string,
-  orderId: string,
+  orderPublicId: string,
   orderNumber: string,
-  shopId: string,
+  shopPublicId: string,
   refundStatus: 'succeeded' | 'failed',
 ): NotifyUserInput {
   return {
@@ -104,7 +104,7 @@ export function buildSellerOrderRefundNotification(
     body: refundStatus === 'succeeded'
       ? `Refund for order ${orderNumber} completed successfully.`
       : `Refund for order ${orderNumber} failed and needs attention.`,
-    data: buildSellerOrderNotificationData(orderId, orderNumber, shopId, {
+    data: buildSellerOrderNotificationData(orderPublicId, orderNumber, shopPublicId, {
       actor: 'system',
       refundStatus,
     }),

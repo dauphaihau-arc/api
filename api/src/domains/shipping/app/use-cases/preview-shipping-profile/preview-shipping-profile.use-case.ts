@@ -31,7 +31,7 @@ export interface PreviewShippingProfileInput {
 
 export interface ShippingRatePreview {
   shippingProfileId: string;
-  shopId: string;
+  shopPublicId: string;
   /**
    * Shop currency the previewed amounts are denominated in. The profile never
    * stores a currency of its own.
@@ -89,7 +89,7 @@ export class PreviewShippingProfileUseCase {
     const match = matchDestinationRate(profile.rates, destination);
     const base = {
       shippingProfileId: profile.id,
-      shopId: profile.shopId,
+      shopPublicId: profile.shopPublicId,
       currency: profile.shopCurrency,
       checkoutReady: isShippingProfileCheckoutReady(profile),
       readinessIssues: collectShippingProfileReadinessIssues(profile),

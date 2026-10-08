@@ -86,10 +86,6 @@ class MeShopResponseDto {
   @Expose()
   id!: string;
 
-  @ApiProperty({ name: 'public_id', required: false })
-  @Expose({ name: 'public_id' })
-  publicId?: string;
-
   @ApiProperty({ name: 'owner_user_id' })
   @Expose({ name: 'owner_user_id' })
   ownerUserId!: string;
@@ -163,7 +159,12 @@ export class MeResponseDto {
       dto.preferences = Object.assign(new MePreferencesResponseDto(), userProfile.preferences);
     }
     if (userProfile.shop) {
-      dto.shop = Object.assign(new MeShopResponseDto(), userProfile.shop);
+      dto.shop = Object.assign(new MeShopResponseDto(), {
+        id: userProfile.shop.publicId,
+        ownerUserId: userProfile.shop.ownerUserId,
+        shopName: userProfile.shop.shopName,
+        status: userProfile.shop.status,
+      });
     }
     return dto;
   }

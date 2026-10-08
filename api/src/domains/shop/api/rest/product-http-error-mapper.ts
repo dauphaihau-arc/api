@@ -65,7 +65,7 @@ export function mapProductAppErrorToHttpException(
   }
 
   if (error instanceof ProductNotFoundError) {
-    return new NotFoundException(error.message);
+    return new NotFoundException('Product was not found');
   }
 
   if (error instanceof ProductSlugAlreadyExistsError) {
@@ -126,9 +126,9 @@ export function mapProductAppErrorToHttpException(
   if (error instanceof ProductDraftIncompleteError) {
     return new UnprocessableEntityException({
       error: 'Unprocessable Entity',
-      message: error.message,
+      message: error.message.replaceAll(error.productId, error.productPublicId),
       code: error.code,
-      product_id: error.productId,
+      product_id: error.productPublicId,
       failed_step: error.failedStep,
     });
   }

@@ -162,7 +162,7 @@ function buildCheckoutErrorPayload(error: OrderAppError): {
     ...(error instanceof CheckoutShippingUnavailableError
       ? {
         products: error.products.map((product) => ({
-          product_id: product.productId,
+          product_id: product.productPublicId,
           inventory_id: product.inventoryId,
           quantity: product.quantity,
           reason: product.reason,
@@ -180,7 +180,7 @@ function buildCheckoutErrorPayload(error: OrderAppError): {
           sale_discount_minor: error.refreshedTotals.saleDiscountMinor,
           total_minor: error.refreshedTotals.totalMinor,
           shops: error.refreshedTotals.shops.map((shop) => ({
-            shop_id: shop.shopId,
+            shop_id: shop.shopPublicId,
             subtotal_minor: shop.subtotalMinor,
             discount_minor: shop.discountMinor,
             sale_discount_minor: shop.saleDiscountMinor,

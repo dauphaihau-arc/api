@@ -12,6 +12,7 @@ import { ShopEntity } from '../../../infra/persistence/entities/shop.entity';
 import { ShopAccessDeniedError, ShopNotFoundError } from '../../errors/shop-app.error';
 import type { ShopSaleSummary } from '../../shop.types';
 import { toShopSaleSummary } from '../../sale-summary';
+import { loadProductReferences, selectProductReferences } from '../../product-reference';
 import { dispatchShopProjection } from '../shop-promotion-catalog-projection';
 
 export interface BulkStopShopSalesFailure {
@@ -43,7 +44,7 @@ export class BulkStopShopSalesUseCase {
   async execute(
     actor: AuthenticatedUser,
     shopId: string,
-    saleIds: string[],
+    salePublicIds: string[],
   ): Promise<BulkStopShopSalesResult> {
     const entityManager = this.entityManager.fork();
 
@@ -62,25 +63,29 @@ export class BulkStopShopSalesUseCase {
 
     const promotions = await entityManager.getRepository(PromotionEntity).find(
       {
-        id: { $in: saleIds },
+        publicId: { $in: salePublicIds },
         shop: shopId,
         applicationKind: PromotionApplicationKind.SALE,
       },
       { populate: ['shop', 'products'] },
     );
-    const promotionsById = new Map(promotions.map((promotion) => [promotion.id, promotion]));
+    const promotionsByPublicId = new Map(promotions.map((promotion) => [promotion.publicId, promotion]));
+    const referencesById = await loadProductReferences(
+      entityManager,
+      promotions.flatMap((promotion) => promotion.products.getItems().map((target) => target.productId)),
+    );
 
     const now = this.clock.now();
     const results: ShopSaleSummary[] = [];
     const succeededIds: string[] = [];
     const failed: BulkStopShopSalesFailure[] = [];
 
-    for (const saleId of saleIds) {
-      const promotion = promotionsById.get(saleId);
+    for (const salePublicId of salePublicIds) {
+      const promotion = promotionsByPublicId.get(salePublicId);
 
       if (!promotion) {
         failed.push({
-          id: saleId,
+          id: salePublicId,
           code: 'NotFound',
           reason: 'Sale not found',
         });
@@ -97,19 +102,19 @@ export class BulkStopShopSalesUseCase {
       }
       else {
         failed.push({
-          id: saleId,
+          id: salePublicId,
           code: 'NotStoppable',
           reason: `This sale is already ${status}`,
         });
         continue;
       }
-      succeededIds.push(saleId);
+      succeededIds.push(salePublicId);
 
       results.push(toShopSaleSummary(
         promotion,
         promotion.productScope === PromotionProductScope.ALL
           ? []
-          : promotion.products.getItems().map((target) => target.productId),
+          : selectProductReferences(promotion.products.getItems().map((target) => target.productId), referencesById),
         now,
       ));
     }

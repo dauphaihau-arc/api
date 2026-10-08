@@ -163,10 +163,10 @@ export class UpsertMyProductReviewUseCase {
 
     return {
       id: review.id,
-      orderId: orderItem.order.id,
+      orderPublicId: orderItem.order.publicId,
       orderItemId: orderItem.id,
       product: {
-        id: orderItem.product.id,
+        publicId: orderItem.product.publicId,
         slug: orderItem.product.slug,
         title: orderItem.title,
         shopSlug: orderItem.product.shop.slug,

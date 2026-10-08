@@ -22,7 +22,7 @@ implements ShopOrderExportRepository {
     const entityManager = this.entityManager.fork();
     const orderExport = new OrderExportEntity();
 
-    orderExport.shop = entityManager.getReference(ShopEntity, input.shopId);
+    orderExport.shop = await entityManager.findOneOrFail(ShopEntity, input.shopId);
     orderExport.requestedBy = entityManager.getReference(UserEntity, input.requestedByUserId);
     orderExport.status = OrderExportStatus.QUEUED;
     orderExport.filtersJson = input.filtersJson;
@@ -51,6 +51,20 @@ implements ShopOrderExportRepository {
     );
 
     return orderExport ? toShopOrderExportSummary(orderExport) : undefined;
+  }
+
+  async findByPublicId(
+    publicId: string,
+  ): Promise<string | null> {
+    const entityManager = this.entityManager.fork();
+
+    const orderExport = await entityManager.findOne(
+      OrderExportEntity,
+      { publicId },
+      { fields: ['id'] },
+    );
+
+    return orderExport?.id ?? null;
   }
 
   async findForProcessing(
@@ -164,7 +178,9 @@ function toShopOrderExportSummary(
 ): ShopOrderExportSummary {
   return {
     id: orderExport.id,
+    publicId: orderExport.publicId,
     shopId: orderExport.shop.id,
+    shopPublicId: orderExport.shop.publicId,
     requestedByUserId: orderExport.requestedBy.id,
     status: orderExport.status,
     filtersJson: orderExport.filtersJson,

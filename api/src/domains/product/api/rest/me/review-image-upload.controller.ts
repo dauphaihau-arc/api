@@ -19,6 +19,7 @@ import {
 } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { CurrentUser } from '~/platform/decorators/current-user.decorator';
+import { readRawBody } from '~/platform/http/read-raw-body';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import { JwtAuthGuard } from '~/domains/auth/api/guard/jwt-auth.guard';
 import { PermissionsGuard } from '~/domains/auth/api/guard/permissions.guard';
@@ -102,24 +103,4 @@ export class ReviewImageUploadController {
 
     return `${protocol}://${host}${baseUrl}/${token}`;
   }
-}
-
-async function readRawBody(request: Request): Promise<Buffer> {
-  const chunks: Buffer[] = [];
-
-  for await (const chunk of request) {
-    if (Buffer.isBuffer(chunk)) {
-      chunks.push(chunk);
-      continue;
-    }
-
-    if (typeof chunk === 'string' || chunk instanceof Uint8Array) {
-      chunks.push(Buffer.from(chunk));
-      continue;
-    }
-
-    throw new TypeError('Unexpected request body chunk type');
-  }
-
-  return Buffer.concat(chunks);
 }

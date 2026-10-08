@@ -2,7 +2,7 @@ import type { ShopOrderExportSummary } from '../../app/ports/shop-order-export.r
 
 export function toShopOrderExportResponse(orderExport: ShopOrderExportSummary) {
   return {
-    id: orderExport.id,
+    id: orderExport.publicId,
     status: orderExport.status,
     filename: orderExport.filename,
     total_rows: orderExport.totalRows ?? 0,

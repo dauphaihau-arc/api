@@ -8,6 +8,7 @@ describe('UpdateAdminOrderSupportNoteUseCase', () => {
       orderNumber: 'ORD-1',
       shop: {
         id: 'shop-1',
+        publicId: 'shop_1',
         shopName: 'Shop 1',
         slug: 'shop-1',
       },
@@ -55,8 +56,9 @@ describe('UpdateAdminOrderSupportNoteUseCase', () => {
       order: { id: 'order-1' },
       product: {
         id: 'product-1',
+        publicId: 'prod_public1',
         slug: 'product-1',
-        shop: { slug: 'shop-1' },
+        shop: { slug: 'shop-1' }, 
       },
       inventory: {},
       title: 'Product 1',

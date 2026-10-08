@@ -13,6 +13,7 @@ function buildProfile(
   return {
     id,
     shopId: 'shop-1',
+    shopPublicId: 'shop_public-1',
     name: `Profile ${id}`,
     status: ShippingProfileStatus.ACTIVE,
     version: 1,
@@ -349,6 +350,7 @@ describe('ShippingQuoteService.quoteForCheckout', () => {
         buildProfile('profile-1', { shopId: 'shop-1' }),
         buildProfile('profile-2', {
           shopId: 'shop-2',
+          shopPublicId: 'shop_public-2',
           rates: [
             {
               id: 'rate-2',

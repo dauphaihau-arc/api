@@ -143,6 +143,7 @@ implements StorefrontProductQueryRepository {
         $project: {
           _id: 1,
           productId: 1,
+          productPublicId: 1,
           shopId: 1,
           shopPublicId: 1,
           shopSlug: 1,
@@ -234,6 +235,7 @@ implements StorefrontProductQueryRepository {
         $project: {
           _id: 1,
           productId: 1,
+          productPublicId: 1,
           shopId: 1,
           shopPublicId: 1,
           shopSlug: 1,
@@ -374,6 +376,7 @@ implements StorefrontProductQueryRepository {
         $project: {
           _id: 0,
           productId: 1,
+          productPublicId: 1,
           title: 1,
           slug: 1,
           shopId: 1,
@@ -386,6 +389,7 @@ implements StorefrontProductQueryRepository {
 
     return documents.map((document) => ({
       id: document.productId,
+      publicId: document.productPublicId,
       title: document.title,
       slug: document.slug,
       shop: {
@@ -439,6 +443,7 @@ implements StorefrontProductQueryRepository {
         projection: {
           _id: 1,
           productId: 1,
+          productPublicId: 1,
           shopId: 1,
           shopPublicId: 1,
           shopSlug: 1,
@@ -920,6 +925,7 @@ function toPublicProductListItemFromSearchDocument(
 
   return {
     id: document.productId,
+    publicId: document.productPublicId,
     shop: {
       id: document.shopId,
       publicId: document.shopPublicId,
@@ -989,6 +995,7 @@ export function toPublicProductDetail(
 
   return {
     id: document.productId,
+    publicId: document.productPublicId,
     shop: {
       id: document.shopId,
       publicId: document.shopPublicId,

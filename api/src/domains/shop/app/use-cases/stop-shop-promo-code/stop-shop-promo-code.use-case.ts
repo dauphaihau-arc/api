@@ -18,6 +18,7 @@ import {
 } from '../../errors/shop-app.error';
 import type { ShopPromoCodeSummary } from '../../shop.types';
 import { toShopPromoCodeSummary } from '../../promo-code-summary.mapper';
+import { loadProductReferences, selectProductReferences } from '../../product-reference';
 
 /**
  * The irreversible stops a seller can apply to a Promo Code. Cancelling
@@ -41,7 +42,7 @@ export class StopShopPromoCodeUseCase {
   async execute(
     actor: AuthenticatedUser,
     shopId: string,
-    promoCodeId: string,
+    promoCodePublicId: string,
     action: ShopPromoCodeStopAction,
   ): Promise<ShopPromoCodeSummary> {
     const entityManager = this.entityManager.fork();
@@ -61,7 +62,7 @@ export class StopShopPromoCodeUseCase {
 
     const promotion = await entityManager.getRepository(PromotionEntity).findOne(
       {
-        id: promoCodeId,
+        publicId: promoCodePublicId,
         shop: shopId,
         applicationKind: PromotionApplicationKind.CHECKOUT_DISCOUNT,
       },
@@ -109,13 +110,15 @@ export class StopShopPromoCodeUseCase {
     const redemptionCount = await entityManager.getRepository(PromotionUsageEntity).count({
       promotion: promotion.id,
     });
+    const productIds = promotion.products.getItems().map((target) => target.productId);
+    const referencesById = await loadProductReferences(entityManager, productIds);
 
     return toShopPromoCodeSummary(
       promotion,
       code?.code ?? '',
       promotion.productScope === PromotionProductScope.ALL
         ? []
-        : promotion.products.getItems().map((target) => target.productId),
+        : selectProductReferences(productIds, referencesById),
       now,
       redemptionCount,
     );

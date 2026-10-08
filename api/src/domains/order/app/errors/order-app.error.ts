@@ -77,6 +77,7 @@ export interface RefreshedCheckoutTotals {
   totalMinor: number;
   shops: Array<{
     shopId: string;
+    shopPublicId: string;
     subtotalMinor: number;
     discountMinor: number;
     saleDiscountMinor: number;
@@ -102,9 +103,14 @@ export class CheckoutQuotePricesChangedError extends OrderAppError {
  * The quote never falls back to zero shipping, another Product's profile, or a
  * shop-wide rule.
  */
+export interface CheckoutShippingUnavailableProduct
+  extends ShippingQuoteUnavailableProduct {
+  productPublicId: string;
+}
+
 export class CheckoutShippingUnavailableError extends OrderAppError {
   constructor(
-    readonly products: ShippingQuoteUnavailableProduct[],
+    readonly products: CheckoutShippingUnavailableProduct[],
   ) {
     super('Selected items cannot be shipped to the provided address');
   }

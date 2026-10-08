@@ -20,6 +20,7 @@ describe('OrderRefundService', () => {
       { record: jest.fn().mockResolvedValue(undefined) } as never,
       {
         findById: jest.fn(),
+        findByPublicId: jest.fn(),
         findByIdWithShopOwner: jest.fn(),
       } as unknown as OrderRefundQueryRepository,
     );
@@ -47,6 +48,7 @@ describe('OrderRefundService', () => {
   it('processes a refund and marks the order refunded', async () => {
     const order = {
       id: 'order-1',
+      publicId: 'ord_1',
       orderNumber: 'ORD-20260604-000001',
       paymentType: PaymentType.CARD,
       currency: 'USD',
@@ -54,6 +56,7 @@ describe('OrderRefundService', () => {
       refundedAt: undefined,
       shop: {
         id: 'shop-1',
+        publicId: 'shop_1',
         ownerUser: {
           id: 'seller-1',
         },
@@ -105,6 +108,7 @@ describe('OrderRefundService', () => {
       { record: jest.fn().mockResolvedValue(undefined) } as never,
       {
         findById: jest.fn().mockResolvedValue(order),
+        findByPublicId: jest.fn(),
         findByIdWithShopOwner: jest.fn().mockResolvedValue(order),
       } as unknown as OrderRefundQueryRepository,
     );
@@ -122,9 +126,9 @@ describe('OrderRefundService', () => {
       type: 'seller.order.refund_succeeded',
       body: 'Refund for order ORD-20260604-000001 completed successfully.',
       data: expect.objectContaining({
-        orderId: 'order-1',
+        orderId: 'ord_1',
         orderNumber: 'ORD-20260604-000001',
-        shopId: 'shop-1',
+        shopId: 'shop_1',
         refundStatus: 'succeeded',
       }),
     }));
@@ -141,6 +145,7 @@ describe('OrderRefundService', () => {
   it('sends a failure notification when the refund fails', async () => {
     const order = {
       id: 'order-1',
+      publicId: 'ord_1',
       orderNumber: 'ORD-20260604-000001',
       paymentType: PaymentType.CARD,
       currency: 'USD',
@@ -148,6 +153,7 @@ describe('OrderRefundService', () => {
       refundedAt: undefined,
       shop: {
         id: 'shop-1',
+        publicId: 'shop_1',
         ownerUser: {
           id: 'seller-1',
         },
@@ -195,6 +201,7 @@ describe('OrderRefundService', () => {
       { record: jest.fn().mockResolvedValue(undefined) } as never,
       {
         findById: jest.fn().mockResolvedValue(order),
+        findByPublicId: jest.fn(),
         findByIdWithShopOwner: jest.fn().mockResolvedValue(order),
       } as unknown as OrderRefundQueryRepository,
     );
@@ -214,9 +221,9 @@ describe('OrderRefundService', () => {
       type: 'seller.order.refund_failed',
       body: 'Refund for order ORD-20260604-000001 failed and needs attention.',
       data: expect.objectContaining({
-        orderId: 'order-1',
+        orderId: 'ord_1',
         orderNumber: 'ORD-20260604-000001',
-        shopId: 'shop-1',
+        shopId: 'shop_1',
         refundStatus: 'failed',
       }),
     }));

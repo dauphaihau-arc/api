@@ -14,7 +14,9 @@ describe('AddCartItemUseCase', () => {
       findInventoryCandidateById: jest.fn().mockResolvedValue({
         inventoryId: 'inventory-1',
         productId: 'product-1',
+        productPublicId: 'prod_1',
         shopId: 'shop-1',
+        shopPublicId: 'shop_1',
         shopName: 'Clay House',
         title: 'Mug',
         stock: 5,

@@ -180,6 +180,7 @@ describe('ProductController', () => {
     suggestPublicProductsUseCase.execute.mockResolvedValue([
       {
         id: 'product-1',
+        publicId: 'public-product-1',
         title: 'Handmade Bag',
         slug: 'handmade-bag',
         shop: {
@@ -197,12 +198,11 @@ describe('ProductController', () => {
     })).resolves.toEqual({
       items: [
         {
-          id: 'product-1',
+          id: 'public-product-1',
           title: 'Handmade Bag',
           slug: 'handmade-bag',
           shop: {
-            id: 'shop-1',
-            public_id: 'public-shop-1',
+            id: 'public-shop-1',
             shop_name: 'Arc Store',
             slug: 'arc-store',
           },
@@ -215,6 +215,7 @@ describe('ProductController', () => {
   it('returns product detail when looked up by shop slug and product slug', async () => {
     getPublicProductBySlugsUseCase.execute.mockResolvedValue({
       id: 'product-1',
+      publicId: 'public-product-1',
       shop: {
         id: 'shop-1',
         publicId: 'public-shop-1',
@@ -255,10 +256,9 @@ describe('ProductController', () => {
       'arc-store',
       'handmade-bag',
     )).resolves.toEqual({
-      id: 'product-1',
+      id: 'public-product-1',
       shop: {
-        id: 'shop-1',
-        public_id: 'public-shop-1',
+        id: 'public-shop-1',
         shop_name: 'Arc Store',
         slug: 'arc-store',
       },

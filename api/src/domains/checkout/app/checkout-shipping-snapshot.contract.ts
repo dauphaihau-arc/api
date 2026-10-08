@@ -90,10 +90,12 @@ export interface PersistedShippingQuote {
 
 export interface PersistedShippingDiscount {
   promotion_id: string;
+  promotion_public_id: string;
   code: string;
   benefit_type: 'free_shipping';
   product_scope: ShippingDiscountProvenance['productScope'];
   product_ids: string[];
+  product_public_ids: string[];
   min_order_type: ShippingDiscountProvenance['minOrderType'];
   min_order_value: number;
   min_purchase_quantity: number;
@@ -102,6 +104,34 @@ export interface PersistedShippingDiscount {
   redemption_count: number;
   waived_minor: number;
   currency: string;
+}
+
+export function toPublicShippingDiscount(discount: ShippingDiscountProvenance) {
+  const { promotion_public_id, product_public_ids, ...snapshot } = toPersistedShippingDiscount(discount);
+  return { ...snapshot, promotion_id: promotion_public_id, product_ids: product_public_ids };
+}
+
+export function toPublicShippingQuote(
+  shipping: CheckoutShippingShopQuote,
+  shopPublicId: string,
+  products: Array<{ productId: string; productPublicId: string }>,
+): PersistedShippingQuote {
+  const publicProductId = (id: string): string => {
+    const product = products.find((candidate) => candidate.productId === id);
+    if (!product) throw new Error('Shipping product public id is required');
+    return product.productPublicId;
+  };
+  const snapshot = toPersistedShippingQuote(shipping);
+  snapshot.shop_id = shopPublicId;
+  snapshot.charge.base_unit.product_id = publicProductId(snapshot.charge.base_unit.product_id);
+  for (const component of snapshot.charge.additional_components) {
+    component.product_id = publicProductId(component.product_id);
+  }
+  for (const unit of snapshot.units) {
+    unit.product_id = publicProductId(unit.product_id);
+    unit.profile_shop_id = shopPublicId;
+  }
+  return snapshot;
 }
 
 export function toPersistedShippingQuote(
@@ -188,10 +218,12 @@ export function toPersistedShippingDiscount(
 ): PersistedShippingDiscount {
   return {
     promotion_id: discount.promotionId,
+    promotion_public_id: discount.promotionPublicId,
     code: discount.code,
     benefit_type: discount.benefitType,
     product_scope: discount.productScope,
     product_ids: discount.productIds,
+    product_public_ids: discount.productPublicIds,
     min_order_type: discount.minOrderType,
     min_order_value: discount.minOrderValue,
     min_purchase_quantity: discount.minPurchaseQuantity,
@@ -281,10 +313,12 @@ export function parsePersistedShippingDiscount(
 ): ShippingDiscountProvenance {
   return {
     promotionId: discount.promotion_id,
+    promotionPublicId: discount.promotion_public_id,
     code: discount.code,
     benefitType: discount.benefit_type,
     productScope: discount.product_scope,
     productIds: discount.product_ids,
+    productPublicIds: discount.product_public_ids,
     minOrderType: discount.min_order_type,
     minOrderValue: discount.min_order_value,
     minPurchaseQuantity: discount.min_purchase_quantity,

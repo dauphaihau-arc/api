@@ -9,16 +9,19 @@ import type { PromotionEntity } from '~/domains/promotion/infra/persistence/enti
  */
 export function toShopSaleSummary(
   promotion: PromotionEntity,
-  productIds: string[],
+  products: Array<{ id: string; publicId: string }>,
   now: Date,
 ): ShopSaleSummary {
   return {
     id: promotion.id,
+    publicId: promotion.publicId,
     shopId: promotion.shop.id,
+    shopPublicId: promotion.shop.publicId,
     name: promotion.name,
     percentOff: promotion.percentOff ?? 0,
     productScope: promotion.productScope,
-    productIds,
+    productIds: products.map((product) => product.id),
+    productPublicIds: products.map((product) => product.publicId),
     currency: promotion.currency,
     startAt: promotion.startAt,
     endAt: promotion.endAt,

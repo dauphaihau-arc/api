@@ -2,13 +2,13 @@ import { Transform } from 'class-transformer';
 import {
   ArrayNotEmpty,
   IsArray,
-  IsUUID,
+  Matches,
 } from 'class-validator';
 
 export class BulkStopShopPromoCodesDto {
   @IsArray()
   @ArrayNotEmpty()
-  @IsUUID('4', { each: true })
+  @Matches(/^prm_[0-9a-f]{12}$/, { each: true })
   @Transform(({ value }) => Array.isArray(value)
     ? value.map(item => typeof item === 'string' ? item.trim() : item)
     : value)

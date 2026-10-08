@@ -38,6 +38,7 @@ type ItemsSoldRow = {
 
 type TopProductRow = {
   product_id: string;
+  product_public_id: string;
   title: string;
   slug: string;
   image_url: string | null;
@@ -111,6 +112,7 @@ implements ShopDashboardQueryRepository {
 
         return {
           productId: row.product_id,
+          productPublicId: row.product_public_id,
           title: row.title,
           slug: row.slug,
           ...(imageUrl ? { imageUrl } : {}),
@@ -277,6 +279,7 @@ implements ShopDashboardQueryRepository {
       `
         select
           oi.product_id,
+          max(p.public_id) as product_public_id,
           max(oi.title) as title,
           max(p.slug) as slug,
           max(oi.image_url) as image_url,

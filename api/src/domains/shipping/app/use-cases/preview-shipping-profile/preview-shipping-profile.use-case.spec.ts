@@ -12,6 +12,7 @@ function buildProfile(
   return {
     id: 'profile-1',
     shopId,
+    shopPublicId: 'shop_public-1',
     name: 'Standard shipping',
     status: ShippingProfileStatus.ACTIVE,
     version: 1,
@@ -69,6 +70,7 @@ describe('PreviewShippingProfileUseCase', () => {
     expect(result.isOk).toBe(true);
     expect(result.isOk && result.value).toMatchObject({
       matched: true,
+      shopPublicId: 'shop_public-1',
       currency: 'USD',
       checkoutReady: true,
       readinessIssues: [],

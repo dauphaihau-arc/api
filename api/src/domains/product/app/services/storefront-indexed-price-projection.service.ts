@@ -54,7 +54,7 @@ export class StorefrontIndexedPriceProjectionService {
     let sale: StorefrontIndexedAutoSale | undefined;
 
     if (percentOff != null && saleProjection) {
-      sale = { promotionId: saleProjection.promotionId, percentOff };
+      sale = { promotionPublicId: saleProjection.promotionPublicId, percentOff };
     }
 
     await Promise.all(
@@ -209,7 +209,7 @@ function applyAutoSale(
     amountMinor: reduced.amountMinor,
     originalAmountMinor: reduced.originalAmountMinor,
     autoSale: {
-      promotionId: autoSale.promotionId,
+      promotionPublicId: autoSale.promotionPublicId,
       percentOff: autoSale.percentOff,
     },
   };
@@ -245,7 +245,7 @@ function isSameInventoryPrice(
   return left.currency === right.currency
     && left.amountMinor === right.amountMinor
     && left.originalAmountMinor === right.originalAmountMinor
-    && left.autoSale?.promotionId === right.autoSale?.promotionId
+    && left.autoSale?.promotionPublicId === right.autoSale?.promotionPublicId
     && left.autoSale?.percentOff === right.autoSale?.percentOff;
 }
 

@@ -4,12 +4,18 @@ import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import { OrderEntity } from '~/domains/order/infra/persistence/entities/order.entity';
 import { getRequiredOrderNumber } from '~/domains/order/app/order-number';
 import type { CreateOrderResult } from '~/domains/order/app/order.types';
+import { CheckoutPublicIdResolver } from '../../services/checkout-public-id.resolver';
 
 @Injectable()
 export class GetCheckoutSessionReadinessUseCase {
-  constructor(private readonly entityManager: EntityManager) {}
+  constructor(
+    private readonly entityManager: EntityManager,
+    private readonly checkoutPublicIdResolver: CheckoutPublicIdResolver,
+  ) {}
 
-  async execute(actor: AuthenticatedUser, orderIds: string[]): Promise<CreateOrderResult> {
+  async execute(actor: AuthenticatedUser, orderPublicIds: string[]): Promise<CreateOrderResult> {
+    const orderIds = await this.checkoutPublicIdResolver.resolveOrderIds(orderPublicIds);
+
     if (orderIds.length === 0) {
       throw new BadRequestException('order_ids is required');
     }
@@ -44,8 +50,10 @@ export class GetCheckoutSessionReadinessUseCase {
       checkoutSessionUrl,
       orderShops: orders.map((order) => ({
         id: order.id,
+        publicId: order.publicId,
         orderNumber: getRequiredOrderNumber(order),
         shopId: order.shop.id,
+        shopPublicId: order.shop.publicId,
         shopName: order.shop.shopName,
         shopSlug: order.shop.slug,
       })),

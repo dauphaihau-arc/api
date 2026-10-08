@@ -6,6 +6,7 @@ import {
   type FindActiveCheckoutDiscountsInput,
   type PromotionCodeOffer,
 } from '../../../app/ports/promotion-code.reader';
+import { ProductEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product.entity';
 import { PromotionApplicationKind } from '../../../domain/enums/promotion-application-kind.enum';
 import { PromotionMinOrderType } from '../../../domain/enums/promotion-min-order-type.enum';
 import { PromotionProductScope } from '../../../domain/enums/promotion-product-scope.enum';
@@ -47,8 +48,17 @@ export class MikroOrmPromotionCodeReader extends PromotionCodeReader {
 
     const promotionIds = codes.map((code) => (code.promotion as PromotionEntity).id);
     const usageCounts = await this.countUsagesByPromotion(promotionIds, {});
+    const productIds = [...new Set(codes.flatMap((code) =>
+      code.promotion.products.getItems().map((product) => product.productId)))];
+    const products = productIds.length > 0
+      ? await this.entityManager.fork().getRepository(ProductEntity).find(
+        { id: { $in: productIds } },
+        { fields: ['id', 'publicId'] },
+      )
+      : [];
+    const productPublicIdById = new Map(products.map((product) => [product.id, product.publicId]));
 
-    return codes.map((code) => this.toOffer(code, usageCounts));
+    return codes.map((code) => this.toOffer(code, usageCounts, productPublicIdById));
   }
 
   async countUsagesByUser(
@@ -84,6 +94,7 @@ export class MikroOrmPromotionCodeReader extends PromotionCodeReader {
   private toOffer(
     code: PromotionCodeEntity,
     usageCounts: Map<string, number>,
+    productPublicIdById: ReadonlyMap<string, string>,
   ): PromotionCodeOffer {
     const promotion = code.promotion as PromotionEntity;
     const productIds = promotion.productScope === PromotionProductScope.ALL
@@ -92,6 +103,7 @@ export class MikroOrmPromotionCodeReader extends PromotionCodeReader {
 
     return {
       promotionId: promotion.id,
+      promotionPublicId: promotion.publicId,
       shopId: code.shopId,
       code: code.code,
       benefitType: promotion.benefitType,
@@ -101,6 +113,10 @@ export class MikroOrmPromotionCodeReader extends PromotionCodeReader {
       visibility: promotion.visibility ?? PromotionVisibility.CODE_ONLY,
       productScope: promotion.productScope,
       productIds,
+      productPublicIds: productIds.flatMap((id) => {
+        const publicId = productPublicIdById.get(id);
+        return publicId ? [publicId] : [];
+      }),
       minOrderType: promotion.minOrderType ?? PromotionMinOrderType.NONE,
       minOrderValue: promotion.minOrderValue == null ? 0 : Number(promotion.minOrderValue),
       minPurchaseQuantity: promotion.minPurchaseQuantity ?? 0,

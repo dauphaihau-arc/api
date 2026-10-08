@@ -9,9 +9,9 @@ import type { PaginatedResult } from '~/platform/application/pagination';
 
 export interface ProductDraftSummary {
   id: string;
-  publicId?: string;
+  publicId: string;
   shopId: string;
-  shopPublicId?: string;
+  shopPublicId: string;
   categoryId?: string;
   categoryName?: string;
   title: string;
@@ -314,9 +314,10 @@ export type PublicProductSortOrder = 'newest' | 'price_asc' | 'price_desc';
 
 export interface PublicProductListItem {
   id: string;
+  publicId: string;
   shop: {
     id: string;
-    publicId?: string;
+    publicId: string;
     shopName: string;
     slug: string;
   };
@@ -339,7 +340,7 @@ export interface PublicProductListItem {
     originalMaxAmountMinor?: number;
     currency?: string;
     autoSale?: {
-      promotionId: string;
+      promotionPublicId: string;
       percentOff: number;
     };
   };
@@ -354,11 +355,12 @@ export interface PublicProductListItem {
 
 export interface PublicProductSuggestion {
   id: string;
+  publicId: string;
   title: string;
   slug: string;
   shop: {
     id: string;
-    publicId?: string;
+    publicId: string;
     shopName: string;
     slug: string;
   };
@@ -378,7 +380,7 @@ export interface PublicProductInventorySummary {
   originalAmountMinor?: number;
   currency?: string;
   autoSale?: {
-    promotionId: string;
+    promotionPublicId: string;
     percentOff: number;
   };
 }
@@ -394,9 +396,10 @@ export interface PublicProductShippingSummary {
 
 export interface PublicProductDetail {
   id: string;
+  publicId: string;
   shop: {
     id: string;
-    publicId?: string;
+    publicId: string;
     shopName: string;
     slug: string;
   };
@@ -505,10 +508,10 @@ export interface PublicProductReviewImageListResult {
 
 export interface MyProductReview {
   id: string;
-  orderId: string;
+  orderPublicId: string;
   orderItemId: string;
   product: {
-    id: string;
+    publicId: string;
     slug: string;
     title: string;
     shopSlug: string;
@@ -534,7 +537,7 @@ export type ShopProductReviewSortOrder =
 
 export interface ShopProductReviewItem {
   id: string;
-  orderId: string;
+  orderPublicId: string;
   orderItemId: string;
   rating: number;
   title?: string;
@@ -549,7 +552,7 @@ export interface ShopProductReviewItem {
     email: string;
   };
   product: {
-    id: string;
+    publicId: string;
     title: string;
     slug: string;
   };

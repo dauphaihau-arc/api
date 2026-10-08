@@ -48,8 +48,10 @@ export class ListAdminOrdersUseCase {
     return {
       results: orders.map((order) => ({
         id: order.id,
+        publicId: order.publicId,
         orderNumber: getRequiredOrderNumber(order),
         shopId: order.shop.id,
+        shopPublicId: order.shop.publicId,
         shopName: order.shop.shopName,
         shopSlug: order.shop.slug,
         customerEmail: order.customerEmail,

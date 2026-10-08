@@ -11,6 +11,7 @@ export interface SaleProjectionTarget {
  */
 export interface SaleProjection {
   promotionId: string;
+  promotionPublicId: string;
   percentOff: number;
 }
 

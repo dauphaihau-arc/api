@@ -13,8 +13,8 @@ import type {
   ShopOrderSummary,
 } from '../../app/order.types';
 import {
-  toPersistedShippingDiscount,
-  toPersistedShippingQuote,
+  toPublicShippingDiscount,
+  toPublicShippingQuote,
 } from '../../../checkout/app/checkout-shipping-snapshot.contract';
 import { toMinorUnits } from '~/platform/money/money';
 import type { CheckoutConfig } from '~/platform/config/checkout.config';
@@ -144,10 +144,10 @@ export function toCreateOrderResponse(result: CreateOrderResult) {
     checkout_session_url: result.checkoutSessionUrl,
     checkout_pending: result.checkoutPending ?? false,
     order_shops: result.orderShops.map((orderShop) => ({
-      id: orderShop.id,
+      id: orderShop.publicId,
       order_number: orderShop.orderNumber,
       shop: {
-        id: orderShop.shopId,
+        id: orderShop.shopPublicId,
         shop_name: orderShop.shopName,
         slug: orderShop.shopSlug,
       },
@@ -208,8 +208,10 @@ export function toCheckoutQuoteResponse(
 export function toCheckoutSessionOrderResponse(result: CreateOrderResult) {
   return {
     order_shops: result.orderShops.map((orderShop) => ({
+      id: orderShop.publicId,
       order_number: orderShop.orderNumber,
       shop: {
+        id: orderShop.shopPublicId,
         shop_name: orderShop.shopName,
         slug: orderShop.shopSlug,
       },
@@ -220,10 +222,10 @@ export function toCheckoutSessionOrderResponse(result: CreateOrderResult) {
 export function toOrderListResponse(result: OrderListResult) {
   return {
     order_shops: result.orderShops.map((orderShop) => ({
-      id: orderShop.id,
+      id: orderShop.publicId,
       order_number: orderShop.orderNumber,
       shop: {
-        id: orderShop.shopId,
+        id: orderShop.shopPublicId,
         shop_name: orderShop.shopName,
         slug: orderShop.shopSlug,
       },
@@ -231,7 +233,7 @@ export function toOrderListResponse(result: OrderListResult) {
       status: orderShop.status,
       products: orderShop.products.map((product) => ({
         product: {
-          id: product.productId,
+          id: product.productPublicId,
           slug: product.slug,
           shop: {
             slug: product.shopSlug,
@@ -264,7 +266,7 @@ export function toOrderListResponse(result: OrderListResult) {
       })),
       fulfillment: toFulfillmentSummaryResponse(orderShop.fulfillment),
       ...toMinorTotals(orderShop),
-      ...toOrderShippingResponse(orderShop.shippingQuote),
+      ...toOrderShippingResponse(orderShop.shippingQuote, orderShop.shopPublicId, orderShop.products),
       note: orderShop.note,
       canceled_at: orderShop.canceledAt,
       cancel_reason: orderShop.cancelReason,
@@ -290,7 +292,7 @@ function toShopOrderProductResponse(orderShop: ShopOrderSummary) {
       sku: product.sku,
     },
     product: {
-      id: product.productId,
+      id: product.productPublicId,
       slug: product.slug,
       shop: {
         slug: product.shopSlug,
@@ -325,7 +327,7 @@ export function toFulfillmentSummaryResponse(
       })),
       progress: toFulfillmentProgressResponse(group.progress),
       shipments: group.shipments.map((shipment) => ({
-        id: shipment.id,
+        id: shipment.publicId,
         group_id: shipment.groupId,
         status: shipment.status,
         carrier: shipment.carrier,
@@ -385,24 +387,28 @@ export function toFulfillmentProgressResponse(progress: OrderFulfillmentSummary[
  * shape a checkout quote shop returns, so a buyer, guest, seller, or admin view
  * never re-derives shipping from current configuration.
  */
-export function toOrderShippingResponse(shippingQuote?: OrderShippingQuote) {
+export function toOrderShippingResponse(
+  shippingQuote: OrderShippingQuote | undefined,
+  shopPublicId: string,
+  products: Array<{ productId: string; productPublicId: string }>,
+) {
   if (!shippingQuote) {
     return {};
   }
 
   return {
-    shipping: toPersistedShippingQuote(shippingQuote.shipping),
+    shipping: toPublicShippingQuote(shippingQuote.shipping, shopPublicId, products),
     shipping_discount_minor: shippingQuote.shippingDiscountMinor,
-    shipping_discounts: shippingQuote.shippingDiscounts.map(toPersistedShippingDiscount),
+    shipping_discounts: shippingQuote.shippingDiscounts.map(toPublicShippingDiscount),
   };
 }
 
 export function toShopOrderSummaryResponse(orderShop: ShopOrderSummary) {
   return {
-    id: orderShop.id,
+    id: orderShop.publicId,
     order_number: orderShop.orderNumber,
     shop: {
-      id: orderShop.shopId,
+      id: orderShop.shopPublicId,
       shop_name: orderShop.shopName,
       slug: orderShop.shopSlug,
     },
@@ -419,7 +425,7 @@ export function toShopOrderSummaryResponse(orderShop: ShopOrderSummary) {
     })),
     fulfillment: toFulfillmentSummaryResponse(orderShop.fulfillment),
     ...toMinorTotals(orderShop),
-    ...toOrderShippingResponse(orderShop.shippingQuote),
+    ...toOrderShippingResponse(orderShop.shippingQuote, orderShop.shopPublicId, orderShop.products),
     note: orderShop.note,
     canceled_at: orderShop.canceledAt,
     cancel_reason: orderShop.cancelReason,
@@ -462,7 +468,7 @@ export function toShopDashboardResponse(result: ShopDashboardResult) {
     })),
     recent_orders: result.recentOrders.map(toShopOrderSummaryResponse),
     top_selling_products: result.topSellingProducts.map((product) => ({
-      product_id: product.productId,
+      product_id: product.productPublicId,
       title: product.title,
       slug: product.slug,
       image_url: product.imageUrl,
@@ -492,7 +498,7 @@ export function toShopOrderDetailResponse(order: ShopOrderDetail) {
           sku: product.sku,
         },
         product: {
-          id: product.productId,
+          id: product.productPublicId,
           slug: product.slug,
           shop: {
             slug: product.shopSlug,
@@ -531,10 +537,10 @@ export function toShopOrderDetailResponse(order: ShopOrderDetail) {
 export function toMyOrderDetailResponse(order: MyOrderDetail) {
   return {
     order_shop: {
-      id: order.id,
+      id: order.publicId,
       order_number: order.orderNumber,
       shop: {
-        id: order.shopId,
+        id: order.shopPublicId,
         shop_name: order.shopName,
         slug: order.shopSlug,
       },
@@ -545,7 +551,7 @@ export function toMyOrderDetailResponse(order: MyOrderDetail) {
       status: order.status,
       products: order.products.map((product) => ({
         product: {
-          id: product.productId,
+          id: product.productPublicId,
           slug: product.slug,
           shop: {
             slug: product.shopSlug,
@@ -588,7 +594,7 @@ export function toMyOrderDetailResponse(order: MyOrderDetail) {
         phone: order.shippingAddress.phone,
       },
       ...toMinorTotals(order),
-      ...toOrderShippingResponse(order.shippingQuote),
+      ...toOrderShippingResponse(order.shippingQuote, order.shopPublicId, order.products),
       note: order.note,
       canceled_at: order.canceledAt,
       cancel_reason: order.cancelReason,
@@ -602,10 +608,10 @@ export function toMyOrderDetailResponse(order: MyOrderDetail) {
 export function toAdminOrderDetailResponse(order: AdminOrderDetail) {
   return {
     order: {
-      id: order.id,
+      id: order.publicId,
       order_number: order.orderNumber,
       shop: {
-        id: order.shopId,
+        id: order.shopPublicId,
         shop_name: order.shopName,
         slug: order.shopSlug,
       },
@@ -619,7 +625,7 @@ export function toAdminOrderDetailResponse(order: AdminOrderDetail) {
       status: order.status,
       products: order.products.map((product) => ({
         product: {
-          id: product.productId,
+          id: product.productPublicId,
           slug: product.slug,
           shop: {
             slug: product.shopSlug,
@@ -660,7 +666,7 @@ export function toAdminOrderDetailResponse(order: AdminOrderDetail) {
         phone: order.shippingAddress.phone,
       },
       ...toMinorTotals(order),
-      ...toOrderShippingResponse(order.shippingQuote),
+      ...toOrderShippingResponse(order.shippingQuote, order.shopPublicId, order.products),
       note: order.note,
       support_note: order.supportNote,
       canceled_at: order.canceledAt,
@@ -674,10 +680,10 @@ export function toAdminOrderDetailResponse(order: AdminOrderDetail) {
 export function toAdminOrderListResponse(result: AdminOrderListResult) {
   return {
     results: result.results.map((order) => ({
-      id: order.id,
+      id: order.publicId,
       order_number: order.orderNumber,
       shop: {
-        id: order.shopId,
+        id: order.shopPublicId,
         shop_name: order.shopName,
         slug: order.shopSlug,
       },

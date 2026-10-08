@@ -1,13 +1,7 @@
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import {
-  BadRequestException,
-  ForbiddenException,
-  Inject,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import type { Cache } from 'cache-manager';
 import ms from 'ms';
 import { randomUUID } from 'node:crypto';
@@ -15,13 +9,11 @@ import {
   STORAGE_CONFIG,
   type StorageConfig,
 } from '~/platform/config/storage.config';
-import { createPublicId } from '~/platform/ids/public-id';
-import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
+import { createStorageId } from '~/platform/ids/public-id';
 import { buildStorageObjectKey, resolveImageExtension, resolveStorageEnvironmentSegment } from '~/integrations/storage/app/storage-key-builder';
 import { StorageService } from '~/integrations/storage/app/ports/storage.service';
-import { ShopRepository } from '~/domains/shop/app/ports/shop.repository';
 import { ProductImageAssetType } from '../../../domain/enums/product-image-asset-type.enum';
-import { SellerProductQueryRepository } from '../../ports/seller-product-query.repository';
+import type { ProductDraftSummary } from '../../product.types';
 
 const UPLOAD_TICKET_TTL_MS = ms('15m');
 
@@ -41,43 +33,29 @@ export interface IssueProductImageUploadUrlResult {
 export class IssueProductImageUploadUrlUseCase {
   constructor(
     @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
-    private readonly shopRepository: ShopRepository,
-    private readonly productRepository: SellerProductQueryRepository,
     @Inject(STORAGE_CONFIG) private readonly storageConfig: StorageConfig,
     private readonly storageService: StorageService,
   ) {}
 
   async execute(
-    actor: AuthenticatedUser,
-    shopId: string,
-    productId: string,
+    product: ProductDraftSummary,
     contentType: string,
     assetType: ProductImageAssetType,
   ): Promise<IssueProductImageUploadUrlResult> {
-    const product = await this.productRepository.findById(productId);
-
-    if (!product || product.shopId !== shopId) {
-      throw new NotFoundException('Product was not found');
-    }
-
-    await this.assertActorCanManageShop(actor, shopId);
-
     if (!contentType.startsWith('image/')) {
       throw new BadRequestException('Upload content type must be an image');
     }
 
     const extension = resolveImageExtension(contentType);
-    const imageId = createPublicId();
-    const shopStorageId = product.shopPublicId ?? product.shopId;
-    const productStorageId = product.publicId ?? product.id;
+    const imageId = createStorageId();
     const key = buildStorageObjectKey({
       env: resolveStorageEnvironmentSegment(process.env.NODE_ENV),
       visibility: 'public',
       pathSegments: [
         'shops',
-        shopStorageId,
+        product.shopPublicId,
         'products',
-        productStorageId,
+        product.publicId,
         'images',
         imageId,
       ],
@@ -121,8 +99,8 @@ export class IssueProductImageUploadUrlUseCase {
     await this.cacheManager.set<ProductImageUploadTicketRecord>(
       buildTicketCacheKey(token),
       {
-        shopId,
-        productId,
+        shopId: product.shopId,
+        productId: product.id,
         storageKey: key,
       },
       UPLOAD_TICKET_TTL_MS,
@@ -132,29 +110,6 @@ export class IssueProductImageUploadUrlUseCase {
       token,
       key,
     };
-  }
-
-  private async assertActorCanManageShop(
-    actor: AuthenticatedUser,
-    shopId: string,
-  ): Promise<void> {
-    if (actor.roles.includes('admin')) {
-      const shop = await this.shopRepository.findById(shopId);
-
-      if (!shop) {
-        throw new NotFoundException('Shop was not found');
-      }
-
-      return;
-    }
-
-    const shop = await this.shopRepository.findOwnedById(shopId, actor.userId);
-
-    if (!shop) {
-      throw new ForbiddenException(
-        'Actor is not allowed to upload files for this shop',
-      );
-    }
   }
 }
 

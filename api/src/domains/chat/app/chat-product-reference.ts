@@ -51,7 +51,7 @@ export function buildChatProductReferenceMetadata(
 
   return {
     product_reference: {
-      product_id: product.id,
+      product_id: product.publicId,
       snapshot: {
         title: product.title,
         shop_slug: product.shop.slug,

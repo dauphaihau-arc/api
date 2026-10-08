@@ -71,13 +71,15 @@ export class CreateOrGetMyChatConversationUseCase {
         summary: await this.chatCommands.populateConversationSummary(entityManager, conversation),
         eventPayload: productReferenceMessage
           ? {
-            conversation_id: conversation.id,
+            conversation_id: conversation.publicId,
+            conversation_internal_id: conversation.id,
             message_id: productReferenceMessage.id,
             sender_user_id: conversation.buyerUser.id,
             recipient_user_ids: [conversation.shop.ownerUser.id],
             body: productReferenceMessage.body,
             message_type: productReferenceMessage.messageType,
-            shop_id: conversation.shop.id,
+            shop_id: conversation.shop.publicId,
+            shop_internal_id: conversation.shop.id,
             occurred_at: productReferenceMessage.createdAt.toISOString(),
             metadata: productReferenceMessage.metadata,
           } satisfies ChatMessageCreatedEventPayload
@@ -102,7 +104,7 @@ export class CreateOrGetMyChatConversationUseCase {
       conversation,
     );
 
-    if (existingProductReferences.some(message => getProductReferenceProductId(message.metadata) === product.id)) {
+    if (existingProductReferences.some(message => getProductReferenceProductId(message.metadata) === product.publicId)) {
       return null;
     }
 

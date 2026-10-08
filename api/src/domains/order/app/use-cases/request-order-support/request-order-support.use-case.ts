@@ -59,9 +59,9 @@ export class RequestOrderSupportUseCase {
       await this.notifyUserUseCase.execute(
         buildSellerOrderSupportRequestedNotification(
           sellerUserId,
-          order.id,
+          order.publicId,
           getRequiredOrderNumber(order),
-          order.shop.id,
+          order.shop.publicId,
         ),
       );
     }
@@ -76,8 +76,10 @@ export class RequestOrderSupportUseCase {
 
     return {
       id: order.id,
+      publicId: order.publicId,
       orderNumber: getRequiredOrderNumber(order),
       shopId: order.shop.id,
+      shopPublicId: order.shop.publicId,
       shopName: order.shop.shopName,
       shopSlug: order.shop.slug,
       currency: order.currency,
@@ -87,6 +89,7 @@ export class RequestOrderSupportUseCase {
       products: items.map((item) => ({
         id: item.id,
         productId: item.product.id,
+        productPublicId: item.product.publicId,
         slug: item.product.slug,
         shopSlug: item.product.shop.slug,
         title: item.title,

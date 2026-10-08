@@ -40,12 +40,15 @@ describe('CreateCheckoutQuoteService', () => {
         shops: [
           {
             shopId: 'shop-1',
+            shopPublicId: 'shop_public1',
             shopName: 'Shop 1',
             items: [
               {
                 inventoryId: 'inventory-1',
                 productId: 'product-1',
+                productPublicId: 'prod_public1',
                 shopId: 'shop-1',
+                shopPublicId: 'shop_public1',
                 shopName: 'Shop 1',
                 shopSlug: 'shop-1',
                 title: 'Product 1',
@@ -54,7 +57,7 @@ describe('CreateCheckoutQuoteService', () => {
                 currency: 'VND',
                 price: 250000000,
                 baseUnitPrice: 250000000,
-                effectiveUnitPrice: 250000000,
+                effectiveUnitPrice: 250000000, 
               },
             ],
             subtotal: 250000000,
@@ -64,7 +67,7 @@ describe('CreateCheckoutQuoteService', () => {
             total: 250000000,
             note: undefined,
             promoOffers: [],
-            originCountries: ['VN'],
+            originCountries: ['VN'], 
           },
         ],
         currency: 'VND',
@@ -153,6 +156,7 @@ describe('CreateCheckoutQuoteService', () => {
       pricedShops: [
         {
           shop_id: 'shop-1',
+          shop_public_id: 'shop_public1',
           shop_name: 'Shop 1',
           shop_slug: 'shop-1',
           subtotal_minor: 1500,
@@ -165,7 +169,9 @@ describe('CreateCheckoutQuoteService', () => {
             {
               inventory_id: 'inventory-1',
               product_id: 'product-1',
+              product_public_id: 'prod_public1',
               shop_id: 'shop-1',
+              shop_public_id: 'shop_public1',
               shop_name: 'Shop 1',
               shop_slug: 'shop-1',
               title: 'Product 1',
@@ -217,12 +223,15 @@ describe('CreateCheckoutQuoteService', () => {
         shops: [
           {
             shopId: 'shop-1',
+            shopPublicId: 'shop_public1',
             shopName: 'Shop 1',
             items: [
               {
                 inventoryId: 'inventory-1',
                 productId: 'product-1',
+                productPublicId: 'prod_public1',
                 shopId: 'shop-1',
+                shopPublicId: 'shop_public1',
                 shopName: 'Shop 1',
                 shopSlug: 'shop-1',
                 title: 'Product 1',
@@ -232,7 +241,7 @@ describe('CreateCheckoutQuoteService', () => {
                 effectiveUnitPrice: 15,
                 sourceCurrency: 'USD',
                 unitPriceMinor: 1500,
-                sourceUnitPriceMinor: 1500,
+                sourceUnitPriceMinor: 1500, 
               },
             ],
             subtotal: 15,
@@ -261,7 +270,7 @@ describe('CreateCheckoutQuoteService', () => {
               maxUsesPerUser: null,
               usesCount: 0,
             }],
-            originCountries: ['US'],
+            originCountries: ['US'], 
           },
         ],
         subtotalPrice: 15,
@@ -377,12 +386,15 @@ describe('CreateCheckoutQuoteService', () => {
         shops: [
           {
             shopId: 'shop-1',
+            shopPublicId: 'shop_public1',
             shopName: 'Shop 1',
             items: [
               {
                 inventoryId: 'inventory-1',
                 productId: 'product-1',
+                productPublicId: 'prod_public1',
                 shopId: 'shop-1',
+                shopPublicId: 'shop_public1',
                 shopName: 'Shop 1',
                 shopSlug: 'shop-1',
                 title: 'Product 1',
@@ -394,7 +406,7 @@ describe('CreateCheckoutQuoteService', () => {
                 unitPriceMinor: 1500,
                 sourceUnitPriceMinor: 1500,
                 fxEffectiveAt: '2026-06-27T00:00:00.000Z',
-                fxSourceTimestamp: '2026-06-27T00:00:00.000Z',
+                fxSourceTimestamp: '2026-06-27T00:00:00.000Z', 
               },
             ],
             subtotal: 15,
@@ -404,7 +416,7 @@ describe('CreateCheckoutQuoteService', () => {
             total: 15,
             note: undefined,
             promoOffers: [],
-            originCountries: ['US'],
+            originCountries: ['US'], 
           },
         ],
         subtotalPrice: 15,
@@ -450,7 +462,7 @@ describe('CreateCheckoutQuoteService', () => {
           userId: null,
           guestSessionId: 'guest-1',
           kind: 'active' as never,
-          items: [],
+          items: [{ inventory: { inventoryId: 'inventory-1', productPublicId: 'prod_public1', shopPublicId: 'shop_public1' } } as never],
         },
         shippingAddress: {
           fullName: 'Jane Doe',
@@ -487,6 +499,7 @@ describe('CreateCheckoutQuoteService', () => {
         currency: 'USD',
         shops: [{
           shopId: 'shop-1',
+          shopPublicId: 'shop_public1',
           shopName: 'Shop 1',
           items: [{
             cartItemId: 'cart-item-1',
@@ -510,7 +523,7 @@ describe('CreateCheckoutQuoteService', () => {
           totalShippingFee: 0,
           total: 10,
           promoOffers: [],
-          originCountries: ['US'],
+          originCountries: ['US'], 
         }],
         subtotalPrice: 10,
         totalDiscount: 0,
@@ -641,12 +654,15 @@ function buildPricedSummary(options: {
     shops: [
       {
         shopId: 'shop-1',
+        shopPublicId: 'shop_public1',
         shopName: 'Shop 1',
         items: [
           {
             inventoryId: 'inventory-1',
             productId: 'product-1',
+            productPublicId: 'prod_public1',
             shopId: 'shop-1',
+            shopPublicId: 'shop_public1',
             shopName: 'Shop 1',
             shopSlug: 'shop-1',
             title: 'Product 1',
@@ -656,7 +672,7 @@ function buildPricedSummary(options: {
             effectiveUnitPrice: 15,
             sourceCurrency: 'USD',
             unitPriceMinor: 1500,
-            sourceUnitPriceMinor: 1500,
+            sourceUnitPriceMinor: 1500, 
           },
         ],
         subtotal: 30,
@@ -669,7 +685,7 @@ function buildPricedSummary(options: {
         originCountries: ['US'],
         shipping,
         shippingDiscountMinor: options.shippingDiscountMinor ?? 0,
-        shippingDiscounts: [],
+        shippingDiscounts: [], 
       },
     ],
     subtotalPrice: 30,
@@ -728,7 +744,7 @@ const QUOTE_CART_INPUT = {
     userId: null,
     guestSessionId: 'guest-1',
     kind: 'active' as never,
-    items: [],
+    items: [{ inventory: { inventoryId: 'inventory-1', productPublicId: 'prod_public1', shopPublicId: 'shop_public1' } } as never],
   },
   shippingAddress: {
     fullName: 'Jane Doe',

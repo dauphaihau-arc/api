@@ -97,6 +97,7 @@ describe('ProductRecommendationController', () => {
     recommendPublicProductsUseCase.execute.mockResolvedValue([
       {
         id: 'product-2',
+        publicId: 'public-product-2',
         shop: {
           id: 'shop-1',
           publicId: 'public-shop-1',
@@ -125,10 +126,9 @@ describe('ProductRecommendationController', () => {
     )).resolves.toEqual({
       items: [
         {
-          id: 'product-2',
+          id: 'public-product-2',
           shop: {
-            id: 'shop-1',
-            public_id: 'public-shop-1',
+            id: 'public-shop-1',
             shop_name: 'Arc Store',
             slug: 'arc-store',
           },
@@ -157,6 +157,7 @@ describe('ProductRecommendationController', () => {
         items: [
           {
             id: 'product-2',
+            publicId: 'public-product-2',
             shop: {
               id: 'shop-1',
               publicId: 'public-shop-1',
@@ -190,10 +191,9 @@ describe('ProductRecommendationController', () => {
           title: 'Similar products',
           items: [
             {
-              id: 'product-2',
+              id: 'public-product-2',
               shop: {
-                id: 'shop-1',
-                public_id: 'public-shop-1',
+                id: 'public-shop-1',
                 shop_name: 'Arc Store',
                 slug: 'arc-store',
               },
@@ -223,6 +223,7 @@ describe('ProductRecommendationController', () => {
     publicProductViewHistoryService.listRecentViews.mockResolvedValue([
       {
         id: 'product-3',
+        publicId: 'public-product-3',
         shop: {
           id: 'shop-1',
           publicId: 'public-shop-1',
@@ -247,10 +248,9 @@ describe('ProductRecommendationController', () => {
     )).resolves.toEqual({
       items: [
         {
-          id: 'product-3',
+          id: 'public-product-3',
           shop: {
-            id: 'shop-1',
-            public_id: 'public-shop-1',
+            id: 'public-shop-1',
             shop_name: 'Arc Store',
             slug: 'arc-store',
           },
@@ -277,6 +277,7 @@ describe('ProductRecommendationController', () => {
     publicProductViewHistoryService.listTrendingProducts.mockResolvedValue([
       {
         id: 'product-4',
+        publicId: 'public-product-4',
         shop: {
           id: 'shop-1',
           publicId: 'public-shop-1',
@@ -302,10 +303,9 @@ describe('ProductRecommendationController', () => {
     )).resolves.toEqual({
       items: [
         {
-          id: 'product-4',
+          id: 'public-product-4',
           shop: {
-            id: 'shop-1',
-            public_id: 'public-shop-1',
+            id: 'public-shop-1',
             shop_name: 'Arc Store',
             slug: 'arc-store',
           },
@@ -331,6 +331,7 @@ describe('ProductRecommendationController', () => {
     publicProductOrderHistoryService.listBestSellingProducts.mockResolvedValue([
       {
         id: 'product-5',
+        publicId: 'public-product-5',
         shop: {
           id: 'shop-1',
           publicId: 'public-shop-1',
@@ -356,10 +357,9 @@ describe('ProductRecommendationController', () => {
     )).resolves.toEqual({
       items: [
         {
-          id: 'product-5',
+          id: 'public-product-5',
           shop: {
-            id: 'shop-1',
-            public_id: 'public-shop-1',
+            id: 'public-shop-1',
             shop_name: 'Arc Store',
             slug: 'arc-store',
           },
@@ -386,6 +386,7 @@ describe('ProductRecommendationController', () => {
     optionalCacheService.get.mockResolvedValue([
       {
         id: 'cached-product',
+        publicId: 'public-cached-product',
         shop: {
           id: 'shop-1',
           publicId: 'public-shop-1',
@@ -411,15 +412,17 @@ describe('ProductRecommendationController', () => {
     )).resolves.toEqual({
       items: [
         {
-          id: 'cached-product',
+          id: 'public-cached-product',
           shop: {
-            id: 'shop-1',
-            public_id: 'public-shop-1',
+            id: 'public-shop-1',
             shop_name: 'Arc Store',
             slug: 'arc-store',
           },
           title: 'Cached Product',
           slug: 'cached-product',
+          category_id: undefined,
+          image: undefined,
+          pricing: undefined,
           availability: {
             in_stock: true,
             low_stock: false,

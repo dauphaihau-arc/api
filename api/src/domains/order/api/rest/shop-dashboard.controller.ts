@@ -17,6 +17,7 @@ import { JwtAuthGuard } from '~/domains/auth/api/guard/jwt-auth.guard';
 import { PermissionsGuard } from '~/domains/auth/api/guard/permissions.guard';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import { ShopAccessService } from '~/domains/shop/app/services/shop-access.service';
+
 import { CurrentUser } from '~/platform/decorators/current-user.decorator';
 import { RequirePermissions } from '~/platform/decorators/require-permissions.decorator';
 import { GetShopDashboardUseCase } from '../../app/use-cases/get-shop-dashboard/get-shop-dashboard.use-case';
@@ -44,15 +45,17 @@ export class ShopDashboardController {
   })
   async overview(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('shop_id') shopId: string,
+    @Param('shop_id') shopPublicId: string,
     @Query() query: GetShopDashboardQueryDto,
   ) {
-    const shop = await this.shopAccessService.resolveManageableShop(currentUser, shopId);
+    const shop = await this.shopAccessService.resolveManageableShopByPublicId(currentUser, shopPublicId);
 
-    return this.getShopDashboardUseCase.execute({
+    const dashboard = await this.getShopDashboardUseCase.execute({
       shopId: shop.id,
       currency: shop.currency,
       range: query.range,
-    }).then(toShopDashboardResponse);
+    });
+
+    return toShopDashboardResponse(dashboard);
   }
 }

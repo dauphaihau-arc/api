@@ -237,6 +237,7 @@ function toPublicProductListItemFromSearchDocument(
 
   return {
     id: document.productId,
+    publicId: document.productPublicId,
     shop: {
       id: document.shopId,
       publicId: document.shopPublicId,

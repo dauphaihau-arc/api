@@ -27,7 +27,9 @@ describe('BulkMutateShopProductsUseCase', () => {
 
   const readyProduct: ProductDraftSummary = {
     id: 'product-1',
+    publicId: 'public-product-1',
     shopId: 'shop-1',
+    shopPublicId: 'public-shop-1',
     categoryId: 'category-1',
     title: 'Handmade Mug',
     slug: 'handmade-mug',
@@ -95,6 +97,13 @@ describe('BulkMutateShopProductsUseCase', () => {
 
     const productRepository = {
       findById: jest.fn().mockImplementation(async (id: string) => products.get(id) ?? null),
+      findSummariesByPublicIds: jest.fn().mockImplementation(
+        async (publicIds: readonly string[]) => publicIds.map(
+          (publicId) => [...products.values()].find(
+            (product) => product.publicId === publicId,
+          ) ?? null,
+        ),
+      ),
       updateState: jest.fn().mockImplementation(async (id: string, state: ProductState) => {
         const product = products.get(id);
 
@@ -141,6 +150,8 @@ describe('BulkMutateShopProductsUseCase', () => {
     const shopRepository: jest.Mocked<ShopRepository> = {
       create: jest.fn(),
       findById: jest.fn(),
+      findByPublicId: jest.fn(),
+      findByPublicIds: jest.fn(),
       findByOwnerUserId: jest.fn(),
       findByShopName: jest.fn(),
       findBySlug: jest.fn(),
@@ -172,6 +183,7 @@ describe('BulkMutateShopProductsUseCase', () => {
       'product-2': {
         ...readyProduct,
         id: 'product-2',
+        publicId: 'public-product-2',
         slug: 'handmade-mug-2',
       },
     });
@@ -185,12 +197,12 @@ describe('BulkMutateShopProductsUseCase', () => {
 
     const result = await useCase.execute(actor, {
       shopId: 'shop-1',
-      productIds: ['product-1', 'product-2'],
+      productPublicIds: ['public-product-1', 'public-product-2'],
       action: BulkMutateShopProductsAction.PUBLISH,
     });
 
     expect(result).toEqual({
-      succeededIds: ['product-1', 'product-2'],
+      succeededIds: ['public-product-1', 'public-product-2'],
       failed: [],
     });
     expect(productRepository.publish).toHaveBeenCalledTimes(2);
@@ -204,6 +216,7 @@ describe('BulkMutateShopProductsUseCase', () => {
       'product-2': {
         ...readyProduct,
         id: 'product-2',
+        publicId: 'public-product-2',
         shipping: undefined,
       },
     });
@@ -217,14 +230,14 @@ describe('BulkMutateShopProductsUseCase', () => {
 
     const result = await useCase.execute(actor, {
       shopId: 'shop-1',
-      productIds: ['product-1', 'product-2', 'missing-product'],
+      productPublicIds: ['public-product-1', 'public-product-2', 'missing-product'],
       action: BulkMutateShopProductsAction.PUBLISH,
     });
 
-    expect(result.succeededIds).toEqual(['product-1']);
+    expect(result.succeededIds).toEqual(['public-product-1']);
     expect(result.failed).toEqual([
       {
-        id: 'product-2',
+        id: 'public-product-2',
         code: 'ProductNotReadyToPublishError',
         reason: 'A shipping profile is required before publishing',
       },
@@ -248,6 +261,7 @@ describe('BulkMutateShopProductsUseCase', () => {
       'product-2': {
         ...readyProduct,
         id: 'product-2',
+        publicId: 'public-product-2',
         state: ProductState.ACTIVE,
       },
     });
@@ -261,12 +275,12 @@ describe('BulkMutateShopProductsUseCase', () => {
 
     const result = await useCase.execute(actor, {
       shopId: 'shop-1',
-      productIds: ['product-1', 'product-2'],
+      productPublicIds: ['public-product-1', 'public-product-2'],
       action: BulkMutateShopProductsAction.DEACTIVATE,
     });
 
     expect(result).toEqual({
-      succeededIds: ['product-1', 'product-2'],
+      succeededIds: ['public-product-1', 'public-product-2'],
       failed: [],
     });
     expect(productRepository.updateState).toHaveBeenCalledWith(
@@ -293,7 +307,7 @@ describe('BulkMutateShopProductsUseCase', () => {
 
     const result = await useCase.execute(actor, {
       shopId: 'shop-1',
-      productIds: ['product-1'],
+      productPublicIds: ['public-product-1'],
       action: BulkMutateShopProductsAction.DEACTIVATE,
     });
 
@@ -301,7 +315,7 @@ describe('BulkMutateShopProductsUseCase', () => {
       succeededIds: [],
       failed: [
         {
-          id: 'product-1',
+          id: 'public-product-1',
           code: 'ProductStateConflict',
           reason: 'Draft products cannot be deactivated before they are published',
         },
@@ -330,12 +344,12 @@ describe('BulkMutateShopProductsUseCase', () => {
 
     const result = await useCase.execute(actor, {
       shopId: 'shop-1',
-      productIds: ['product-1'],
+      productPublicIds: ['public-product-1'],
       action: BulkMutateShopProductsAction.REMOVE,
     });
 
     expect(result).toEqual({
-      succeededIds: ['product-1'],
+      succeededIds: ['public-product-1'],
       failed: [],
     });
     expect(productRepository.updateState).toHaveBeenCalledWith(

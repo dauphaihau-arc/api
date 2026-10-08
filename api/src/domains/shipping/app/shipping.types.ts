@@ -24,6 +24,7 @@ export interface ShippingRateInput {
 export interface ShippingProfileSummary {
   id: string;
   shopId: string;
+  shopPublicId: string;
   name: string;
   status: ShippingProfileStatus;
   version: number;

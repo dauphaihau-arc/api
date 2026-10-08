@@ -21,7 +21,9 @@ describe('SetProductImagesByKeysUseCase', () => {
 
   const product: ProductDraftSummary = {
     id: 'product-1',
+    publicId: 'public-product-1',
     shopId: 'shop-owner-1',
+    shopPublicId: 'public-shop-owner-1',
     categoryId: 'category-1',
     title: 'Handmade Mug',
     slug: 'handmade-mug',
@@ -60,6 +62,8 @@ describe('SetProductImagesByKeysUseCase', () => {
     const shopRepository: jest.Mocked<ShopRepository> = {
       create: jest.fn(),
       findById: jest.fn(),
+      findByPublicId: jest.fn(),
+      findByPublicIds: jest.fn(),
       findByOwnerUserId: jest.fn(),
       findByShopName: jest.fn(),
       findBySlug: jest.fn(),

@@ -23,9 +23,9 @@ export class ForwardChatMessageToWsListener {
       ...payload.recipient_user_ids,
     ]);
     const channelKeys = [
-      buildConversationWsChannelKey(payload.conversation_id),
+      buildConversationWsChannelKey(payload.conversation_internal_id),
       ...Array.from(userIds, userId => buildUserWsChannelKey(userId)),
-      ...(payload.shop_id ? [buildShopWsChannelKey(payload.shop_id)] : []),
+      ...(payload.shop_internal_id ? [buildShopWsChannelKey(payload.shop_internal_id)] : []),
     ];
 
     this.wsPublisher.publishToChannels(channelKeys, {

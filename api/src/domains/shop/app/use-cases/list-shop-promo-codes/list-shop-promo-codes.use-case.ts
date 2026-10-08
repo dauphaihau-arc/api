@@ -11,6 +11,7 @@ import { ShopAccessDeniedError, ShopNotFoundError } from '../../errors/shop-app.
 import type { ListShopPromoCodesQueryDto } from '../../../api/rest/dto/list-shop-promo-codes.query.dto';
 import type { ShopPromoCodeListResult } from '../../shop.types';
 import { toShopPromoCodeSummary } from '../../promo-code-summary.mapper';
+import { loadProductReferences, selectProductReferences } from '../../product-reference';
 
 @Injectable()
 export class ListShopPromoCodesUseCase {
@@ -49,7 +50,7 @@ export class ListShopPromoCodesUseCase {
       orderBy: { createdAt: 'desc' },
       offset: (query.page - 1) * query.limit,
       limit: query.limit,
-      populate: ['products'],
+      populate: ['shop', 'products'],
     });
 
     const promotionIds = promotions.map((promotion) => promotion.id);
@@ -81,6 +82,10 @@ export class ListShopPromoCodesUseCase {
     }
 
     const now = this.clock.now();
+    const referencesById = await loadProductReferences(
+      entityManager,
+      promotions.flatMap((promotion) => promotion.products.getItems().map((target) => target.productId)),
+    );
 
     return {
       results: promotions.map((promotion) => {
@@ -90,7 +95,7 @@ export class ListShopPromoCodesUseCase {
         return toShopPromoCodeSummary(
           promotion,
           code?.code ?? '',
-          productIds,
+          selectProductReferences(productIds, referencesById),
           now,
           redemptionCountByPromotionId.get(promotion.id) ?? 0,
         );

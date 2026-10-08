@@ -3,10 +3,10 @@ import type { MyProductReview } from '../../../app/product.types';
 export function toMyProductReviewResponse(review: MyProductReview) {
   return {
     id: review.id,
-    order_id: review.orderId,
+    order_id: review.orderPublicId,
     order_item_id: review.orderItemId,
     product: {
-      id: review.product.id,
+      id: review.product.publicId,
       slug: review.product.slug,
       title: review.product.title,
       shop_slug: review.product.shopSlug,

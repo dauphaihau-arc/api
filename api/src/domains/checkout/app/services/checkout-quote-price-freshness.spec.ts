@@ -12,6 +12,7 @@ function buildQuote(): Pick<LoadedCheckoutQuote, 'checkoutCurrency' | 'shops'> {
     checkoutCurrency: 'USD',
     shops: [{
       shopId: 'shop-1',
+      shopPublicId: 'shop_public1',
       shopName: 'Shop 1',
       shopSlug: 'shop-1',
       subtotalMinor: 1800,
@@ -46,6 +47,7 @@ function buildSummary(overrides?: {
     currency: 'USD',
     shops: [{
       shopId: 'shop-1',
+      shopPublicId: 'shop_public1',
       shopName: 'Shop 1',
       items: [],
       subtotal,
@@ -87,6 +89,7 @@ describe('resolveRefreshedCheckoutTotals', () => {
       totalMinor: 3150,
       shops: [{
         shopId: 'shop-1',
+        shopPublicId: 'shop_public1',
         subtotalMinor: 2000,
         discountMinor: 0,
         saleDiscountMinor: 0,

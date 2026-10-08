@@ -93,9 +93,10 @@ export class CreateShopPromoCodeUseCase {
       throw new PromoCodeEndAfterStartRequiredError();
     }
 
-    const productIds = productScope === PromotionProductScope.SPECIFIC
+    const products = productScope === PromotionProductScope.SPECIFIC
       ? await this.resolveProductScope(entityManager, shopId, body.product_ids ?? [])
       : [];
+    const productIds = products.map((product) => product.id);
 
     const normalizedCode = body.code.trim().toUpperCase();
     const existingCode = await entityManager.getRepository(PromotionCodeEntity).findOne({
@@ -141,7 +142,7 @@ export class CreateShopPromoCodeUseCase {
 
     await entityManager.persist([promotion, code, ...targets]).flush();
 
-    return toShopPromoCodeSummary(promotion, code.code, productIds, now, 0);
+    return toShopPromoCodeSummary(promotion, code.code, products, now, 0);
   }
 
   /**
@@ -270,30 +271,31 @@ export class CreateShopPromoCodeUseCase {
   private async resolveProductScope(
     entityManager: EntityManager,
     shopId: string,
-    productIds: string[],
-  ): Promise<string[]> {
-    if (new Set(productIds).size !== productIds.length) {
+    productPublicIds: string[],
+  ): Promise<Array<{ id: string; publicId: string }>> {
+    if (productPublicIds.length === 0) return [];
+    if (new Set(productPublicIds).size !== productPublicIds.length) {
       throw new PromoCodeProductScopeInvalidError('Selected products must be unique');
     }
 
     const products = await entityManager.getRepository(ProductEntity).find(
-      { id: { $in: productIds } },
+      { publicId: { $in: productPublicIds } },
       { populate: ['shop'] },
     );
-    const productsById = new Map(products.map((product) => [product.id, product]));
+    const productsByPublicId = new Map(products.map((product) => [product.publicId, product]));
 
-    for (const productId of productIds) {
-      const product = productsById.get(productId);
-
-      if (!product) {
-        throw new PromoCodeProductScopeInvalidError('A selected product was not found');
-      }
-
+    for (const productPublicId of productPublicIds) {
+      const product = productsByPublicId.get(productPublicId);
+      if (!product) throw new PromoCodeProductScopeInvalidError('A selected product was not found');
       if (product.shop.id !== shopId) {
         throw new PromoCodeProductScopeInvalidError('A selected product belongs to another shop');
       }
     }
 
-    return productIds;
+    return productPublicIds.map((productPublicId) => {
+      const product = productsByPublicId.get(productPublicId);
+      if (!product) throw new PromoCodeProductScopeInvalidError('A selected product was not found');
+      return { id: product.id, publicId: product.publicId };
+    });
   }
 }

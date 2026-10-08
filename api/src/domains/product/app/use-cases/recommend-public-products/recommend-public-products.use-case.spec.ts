@@ -5,8 +5,10 @@ import { RecommendPublicProductsUseCase } from './recommend-public-products.use-
 describe('RecommendPublicProductsUseCase', () => {
   const items: PublicProductListItem[] = [{
     id: 'product-2',
+    publicId: 'public-product-2',
     shop: {
       id: 'shop-1',
+      publicId: 'public-shop-1',
       shopName: 'owner-shop',
       slug: 'owner-shop',
     },

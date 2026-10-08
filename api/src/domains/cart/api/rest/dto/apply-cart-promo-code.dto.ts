@@ -15,10 +15,10 @@ export class ApplyCartPromoCodeDto {
   @IsUUID()
   cartId?: string;
 
-  @ApiProperty({ name: 'shop_id' })
+  @ApiProperty({ name: 'shop_id', description: 'Shop public id (shop_…)' })
   @Expose({ name: 'shop_id' })
   @Transform(({ value, obj: source }) => value ?? source.shop_id)
-  @IsUUID()
+  @IsString()
   shopId!: string;
 
   @ApiProperty()

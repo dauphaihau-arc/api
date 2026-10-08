@@ -19,7 +19,7 @@ function serializeProgress(progress: FulfillmentProgressSnapshot) {
 
 function serializeShipment(shipment: FulfillmentShipmentView) {
   return {
-    id: shipment.id,
+    id: shipment.publicId,
     group_id: shipment.groupId,
     status: shipment.status,
     carrier: shipment.carrier,

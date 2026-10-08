@@ -3,6 +3,28 @@ import type { Client } from 'pg';
 
 type Sql = Pick<Client, 'query'>;
 
+export async function resolveProductId(sql: Sql, productPublicId: string): Promise<string> {
+  const result = await sql.query<{ id: string }>(
+    'select "id" from "products" where "public_id" = $1',
+    [productPublicId],
+  );
+  if (result.rows.length === 0) {
+    throw new Error(`Product not found for public id: ${productPublicId}`);
+  }
+  return result.rows[0].id;
+}
+
+export async function resolveShopId(sql: Sql, shopPublicId: string): Promise<string> {
+  const result = await sql.query<{ id: string }>(
+    'select "id" from "shops" where "public_id" = $1',
+    [shopPublicId],
+  );
+  if (result.rows.length === 0) {
+    throw new Error(`Shop not found for public id: ${shopPublicId}`);
+  }
+  return result.rows[0].id;
+}
+
 export interface SeedShippingRate {
   destinationScope: 'country' | 'everywhere_else';
   destinationCountry?: string;
@@ -20,6 +42,7 @@ export interface SeedShippingRate {
 export async function seedShopShippingProfile(
   sql: Sql,
   input: {
+    /** Public id of the shop (e.g. shop_…). */
     shopId: string;
     name: string;
     status?: 'draft' | 'active';
@@ -32,6 +55,7 @@ export async function seedShopShippingProfile(
 ): Promise<string> {
   const shippingProfileId = randomUUID();
   const rates = input.rates ?? [];
+  const internalShopId = await resolveShopId(sql, input.shopId);
 
   await sql.query(
     `insert into "shipping_profiles"
@@ -39,7 +63,7 @@ export async function seedShopShippingProfile(
      values ($1, now(), now(), $2, $3, $4, $5, 1, $6, $7, $8, $9)`,
     [
       shippingProfileId,
-      input.shopId,
+      internalShopId,
       input.name,
       input.name.trim().toLowerCase(),
       input.status ?? 'active',
@@ -74,12 +98,12 @@ export async function seedShopShippingProfile(
 
 export async function assignProductShippingProfile(
   sql: Sql,
-  productId: string,
+  productPublicId: string,
   shippingProfileId: string | null,
 ): Promise<void> {
   await sql.query(
-    'update "products" set "shipping_profile_id" = $2, "updated_at" = now() where "id" = $1',
-    [productId, shippingProfileId],
+    'update "products" set "shipping_profile_id" = $2, "updated_at" = now() where "public_id" = $1',
+    [productPublicId, shippingProfileId],
   );
 }
 
@@ -91,6 +115,7 @@ export async function assignProductShippingProfile(
 export async function seedPublishableInventory(
   sql: Sql,
   input: {
+    /** Public id of the shop (e.g. shop_…). */
     shopId: string;
     inventoryId: string;
     sku: string;
@@ -99,6 +124,8 @@ export async function seedPublishableInventory(
     currency?: string;
   },
 ): Promise<void> {
+  const internalShopId = await resolveShopId(sql, input.shopId);
+
   await sql.query(
     `update "product_inventory"
      set "sku" = $2,
@@ -123,7 +150,7 @@ export async function seedPublishableInventory(
       `insert into "product_stock_pool"
          ("id", "created_at", "updated_at", "inventory_id", "shop_id", "name", "custody", "is_default", "lifecycle_state", "on_hand_quantity", "reserved_quantity", "on_hand_version", "stock")
        values ($1, now(), now(), $2, $3, 'Default seller pool', 'seller', true, 'active', $4, 0, 1, $4)`,
-      [randomUUID(), input.inventoryId, input.shopId, input.stock],
+      [randomUUID(), input.inventoryId, internalShopId, input.stock],
     );
   }
   else {

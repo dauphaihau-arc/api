@@ -76,6 +76,8 @@ describe('SetProductImagesUseCase', () => {
     const shopRepository: jest.Mocked<ShopRepository> = {
       create: jest.fn(),
       findById: jest.fn(),
+      findByPublicId: jest.fn(),
+      findByPublicIds: jest.fn(),
       findByOwnerUserId: jest.fn(),
       findByShopName: jest.fn(),
       findBySlug: jest.fn(),

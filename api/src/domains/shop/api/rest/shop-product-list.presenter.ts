@@ -27,10 +27,8 @@ export const toShopProductListResponse = (
       && (!inventory.productVariantId || visibleVariantIds.has(inventory.productVariantId)));
 
     return {
-      id: product.id,
-      public_id: product.publicId,
-      shop_id: product.shopId,
-      shop_public_id: product.shopPublicId,
+      id: product.publicId,
+      shop_id: product.shopPublicId,
       category_id: product.categoryId,
       title: product.title,
       slug: product.slug,

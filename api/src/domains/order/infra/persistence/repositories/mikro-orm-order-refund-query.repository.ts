@@ -27,6 +27,38 @@ implements OrderRefundQueryRepository {
       .findOne({ id: orderId }, { populate: ['shop.ownerUser'] });
   }
 
+  async findByPublicId(
+    publicId: string,
+    context?: OrderRepositoryContext,
+  ): Promise<string | null> {
+    const order = await this.getEntityManager(context)
+      .getRepository(OrderEntity)
+      .findOne(
+        { publicId },
+        { fields: ['id'] },
+      );
+
+    return order?.id ?? null;
+  }
+
+  async findIdsByPublicIds(
+    publicIds: readonly string[],
+    context?: OrderRepositoryContext,
+  ): Promise<ReadonlyMap<string, string>> {
+    if (publicIds.length === 0) {
+      return new Map();
+    }
+
+    const orders = await this.getEntityManager(context)
+      .getRepository(OrderEntity)
+      .find(
+        { publicId: { $in: [...new Set(publicIds)] } },
+        { fields: ['id', 'publicId'] },
+      );
+
+    return new Map(orders.map(order => [order.publicId, order.id]));
+  }
+
   private getEntityManager(context?: OrderRepositoryContext): EntityManager {
     return context?.entityManager ?? this.entityManager.fork();
   }

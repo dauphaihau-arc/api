@@ -1,6 +1,6 @@
 import { Expose, Transform, Type } from 'class-transformer';
 import {
-  IsEnum, IsIn, IsOptional, IsUUID, Max, Min, 
+  IsEnum, IsIn, IsOptional, Matches, Max, Min,
 } from 'class-validator';
 import {
   SHOP_PRODUCT_REVIEW_LIST_DEFAULT_LIMIT,
@@ -28,7 +28,7 @@ export class ListShopProductReviewsQueryDto {
   @IsOptional()
   @Expose({ name: 'product_id' })
   @Transform(({ value, obj: source }) => value ?? source.product_id)
-  @IsUUID()
+  @Matches(/^prod_[0-9a-f]{12}$/)
   productId?: string;
 
   @IsOptional()

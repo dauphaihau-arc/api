@@ -30,6 +30,7 @@ export function buildRefreshedCheckoutTotals(
 
     return {
       shopId: shop.shopId,
+      shopPublicId: shop.shopPublicId,
       subtotalMinor,
       discountMinor,
       saleDiscountMinor,

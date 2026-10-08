@@ -9,6 +9,7 @@ import { ShopAccessDeniedError, ShopNotFoundError } from '../../errors/shop-app.
 import type { ListShopSalesQueryDto } from '../../../api/rest/dto/list-shop-sales.query.dto';
 import type { ShopSaleListResult } from '../../shop.types';
 import { toShopSaleSummary } from '../../sale-summary';
+import { loadProductReferences, selectProductReferences } from '../../product-reference';
 
 @Injectable()
 export class ListShopSalesUseCase {
@@ -47,15 +48,21 @@ export class ListShopSalesUseCase {
       orderBy: { createdAt: 'desc' },
       offset: (query.page - 1) * query.limit,
       limit: query.limit,
-      populate: ['products'],
+      populate: ['shop', 'products'],
     });
 
     const now = this.clock.now();
+    const productIds = promotions.flatMap((promotion) =>
+      promotion.products.getItems().map((target) => target.productId));
+    const productReferences = await loadProductReferences(entityManager, productIds);
 
     return {
       results: promotions.map((promotion) => toShopSaleSummary(
         promotion,
-        promotion.products.getItems().map((target) => target.productId),
+        selectProductReferences(
+          promotion.products.getItems().map((target) => target.productId),
+          productReferences,
+        ),
         now,
       )),
       page: query.page,

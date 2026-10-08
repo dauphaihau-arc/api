@@ -11,6 +11,7 @@ export type OrderSseChangedField = (typeof ORDER_SSE_CHANGED_FIELDS)[number];
 
 export type OrderUpdatedSseEventPayload = {
   userId: string;
+  /** Public order reference delivered unchanged to clients. */
   orderId: string;
   changed: OrderSseChangedField[];
   status?: string;

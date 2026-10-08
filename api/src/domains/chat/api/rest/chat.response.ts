@@ -7,7 +7,7 @@ import type {
 
 export function toChatConversationResponse(conversation: ChatConversationSummary) {
   return {
-    id: conversation.id,
+    id: conversation.publicId,
     buyer_user_id: conversation.buyerUserId,
     buyer: {
       id: conversation.buyerUserId,
@@ -15,7 +15,7 @@ export function toChatConversationResponse(conversation: ChatConversationSummary
       avatar: conversation.buyerAvatar ?? null,
     },
     shop: {
-      id: conversation.shopId,
+      id: conversation.shopPublicId,
       owner_user_id: conversation.shopOwnerUserId,
       shop_name: conversation.shopName,
       slug: conversation.shopSlug,
@@ -44,7 +44,7 @@ export function toChatConversationResponse(conversation: ChatConversationSummary
 export function toChatMessageResponse(message: ChatMessageSummary) {
   return {
     id: message.id,
-    conversation_id: message.conversationId,
+    conversation_id: message.conversationPublicId,
     sender_user_id: message.senderUserId,
     body: message.body,
     message_type: message.messageType,

@@ -22,6 +22,8 @@ import { CurrentUser } from '~/platform/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import { JwtAuthGuard } from '~/domains/auth/api/guard/jwt-auth.guard';
 import { PermissionsGuard } from '~/domains/auth/api/guard/permissions.guard';
+import { readRawBody } from '~/platform/http/read-raw-body';
+import { ShopProductAccessService } from '../../../app/services/shop-product-access.service';
 import { ConsumeProductImageUploadTicketUseCase } from '../../../app/use-cases/consume-product-image-upload-ticket/consume-product-image-upload-ticket.use-case';
 import { IssueProductImageUploadUrlUseCase } from '../../../app/use-cases/issue-product-image-upload-url/issue-product-image-upload-url.use-case';
 import { IssueProductImageUploadDto } from './dto/issue-product-image-upload.dto';
@@ -38,6 +40,7 @@ export class ProductUploadController {
   constructor(
     private readonly issueProductImageUploadUrlUseCase: IssueProductImageUploadUrlUseCase,
     private readonly consumeProductImageUploadTicketUseCase: ConsumeProductImageUploadTicketUseCase,
+    private readonly shopProductAccessService: ShopProductAccessService,
   ) {}
 
   @Post()
@@ -52,17 +55,20 @@ export class ProductUploadController {
     schema: { type: 'object' },
   })
   async issueUploadUrl(
-    @Param('shop_id') shopId: string,
-    @Param('product_id') productId: string,
+    @Param('shop_id') shopPublicId: string,
+    @Param('product_id') productPublicId: string,
     @CurrentUser() currentUser: AuthenticatedUser,
     @Req() request: Request,
     @Body() body: IssueProductImageUploadDto,
   ): Promise<UploadUrlResponse> {
+    const product = await this.shopProductAccessService.resolveManageableProduct(
+      currentUser,
+      shopPublicId,
+      productPublicId,
+    );
     const { token, key, presignedUrl } =
       await this.issueProductImageUploadUrlUseCase.execute(
-        currentUser,
-        shopId,
-        productId,
+        product,
         body.contentType,
         body.assetType,
       );
@@ -106,24 +112,4 @@ export class ProductUploadController {
 
     return `${protocol}://${host}${baseUrl}/${token}`;
   }
-}
-
-async function readRawBody(request: Request): Promise<Buffer> {
-  const chunks: Buffer[] = [];
-
-  for await (const chunk of request) {
-    if (Buffer.isBuffer(chunk)) {
-      chunks.push(chunk);
-      continue;
-    }
-
-    if (typeof chunk === 'string' || chunk instanceof Uint8Array) {
-      chunks.push(Buffer.from(chunk));
-      continue;
-    }
-
-    throw new TypeError('Unexpected request body chunk type');
-  }
-
-  return Buffer.concat(chunks);
 }

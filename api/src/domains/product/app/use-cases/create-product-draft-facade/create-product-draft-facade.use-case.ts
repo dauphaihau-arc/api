@@ -119,7 +119,7 @@ export class CreateProductDraftFacadeUseCase {
       const imagesResult = await this.setProductImagesByKeysUseCase.execute(actor, currentProduct.id, {
         images: input.images,
       });
-      if (!imagesResult.isOk) return this.incomplete(currentProduct.id, 'images', imagesResult.error);
+      if (!imagesResult.isOk) return this.incomplete(currentProduct, 'images', imagesResult.error);
       currentProduct = imagesResult.value;
     }
 
@@ -127,7 +127,7 @@ export class CreateProductDraftFacadeUseCase {
       const attributesResult = await this.setProductAttributesUseCase.execute(actor, currentProduct.id, {
         attributes: input.attributes,
       });
-      if (!attributesResult.isOk) return this.incomplete(currentProduct.id, 'attributes', attributesResult.error);
+      if (!attributesResult.isOk) return this.incomplete(currentProduct, 'attributes', attributesResult.error);
       currentProduct = attributesResult.value;
     }
 
@@ -151,9 +151,9 @@ export class CreateProductDraftFacadeUseCase {
     });
     if (unknownInventoryKey) {
       return this.incomplete(
-        currentProduct.id,
+        currentProduct,
         'inventory',
-        new ProductDraftIncompleteError(currentProduct.id, 'inventory', 'unknown variant client key'),
+        new InvalidProductVariantConfigurationError('unknown variant client key'),
       );
     }
     const unknownPricingKey = input.pricing?.find((pricing) => {
@@ -162,9 +162,9 @@ export class CreateProductDraftFacadeUseCase {
     });
     if (unknownPricingKey) {
       return this.incomplete(
-        currentProduct.id,
+        currentProduct,
         'inventory',
-        new ProductDraftIncompleteError(currentProduct.id, 'inventory', 'unknown pricing variant client key'),
+        new InvalidProductVariantConfigurationError('unknown pricing variant client key'),
       );
     }
 
@@ -210,7 +210,7 @@ export class CreateProductDraftFacadeUseCase {
       removedVariantIds,
       restoreVariantIds: [],
     });
-    if (!configurationResult.isOk) return this.incomplete(currentProduct.id, 'variants', configurationResult.error);
+    if (!configurationResult.isOk) return this.incomplete(currentProduct, 'variants', configurationResult.error);
     currentProduct = configurationResult.value;
     
 
@@ -220,7 +220,7 @@ export class CreateProductDraftFacadeUseCase {
         currentProduct.id,
         { shippingProfileId: input.shippingProfileId },
       );
-      if (!shippingResult.isOk) return this.incomplete(currentProduct.id, 'shipping', shippingResult.error);
+      if (!shippingResult.isOk) return this.incomplete(currentProduct, 'shipping', shippingResult.error);
       currentProduct = shippingResult.value;
     }
 
@@ -228,10 +228,10 @@ export class CreateProductDraftFacadeUseCase {
   }
 
   private incomplete(
-    productId: string,
+    product: ProductDraftSummary,
     failedStep: ProductDraftIncompleteError['failedStep'],
     error: Exclude<CreateProductDraftFacadeError, ProductDraftIncompleteError>,
   ): Result<ProductDraftSummary, ProductDraftIncompleteError> {
-    return err(new ProductDraftIncompleteError(productId, failedStep, error.message));
+    return err(new ProductDraftIncompleteError(product.id, failedStep, error.message, product.publicId));
   }
 }

@@ -22,8 +22,10 @@ describe('CartUpdatePricingService', () => {
           inventory: {
             inventoryId: 'inventory-1',
             productId: 'product-1',
+            productPublicId: 'prod_1',
             productSlug: 'mug',
             shopId: 'shop-1',
+            shopPublicId: 'shop_1',
             shopName: 'Clay House',
             shopSlug: 'clay-house',
             title: 'Mug',

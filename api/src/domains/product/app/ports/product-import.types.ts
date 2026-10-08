@@ -22,6 +22,7 @@ export interface ProductImportRowResult {
 
 export interface ProductImportSummary {
   id: string;
+  publicId: string;
   shopId: string;
   requestedByUserId: string;
   status: ProductImportStatus;

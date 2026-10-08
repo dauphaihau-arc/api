@@ -12,7 +12,7 @@ function toShopProductReviewResponse(
 ): ShopProductReviewResponse {
   return {
     id: review.id,
-    order_id: review.orderId,
+    order_id: review.orderPublicId,
     order_item_id: review.orderItemId,
     rating: review.rating,
     title: review.title,
@@ -35,7 +35,7 @@ function toShopProductReviewResponse(
       email: review.author.email,
     },
     product: {
-      id: review.product.id,
+      id: review.product.publicId,
       title: review.product.title,
       slug: review.product.slug,
     },

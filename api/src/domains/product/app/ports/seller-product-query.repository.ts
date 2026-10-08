@@ -8,6 +8,12 @@ import type {
 export abstract class SellerProductQueryRepository {
   abstract findById(id: string): Promise<ProductDraftSummary | null>;
 
+  abstract findByPublicId(publicId: string): Promise<ProductDraftSummary | null>;
+
+  abstract findSummariesByPublicIds(
+    publicIds: readonly string[]
+  ): Promise<readonly (ProductDraftSummary | null)[]>;
+
   abstract findMutationTargetById(id: string): Promise<ProductMutationTarget | null>;
 
   abstract listByShop(

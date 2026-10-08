@@ -49,6 +49,7 @@ function toOrderProducts(
     sku: item.sku,
     selectedOptions: item.selectedOptions ?? [],
     productId: item.product.id,
+    productPublicId: item.product.publicId,
     shopSlug: item.product.shop.slug,
 
   }));
@@ -78,8 +79,10 @@ export function toShopOrderSummary(
 
   return {
     id: order.id,
+    publicId: order.publicId,
     orderNumber: getRequiredOrderNumber(order),
     shopId: order.shop.id,
+    shopPublicId: order.shop.publicId,
     shopName: order.shop.shopName,
     shopSlug: order.shop.slug,
     currency: order.currency,

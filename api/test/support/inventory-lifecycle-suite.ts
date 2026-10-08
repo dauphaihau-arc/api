@@ -43,7 +43,9 @@ import { ObservabilityService } from '~/platform/observability/observability.ser
 import { RequestContextService } from '~/platform/request-context/request-context.service';
 import { createTestDatabase, dropTestDatabase, type TestDatabaseContext } from './test-postgres';
 import { seedAuthReferenceData } from '../../database/seeds/auth.seed';
-import { assignProductShippingProfile, seedShopShippingProfile } from './shipping-fixtures';
+import {
+  assignProductShippingProfile, resolveProductId, resolveShopId, seedShopShippingProfile, 
+} from './shipping-fixtures';
 
 jest.setTimeout(180_000);
 
@@ -55,7 +57,9 @@ const RABBITMQ_URL = process.env.RABBITMQ_URL ?? 'amqp://guest:guest@127.0.0.1:5
 
 type InventoryMode = 'local' | 'remote';
 
-type TestSeller = { agent: Agent; email: string; shopId: string };
+type TestSeller = {
+  agent: Agent; email: string; shopId: string; shopPublicId: string 
+};
 type SeededProduct = { productId: string; inventoryId: string };
 
 type PoolRow = {
@@ -455,7 +459,9 @@ export function defineInventoryLifecycleSuite(
         })
         .expect(201);
 
-      return { agent, email, shopId: shopResponse.body.id as string };
+      return {
+        agent, email, shopId: shopResponse.body.id as string, shopPublicId: shopResponse.body.id as string, 
+      };
     }
 
     async function seedCategory(seller: TestSeller): Promise<string> {
@@ -474,7 +480,7 @@ export function defineInventoryLifecycleSuite(
       priceMinor: number;
     }): Promise<SeededProduct> {
       const productResponse = await input.seller.agent
-        .post(`${API_PREFIX}/shops/${input.seller.shopId}/products`)
+        .post(`${API_PREFIX}/shops/${input.seller.shopPublicId}/products`)
         .set('Idempotency-Key', randomUUID())
         .send({
           category_id: await seedCategory(input.seller),
@@ -484,9 +490,10 @@ export function defineInventoryLifecycleSuite(
         })
         .expect(201);
       const productId = productResponse.body.id as string;
+      const productPublicId = productResponse.body.id as string;
 
       const draftResponse = await input.seller.agent
-        .get(`${API_PREFIX}/shops/${input.seller.shopId}/products/${productId}`)
+        .get(`${API_PREFIX}/shops/${input.seller.shopPublicId}/products/${productPublicId}`)
         .expect(200);
       const variantId = draftResponse.body.variants[0].id as string;
 
@@ -495,13 +502,15 @@ export function defineInventoryLifecycleSuite(
         [variantId],
       );
       const inventoryId = (existingInventory.rows[0]?.id as string | undefined) ?? randomUUID();
+      const internalShopId = await resolveShopId(sql, input.seller.shopId);
+      const internalProductId = await resolveProductId(sql, productId);
 
       if (existingInventory.rows.length === 0) {
         await sql.query(
           `insert into "product_inventory"
              ("id", "created_at", "updated_at", "shop_id", "product_id", "product_variant_id", "sku", "stock", "on_hand_quantity", "reserved_quantity", "on_hand_version", "lifecycle_state")
            values ($1, now(), now(), $2, $3, $4, $5, $6, $6, 0, 1, 'active')`,
-          [inventoryId, input.seller.shopId, productId, variantId, `INV-${randomUUID().slice(0, 8)}`, input.stock],
+          [inventoryId, internalShopId, internalProductId, variantId, `INV-${randomUUID().slice(0, 8)}`, input.stock],
         );
       }
       else {
@@ -525,7 +534,7 @@ export function defineInventoryLifecycleSuite(
           `insert into "product_stock_pool"
              ("id", "created_at", "updated_at", "inventory_id", "shop_id", "name", "custody", "is_default", "lifecycle_state", "on_hand_quantity", "reserved_quantity", "on_hand_version", "stock")
            values ($1, now(), now(), $2, $3, 'Default seller pool', 'seller', true, 'active', $4, 0, 1, $4)`,
-          [randomUUID(), inventoryId, input.seller.shopId, input.stock],
+          [randomUUID(), inventoryId, internalShopId, input.stock],
         );
       }
       else {
@@ -657,19 +666,19 @@ export function defineInventoryLifecycleSuite(
       await outboxPublisher.processPendingEvents();
     }
 
-    async function readOrderReservationId(orderId: string): Promise<string | undefined> {
+    async function readOrderReservationId(orderPublicId: string): Promise<string | undefined> {
       const rows = await sql.query(
-        'select "payment_details"->>\'reservation_id\' as "reservation_id" from "orders" where "id" = $1',
-        [orderId],
+        'select "payment_details"->>\'reservation_id\' as "reservation_id" from "orders" where "public_id" = $1',
+        [orderPublicId],
       );
 
       return rows.rows[0]?.reservation_id as string | undefined;
     }
 
-    async function readOrderSessionId(orderId: string): Promise<string> {
+    async function readOrderSessionId(orderPublicId: string): Promise<string> {
       const rows = await sql.query(
-        'select "payment_details"->>\'checkout_session_id\' as "session_id" from "orders" where "id" = $1',
-        [orderId],
+        'select "payment_details"->>\'checkout_session_id\' as "session_id" from "orders" where "public_id" = $1',
+        [orderPublicId],
       );
 
       return rows.rows[0]?.session_id as string;
@@ -692,7 +701,7 @@ export function defineInventoryLifecycleSuite(
       quantity: number;
       paymentType: 'cash' | 'card';
     }): Promise<{
-      orderId: string; quoteId: string; reservationId?: string; sessionId?: string 
+      orderId: string; orderPublicId: string; quoteId: string; reservationId?: string; sessionId?: string
     }> {
       const agent = request.agent(app.getHttpServer());
 
@@ -734,12 +743,14 @@ export function defineInventoryLifecycleSuite(
         })
         .expect(201);
 
-      const orderId = (orderResponse.body.order_shops[0] as OrderShop).id;
+      const orderShop = orderResponse.body.order_shops[0] as OrderShop;
+      const orderId = orderShop.id;
+      const orderPublicId = orderShop.id;
       const reservationId = mode === 'remote'
-        ? await readOrderReservationId(orderId)
+        ? await readOrderReservationId(orderPublicId)
         : undefined;
       const sessionId = input.paymentType === 'card'
-        ? await readOrderSessionId(orderId)
+        ? await readOrderSessionId(orderPublicId)
         : undefined;
 
       if (input.paymentType === 'cash') {
@@ -749,7 +760,7 @@ export function defineInventoryLifecycleSuite(
       }
 
       return {
-        orderId, quoteId, reservationId, sessionId,
+        orderId, orderPublicId, quoteId, reservationId, sessionId,
       };
     }
 
@@ -783,9 +794,9 @@ export function defineInventoryLifecycleSuite(
         .expect(201);
     }
 
-    async function cancelOrder(seller: TestSeller, orderId: string): Promise<void> {
+    async function cancelOrder(seller: TestSeller, orderPublicId: string): Promise<void> {
       await seller.agent
-        .patch(`${API_PREFIX}/shops/${seller.shopId}/orders/${orderId}/status`)
+        .patch(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${orderPublicId}/status`)
         .send({ status: 'canceled', cancel_reason: 'inventory verification' })
         .expect(200);
     }
@@ -794,7 +805,7 @@ export function defineInventoryLifecycleSuite(
       const seller = await createSeller();
       const { inventoryId } = await seedPublishedProduct({ seller, stock: 5, priceMinor: 1999 });
 
-      const { orderId } = await placeGuestOrder({ inventoryId, quantity: 2, paymentType: 'cash' });
+      const { orderPublicId } = await placeGuestOrder({ inventoryId, quantity: 2, paymentType: 'cash' });
 
       const pool = mode === 'local'
         ? await readPool(inventoryId)
@@ -832,7 +843,7 @@ export function defineInventoryLifecycleSuite(
       expect(pool.on_hand_version).toBe(1);
 
       const orderRead = await seller.agent
-        .get(`${API_PREFIX}/shops/${seller.shopId}/orders/${orderId}`)
+        .get(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${orderPublicId}`)
         .expect(200);
       expect(orderRead.body.order.status).toBe('pending');
     });
@@ -968,14 +979,14 @@ export function defineInventoryLifecycleSuite(
       const seller = await createSeller();
       const { inventoryId } = await seedPublishedProduct({ seller, stock: 5, priceMinor: 1999 });
 
-      const { orderId } = await placeGuestOrder({ inventoryId, quantity: 2, paymentType: 'cash' });
+      const { orderPublicId } = await placeGuestOrder({ inventoryId, quantity: 2, paymentType: 'cash' });
 
       const consumed = mode === 'local'
         ? await readPool(inventoryId)
         : await waitForPool(inventoryId, (current) => current.on_hand_quantity === 3);
       expect(consumed).toMatchObject({ on_hand_quantity: 3, reserved_quantity: 0 });
 
-      await cancelOrder(seller, orderId);
+      await cancelOrder(seller, orderPublicId);
 
       const restored = mode === 'local'
         ? await readPool(inventoryId)
@@ -990,12 +1001,12 @@ export function defineInventoryLifecycleSuite(
       expect(corrections[0]).toMatchObject({ quantity_delta: 2, stock_pool_id: restored.id });
 
       const orderRead = await seller.agent
-        .get(`${API_PREFIX}/shops/${seller.shopId}/orders/${orderId}`)
+        .get(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${orderPublicId}`)
         .expect(200);
       expect(orderRead.body.order.status).toBe('canceled');
 
       // Replaying the cancellation command must not restore the sale twice.
-      await cancelOrder(seller, orderId);
+      await cancelOrder(seller, orderPublicId);
       expect(await readPool(inventoryId)).toMatchObject({ on_hand_quantity: 5, reserved_quantity: 0 });
       expect(
         (await readMovements(inventoryId)).filter((movement) => movement.movement_kind === 'correction'),
@@ -1026,8 +1037,9 @@ export function defineInventoryLifecycleSuite(
       }
       else {
         const rows = await sql.query(
-          `select "stock_pool_id" from "checkout_stock_reservations"
-           where "order_id" = $1`,
+          `select csr."stock_pool_id" from "checkout_stock_reservations" csr
+           join "orders" o on csr."order_id" = o."id"
+           where o."public_id" = $1`,
           [orderId],
         );
         expect(rows.rows[0]?.stock_pool_id).toBe(pool.id);

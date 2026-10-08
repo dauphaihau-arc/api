@@ -31,7 +31,12 @@ describe('shop-order-read-model', () => {
         zip: '',
         phone: '1234',
       },
-      shop: { id: 'shop-1', shopName: 'Shop', slug: 'shop' },
+      shop: {
+        id: 'shop-1',
+        publicId: 'shop_1',
+        shopName: 'Shop',
+        slug: 'shop',
+      },
     } as unknown as OrderEntity;
 
     const item = {
@@ -49,6 +54,7 @@ describe('shop-order-read-model', () => {
       currency: 'HKD',
       product: {
         id: 'product-1',
+        publicId: 'prod_public1',
         slug: 'current-slug',
         shop: { slug: 'shop' },
         images: {
@@ -62,7 +68,7 @@ describe('shop-order-read-model', () => {
               }],
             },
           }],
-        },
+        }, 
       },
 
     } as unknown as OrderItemEntity;
@@ -71,6 +77,8 @@ describe('shop-order-read-model', () => {
 
     expect(detail.products[0]).toEqual(
       expect.objectContaining({
+        productId: 'product-1',
+        productPublicId: 'prod_public1',
         title: 'Purchased Title',
         imageUrl: 'https://cdn.example.com/order-card.webp',
         imageReference: 'retained/order-safe/card.webp',

@@ -12,6 +12,7 @@ import { MeChatController } from './api/rest/me-chat.controller';
 import { ShopChatController } from './api/rest/shop-chat.controller';
 import { ChatCommandRepository } from './app/ports/chat-command.repository';
 import { ChatQueryRepository } from './app/ports/chat-query.repository';
+import { ChatPublicReferenceService } from './app/services/chat-public-reference.service';
 import { CreateOrGetMyChatConversationUseCase } from './app/use-cases/create-or-get-my-chat-conversation/create-or-get-my-chat-conversation.use-case';
 import { GetMyChatUnreadCountUseCase } from './app/use-cases/get-my-chat-unread-count/get-my-chat-unread-count.use-case';
 import { GetMyChatMessagesUseCase } from './app/use-cases/get-my-chat-messages/get-my-chat-messages.use-case';
@@ -67,6 +68,7 @@ import { ForwardChatMessageToWsListener } from './listeners/forward-chat-message
     MarkShopChatConversationReadUseCase,
     SendMyChatMessageUseCase,
     SendShopChatMessageUseCase,
+    ChatPublicReferenceService,
     ForwardChatMessageToWsListener,
   ],
 })

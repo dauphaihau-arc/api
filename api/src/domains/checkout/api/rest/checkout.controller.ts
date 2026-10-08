@@ -8,6 +8,7 @@ import {
   Post,
   Query,
   Req,
+  UseFilters,
 } from '@nestjs/common';
 import {
   ApiNotFoundResponse,
@@ -20,21 +21,14 @@ import { Throttle } from '@nestjs/throttler';
 import type { Request } from 'express';
 import { CHECKOUT_CONFIG, type CheckoutConfig } from '~/platform/config/checkout.config';
 import { GuestCartSessionService } from '~/domains/cart/api/rest/guest-cart-session.service';
-import {
-  isPromotionAppError,
-  mapPromotionAppErrorToHttpException,
-} from '~/domains/promotion/api/rest/promotion-http-error-mapper';
 import { CreateGuestCheckoutQuoteForBuyNowUseCase } from '~/domains/checkout/app/use-cases/create-guest-checkout-quote-for-buy-now/create-guest-checkout-quote-for-buy-now.use-case';
 import { CreateGuestOrderForBuyNowUseCase } from '~/domains/checkout/app/use-cases/create-guest-order-for-buy-now/create-guest-order-for-buy-now.use-case';
 import { CreateGuestCheckoutQuoteFromCartUseCase } from '~/domains/checkout/app/use-cases/create-guest-checkout-quote-from-cart/create-guest-checkout-quote-from-cart.use-case';
 import { CreateGuestOrderFromCartUseCase } from '~/domains/checkout/app/use-cases/create-guest-order-from-cart/create-guest-order-from-cart.use-case';
+import { CheckoutPublicIdResolver } from '../../app/services/checkout-public-id.resolver';
 import { GuestOrderTrackingTokenService } from '../../app/services/guest-order-tracking-token.service';
 import { GetOrdersByCheckoutSessionUseCase } from '~/domains/checkout/app/use-cases/get-orders-by-checkout-session/get-orders-by-checkout-session.use-case';
 import { LookupGuestOrdersUseCase } from '~/domains/checkout/app/use-cases/lookup-guest-orders/lookup-guest-orders.use-case';
-import {
-  isCheckoutAppError,
-  mapCheckoutAppErrorToHttpException,
-} from './checkout-http-error-mapper';
 import {
   toCheckoutQuoteResponse,
   toCheckoutSessionOrderResponse,
@@ -46,6 +40,7 @@ import { CreateGuestCheckoutQuoteFromCartDto } from './dto/create-guest-checkout
 import { CreateGuestOrderForBuyNowDto } from './dto/create-guest-order-for-buy-now.dto';
 import { CreateGuestOrderFromCartDto } from './dto/create-guest-order-from-cart.dto';
 import { LookupGuestOrdersQueryDto } from './dto/lookup-guest-orders.query.dto';
+import { CheckoutExceptionsFilter } from './checkout-exceptions.filter';
 
 const checkoutRouteRateLimits = {
   guestLookup: {
@@ -56,6 +51,7 @@ const checkoutRouteRateLimits = {
 } as const;
 
 @Controller('checkout')
+@UseFilters(CheckoutExceptionsFilter)
 @ApiTags('Checkout')
 export class CheckoutController {
   constructor(
@@ -69,6 +65,7 @@ export class CheckoutController {
     private readonly getOrdersByCheckoutSessionUseCase: GetOrdersByCheckoutSessionUseCase,
     private readonly guestOrderTrackingTokenService: GuestOrderTrackingTokenService,
     private readonly lookupGuestOrdersUseCase: LookupGuestOrdersUseCase,
+    private readonly checkoutPublicIdResolver: CheckoutPublicIdResolver,
   ) {}
 
   @Get('session/:session_id')
@@ -79,14 +76,9 @@ export class CheckoutController {
     schema: { type: 'object' },
   })
   async getBySession(@Param('session_id') sessionId: string) {
-    try {
-      return toCheckoutSessionOrderResponse(
-        await this.getOrdersByCheckoutSessionUseCase.execute(sessionId),
-      );
-    }
-    catch (error) {
-      this.throwMappedOrderError(error);
-    }
+    return toCheckoutSessionOrderResponse(
+      await this.getOrdersByCheckoutSessionUseCase.execute(sessionId),
+    );
   }
 
   @Get('guest-orders')
@@ -105,25 +97,25 @@ export class CheckoutController {
       ? this.guestOrderTrackingTokenService.resolve(query.token)
       : {
         email: query.email,
-        orderId: query.orderId,
+        orderId: query.orderId
+          ? await this.checkoutPublicIdResolver.resolveOrderId(query.orderId)
+          : undefined,
         orderIds: query.orderIds
-          ? query.orderIds.split(',').map((value) => value.trim()).filter(Boolean)
+          ? await this.checkoutPublicIdResolver.resolveOrderIds(
+            query.orderIds.split(',').map((value) => value.trim()).filter(Boolean),
+          )
           : undefined,
         sessionId: query.sessionId,
         zip: query.zip,
       };
 
     if ('sessionId' in resolvedLookup && resolvedLookup.sessionId) {
-      try {
-        await this.getOrdersByCheckoutSessionUseCase.execute(resolvedLookup.sessionId);
-      }
-      catch (error) {
-        this.throwMappedOrderError(error);
-      }
+      await this.getOrdersByCheckoutSessionUseCase.execute(resolvedLookup.sessionId);
     }
 
-    return this.lookupGuestOrdersUseCase.execute(resolvedLookup)
-      .then(toCheckoutOrderListResponse);
+    return toCheckoutOrderListResponse(
+      await this.lookupGuestOrdersUseCase.execute(resolvedLookup),
+    );
   }
 
   @Post('cart/quote')
@@ -143,15 +135,13 @@ export class CheckoutController {
       throw new NotFoundException('Guest cart session not found');
     }
 
-    try {
-      return toCheckoutQuoteResponse(
-        await this.createGuestCheckoutQuoteFromCartUseCase.execute(guestSessionId, body),
-        this.checkoutConfig,
-      );
-    }
-    catch (error) {
-      this.throwMappedOrderError(error);
-    }
+    return toCheckoutQuoteResponse(
+      await this.createGuestCheckoutQuoteFromCartUseCase.execute(
+        guestSessionId,
+        await this.checkoutPublicIdResolver.resolveCheckoutQuoteShopIds(body),
+      ),
+      this.checkoutConfig,
+    );
   }
 
   @Post('cart')
@@ -171,14 +161,9 @@ export class CheckoutController {
       throw new NotFoundException('Guest cart session not found');
     }
 
-    try {
-      return toCreateOrderResponse(
-        await this.createGuestOrderFromCartUseCase.execute(guestSessionId, body),
-      );
-    }
-    catch (error) {
-      this.throwMappedOrderError(error);
-    }
+    return toCreateOrderResponse(
+      await this.createGuestOrderFromCartUseCase.execute(guestSessionId, body),
+    );
   }
 
   @Post('buy-now/quote')
@@ -198,15 +183,10 @@ export class CheckoutController {
       throw new NotFoundException('Guest cart session not found');
     }
 
-    try {
-      return toCheckoutQuoteResponse(
-        await this.createGuestCheckoutQuoteForBuyNowUseCase.execute(guestSessionId, body),
-        this.checkoutConfig,
-      );
-    }
-    catch (error) {
-      this.throwMappedOrderError(error);
-    }
+    return toCheckoutQuoteResponse(
+      await this.createGuestCheckoutQuoteForBuyNowUseCase.execute(guestSessionId, body),
+      this.checkoutConfig,
+    );
   }
 
   @Post('buy-now')
@@ -226,25 +206,8 @@ export class CheckoutController {
       throw new NotFoundException('Guest cart session not found');
     }
 
-    try {
-      return toCreateOrderResponse(
-        await this.createGuestOrderForBuyNowUseCase.execute(guestSessionId, body),
-      );
-    }
-    catch (error) {
-      this.throwMappedOrderError(error);
-    }
-  }
-
-  private throwMappedOrderError(error: unknown): never {
-    if (isCheckoutAppError(error)) {
-      throw mapCheckoutAppErrorToHttpException(error);
-    }
-
-    if (isPromotionAppError(error)) {
-      throw mapPromotionAppErrorToHttpException(error);
-    }
-
-    throw error;
+    return toCreateOrderResponse(
+      await this.createGuestOrderForBuyNowUseCase.execute(guestSessionId, body),
+    );
   }
 }

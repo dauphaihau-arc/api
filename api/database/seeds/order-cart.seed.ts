@@ -6,6 +6,7 @@ import { CartItemEntity } from '~/domains/cart/infra/persistence/entities/cart-i
 import { PromotionUsageEntity } from '~/domains/promotion/infra/persistence/entities/promotion-usage.entity';
 import { PromotionCodeEntity } from '~/domains/promotion/infra/persistence/entities/promotion-code.entity';
 import type { PromotionEntity } from '~/domains/promotion/infra/persistence/entities/promotion.entity';
+import { ProductEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product.entity';
 import { PromotionBenefitType } from '~/domains/promotion/domain/enums/promotion-benefit-type.enum';
 import {
   promotionCodeEntityToPromoOffer,
@@ -128,11 +129,23 @@ async function loadPromoCodes(
     { code: { $in: ['OLIVE-FA', 'REED-PC'] } },
     { populate: ['promotion', 'promotion.products'] },
   );
+  const targetProductIds = [...new Set(promotionCodes.flatMap((code) =>
+    code.promotion.products.getItems().map((target) => target.productId)))];
+  const targetProducts = targetProductIds.length > 0
+    ? await em.find(ProductEntity, { id: { $in: targetProductIds } }, { fields: ['id', 'publicId'] })
+    : [];
+  const publicIdByProductId = new Map(targetProducts.map((product) => [product.id, product.publicId]));
 
   return new Map(promotionCodes.map((promotionCode) => [
     promotionCode.code,
     {
-      offer: promotionCodeEntityToPromoOffer(promotionCode),
+      offer: promotionCodeEntityToPromoOffer(
+        promotionCode,
+        promotionCode.promotion.products.getItems().flatMap((target) => {
+          const publicId = publicIdByProductId.get(target.productId);
+          return publicId ? [publicId] : [];
+        }),
+      ),
       promotion: promotionCode.promotion,
     },
   ]));

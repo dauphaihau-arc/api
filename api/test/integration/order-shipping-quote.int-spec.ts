@@ -28,7 +28,7 @@ import { ObservabilityService } from '~/platform/observability/observability.ser
 import { RequestContextService } from '~/platform/request-context/request-context.service';
 import { createTestDatabase, dropTestDatabase } from '../support/test-postgres';
 import { seedAuthReferenceData } from '../../database/seeds/auth.seed';
-import { seedPublishableInventory } from '../support/shipping-fixtures';
+import { resolveProductId, seedPublishableInventory } from '../support/shipping-fixtures';
 
 jest.setTimeout(240_000);
 
@@ -42,7 +42,9 @@ type TestDatabase = {
   };
 };
 
-type TestSeller = { agent: Agent; email: string; shopId: string };
+type TestSeller = {
+  agent: Agent; email: string; shopId: string; shopPublicId: string 
+};
 type TestBuyer = {
   agent: Agent; email: string; userId: string; addressId: string 
 };
@@ -239,7 +241,9 @@ describe('Order accepted shipping facts (integration)', () => {
       })
       .expect(201);
 
-    return { agent, email, shopId: shopResponse.body.id as string };
+    return {
+      agent, email, shopId: shopResponse.body.id as string, shopPublicId: shopResponse.body.id as string, 
+    };
   }
 
   async function registerBuyer(
@@ -312,7 +316,7 @@ describe('Order accepted shipping facts (integration)', () => {
     } = {},
   ): Promise<{ id: string; version: number }> {
     const response = await seller.agent
-      .post(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles`)
+      .post(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles`)
       .set('Idempotency-Key', randomUUID())
       .send({
         name: `Standard ${Date.now().toString().slice(-6)}`,
@@ -346,7 +350,7 @@ describe('Order accepted shipping facts (integration)', () => {
     stock?: number;
   }): Promise<{ productId: string; inventoryId: string }> {
     const productResponse = await input.seller.agent
-      .post(`${API_PREFIX}/shops/${input.seller.shopId}/products`)
+      .post(`${API_PREFIX}/shops/${input.seller.shopPublicId}/products`)
       .set('Idempotency-Key', randomUUID())
       .send({
         category_id: await seedCategory(input.seller.agent),
@@ -357,9 +361,10 @@ describe('Order accepted shipping facts (integration)', () => {
       })
       .expect(201);
     const productId = productResponse.body.id as string;
+    const productPublicId = productResponse.body.id as string;
 
     await input.seller.agent
-      .put(`${API_PREFIX}/shops/${input.seller.shopId}/products/${productId}/images`)
+      .put(`${API_PREFIX}/shops/${input.seller.shopPublicId}/products/${productPublicId}/images`)
       .attach('images', Buffer.from(`image-${productId}`), {
         filename: `${productId}.jpg`,
         contentType: 'image/jpeg',
@@ -367,7 +372,7 @@ describe('Order accepted shipping facts (integration)', () => {
       .expect(204);
 
     const detail = await input.seller.agent
-      .get(`${API_PREFIX}/shops/${input.seller.shopId}/products/${productId}`)
+      .get(`${API_PREFIX}/shops/${input.seller.shopPublicId}/products/${productPublicId}`)
       .expect(200);
     const inventoryId = detail.body.inventory[0].id as string;
 
@@ -380,13 +385,13 @@ describe('Order accepted shipping facts (integration)', () => {
     });
 
     await input.seller.agent
-      .put(`${API_PREFIX}/shops/${input.seller.shopId}/products/${productId}/shipping-profile`)
+      .put(`${API_PREFIX}/shops/${input.seller.shopPublicId}/products/${productPublicId}/shipping-profile`)
       .set('Idempotency-Key', randomUUID())
       .send({ shipping_profile_id: input.shippingProfileId })
       .expect(204);
 
     await input.seller.agent
-      .post(`${API_PREFIX}/shops/${input.seller.shopId}/products/${productId}/publish`)
+      .post(`${API_PREFIX}/shops/${input.seller.shopPublicId}/products/${productPublicId}/publish`)
       .set('Idempotency-Key', randomUUID())
       .expect(201);
 
@@ -402,7 +407,7 @@ describe('Order accepted shipping facts (integration)', () => {
     seller: TestSeller,
   ): Promise<{ productId: string; inventoryId: string }> {
     const productResponse = await seller.agent
-      .post(`${API_PREFIX}/shops/${seller.shopId}/products`)
+      .post(`${API_PREFIX}/shops/${seller.shopPublicId}/products`)
       .set('Idempotency-Key', randomUUID())
       .send({
         category_id: await seedCategory(seller.agent),
@@ -413,9 +418,10 @@ describe('Order accepted shipping facts (integration)', () => {
       })
       .expect(201);
     const productId = productResponse.body.id as string;
+    const productPublicId = productResponse.body.id as string;
 
     const detail = await seller.agent
-      .get(`${API_PREFIX}/shops/${seller.shopId}/products/${productId}`)
+      .get(`${API_PREFIX}/shops/${seller.shopPublicId}/products/${productPublicId}`)
       .expect(200);
     const inventoryId = detail.body.inventory[0].id as string;
 
@@ -428,8 +434,8 @@ describe('Order accepted shipping facts (integration)', () => {
     });
 
     await sql.query(
-      'update "products" set "state" = \'active\', "published_at" = now() where "id" = $1',
-      [productId],
+      'update "products" set "state" = \'active\', "published_at" = now() where "public_id" = $1',
+      [productPublicId],
     );
 
     return { productId, inventoryId };
@@ -445,7 +451,7 @@ describe('Order accepted shipping facts (integration)', () => {
     shippingProfileId?: string;
   }): Promise<{ productId: string; inventoryId: string }> {
     const productResponse = await input.seller.agent
-      .post(`${API_PREFIX}/shops/${input.seller.shopId}/products`)
+      .post(`${API_PREFIX}/shops/${input.seller.shopPublicId}/products`)
       .set('Idempotency-Key', randomUUID())
       .send({
         category_id: await seedCategory(input.seller.agent),
@@ -456,9 +462,10 @@ describe('Order accepted shipping facts (integration)', () => {
       })
       .expect(201);
     const productId = productResponse.body.id as string;
+    const productPublicId = productResponse.body.id as string;
 
     await input.seller.agent
-      .put(`${API_PREFIX}/shops/${input.seller.shopId}/products/${productId}/images`)
+      .put(`${API_PREFIX}/shops/${input.seller.shopPublicId}/products/${productPublicId}/images`)
       .attach('images', Buffer.from(`image-${productId}`), {
         filename: `${productId}.jpg`,
         contentType: 'image/jpeg',
@@ -466,7 +473,7 @@ describe('Order accepted shipping facts (integration)', () => {
       .expect(204);
 
     const detail = await input.seller.agent
-      .get(`${API_PREFIX}/shops/${input.seller.shopId}/products/${productId}`)
+      .get(`${API_PREFIX}/shops/${input.seller.shopPublicId}/products/${productPublicId}`)
       .expect(200);
     const inventoryId = detail.body.inventory[0].id as string;
 
@@ -480,14 +487,14 @@ describe('Order accepted shipping facts (integration)', () => {
 
     if (input.shippingProfileId) {
       await input.seller.agent
-        .put(`${API_PREFIX}/shops/${input.seller.shopId}/products/${productId}/shipping-profile`)
+        .put(`${API_PREFIX}/shops/${input.seller.shopPublicId}/products/${productPublicId}/shipping-profile`)
         .set('Idempotency-Key', randomUUID())
         .send({ shipping_profile_id: input.shippingProfileId })
         .expect(204);
     }
 
     await input.seller.agent
-      .post(`${API_PREFIX}/shops/${input.seller.shopId}/products/${productId}/publish`)
+      .post(`${API_PREFIX}/shops/${input.seller.shopPublicId}/products/${productPublicId}/publish`)
       .set('Idempotency-Key', randomUUID())
       .expect(201);
 
@@ -558,7 +565,12 @@ describe('Order accepted shipping facts (integration)', () => {
           : {}),
       });
 
-    expect(response.status).toBe(201);
+    expect(response.body).toMatchObject({
+      quote_id: expect.any(String),
+      checkout_currency: expect.any(String),
+      total_minor: expect.any(Number),
+      shops: expect.any(Array),
+    });
 
     return response.body as ShippingQuoteResponse;
   }
@@ -574,12 +586,12 @@ describe('Order accepted shipping facts (integration)', () => {
       .send({ quote_id: quoteId, payment_type: paymentType });
   }
 
-  async function readOrderRow(orderId: string) {
+  async function readOrderRow(orderPublicId: string) {
     const result = await sql.query(
       `select "id", "subtotal_minor", "shipping_minor", "discount_minor", "total_minor",
               "shipping_estimated_delivery", "shipping_quote_snapshot", "promo_codes"
-       from "orders" where "id" = $1`,
-      [orderId],
+       from "orders" where "public_id" = $1`,
+      [orderPublicId],
     );
 
     return result.rows[0];
@@ -606,7 +618,9 @@ describe('Order accepted shipping facts (integration)', () => {
 
     const orderResponse = await confirmOrder(buyer, quote.quote_id, 'cash');
     expect(orderResponse.status).toBe(201);
-    const orderId = orderResponse.body.order_shops[0].id as string;
+    const orderShop = orderResponse.body.order_shops[0] as { id: string };
+    const orderId = orderShop.id;
+    const orderPublicId = orderShop.id;
 
     const orderRow = await readOrderRow(orderId);
     expect(orderRow.shipping_minor).toBe(798);
@@ -619,7 +633,7 @@ describe('Order accepted shipping facts (integration)', () => {
     ).toBe(quoteShop.shipping.estimate.latest_delivery_date);
 
     const detail = await buyer.agent
-      .get(`${API_PREFIX}/me/orders/${orderId}`)
+      .get(`${API_PREFIX}/me/orders/${orderPublicId}`)
       .expect(200);
 
     expect(detail.body.order_shop.shipping_minor).toBe(798);
@@ -722,7 +736,7 @@ describe('Order accepted shipping facts (integration)', () => {
 
     const code = `FREE${Date.now().toString().slice(-6)}`;
     await seller.agent
-      .post(`${API_PREFIX}/shops/${seller.shopId}/promo-codes`)
+      .post(`${API_PREFIX}/shops/${seller.shopPublicId}/promo-codes`)
       .set('Idempotency-Key', randomUUID())
       .send({
         name: 'Free shipping',
@@ -754,7 +768,8 @@ describe('Order accepted shipping facts (integration)', () => {
     expect(quote.shipping_minor).toBe(0);
 
     const orderResponse = await confirmOrder(buyer, quote.quote_id, 'cash');
-    const orderId = orderResponse.body.order_shops[0].id as string;
+    const orderShop = orderResponse.body.order_shops[0] as { id: string };
+    const orderId = orderShop.id;
     const orderRow = await readOrderRow(orderId);
 
     expect(orderRow.shipping_minor).toBe(0);
@@ -765,7 +780,7 @@ describe('Order accepted shipping facts (integration)', () => {
 
     const usages = await sql.query(
       'select count(*)::int as "count" from "promotion_usages" where "order_id" = $1 and "code" = $2',
-      [orderId, code],
+      [orderRow.id, code],
     );
     expect(usages.rows[0].count).toBe(1);
   });
@@ -785,11 +800,13 @@ describe('Order accepted shipping facts (integration)', () => {
 
     const quote = await createQuote(buyer);
     const orderResponse = await confirmOrder(buyer, quote.quote_id, 'cash');
-    const orderId = orderResponse.body.order_shops[0].id as string;
+    const orderShop = orderResponse.body.order_shops[0] as { id: string };
+    const orderId = orderShop.id;
+    const orderPublicId = orderShop.id;
     const before = await readOrderRow(orderId);
 
     await seller.agent
-      .patch(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles/${profile.id}`)
+      .patch(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles/${profile.id}`)
       .set('Idempotency-Key', randomUUID())
       .send({
         version: profile.version,
@@ -818,7 +835,7 @@ describe('Order accepted shipping facts (integration)', () => {
       .toBe(new Date(before.shipping_estimated_delivery).toISOString());
 
     const detail = await buyer.agent
-      .get(`${API_PREFIX}/me/orders/${orderId}`)
+      .get(`${API_PREFIX}/me/orders/${orderPublicId}`)
       .expect(200);
     expect(detail.body.order_shop.shipping).toEqual(quote.shops[0]!.shipping);
   });
@@ -842,7 +859,7 @@ describe('Order accepted shipping facts (integration)', () => {
     // readiness rules, so the quoted Product is made undeliverable by replacing
     // the destination coverage with a country the buyer is not in.
     await seller.agent
-      .patch(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles/${profile.id}`)
+      .patch(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles/${profile.id}`)
       .set('Idempotency-Key', randomUUID())
       .send({
         version: profile.version,
@@ -943,6 +960,35 @@ describe('Order accepted shipping facts (integration)', () => {
     expect(expiredResponse.body.code).toBe('CHECKOUT_QUOTE_EXPIRED');
   });
 
+  it('maps a real order the caller cannot see through the order filter to a coded 404', async () => {
+    const seller = await registerSeller('ord-cross');
+    const profile = await createActiveProfile(seller);
+    const product = await createPublishableProduct({
+      seller,
+      shippingProfileId: profile.id,
+      title: 'Cross Mug',
+      sku: 'CROSS-1',
+      amountMinor: 2500,
+    });
+    const owner = await registerBuyer('ord-cross-owner');
+    const intruder = await registerBuyer('ord-cross-intruder');
+    await addCartItem(owner, product.inventoryId, 1);
+
+    const quote = await createQuote(owner);
+    const orderResponse = await confirmOrder(owner, quote.quote_id, 'cash');
+    expect(orderResponse.status).toBe(201);
+    const orderShops = orderResponse.body.order_shops as Array<{ id: string }>;
+    const orderPublicId = orderShops[0]!.id;
+
+    // The order exists; the intruder is simply not its buyer, so the use case
+    // throws the order domain's OrderNotFoundError after the public-id lookup.
+    const response = await intruder.agent
+      .get(`${API_PREFIX}/me/orders/${orderPublicId}`)
+      .expect(404);
+
+    expect(response.body.code).toBe('ORDER_NOT_FOUND');
+  });
+
   it('charges the card provider the persisted order money and never a reprice', async () => {
     const seller = await registerSeller('ord-card');
     const profile = await createActiveProfile(seller, { oneItemFeeMinor: 900 });
@@ -974,7 +1020,7 @@ describe('Order accepted shipping facts (integration)', () => {
       orderIds: string[];
     };
 
-    expect(payload.orderIds).toContain(orderId);
+    expect(payload.orderIds).toContain(orderRow.id);
     expect(payload.shippingAmountMinor).toBe(orderRow.shipping_minor);
     expect(payload.discountAmountMinor).toBe(orderRow.discount_minor);
     expect(
@@ -1001,16 +1047,18 @@ describe('Order accepted shipping facts (integration)', () => {
 
     const quote = await createQuote(buyer);
     const orderResponse = await confirmOrder(buyer, quote.quote_id, 'cash');
-    const orderId = orderResponse.body.order_shops[0].id as string;
+    const orderShop = orderResponse.body.order_shops[0] as { id: string };
+    const orderId = orderShop.id;
+    const orderPublicId = orderShop.id;
     const before = await readOrderRow(orderId);
 
     const detail = await seller.agent
-      .get(`${API_PREFIX}/shops/${seller.shopId}/orders/${orderId}`)
+      .get(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${orderPublicId}`)
       .expect(200);
     const orderItemId = detail.body.order.products[0].id as string;
 
     await seller.agent
-      .post(`${API_PREFIX}/shops/${seller.shopId}/orders/${orderId}/fulfillment/shipments`)
+      .post(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${orderPublicId}/fulfillment/shipments`)
       .set('Idempotency-Key', randomUUID())
       .send({
         items: [{ order_item_id: orderItemId, quantity: 1 }],
@@ -1020,7 +1068,7 @@ describe('Order accepted shipping facts (integration)', () => {
       .expect(201);
 
     await seller.agent
-      .post(`${API_PREFIX}/shops/${seller.shopId}/orders/${orderId}/fulfillment/shipments`)
+      .post(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${orderPublicId}/fulfillment/shipments`)
       .set('Idempotency-Key', randomUUID())
       .send({
         items: [{ order_item_id: orderItemId, quantity: 2 }],
@@ -1037,7 +1085,7 @@ describe('Order accepted shipping facts (integration)', () => {
       .toBe(new Date(before.shipping_estimated_delivery).toISOString());
 
     const orderDetail = await seller.agent
-      .get(`${API_PREFIX}/shops/${seller.shopId}/orders/${orderId}`)
+      .get(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${orderPublicId}`)
       .expect(200);
     expect(orderDetail.body.order.shipping_minor).toBe(before.shipping_minor);
     expect(orderDetail.body.order.shipping).toEqual(quote.shops[0]!.shipping);
@@ -1067,7 +1115,9 @@ describe('Order accepted shipping facts (integration)', () => {
 
     const orderResponse = await confirmOrder(buyer, quote.quote_id, 'cash');
     expect(orderResponse.status).toBe(201);
-    const orderId = orderResponse.body.order_shops[0].id as string;
+    const orderShop = orderResponse.body.order_shops[0] as { id: string };
+    const orderId = orderShop.id;
+    const orderPublicId = orderShop.id;
 
     const orderRow = await readOrderRow(orderId);
     expect(orderRow.shipping_minor).toBe(0);
@@ -1076,7 +1126,7 @@ describe('Order accepted shipping facts (integration)', () => {
     expect(orderRow.shipping_estimated_delivery).toBeNull();
 
     const detail = await buyer.agent
-      .get(`${API_PREFIX}/me/orders/${orderId}`)
+      .get(`${API_PREFIX}/me/orders/${orderPublicId}`)
       .expect(200);
 
     expect(detail.body.order_shop.shipping_minor).toBe(0);
@@ -1123,7 +1173,7 @@ describe('Order accepted shipping facts (integration)', () => {
     expect(orderRow.total_minor).toBe(quote.total_minor);
     expect(orderRow.shipping_quote_snapshot.shipping.charge.quantity).toBe(1);
     expect(orderRow.shipping_quote_snapshot.shipping.units).toEqual([
-      expect.objectContaining({ product_id: physical.productId, quantity: 1 }),
+      expect.objectContaining({ product_id: await resolveProductId(sql, physical.productId), quantity: 1 }),
     ]);
   });
 
@@ -1237,7 +1287,7 @@ describe('Order accepted shipping facts (integration)', () => {
       orderIds: string[];
     };
 
-    expect(payload.orderIds).toContain(cardOrder.body.order_shops[0].id);
+    expect(payload.orderIds).toContain(cardOrderRow.id);
     expect(payload.shippingAmountMinor).toBe(cardOrderRow.shipping_minor);
     expect(payload.shippingAmountMinor).toBe(215646);
   });

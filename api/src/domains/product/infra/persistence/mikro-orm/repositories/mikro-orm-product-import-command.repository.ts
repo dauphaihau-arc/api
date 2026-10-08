@@ -187,6 +187,7 @@ export class MikroOrmProductImportCommandRepository implements ProductImportComm
 function toProductImportSummary(productImport: ProductImportEntity): ProductImportSummary {
   return {
     id: productImport.id,
+    publicId: productImport.publicId,
     shopId: productImport.shop.id,
     requestedByUserId: productImport.requestedBy.id,
     status: productImport.status,

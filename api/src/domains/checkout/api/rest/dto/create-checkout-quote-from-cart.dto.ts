@@ -13,7 +13,7 @@ class ShopAdjustmentDto {
   @ApiProperty({ name: 'shop_id' })
   @Expose({ name: 'shop_id' })
   @Transform(({ value, obj: source }) => value ?? source.shop_id)
-  @IsUUID()
+  @IsString()
   shopId!: string;
 
   @IsOptional()

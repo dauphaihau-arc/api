@@ -1,5 +1,5 @@
 import {
-  Body, Controller, Get, Header, NotFoundException, Param, Patch, Post, UseGuards, 
+  Body, Controller, Get, Header, NotFoundException, Param, Patch, Post, UseFilters, UseGuards, 
 } from '@nestjs/common';
 import {
   ApiCookieAuth,
@@ -17,16 +17,16 @@ import { JwtAuthGuard } from '~/domains/auth/api/guard/jwt-auth.guard';
 import { PermissionsGuard } from '~/domains/auth/api/guard/permissions.guard';
 import { CreateShopUseCase } from '../../app/use-cases/create-shop/create-shop.use-case';
 import { GetMyShopUseCase } from '../../app/use-cases/get-my-shop/get-my-shop.use-case';
+import { ShopAccessService } from '../../app/services/shop-access.service';
 import { UpdateShopSettingsUseCase } from '../../app/use-cases/update-shop-settings/update-shop-settings.use-case';
 import { CreateShopDto } from './dto/create-shop.dto';
 import { UpdateShopSettingsDto } from './dto/update-shop-settings.dto';
-import {
-  isShopAppError,
-  mapShopAppErrorToHttpException,
-} from './shop-http-error-mapper';
+import { mapShopAppErrorToHttpException } from './shop-http-error-mapper';
+import { ShopExceptionsFilter } from './shop-exceptions.filter';
 import { toShopResponse } from './shop.response';
 
 @Controller('shops')
+@UseFilters(ShopExceptionsFilter)
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @ApiTags('Shops')
 @ApiCookieAuth('accessCookie')
@@ -35,6 +35,7 @@ export class ShopController {
     private readonly createShopUseCase: CreateShopUseCase,
     private readonly getMyShopUseCase: GetMyShopUseCase,
     private readonly updateShopSettingsUseCase: UpdateShopSettingsUseCase,
+    private readonly shopAccessService: ShopAccessService,
   ) {}
 
   @Post()
@@ -45,16 +46,18 @@ export class ShopController {
     description: 'Created shop.',
     schema: { type: 'object' },
   })
-  createShop(
+  async createShop(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() body: CreateShopDto,
   ) {
-    return this.createShopUseCase.execute(currentUser, {
+    const result = await this.createShopUseCase.execute(currentUser, {
       shopName: body.shop_name,
       currency: body.currency,
-    })
-      .then((result) => resolveOrThrow(result, mapShopAppErrorToHttpException))
-      .then(toShopResponse);
+    });
+
+    return toShopResponse(
+      resolveOrThrow(result, mapShopAppErrorToHttpException),
+    );
   }
 
   @Get('me')
@@ -90,28 +93,16 @@ export class ShopController {
   @ApiNotFoundResponse({ description: 'Shop was not found.' })
   async updateSettings(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('shop_id') shopId: string,
+    @Param('shop_id') shopPublicId: string,
     @Body() body: UpdateShopSettingsDto,
   ) {
-    try {
-      const shop = await this.updateShopSettingsUseCase.execute(
-        currentUser,
-        shopId,
-        { timezone: body.timezone },
-      );
+    const shopId = (await this.shopAccessService.resolveManageableShopByPublicId(currentUser, shopPublicId)).id;
+    const shop = await this.updateShopSettingsUseCase.execute(
+      currentUser,
+      shopId,
+      { timezone: body.timezone },
+    );
 
-      return toShopResponse(shop);
-    }
-    catch (error) {
-      this.throwMappedShopError(error);
-    }
-  }
-
-  private throwMappedShopError(error: unknown): never {
-    if (isShopAppError(error)) {
-      throw mapShopAppErrorToHttpException(error);
-    }
-
-    throw error;
+    return toShopResponse(shop);
   }
 }

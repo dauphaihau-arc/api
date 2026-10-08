@@ -6,6 +6,7 @@ describe('SendRefundFailedEmailJob', () => {
   it('sends a buyer refund failure email', async () => {
     const order = {
       id: 'order-1',
+      publicId: 'ord_public1',
       customerEmail: 'buyer@example.com',
       paymentDetails: { refund_failed_reason: 'Stripe timeout' },
       shop: { shopName: 'Shop 1' },
@@ -26,7 +27,7 @@ describe('SendRefundFailedEmailJob', () => {
 
     expect(mailSender.send).toHaveBeenCalledWith(expect.objectContaining({
       to: { email: 'buyer@example.com' },
-      subject: 'Refund update for order order-1',
+      subject: 'Refund update for order ord_public1',
       tags: ['order-refund-failed'],
       text: expect.stringContaining('Stripe timeout'),
     }));

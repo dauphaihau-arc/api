@@ -4,12 +4,11 @@ import type { PublicProductSuggestionResponse } from '../responses/public-produc
 export const toPublicProductSuggestionResponse = (
   product: PublicProductSuggestion,
 ): PublicProductSuggestionResponse => ({
-  id: product.id,
+  id: product.publicId,
   title: product.title,
   slug: product.slug,
   shop: {
-    id: product.shop.id,
-    public_id: product.shop.publicId,
+    id: product.shop.publicId,
     shop_name: product.shop.shopName,
     slug: product.shop.slug,
   },

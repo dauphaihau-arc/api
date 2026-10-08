@@ -38,8 +38,10 @@ export class OrderPaymentService {
     return {
       orderShops: orders.map((order) => ({
         id: order.id,
+        publicId: order.publicId,
         orderNumber: getRequiredOrderNumber(order),
         shopId: order.shop.id,
+        shopPublicId: order.shop.publicId,
         shopName: order.shop.shopName,
         shopSlug: order.shop.slug,
       })),

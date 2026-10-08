@@ -65,8 +65,10 @@ const SHIPPING_SNAPSHOT = {
 function buildOrderSummary(): ShopOrderSummary {
   return {
     id: 'order-1',
+    publicId: 'ord_1',
     orderNumber: 'ORD-1',
     shopId: 'shop-1',
+    shopPublicId: 'shop_1',
     shopName: 'Shop 1',
     shopSlug: 'shop-1',
     customerEmail: 'buyer@example.com',
@@ -74,7 +76,7 @@ function buildOrderSummary(): ShopOrderSummary {
     currency: 'USD',
     paymentType: 'cash',
     status: 'pending',
-    products: [],
+    products: [{ productId: 'product-1', productPublicId: 'prod_public1' } as never],
     promoCodes: ['FREESHIP'],
     fulfillment: {
       status: 'unfulfilled' as never,
@@ -129,6 +131,7 @@ describe('order shipping response', () => {
       shops: [
         {
           shopId: 'shop-1',
+          shopPublicId: 'shop_1',
           shopName: 'Shop 1',
           shopSlug: 'shop-1',
           subtotalMinor: 1800,
@@ -141,7 +144,7 @@ describe('order shipping response', () => {
           originCountries: ['US'],
           shippingDiscounts: [],
           shipping: SHIPPING_SNAPSHOT as never,
-          items: [],
+          items: [{ productId: 'product-1', productPublicId: 'prod_public1' } as never],
         },
       ],
     } as CheckoutQuoteResult);
@@ -164,7 +167,7 @@ describe('order shipping response', () => {
       latest_delivery_date: '2026-09-30T00:00:00.000Z',
     });
     expect(orderResponse.shipping?.charge.base_unit).toEqual({
-      product_id: 'product-1',
+      product_id: 'prod_public1',
       inventory_id: 'inventory-1',
       one_item_fee_minor: 900,
     });

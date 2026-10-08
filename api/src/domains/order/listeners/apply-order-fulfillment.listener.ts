@@ -84,7 +84,8 @@ export class ApplyOrderFulfillmentListener {
         completed,
         customerUserId: payload.customerUserId,
         orderNumber: getRequiredOrderNumber(order),
-        shopId: order.shop.id,
+        shopId: order.shop.publicId,
+        orderPublicId: order.publicId,
         status: order.status,
         fulfillmentStatus: summary.status,
       };
@@ -112,7 +113,7 @@ export class ApplyOrderFulfillmentListener {
 
     this.eventEmitter.emit(ORDER_UPDATED_SSE_EVENT, {
       userId: outcome.customerUserId,
-      orderId: payload.orderId,
+      orderId: outcome.orderPublicId,
       changed: outcome.completed ? ['status', 'fulfillment'] : ['fulfillment'],
       status: outcome.status,
       fulfillmentStatus: outcome.fulfillmentStatus,
@@ -124,7 +125,7 @@ export class ApplyOrderFulfillmentListener {
       title: 'Order fulfillment updated',
       body: `Fulfillment for order ${outcome.orderNumber} is now ${outcome.fulfillmentStatus.replace(/_/g, ' ')}.`,
       data: {
-        orderId: payload.orderId,
+        orderId: outcome.orderPublicId,
         shopId: outcome.shopId,
         fulfillmentStatus: outcome.fulfillmentStatus,
       },

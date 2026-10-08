@@ -23,6 +23,8 @@ export function createCheckoutQuoteItem(args: {
   quote: CheckoutQuoteEntity;
   inventory: ProductInventoryEntity;
   item: PricedCartItem;
+  productPublicId: string;
+  shopPublicId: string;
   checkoutCurrency: string;
 }): MappedCheckoutQuoteItem {
   const {
@@ -30,6 +32,8 @@ export function createCheckoutQuoteItem(args: {
     quote,
     inventory,
     item,
+    productPublicId,
+    shopPublicId,
     checkoutCurrency,
   } = args;
 
@@ -80,7 +84,9 @@ export function createCheckoutQuoteItem(args: {
     summary: {
       inventoryId: item.inventoryId,
       productId: item.productId,
+      productPublicId,
       shopId: item.shopId,
+      shopPublicId,
       shopName: item.shopName,
       shopSlug: item.shopSlug,
       title: item.title,

@@ -8,6 +8,7 @@ import { MikroOrmSaleProjectionReader } from './mikro-orm-sale-projection.reader
 
 function buildPromotion(input: {
   id: string;
+  publicId?: string;
   shopId: string;
   percentOff: number;
   productScope: PromotionProductScope;
@@ -15,6 +16,7 @@ function buildPromotion(input: {
 }) {
   return {
     id: input.id,
+    publicId: input.publicId ?? `prm_${input.id}`,
     shop: { id: input.shopId },
     percentOff: input.percentOff,
     productScope: input.productScope,
@@ -89,6 +91,7 @@ describe('MikroOrmSaleProjectionReader', () => {
     });
 
     expect(result.get('product-1')).toEqual({
+      promotionPublicId: 'prm_sale-30',
       promotionId: 'sale-30',
       percentOff: 30,
     });
@@ -119,10 +122,12 @@ describe('MikroOrmSaleProjectionReader', () => {
     });
 
     expect(result.get('product-1')).toEqual({
+      promotionPublicId: 'prm_shop-1-specific',
       promotionId: 'shop-1-specific',
       percentOff: 25,
     });
     expect(result.get('product-2')).toEqual({
+      promotionPublicId: 'prm_shop-1-all',
       promotionId: 'shop-1-all',
       percentOff: 15,
     });

@@ -526,6 +526,8 @@ export class MikroOrmCartRepository implements CartRepository {
         item.shop.shopName,
         item.product.slug,
         item.shop.slug,
+        item.product.publicId,
+        item.shop.publicId,
       ),
     };
   }
@@ -537,6 +539,8 @@ export class MikroOrmCartRepository implements CartRepository {
     shopName?: string,
     productSlug?: string,
     shopSlug?: string,
+    productPublicId?: string,
+    shopPublicId?: string,
   ): Promise<CartInventorySnapshot> {
     const pricing = await this.resolvedStorefrontPriceService.resolveForCurrentRequest(inventory);
 
@@ -558,8 +562,10 @@ export class MikroOrmCartRepository implements CartRepository {
     return {
       inventoryId: inventory.id,
       productId: inventory.product.id,
+      productPublicId: productPublicId ?? inventory.product.publicId,
       productSlug: productSlug ?? inventory.product.slug,
       shopId: inventory.shop.id,
+      shopPublicId: shopPublicId ?? inventory.shop.publicId,
       shopName: shopName ?? inventory.shop.shopName,
       shopSlug: shopSlug ?? inventory.shop.slug,
       title: title ?? inventory.product.title,

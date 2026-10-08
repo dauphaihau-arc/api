@@ -31,8 +31,10 @@ export type CheckoutActor =
 
 export interface CreatedOrderShopRef {
   id: string;
+  publicId: string;
   orderNumber: string;
   shopId: string;
+  shopPublicId: string;
   shopName: string;
   shopSlug: string;
 }
@@ -54,7 +56,9 @@ export interface SelectedOptionSnapshot {
 export interface CheckoutQuoteItemSummary {
   inventoryId: string;
   productId: string;
+  productPublicId: string;
   shopId: string;
+  shopPublicId: string;
   shopName: string;
   shopSlug: string;
   title: string;
@@ -90,6 +94,7 @@ export interface CheckoutQuoteItemSummary {
 
 export interface CheckoutQuoteShopSummary {
   shopId: string;
+  shopPublicId: string;
   shopName: string;
   shopSlug: string;
   subtotalMinor: number;
@@ -138,6 +143,7 @@ export interface OrderListProduct {
   sku?: string;
   selectedOptions?: SelectedOptionSnapshot[];
   productId: string;
+  productPublicId: string;
   shopSlug: string;
   myReview?: {
     id: string;
@@ -183,8 +189,10 @@ export interface OrderShippingQuote {
 
 export interface OrderListShop {
   id: string;
+  publicId: string;
   orderNumber: string;
   shopId: string;
+  shopPublicId: string;
   shopName: string;
   shopSlug: string;
   currency: string;
@@ -230,8 +238,10 @@ export interface AdminOrderDetail extends MyOrderDetail {
 
 export interface AdminOrderSummary {
   id: string;
+  publicId: string;
   orderNumber: string;
   shopId: string;
+  shopPublicId: string;
   shopName: string;
   shopSlug: string;
   customerEmail: string;
@@ -304,8 +314,10 @@ export interface OrderTimelineEvent {
 
 export interface ShopOrderSummary {
   id: string;
+  publicId: string;
   orderNumber: string;
   shopId: string;
+  shopPublicId: string;
   shopName: string;
   shopSlug: string;
   customerEmail: string;
@@ -387,6 +399,7 @@ export interface ShopDashboardRevenuePoint {
 
 export interface ShopDashboardTopProduct {
   productId: string;
+  productPublicId: string;
   title: string;
   slug: string;
   imageUrl?: string;
@@ -454,10 +467,12 @@ export interface PricedCartItem {
 
 export interface ShippingDiscountProvenance {
   promotionId: string;
+  promotionPublicId: string;
   code: string;
   benefitType: 'free_shipping';
   productScope: PromotionProductScope;
   productIds: string[];
+  productPublicIds: string[];
   minOrderType: PromotionMinOrderType;
   /** Order-total minimum in major units of `currency` (the checkout currency). */
   minOrderValue: number;
@@ -472,6 +487,7 @@ export interface ShippingDiscountProvenance {
 
 export interface PricedShopCart {
   shopId: string;
+  shopPublicId: string;
   shopName: string;
   items: PricedCartItem[];
   subtotal: number;

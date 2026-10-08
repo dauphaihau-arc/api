@@ -153,7 +153,8 @@ describe('Fulfillment migration (integration)', () => {
            "promo_codes", "shipping_address", "shipping_origin_countries",
            "shipping_to_country", "shipping_estimated_delivery",
            "subtotal_minor", "shipping_minor", "discount_minor", "total_minor",
-           "order_number", "tracking_number", "shipped_at", "delivered_at", "canceled_at"
+           "order_number", "tracking_number", "shipped_at", "delivered_at", "canceled_at",
+           "public_id"
          ) values (
            $1, now(), now(), null, 'legacy-buyer@example.test', $2,
            'card', $3, $4, 'USD',
@@ -161,7 +162,7 @@ describe('Fulfillment migration (integration)', () => {
            '{}', '{"full_name":"Legacy Buyer","address1":"1 Old Road","city":"Portland","country":"US","state":"OR","zip":"97201"}', '{US}',
            'US', now() + interval '7 days',
            $5, 0, 0, $5,
-           $6, $7, $8, $9, $10
+           $6, $7, $8, $9, $10, $11
          )`,
         [
           order.id,
@@ -174,6 +175,7 @@ describe('Fulfillment migration (integration)', () => {
           order.shippedAt ? daysAgo(10) : null,
           order.deliveredAt ? daysAgo(3) : null,
           order.canceledAt ? new Date() : null,
+          `ord_${order.id.replace(/-/g, '').slice(0, 12)}`,
         ],
       );
     }

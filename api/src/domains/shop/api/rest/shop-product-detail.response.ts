@@ -4,9 +4,7 @@ type ShipProductShipping = NonNullable<ProductShippingSummary>;
 
 export type ShopProductDetailResponse = {
   id: string;
-  public_id?: string;
   shop_id: string;
-  shop_public_id?: string;
   category_id?: string;
   category?: {
     id: string;

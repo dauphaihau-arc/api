@@ -1,9 +1,11 @@
 import { MikroOrmModule } from '@mikro-orm/nestjs';
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { CacheModule } from '~/integrations/cache/cache.module';
 import { IdempotencyModule } from '~/platform/idempotency/idempotency.module';
+import { OrderModule } from '../order/order.module';
 import { ShopModule } from '../shop/shop.module';
 import { FulfillmentCommandRunner } from './app/services/fulfillment-command.runner';
+import { FulfillmentTargetResolver } from './app/services/fulfillment-target-resolver.service';
 import { FulfillmentService } from './app/services/fulfillment.service';
 import { AmendFulfillmentShipmentUseCase } from './app/use-cases/amend-fulfillment-shipment/amend-fulfillment-shipment.use-case';
 import { PrepareFulfillmentShipmentUseCase } from './app/use-cases/prepare-fulfillment-shipment/prepare-fulfillment-shipment.use-case';
@@ -12,7 +14,9 @@ import { UpdateShipmentJourneyUseCase } from './app/use-cases/update-shipment-jo
 import { VoidFulfillmentShipmentUseCase } from './app/use-cases/void-fulfillment-shipment/void-fulfillment-shipment.use-case';
 import { OrderFulfillmentContextPort } from './app/ports/order-fulfillment-context.port';
 import { OrderFulfillmentViewPort } from './app/ports/order-fulfillment-view.port';
+import { ShipmentPublicIdLookup } from './app/services/shipment-public-id-lookup.service';
 import { ShopOrderFulfillmentController } from './api/rest/shop-order-fulfillment.controller';
+import { ShipmentQueryRepository } from './app/ports/shipment-query.repository';
 import { FulfillmentGroupEntity } from './infra/persistence/entities/fulfillment-group.entity';
 import { FulfillmentGroupItemEntity } from './infra/persistence/entities/fulfillment-group-item.entity';
 import { ShipmentEntity } from './infra/persistence/entities/shipment.entity';
@@ -20,10 +24,12 @@ import { ShipmentItemEntity } from './infra/persistence/entities/shipment-item.e
 import { ShipmentUpdateEntity } from './infra/persistence/entities/shipment-update.entity';
 import { MikroOrmOrderFulfillmentContextAdapter } from './infra/persistence/repositories/mikro-orm-order-fulfillment-context.adapter';
 import { MikroOrmOrderFulfillmentViewAdapter } from './infra/persistence/repositories/mikro-orm-order-fulfillment-view.adapter';
+import { MikroOrmShipmentQueryRepository } from './infra/persistence/repositories/mikro-orm-shipment-query.repository';
 
 @Module({
   imports: [
     ShopModule,
+    forwardRef(() => OrderModule),
     CacheModule,
     IdempotencyModule,
     MikroOrmModule.forFeature([
@@ -43,6 +49,8 @@ import { MikroOrmOrderFulfillmentViewAdapter } from './infra/persistence/reposit
     VoidFulfillmentShipmentUseCase,
     UpdateShipmentJourneyUseCase,
     ReconcileOrderFulfillmentUseCase,
+    ShipmentPublicIdLookup,
+    FulfillmentTargetResolver,
     {
       provide: OrderFulfillmentContextPort,
       useClass: MikroOrmOrderFulfillmentContextAdapter,
@@ -50,6 +58,11 @@ import { MikroOrmOrderFulfillmentViewAdapter } from './infra/persistence/reposit
     {
       provide: OrderFulfillmentViewPort,
       useClass: MikroOrmOrderFulfillmentViewAdapter,
+    },
+
+    {
+      provide: ShipmentQueryRepository,
+      useClass: MikroOrmShipmentQueryRepository,
     },
   ],
   exports: [FulfillmentService, OrderFulfillmentViewPort],

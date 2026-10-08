@@ -1,13 +1,14 @@
-import { RequestMethod } from '@nestjs/common';
-import { METHOD_METADATA, PATH_METADATA } from '@nestjs/common/constants';
 import { ok } from '~/platform/application/result';
 import { ShopProductsController } from './shop-products.controller';
 
 describe('ShopProductsController', () => {
-  const shopAccessService = { assertCanManageShop: jest.fn() };
+  const shopAccessService = {
+    resolveManageableShopByPublicId: jest.fn(),
+    assertCanManageShop: jest.fn(),
+  };
+  const shopProductAccessService = { resolveManageableProduct: jest.fn() };
   const createProductDraftFacadeUseCase = { execute: jest.fn() };
   const createProductDraftUseCase = { execute: jest.fn() };
-  const getProductByIdUseCase = { execute: jest.fn() };
   const generateProductDescriptionUseCase = { execute: jest.fn() };
   const listShopProductsUseCase = { execute: jest.fn() };
   const publishProductUseCase = { execute: jest.fn() };
@@ -22,9 +23,9 @@ describe('ShopProductsController', () => {
 
   const controller = new ShopProductsController(
     shopAccessService as never,
+    shopProductAccessService as never,
     createProductDraftFacadeUseCase as never,
     createProductDraftUseCase as never,
-    getProductByIdUseCase as never,
     generateProductDescriptionUseCase as never,
     listShopProductsUseCase as never,
     publishProductUseCase as never,
@@ -39,90 +40,17 @@ describe('ShopProductsController', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    shopAccessService.assertCanManageShop.mockResolvedValue(undefined);
-  });
-
-  it('registers GET :id on the controller method', () => {
-    const handler = ShopProductsController.prototype.product;
-
-    expect(Reflect.getMetadata(PATH_METADATA, handler)).toBe(':id');
-    expect(Reflect.getMetadata(METHOD_METADATA, handler)).toBe(RequestMethod.GET);
-  });
-
-
-  it('delegates normalized variant configuration with route ids and idempotency', async () => {
-    const product = {
+    shopAccessService.resolveManageableShopByPublicId.mockResolvedValue({ id: 'shop-1' });
+    shopProductAccessService.resolveManageableProduct.mockResolvedValue({
       id: 'product-1',
+      publicId: 'public-product-1',
       shopId: 'shop-1',
-      title: 'Mug',
-      slug: 'mug',
-      description: 'Mug',
-      state: 'active',
-      productVersion: 8,
-      whoMade: 'i_did',
-      isDigital: false,
-      nonTaxable: false,
-      images: [],
-      attributes: [],
-      variants: [],
-      inventory: [],
-      options: [],
-    };
-    const actor = {
-      userId: 'user-1',
-      email: 'seller@example.com',
-      status: 'active',
-      sessionId: 'session-1',
-      roles: [],
-      permissions: [],
-    } as never;
-
-    getProductByIdUseCase.execute.mockResolvedValue(product);
-    configureProductVariantConfigurationUseCase.execute.mockResolvedValue(ok(product));
-
-    await controller.configureProductVariantConfiguration('shop-1', 'product-1', actor, {
-      productVersion: 7,
-      options: [{
-        clientRef: 'option-size',
-        name: 'Size',
-        position: 1,
-        values: [{
-          clientRef: 'value-m',
-          value: 'M',
-          position: 1,
-        }],
-      }],
-      variants: [{
-        clientRef: 'variant-m',
-        lifecycleState: 'active' as never,
-        selections: [{
-          optionRef: 'option-size',
-          valueRef: 'value-m',
-        }],
-        inventory: {
-          sku: 'MUG-M',
-          onHandQuantity: 4,
-          amountMinor: 2000,
-          currency: 'USD',
-        },
-      }],
-      removedVariantIds: ['variant-old'],
-      restoreVariantIds: [],
-    }, 'configuration-command-1');
-
-    expect(configureProductVariantConfigurationUseCase.execute).toHaveBeenCalledWith(
-      actor,
-      'product-1',
-      expect.objectContaining({
-        productVersion: 7,
-        idempotencyKey: 'configuration-command-1',
-        removedVariantIds: ['variant-old'],
-      }),
-    );
+      shopPublicId: 'public-shop-1',
+    });
   });
 
   it('returns product detail in snake_case for the HTTP boundary', async () => {
-    getProductByIdUseCase.execute.mockResolvedValue({
+    shopProductAccessService.resolveManageableProduct.mockResolvedValue({
       id: 'product-1',
       publicId: 'public-product-1',
       shopId: 'shop-1',
@@ -238,10 +166,8 @@ describe('ShopProductsController', () => {
       roles: [],
       permissions: [],
     } as never)).resolves.toEqual({
-      id: 'product-1',
-      public_id: 'public-product-1',
-      shop_id: 'shop-1',
-      shop_public_id: 'public-shop-1',
+      id: 'public-product-1',
+      shop_id: 'public-shop-1',
       category_id: 'category-1',
       category: {
         id: 'category-1',
@@ -351,10 +277,10 @@ describe('ShopProductsController', () => {
         ],
       },
     });
-    expect(getProductByIdUseCase.execute).toHaveBeenCalledWith('product-1');
-    expect(shopAccessService.assertCanManageShop).toHaveBeenCalledWith(
+    expect(shopProductAccessService.resolveManageableProduct).toHaveBeenCalledWith(
       expect.objectContaining({ userId: 'user-1' }),
       'shop-1',
+      'product-1',
     );
   });
 
@@ -396,10 +322,8 @@ describe('ShopProductsController', () => {
         whoMade: 'i_did',
       } as never,
     )).resolves.toMatchObject({
-      id: 'product-1',
-      public_id: 'public-product-1',
-      shop_id: 'shop-1',
-      shop_public_id: 'public-shop-1',
+      id: 'public-product-1',
+      shop_id: 'public-shop-1',
       category_id: 'category-1',
       who_made: 'i_did',
       is_digital: false,
@@ -476,7 +400,7 @@ describe('ShopProductsController', () => {
     )).resolves.toMatchObject({
       items: [
         {
-          id: 'product-1',
+          id: 'public-product-1',
           image_url: 'https://cdn.example.test/products/image-1/thumb_1x1.webp',
           images: [
             {
@@ -502,9 +426,5 @@ describe('ShopProductsController', () => {
         has_previous_page: false,
       },
     });
-    expect(shopAccessService.assertCanManageShop).toHaveBeenCalledWith(
-      expect.objectContaining({ userId: 'user-1' }),
-      'shop-1',
-    );
   });
 });

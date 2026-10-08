@@ -163,7 +163,7 @@ export class UpdateAdminOrderRefundUseCase {
     if (result.customerUserId) {
       this.eventEmitter.emit(ORDER_UPDATED_SSE_EVENT, {
         userId: result.customerUserId,
-        orderId: result.detail.id,
+        orderId: result.detail.publicId,
         changed: ['status', 'refundStatus'],
         status: result.detail.status,
       });

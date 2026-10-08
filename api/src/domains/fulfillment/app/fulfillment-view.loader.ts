@@ -100,6 +100,7 @@ function toGroupView(
     })
     .map((shipment): FulfillmentShipmentView => ({
       id: shipment.id,
+      publicId: shipment.publicId,
       groupId: group.id,
       status: shipment.status,
       carrier: shipment.carrier,

@@ -10,6 +10,7 @@ import {
 import { AuthModule } from '../auth/auth.module';
 import { AdminOrderController } from './api/rest/admin-order.controller';
 import { MeOrderController } from './api/rest/me-order.controller';
+import { OrderPublicIdLookup } from './app/services/order-public-id-lookup.service';
 import { OrderWebhookController } from './api/rest/order-webhook.controller';
 import { ShopDashboardController } from './api/rest/shop-dashboard.controller';
 import { ShopOrderExportController } from './api/rest/shop-order-export.controller';
@@ -75,6 +76,7 @@ import { QueueModule } from '~/integrations/queue/queue.module';
 import { SseModule } from '~/platform/sse/sse.module';
 import { StorageModule } from '~/integrations/storage/storage.module';
 import { FulfillmentModule } from '../fulfillment/fulfillment.module';
+// Imported via forwardRef to avoid a module cycle with FulfillmentModule.
 import { ShopModule } from '../shop/shop.module';
 import { ShippingModule } from '../shipping/shipping.module';
 import { ProductModule } from '../product/product.module';
@@ -99,7 +101,7 @@ import { UpdateShopOrderRefundUseCase } from './app/use-cases/update-shop-order-
     StorageModule,
     ShopModule,
     ShippingModule,
-    FulfillmentModule,
+    forwardRef(() => FulfillmentModule),
     PromotionModule,
     MikroOrmModule.forFeature([
       OutboxEventEntity,
@@ -192,6 +194,7 @@ import { UpdateShopOrderRefundUseCase } from './app/use-cases/update-shop-order-
     UpdateAdminOrderSupportNoteUseCase,
     UpdateShopOrderStatusUseCase,
     UpdateShopOrderRefundUseCase,
+    OrderPublicIdLookup,
     ApplyOrderFulfillmentListener,
     ForwardOrderUpdatedToSseListener,
     ForwardOrderExportToSseListener,
@@ -208,6 +211,8 @@ import { UpdateShopOrderRefundUseCase } from './app/use-cases/update-shop-order-
     OrderRefundService,
     ProcessOrderRefundJob,
     ProcessShopOrderExportJob,
+    OrderPublicIdLookup,
+    OrderRefundQueryRepository,
     ShopOrderExportQueryRepository,
     ShopOrderExportRepository,
   ],

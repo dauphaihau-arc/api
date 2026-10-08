@@ -10,13 +10,15 @@ import type { PromotionEntity } from '~/domains/promotion/infra/persistence/enti
 export function toShopPromoCodeSummary(
   promotion: PromotionEntity,
   code: string,
-  productIds: string[],
+  products: Array<{ id: string; publicId: string }>,
   now: Date,
   redemptionCount: number,
 ): ShopPromoCodeSummary {
   return {
     id: promotion.id,
+    publicId: promotion.publicId,
     shopId: promotion.shop.id,
+    shopPublicId: promotion.shop.publicId,
     name: promotion.name,
     code,
     benefitType: promotion.benefitType,
@@ -25,7 +27,8 @@ export function toShopPromoCodeSummary(
     currency: promotion.currency,
     visibility: promotion.visibility ?? 'code_only',
     productScope: promotion.productScope,
-    productIds,
+    productIds: products.map((product) => product.id),
+    productPublicIds: products.map((product) => product.publicId),
     minOrderType: promotion.minOrderType ?? PromotionMinOrderType.NONE,
     minOrderValue: promotion.minOrderValue == null ? 0 : Number(promotion.minOrderValue),
     minPurchaseQuantity: promotion.minPurchaseQuantity ?? 0,

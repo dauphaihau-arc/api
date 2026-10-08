@@ -7,6 +7,7 @@ import {
   Param,
   Post,
   Query,
+  UseFilters,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -30,6 +31,7 @@ import { GetMyChatMessagesUseCase } from '../../app/use-cases/get-my-chat-messag
 import { ListMyChatConversationsUseCase } from '../../app/use-cases/list-my-chat-conversations/list-my-chat-conversations.use-case';
 import { MarkMyChatConversationReadUseCase } from '../../app/use-cases/mark-my-chat-conversation-read/mark-my-chat-conversation-read.use-case';
 import { SendMyChatMessageUseCase } from '../../app/use-cases/send-my-chat-message/send-my-chat-message.use-case';
+import { ChatPublicReferenceService } from '../../app/services/chat-public-reference.service';
 import { CreateChatConversationDto } from './dto/create-chat-conversation.dto';
 import { ListChatConversationsQueryDto } from './dto/list-chat-conversations.query.dto';
 import { ListChatMessagesQueryDto } from './dto/list-chat-messages.query.dto';
@@ -40,12 +42,10 @@ import {
   toChatMessageListResponse,
   toChatMessageResponse,
 } from './chat.response';
-import {
-  isChatAppError,
-  mapChatAppErrorToHttpException,
-} from './chat-http-error-mapper';
+import { ChatExceptionsFilter } from './chat-exceptions.filter';
 
 @Controller('me/chat')
+@UseFilters(ChatExceptionsFilter)
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @ApiTags('My Chat')
 @ApiCookieAuth('accessCookie')
@@ -57,6 +57,7 @@ export class MeChatController {
     private readonly getMyChatMessagesUseCase: GetMyChatMessagesUseCase,
     private readonly markMyChatConversationReadUseCase: MarkMyChatConversationReadUseCase,
     private readonly sendMyChatMessageUseCase: SendMyChatMessageUseCase,
+    private readonly chatPublicReferenceService: ChatPublicReferenceService,
   ) {}
 
   @Post('conversations')
@@ -67,17 +68,14 @@ export class MeChatController {
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() body: CreateChatConversationDto,
   ) {
-    try {
-      return toChatConversationResponse(
-        await this.createOrGetMyChatConversationUseCase.execute(currentUser, {
-          shopId: body.shopId,
-          productId: body.productId,
-        }),
-      );
-    }
-    catch (error) {
-      this.throwMappedChatError(error);
-    }
+    const { shopId, productId } = await this.chatPublicReferenceService.resolveBuyerReferences(body.shopId, body.productId);
+
+    return toChatConversationResponse(
+      await this.createOrGetMyChatConversationUseCase.execute(currentUser, {
+        shopId,
+        productId,
+      }),
+    );
   }
 
   @Get('conversations')
@@ -113,21 +111,13 @@ export class MeChatController {
   @ApiOkResponse({ description: 'Chat message list.', schema: { type: 'object' } })
   async listMessages(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('conversation_id') conversationId: string,
+    @Param('conversation_id') conversationPublicId: string,
     @Query() query: ListChatMessagesQueryDto,
   ) {
-    try {
-      return toChatMessageListResponse(
-        await this.getMyChatMessagesUseCase.execute(
-          currentUser,
-          conversationId,
-          buildChatMessageListQuery(query),
-        ),
-      );
-    }
-    catch (error) {
-      this.throwMappedChatError(error);
-    }
+    const conversationId = await this.chatPublicReferenceService.resolveBuyerConversationId(currentUser, conversationPublicId);
+    return toChatMessageListResponse(
+      await this.getMyChatMessagesUseCase.execute(currentUser, conversationId, buildChatMessageListQuery(query)),
+    );
   }
 
   @Patch('conversations/:conversation_id/read')
@@ -137,18 +127,14 @@ export class MeChatController {
   @ApiOkResponse({ description: 'Updated chat conversation.', schema: { type: 'object' } })
   async markConversationRead(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('conversation_id') conversationId: string,
+    @Param('conversation_id') conversationPublicId: string,
   ) {
-    try {
-      return {
-        conversation: toChatConversationResponse(
-          await this.markMyChatConversationReadUseCase.execute(currentUser, conversationId),
-        ),
-      };
-    }
-    catch (error) {
-      this.throwMappedChatError(error);
-    }
+    const conversationId = await this.chatPublicReferenceService.resolveBuyerConversationId(currentUser, conversationPublicId);
+    return {
+      conversation: toChatConversationResponse(
+        await this.markMyChatConversationReadUseCase.execute(currentUser, conversationId),
+      ),
+    };
   }
 
   @Post('conversations/:conversation_id/messages')
@@ -158,26 +144,14 @@ export class MeChatController {
   @ApiOkResponse({ description: 'Created chat message.', schema: { type: 'object' } })
   async sendMessage(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('conversation_id') conversationId: string,
+    @Param('conversation_id') conversationPublicId: string,
     @Body() body: SendChatMessageDto,
   ) {
-    try {
-      return {
-        message: toChatMessageResponse(
-          await this.sendMyChatMessageUseCase.execute(currentUser, conversationId, body),
-        ),
-      };
-    }
-    catch (error) {
-      this.throwMappedChatError(error);
-    }
-  }
-
-  private throwMappedChatError(error: unknown): never {
-    if (isChatAppError(error)) {
-      throw mapChatAppErrorToHttpException(error);
-    }
-
-    throw error;
+    const conversationId = await this.chatPublicReferenceService.resolveBuyerConversationId(currentUser, conversationPublicId);
+    return {
+      message: toChatMessageResponse(
+        await this.sendMyChatMessageUseCase.execute(currentUser, conversationId, body),
+      ),
+    };
   }
 }

@@ -27,9 +27,11 @@ describe('RequestOrderCancelUseCase', () => {
   }) {
     const order = {
       id: 'order-1',
+      publicId: 'ord_1',
       orderNumber: 'ORD-20260604-000001',
       shop: {
         id: 'shop-1',
+        publicId: 'shop_1',
         shopName: 'Shop 1',
         slug: 'shop-1',
         ownerUser: {
@@ -75,7 +77,9 @@ describe('RequestOrderCancelUseCase', () => {
     };
     const items = [{
       id: 'item-1',
-      product: { id: 'product-1', slug: 'product-1', shop: { slug: 'shop-1' } },
+      product: {
+        id: 'product-1', publicId: 'prod_public1', slug: 'product-1', shop: { slug: 'shop-1' }, 
+      },
       title: 'Product 1',
       imageUrl: undefined,
       quantity: 1,
@@ -189,9 +193,9 @@ describe('RequestOrderCancelUseCase', () => {
       body: 'Customer requested cancellation for order ORD-20260604-000001.',
       data: expect.objectContaining({
         target: 'seller_order_detail',
-        orderId: 'order-1',
+        orderId: 'ord_1',
         orderNumber: 'ORD-20260604-000001',
-        shopId: 'shop-1',
+        shopId: 'shop_1',
       }),
     }));
     expect(result.status).toBe(OrderStatus.CANCELED);

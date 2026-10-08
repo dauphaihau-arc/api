@@ -34,6 +34,8 @@ import { createTestDatabase, dropTestDatabase } from '../support/test-postgres';
 import { seedAuthReferenceData } from '../../database/seeds/auth.seed';
 import {
   assignProductShippingProfile,
+  resolveProductId,
+  resolveShopId,
   seedShopShippingProfile,
 } from '../support/shipping-fixtures';
 
@@ -49,7 +51,9 @@ type TestDatabase = {
   };
 };
 
-type TestSeller = { agent: Agent; email: string; shopId: string };
+type TestSeller = {
+  agent: Agent; email: string; shopId: string; shopPublicId: string 
+};
 type TestBuyer = {
   agent: Agent; email: string; userId: string; addressId: string 
 };
@@ -97,6 +101,7 @@ type Fulfillment = {
 
 type SeededOrder = {
   orderId: string;
+  orderPublicId: string;
   orderItemId: string;
   quantity: number;
 };
@@ -314,7 +319,9 @@ describe('Fulfillment flow (integration)', () => {
       })
       .expect(201);
 
-    return { agent, email, shopId: shopResponse.body.id as string };
+    return {
+      agent, email, shopId: shopResponse.body.id as string, shopPublicId: shopResponse.body.id as string, 
+    };
   }
 
   async function createBuyer(): Promise<TestBuyer> {
@@ -357,7 +364,7 @@ describe('Fulfillment flow (integration)', () => {
     stock: number;
   }) {
     const productResponse = await input.seller.agent
-      .post(`${API_PREFIX}/shops/${input.seller.shopId}/products`)
+      .post(`${API_PREFIX}/shops/${input.seller.shopPublicId}/products`)
       .set('Idempotency-Key', randomUUID())
       .send({
         category_id: await seedCategory(input.seller.agent),
@@ -367,9 +374,10 @@ describe('Fulfillment flow (integration)', () => {
       })
       .expect(201);
     const productId = productResponse.body.id as string;
+    const productPublicId = productResponse.body.id as string;
 
     const draftResponse = await input.seller.agent
-      .get(`${API_PREFIX}/shops/${input.seller.shopId}/products/${productId}`)
+      .get(`${API_PREFIX}/shops/${input.seller.shopPublicId}/products/${productPublicId}`)
       .expect(200);
     const variantId = draftResponse.body.variants[0].id as string;
 
@@ -381,13 +389,15 @@ describe('Fulfillment flow (integration)', () => {
       [variantId],
     );
     const inventoryId = (existingInventory.rows[0]?.id as string | undefined) ?? randomUUID();
+    const internalShopId = await resolveShopId(sql, input.seller.shopId);
+    const internalProductId = await resolveProductId(sql, productId);
 
     if (existingInventory.rows.length === 0) {
       await sql.query(
         `insert into "product_inventory"
            ("id", "created_at", "updated_at", "shop_id", "product_id", "product_variant_id", "sku", "stock", "on_hand_quantity", "reserved_quantity", "on_hand_version", "lifecycle_state")
          values ($1, now(), now(), $2, $3, $4, $5, $6, $6, 0, 1, 'active')`,
-        [inventoryId, input.seller.shopId, productId, variantId, input.sku, input.stock],
+        [inventoryId, internalShopId, internalProductId, variantId, input.sku, input.stock],
       );
     }
     else {
@@ -408,7 +418,7 @@ describe('Fulfillment flow (integration)', () => {
         `insert into "product_stock_pool"
            ("id", "created_at", "updated_at", "inventory_id", "shop_id", "name", "custody", "is_default", "lifecycle_state", "on_hand_quantity", "reserved_quantity", "on_hand_version", "stock")
          values ($1, now(), now(), $2, $3, 'Default seller pool', 'seller', true, 'active', $4, 0, 1, $4)`,
-        [randomUUID(), inventoryId, input.seller.shopId, input.stock],
+        [randomUUID(), inventoryId, internalShopId, input.stock],
       );
     }
     else {
@@ -443,7 +453,7 @@ describe('Fulfillment flow (integration)', () => {
     await assignProductShippingProfile(sql, productId, profileId);
 
     await sql.query(
-      'update "products" set "state" = \'active\', "updated_at" = now() where "id" = $1',
+      'update "products" set "state" = \'active\', "updated_at" = now() where "public_id" = $1',
       [productId],
     );
 
@@ -481,14 +491,19 @@ describe('Fulfillment flow (integration)', () => {
         quote_id: quoteResponse.body.quote_id,
       })
       .expect(200);
-    const orderId = orderResponse.body.order_shops[0].id as string;
+    const orderShop = orderResponse.body.order_shops[0] as { id: string };
+    const orderRow = await sql.query<{ id: string }>(
+      'select "id" from "orders" where "public_id" = $1',
+      [orderShop.id],
+    );
     const orderItem = await sql.query<{ id: string }>(
       'select "id" from "order_items" where "order_id" = $1',
-      [orderId],
+      [orderRow.rows[0].id],
     );
 
     return {
-      orderId,
+      orderId: orderRow.rows[0].id,
+      orderPublicId: orderShop.id,
       orderItemId: orderItem.rows[0].id,
       quantity: input.quantity,
     };
@@ -526,7 +541,10 @@ describe('Fulfillment flow (integration)', () => {
   }): Promise<SeededOrder> {
     const orderId = randomUUID();
     const orderItemId = randomUUID();
+    const orderPublicId = `ord_${orderId.replace(/-/g, '').slice(0, 12)}`;
     const totalMinor = 1999 * input.quantity;
+    const internalShopId = await resolveShopId(sql, input.seller.shopId);
+    const internalProductId = await resolveProductId(sql, input.productId);
 
     await sql.query(
       `insert into "orders" (
@@ -536,7 +554,8 @@ describe('Fulfillment flow (integration)', () => {
          "promo_codes", "shipping_address", "shipping_origin_countries",
          "shipping_to_country", "shipping_estimated_delivery",
          "subtotal_minor", "shipping_minor", "discount_minor", "total_minor",
-         "order_number", "tracking_number", "shipped_at", "delivered_at", "fulfillment_status"
+         "order_number", "tracking_number", "shipped_at", "delivered_at", "fulfillment_status",
+         "public_id"
        ) values (
          $1, now(), now(), $2, $3, $4,
          'cash', $5, $6, 'USD',
@@ -544,13 +563,13 @@ describe('Fulfillment flow (integration)', () => {
          '{}', '{"full_name":"Buyer One","address1":"1 Test Street","city":"Portland","country":"US","state":"OR","zip":"97201"}', '{US}',
          'US', now() + interval '7 days',
          $7, 0, 0, $7,
-         $8, $9, $10, $11, $12
+         $8, $9, $10, $11, $12, $13
        )`,
       [
         orderId,
         input.buyer.userId,
         input.buyer.email,
-        input.seller.shopId,
+        internalShopId,
         input.status ?? 'paid',
         input.shippingStatus ?? 'pre_transit',
         totalMinor,
@@ -559,6 +578,7 @@ describe('Fulfillment flow (integration)', () => {
         input.shippedAt ? daysAgo(10) : null,
         input.deliveredAt ? daysAgo(3) : null,
         storedFulfillmentStatus(input.status ?? 'paid', input.shippingStatus ?? 'pre_transit'),
+        orderPublicId,
       ],
     );
 
@@ -570,7 +590,7 @@ describe('Fulfillment flow (integration)', () => {
       [
         orderItemId,
         orderId,
-        input.productId,
+        internalProductId,
         input.inventoryId,
         input.quantity,
         totalMinor,
@@ -578,7 +598,9 @@ describe('Fulfillment flow (integration)', () => {
       ],
     );
 
-    return { orderId, orderItemId, quantity: input.quantity };
+    return {
+      orderId, orderPublicId, orderItemId, quantity: input.quantity, 
+    };
   }
 
   async function assignGroup(input: {
@@ -586,11 +608,12 @@ describe('Fulfillment flow (integration)', () => {
     shopId: string;
   }): Promise<void> {
     const entityManager = app.get(EntityManager).fork();
+    const internalShopId = await resolveShopId(sql, input.shopId);
 
     await entityManager.transactional(async (transactionalEntityManager) => {
       await fulfillmentService.assignSellerGroupToOrder(transactionalEntityManager, {
         orderId: input.order.orderId,
-        shopId: input.shopId,
+        shopId: internalShopId,
         items: [
           { orderItemId: input.order.orderItemId, quantity: input.order.quantity },
         ],
@@ -604,11 +627,11 @@ describe('Fulfillment flow (integration)', () => {
 
   async function getShopOrder(
     agent: Agent,
-    shopId: string,
-    orderId: string,
+    shopPublicId: string,
+    orderPublicId: string,
   ): Promise<{ order: { status: string; fulfillment: Fulfillment } }> {
     const response = await agent
-      .get(`${API_PREFIX}/shops/${shopId}/orders/${orderId}`)
+      .get(`${API_PREFIX}/shops/${shopPublicId}/orders/${orderPublicId}`)
       .expect(200);
 
     return response.body as { order: { status: string; fulfillment: Fulfillment } };
@@ -628,13 +651,15 @@ describe('Fulfillment flow (integration)', () => {
     buyer: TestBuyer;
     items: Array<{ productId: string; inventoryId: string; quantity: number }>;
     status?: 'pending' | 'paid' | 'checkout_pending' | 'canceled';
-  }): Promise<{ orderId: string; items: Array<{ orderItemId: string; quantity: number }> }> {
+  }): Promise<{ orderId: string; orderPublicId: string; items: Array<{ orderItemId: string; quantity: number }> }> {
     const orderId = randomUUID();
     const orderItemIds = input.items.map(() => randomUUID());
+    const orderPublicId = `ord_${orderId.replace(/-/g, '').slice(0, 12)}`;
     const totalMinor = input.items.reduce(
       (total, item) => total + (1999 * item.quantity),
       0,
     );
+    const internalShopId = await resolveShopId(sql, input.seller.shopId);
 
     await sql.query(
       `insert into "orders" (
@@ -644,7 +669,7 @@ describe('Fulfillment flow (integration)', () => {
          "promo_codes", "shipping_address", "shipping_origin_countries",
          "shipping_to_country", "shipping_estimated_delivery",
          "subtotal_minor", "shipping_minor", "discount_minor", "total_minor",
-         "order_number", "fulfillment_status"
+         "order_number", "fulfillment_status", "public_id"
        ) values (
          $1, now(), now(), $2, $3, $4,
          'cash', $5, 'pre_transit', 'USD',
@@ -652,22 +677,24 @@ describe('Fulfillment flow (integration)', () => {
          '{}', '{"full_name":"Buyer One","address1":"1 Test Street","city":"Portland","country":"US","state":"OR","zip":"97201"}', '{US}',
          'US', now() + interval '7 days',
          $6::int, 0, 0, $6::int,
-         $7, $8
+         $7, $8, $9
        )`,
       [
         orderId,
         input.buyer.userId,
         input.buyer.email,
-        input.seller.shopId,
+        internalShopId,
         input.status ?? 'paid',
         totalMinor,
         `ORD-${Date.now()}${Math.floor(Math.random() * 1000)}`,
         storedFulfillmentStatus(input.status ?? 'paid', 'pre_transit'),
+        orderPublicId,
       ],
     );
 
     for (let index = 0; index < input.items.length; index += 1) {
       const item = input.items[index]!;
+      const internalProductId = await resolveProductId(sql, item.productId);
       await sql.query(
         `insert into "order_items" (
            "id", "created_at", "updated_at", "order_id", "product_id", "inventory_id",
@@ -676,7 +703,7 @@ describe('Fulfillment flow (integration)', () => {
         [
           orderItemIds[index],
           orderId,
-          item.productId,
+          internalProductId,
           item.inventoryId,
           item.quantity,
           1999 * item.quantity,
@@ -687,6 +714,7 @@ describe('Fulfillment flow (integration)', () => {
 
     return {
       orderId,
+      orderPublicId,
       items: input.items.map((item, index) => ({
         orderItemId: orderItemIds[index]!,
         quantity: item.quantity,
@@ -700,11 +728,12 @@ describe('Fulfillment flow (integration)', () => {
     items: Array<{ orderItemId: string; quantity: number }>;
   }): Promise<void> {
     const entityManager = app.get(EntityManager).fork();
+    const internalShopId = await resolveShopId(sql, input.shopId);
 
     await entityManager.transactional(async (transactionalEntityManager) => {
       await fulfillmentService.assignSellerGroupToOrder(transactionalEntityManager, {
         orderId: input.orderId,
-        shopId: input.shopId,
+        shopId: internalShopId,
         items: input.items,
         actor: {
           actorType: ShipmentUpdateActorType.SYSTEM,
@@ -716,30 +745,30 @@ describe('Fulfillment flow (integration)', () => {
 
   function prepareShipmentRequest(
     seller: TestSeller,
-    orderId: string,
+    orderPublicId: string,
     body: Record<string, unknown>,
   ) {
     return seller.agent
-      .post(`${API_PREFIX}/shops/${seller.shopId}/orders/${orderId}/fulfillment/shipments`)
+      .post(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${orderPublicId}/fulfillment/shipments`)
       .set('Idempotency-Key', randomUUID())
       .send(body);
   }
 
   function journeyRequest(
     seller: TestSeller,
-    orderId: string,
+    orderPublicId: string,
     shipmentId: string,
     status: string,
   ) {
     return seller.agent
-      .post(`${API_PREFIX}/shops/${seller.shopId}/orders/${orderId}/fulfillment/shipments/${shipmentId}/journey`)
+      .post(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${orderPublicId}/fulfillment/shipments/${shipmentId}/journey`)
       .set('Idempotency-Key', randomUUID())
       .send({ status });
   }
 
-  function cancelOrderRequest(seller: TestSeller, orderId: string, reason: string) {
+  function cancelOrderRequest(seller: TestSeller, orderPublicId: string, reason: string) {
     return seller.agent
-      .patch(`${API_PREFIX}/shops/${seller.shopId}/orders/${orderId}/status`)
+      .patch(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${orderPublicId}/status`)
       .send({ status: 'canceled', cancel_reason: reason });
   }
 
@@ -768,10 +797,10 @@ describe('Fulfillment flow (integration)', () => {
 
     // The standalone shop Shipping Origin resource no longer exists.
     await seller.agent
-      .get(`${API_PREFIX}/shops/${seller.shopId}/shipping-origin`)
+      .get(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-origin`)
       .expect(404);
     await seller.agent
-      .put(`${API_PREFIX}/shops/${seller.shopId}/shipping-origin`)
+      .put(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-origin`)
       .set('Idempotency-Key', randomUUID())
       .send({
         phone: '+15035550111',
@@ -791,7 +820,7 @@ describe('Fulfillment flow (integration)', () => {
       inventoryId,
       quantity: 2,
     });
-    const detail = await getShopOrder(seller.agent, seller.shopId, order.orderId);
+    const detail = await getShopOrder(seller.agent, seller.shopPublicId, order.orderPublicId);
 
     expect(detail.order.fulfillment.groups).toHaveLength(1);
     expect(detail.order.fulfillment.groups[0].items).toEqual([
@@ -833,10 +862,11 @@ describe('Fulfillment flow (integration)', () => {
       resolve: markSecondStarted,
     } = createDeferredSignal();
 
+    const internalShopId = await resolveShopId(sql, seller.shopId);
     const first = app.get(EntityManager).fork().transactional(async (entityManager) => {
       const group = await fulfillmentService.assignSellerGroupToOrder(entityManager, {
         orderId: order.orderId,
-        shopId: seller.shopId,
+        shopId: internalShopId,
         items: [{ orderItemId: order.orderItemId, quantity: order.quantity }],
         actor,
       });
@@ -850,7 +880,7 @@ describe('Fulfillment flow (integration)', () => {
       markSecondStarted();
       return fulfillmentService.assignSellerGroupToOrder(entityManager, {
         orderId: order.orderId,
-        shopId: seller.shopId,
+        shopId: internalShopId,
         items: [{ orderItemId: order.orderItemId, quantity: order.quantity }],
         actor,
       });
@@ -886,7 +916,7 @@ describe('Fulfillment flow (integration)', () => {
     });
     const stockAfterCheckout = await readInventoryStock(inventoryId);
 
-    const before = await getShopOrder(seller.agent, seller.shopId, order.orderId);
+    const before = await getShopOrder(seller.agent, seller.shopPublicId, order.orderPublicId);
     const group = before.order.fulfillment.groups[0]!;
     expect(before.order.fulfillment.groups).toHaveLength(1);
     expect(group.method).toBe('seller');
@@ -903,7 +933,7 @@ describe('Fulfillment flow (integration)', () => {
     });
 
     const prepareResponse = await seller.agent
-      .post(`${API_PREFIX}/shops/${seller.shopId}/orders/${order.orderId}/fulfillment/shipments`)
+      .post(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${order.orderPublicId}/fulfillment/shipments`)
       .set('Idempotency-Key', randomUUID())
       .send({ carrier: 'USPS', tracking_number: 'TRACK-1', shipment_note: 'Front desk' })
       .expect(201);
@@ -919,11 +949,11 @@ describe('Fulfillment flow (integration)', () => {
     ]);
     expect(prepareResponse.body.fulfillment.status).toBe('prepared');
     // Preparation does not alter the cash Order's commercial payment state.
-    expect((await getShopOrder(seller.agent, seller.shopId, order.orderId)).order.status)
+    expect((await getShopOrder(seller.agent, seller.shopPublicId, order.orderPublicId)).order.status)
       .toBe('pending');
 
     const dispatchResponse = await seller.agent
-      .post(`${API_PREFIX}/shops/${seller.shopId}/orders/${order.orderId}/fulfillment/shipments/${preparedShipment.id}/journey`)
+      .post(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${order.orderPublicId}/fulfillment/shipments/${preparedShipment.id}/journey`)
       .set('Idempotency-Key', randomUUID())
       .send({ status: 'dispatched' })
       .expect(201);
@@ -935,7 +965,7 @@ describe('Fulfillment flow (integration)', () => {
 
     // Replay of the same status does not duplicate updates or reset timestamps.
     const replayResponse = await seller.agent
-      .post(`${API_PREFIX}/shops/${seller.shopId}/orders/${order.orderId}/fulfillment/shipments/${preparedShipment.id}/journey`)
+      .post(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${order.orderPublicId}/fulfillment/shipments/${preparedShipment.id}/journey`)
       .set('Idempotency-Key', randomUUID())
       .send({ status: 'dispatched' })
       .expect(201);
@@ -946,13 +976,13 @@ describe('Fulfillment flow (integration)', () => {
       .toBe(dispatchedShipment.dispatched_at);
 
     await seller.agent
-      .post(`${API_PREFIX}/shops/${seller.shopId}/orders/${order.orderId}/fulfillment/shipments/${preparedShipment.id}/journey`)
+      .post(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${order.orderPublicId}/fulfillment/shipments/${preparedShipment.id}/journey`)
       .set('Idempotency-Key', randomUUID())
       .send({ status: 'in_transit' })
       .expect(201);
 
     const deliveredResponse = await seller.agent
-      .post(`${API_PREFIX}/shops/${seller.shopId}/orders/${order.orderId}/fulfillment/shipments/${preparedShipment.id}/journey`)
+      .post(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${order.orderPublicId}/fulfillment/shipments/${preparedShipment.id}/journey`)
       .set('Idempotency-Key', randomUUID())
       .send({ status: 'delivered' })
       .expect(201);
@@ -965,12 +995,12 @@ describe('Fulfillment flow (integration)', () => {
     });
 
     // Delivery does not mark a cash Order paid or commercially complete.
-    const deliveredOrder = await getShopOrder(seller.agent, seller.shopId, order.orderId);
+    const deliveredOrder = await getShopOrder(seller.agent, seller.shopPublicId, order.orderPublicId);
     expect(deliveredOrder.order.status).toBe('pending');
 
     // Buyer observes the same Shipment identity and quantities.
     const buyerDetail = await buyer.agent
-      .get(`${API_PREFIX}/me/orders/${order.orderId}`)
+      .get(`${API_PREFIX}/me/orders/${order.orderPublicId}`)
       .expect(200);
     const buyerFulfillment = buyerDetail.body.order_shop.fulfillment as Fulfillment;
     expect(buyerFulfillment.status).toBe('delivered');
@@ -983,7 +1013,7 @@ describe('Fulfillment flow (integration)', () => {
     // Authorized guest tracking sees the same collection.
     const guestLookup = await request(app.getHttpServer())
       .get(`${API_PREFIX}/checkout/guest-orders`)
-      .query({ email: buyer.email, order_id: order.orderId, zip: '97201' })
+      .query({ email: buyer.email, order_id: order.orderPublicId, zip: '97201' })
       .expect(200);
     const guestOrder = guestLookup.body.order_shops[0];
     expect(guestOrder.fulfillment.status).toBe('delivered');
@@ -992,7 +1022,7 @@ describe('Fulfillment flow (integration)', () => {
     // A non-matching zip leaks nothing.
     const wrongZip = await request(app.getHttpServer())
       .get(`${API_PREFIX}/checkout/guest-orders`)
-      .query({ email: buyer.email, order_id: order.orderId, zip: '00000' })
+      .query({ email: buyer.email, order_id: order.orderPublicId, zip: '00000' })
       .expect(200);
     expect(wrongZip.body.order_shops).toEqual([]);
 
@@ -1003,7 +1033,7 @@ describe('Fulfillment flow (integration)', () => {
     // Cross-shop mutation is rejected without side effects.
     const otherSeller = await createSeller('other-seller');
     await otherSeller.agent
-      .post(`${API_PREFIX}/shops/${seller.shopId}/orders/${order.orderId}/fulfillment/shipments`)
+      .post(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${order.orderPublicId}/fulfillment/shipments`)
       .set('Idempotency-Key', randomUUID())
       .send({ carrier: 'DHL' })
       .expect(403);
@@ -1036,7 +1066,7 @@ describe('Fulfillment flow (integration)', () => {
     });
 
     const pendingResponse = await seller.agent
-      .post(`${API_PREFIX}/shops/${seller.shopId}/orders/${pendingOrder.orderId}/fulfillment/shipments`)
+      .post(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${pendingOrder.orderPublicId}/fulfillment/shipments`)
       .set('Idempotency-Key', randomUUID())
       .send({})
       .expect(400);
@@ -1050,7 +1080,7 @@ describe('Fulfillment flow (integration)', () => {
 
     // Reconciliation is not allowed for a non-actionable order either.
     await seller.agent
-      .post(`${API_PREFIX}/shops/${seller.shopId}/orders/${pendingOrder.orderId}/fulfillment/reconciliation`)
+      .post(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${pendingOrder.orderPublicId}/fulfillment/reconciliation`)
       .set('Idempotency-Key', randomUUID())
       .send({ items: [{ order_item_id: pendingOrder.orderItemId, quantity: 1 }] })
       .expect(400);
@@ -1066,14 +1096,14 @@ describe('Fulfillment flow (integration)', () => {
     await assignGroup({ order: confirmedOrder, shopId: seller.shopId });
 
     const crossOrderResponse = await seller.agent
-      .post(`${API_PREFIX}/shops/${seller.shopId}/orders/${confirmedOrder.orderId}/fulfillment/shipments`)
+      .post(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${confirmedOrder.orderPublicId}/fulfillment/shipments`)
       .set('Idempotency-Key', randomUUID())
       .send({ items: [{ order_item_id: pendingOrder.orderItemId, quantity: 1 }] })
       .expect(400);
     expect(crossOrderResponse.body.code).toBe('SHIPMENT_ITEM_NOT_IN_GROUP');
 
     const quantityExceeded = await seller.agent
-      .post(`${API_PREFIX}/shops/${seller.shopId}/orders/${confirmedOrder.orderId}/fulfillment/shipments`)
+      .post(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${confirmedOrder.orderPublicId}/fulfillment/shipments`)
       .set('Idempotency-Key', randomUUID())
       .send({ items: [{ order_item_id: confirmedOrder.orderItemId, quantity: 5 }] })
       .expect(409);
@@ -1104,7 +1134,7 @@ describe('Fulfillment flow (integration)', () => {
       deliveredAt: true,
     });
 
-    const legacyDetail = await getShopOrder(seller.agent, seller.shopId, legacyOrder.orderId);
+    const legacyDetail = await getShopOrder(seller.agent, seller.shopPublicId, legacyOrder.orderPublicId);
     expect(legacyDetail.order.fulfillment.groups).toEqual([]);
     // The aggregate matches what the list/filter reads; the uncertainty is carried
     // by requires_reconciliation plus the preserved legacy evidence.
@@ -1121,7 +1151,7 @@ describe('Fulfillment flow (integration)', () => {
 
     // New quantity-sensitive mutation requires reconciliation.
     const blocked = await seller.agent
-      .post(`${API_PREFIX}/shops/${seller.shopId}/orders/${legacyOrder.orderId}/fulfillment/shipments`)
+      .post(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${legacyOrder.orderPublicId}/fulfillment/shipments`)
       .set('Idempotency-Key', randomUUID())
       .send({ carrier: 'USPS' })
       .expect(409);
@@ -1129,7 +1159,7 @@ describe('Fulfillment flow (integration)', () => {
 
     // Reconciliation cannot exceed the remaining obligation.
     const excessive = await seller.agent
-      .post(`${API_PREFIX}/shops/${seller.shopId}/orders/${legacyOrder.orderId}/fulfillment/reconciliation`)
+      .post(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${legacyOrder.orderPublicId}/fulfillment/reconciliation`)
       .set('Idempotency-Key', randomUUID())
       .send({
         items: [{ order_item_id: legacyOrder.orderItemId, quantity: Number(legacyOrder.quantity) + 1 }],
@@ -1139,7 +1169,7 @@ describe('Fulfillment flow (integration)', () => {
 
     // Partial attestation would understate the order's obligation, so it is rejected.
     const partial = await seller.agent
-      .post(`${API_PREFIX}/shops/${seller.shopId}/orders/${legacyOrder.orderId}/fulfillment/reconciliation`)
+      .post(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${legacyOrder.orderPublicId}/fulfillment/reconciliation`)
       .set('Idempotency-Key', randomUUID())
       .send({
         items: [{ order_item_id: legacyOrder.orderItemId, quantity: legacyOrder.quantity - 1 }],
@@ -1148,7 +1178,7 @@ describe('Fulfillment flow (integration)', () => {
     expect(partial.body.code).toBe('FULFILLMENT_RECONCILIATION_INCOMPLETE');
 
     const reconcileResponse = await seller.agent
-      .post(`${API_PREFIX}/shops/${seller.shopId}/orders/${legacyOrder.orderId}/fulfillment/reconciliation`)
+      .post(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${legacyOrder.orderPublicId}/fulfillment/reconciliation`)
       .set('Idempotency-Key', randomUUID())
       .send({
         items: [{ order_item_id: legacyOrder.orderItemId, quantity: legacyOrder.quantity }],
@@ -1162,7 +1192,7 @@ describe('Fulfillment flow (integration)', () => {
 
     // Re-attesting an already-reconciled order is rejected outright.
     const reReconcile = await seller.agent
-      .post(`${API_PREFIX}/shops/${seller.shopId}/orders/${legacyOrder.orderId}/fulfillment/reconciliation`)
+      .post(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${legacyOrder.orderPublicId}/fulfillment/reconciliation`)
       .set('Idempotency-Key', randomUUID())
       .send({
         items: [{ order_item_id: legacyOrder.orderItemId, quantity: legacyOrder.quantity }],
@@ -1171,7 +1201,7 @@ describe('Fulfillment flow (integration)', () => {
     expect(reReconcile.body.code).toBe('FULFILLMENT_GROUP_ALREADY_ASSIGNED');
 
     const afterReconcile = await seller.agent
-      .post(`${API_PREFIX}/shops/${seller.shopId}/orders/${legacyOrder.orderId}/fulfillment/shipments`)
+      .post(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${legacyOrder.orderPublicId}/fulfillment/shipments`)
       .set('Idempotency-Key', randomUUID())
       .send({ carrier: 'USPS' })
       .expect(201);
@@ -1204,35 +1234,35 @@ describe('Fulfillment flow (integration)', () => {
     await assignGroup({ order, shopId: seller.shopId });
 
     const prepareResponse = await seller.agent
-      .post(`${API_PREFIX}/shops/${seller.shopId}/orders/${order.orderId}/fulfillment/shipments`)
+      .post(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${order.orderPublicId}/fulfillment/shipments`)
       .set('Idempotency-Key', randomUUID())
       .send({})
       .expect(201);
     const shipmentId = prepareResponse.body.fulfillment.groups[0].shipments[0].id as string;
 
     const invalidTransition = await seller.agent
-      .post(`${API_PREFIX}/shops/${seller.shopId}/orders/${order.orderId}/fulfillment/shipments/${shipmentId}/journey`)
+      .post(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${order.orderPublicId}/fulfillment/shipments/${shipmentId}/journey`)
       .set('Idempotency-Key', randomUUID())
       .send({ status: 'delivered' })
       .expect(409);
     expect(invalidTransition.body.code).toBe('INVALID_SHIPMENT_JOURNEY_TRANSITION');
 
     const amended = await seller.agent
-      .patch(`${API_PREFIX}/shops/${seller.shopId}/orders/${order.orderId}/fulfillment/shipments/${shipmentId}`)
+      .patch(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${order.orderPublicId}/fulfillment/shipments/${shipmentId}`)
       .set('Idempotency-Key', randomUUID())
       .send({ tracking_number: 'TRACK-EDIT' })
       .expect(200);
     expect(amended.body.fulfillment.groups[0].shipments[0].tracking_number).toBe('TRACK-EDIT');
 
     const voided = await seller.agent
-      .delete(`${API_PREFIX}/shops/${seller.shopId}/orders/${order.orderId}/fulfillment/shipments/${shipmentId}`)
+      .delete(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${order.orderPublicId}/fulfillment/shipments/${shipmentId}`)
       .set('Idempotency-Key', randomUUID())
       .expect(200);
     expect(voided.body.fulfillment.groups[0].shipments[0].status).toBe('voided');
     expect(voided.body.fulfillment.progress.prepared).toBe(0);
 
     const reprepared = await seller.agent
-      .post(`${API_PREFIX}/shops/${seller.shopId}/orders/${order.orderId}/fulfillment/shipments`)
+      .post(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${order.orderPublicId}/fulfillment/shipments`)
       .set('Idempotency-Key', randomUUID())
       .send({})
       .expect(201);
@@ -1260,7 +1290,7 @@ describe('Fulfillment flow (integration)', () => {
     });
     await assignGroup({ order, shopId: seller.shopId });
 
-    const first = await prepareShipmentRequest(seller, order.orderId, {
+    const first = await prepareShipmentRequest(seller, order.orderPublicId, {
       items: [{ order_item_id: order.orderItemId, quantity: 1 }],
       carrier: 'USPS',
       tracking_number: 'PARCEL-1',
@@ -1277,7 +1307,7 @@ describe('Fulfillment flow (integration)', () => {
       outstanding: 3,
     });
 
-    const second = await prepareShipmentRequest(seller, order.orderId, {
+    const second = await prepareShipmentRequest(seller, order.orderPublicId, {
       items: [{ order_item_id: order.orderItemId, quantity: 2 }],
       carrier: 'DHL',
       tracking_number: 'PARCEL-2',
@@ -1290,10 +1320,10 @@ describe('Fulfillment flow (integration)', () => {
       outstanding: 3,
     });
 
-    await journeyRequest(seller, order.orderId, firstShipment.id, 'dispatched').expect(201);
-    await journeyRequest(seller, order.orderId, firstShipment.id, 'delivered').expect(201);
+    await journeyRequest(seller, order.orderPublicId, firstShipment.id, 'dispatched').expect(201);
+    await journeyRequest(seller, order.orderPublicId, firstShipment.id, 'delivered').expect(201);
 
-    const afterFirstParcel = await getShopOrder(seller.agent, seller.shopId, order.orderId);
+    const afterFirstParcel = await getShopOrder(seller.agent, seller.shopPublicId, order.orderPublicId);
     expect(afterFirstParcel.order.status).toBe('paid');
     expect(afterFirstParcel.order.fulfillment.status).toBe('partially_delivered');
     expect(afterFirstParcel.order.fulfillment.progress).toMatchObject({
@@ -1305,15 +1335,15 @@ describe('Fulfillment flow (integration)', () => {
 
     // The buyer sees the outstanding consignment rather than an implied full delivery.
     const buyerAfterFirst = await buyer.agent
-      .get(`${API_PREFIX}/me/orders/${order.orderId}`)
+      .get(`${API_PREFIX}/me/orders/${order.orderPublicId}`)
       .expect(200);
     expect(buyerAfterFirst.body.order_shop.fulfillment.status).toBe('partially_delivered');
     expect(buyerAfterFirst.body.order_shop.fulfillment.groups[0].shipments).toHaveLength(2);
 
-    await journeyRequest(seller, order.orderId, secondShipment.id, 'dispatched').expect(201);
-    await journeyRequest(seller, order.orderId, secondShipment.id, 'delivered').expect(201);
+    await journeyRequest(seller, order.orderPublicId, secondShipment.id, 'dispatched').expect(201);
+    await journeyRequest(seller, order.orderPublicId, secondShipment.id, 'delivered').expect(201);
 
-    const afterSecondParcel = await getShopOrder(seller.agent, seller.shopId, order.orderId);
+    const afterSecondParcel = await getShopOrder(seller.agent, seller.shopPublicId, order.orderPublicId);
     expect(afterSecondParcel.order.status).toBe('completed');
     expect(afterSecondParcel.order.fulfillment.status).toBe('delivered');
     expect(afterSecondParcel.order.fulfillment.progress).toMatchObject({
@@ -1365,7 +1395,7 @@ describe('Fulfillment flow (integration)', () => {
     });
     await assignGroupItems({ orderId: order.orderId, shopId: seller.shopId, items: order.items });
 
-    const prepared = await prepareShipmentRequest(seller, order.orderId, {
+    const prepared = await prepareShipmentRequest(seller, order.orderPublicId, {
       items: [
         { order_item_id: order.items[0]!.orderItemId, quantity: 1 },
         { order_item_id: order.items[1]!.orderItemId, quantity: 1 },
@@ -1377,10 +1407,10 @@ describe('Fulfillment flow (integration)', () => {
       prepared: 2,
     });
 
-    await journeyRequest(seller, order.orderId, shipmentId, 'dispatched').expect(201);
-    await journeyRequest(seller, order.orderId, shipmentId, 'delivered').expect(201);
+    await journeyRequest(seller, order.orderPublicId, shipmentId, 'dispatched').expect(201);
+    await journeyRequest(seller, order.orderPublicId, shipmentId, 'delivered').expect(201);
 
-    const partial = await getShopOrder(seller.agent, seller.shopId, order.orderId);
+    const partial = await getShopOrder(seller.agent, seller.shopPublicId, order.orderPublicId);
     expect(partial.order.status).toBe('paid');
     expect(partial.order.fulfillment.progress).toMatchObject({
       ordered: 3,
@@ -1388,7 +1418,7 @@ describe('Fulfillment flow (integration)', () => {
       outstanding: 1,
     });
 
-    const remainder = await prepareShipmentRequest(seller, order.orderId, {
+    const remainder = await prepareShipmentRequest(seller, order.orderPublicId, {
       items: [{ order_item_id: order.items[0]!.orderItemId, quantity: 1 }],
     }).expect(201);
     expect((remainder.body.fulfillment as Fulfillment).groups[0]!.items).toEqual([
@@ -1398,10 +1428,10 @@ describe('Fulfillment flow (integration)', () => {
 
     const remainderShipmentId = (remainder.body.fulfillment as Fulfillment)
       .groups[0]!.shipments[1]!.id;
-    await journeyRequest(seller, order.orderId, remainderShipmentId, 'dispatched').expect(201);
-    await journeyRequest(seller, order.orderId, remainderShipmentId, 'delivered').expect(201);
+    await journeyRequest(seller, order.orderPublicId, remainderShipmentId, 'dispatched').expect(201);
+    await journeyRequest(seller, order.orderPublicId, remainderShipmentId, 'delivered').expect(201);
 
-    const completed = await getShopOrder(seller.agent, seller.shopId, order.orderId);
+    const completed = await getShopOrder(seller.agent, seller.shopPublicId, order.orderPublicId);
     expect(completed.order.status).toBe('completed');
     expect(completed.order.fulfillment.status).toBe('delivered');
   });
@@ -1427,18 +1457,18 @@ describe('Fulfillment flow (integration)', () => {
     });
     await assignGroup({ order, shopId: seller.shopId });
 
-    const prepared = await prepareShipmentRequest(seller, order.orderId, {}).expect(201);
+    const prepared = await prepareShipmentRequest(seller, order.orderPublicId, {}).expect(201);
     const shipmentId = (prepared.body.fulfillment as Fulfillment).groups[0]!.shipments[0]!.id;
 
     const overAmend = await seller.agent
-      .patch(`${API_PREFIX}/shops/${seller.shopId}/orders/${order.orderId}/fulfillment/shipments/${shipmentId}`)
+      .patch(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${order.orderPublicId}/fulfillment/shipments/${shipmentId}`)
       .set('Idempotency-Key', randomUUID())
       .send({ items: [{ order_item_id: order.orderItemId, quantity: 5 }] })
       .expect(409);
     expect(overAmend.body.code).toBe('SHIPMENT_QUANTITY_EXCEEDED');
 
     const amended = await seller.agent
-      .patch(`${API_PREFIX}/shops/${seller.shopId}/orders/${order.orderId}/fulfillment/shipments/${shipmentId}`)
+      .patch(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${order.orderPublicId}/fulfillment/shipments/${shipmentId}`)
       .set('Idempotency-Key', randomUUID())
       .send({ items: [{ order_item_id: order.orderItemId, quantity: 1 }] })
       .expect(200);
@@ -1448,7 +1478,7 @@ describe('Fulfillment flow (integration)', () => {
       outstanding: 3,
     });
 
-    const released = await prepareShipmentRequest(seller, order.orderId, {
+    const released = await prepareShipmentRequest(seller, order.orderPublicId, {
       items: [{ order_item_id: order.orderItemId, quantity: 2 }],
     }).expect(201);
     expect(released.body.fulfillment.progress).toMatchObject({
@@ -1486,12 +1516,12 @@ describe('Fulfillment flow (integration)', () => {
     };
 
     const first = await seller.agent
-      .post(`${API_PREFIX}/shops/${seller.shopId}/orders/${order.orderId}/fulfillment/shipments`)
+      .post(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${order.orderPublicId}/fulfillment/shipments`)
       .set('Idempotency-Key', idempotencyKey)
       .send(body)
       .expect(201);
     const replay = await seller.agent
-      .post(`${API_PREFIX}/shops/${seller.shopId}/orders/${order.orderId}/fulfillment/shipments`)
+      .post(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${order.orderPublicId}/fulfillment/shipments`)
       .set('Idempotency-Key', idempotencyKey)
       .send(body)
       .expect(201);
@@ -1527,8 +1557,8 @@ describe('Fulfillment flow (integration)', () => {
 
     const body = { items: [{ order_item_id: order.orderItemId, quantity: 2 }] };
     const [first, second] = await Promise.all([
-      prepareShipmentRequest(seller, order.orderId, body),
-      prepareShipmentRequest(seller, order.orderId, body),
+      prepareShipmentRequest(seller, order.orderPublicId, body),
+      prepareShipmentRequest(seller, order.orderPublicId, body),
     ]);
 
     const responses = [first, second];
@@ -1567,15 +1597,15 @@ describe('Fulfillment flow (integration)', () => {
     });
     await assignGroup({ order, shopId: seller.shopId });
 
-    const prepared = await prepareShipmentRequest(seller, order.orderId, {}).expect(201);
+    const prepared = await prepareShipmentRequest(seller, order.orderPublicId, {}).expect(201);
     const shipmentId = (prepared.body.fulfillment as Fulfillment).groups[0]!.shipments[0]!.id;
 
     const [dispatchResult, cancelResult] = await Promise.all([
-      journeyRequest(seller, order.orderId, shipmentId, 'dispatched'),
-      cancelOrderRequest(seller, order.orderId, 'Race with handover'),
+      journeyRequest(seller, order.orderPublicId, shipmentId, 'dispatched'),
+      cancelOrderRequest(seller, order.orderPublicId, 'Race with handover'),
     ]);
 
-    const detail = await getShopOrder(seller.agent, seller.shopId, order.orderId);
+    const detail = await getShopOrder(seller.agent, seller.shopPublicId, order.orderPublicId);
     const shipmentStatus = detail.order.fulfillment.groups[0]!.shipments[0]!.status;
 
     if (detail.order.status === 'canceled') {
@@ -1623,14 +1653,14 @@ describe('Fulfillment flow (integration)', () => {
     });
     await assignGroup({ order, shopId: seller.shopId });
 
-    await prepareShipmentRequest(seller, order.orderId, {
+    await prepareShipmentRequest(seller, order.orderPublicId, {
       carrier: 'USPS',
       tracking_number: 'LABEL-ONLY',
     }).expect(201);
 
-    await cancelOrderRequest(seller, order.orderId, 'Label only').expect(200);
+    await cancelOrderRequest(seller, order.orderPublicId, 'Label only').expect(200);
 
-    const detail = await getShopOrder(seller.agent, seller.shopId, order.orderId);
+    const detail = await getShopOrder(seller.agent, seller.shopPublicId, order.orderPublicId);
     expect(detail.order.status).toBe('canceled');
     expect(detail.order.fulfillment.status).toBe('canceled');
     expect(detail.order.fulfillment.progress).toMatchObject({
@@ -1665,21 +1695,21 @@ describe('Fulfillment flow (integration)', () => {
     });
     await assignGroup({ order, shopId: seller.shopId });
 
-    const prepared = await prepareShipmentRequest(seller, order.orderId, {
+    const prepared = await prepareShipmentRequest(seller, order.orderPublicId, {
       items: [{ order_item_id: order.orderItemId, quantity: 1 }],
     }).expect(201);
     const shipmentId = (prepared.body.fulfillment as Fulfillment).groups[0]!.shipments[0]!.id;
-    await journeyRequest(seller, order.orderId, shipmentId, 'dispatched').expect(201);
+    await journeyRequest(seller, order.orderPublicId, shipmentId, 'dispatched').expect(201);
 
-    const cancel = await cancelOrderRequest(seller, order.orderId, 'Too late');
+    const cancel = await cancelOrderRequest(seller, order.orderPublicId, 'Too late');
     expect(cancel.status).toBe(400);
     expect(cancel.body.code).toBe('SELLER_SHIPPED_ORDER_CANCEL_NOT_ALLOWED');
 
-    const detail = await getShopOrder(seller.agent, seller.shopId, order.orderId);
+    const detail = await getShopOrder(seller.agent, seller.shopPublicId, order.orderPublicId);
     expect(detail.order.status).toBe('paid');
 
     // The remainder is still preparable: the refused cancellation did not void it.
-    const remainder = await prepareShipmentRequest(seller, order.orderId, {
+    const remainder = await prepareShipmentRequest(seller, order.orderPublicId, {
       items: [{ order_item_id: order.orderItemId, quantity: 1 }],
     }).expect(201);
     expect((remainder.body.fulfillment as Fulfillment).progress).toMatchObject({

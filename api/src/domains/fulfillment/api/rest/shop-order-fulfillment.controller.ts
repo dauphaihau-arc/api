@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  UseFilters,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
@@ -23,7 +24,8 @@ import { IdempotencyKeyInterceptor } from '~/platform/interceptors/idempotency-k
 import { JwtAuthGuard } from '~/domains/auth/api/guard/jwt-auth.guard';
 import { PermissionsGuard } from '~/domains/auth/api/guard/permissions.guard';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
-import { ShopAccessService } from '~/domains/shop/app/services/shop-access.service';
+
+import { FulfillmentTargetResolver } from '../../app/services/fulfillment-target-resolver.service';
 import { AmendFulfillmentShipmentUseCase } from '../../app/use-cases/amend-fulfillment-shipment/amend-fulfillment-shipment.use-case';
 import { PrepareFulfillmentShipmentUseCase } from '../../app/use-cases/prepare-fulfillment-shipment/prepare-fulfillment-shipment.use-case';
 import { ReconcileOrderFulfillmentUseCase } from '../../app/use-cases/reconcile-order-fulfillment/reconcile-order-fulfillment.use-case';
@@ -33,21 +35,19 @@ import { AmendFulfillmentShipmentDto } from './dto/amend-fulfillment-shipment.dt
 import { PrepareFulfillmentShipmentDto } from './dto/prepare-fulfillment-shipment.dto';
 import { ReconcileOrderFulfillmentDto } from './dto/reconcile-order-fulfillment.dto';
 import { UpdateShipmentJourneyDto } from './dto/update-shipment-journey.dto';
-import {
-  isFulfillmentError,
-  mapFulfillmentErrorToHttpException,
-} from './fulfillment-http-error-mapper';
+import { FulfillmentExceptionsFilter } from './fulfillment-exceptions.filter';
 import { toFulfillmentOrderResponse } from './fulfillment.response';
 import type { FulfillmentCommandResult } from '../../app/services/fulfillment-command.runner';
 
 @Controller('shops/:shop_id/orders')
+@UseFilters(FulfillmentExceptionsFilter)
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @RequirePermissions('shops.manage')
 @ApiTags('Shop Order Fulfillment')
 @ApiCookieAuth('accessCookie')
 export class ShopOrderFulfillmentController {
   constructor(
-    private readonly shopAccessService: ShopAccessService,
+    private readonly fulfillmentTargetResolver: FulfillmentTargetResolver,
     private readonly prepareFulfillmentShipmentUseCase: PrepareFulfillmentShipmentUseCase,
     private readonly amendFulfillmentShipmentUseCase: AmendFulfillmentShipmentUseCase,
     private readonly voidFulfillmentShipmentUseCase: VoidFulfillmentShipmentUseCase,
@@ -65,29 +65,28 @@ export class ShopOrderFulfillmentController {
   @ApiOkResponse({ description: 'Updated order fulfillment.', schema: { type: 'object' } })
   async prepareShipment(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('shop_id') shopId: string,
-    @Param('order_id') orderId: string,
+    @Param('shop_id') shopPublicId: string,
+    @Param('order_id') orderPublicId: string,
     @Body() body: PrepareFulfillmentShipmentDto,
   ) {
-    await this.shopAccessService.assertCanManageShop(currentUser, shopId);
+    const { shopId, orderId } = await this.fulfillmentTargetResolver.resolve(
+      currentUser,
+      shopPublicId,
+      orderPublicId,
+    );
 
-    try {
-      return this.respond(await this.prepareFulfillmentShipmentUseCase.execute(
-        shopId,
-        orderId,
-        currentUser.userId,
-        {
-          groupId: body.groupId,
-          items: body.items,
-          carrier: body.carrier,
-          trackingNumber: body.trackingNumber,
-          note: body.shipmentNote,
-        },
-      ));
-    }
-    catch (error) {
-      this.throwMappedFulfillmentError(error);
-    }
+    return this.respond(await this.prepareFulfillmentShipmentUseCase.execute(
+      shopId,
+      orderId,
+      currentUser.userId,
+      {
+        groupId: body.groupId,
+        items: body.items,
+        carrier: body.carrier,
+        trackingNumber: body.trackingNumber,
+        note: body.shipmentNote,
+      },
+    ));
   }
 
   @Patch(':order_id/fulfillment/shipments/:shipment_id')
@@ -101,30 +100,30 @@ export class ShopOrderFulfillmentController {
   @ApiOkResponse({ description: 'Updated order fulfillment.', schema: { type: 'object' } })
   async amendShipment(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('shop_id') shopId: string,
-    @Param('order_id') orderId: string,
-    @Param('shipment_id') shipmentId: string,
+    @Param('shop_id') shopPublicId: string,
+    @Param('order_id') orderPublicId: string,
+    @Param('shipment_id') shipmentPublicId: string,
     @Body() body: AmendFulfillmentShipmentDto,
   ) {
-    await this.shopAccessService.assertCanManageShop(currentUser, shopId);
+    const { shopId, orderId, shipmentId } = await this.fulfillmentTargetResolver.resolve(
+      currentUser,
+      shopPublicId,
+      orderPublicId,
+      shipmentPublicId,
+    );
 
-    try {
-      return this.respond(await this.amendFulfillmentShipmentUseCase.execute(
-        shopId,
-        orderId,
-        shipmentId,
-        currentUser.userId,
-        {
-          items: body.items,
-          carrier: body.carrier,
-          trackingNumber: body.trackingNumber,
-          note: body.shipmentNote,
-        },
-      ));
-    }
-    catch (error) {
-      this.throwMappedFulfillmentError(error);
-    }
+    return this.respond(await this.amendFulfillmentShipmentUseCase.execute(
+      shopId,
+      orderId,
+      shipmentId,
+      currentUser.userId,
+      {
+        items: body.items,
+        carrier: body.carrier,
+        trackingNumber: body.trackingNumber,
+        note: body.shipmentNote,
+      },
+    ));
   }
 
   @Delete(':order_id/fulfillment/shipments/:shipment_id')
@@ -138,23 +137,23 @@ export class ShopOrderFulfillmentController {
   @ApiOkResponse({ description: 'Updated order fulfillment.', schema: { type: 'object' } })
   async voidShipment(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('shop_id') shopId: string,
-    @Param('order_id') orderId: string,
-    @Param('shipment_id') shipmentId: string,
+    @Param('shop_id') shopPublicId: string,
+    @Param('order_id') orderPublicId: string,
+    @Param('shipment_id') shipmentPublicId: string,
   ) {
-    await this.shopAccessService.assertCanManageShop(currentUser, shopId);
+    const { shopId, orderId, shipmentId } = await this.fulfillmentTargetResolver.resolve(
+      currentUser,
+      shopPublicId,
+      orderPublicId,
+      shipmentPublicId,
+    );
 
-    try {
-      return this.respond(await this.voidFulfillmentShipmentUseCase.execute(
-        shopId,
-        orderId,
-        shipmentId,
-        currentUser.userId,
-      ));
-    }
-    catch (error) {
-      this.throwMappedFulfillmentError(error);
-    }
+    return this.respond(await this.voidFulfillmentShipmentUseCase.execute(
+      shopId,
+      orderId,
+      shipmentId,
+      currentUser.userId,
+    ));
   }
 
   @Post(':order_id/fulfillment/shipments/:shipment_id/journey')
@@ -168,30 +167,30 @@ export class ShopOrderFulfillmentController {
   @ApiOkResponse({ description: 'Updated order fulfillment.', schema: { type: 'object' } })
   async recordShipmentJourney(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('shop_id') shopId: string,
-    @Param('order_id') orderId: string,
-    @Param('shipment_id') shipmentId: string,
+    @Param('shop_id') shopPublicId: string,
+    @Param('order_id') orderPublicId: string,
+    @Param('shipment_id') shipmentPublicId: string,
     @Body() body: UpdateShipmentJourneyDto,
   ) {
-    await this.shopAccessService.assertCanManageShop(currentUser, shopId);
+    const { shopId, orderId, shipmentId } = await this.fulfillmentTargetResolver.resolve(
+      currentUser,
+      shopPublicId,
+      orderPublicId,
+      shipmentPublicId,
+    );
 
-    try {
-      return this.respond(await this.updateShipmentJourneyUseCase.execute(
-        shopId,
-        orderId,
-        shipmentId,
-        currentUser.userId,
-        {
-          status: body.status,
-          carrier: body.carrier,
-          trackingNumber: body.trackingNumber,
-          note: body.shipmentNote,
-        },
-      ));
-    }
-    catch (error) {
-      this.throwMappedFulfillmentError(error);
-    }
+    return this.respond(await this.updateShipmentJourneyUseCase.execute(
+      shopId,
+      orderId,
+      shipmentId,
+      currentUser.userId,
+      {
+        status: body.status,
+        carrier: body.carrier,
+        trackingNumber: body.trackingNumber,
+        note: body.shipmentNote,
+      },
+    ));
   }
 
   @Post(':order_id/fulfillment/reconciliation')
@@ -204,23 +203,22 @@ export class ShopOrderFulfillmentController {
   @ApiOkResponse({ description: 'Updated order fulfillment.', schema: { type: 'object' } })
   async reconcileOrder(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('shop_id') shopId: string,
-    @Param('order_id') orderId: string,
+    @Param('shop_id') shopPublicId: string,
+    @Param('order_id') orderPublicId: string,
     @Body() body: ReconcileOrderFulfillmentDto,
   ) {
-    await this.shopAccessService.assertCanManageShop(currentUser, shopId);
+    const { shopId, orderId } = await this.fulfillmentTargetResolver.resolve(
+      currentUser,
+      shopPublicId,
+      orderPublicId,
+    );
 
-    try {
-      return this.respond(await this.reconcileOrderFulfillmentUseCase.execute(
-        shopId,
-        orderId,
-        currentUser.userId,
-        { items: body.items },
-      ));
-    }
-    catch (error) {
-      this.throwMappedFulfillmentError(error);
-    }
+    return this.respond(await this.reconcileOrderFulfillmentUseCase.execute(
+      shopId,
+      orderId,
+      currentUser.userId,
+      { items: body.items },
+    ));
   }
 
   /**
@@ -230,13 +228,5 @@ export class ShopOrderFulfillmentController {
    */
   private respond(result: FulfillmentCommandResult) {
     return { fulfillment: toFulfillmentOrderResponse(result) };
-  }
-
-  private throwMappedFulfillmentError(error: unknown): never {
-    if (isFulfillmentError(error)) {
-      throw mapFulfillmentErrorToHttpException(error);
-    }
-
-    throw error;
   }
 }

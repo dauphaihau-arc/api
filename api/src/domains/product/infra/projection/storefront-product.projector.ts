@@ -42,6 +42,7 @@ export async function toPublicProductDetail(
 
   return {
     id: product.id,
+    publicId: product.publicId,
     shop: {
       id: product.shop.id,
       publicId: product.shop.publicId,
@@ -138,6 +139,7 @@ export async function toPublicProductListItem(
 
   return {
     id: product.id,
+    publicId: product.publicId,
     shop: {
       id: product.shop.id,
       publicId: product.shop.publicId,

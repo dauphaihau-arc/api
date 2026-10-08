@@ -29,11 +29,11 @@ export class SendSellerOrderUpdateEmailJob {
     }
 
     const subject = payload.eventType === 'canceled'
-      ? `Order ${order.id} was canceled`
-      : `Order ${order.id} was refunded`;
+      ? `Order ${order.publicId} was canceled`
+      : `Order ${order.publicId} was refunded`;
     const body = payload.eventType === 'canceled'
-      ? `Order ${order.id} from ${order.customerEmail} was canceled.`
-      : `Order ${order.id} from ${order.customerEmail} was refunded.`;
+      ? `Order ${order.publicId} from ${order.customerEmail} was canceled.`
+      : `Order ${order.publicId} from ${order.customerEmail} was refunded.`;
 
     await this.mailSender.send({
       to: {

@@ -1,13 +1,12 @@
 import {
-  BadRequestException,
   Controller,
   Get,
   Header,
-  NotFoundException,
   Param,
   Post,
   Res,
   UploadedFile,
+  UseFilters,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
@@ -29,6 +28,7 @@ import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import { JwtAuthGuard } from '~/domains/auth/api/guard/jwt-auth.guard';
 import { PermissionsGuard } from '~/domains/auth/api/guard/permissions.guard';
 import { ShopAccessService } from '~/domains/shop/app/services/shop-access.service';
+import { ProductImportLookupService } from '~/domains/product/app/services/product-import-lookup.service';
 import { DownloadProductImportReportUseCase } from '~/domains/product/app/use-cases/download-product-import-report/download-product-import-report.use-case';
 import { DownloadProductImportTemplateUseCase } from '~/domains/product/app/use-cases/download-product-import-template/download-product-import-template.use-case';
 import { GetProductImportUseCase } from '~/domains/product/app/use-cases/get-product-import/get-product-import.use-case';
@@ -36,16 +36,14 @@ import {
   StartProductImportUseCase,
   type UploadedProductImportFile,
 } from '~/domains/product/app/use-cases/start-product-import/start-product-import.use-case';
-import {
-  ProductImportNotFoundError,
-  ProductImportTemplateError,
-} from '~/domains/product/app/product-import/product-import.errors';
+import { ProductImportExceptionsFilter } from './product-import-exceptions.filter';
 import {
   toShopProductImportResponse,
   type ShopProductImportResponse,
 } from './product-import.response';
 
 @Controller('shops/:shop_id/products/imports')
+@UseFilters(ProductImportExceptionsFilter)
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @RequirePermissions('shops.manage')
 @ApiTags('Shop Product Imports')
@@ -57,6 +55,7 @@ export class ShopProductImportController {
     private readonly startProductImportUseCase: StartProductImportUseCase,
     private readonly getProductImportUseCase: GetProductImportUseCase,
     private readonly downloadProductImportReportUseCase: DownloadProductImportReportUseCase,
+    private readonly productImportLookupService: ProductImportLookupService,
   ) {}
 
   @Get('template')
@@ -65,10 +64,10 @@ export class ShopProductImportController {
   @ApiParam({ name: 'shop_id', type: String })
   async downloadTemplate(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('shop_id') shopId: string,
+    @Param('shop_id') shopPublicId: string,
     @Res() response: Response,
   ) {
-    await this.shopAccessService.assertCanManageShop(currentUser, shopId);
+    await this.shopAccessService.resolveManageableShopByPublicId(currentUser, shopPublicId);
 
     const workbook = this.downloadProductImportTemplateUseCase.execute();
 
@@ -100,19 +99,14 @@ export class ShopProductImportController {
   @ApiParam({ name: 'shop_id', type: String })
   async startImport(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('shop_id') shopId: string,
+    @Param('shop_id') shopPublicId: string,
     @UploadedFile() file?: UploadedProductImportFile,
   ): Promise<ShopProductImportResponse> {
-    await this.shopAccessService.assertCanManageShop(currentUser, shopId);
+    const shopId = (await this.shopAccessService.resolveManageableShopByPublicId(currentUser, shopPublicId)).id;
 
-    try {
-      return toShopProductImportResponse(
-        await this.startProductImportUseCase.execute(shopId, currentUser, file as UploadedProductImportFile),
-      );
-    }
-    catch (error) {
-      throwProductImportError(error);
-    }
+    return toShopProductImportResponse(
+      await this.startProductImportUseCase.execute(shopId, currentUser, file as UploadedProductImportFile),
+    );
   }
 
   @Get(':import_id')
@@ -122,19 +116,15 @@ export class ShopProductImportController {
   @ApiParam({ name: 'import_id', type: String })
   async importDetail(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('shop_id') shopId: string,
-    @Param('import_id') importId: string,
+    @Param('shop_id') shopPublicId: string,
+    @Param('import_id') importPublicId: string,
   ): Promise<ShopProductImportResponse> {
-    await this.shopAccessService.assertCanManageShop(currentUser, shopId);
+    const shopId = (await this.shopAccessService.resolveManageableShopByPublicId(currentUser, shopPublicId)).id;
+    const importId = await this.productImportLookupService.resolvePublicId(importPublicId);
 
-    try {
-      return toShopProductImportResponse(
-        await this.getProductImportUseCase.execute(shopId, importId),
-      );
-    }
-    catch (error) {
-      throwProductImportError(error);
-    }
+    return toShopProductImportResponse(
+      await this.getProductImportUseCase.execute(shopId, importId),
+    );
   }
 
   @Get(':import_id/report')
@@ -144,36 +134,17 @@ export class ShopProductImportController {
   @ApiParam({ name: 'import_id', type: String })
   async downloadReport(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('shop_id') shopId: string,
-    @Param('import_id') importId: string,
+    @Param('shop_id') shopPublicId: string,
+    @Param('import_id') importPublicId: string,
     @Res() response: Response,
   ) {
-    await this.shopAccessService.assertCanManageShop(currentUser, shopId);
+    const shopId = (await this.shopAccessService.resolveManageableShopByPublicId(currentUser, shopPublicId)).id;
+    const importId = await this.productImportLookupService.resolvePublicId(importPublicId);
 
-    try {
-      const report = await this.downloadProductImportReportUseCase.execute(shopId, importId);
+    const report = await this.downloadProductImportReportUseCase.execute(shopId, importId);
 
-      response.setHeader('Content-Type', 'text/csv; charset=utf-8');
-      response.setHeader('Content-Disposition', `attachment; filename="${report.filename}"`);
-      response.send(report.body);
-    }
-    catch (error) {
-      throwProductImportError(error);
-    }
+    response.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    response.setHeader('Content-Disposition', `attachment; filename="${report.filename}"`);
+    response.send(report.body);
   }
-}
-
-function throwProductImportError(error: unknown): never {
-  if (error instanceof ProductImportTemplateError) {
-    throw new BadRequestException({
-      code: error.code,
-      message: error.message,
-    });
-  }
-
-  if (error instanceof ProductImportNotFoundError) {
-    throw new NotFoundException(error.message);
-  }
-
-  throw error;
 }

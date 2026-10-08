@@ -18,7 +18,7 @@ export enum BulkMutateShopProductsAction {
 
 export interface BulkMutateShopProductsInput {
   shopId: string;
-  productIds: string[];
+  productPublicIds: string[];
   action: BulkMutateShopProductsAction;
   idempotencyKey?: string;
 }
@@ -59,8 +59,8 @@ export class BulkMutateShopProductsUseCase {
       if (!ownedShop) {
         return {
           succeededIds: [],
-          failed: input.productIds.map(id => ({
-            id,
+          failed: input.productPublicIds.map(publicId => ({
+            id: publicId,
             code: 'FORBIDDEN',
             reason: 'Actor is not allowed to manage products for this shop',
           })),
@@ -68,17 +68,24 @@ export class BulkMutateShopProductsUseCase {
       }
     }
 
-    const succeededIds: string[] = [];
+    const products = await this.sellerProductQueryRepository.findSummariesByPublicIds(
+      input.productPublicIds,
+    );
+
+    const succeededPublicIds: string[] = [];
+    const succeededInternalIds: string[] = [];
     const failed: BulkMutateShopProductsFailure[] = [];
 
-    for (const productId of input.productIds) {
-      const product = await this.sellerProductQueryRepository.findById(productId);
+    // Identifiers are resolved once, up front. Public ids stay on the response
+    // and internal ids stay inside the application for commands and jobs.
+    for (const [index, productPublicId] of input.productPublicIds.entries()) {
+      const product = products[index];
 
       if (!product || product.shopId !== input.shopId) {
         failed.push({
-          id: productId,
+          id: productPublicId,
           code: 'ProductNotFoundError',
-          reason: `Product "${productId}" was not found`,
+          reason: `Product "${productPublicId}" was not found`,
         });
         continue;
       }
@@ -87,26 +94,27 @@ export class BulkMutateShopProductsUseCase {
 
       if (!mutationResult.ok) {
         failed.push({
-          id: productId,
+          id: productPublicId,
           code: mutationResult.code,
           reason: mutationResult.reason,
         });
         continue;
       }
 
-      succeededIds.push(productId);
+      succeededPublicIds.push(productPublicId);
+      succeededInternalIds.push(product.id);
     }
 
     // Publishing makes a Product eligible for every all-Products Sale, and
     // deactivating or removing one must drop its stored price. Both are
     // catalog-visible changes, so the affected projections are refreshed here
     // exactly as the single-Product actions do.
-    if (succeededIds.length > 0) {
-      await dispatchCatalogProductProjections(this.jobDispatcher, succeededIds);
+    if (succeededInternalIds.length > 0) {
+      await dispatchCatalogProductProjections(this.jobDispatcher, succeededInternalIds);
     }
 
     return {
-      succeededIds,
+      succeededIds: succeededPublicIds,
       failed,
     };
   }
@@ -136,7 +144,7 @@ export class BulkMutateShopProductsUseCase {
         return {
           ok: false,
           code: 'ProductNotFoundError',
-          reason: `Product "${product.id}" was not found`,
+          reason: `Product "${product.publicId}" was not found`,
         };
       }
 
@@ -144,7 +152,7 @@ export class BulkMutateShopProductsUseCase {
         return {
           ok: false,
           code: 'ProductNotReadyToPublishError',
-          reason: `Product "${product.id}" lost its checkout-ready shipping profile before publishing`,
+          reason: `Product "${product.publicId}" lost its checkout-ready shipping profile before publishing`,
         };
       }
 
@@ -196,7 +204,7 @@ export class BulkMutateShopProductsUseCase {
       return {
         ok: false,
         code: 'ProductNotFoundError',
-        reason: `Product "${product.id}" was not found`,
+        reason: `Product "${product.publicId}" was not found`,
       };
     }
 

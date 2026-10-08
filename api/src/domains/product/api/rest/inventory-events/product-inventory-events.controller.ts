@@ -1,5 +1,6 @@
 import { Controller, Param, Sse } from '@nestjs/common';
 import type { MessageEvent } from '@nestjs/common';
+import { ProductLookupService } from '../../../app/services/product-lookup.service';
 import {
   ApiOkResponse,
   ApiOperation,
@@ -14,7 +15,10 @@ import { buildProductInventoryChannelKey } from '../../../app/events/product-inv
 @Controller('products/:product_id/inventory')
 @ApiTags('Product Inventory')
 export class ProductInventoryEventsController {
-  constructor(private readonly ssePublisher: SsePublisher) {}
+  constructor(
+    private readonly ssePublisher: SsePublisher,
+    private readonly productLookupService: ProductLookupService,
+  ) {}
 
   @Sse('events')
   @ApiOperation({ summary: 'Stream product inventory events over SSE' })
@@ -24,12 +28,14 @@ export class ProductInventoryEventsController {
     description: 'Server-sent event stream.',
     schema: { type: 'string' },
   })
-  stream(
-    @Param('product_id') productId: string,
-  ): Observable<MessageEvent> {
+  async stream(
+    @Param('product_id') productPublicId: string,
+  ): Promise<Observable<MessageEvent>> {
+    const productId = await this.productLookupService.resolveProductPublicId(productPublicId);
+
     return this.ssePublisher.createChannelStream(
       buildProductInventoryChannelKey(productId),
-      { productId },
+      { productId: productPublicId },
     );
   }
 }

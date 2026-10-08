@@ -22,6 +22,18 @@ export abstract class ChatQueryRepository {
 
   abstract conversationExists(conversationId: string): Promise<boolean>;
 
+  abstract findByPublicId(publicId: string): Promise<{ id: string } | null>;
+
+  abstract findIdByPublicIdAndBuyer(
+    publicId: string,
+    buyerUserId: string
+  ): Promise<string | null>;
+
+  abstract findIdByPublicIdAndShop(
+    publicId: string,
+    shopId: string
+  ): Promise<string | null>;
+
   abstract listBuyerMessages(
     buyerUserId: string,
     conversationId: string,

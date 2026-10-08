@@ -6,6 +6,7 @@ describe('SendSellerOrderUpdateEmailJob', () => {
   it('sends a seller cancellation email', async () => {
     const order = {
       id: 'order-1',
+      publicId: 'ord_public1',
       customerEmail: 'buyer@example.com',
       shop: {
         shopName: 'Shop 1',
@@ -31,7 +32,7 @@ describe('SendSellerOrderUpdateEmailJob', () => {
 
     expect(mailSender.send).toHaveBeenCalledWith(expect.objectContaining({
       to: { email: 'seller@example.com', name: 'Seller One' },
-      subject: 'Order order-1 was canceled',
+      subject: 'Order ord_public1 was canceled',
       tags: ['order-canceled', 'seller-order-update'],
     }));
   });

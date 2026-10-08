@@ -25,10 +25,9 @@ export const toPublicProductDetailResponse = (
   const imageUrlsByStorageKey = buildImageUrlsByStorageKey(product);
 
   return {
-    id: product.id,
+    id: product.publicId,
     shop: {
-      id: product.shop.id,
-      public_id: product.shop.publicId,
+      id: product.shop.publicId,
       shop_name: product.shop.shopName,
       slug: product.shop.slug,
     },
@@ -110,7 +109,7 @@ export const toPublicProductDetailResponse = (
       ...(inventory.autoSale
         ? {
           auto_sale: {
-            promotion_id: inventory.autoSale.promotionId,
+            promotion_id: inventory.autoSale.promotionPublicId,
             percent_off: inventory.autoSale.percentOff,
           },
         }

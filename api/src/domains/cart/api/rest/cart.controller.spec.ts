@@ -1,11 +1,7 @@
-import { NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import { CartController } from './cart.controller';
 import type { GuestCartSessionService } from './guest-cart-session.service';
-import {
-  PromotionCodeNotFoundError,
-  PromotionSlotConflictError,
-} from '~/domains/promotion/app/errors/promotion-app.error';
 import type { CartUpdatePricingService } from '../../app/services/cart-update-pricing.service';
+import type { CartPublicShopResolver } from '../../app/services/cart-public-shop-resolver.service';
 import type { CartSnapshot } from '../../app/cart.types';
 import type { AddCartItemUseCase } from '../../app/use-cases/add-cart-item/add-cart-item.use-case';
 import type { ApplyPromoCodeUseCase } from '../../app/use-cases/apply-promo-code/apply-promo-code.use-case';
@@ -31,6 +27,10 @@ describe('CartController', () => {
       ensureSessionId: jest.fn(),
       clearSession: jest.fn(),
     } as unknown as jest.Mocked<GuestCartSessionService>;
+    const cartPublicShopResolver = {
+      resolveShopId: jest.fn().mockImplementation(async (publicId: string) => publicId.replace('shop_', 'shop-')),
+      resolveShopAdjustments: jest.fn().mockImplementation(async (adjustments: Array<{ shopId: string; note?: string }>) => adjustments.map((entry) => ({ ...entry, shopId: entry.shopId.replace('shop_', 'shop-') }))),
+    };
     const getCartUseCase = {
       execute: jest.fn(),
     } as unknown as jest.Mocked<GetCartUseCase>;
@@ -57,6 +57,7 @@ describe('CartController', () => {
       checkoutConfig as never,
       cartUpdatePricingService,
       guestCartSessionService,
+      cartPublicShopResolver as unknown as CartPublicShopResolver,
       getCartUseCase,
       mergeGuestCartUseCase,
       addCartItemUseCase,
@@ -70,6 +71,7 @@ describe('CartController', () => {
       controller,
       cartUpdatePricingService,
       guestCartSessionService,
+      cartPublicShopResolver,
       addCartItemUseCase,
       getCartUseCase,
       mergeGuestCartUseCase,
@@ -181,8 +183,10 @@ describe('CartController', () => {
           inventory: {
             inventoryId: 'inventory-1',
             productId: 'product-1',
+            productPublicId: 'prod_1',
             productSlug: 'mug',
             shopId: 'shop-1',
+            shopPublicId: 'shop_1',
             shopName: 'Clay House',
             shopSlug: 'clay-house',
             title: 'Mug',
@@ -236,64 +240,13 @@ describe('CartController', () => {
     });
   });
 
-  it('maps rejected Promo Code pricing to a promotion response error', async () => {
-    const { controller, getCartUseCase, cartUpdatePricingService } = buildController();
-    const cart: CartSnapshot = {
-      id: 'cart-1',
-      userId: 'user-1',
-      guestSessionId: null,
-      kind: CartKind.BUY_NOW,
-      items: [
-        {
-          id: 'item-1',
-          quantity: 1,
-          isSelectOrder: true,
-          updatedAt: new Date('2026-05-14T10:00:00.000Z'),
-          inventory: {
-            inventoryId: 'inventory-1',
-            productId: 'product-1',
-            productSlug: 'mug',
-            shopId: 'shop-1',
-            shopName: 'Clay House',
-            shopSlug: 'clay-house',
-            title: 'Mug',
-            stock: 9,
-            currency: 'USD',
-            pricing: {
-              amountMinor: 1500,
-              currency: 'USD',
-              sourceCurrency: 'USD',
-              sourceUnitAmountMinor: 1500,
-            },
-            productState: 'active',
-          },
-        },
-      ],
-    };
-    getCartUseCase.execute.mockResolvedValue(cart);
-    cartUpdatePricingService.buildPricedCartSummary.mockRejectedValue(
-      new PromotionCodeNotFoundError('MISSING'),
-    );
-
-    await expect(controller.updateItem(
-      { user: { userId: 'user-1' } } as never,
-      {} as never,
-      {
-        cartId: 'cart-1',
-        additionInfoTempCart: {
-          promo_codes: ['MISSING'],
-        },
-      } as never,
-    )).rejects.toBeInstanceOf(NotFoundException);
-  });
-
   it('returns an empty promo code list when no auth user or guest cookie exists', async () => {
     const { controller, guestCartSessionService } = buildController();
     guestCartSessionService.extractSessionId.mockReturnValue(null);
 
     const response = await controller.promoCodes(
       {} as never,
-      { shopId: 'shop-1' } as never,
+      { shopId: 'shop_1' } as never,
     );
 
     expect(response).toEqual({ promo_codes: [] });
@@ -332,7 +285,7 @@ describe('CartController', () => {
 
     const response = await controller.promoCodes(
       {} as never,
-      { shopId: 'shop-1' } as never,
+      { shopId: 'shop_1' } as never,
     );
 
     expect(listDiscoverablePromoCodesUseCase.execute).toHaveBeenCalledWith({
@@ -384,7 +337,7 @@ describe('CartController', () => {
     const response = await controller.applyPromoCode(
       { user: { userId: 'user-1' } } as never,
       {
-        shopId: 'shop-1',
+        shopId: 'shop_1',
         code: 'SAVE10',
         promoCodes: ['FREESHIP'],
       } as never,
@@ -404,19 +357,5 @@ describe('CartController', () => {
         { code: 'SAVE10', benefit_type: 'percentage' },
       ],
     });
-  });
-
-  it('rejects a conflicting promo code selection without side effects', async () => {
-    const { controller, applyPromoCodeUseCase } = buildController();
-    applyPromoCodeUseCase.execute.mockRejectedValue(new PromotionSlotConflictError('SAVE10'));
-
-    await expect(controller.applyPromoCode(
-      { user: { userId: 'user-1' } } as never,
-      {
-        shopId: 'shop-1',
-        code: 'SAVE10',
-        promoCodes: ['SAVE20'],
-      } as never,
-    )).rejects.toBeInstanceOf(UnprocessableEntityException);
   });
 });

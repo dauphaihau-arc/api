@@ -27,23 +27,33 @@ export function buildQuoteShopSummaries(
   shopMoney: PricedShopMoney[],
   quoteItems: CheckoutQuoteItemSummary[],
 ): CheckoutQuoteShopSummary[] {
-  return shopMoney.map((entry) => ({
-    shopId: entry.shop.shopId,
-    shopName: entry.shop.shopName,
-    shopSlug: entry.shop.items[0]?.shopSlug ?? '',
-    subtotalMinor: entry.subtotalMinor,
-    discountMinor: entry.discountMinor,
-    saleDiscountMinor: entry.saleDiscountMinor,
-    shippingMinor: entry.shippingMinor,
-    shippingDiscountMinor: entry.shop.shippingDiscountMinor ?? 0,
-    totalMinor: entry.totalMinor,
-    note: entry.shop.note,
-    promoCodes: entry.shop.promoOffers.map((offer) => offer.code),
-    originCountries: entry.shop.originCountries,
-    shipping: entry.shop.shipping,
-    shippingDiscounts: entry.shop.shippingDiscounts ?? [],
-    items: quoteItems.filter((item) => item.shopId === entry.shop.shopId),
-  }));
+  return shopMoney.map((entry) => {
+    const items = quoteItems.filter((item) => item.shopId === entry.shop.shopId);
+    const shopPublicId = items[0]?.shopPublicId;
+
+    if (!shopPublicId) {
+      throw new Error('Shop public id is required for every checkout quote shop');
+    }
+
+    return {
+      shopId: entry.shop.shopId,
+      shopPublicId,
+      shopName: entry.shop.shopName,
+      shopSlug: entry.shop.items[0]?.shopSlug ?? '',
+      subtotalMinor: entry.subtotalMinor,
+      discountMinor: entry.discountMinor,
+      saleDiscountMinor: entry.saleDiscountMinor,
+      shippingMinor: entry.shippingMinor,
+      shippingDiscountMinor: entry.shop.shippingDiscountMinor ?? 0,
+      totalMinor: entry.totalMinor,
+      note: entry.shop.note,
+      promoCodes: entry.shop.promoOffers.map((offer) => offer.code),
+      originCountries: entry.shop.originCountries,
+      shipping: entry.shop.shipping,
+      shippingDiscounts: entry.shop.shippingDiscounts ?? [],
+      items,
+    };
+  });
 }
 
 /**

@@ -81,6 +81,15 @@ export class CreateCheckoutQuoteService {
     });
 
     const allItems = pricedCartSummary.shops.flatMap((shop) => shop.items);
+    const publicReferencesByInventoryId = new Map(
+      input.cart.items.map((item) => [
+        item.inventory.inventoryId,
+        {
+          productPublicId: item.inventory.productPublicId,
+          shopPublicId: item.inventory.shopPublicId,
+        },
+      ]),
+    );
 
     if (allItems.length === 0) {
       throw new CheckoutQuoteNoItemsError();
@@ -224,11 +233,19 @@ export class CreateCheckoutQuoteService {
       entityManager.persist(checkoutQuote);
 
       const quoteItems = allItems.map((item) => {
+        const publicReferences = publicReferencesByInventoryId.get(item.inventoryId);
+
+        if (!publicReferences) {
+          throw new Error('Checkout public references are required for every quoted item');
+        }
+
         const { entity, summary } = createCheckoutQuoteItem({
           repository: quoteItemRepository,
           quote: checkoutQuote,
           inventory: entityManager.getReference(ProductInventoryEntity, item.inventoryId),
           item,
+          productPublicId: publicReferences.productPublicId,
+          shopPublicId: publicReferences.shopPublicId,
           checkoutCurrency,
         });
 

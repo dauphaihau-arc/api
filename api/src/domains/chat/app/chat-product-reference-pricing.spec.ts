@@ -8,12 +8,13 @@ describe('applyProductReferenceDisplayPrices', () => {
       {
         id: 'message-1',
         conversationId: 'conversation-1',
+        conversationPublicId: 'cnv_1',
         senderUserId: 'buyer-1',
         body: 'Salomon XT-6',
         messageType: 'product_reference',
         metadata: {
           product_reference: {
-            product_id: 'product-1',
+            product_id: 'prod_1',
             snapshot: {
               title: 'Salomon XT-6',
               shop_slug: 'terrain-index',
@@ -37,9 +38,9 @@ describe('applyProductReferenceDisplayPrices', () => {
       messages,
       new Map([
         [
-          'product-1',
+          'prod_1',
           {
-            productId: 'product-1',
+            productId: 'prod_1',
             amountMinor: 1164000,
             currency: 'PHP',
           },
@@ -49,7 +50,7 @@ describe('applyProductReferenceDisplayPrices', () => {
 
     expect(message.metadata).toEqual({
       product_reference: {
-        product_id: 'product-1',
+        product_id: 'prod_1',
         snapshot: {
           title: 'Salomon XT-6',
           shop_slug: 'terrain-index',
@@ -65,7 +66,7 @@ describe('applyProductReferenceDisplayPrices', () => {
     });
     expect(messages[0]?.metadata).toEqual({
       product_reference: {
-        product_id: 'product-1',
+        product_id: 'prod_1',
         snapshot: {
           title: 'Salomon XT-6',
           shop_slug: 'terrain-index',

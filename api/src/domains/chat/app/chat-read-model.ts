@@ -10,10 +10,12 @@ export function toChatConversationSummary(
 ): ChatConversationSummary {
   return {
     id: conversation.id,
+    publicId: conversation.publicId,
     buyerUserId: conversation.buyerUser.id,
     buyerDisplayName: conversation.buyerUser.displayName,
     buyerAvatar: conversation.buyerUser.avatar,
     shopId: conversation.shop.id,
+    shopPublicId: conversation.shop.publicId,
     shopName: conversation.shop.shopName,
     shopSlug: conversation.shop.slug,
     shopOwnerUserId: conversation.shop.ownerUser.id,
@@ -36,6 +38,7 @@ export function toChatMessageSummary(message: ChatMessageEntity): ChatMessageSum
   return {
     id: message.id,
     conversationId: message.conversation.id,
+    conversationPublicId: message.conversation.publicId,
     senderUserId: message.senderUser.id,
     body: message.body,
     messageType: message.messageType,

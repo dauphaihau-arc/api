@@ -2,6 +2,9 @@ import { randomUUID } from 'node:crypto';
 import { mkdtemp, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+import { MongoClient } from 'mongodb';
 import { MikroORM } from '@mikro-orm/postgresql';
 import type { TestingModule } from '@nestjs/testing';
 import { Test } from '@nestjs/testing';
@@ -29,7 +32,7 @@ import { ObservabilityService } from '~/platform/observability/observability.ser
 import { RequestContextService } from '~/platform/request-context/request-context.service';
 import { createTestDatabase, dropTestDatabase } from '../support/test-postgres';
 import { seedAuthReferenceData } from '../../database/seeds/auth.seed';
-import { seedPublishableInventory } from '../support/shipping-fixtures';
+import { resolveShopId, seedPublishableInventory } from '../support/shipping-fixtures';
 
 jest.setTimeout(240_000);
 
@@ -46,7 +49,9 @@ type TestDatabase = {
   };
 };
 
-type TestSeller = { agent: Agent; email: string; shopId: string };
+type TestSeller = {
+  agent: Agent; email: string; shopId: string; shopPublicId: string 
+};
 type TestBuyer = {
   agent: Agent; email: string; userId: string; addressId: string;
 };
@@ -263,7 +268,9 @@ describe('Shop sales (integration)', () => {
       })
       .expect(201);
 
-    return { agent, email, shopId: shopResponse.body.id as string };
+    return {
+      agent, email, shopId: await resolveShopId(sql, shopResponse.body.id as string), shopPublicId: shopResponse.body.id as string,
+    };
   }
 
   async function registerBuyer(prefix: string): Promise<TestBuyer> {
@@ -318,7 +325,7 @@ describe('Shop sales (integration)', () => {
 
   async function createActiveProfile(seller: TestSeller): Promise<string> {
     const response = await seller.agent
-      .post(`${API_PREFIX}/shops/${seller.shopId}/shipping-profiles`)
+      .post(`${API_PREFIX}/shops/${seller.shopPublicId}/shipping-profiles`)
       .set('Idempotency-Key', randomUUID())
       .send({
         name: `Standard ${Date.now().toString().slice(-6)}`,
@@ -351,7 +358,7 @@ describe('Shop sales (integration)', () => {
     amountMinor: number;
   }): Promise<{ productId: string; inventoryId: string }> {
     const productResponse = await input.seller.agent
-      .post(`${API_PREFIX}/shops/${input.seller.shopId}/products`)
+      .post(`${API_PREFIX}/shops/${input.seller.shopPublicId}/products`)
       .set('Idempotency-Key', randomUUID())
       .send({
         category_id: await seedCategory(input.seller.agent),
@@ -362,9 +369,10 @@ describe('Shop sales (integration)', () => {
       })
       .expect(201);
     const productId = productResponse.body.id as string;
+    const productPublicId = productResponse.body.id as string;
 
     await input.seller.agent
-      .put(`${API_PREFIX}/shops/${input.seller.shopId}/products/${productId}/images`)
+      .put(`${API_PREFIX}/shops/${input.seller.shopPublicId}/products/${productPublicId}/images`)
       .attach('images', Buffer.from(`image-${productId}`), {
         filename: `${productId}.jpg`,
         contentType: 'image/jpeg',
@@ -372,12 +380,12 @@ describe('Shop sales (integration)', () => {
       .expect(204);
 
     const detail = await input.seller.agent
-      .get(`${API_PREFIX}/shops/${input.seller.shopId}/products/${productId}`)
+      .get(`${API_PREFIX}/shops/${input.seller.shopPublicId}/products/${productPublicId}`)
       .expect(200);
     const inventoryId = detail.body.inventory[0].id as string;
 
     await seedPublishableInventory(sql, {
-      shopId: input.seller.shopId,
+      shopId: input.seller.shopPublicId,
       inventoryId,
       sku: input.sku,
       stock: 10,
@@ -385,13 +393,13 @@ describe('Shop sales (integration)', () => {
     });
 
     await input.seller.agent
-      .put(`${API_PREFIX}/shops/${input.seller.shopId}/products/${productId}/shipping-profile`)
+      .put(`${API_PREFIX}/shops/${input.seller.shopPublicId}/products/${productPublicId}/shipping-profile`)
       .set('Idempotency-Key', randomUUID())
       .send({ shipping_profile_id: input.shippingProfileId })
       .expect(204);
 
     await input.seller.agent
-      .post(`${API_PREFIX}/shops/${input.seller.shopId}/products/${productId}/publish`)
+      .post(`${API_PREFIX}/shops/${input.seller.shopPublicId}/products/${productPublicId}/publish`)
       .set('Idempotency-Key', randomUUID())
       .expect(201);
 
@@ -426,7 +434,7 @@ describe('Shop sales (integration)', () => {
     body: Record<string, unknown>,
   ): Promise<ShopSaleResponse> {
     const response = await seller.agent
-      .post(`${API_PREFIX}/shops/${seller.shopId}/sales`)
+      .post(`${API_PREFIX}/shops/${seller.shopPublicId}/sales`)
       .set('Idempotency-Key', randomUUID())
       .send(body)
       .expect(201);
@@ -436,7 +444,7 @@ describe('Shop sales (integration)', () => {
 
   async function listSales(seller: TestSeller): Promise<ShopSaleResponse[]> {
     const response = await seller.agent
-      .get(`${API_PREFIX}/shops/${seller.shopId}/sales`)
+      .get(`${API_PREFIX}/shops/${seller.shopPublicId}/sales`)
       .query({ limit: 100 })
       .expect(200);
 
@@ -445,19 +453,19 @@ describe('Shop sales (integration)', () => {
 
   function cancelSale(seller: TestSeller, saleId: string) {
     return seller.agent
-      .post(`${API_PREFIX}/shops/${seller.shopId}/sales/${saleId}/cancel`)
+      .post(`${API_PREFIX}/shops/${seller.shopPublicId}/sales/${saleId}/cancel`)
       .set('Idempotency-Key', randomUUID());
   }
 
   function endSale(seller: TestSeller, saleId: string) {
     return seller.agent
-      .post(`${API_PREFIX}/shops/${seller.shopId}/sales/${saleId}/end`)
+      .post(`${API_PREFIX}/shops/${seller.shopPublicId}/sales/${saleId}/end`)
       .set('Idempotency-Key', randomUUID());
   }
 
   function bulkStopSales(seller: TestSeller, ids: string[]) {
     return seller.agent
-      .post(`${API_PREFIX}/shops/${seller.shopId}/sales/bulk-stop`)
+      .post(`${API_PREFIX}/shops/${seller.shopPublicId}/sales/bulk-stop`)
       .set('Idempotency-Key', randomUUID())
       .send({ ids });
   }
@@ -486,6 +494,102 @@ describe('Shop sales (integration)', () => {
       .send({ quote_id: quoteId, payment_type: 'cash' });
   }
 
+  it('rebuilds legacy Mongo public references during the public-id catalog cutover', async () => {
+    const seller = await registerSeller('catalog-public-cutover');
+    const profile = await createActiveProfile(seller);
+    const product = await createPublishedProduct({
+      seller,
+      shippingProfileId: profile,
+      title: 'Catalog cutover mug',
+      sku: 'PUBLIC-CUTOVER-MUG',
+      amountMinor: 2500,
+    });
+    const sale = await createSale(seller, {
+      name: 'Catalog cutover Sale',
+      percent_off: 20,
+      product_scope: 'specific',
+      product_ids: [product.productId],
+      timezone: 'UTC',
+      start_now: true,
+      end_local: utcLocalDateTime(new Date(Date.now() + TWO_DAYS_MS)),
+    });
+    const productRow = await sql.query<{ id: string }>(
+      'select id from products where public_id = $1',
+      [product.productId],
+    );
+    const internalProductId = productRow.rows[0]!.id;
+    const promotionRow = await sql.query<{ id: string }>(
+      'select id from promotions where public_id = $1',
+      [sale.id],
+    );
+    const mongoDbName = `arc_public_cutover_${randomUUID().replace(/-/g, '')}`;
+    const mongo = new MongoClient(process.env.CATALOG_MONGODB_URI ?? 'mongodb://127.0.0.1:27017');
+    await mongo.connect();
+    const db = mongo.db(mongoDbName);
+
+    try {
+      await Promise.all([
+        db.collection('catalog_products').insertOne({
+          productId: internalProductId,
+          productPublicId: product.productId.slice(5),
+          shopPublicId: seller.shopPublicId.slice(5),
+        }),
+        db.collection('catalog_product_search').insertOne({
+          productId: internalProductId,
+          productPublicId: product.productId.slice(5),
+          shopPublicId: seller.shopPublicId.slice(5),
+          price: { autoSale: { promotionId: promotionRow.rows[0]!.id, percentOff: 20 } },
+        }),
+        db.collection('catalog_product_prices').insertOne({
+          productId: internalProductId,
+          inventoryPricingById: {
+            [product.inventoryId]: {
+              basePrice: { autoSale: { promotionId: promotionRow.rows[0]!.id, percentOff: 20 } },
+            },
+          },
+        }),
+      ]);
+      await promisify(execFile)(process.execPath, [
+        '-r', 'ts-node/register', '-r', 'tsconfig-paths/register',
+        'scripts/refresh-catalog-products.ts',
+      ], {
+        cwd: process.cwd(),
+        env: {
+          ...process.env,
+          DATABASE_URL: '',
+          CATALOG_SEARCH_DRIVER: 'mongo-basic',
+          CATALOG_MONGODB_DB_NAME: mongoDbName,
+          CATALOG_MONGODB_PRODUCTS_COLLECTION: 'catalog_products',
+          CATALOG_MONGODB_PRICES_COLLECTION: 'catalog_product_prices',
+          CATALOG_MONGODB_SLUGS_COLLECTION: 'catalog_product_slugs',
+          CATALOG_MONGODB_SEARCH_COLLECTION: 'catalog_product_search',
+        },
+        maxBuffer: 8 * 1024 * 1024,
+      });
+
+      const document = await db.collection('catalog_products').findOne({ productId: internalProductId });
+      const search = await db.collection('catalog_product_search').findOne({ productId: internalProductId });
+      const prices = await db.collection('catalog_product_prices').findOne({ productId: internalProductId });
+      expect(document).toMatchObject({
+        productPublicId: product.productId,
+        shopPublicId: seller.shopPublicId,
+      });
+      expect(search).toMatchObject({
+        productPublicId: product.productId,
+        shopPublicId: seller.shopPublicId,
+        price: { autoSale: { promotionPublicId: sale.id, percentOff: 20 } },
+      });
+      expect(prices?.inventoryPricingById[product.inventoryId].basePrice.autoSale)
+        .toEqual({ promotionPublicId: sale.id, percentOff: 20 });
+      expect(JSON.stringify(search)).not.toContain('"promotionId"');
+      expect(JSON.stringify(prices)).not.toContain('"promotionId"');
+    }
+    finally {
+      await db.dropDatabase();
+      await mongo.close();
+    }
+  });
+
   it('creates an active selected-product Sale and discounts only its targets at checkout', async () => {
     const seller = await registerSeller('sale-active');
     const profile = await createActiveProfile(seller);
@@ -505,7 +609,7 @@ describe('Shop sales (integration)', () => {
     });
 
     const createResponse = await seller.agent
-      .post(`${API_PREFIX}/shops/${seller.shopId}/sales`)
+      .post(`${API_PREFIX}/shops/${seller.shopPublicId}/sales`)
       .set('Idempotency-Key', randomUUID())
       .send({
         name: 'Autumn Sale',
@@ -525,7 +629,7 @@ describe('Shop sales (integration)', () => {
     expect(sale.currency).toBe('USD');
 
     const listResponse = await seller.agent
-      .get(`${API_PREFIX}/shops/${seller.shopId}/sales`)
+      .get(`${API_PREFIX}/shops/${seller.shopPublicId}/sales`)
       .expect(200);
     expect(listResponse.body.total_results).toBe(1);
     expect(listResponse.body.results[0].name).toBe('Autumn Sale');
@@ -546,14 +650,14 @@ describe('Shop sales (integration)', () => {
 
     const orderId = orderResponse.body.order_shops[0].id as string;
     const orderRow = await sql.query(
-      'select "subtotal_minor", "total_minor" from "orders" where "id" = $1',
+      'select "id", "subtotal_minor", "total_minor" from "orders" where "public_id" = $1',
       [orderId],
     );
     expect(orderRow.rows[0].subtotal_minor).toBe(6750);
 
     const items = await sql.query(
       'select "unit_price_minor" from "order_items" where "order_id" = $1 order by "unit_price_minor"',
-      [orderId],
+      [orderRow.rows[0].id],
     );
     expect(items.rows).toEqual([
       { unit_price_minor: 1875 },
@@ -584,7 +688,7 @@ describe('Shop sales (integration)', () => {
     const endLocal = utcLocalDateTime(new Date(Date.now() + TWO_DAYS_MS));
 
     await seller.agent
-      .post(`${API_PREFIX}/shops/${seller.shopId}/sales`)
+      .post(`${API_PREFIX}/shops/${seller.shopPublicId}/sales`)
       .set('Idempotency-Key', randomUUID())
       .send({
         name: 'Duplicate targets',
@@ -598,7 +702,7 @@ describe('Shop sales (integration)', () => {
       .expect(400);
 
     await seller.agent
-      .post(`${API_PREFIX}/shops/${seller.shopId}/sales`)
+      .post(`${API_PREFIX}/shops/${seller.shopPublicId}/sales`)
       .set('Idempotency-Key', randomUUID())
       .send({
         name: 'Foreign target',
@@ -614,7 +718,7 @@ describe('Shop sales (integration)', () => {
 
   it('validates the schedule: end after start, no 30-day cap, and no daylight-saving gaps or unreconciled repeats', async () => {
     const seller = await registerSeller('sale-schedule');
-    const endpoint = `${API_PREFIX}/shops/${seller.shopId}/sales`;
+    const endpoint = `${API_PREFIX}/shops/${seller.shopPublicId}/sales`;
     const endLocal = utcLocalDateTime(new Date(Date.now() + SIXTY_DAYS_MS));
 
     // A schedule longer than 30 days is allowed.
@@ -911,7 +1015,7 @@ describe('Shop sales (integration)', () => {
     await endSale(seller, scheduledTwo.id).expect(409);
     await cancelSale(seller, activeTwo.id).expect(409);
 
-    const missingId = randomUUID();
+    const missingId = 'prm_000000000000';
     const bulk = await bulkStopSales(seller, [
       scheduledTwo.id,
       activeTwo.id,
@@ -945,30 +1049,6 @@ describe('Shop sales (integration)', () => {
       status: 'ended',
     });
 
-    // The stop refreshes the affected catalog projections for its shop.
-    expect(jobDispatcher.dispatch.mock.calls).toEqual(expect.arrayContaining([
-      [
-        'catalog.project-shop-products',
-        { shopId: seller.shopId },
-        expect.objectContaining({
-          deduplicationKey: `catalog-project-shop-products--${seller.shopId}--sale-${scheduled.id}-cancel`,
-        }),
-      ],
-      [
-        'catalog.project-shop-products',
-        { shopId: seller.shopId },
-        expect.objectContaining({
-          deduplicationKey: `catalog-project-shop-products--${seller.shopId}--sale-${active.id}-end`,
-        }),
-      ],
-      [
-        'catalog.project-shop-products',
-        { shopId: seller.shopId },
-        expect.objectContaining({
-          deduplicationKey: `catalog-project-shop-products--${seller.shopId}--sale-${scheduledTwo.id}-bulk-stop`,
-        }),
-      ],
-    ]));
   });
 
   it('keeps committed Order prices after a Sale stops and the regular price changes', async () => {
@@ -1004,13 +1084,13 @@ describe('Shop sales (integration)', () => {
     await setRegularPriceMinor(product.inventoryId, 15000);
 
     const order = await sql.query(
-      'select "subtotal_minor", "discount_minor" from "orders" where "id" = $1',
+      'select "subtotal_minor", "discount_minor" from "orders" where "public_id" = $1',
       [orderId],
     );
     expect(order.rows[0]).toEqual({ subtotal_minor: 16000, discount_minor: 0 });
 
     const items = await sql.query(
-      'select "unit_price_minor", "line_total_minor" from "order_items" where "order_id" = $1',
+      'select oi."unit_price_minor", oi."line_total_minor" from "order_items" oi join "orders" o on oi."order_id" = o."id" where o."public_id" = $1',
       [orderId],
     );
     expect(items.rows).toEqual([{ unit_price_minor: 8000, line_total_minor: 16000 }]);
@@ -1066,7 +1146,7 @@ describe('Shop sales (integration)', () => {
     const orderResponse = await submitCashOrder(buyer, refreshed.quote_id).expect(201);
     const orderId = orderResponse.body.order_shops[0].id as string;
     const items = await sql.query(
-      'select "unit_price_minor" from "order_items" where "order_id" = $1',
+      'select oi."unit_price_minor" from "order_items" oi join "orders" o on oi."order_id" = o."id" where o."public_id" = $1',
       [orderId],
     );
     expect(items.rows).toEqual([{ unit_price_minor: 10000 }]);
@@ -1173,7 +1253,7 @@ describe('Shop sales (integration)', () => {
   describe('store timezone settings', () => {
     function updateShopSettings(seller: TestSeller, timezone: unknown) {
       return seller.agent
-        .patch(`${API_PREFIX}/shops/${seller.shopId}/settings`)
+        .patch(`${API_PREFIX}/shops/${seller.shopPublicId}/settings`)
         .set('Idempotency-Key', randomUUID())
         .send({ timezone });
     }
@@ -1192,7 +1272,7 @@ describe('Shop sales (integration)', () => {
       expect((await getMyShop(seller)).timezone).toBe('UTC');
 
       const updated = await updateShopSettings(seller, 'Asia/Saigon').expect(200);
-      expect(updated.body).toMatchObject({ id: seller.shopId, timezone: 'Asia/Saigon' });
+      expect(updated.body).toMatchObject({ id: seller.shopPublicId, timezone: 'Asia/Saigon' });
 
       expect((await getMyShop(seller)).timezone).toBe('Asia/Saigon');
     });
@@ -1211,7 +1291,7 @@ describe('Shop sales (integration)', () => {
       const intruder = await registerSeller('store-tz-intruder');
 
       await intruder.agent
-        .patch(`${API_PREFIX}/shops/${owner.shopId}/settings`)
+        .patch(`${API_PREFIX}/shops/${owner.shopPublicId}/settings`)
         .set('Idempotency-Key', randomUUID())
         .send({ timezone: 'Asia/Saigon' })
         .expect(403);

@@ -2,7 +2,9 @@ import type { OrderExportStatus } from '../../domain/enums/order-export-status.e
 
 export interface ShopOrderExportSummary {
   id: string;
+  publicId: string;
   shopId: string;
+  shopPublicId: string;
   requestedByUserId: string;
   status: OrderExportStatus;
   filtersJson: Record<string, unknown>;
@@ -46,6 +48,10 @@ export abstract class ShopOrderExportRepository {
     shopId: string,
     exportId: string,
   ): Promise<ShopOrderExportSummary | undefined>;
+
+  abstract findByPublicId(
+    publicId: string,
+  ): Promise<string | null>;
 
   abstract findForProcessing(
     exportId: string,

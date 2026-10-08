@@ -6,10 +6,12 @@ export const CHAT_MESSAGE_LIST_MAX_LIMIT = 100;
 
 export interface ChatConversationSummary {
   id: string;
+  publicId: string;
   buyerUserId: string;
   buyerDisplayName?: string;
   buyerAvatar?: string;
   shopId: string;
+  shopPublicId: string;
   shopName: string;
   shopSlug: string;
   shopOwnerUserId: string;
@@ -30,6 +32,7 @@ export interface ChatConversationSummary {
 export interface ChatMessageSummary {
   id: string;
   conversationId: string;
+  conversationPublicId: string;
   senderUserId: string;
   body: string;
   messageType: string;

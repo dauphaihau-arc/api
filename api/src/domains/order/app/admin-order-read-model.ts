@@ -27,8 +27,10 @@ export function toAdminOrderDetail(
 ): AdminOrderDetail {
   return {
     id: order.id,
+    publicId: order.publicId,
     orderNumber: getRequiredOrderNumber(order),
     shopId: order.shop.id,
+    shopPublicId: order.shop.publicId,
     shopName: order.shop.shopName,
     shopSlug: order.shop.slug,
     currency: order.currency,
@@ -38,6 +40,7 @@ export function toAdminOrderDetail(
     products: items.map((item) => ({
       id: item.id,
       productId: item.product.id,
+      productPublicId: item.product.publicId,
       slug: item.product.slug,
       shopSlug: item.product.shop.slug,
       title: item.title,

@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Query,
+  UseFilters,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -27,13 +28,12 @@ import { ListAdminOrdersQueryDto } from './dto/list-admin-orders.query.dto';
 import { UpdateAdminOrderRefundDto } from './dto/update-admin-order-refund.dto';
 import { UpdateAdminOrderStatusDto } from './dto/update-admin-order-status.dto';
 import { UpdateAdminOrderSupportNoteDto } from './dto/update-admin-order-support-note.dto';
-import {
-  isOrderAppError,
-  mapOrderAppErrorToHttpException,
-} from './order-http-error-mapper';
+import { OrderPublicIdLookup } from '../../app/services/order-public-id-lookup.service';
+import { OrderExceptionsFilter } from './order-exceptions.filter';
 import { toAdminOrderDetailResponse, toAdminOrderListResponse } from './order.response';
 
 @Controller('admin/orders')
+@UseFilters(OrderExceptionsFilter)
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @RequirePermissions('orders.manage')
 @ApiExcludeController()
@@ -46,6 +46,7 @@ export class AdminOrderController {
     private readonly updateAdminOrderStatusUseCase: UpdateAdminOrderStatusUseCase,
     private readonly updateAdminOrderRefundUseCase: UpdateAdminOrderRefundUseCase,
     private readonly updateAdminOrderSupportNoteUseCase: UpdateAdminOrderSupportNoteUseCase,
+    private readonly orderPublicIdLookup: OrderPublicIdLookup,
   ) {}
 
   @Get()
@@ -56,8 +57,9 @@ export class AdminOrderController {
     schema: { type: 'object' },
   })
   async list(@Query() query: ListAdminOrdersQueryDto) {
-    return this.listAdminOrdersUseCase.execute(query)
-      .then(toAdminOrderListResponse);
+    return toAdminOrderListResponse(
+      await this.listAdminOrdersUseCase.execute(query),
+    );
   }
 
   @Get(':order_id')
@@ -68,15 +70,11 @@ export class AdminOrderController {
     description: 'Admin order detail.',
     schema: { type: 'object' },
   })
-  async detail(@Param('order_id') orderId: string) {
-    try {
-      return toAdminOrderDetailResponse(
-        await this.getAdminOrderByIdUseCase.execute(orderId),
-      );
-    }
-    catch (error) {
-      this.throwMappedOrderError(error);
-    }
+  async detail(@Param('order_id') publicId: string) {
+    const orderId = await this.orderPublicIdLookup.resolveOrderPublicId(publicId);
+    return toAdminOrderDetailResponse(
+      await this.getAdminOrderByIdUseCase.execute(orderId),
+    );
   }
 
   @Patch(':order_id/status')
@@ -88,17 +86,13 @@ export class AdminOrderController {
     schema: { type: 'object' },
   })
   async updateStatus(
-    @Param('order_id') orderId: string,
+    @Param('order_id') publicId: string,
     @Body() body: UpdateAdminOrderStatusDto,
   ) {
-    try {
-      return toAdminOrderDetailResponse(
-        await this.updateAdminOrderStatusUseCase.execute(orderId, body),
-      );
-    }
-    catch (error) {
-      this.throwMappedOrderError(error);
-    }
+    const orderId = await this.orderPublicIdLookup.resolveOrderPublicId(publicId);
+    return toAdminOrderDetailResponse(
+      await this.updateAdminOrderStatusUseCase.execute(orderId, body),
+    );
   }
 
   @Patch(':order_id/refund')
@@ -110,17 +104,13 @@ export class AdminOrderController {
     schema: { type: 'object' },
   })
   async updateRefund(
-    @Param('order_id') orderId: string,
+    @Param('order_id') publicId: string,
     @Body() body: UpdateAdminOrderRefundDto,
   ) {
-    try {
-      return toAdminOrderDetailResponse(
-        await this.updateAdminOrderRefundUseCase.execute(orderId, body),
-      );
-    }
-    catch (error) {
-      this.throwMappedOrderError(error);
-    }
+    const orderId = await this.orderPublicIdLookup.resolveOrderPublicId(publicId);
+    return toAdminOrderDetailResponse(
+      await this.updateAdminOrderRefundUseCase.execute(orderId, body),
+    );
   }
 
   @Patch(':order_id/support-note')
@@ -132,24 +122,12 @@ export class AdminOrderController {
     schema: { type: 'object' },
   })
   async updateSupportNote(
-    @Param('order_id') orderId: string,
+    @Param('order_id') publicId: string,
     @Body() body: UpdateAdminOrderSupportNoteDto,
   ) {
-    try {
-      return toAdminOrderDetailResponse(
-        await this.updateAdminOrderSupportNoteUseCase.execute(orderId, body),
-      );
-    }
-    catch (error) {
-      this.throwMappedOrderError(error);
-    }
-  }
-
-  private throwMappedOrderError(error: unknown): never {
-    if (isOrderAppError(error)) {
-      throw mapOrderAppErrorToHttpException(error);
-    }
-
-    throw error;
+    const orderId = await this.orderPublicIdLookup.resolveOrderPublicId(publicId);
+    return toAdminOrderDetailResponse(
+      await this.updateAdminOrderSupportNoteUseCase.execute(orderId, body),
+    );
   }
 }

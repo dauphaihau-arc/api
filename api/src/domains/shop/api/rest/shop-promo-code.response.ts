@@ -3,8 +3,8 @@ import type { BulkStopShopPromoCodesResult } from '../../app/use-cases/bulk-stop
 
 export function toShopPromoCodeResponse(promoCode: ShopPromoCodeSummary) {
   return {
-    id: promoCode.id,
-    shop: promoCode.shopId,
+    id: promoCode.publicId,
+    shop: promoCode.shopPublicId,
     name: promoCode.name,
     code: promoCode.code,
     benefit_type: promoCode.benefitType,
@@ -13,7 +13,7 @@ export function toShopPromoCodeResponse(promoCode: ShopPromoCodeSummary) {
     currency: promoCode.currency,
     visibility: promoCode.visibility,
     product_scope: promoCode.productScope,
-    product_ids: promoCode.productIds,
+    product_ids: promoCode.productPublicIds,
     min_order_type: promoCode.minOrderType,
     min_order_value: promoCode.minOrderValue,
     min_purchase_quantity: promoCode.minPurchaseQuantity,

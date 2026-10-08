@@ -55,6 +55,7 @@ describe('OrderCancellationService', () => {
       { record: jest.fn().mockResolvedValue(undefined) } as never,
       {
         findById: jest.fn(),
+        findByPublicId: jest.fn(),
         findByIdWithShopOwner: jest.fn(),
       } as unknown as OrderRefundQueryRepository,
     );

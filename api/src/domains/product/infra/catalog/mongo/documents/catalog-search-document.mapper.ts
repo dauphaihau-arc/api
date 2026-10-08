@@ -11,8 +11,9 @@ import { getInventoryPricingSnapshot } from '../../../persistence/mikro-orm/read
 export interface CatalogSearchDocument {
   _id: string;
   productId: string;
+  productPublicId: string;
   shopId: string;
-  shopPublicId?: string;
+  shopPublicId: string;
   shopSlug: string;
   shopName: string;
   slug: string;
@@ -50,7 +51,7 @@ export interface CatalogSearchDocument {
     originalMinAmountMinor?: number;
     originalMaxAmountMinor?: number;
     autoSale?: {
-      promotionId: string;
+      promotionPublicId: string;
       percentOff: number;
     };
   };
@@ -125,6 +126,7 @@ export function toCatalogSearchDocument(
   return {
     _id: product.id,
     productId: product.id,
+    productPublicId: product.publicId,
     shopId: product.shop.id,
     shopPublicId: product.shop.publicId,
     shopSlug: product.shop.slug,

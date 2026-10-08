@@ -32,6 +32,7 @@ import { CheckoutStockReservationCommandRepository } from './app/ports/checkout-
 import { CheckoutStockReservationPort } from './app/ports/checkout-stock-reservation.port';
 import { RemoteInventoryReservationClient } from './app/ports/remote-inventory-reservation.client';
 import { CheckoutStockReservationService } from './app/services/checkout-stock-reservation.service';
+import { CheckoutPublicIdResolver } from './app/services/checkout-public-id.resolver';
 import { CreateCheckoutQuoteService } from './app/services/create-checkout-quote.service';
 import { GuestOrderTrackingTokenService } from './app/services/guest-order-tracking-token.service';
 import { LoadCheckoutQuoteService } from './app/services/load-checkout-quote.service';
@@ -128,6 +129,7 @@ import { OrderItemEntity } from '../order/infra/persistence/entities/order-item.
     CreateCheckoutQuoteService,
     LoadCheckoutQuoteService,
     GuestOrderTrackingTokenService,
+    CheckoutPublicIdResolver,
     CreateGuestCheckoutQuoteFromCartUseCase,
     CreateGuestCheckoutQuoteForBuyNowUseCase,
     CreateGuestOrderFromCartUseCase,

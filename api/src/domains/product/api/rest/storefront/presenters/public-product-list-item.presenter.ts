@@ -4,10 +4,9 @@ import type { PublicProductListItemResponse } from '../responses/public-product-
 export const toPublicProductListItemResponse = (
   product: PublicProductListItem,
 ): PublicProductListItemResponse => ({
-  id: product.id,
+  id: product.publicId,
   shop: {
-    id: product.shop.id,
-    public_id: product.shop.publicId,
+    id: product.shop.publicId,
     shop_name: product.shop.shopName,
     slug: product.shop.slug,
   },
@@ -50,7 +49,7 @@ export const toPublicProductListItemResponse = (
       ...(product.pricing.autoSale
         ? {
           auto_sale: {
-            promotion_id: product.pricing.autoSale.promotionId,
+            promotion_id: product.pricing.autoSale.promotionPublicId,
             percent_off: product.pricing.autoSale.percentOff,
           },
         }
