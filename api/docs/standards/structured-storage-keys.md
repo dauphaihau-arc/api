@@ -59,11 +59,11 @@ That flow builds keys using:
 
 - environment segment from `NODE_ENV`
 - `public` visibility
-- domain path nodes for shop and product
+- domain path nodes for shop and product, using each entity's prefixed public id (`shop_…`, `prod_…`)
 - `images` collection
 - asset type variant
 - resolved image extension
-- generated public identifier as filename
+- generated storage identifier as filename (unprefixed hex; storage ids are not entity public ids)
 
 ## Rules
 

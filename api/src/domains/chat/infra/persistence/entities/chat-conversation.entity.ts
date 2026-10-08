@@ -5,8 +5,10 @@ import {
   ManyToOne,
   OneToMany,
   Property,
+  Unique,
 } from '@mikro-orm/core';
 import { AbstractBaseEntity } from '~/platform/database/abstract-base.entity';
+import { createPublicId } from '~/platform/ids/public-id';
 import { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
 import { ShopEntity } from '~/domains/shop/infra/persistence/entities/shop.entity';
 import { ChatMessageEntity } from './chat-message.entity';
@@ -17,6 +19,10 @@ import { ChatMessageEntity } from './chat-message.entity';
 @Index({ properties: ['status'] })
 @Index({ properties: ['lastMessageAt'] })
 export class ChatConversationEntity extends AbstractBaseEntity {
+  @Property({ fieldName: 'public_id', length: 32 })
+  @Unique()
+  publicId: string = createPublicId('cnv');
+
   @ManyToOne(() => UserEntity, {
     fieldName: 'buyer_user_id',
     deleteRule: 'cascade',

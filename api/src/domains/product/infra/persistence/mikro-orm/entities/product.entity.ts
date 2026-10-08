@@ -27,9 +27,9 @@ import { ProductOptionEntity } from './product-option.entity';
 @Index({ properties: ['shop', 'state'] })
 @Unique({ properties: ['shop', 'slug'] })
 export class ProductEntity extends AbstractBaseEntity {
-  @Property({ fieldName: 'public_id', length: 12 })
+  @Property({ fieldName: 'public_id', length: 32 })
   @Unique()
-  publicId: string = createPublicId();
+  publicId: string = createPublicId('prod');
 
   @ManyToOne(() => ShopEntity, {
     fieldName: 'shop_id',

@@ -16,9 +16,9 @@ import { ProductEntity } from '~/domains/product/infra/persistence/mikro-orm/ent
 @Entity({ tableName: 'shops' })
 @Index({ properties: ['ownerUser'] })
 export class ShopEntity extends AbstractBaseEntity {
-  @Property({ fieldName: 'public_id', length: 12 })
+  @Property({ fieldName: 'public_id', length: 32 })
   @Unique()
-  publicId: string = createPublicId();
+  publicId: string = createPublicId('shop');
 
   @ManyToOne(() => UserEntity, {
     fieldName: 'owner_user_id',

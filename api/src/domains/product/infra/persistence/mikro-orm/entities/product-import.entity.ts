@@ -6,8 +6,10 @@ import {
   ManyToOne,
   OneToMany,
   Property,
+  Unique,
 } from '@mikro-orm/core';
 import { AbstractBaseEntity } from '~/platform/database/abstract-base.entity';
+import { createPublicId } from '~/platform/ids/public-id';
 import { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
 import { ShopEntity } from '~/domains/shop/infra/persistence/entities/shop.entity';
 import { ProductImportStatus } from '../../../../domain/enums/product-import-status.enum';
@@ -17,6 +19,10 @@ import { ProductImportRowEntity } from './product-import-row.entity';
 @Index({ properties: ['shop', 'requestedBy', 'createdAt'] })
 @Index({ properties: ['status', 'createdAt'] })
 export class ProductImportEntity extends AbstractBaseEntity {
+  @Property({ fieldName: 'public_id', length: 32 })
+  @Unique()
+  publicId: string = createPublicId('imp');
+
   @ManyToOne(() => ShopEntity, {
     fieldName: 'shop_id',
     deleteRule: 'cascade',

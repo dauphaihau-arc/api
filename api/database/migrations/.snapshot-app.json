@@ -1555,6 +1555,22 @@
           "comment": null,
           "enumItems": [],
           "mappedType": "integer"
+        },
+        "public_id": {
+          "name": "public_id",
+          "type": "varchar(32)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": true,
+          "length": 32,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "string"
         }
       },
       "name": "chat_conversations",
@@ -1620,6 +1636,16 @@
           "keyName": "chat_conversations_pkey",
           "unique": true,
           "primary": true
+        },
+        {
+          "columnNames": [
+            "public_id"
+          ],
+          "composite": false,
+          "constraint": true,
+          "keyName": "chat_conversations_public_id_unique",
+          "unique": true,
+          "primary": false
         },
         {
           "columnNames": [
@@ -5405,6 +5431,22 @@
           "comment": null,
           "enumItems": [],
           "mappedType": "datetime"
+        },
+        "public_id": {
+          "name": "public_id",
+          "type": "varchar(32)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": true,
+          "length": 32,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "string"
         }
       },
       "name": "order_exports",
@@ -5419,6 +5461,16 @@
           "keyName": "order_exports_pkey",
           "unique": true,
           "primary": true
+        },
+        {
+          "columnNames": [
+            "public_id"
+          ],
+          "composite": false,
+          "constraint": true,
+          "keyName": "order_exports_public_id_unique",
+          "unique": true,
+          "primary": false
         },
         {
           "columnNames": [
@@ -6639,6 +6691,22 @@
           "comment": null,
           "enumItems": [],
           "mappedType": "integer"
+        },
+        "public_id": {
+          "name": "public_id",
+          "type": "varchar(32)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": true,
+          "length": 32,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "string"
         }
       },
       "name": "orders",
@@ -6663,6 +6731,16 @@
           "keyName": "orders_pkey",
           "unique": true,
           "primary": true
+        },
+        {
+          "columnNames": [
+            "public_id"
+          ],
+          "composite": false,
+          "constraint": true,
+          "keyName": "orders_public_id_unique",
+          "unique": true,
+          "primary": false
         },
         {
           "columnNames": [
@@ -8682,6 +8760,22 @@
           "comment": null,
           "enumItems": [],
           "mappedType": "datetime"
+        },
+        "public_id": {
+          "name": "public_id",
+          "type": "varchar(32)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": true,
+          "length": 32,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "string"
         }
       },
       "name": "product_imports",
@@ -8696,6 +8790,16 @@
           "keyName": "product_imports_pkey",
           "unique": true,
           "primary": true
+        },
+        {
+          "columnNames": [
+            "public_id"
+          ],
+          "composite": false,
+          "constraint": true,
+          "keyName": "product_imports_public_id_unique",
+          "unique": true,
+          "primary": false
         },
         {
           "columnNames": [
@@ -11401,13 +11505,13 @@
         },
         "public_id": {
           "name": "public_id",
-          "type": "varchar(12)",
+          "type": "varchar(32)",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
           "unique": true,
-          "length": 12,
+          "length": 32,
           "precision": null,
           "scale": null,
           "default": null,
@@ -12539,6 +12643,22 @@
           "comment": null,
           "enumItems": [],
           "mappedType": "datetime"
+        },
+        "public_id": {
+          "name": "public_id",
+          "type": "varchar(32)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": true,
+          "length": 32,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "string"
         }
       },
       "name": "promotions",
@@ -12553,6 +12673,16 @@
           "keyName": "promotions_pkey",
           "unique": true,
           "primary": true
+        },
+        {
+          "columnNames": [
+            "public_id"
+          ],
+          "composite": false,
+          "constraint": true,
+          "keyName": "promotions_public_id_unique",
+          "unique": true,
+          "primary": false
         },
         {
           "columnNames": [
@@ -13496,6 +13626,22 @@
           "comment": null,
           "enumItems": [],
           "mappedType": "datetime"
+        },
+        "public_id": {
+          "name": "public_id",
+          "type": "varchar(32)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": true,
+          "length": 32,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "string"
         }
       },
       "name": "shipments",
@@ -13530,6 +13676,16 @@
           "keyName": "shipments_pkey",
           "unique": true,
           "primary": true
+        },
+        {
+          "columnNames": [
+            "public_id"
+          ],
+          "composite": false,
+          "constraint": true,
+          "keyName": "shipments_public_id_unique",
+          "unique": true,
+          "primary": false
         }
       ],
       "checks": [],
@@ -14174,13 +14330,13 @@
         },
         "public_id": {
           "name": "public_id",
-          "type": "varchar(12)",
+          "type": "varchar(32)",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
           "unique": true,
-          "length": 12,
+          "length": 32,
           "precision": null,
           "scale": null,
           "default": null,

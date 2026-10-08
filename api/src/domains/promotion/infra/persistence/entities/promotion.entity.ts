@@ -6,8 +6,10 @@ import {
   ManyToOne,
   OneToMany,
   Property,
+  Unique,
 } from '@mikro-orm/core';
 import { AbstractBaseEntity } from '~/platform/database/abstract-base.entity';
+import { createPublicId } from '~/platform/ids/public-id';
 import { ShopEntity } from '~/domains/shop/infra/persistence/entities/shop.entity';
 import { PromotionApplicationKind } from '../../../domain/enums/promotion-application-kind.enum';
 import { PromotionBenefitType } from '../../../domain/enums/promotion-benefit-type.enum';
@@ -20,6 +22,10 @@ import { PromotionProductEntity } from './promotion-product.entity';
 @Index({ properties: ['shop'] })
 @Index({ properties: ['shop', 'applicationKind'] })
 export class PromotionEntity extends AbstractBaseEntity {
+  @Property({ fieldName: 'public_id', length: 32 })
+  @Unique()
+  publicId: string = createPublicId('prm');
+
   @ManyToOne(() => ShopEntity, {
     fieldName: 'shop_id',
     deleteRule: 'cascade',

@@ -7,8 +7,10 @@ import {
   ManyToOne,
   OneToMany,
   Property,
+  Unique,
 } from '@mikro-orm/core';
 import { AbstractBaseEntity } from '~/platform/database/abstract-base.entity';
+import { createPublicId } from '~/platform/ids/public-id';
 import { ShipmentStatus } from '../../../domain/enums/shipment-status.enum';
 import { FulfillmentGroupEntity } from './fulfillment-group.entity';
 import { ShipmentItemEntity } from './shipment-item.entity';
@@ -18,6 +20,10 @@ import { ShipmentUpdateEntity } from './shipment-update.entity';
 @Index({ properties: ['group'] })
 @Index({ properties: ['orderId'] })
 export class ShipmentEntity extends AbstractBaseEntity {
+  @Property({ fieldName: 'public_id', length: 32 })
+  @Unique()
+  publicId: string = createPublicId('shp');
+
   @ManyToOne(() => FulfillmentGroupEntity, {
     fieldName: 'group_id',
     deleteRule: 'cascade',

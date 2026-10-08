@@ -2,6 +2,7 @@ import {
   ArrayType, Entity, Enum, Index, ManyToOne, Opt, Property, Unique,
 } from '@mikro-orm/core';
 import { AbstractBaseEntity } from '~/platform/database/abstract-base.entity';
+import { createPublicId } from '~/platform/ids/public-id';
 import { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
 import { ShopEntity } from '~/domains/shop/infra/persistence/entities/shop.entity';
 import { OrderShippingStatus } from '../../../domain/enums/order-shipping-status.enum';
@@ -13,6 +14,10 @@ import { PaymentType } from '../../../domain/enums/payment-type.enum';
 @Index({ properties: ['user'] })
 @Index({ properties: ['shop'] })
 export class OrderEntity extends AbstractBaseEntity {
+  @Property({ fieldName: 'public_id', length: 32 })
+  @Unique()
+  publicId: string = createPublicId('ord');
+
   @Property({ fieldName: 'order_number', length: 25, nullable: true })
   @Unique()
   orderNumber?: Opt<string>;
