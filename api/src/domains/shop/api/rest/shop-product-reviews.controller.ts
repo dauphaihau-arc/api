@@ -25,7 +25,10 @@ import { ProductLookupService } from '~/domains/product/app/services/product-loo
 import { ListShopProductReviewsQueryDto } from './dto/list-shop-product-reviews.query.dto';
 import { shopProductReviewsControllerErrorResponses } from './errors/shop-error-responses';
 import { toShopProductReviewListResponse } from './presenters/shop-product-review.presenter';
-import type { ShopProductReviewListResponse } from './responses/shop-product-review.response';
+import {
+  ShopProductReviewListResponseDto,
+  type ShopProductReviewListResponse,
+} from './responses/shop-product-review.response';
 
 @Controller('shops/:shop_id/reviews')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -47,7 +50,7 @@ export class ShopProductReviewsController {
   @ApiParam({ name: 'shop_id', type: String })
   @ApiOkResponse({
     description: 'Paginated shop review list.',
-    schema: { type: 'object' },
+    type: ShopProductReviewListResponseDto,
   })
   async list(
     @CurrentUser() currentUser: AuthenticatedUser,

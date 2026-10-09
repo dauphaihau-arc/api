@@ -37,6 +37,12 @@ import { ListChatConversationsQueryDto } from './dto/list-chat-conversations.que
 import { ListChatMessagesQueryDto } from './dto/list-chat-messages.query.dto';
 import { SendChatMessageDto } from './dto/send-chat-message.dto';
 import {
+  ChatConversationEnvelopeResponseDto,
+  ChatConversationListResponseDto,
+  ChatConversationResponseDto,
+  ChatMessageEnvelopeResponseDto,
+  ChatMessageListResponseDto,
+  ChatUnreadCountResponseDto,
   toChatConversationListResponse,
   toChatConversationResponse,
   toChatMessageListResponse,
@@ -70,7 +76,7 @@ export class MeChatController {
     summary: 'Create conversation',
     description: 'Creates or returns a chat conversation for the buyer and selected shop or product.',
   })
-  @ApiOkResponse({ description: 'Chat conversation.', schema: { type: 'object' } })
+  @ApiOkResponse({ description: 'Chat conversation.', type: ChatConversationResponseDto })
   async createOrGetConversation(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() body: CreateChatConversationDto,
@@ -92,7 +98,7 @@ export class MeChatController {
     summary: 'List conversations',
     description: 'Returns the signed-in buyer’s chat conversations.',
   })
-  @ApiOkResponse({ description: 'Chat conversation list.', schema: { type: 'object' } })
+  @ApiOkResponse({ description: 'Chat conversation list.', type: ChatConversationListResponseDto })
   async listConversations(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Query() query: ListChatConversationsQueryDto,
@@ -111,7 +117,7 @@ export class MeChatController {
     summary: 'Get unread count',
     description: 'Returns the signed-in buyer’s unread chat conversation count.',
   })
-  @ApiOkResponse({ description: 'Unread chat count.', schema: { type: 'object' } })
+  @ApiOkResponse({ description: 'Unread chat count.', type: ChatUnreadCountResponseDto })
   async unreadCount(@CurrentUser() currentUser: AuthenticatedUser) {
     return {
       unread_count: await this.getMyChatUnreadCountUseCase.execute(currentUser),
@@ -126,7 +132,7 @@ export class MeChatController {
     description: 'Returns messages in the specified buyer conversation.',
   })
   @ApiParam({ name: 'conversation_id', type: String })
-  @ApiOkResponse({ description: 'Chat message list.', schema: { type: 'object' } })
+  @ApiOkResponse({ description: 'Chat message list.', type: ChatMessageListResponseDto })
   async listMessages(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('conversation_id') conversationPublicId: string,
@@ -146,7 +152,7 @@ export class MeChatController {
     description: 'Marks the specified buyer conversation as read.',
   })
   @ApiParam({ name: 'conversation_id', type: String })
-  @ApiOkResponse({ description: 'Updated chat conversation.', schema: { type: 'object' } })
+  @ApiOkResponse({ description: 'Updated chat conversation.', type: ChatConversationEnvelopeResponseDto })
   async markConversationRead(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('conversation_id') conversationPublicId: string,
@@ -167,7 +173,7 @@ export class MeChatController {
     description: 'Sends a message in the specified buyer conversation.',
   })
   @ApiParam({ name: 'conversation_id', type: String })
-  @ApiOkResponse({ description: 'Created chat message.', schema: { type: 'object' } })
+  @ApiOkResponse({ description: 'Created chat message.', type: ChatMessageEnvelopeResponseDto })
   async sendMessage(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('conversation_id') conversationPublicId: string,

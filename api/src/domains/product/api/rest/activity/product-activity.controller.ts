@@ -2,7 +2,7 @@ import {
   Controller, Header, Param, Post, Req, Res, UseGuards, 
 } from '@nestjs/common';
 import {
-  ApiOkResponse, ApiOperation, ApiParam, ApiTags, 
+  ApiOkResponse, ApiOperation, ApiParam, ApiProperty, ApiTags,
 } from '@nestjs/swagger';
 import { OptionalJwtAuthGuard } from '~/domains/auth/api/guard/optional-jwt-auth.guard';
 import { ApiErrorResponses } from '~/platform/http/api-error-responses.decorator';
@@ -13,6 +13,11 @@ import { PublicProductViewHistoryService } from '../../../app/services/public-pr
 import { ProductActivitySessionService } from './product-activity-session.service';
 
 type ProductRequest = Request & { user?: AuthenticatedUser | null };
+
+class RecordProductViewResponseDto {
+  @ApiProperty({ enum: [true] })
+  ok!: true;
+}
 
 @Controller('products')
 @ApiTags('Product Activity')
@@ -31,7 +36,7 @@ export class ProductActivityController {
   @ApiParam({ name: 'product_slug', type: String })
   @ApiOkResponse({
     description: 'Recorded product view.',
-    schema: { type: 'object' },
+    type: RecordProductViewResponseDto,
   })
   async recordProductView(
     @Req() request: ProductRequest,

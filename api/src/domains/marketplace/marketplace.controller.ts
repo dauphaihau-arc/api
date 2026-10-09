@@ -1,12 +1,42 @@
 import { Controller, Get, Header } from '@nestjs/common';
-import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiOkResponse, ApiOperation, ApiProperty, ApiTags, 
+} from '@nestjs/swagger';
 import { SkipThrottle } from '@nestjs/throttler';
 import { ApiErrorResponses } from '~/platform/http/api-error-responses.decorator';
+import { marketplaceErrorResponses } from './marketplace-error-responses';
+
 import {
   MarketplaceService,
   type MarketplaceConfigResult,
 } from './marketplace.service';
-import { marketplaceErrorResponses } from './marketplace-error-responses';
+class MarketplaceMarketResponseDto {
+  @ApiProperty()
+  code!: string;
+
+  @ApiProperty()
+  name!: string;
+
+  @ApiProperty()
+  defaultCurrency!: string;
+
+  @ApiProperty({ type: [String] })
+  supportedCurrencies!: string[];
+
+  @ApiProperty()
+  defaultLocale!: string;
+
+  @ApiProperty({ type: [String] })
+  supportedLocales!: string[];
+
+  @ApiProperty()
+  enabled!: boolean;
+}
+
+class MarketplaceConfigResponseDto {
+  @ApiProperty({ type: [MarketplaceMarketResponseDto] })
+  markets!: MarketplaceMarketResponseDto[];
+}
 
 @Controller('marketplace')
 @SkipThrottle()
@@ -23,7 +53,7 @@ export class MarketplaceController {
   })
   @ApiOkResponse({
     description: 'Marketplace configuration.',
-    schema: { type: 'object' },
+    type: MarketplaceConfigResponseDto,
   })
   getConfig(): MarketplaceConfigResult {
     return this.marketplaceService.getConfig();

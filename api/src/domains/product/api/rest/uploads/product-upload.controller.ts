@@ -29,12 +29,10 @@ import { ShopProductAccessService } from '../../../app/services/shop-product-acc
 import { ConsumeProductImageUploadTicketUseCase } from '../../../app/use-cases/consume-product-image-upload-ticket/consume-product-image-upload-ticket.use-case';
 import { IssueProductImageUploadUrlUseCase } from '../../../app/use-cases/issue-product-image-upload-url/issue-product-image-upload-url.use-case';
 import { IssueProductImageUploadDto } from './dto/issue-product-image-upload.dto';
-
-interface UploadUrlResponse {
-  key: string;
-  presigned_url: string;
-  method: 'PUT';
-}
+import {
+  ProductImageUploadedAssetResponseDto,
+  ProductImageUploadUrlResponseDto,
+} from './responses/product-upload-response.dto';
 
 @Controller('shops/:shop_id/products/:product_id/image-uploads')
 @ApiTags('Product Uploads')
@@ -59,7 +57,7 @@ export class ProductUploadController {
   @ApiErrorResponses(productUploadControllerErrorResponses.issue)
   @ApiOkResponse({
     description: 'Issued upload URL.',
-    schema: { type: 'object' },
+    type: ProductImageUploadUrlResponseDto,
   })
   async issueUploadUrl(
     @Param('shop_id') shopPublicId: string,
@@ -67,7 +65,7 @@ export class ProductUploadController {
     @CurrentUser() currentUser: AuthenticatedUser,
     @Req() request: Request,
     @Body() body: IssueProductImageUploadDto,
-  ): Promise<UploadUrlResponse> {
+  ): Promise<ProductImageUploadUrlResponseDto> {
     const product = await this.shopProductAccessService.resolveManageableProduct(
       currentUser,
       shopPublicId,
@@ -99,7 +97,7 @@ export class ProductUploadController {
   @ApiErrorResponses(productUploadControllerErrorResponses.upload)
   @ApiOkResponse({
     description: 'Uploaded asset key.',
-    schema: { type: 'object' },
+    type: ProductImageUploadedAssetResponseDto,
   })
   async uploadByTicket(
     @Param('token') token: string,

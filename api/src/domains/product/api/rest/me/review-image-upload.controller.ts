@@ -28,12 +28,10 @@ import { PermissionsGuard } from '~/domains/auth/api/guard/permissions.guard';
 import { ConsumeReviewImageUploadTicketUseCase } from '../../../app/use-cases/consume-review-image-upload-ticket/consume-review-image-upload-ticket.use-case';
 import { IssueReviewImageUploadUrlUseCase } from '../../../app/use-cases/issue-review-image-upload-url/issue-review-image-upload-url.use-case';
 import { IssueReviewImageUploadDto } from './dto/issue-review-image-upload.dto';
-
-interface UploadUrlResponse {
-  key: string;
-  presigned_url: string;
-  method: 'PUT';
-}
+import {
+  ReviewImageUploadedAssetResponseDto,
+  ReviewImageUploadUrlResponseDto,
+} from './responses/review-image-upload-response.dto';
 
 @Controller('me/product-reviews/:order_item_id/image-uploads')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -53,14 +51,14 @@ export class ReviewImageUploadController {
   @ApiErrorResponses(reviewImageUploadControllerErrorResponses.issue)
   @ApiOkResponse({
     description: 'Issued upload URL.',
-    schema: { type: 'object' },
+    type: ReviewImageUploadUrlResponseDto,
   })
   async issueUploadUrl(
     @Param('order_item_id') orderItemId: string,
     @CurrentUser() currentUser: AuthenticatedUser,
     @Req() request: Request,
     @Body() body: IssueReviewImageUploadDto,
-  ): Promise<UploadUrlResponse> {
+  ): Promise<ReviewImageUploadUrlResponseDto> {
     const { token, key, presignedUrl } = await this.issueReviewImageUploadUrlUseCase.execute(
       currentUser,
       orderItemId,
@@ -84,7 +82,7 @@ export class ReviewImageUploadController {
   @ApiErrorResponses(reviewImageUploadControllerErrorResponses.upload)
   @ApiOkResponse({
     description: 'Uploaded asset key.',
-    schema: { type: 'object' },
+    type: ReviewImageUploadedAssetResponseDto,
   })
   async uploadByTicket(
     @Param('token') token: string,

@@ -31,6 +31,7 @@ import {
 import { UpsertMyProductReviewUseCase } from '../../../app/use-cases/upsert-my-product-review/upsert-my-product-review.use-case';
 import { UpsertMyProductReviewDto } from './dto/upsert-my-product-review.dto';
 import { toMyProductReviewResponse } from './responses/me-product-review.response';
+import { MyProductReviewResponseDto } from './responses/me-product-review-response.dto';
 
 @Controller('me/product-reviews')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -51,7 +52,7 @@ export class MeProductReviewController {
   @ApiErrorResponses(meProductReviewControllerErrorResponses.upsert)
   @ApiOkResponse({
     description: 'Created or updated product review.',
-    schema: { type: 'object' },
+    type: MyProductReviewResponseDto,
   })
   async upsert(
     @CurrentUser() currentUser: AuthenticatedUser,

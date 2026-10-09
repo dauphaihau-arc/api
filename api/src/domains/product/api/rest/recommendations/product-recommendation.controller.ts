@@ -21,6 +21,10 @@ import { toPublicProductRecommendationSectionsResponse } from './presenters/publ
 import type { PublicProductRecommendationSectionsResponse } from './responses/public-product-recommendation-sections.response';
 import { toPublicProductRecommendationsResponse } from './presenters/public-product-recommendations.presenter';
 import type { PublicProductRecommendationsResponse } from './responses/public-product-recommendations.response';
+import {
+  PublicProductRecommendationsResponseDto,
+  PublicProductRecommendationSectionsResponseDto,
+} from './responses/public-product-recommendation-response.dto';
 
 type ProductRequest = Request & { user?: AuthenticatedUser | null };
 const STOREFRONT_CACHE_VARY_HEADER = 'x-market-code, x-currency, x-locale, x-channel';
@@ -57,7 +61,7 @@ export class ProductRecommendationController {
   })
   @ApiOkResponse({
     description: 'Recently viewed public products.',
-    schema: { type: 'object' },
+    type: PublicProductRecommendationsResponseDto,
   })
   async listRecentlyViewedProducts(
     @Req() request: ProductRequest,
@@ -80,7 +84,7 @@ export class ProductRecommendationController {
   })
   @ApiOkResponse({
     description: 'Trending public products.',
-    schema: { type: 'object' },
+    type: PublicProductRecommendationsResponseDto,
   })
   async listTrendingProducts(
     @Req() request: ProductRequest,
@@ -108,7 +112,7 @@ export class ProductRecommendationController {
   })
   @ApiOkResponse({
     description: 'Best-selling public products.',
-    schema: { type: 'object' },
+    type: PublicProductRecommendationsResponseDto,
   })
   async listBestSellingProducts(
     @Req() request: ProductRequest,
@@ -138,7 +142,7 @@ export class ProductRecommendationController {
   @ApiParam({ name: 'product_slug', type: String })
   @ApiOkResponse({
     description: 'Recommended public products.',
-    schema: { type: 'object' },
+    type: PublicProductRecommendationsResponseDto,
   })
   async recommendProducts(
     @Req() request: ProductRequest,
@@ -176,7 +180,7 @@ export class ProductRecommendationController {
   @ApiParam({ name: 'product_slug', type: String })
   @ApiOkResponse({
     description: 'Product recommendation sections.',
-    schema: { type: 'object' },
+    type: PublicProductRecommendationSectionsResponseDto,
   })
   async getRecommendationSections(
     @Req() request: ProductRequest,

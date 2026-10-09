@@ -25,7 +25,7 @@ import { UpdateShopSettingsDto } from './dto/update-shop-settings.dto';
 import { mapShopAppErrorToHttpException } from './errors/shop-http-error-mapper';
 import { ShopExceptionsFilter } from './errors/shop-exceptions.filter';
 import { shopControllerErrorResponses } from './errors/shop-error-responses';
-import { toShopResponse } from './responses/shop.response';
+import { ShopResponseDto, toShopResponse } from './responses/shop.response';
 
 @Controller('shops')
 @UseFilters(ShopExceptionsFilter)
@@ -48,7 +48,7 @@ export class ShopController {
   @ApiErrorResponses(shopControllerErrorResponses.create)
   @ApiOkResponse({
     description: 'Created shop.',
-    schema: { type: 'object' },
+    type: ShopResponseDto,
   })
   async createShop(
     @CurrentUser() currentUser: AuthenticatedUser,
@@ -71,7 +71,7 @@ export class ShopController {
   @ApiErrorResponses(shopControllerErrorResponses.me)
   @ApiOkResponse({
     description: 'Current user shop.',
-    schema: { type: 'object' },
+    type: ShopResponseDto,
   })
   @ApiNotFoundResponse({ description: 'Shop was not found.' })
   async myShop(
@@ -97,7 +97,7 @@ export class ShopController {
   @ApiParam({ name: 'shop_id', type: String })
   @ApiOkResponse({
     description: 'Updated shop.',
-    schema: { type: 'object' },
+    type: ShopResponseDto,
   })
   @ApiNotFoundResponse({ description: 'Shop was not found.' })
   async updateSettings(

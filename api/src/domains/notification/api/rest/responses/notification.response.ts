@@ -1,7 +1,111 @@
+import { ApiProperty } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import type {
   NotificationListResult,
   NotificationSummary,
 } from '../../../app/notification.types';
+
+export class NotificationResponseDto {
+  @ApiProperty()
+  id!: string;
+
+  @ApiProperty()
+  user!: string;
+
+  @ApiProperty()
+  type!: string;
+
+  @ApiProperty()
+  channel!: string;
+
+  @ApiProperty()
+  title!: string;
+
+  @ApiProperty()
+  body!: string;
+
+  @ApiProperty({ type: Object, nullable: true })
+  data!: Record<string, unknown> | null;
+
+  @ApiProperty({ type: String, format: 'date-time', nullable: true })
+  read_at!: Date | null;
+
+  @ApiProperty({ type: String, format: 'date-time' })
+  created_at!: Date;
+
+  @ApiProperty({ type: String, format: 'date-time' })
+  updated_at!: Date;
+}
+
+export class NotificationListResponseDto {
+  @ApiProperty({ type: [NotificationResponseDto] })
+  @Type(() => NotificationResponseDto)
+  results!: NotificationResponseDto[];
+
+  @ApiProperty()
+  page!: number;
+
+  @ApiProperty()
+  limit!: number;
+
+  @ApiProperty()
+  total_pages!: number;
+
+  @ApiProperty()
+  total_results!: number;
+}
+
+export class NotificationEnvelopeResponseDto {
+  @ApiProperty({ type: NotificationResponseDto })
+  @Type(() => NotificationResponseDto)
+  notification!: NotificationResponseDto;
+}
+
+export class NotificationUnreadCountResponseDto {
+  @ApiProperty()
+  unread_count!: number;
+}
+
+export class MarkAllNotificationsReadResponseDto {
+  @ApiProperty()
+  updated_count!: number;
+}
+
+export class WebPushPublicKeyResponseDto {
+  @ApiProperty()
+  enabled!: boolean;
+
+  @ApiProperty({ type: String, nullable: true })
+  public_key!: string | null;
+}
+
+export class WebPushSubscriptionResponseDto {
+  @ApiProperty()
+  id!: string;
+
+  @ApiProperty()
+  endpoint!: string;
+
+  @ApiProperty()
+  is_active!: boolean;
+
+  @ApiProperty({ type: String, format: 'date-time' })
+  created_at!: Date;
+
+  @ApiProperty({ type: String, format: 'date-time' })
+  updated_at!: Date;
+}
+
+export class WebPushSubscriptionEnvelopeResponseDto {
+  @ApiProperty({ type: WebPushSubscriptionResponseDto })
+  @Type(() => WebPushSubscriptionResponseDto)
+  subscription!: WebPushSubscriptionResponseDto;
+}
+
+export class WebPushSubscriptionRemovalResponseDto {
+  @ApiProperty()
+  removed!: boolean;
+}
 
 function toSnakeCaseKey(value: string): string {
   return value.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);

@@ -50,10 +50,13 @@ import {
   toShippingProfileResponse,
   toShippingRatePreviewResponse,
 } from './presenters/shipping-profile.presenter';
-import type {
-  ShippingProfileListResponse,
-  ShippingProfileResponse,
-  ShippingRatePreviewResponse,
+import {
+  ShippingProfileListResponseDto,
+  ShippingProfileResponseDto,
+  ShippingRatePreviewResponseDto,
+  type ShippingProfileListResponse,
+  type ShippingProfileResponse,
+  type ShippingRatePreviewResponse,
 } from './responses/shipping-profile.response';
 
 @Controller('shops/:shop_id/shipping-profiles')
@@ -83,7 +86,7 @@ export class ShopShippingProfilesController {
   })
   @ApiErrorResponses(shopShippingProfilesControllerErrorResponses.list)
   @ApiParam({ name: 'shop_id', type: String })
-  @ApiOkResponse({ description: 'Shop shipping profiles.', schema: { type: 'object' } })
+  @ApiOkResponse({ description: 'Shop shipping profiles.', type: ShippingProfileListResponseDto })
   async profiles(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('shop_id') shopPublicId: string,
@@ -114,7 +117,7 @@ export class ShopShippingProfilesController {
     description: 'Creates a reusable shipping profile for the shop.',
   })
   @ApiParam({ name: 'shop_id', type: String })
-  @ApiCreatedResponse({ description: 'Created shipping profile.', schema: { type: 'object' } })
+  @ApiCreatedResponse({ description: 'Created shipping profile.', type: ShippingProfileResponseDto })
   @ApiErrorResponses(shopShippingProfilesControllerErrorResponses.create)
   async create(
     @CurrentUser() currentUser: AuthenticatedUser,
@@ -148,7 +151,7 @@ export class ShopShippingProfilesController {
   })
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'shipping_profile_id', type: String })
-  @ApiOkResponse({ description: 'Shipping profile.', schema: { type: 'object' } })
+  @ApiOkResponse({ description: 'Shipping profile.', type: ShippingProfileResponseDto })
   @ApiErrorResponses(shopShippingProfilesControllerErrorResponses.detail)
   async profile(
     @CurrentUser() currentUser: AuthenticatedUser,
@@ -176,7 +179,7 @@ export class ShopShippingProfilesController {
   })
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'shipping_profile_id', type: String })
-  @ApiOkResponse({ description: 'Updated shipping profile.', schema: { type: 'object' } })
+  @ApiOkResponse({ description: 'Updated shipping profile.', type: ShippingProfileResponseDto })
   @ApiErrorResponses(shopShippingProfilesControllerErrorResponses.update)
   async update(
     @CurrentUser() currentUser: AuthenticatedUser,
@@ -212,7 +215,7 @@ export class ShopShippingProfilesController {
   @ApiOperation({ summary: 'Archive a shipping profile' })
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'shipping_profile_id', type: String })
-  @ApiOkResponse({ description: 'Archived shipping profile.', schema: { type: 'object' } })
+  @ApiOkResponse({ description: 'Archived shipping profile.', type: ShippingProfileResponseDto })
   @ApiErrorResponses(shopShippingProfilesControllerErrorResponses.archive)
   async archive(
     @CurrentUser() currentUser: AuthenticatedUser,
@@ -239,7 +242,7 @@ export class ShopShippingProfilesController {
   })
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'shipping_profile_id', type: String })
-  @ApiOkResponse({ description: 'Designated shipping profile.', schema: { type: 'object' } })
+  @ApiOkResponse({ description: 'Designated shipping profile.', type: ShippingProfileResponseDto })
   @ApiErrorResponses(shopShippingProfilesControllerErrorResponses.setDefault)
   async setDefault(
     @CurrentUser() currentUser: AuthenticatedUser,
@@ -266,7 +269,7 @@ export class ShopShippingProfilesController {
   })
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'shipping_profile_id', type: String })
-  @ApiOkResponse({ description: 'Shipping profile with no default designation.', schema: { type: 'object' } })
+  @ApiOkResponse({ description: 'Shipping profile with no default designation.', type: ShippingProfileResponseDto })
   @ApiErrorResponses(shopShippingProfilesControllerErrorResponses.clearDefault)
   async clearDefault(
     @CurrentUser() currentUser: AuthenticatedUser,
@@ -293,7 +296,7 @@ export class ShopShippingProfilesController {
   })
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'shipping_profile_id', type: String })
-  @ApiOkResponse({ description: 'Shipping rate preview.', schema: { type: 'object' } })
+  @ApiOkResponse({ description: 'Shipping rate preview.', type: ShippingRatePreviewResponseDto })
   @ApiErrorResponses(shopShippingProfilesControllerErrorResponses.preview)
   async preview(
     @CurrentUser() currentUser: AuthenticatedUser,

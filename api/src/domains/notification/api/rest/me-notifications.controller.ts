@@ -39,8 +39,15 @@ import { ListMyNotificationsQueryDto } from './dto/list-my-notifications.query.d
 import { RegisterWebPushSubscriptionDto } from './dto/register-web-push-subscription.dto';
 import { UnregisterWebPushSubscriptionDto } from './dto/unregister-web-push-subscription.dto';
 import {
+  MarkAllNotificationsReadResponseDto,
+  NotificationEnvelopeResponseDto,
+  NotificationListResponseDto,
+  NotificationUnreadCountResponseDto,
   toNotificationListResponse,
   toNotificationResponse,
+  WebPushPublicKeyResponseDto,
+  WebPushSubscriptionEnvelopeResponseDto,
+  WebPushSubscriptionRemovalResponseDto,
 } from './responses/notification.response';
 import { ApiErrorResponses } from '~/platform/http/api-error-responses.decorator';
 import { meNotificationsErrorResponses } from './errors/me-notifications-error-responses';
@@ -71,7 +78,7 @@ export class MeNotificationsController {
   })
   @ApiOkResponse({
     description: 'Paginated notification list.',
-    schema: { type: 'object' },
+    type: NotificationListResponseDto,
   })
   async list(
     @CurrentUser() currentUser: AuthenticatedUser,
@@ -96,7 +103,7 @@ export class MeNotificationsController {
   })
   @ApiOkResponse({
     description: 'Unread notification count.',
-    schema: { type: 'object' },
+    type: NotificationUnreadCountResponseDto,
   })
   async unreadCount(@CurrentUser() currentUser: AuthenticatedUser) {
     return {
@@ -116,7 +123,7 @@ export class MeNotificationsController {
   @ApiParam({ name: 'id', type: String })
   @ApiOkResponse({
     description: 'Updated notification.',
-    schema: { type: 'object' },
+    type: NotificationEnvelopeResponseDto,
   })
   async markAsRead(
     @CurrentUser() currentUser: AuthenticatedUser,
@@ -137,7 +144,7 @@ export class MeNotificationsController {
   })
   @ApiOkResponse({
     description: 'Bulk read result.',
-    schema: { type: 'object' },
+    type: MarkAllNotificationsReadResponseDto,
   })
   async markAllAsRead(@CurrentUser() currentUser: AuthenticatedUser) {
     const result = await this.markAllMyNotificationsAsReadUseCase.execute(
@@ -157,7 +164,7 @@ export class MeNotificationsController {
   })
   @ApiOkResponse({
     description: 'Web push public key configuration.',
-    schema: { type: 'object' },
+    type: WebPushPublicKeyResponseDto,
   })
   getWebPushPublicKey() {
     return {
@@ -175,7 +182,7 @@ export class MeNotificationsController {
   })
   @ApiOkResponse({
     description: 'Registered web push subscription.',
-    schema: { type: 'object' },
+    type: WebPushSubscriptionEnvelopeResponseDto,
   })
   async registerWebPushSubscription(
     @CurrentUser() currentUser: AuthenticatedUser,
@@ -212,7 +219,7 @@ export class MeNotificationsController {
   })
   @ApiOkResponse({
     description: 'Removal result.',
-    schema: { type: 'object' },
+    type: WebPushSubscriptionRemovalResponseDto,
   })
   async unregisterWebPushSubscription(
     @CurrentUser() currentUser: AuthenticatedUser,

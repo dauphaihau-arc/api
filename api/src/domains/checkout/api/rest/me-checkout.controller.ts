@@ -23,6 +23,9 @@ import { JwtAuthGuard } from '~/domains/auth/api/guard/jwt-auth.guard';
 import { PermissionsGuard } from '~/domains/auth/api/guard/permissions.guard';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import {
+  CheckoutQuoteResponseDto,
+  CheckoutSessionOrderResponseDto,
+  CreateOrderResponseDto,
   toCheckoutQuoteResponse,
   toCheckoutSessionOrderResponse,
   toCreateOrderResponse,
@@ -67,7 +70,7 @@ export class MeCheckoutController {
   })
   @ApiOkResponse({
     description: 'Checkout quote.',
-    schema: { type: 'object' },
+    type: CheckoutQuoteResponseDto,
   })
   @ApiErrorResponses(meCheckoutControllerErrorResponses.createQuoteFromCart)
   async createQuoteFromCart(
@@ -90,7 +93,7 @@ export class MeCheckoutController {
   })
   @ApiOkResponse({
     description: 'Checkout quote.',
-    schema: { type: 'object' },
+    type: CheckoutQuoteResponseDto,
   })
   @ApiErrorResponses(meCheckoutControllerErrorResponses.createQuoteForBuyNow)
   async createQuoteForBuyNow(
@@ -110,7 +113,7 @@ export class MeCheckoutController {
   })
   @ApiOkResponse({
     description: 'Created order.',
-    schema: { type: 'object' },
+    type: CreateOrderResponseDto,
   })
   @ApiErrorResponses(meCheckoutControllerErrorResponses.createFromCart)
   async createFromCart(
@@ -129,7 +132,7 @@ export class MeCheckoutController {
   })
   @ApiOkResponse({
     description: 'Created order.',
-    schema: { type: 'object' },
+    type: CreateOrderResponseDto,
   })
   @ApiErrorResponses(meCheckoutControllerErrorResponses.createForBuyNow)
   async createForBuyNow(
@@ -149,7 +152,7 @@ export class MeCheckoutController {
   @ApiQuery({ name: 'order_ids', required: true, type: String })
   @ApiOkResponse({
     description: 'Checkout session readiness.',
-    schema: { type: 'object' },
+    type: CreateOrderResponseDto,
   })
   @ApiErrorResponses(meCheckoutControllerErrorResponses.getCheckoutSessionReadiness)
   async getCheckoutSessionReadiness(
@@ -177,7 +180,7 @@ export class MeCheckoutController {
   @ApiQuery({ name: 'session_id', required: false, type: String })
   @ApiOkResponse({
     description: 'Checkout session orders.',
-    schema: { type: 'object' },
+    type: CheckoutSessionOrderResponseDto,
   })
   @ApiErrorResponses(meCheckoutControllerErrorResponses.getByCheckoutSession)
   async getByCheckoutSession(@Query('session_id') sessionId?: string) {

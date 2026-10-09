@@ -73,9 +73,16 @@ import { AssignProductShippingProfileDto } from '~/domains/shop/api/rest/dto/ass
 import { UpdateProductDto } from '~/domains/shop/api/rest/dto/update-product.dto';
 import { mapProductAppErrorToHttpException } from '~/domains/shop/api/rest/errors/product-http-error-mapper';
 import { toShopProductDetailResponse } from './presenters/shop-product-detail.presenter';
-import type { ShopProductDetailResponse } from './responses/shop-product-detail.response';
+import {
+  ShopProductDetailResponseDto,
+  type ShopProductDetailResponse,
+} from './responses/shop-product-detail.response';
 import { toShopProductListResponse } from './presenters/shop-product-list.presenter';
-import type { ShopProductListResponse } from './responses/shop-product-list.response';
+import {
+  ShopProductListResponseDto,
+  type ShopProductListResponse,
+} from './responses/shop-product-list.response';
+import { ShopProductBulkMutateResponseDto } from './responses/shop-bulk.response';
 
 const shopProductRouteRateLimits = {
   generateDescription: {
@@ -118,7 +125,7 @@ export class ShopProductsController {
   @ApiParam({ name: 'shop_id', type: String })
   @ApiOkResponse({
     description: 'Paginated shop product list.',
-    schema: { type: 'object' },
+    type: ShopProductListResponseDto,
   })
   @ApiErrorResponses(shopProductsControllerErrorResponses.list)
   async products(
@@ -150,7 +157,7 @@ export class ShopProductsController {
   @ApiParam({ name: 'id', type: String })
   @ApiOkResponse({
     description: 'Shop product detail.',
-    schema: { type: 'object' },
+    type: ShopProductDetailResponseDto,
   })
   @ApiErrorResponses(shopProductsControllerErrorResponses.detail)
   async product(
@@ -176,7 +183,7 @@ export class ShopProductsController {
   @ApiParam({ name: 'shop_id', type: String })
   @ApiOkResponse({
     description: 'Created product draft.',
-    schema: { type: 'object' },
+    type: ShopProductDetailResponseDto,
   })
   @ApiErrorResponses(shopProductsControllerErrorResponses.createDraft)
   async createProductDraft(
@@ -210,7 +217,7 @@ export class ShopProductsController {
   @ApiParam({ name: 'shop_id', type: String })
   @ApiOkResponse({
     description: 'Created product draft.',
-    schema: { type: 'object' },
+    type: ShopProductDetailResponseDto,
   })
   @ApiErrorResponses(shopProductsControllerErrorResponses.createDraftFacade)
   async createProductDraftFacade(
@@ -268,7 +275,7 @@ export class ShopProductsController {
   @ApiParam({ name: 'shop_id', type: String })
   @ApiOkResponse({
     description: 'Bulk mutation result.',
-    schema: { type: 'object' },
+    type: ShopProductBulkMutateResponseDto,
   })
   @ApiErrorResponses(shopProductsControllerErrorResponses.bulkMutate)
   async bulkMutateProducts(
@@ -304,7 +311,7 @@ export class ShopProductsController {
   })
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'id', type: String })
-  @ApiOkResponse({ description: 'Product details updated.', schema: { type: 'object' } })
+  @ApiOkResponse({ description: 'Product details updated.', type: ShopProductDetailResponseDto })
   @ApiErrorResponses(shopProductsControllerErrorResponses.updateDetails)
   async updateProductDetails(
     @Param('shop_id') shopPublicId: string,
@@ -337,7 +344,7 @@ export class ShopProductsController {
   @ApiParam({ name: 'id', type: String })
   @ApiOkResponse({
     description: 'Published product draft.',
-    schema: { type: 'object' },
+    type: ShopProductDetailResponseDto,
   })
   @ApiErrorResponses(shopProductsControllerErrorResponses.publish)
   async publishProduct(
@@ -401,7 +408,7 @@ export class ShopProductsController {
   })
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'id', type: String })
-  @ApiOkResponse({ description: 'Product images updated.', schema: { type: 'object' } })
+  @ApiOkResponse({ description: 'Product images updated.', type: ShopProductDetailResponseDto })
   @ApiErrorResponses(shopProductsControllerErrorResponses.setImagesByKeys)
   async setProductImagesByKeys(
     @Param('shop_id') shopPublicId: string,
@@ -432,7 +439,7 @@ export class ShopProductsController {
   })
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'id', type: String })
-  @ApiOkResponse({ description: 'Product attributes updated.', schema: { type: 'object' } })
+  @ApiOkResponse({ description: 'Product attributes updated.', type: ShopProductDetailResponseDto })
   @ApiErrorResponses(shopProductsControllerErrorResponses.setAttributes)
   async setProductAttributes(
     @Param('shop_id') shopPublicId: string,
@@ -463,7 +470,7 @@ export class ShopProductsController {
   })
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'product_id', type: String })
-  @ApiOkResponse({ description: 'Product Variant configuration updated.', schema: { type: 'object' } })
+  @ApiOkResponse({ description: 'Product Variant configuration updated.', type: ShopProductDetailResponseDto })
   @ApiErrorResponses(shopProductsControllerErrorResponses.configureVariants)
   async configureProductVariantConfiguration(
     @Param('shop_id') shopPublicId: string,

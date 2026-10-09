@@ -29,6 +29,8 @@ import { RequestOrderCancelDto } from './dto/request-order-cancel.dto';
 import { RequestOrderSupportDto } from './dto/request-order-support.dto';
 import { ListMyOrdersQueryDto } from './dto/list-my-orders.query.dto';
 import {
+  MyOrderDetailResponseDto,
+  OrderListResponseDto,
   toMyOrderDetailResponse,
   toOrderListResponse,
 } from './responses/order.response';
@@ -54,7 +56,7 @@ export class MeOrderController {
   @ApiOperation({ summary: 'List my orders' })
   @ApiOkResponse({
     description: 'Paginated order list.',
-    schema: { type: 'object' },
+    type: OrderListResponseDto,
   })
   @ApiErrorResponses(meOrderControllerErrorResponses.list)
   async list(
@@ -71,7 +73,7 @@ export class MeOrderController {
   @ApiParam({ name: 'order_id', type: String })
   @ApiOkResponse({
     description: 'Order detail.',
-    schema: { type: 'object' },
+    type: MyOrderDetailResponseDto,
   })
   @ApiErrorResponses(meOrderControllerErrorResponses.detail)
   async detail(
@@ -89,7 +91,7 @@ export class MeOrderController {
   @ApiParam({ name: 'order_id', type: String })
   @ApiOkResponse({
     description: 'Updated order detail.',
-    schema: { type: 'object' },
+    type: MyOrderDetailResponseDto,
   })
   @ApiErrorResponses(meOrderControllerErrorResponses.requestCancel)
   async requestCancel(
@@ -108,7 +110,7 @@ export class MeOrderController {
   @ApiParam({ name: 'order_id', type: String })
   @ApiOkResponse({
     description: 'Updated order detail.',
-    schema: { type: 'object' },
+    type: MyOrderDetailResponseDto,
   })
   @ApiErrorResponses(meOrderControllerErrorResponses.requestSupport)
   async requestSupport(

@@ -28,6 +28,11 @@ import type {
   CategoryResponse,
   CategorySuggestionResponse,
 } from './responses/category.response';
+import {
+  CategoryAttributeListResponseDto,
+  CategoryResponseDto,
+  CategorySuggestionListResponseDto,
+} from './responses/category-response.dto';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { ListCategoriesQueryDto } from './dto/list-categories.query.dto';
 import { SuggestCategoriesQueryDto } from './dto/suggest-categories.query.dto';
@@ -53,7 +58,7 @@ export class CategoryController {
   @ApiOperation({ summary: 'Suggest categories by name' })
   @ApiOkResponse({
     description: 'Matching category suggestions.',
-    schema: { type: 'object' },
+    type: CategorySuggestionListResponseDto,
   })
   async suggestCategories(
     @Query() query: SuggestCategoriesQueryDto,
@@ -72,7 +77,8 @@ export class CategoryController {
   @ApiOperation({ summary: 'List categories' })
   @ApiOkResponse({
     description: 'Category list.',
-    schema: { type: 'array', items: { type: 'object' } },
+    type: CategoryResponseDto,
+    isArray: true,
   })
   categories(
     @Query() query: ListCategoriesQueryDto,
@@ -89,7 +95,7 @@ export class CategoryController {
   @ApiParam({ name: 'id', type: String })
   @ApiOkResponse({
     description: 'Category attributes.',
-    schema: { type: 'object' },
+    type: CategoryAttributeListResponseDto,
   })
   getCategoryAttributes(
     @Param('id') id: string,
@@ -111,7 +117,7 @@ export class CategoryController {
   @ApiOperation({ summary: 'Create a category' })
   @ApiOkResponse({
     description: 'Created category.',
-    schema: { type: 'object' },
+    type: CategoryResponseDto,
   })
   createCategory(@Body() body: CreateCategoryDto): Promise<CategoryResponse> {
     return this.createCategoryUseCase.execute(body)
@@ -130,7 +136,7 @@ export class CategoryController {
   @ApiParam({ name: 'id', type: String })
   @ApiOkResponse({
     description: 'Updated category.',
-    schema: { type: 'object' },
+    type: CategoryResponseDto,
   })
   createCategoryAttribute(
     @Param('id') id: string,

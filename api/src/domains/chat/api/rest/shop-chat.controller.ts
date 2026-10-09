@@ -36,6 +36,11 @@ import { ListChatConversationsQueryDto } from './dto/list-chat-conversations.que
 import { ListChatMessagesQueryDto } from './dto/list-chat-messages.query.dto';
 import { SendChatMessageDto } from './dto/send-chat-message.dto';
 import {
+  ChatConversationEnvelopeResponseDto,
+  ChatConversationListResponseDto,
+  ChatMessageEnvelopeResponseDto,
+  ChatMessageListResponseDto,
+  ChatUnreadCountResponseDto,
   toChatConversationListResponse,
   toChatConversationResponse,
   toChatMessageListResponse,
@@ -70,7 +75,7 @@ export class ShopChatController {
     description: 'Returns conversations for the specified shop.',
   })
   @ApiParam({ name: 'shop_id', type: String })
-  @ApiOkResponse({ description: 'Chat conversation list.', schema: { type: 'object' } })
+  @ApiOkResponse({ description: 'Chat conversation list.', type: ChatConversationListResponseDto })
   async listConversations(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('shop_id') shopPublicId: string,
@@ -94,7 +99,7 @@ export class ShopChatController {
     description: 'Returns the unread chat conversation count for the shop.',
   })
   @ApiParam({ name: 'shop_id', type: String })
-  @ApiOkResponse({ description: 'Unread chat count.', schema: { type: 'object' } })
+  @ApiOkResponse({ description: 'Unread chat count.', type: ChatUnreadCountResponseDto })
   async unreadCount(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('shop_id') shopPublicId: string,
@@ -115,7 +120,7 @@ export class ShopChatController {
   })
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'conversation_id', type: String })
-  @ApiOkResponse({ description: 'Chat message list.', schema: { type: 'object' } })
+  @ApiOkResponse({ description: 'Chat message list.', type: ChatMessageListResponseDto })
   async listMessages(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('shop_id') shopPublicId: string,
@@ -145,7 +150,7 @@ export class ShopChatController {
   })
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'conversation_id', type: String })
-  @ApiOkResponse({ description: 'Updated chat conversation.', schema: { type: 'object' } })
+  @ApiOkResponse({ description: 'Updated chat conversation.', type: ChatConversationEnvelopeResponseDto })
   async markConversationRead(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('shop_id') shopPublicId: string,
@@ -172,7 +177,7 @@ export class ShopChatController {
   })
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'conversation_id', type: String })
-  @ApiOkResponse({ description: 'Created chat message.', schema: { type: 'object' } })
+  @ApiOkResponse({ description: 'Created chat message.', type: ChatMessageEnvelopeResponseDto })
   async sendMessage(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('shop_id') shopPublicId: string,

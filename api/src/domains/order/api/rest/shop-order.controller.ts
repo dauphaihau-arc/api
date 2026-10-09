@@ -33,6 +33,8 @@ import { ListShopOrdersQueryDto } from './dto/list-shop-orders.query.dto';
 import { UpdateShopOrderRefundDto } from './dto/update-shop-order-refund.dto';
 import { UpdateShopOrderStatusDto } from './dto/update-shop-order-status.dto';
 import {
+  ShopOrderDetailResponseDto,
+  ShopOrderListResponseDto,
   toShopOrderDetailResponse,
   toShopOrderListResponse,
 } from './responses/order.response';
@@ -61,7 +63,7 @@ export class ShopOrderController {
   @ApiParam({ name: 'shop_id', type: String })
   @ApiOkResponse({
     description: 'Paginated shop order list.',
-    schema: { type: 'object' },
+    type: ShopOrderListResponseDto,
   })
   @ApiErrorResponses(shopOrderControllerErrorResponses.list)
   async list(
@@ -83,7 +85,7 @@ export class ShopOrderController {
   @ApiParam({ name: 'order_id', type: String })
   @ApiOkResponse({
     description: 'Shop order detail.',
-    schema: { type: 'object' },
+    type: ShopOrderDetailResponseDto,
   })
   @ApiErrorResponses(shopOrderControllerErrorResponses.detail)
   async detail(
@@ -106,7 +108,7 @@ export class ShopOrderController {
   @ApiParam({ name: 'order_id', type: String })
   @ApiOkResponse({
     description: 'Updated shop order detail.',
-    schema: { type: 'object' },
+    type: ShopOrderDetailResponseDto,
   })
   @ApiErrorResponses(shopOrderControllerErrorResponses.updateStatus)
   async updateStatus(
@@ -130,7 +132,7 @@ export class ShopOrderController {
   @ApiParam({ name: 'order_id', type: String })
   @ApiOkResponse({
     description: 'Updated shop order detail.',
-    schema: { type: 'object' },
+    type: ShopOrderDetailResponseDto,
   })
   @ApiErrorResponses(shopOrderControllerErrorResponses.updateRefund)
   async updateRefund(

@@ -32,6 +32,9 @@ import { ListShopPromoCodesQueryDto } from './dto/list-shop-promo-codes.query.dt
 import { ShopExceptionsFilter } from './errors/shop-exceptions.filter';
 import { shopPromoCodesControllerErrorResponses } from './errors/shop-error-responses';
 import {
+  ShopPromoCodeEnvelopeResponseDto,
+  ShopPromoCodeListResponseDto,
+  ShopPromoCodeStopListResponseDto,
   toShopPromoCodeListResponse,
   toShopPromoCodeResponse,
   toShopPromoCodeStopListResponse,
@@ -62,7 +65,7 @@ export class ShopPromoCodesController {
   @ApiParam({ name: 'shop_id', type: String })
   @ApiOkResponse({
     description: 'Created promo code.',
-    schema: { type: 'object' },
+    type: ShopPromoCodeEnvelopeResponseDto,
   })
   async create(
     @CurrentUser() currentUser: AuthenticatedUser,
@@ -81,7 +84,7 @@ export class ShopPromoCodesController {
   @ApiParam({ name: 'shop_id', type: String })
   @ApiOkResponse({
     description: 'Paginated promo code list.',
-    schema: { type: 'object' },
+    type: ShopPromoCodeListResponseDto,
   })
   async list(
     @CurrentUser() currentUser: AuthenticatedUser,
@@ -101,7 +104,7 @@ export class ShopPromoCodesController {
   @ApiParam({ name: 'promo_code_id', type: String })
   @ApiOkResponse({
     description: 'Cancelled promo code.',
-    schema: { type: 'object' },
+    type: ShopPromoCodeEnvelopeResponseDto,
   })
   async cancel(
     @CurrentUser() currentUser: AuthenticatedUser,
@@ -126,7 +129,7 @@ export class ShopPromoCodesController {
   @ApiParam({ name: 'promo_code_id', type: String })
   @ApiOkResponse({
     description: 'Ended promo code.',
-    schema: { type: 'object' },
+    type: ShopPromoCodeEnvelopeResponseDto,
   })
   async end(
     @CurrentUser() currentUser: AuthenticatedUser,
@@ -153,7 +156,7 @@ export class ShopPromoCodesController {
   @ApiParam({ name: 'shop_id', type: String })
   @ApiOkResponse({
     description: 'Per-promo-code stop outcome.',
-    schema: { type: 'object' },
+    type: ShopPromoCodeStopListResponseDto,
   })
   async bulkStop(
     @CurrentUser() currentUser: AuthenticatedUser,

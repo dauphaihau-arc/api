@@ -30,6 +30,10 @@ import { GuestOrderTrackingTokenService } from '../../app/services/guest-order-t
 import { GetOrdersByCheckoutSessionUseCase } from '~/domains/checkout/app/use-cases/get-orders-by-checkout-session/get-orders-by-checkout-session.use-case';
 import { LookupGuestOrdersUseCase } from '~/domains/checkout/app/use-cases/lookup-guest-orders/lookup-guest-orders.use-case';
 import {
+  CheckoutOrderListResponseDto,
+  CheckoutQuoteResponseDto,
+  CheckoutSessionOrderResponseDto,
+  CreateOrderResponseDto,
   toCheckoutQuoteResponse,
   toCheckoutSessionOrderResponse,
   toCreateOrderResponse,
@@ -78,7 +82,7 @@ export class CheckoutController {
   @ApiParam({ name: 'session_id', type: String })
   @ApiOkResponse({
     description: 'Checkout session orders.',
-    schema: { type: 'object' },
+    type: CheckoutSessionOrderResponseDto,
   })
   @ApiErrorResponses(checkoutControllerErrorResponses.getBySession)
   async getBySession(@Param('session_id') sessionId: string) {
@@ -97,7 +101,7 @@ export class CheckoutController {
   })
   @ApiOkResponse({
     description: 'Matching guest orders.',
-    schema: { type: 'object' },
+    type: CheckoutOrderListResponseDto,
   })
   @ApiErrorResponses(checkoutControllerErrorResponses.lookupGuestOrders)
   async lookupGuestOrders(@Query() query: LookupGuestOrdersQueryDto) {
@@ -135,7 +139,7 @@ export class CheckoutController {
   })
   @ApiOkResponse({
     description: 'Guest checkout quote.',
-    schema: { type: 'object' },
+    type: CheckoutQuoteResponseDto,
   })
   @ApiErrorResponses(checkoutControllerErrorResponses.createQuoteFromCart)
   async createQuoteFromCart(
@@ -167,7 +171,7 @@ export class CheckoutController {
   })
   @ApiOkResponse({
     description: 'Created guest order.',
-    schema: { type: 'object' },
+    type: CreateOrderResponseDto,
   })
   @ApiErrorResponses(checkoutControllerErrorResponses.createFromCart)
   async createFromCart(
@@ -195,7 +199,7 @@ export class CheckoutController {
   })
   @ApiOkResponse({
     description: 'Guest checkout quote.',
-    schema: { type: 'object' },
+    type: CheckoutQuoteResponseDto,
   })
   @ApiErrorResponses(checkoutControllerErrorResponses.createQuoteForBuyNow)
   async createQuoteForBuyNow(
@@ -224,7 +228,7 @@ export class CheckoutController {
   })
   @ApiOkResponse({
     description: 'Created guest order.',
-    schema: { type: 'object' },
+    type: CreateOrderResponseDto,
   })
   @ApiErrorResponses(checkoutControllerErrorResponses.createForBuyNow)
   async createForBuyNow(

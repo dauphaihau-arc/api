@@ -30,7 +30,12 @@ import { UpdateAdminOrderStatusDto } from './dto/update-admin-order-status.dto';
 import { UpdateAdminOrderSupportNoteDto } from './dto/update-admin-order-support-note.dto';
 import { OrderPublicIdLookup } from '../../app/services/order-public-id-lookup.service';
 import { OrderExceptionsFilter } from './errors/order-exceptions.filter';
-import { toAdminOrderDetailResponse, toAdminOrderListResponse } from './responses/order.response';
+import {
+  AdminOrderDetailResponseDto,
+  AdminOrderListResponseDto,
+  toAdminOrderDetailResponse,
+  toAdminOrderListResponse,
+} from './responses/order.response';
 
 @Controller('admin/orders')
 @UseFilters(OrderExceptionsFilter)
@@ -54,7 +59,7 @@ export class AdminOrderController {
   @ApiOperation({ summary: 'List admin orders' })
   @ApiOkResponse({
     description: 'Paginated admin order list.',
-    schema: { type: 'object' },
+    type: AdminOrderListResponseDto,
   })
   async list(@Query() query: ListAdminOrdersQueryDto) {
     return toAdminOrderListResponse(
@@ -68,7 +73,7 @@ export class AdminOrderController {
   @ApiParam({ name: 'order_id', type: String })
   @ApiOkResponse({
     description: 'Admin order detail.',
-    schema: { type: 'object' },
+    type: AdminOrderDetailResponseDto,
   })
   async detail(@Param('order_id') publicId: string) {
     const orderId = await this.orderPublicIdLookup.resolveOrderPublicId(publicId);
@@ -83,7 +88,7 @@ export class AdminOrderController {
   @ApiParam({ name: 'order_id', type: String })
   @ApiOkResponse({
     description: 'Updated admin order detail.',
-    schema: { type: 'object' },
+    type: AdminOrderDetailResponseDto,
   })
   async updateStatus(
     @Param('order_id') publicId: string,
@@ -101,7 +106,7 @@ export class AdminOrderController {
   @ApiParam({ name: 'order_id', type: String })
   @ApiOkResponse({
     description: 'Updated admin order detail.',
-    schema: { type: 'object' },
+    type: AdminOrderDetailResponseDto,
   })
   async updateRefund(
     @Param('order_id') publicId: string,
@@ -119,7 +124,7 @@ export class AdminOrderController {
   @ApiParam({ name: 'order_id', type: String })
   @ApiOkResponse({
     description: 'Updated admin order detail.',
-    schema: { type: 'object' },
+    type: AdminOrderDetailResponseDto,
   })
   async updateSupportNote(
     @Param('order_id') publicId: string,

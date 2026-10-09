@@ -16,6 +16,7 @@ import { ApiErrorResponses } from '~/platform/http/api-error-responses.decorator
 import { orderWebhookControllerErrorResponses } from './errors/order-error-responses';
 import { PaymentGateway } from '~/integrations/payment/app/ports/payment-gateway';
 import { HandleStripeWebhookUseCase } from '../../app/use-cases/handle-stripe-webhook/handle-stripe-webhook.use-case';
+import { StripeWebhookAckResponseDto } from './responses/order.response';
 
 @Controller('webhooks/stripe')
 @ApiTags('Stripe Webhooks')
@@ -35,8 +36,8 @@ export class OrderWebhookController {
     description: 'Stripe webhook signature header.',
   })
   @ApiOkResponse({
-    description: 'Webhook accepted.',
-    schema: { type: 'object' },
+    description: 'Webhook accepted; the response body is always an empty object.',
+    type: StripeWebhookAckResponseDto,
   })
   @ApiErrorResponses(orderWebhookControllerErrorResponses.handle)
   async handle(

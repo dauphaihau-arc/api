@@ -37,6 +37,14 @@ import { toPublicProductReviewListResponse } from './presenters/public-product-r
 import type { PublicProductReviewListResponse } from './responses/public-product-review-list.response';
 import { toPublicProductSuggestionResponse } from './presenters/public-product-suggestion.presenter';
 import type { PublicProductSuggestionResponse } from './responses/public-product-suggestion.response';
+import {
+  PublicProductDetailResponseDto,
+  PublicProductFacetResponseDto,
+  PublicProductListResponseDto,
+  PublicProductReviewImageListResponseDto,
+  PublicProductReviewListResponseDto,
+  PublicProductSuggestionListResponseDto,
+} from './responses/public-product-response.dto';
 
 const STOREFRONT_CACHE_VARY_HEADER = 'x-market-code, x-currency, x-locale, x-channel';
 const PUBLIC_STOREFRONT_CACHE_CONTROL = 'public, max-age=60';
@@ -76,7 +84,7 @@ export class ProductController {
   @ApiErrorResponses(productControllerErrorResponses.suggestions)
   @ApiOkResponse({
     description: 'Matching public product suggestions.',
-    schema: { type: 'object' },
+    type: PublicProductSuggestionListResponseDto,
   })
   async suggestProducts(
     @Query() query: SuggestPublicProductsQueryDto,
@@ -98,7 +106,7 @@ export class ProductController {
   @ApiErrorResponses(productControllerErrorResponses.list)
   @ApiOkResponse({
     description: 'Public product list.',
-    schema: { type: 'object' },
+    type: PublicProductListResponseDto,
   })
   async listProducts(
     @Req() request: ProductRequest,
@@ -126,7 +134,7 @@ export class ProductController {
   @ApiErrorResponses(productControllerErrorResponses.facets)
   @ApiOkResponse({
     description: 'Public product facets.',
-    schema: { type: 'object' },
+    type: PublicProductFacetResponseDto,
   })
   async listProductFacets(
     @Req() request: ProductRequest,
@@ -157,7 +165,7 @@ export class ProductController {
   @ApiErrorResponses(productControllerErrorResponses.bySlug)
   @ApiOkResponse({
     description: 'Public product detail.',
-    schema: { type: 'object' },
+    type: PublicProductDetailResponseDto,
   })
   @ApiNotFoundResponse({ description: 'Product was not found.' })
   async productBySlugs(
@@ -195,7 +203,7 @@ export class ProductController {
   @ApiErrorResponses(productControllerErrorResponses.reviews)
   @ApiOkResponse({
     description: 'Public product reviews.',
-    schema: { type: 'object' },
+    type: PublicProductReviewListResponseDto,
   })
   @ApiNotFoundResponse({ description: 'Product was not found.' })
   async listProductReviews(
@@ -236,7 +244,7 @@ export class ProductController {
   @ApiErrorResponses(productControllerErrorResponses.reviewImages)
   @ApiOkResponse({
     description: 'Public product review images.',
-    schema: { type: 'object' },
+    type: PublicProductReviewImageListResponseDto,
   })
   @ApiNotFoundResponse({ description: 'Product was not found.' })
   async listProductReviewImages(

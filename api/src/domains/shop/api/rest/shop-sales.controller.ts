@@ -32,6 +32,9 @@ import { ListShopSalesQueryDto } from './dto/list-shop-sales.query.dto';
 import { ShopExceptionsFilter } from './errors/shop-exceptions.filter';
 import { shopSalesControllerErrorResponses } from './errors/shop-error-responses';
 import {
+  ShopSaleEnvelopeResponseDto,
+  ShopSaleListResponseDto,
+  ShopSaleStopListResponseDto,
   toShopSaleListResponse,
   toShopSaleResponse,
   toShopSaleStopListResponse,
@@ -59,7 +62,7 @@ export class ShopSalesController {
   @ApiParam({ name: 'shop_id', type: String })
   @ApiOkResponse({
     description: 'Created sale.',
-    schema: { type: 'object' },
+    type: ShopSaleEnvelopeResponseDto,
   })
   async create(
     @CurrentUser() currentUser: AuthenticatedUser,
@@ -78,7 +81,7 @@ export class ShopSalesController {
   @ApiParam({ name: 'shop_id', type: String })
   @ApiOkResponse({
     description: 'Paginated sale list.',
-    schema: { type: 'object' },
+    type: ShopSaleListResponseDto,
   })
   async list(
     @CurrentUser() currentUser: AuthenticatedUser,
@@ -98,7 +101,7 @@ export class ShopSalesController {
   @ApiParam({ name: 'sale_id', type: String })
   @ApiOkResponse({
     description: 'Cancelled sale.',
-    schema: { type: 'object' },
+    type: ShopSaleEnvelopeResponseDto,
   })
   async cancel(
     @CurrentUser() currentUser: AuthenticatedUser,
@@ -117,7 +120,7 @@ export class ShopSalesController {
   @ApiParam({ name: 'sale_id', type: String })
   @ApiOkResponse({
     description: 'Ended sale.',
-    schema: { type: 'object' },
+    type: ShopSaleEnvelopeResponseDto,
   })
   async end(
     @CurrentUser() currentUser: AuthenticatedUser,
@@ -138,7 +141,7 @@ export class ShopSalesController {
   @ApiParam({ name: 'shop_id', type: String })
   @ApiOkResponse({
     description: 'Per-sale stop outcome.',
-    schema: { type: 'object' },
+    type: ShopSaleStopListResponseDto,
   })
   async bulkStop(
     @CurrentUser() currentUser: AuthenticatedUser,

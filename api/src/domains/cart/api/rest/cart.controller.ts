@@ -51,9 +51,12 @@ import { mapCartAppErrorToHttpException } from './errors/cart-http-error-mapper'
 import { CartExceptionsFilter } from './errors/cart-exceptions.filter';
 import { cartControllerErrorResponses } from './errors/cart-error-responses';
 import {
+  CartPromoCodeApplyResponseDto,
+  CartPromoCodeListResponseDto,
   toCartPromoCodeListResponse,
   toCartPromoCodeApplyResponse,
 } from './responses/cart-promo-code.response';
+import { CartResponseDto } from './responses/cart.response';
 import { AddCartItemDto } from './dto/add-cart-item.dto';
 import { ApplyCartPromoCodeDto } from './dto/apply-cart-promo-code.dto';
 import { DeleteCartItemQueryDto } from './dto/delete-cart-item.query.dto';
@@ -94,7 +97,7 @@ export class CartController {
   })
   @ApiOkResponse({
     description: 'Cart state.',
-    schema: { type: 'object' },
+    type: CartResponseDto,
   })
   @ApiErrorResponses(cartControllerErrorResponses.cart)
   async cart(
@@ -119,7 +122,7 @@ export class CartController {
   })
   @ApiOkResponse({
     description: 'Eligible public promo codes for the selected shop items.',
-    schema: { type: 'object' },
+    type: CartPromoCodeListResponseDto,
   })
   @ApiErrorResponses(cartControllerErrorResponses.promoCodes)
   async promoCodes(
@@ -151,7 +154,7 @@ export class CartController {
   })
   @ApiOkResponse({
     description: 'Promo codes the cart holds after the selection.',
-    schema: { type: 'object' },
+    type: CartPromoCodeApplyResponseDto,
   })
   @ApiErrorResponses(cartControllerErrorResponses.applyPromoCode)
   async applyPromoCode(
@@ -188,7 +191,7 @@ export class CartController {
   })
   @ApiOkResponse({
     description: 'Updated cart state.',
-    schema: { type: 'object' },
+    type: CartResponseDto,
   })
   @ApiErrorResponses(cartControllerErrorResponses.addItem)
   async addItem(
@@ -217,7 +220,7 @@ export class CartController {
   })
   @ApiOkResponse({
     description: 'Merged cart state.',
-    schema: { type: 'object' },
+    type: CartResponseDto,
   })
   async merge(
     @Req() request: CartRequest,
@@ -262,7 +265,7 @@ export class CartController {
   })
   @ApiOkResponse({
     description: 'Updated cart state.',
-    schema: { type: 'object' },
+    type: CartResponseDto,
   })
   @ApiErrorResponses(cartControllerErrorResponses.updateItem)
   async updateItem(
@@ -319,7 +322,7 @@ export class CartController {
   })
   @ApiOkResponse({
     description: 'Updated cart state.',
-    schema: { type: 'object' },
+    type: CartResponseDto,
   })
   @ApiErrorResponses(cartControllerErrorResponses.deleteItem)
   async deleteItem(

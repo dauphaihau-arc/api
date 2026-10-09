@@ -47,6 +47,8 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { mapUserAppErrorToHttpException } from './errors/user-http-error-mapper';
 import { JwtAuthGuard } from '~/domains/auth/api/guard/jwt-auth.guard';
 import {
+  UserListResponseDto,
+  UserResponseDto,
   toUserListResponse,
   toUserResponse,
   type UserListResponse,
@@ -72,7 +74,7 @@ export class UserController {
   @ApiOperation({ summary: 'List users' })
   @ApiOkResponse({
     description: 'Paginated user list.',
-    schema: { type: 'object' },
+    type: UserListResponseDto,
   })
   users(
     @Query() query: ListUsersQueryDto,
@@ -96,7 +98,7 @@ export class UserController {
   @ApiParam({ name: 'id', type: String })
   @ApiOkResponse({
     description: 'User detail.',
-    schema: { type: 'object' },
+    type: UserResponseDto,
   })
   @ApiNotFoundResponse({ description: 'User was not found.' })
   async user(@Param('id') id: string): Promise<UserResponse> {
@@ -117,7 +119,7 @@ export class UserController {
   @ApiOperation({ summary: 'Create a user' })
   @ApiOkResponse({
     description: 'Created user.',
-    schema: { type: 'object' },
+    type: UserResponseDto,
   })
   createUser(
     @CurrentUser() currentUser: AuthenticatedUser,
@@ -138,7 +140,7 @@ export class UserController {
   @ApiParam({ name: 'id', type: String })
   @ApiOkResponse({
     description: 'Updated user.',
-    schema: { type: 'object' },
+    type: UserResponseDto,
   })
   updateUser(
     @Param('id') id: string,

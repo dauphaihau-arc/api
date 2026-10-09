@@ -38,7 +38,10 @@ import { ReconcileOrderFulfillmentDto } from './dto/reconcile-order-fulfillment.
 import { UpdateShipmentJourneyDto } from './dto/update-shipment-journey.dto';
 import { FulfillmentExceptionsFilter } from './errors/fulfillment-exceptions.filter';
 import { shopOrderFulfillmentControllerErrorResponses } from './errors/fulfillment-error-responses';
-import { toFulfillmentOrderResponse } from './responses/fulfillment.response';
+import {
+  ShopOrderFulfillmentResponseDto,
+  toFulfillmentOrderResponse,
+} from './responses/fulfillment.response';
 import type { FulfillmentCommandResult } from '../../app/services/fulfillment-command.runner';
 
 @Controller('shops/:shop_id/orders')
@@ -69,7 +72,7 @@ export class ShopOrderFulfillmentController {
   @ApiErrorResponses(shopOrderFulfillmentControllerErrorResponses.prepare)
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'order_id', type: String })
-  @ApiOkResponse({ description: 'Updated order fulfillment.', schema: { type: 'object' } })
+  @ApiOkResponse({ description: 'Updated order fulfillment.', type: ShopOrderFulfillmentResponseDto })
   async prepareShipment(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('shop_id') shopPublicId: string,
@@ -108,7 +111,7 @@ export class ShopOrderFulfillmentController {
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'order_id', type: String })
   @ApiParam({ name: 'shipment_id', type: String })
-  @ApiOkResponse({ description: 'Updated order fulfillment.', schema: { type: 'object' } })
+  @ApiOkResponse({ description: 'Updated order fulfillment.', type: ShopOrderFulfillmentResponseDto })
   async amendShipment(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('shop_id') shopPublicId: string,
@@ -149,7 +152,7 @@ export class ShopOrderFulfillmentController {
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'order_id', type: String })
   @ApiParam({ name: 'shipment_id', type: String })
-  @ApiOkResponse({ description: 'Updated order fulfillment.', schema: { type: 'object' } })
+  @ApiOkResponse({ description: 'Updated order fulfillment.', type: ShopOrderFulfillmentResponseDto })
   async voidShipment(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('shop_id') shopPublicId: string,
@@ -183,7 +186,7 @@ export class ShopOrderFulfillmentController {
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'order_id', type: String })
   @ApiParam({ name: 'shipment_id', type: String })
-  @ApiOkResponse({ description: 'Updated order fulfillment.', schema: { type: 'object' } })
+  @ApiOkResponse({ description: 'Updated order fulfillment.', type: ShopOrderFulfillmentResponseDto })
   async recordShipmentJourney(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('shop_id') shopPublicId: string,
@@ -223,7 +226,7 @@ export class ShopOrderFulfillmentController {
   @ApiErrorResponses(shopOrderFulfillmentControllerErrorResponses.reconcile)
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'order_id', type: String })
-  @ApiOkResponse({ description: 'Updated order fulfillment.', schema: { type: 'object' } })
+  @ApiOkResponse({ description: 'Updated order fulfillment.', type: ShopOrderFulfillmentResponseDto })
   async reconcileOrder(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('shop_id') shopPublicId: string,

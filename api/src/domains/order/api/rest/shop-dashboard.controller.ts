@@ -24,7 +24,7 @@ import { ApiErrorResponses } from '~/platform/http/api-error-responses.decorator
 import { shopDashboardControllerErrorResponses } from './errors/order-error-responses';
 import { GetShopDashboardUseCase } from '../../app/use-cases/get-shop-dashboard/get-shop-dashboard.use-case';
 import { GetShopDashboardQueryDto } from './dto/get-shop-dashboard.query.dto';
-import { toShopDashboardResponse } from './responses/order.response';
+import { ShopDashboardResponseDto, toShopDashboardResponse } from './responses/order.response';
 
 @Controller('shops/:shop_id/dashboard')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -47,7 +47,7 @@ export class ShopDashboardController {
   @ApiParam({ name: 'shop_id', type: String })
   @ApiOkResponse({
     description: 'Shop dashboard overview.',
-    schema: { type: 'object' },
+    type: ShopDashboardResponseDto,
   })
   @ApiErrorResponses(shopDashboardControllerErrorResponses.overview)
   async overview(

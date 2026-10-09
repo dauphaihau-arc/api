@@ -36,6 +36,8 @@ import { CreateMyAddressDto } from './dto/create-my-address.dto';
 import { ListMyAddressesQueryDto } from './dto/list-my-addresses.query.dto';
 import { UpdateMyAddressDto } from './dto/update-my-address.dto';
 import {
+  MyAddressEnvelopeResponseDto,
+  MyAddressListResponseDto,
   toMyAddressListResponse,
   toMyAddressResponse,
 } from './responses/me-address.response';
@@ -62,7 +64,7 @@ export class MeAddressesController {
   @ApiOperation({ summary: 'List my addresses' })
   @ApiOkResponse({
     description: 'Paginated address list.',
-    schema: { type: 'object' },
+    type: MyAddressListResponseDto,
   })
   async list(
     @CurrentUser() currentUser: AuthenticatedUser,
@@ -86,7 +88,7 @@ export class MeAddressesController {
   @ApiOperation({ summary: 'Create my address' })
   @ApiOkResponse({
     description: 'Created address.',
-    schema: { type: 'object' },
+    type: MyAddressEnvelopeResponseDto,
   })
   async create(
     @CurrentUser() currentUser: AuthenticatedUser,
@@ -114,7 +116,7 @@ export class MeAddressesController {
   @ApiParam({ name: 'id', type: String })
   @ApiOkResponse({
     description: 'Address detail.',
-    schema: { type: 'object' },
+    type: MyAddressEnvelopeResponseDto,
   })
   @ApiNotFoundResponse({ description: 'Address not found.' })
   async detail(
@@ -140,7 +142,7 @@ export class MeAddressesController {
   @ApiParam({ name: 'id', type: String })
   @ApiOkResponse({
     description: 'Updated address.',
-    schema: { type: 'object' },
+    type: MyAddressEnvelopeResponseDto,
   })
   async update(
     @CurrentUser() currentUser: AuthenticatedUser,
