@@ -6,7 +6,7 @@ import {
   SHOP_PRODUCT_REVIEW_LIST_DEFAULT_LIMIT,
   SHOP_PRODUCT_REVIEW_LIST_DEFAULT_PAGE,
   SHOP_PRODUCT_REVIEW_LIST_MAX_LIMIT,
-} from '~/domains/product/app/product.types';
+} from '~/domains/product/app/product.constants';
 import { ProductReviewStatus } from '~/domains/product/domain/enums/product-review-status.enum';
 
 export class ListShopProductReviewsQueryDto {

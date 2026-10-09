@@ -12,7 +12,7 @@ import {
   SHOP_PRODUCT_LIST_DEFAULT_LIMIT,
   SHOP_PRODUCT_LIST_DEFAULT_PAGE,
   SHOP_PRODUCT_LIST_MAX_LIMIT,
-} from '../../../../product/app/product.types';
+} from '../../../../product/app/product.constants';
 
 export class ListShopProductsQueryDto {
   @IsOptional()
