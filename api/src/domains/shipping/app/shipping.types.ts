@@ -1,5 +1,5 @@
 import type { ProductState } from '~/domains/product/domain/enums/product-state.enum';
-import { ShippingProfileStatus } from '../domain/enums/shipping-profile-status.enum';
+import type { ShippingProfileStatus } from '../domain/enums/shipping-profile-status.enum';
 import type { ShippingDestinationScope } from '../domain/enums/shipping-destination-scope.enum';
 import type { ShippingDurationRange } from '../domain/shipping-duration-range';
 import type { ShippingProfileReadinessIssue } from '../domain/shipping-profile-readiness';
@@ -7,10 +7,6 @@ import type {
   ShippingDestination,
   ShippingDestinationRate,
 } from '../domain/shipping-destination-matcher';
-
-export const SHIPPING_PROFILE_LIST_DEFAULT_PAGE = 1;
-export const SHIPPING_PROFILE_LIST_DEFAULT_LIMIT = 20;
-export const SHIPPING_PROFILE_LIST_MAX_LIMIT = 100;
 
 export interface ShippingRateInput {
   destinationScope: ShippingDestinationScope;
@@ -101,12 +97,6 @@ export interface ShippingProfileView {
   checkoutReady: boolean;
   readinessIssues: ShippingProfileReadinessIssue[];
 }
-
-/** Statuses the settings list shows when the caller does not ask for others. */
-export const SHIPPING_PROFILE_LIST_STATUSES_WITHOUT_ARCHIVED = [
-  ShippingProfileStatus.ACTIVE,
-  ShippingProfileStatus.DRAFT,
-];
 
 /** One page of Shipping Profiles as the repository returns it. */
 export interface ShippingProfileListRepositoryQuery {

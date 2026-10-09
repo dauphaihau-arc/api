@@ -13,7 +13,7 @@ import {
   SHIPPING_PROFILE_LIST_DEFAULT_LIMIT,
   SHIPPING_PROFILE_LIST_DEFAULT_PAGE,
   SHIPPING_PROFILE_LIST_MAX_LIMIT,
-} from '../../../app/shipping.types';
+} from '../../../app/shipping.constants';
 
 export class ListShippingProfilesQueryDto {
   @IsOptional()

@@ -4,10 +4,8 @@ import { ShippingProfileStatus } from '../../../domain/enums/shipping-profile-st
 import { ProductShippingAssignmentPort } from '../../ports/product-shipping-assignment.port';
 import { ShippingProfileRepository } from '../../ports/shipping-profile.repository';
 import { toShippingProfileView } from '../../services/shipping-profile-view';
-import {
-  SHIPPING_PROFILE_LIST_STATUSES_WITHOUT_ARCHIVED,
-  type ShippingProfileListResult,
-} from '../../shipping.types';
+import { SHIPPING_PROFILE_LIST_STATUSES_WITHOUT_ARCHIVED } from '../../shipping.constants';
+import type { ShippingProfileListResult } from '../../shipping.types';
 
 export interface ListShippingProfilesQuery {
   page: number;
