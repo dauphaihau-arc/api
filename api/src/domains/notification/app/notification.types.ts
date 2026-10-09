@@ -1,7 +1,3 @@
-export const NOTIFICATION_LIST_DEFAULT_PAGE = 1;
-export const NOTIFICATION_LIST_DEFAULT_LIMIT = 20;
-export const NOTIFICATION_LIST_MAX_LIMIT = 50;
-
 export type NotificationChannel = 'in_app' | 'web_push';
 
 export interface NotificationSummary {
@@ -72,11 +68,4 @@ export interface RegisterWebPushSubscriptionInput {
   p256dh: string;
   auth: string;
   userAgent?: string;
-}
-
-export function buildListMyNotificationsQuery(input?: Partial<ListMyNotificationsQuery>): ListMyNotificationsQuery {
-  return {
-    page: input?.page ?? NOTIFICATION_LIST_DEFAULT_PAGE,
-    limit: input?.limit ?? NOTIFICATION_LIST_DEFAULT_LIMIT,
-  };
 }
