@@ -40,7 +40,10 @@ export class ShopDashboardController {
 
   @Get()
   @Header('Cache-Control', 'private, no-cache')
-  @ApiOperation({ summary: 'Get shop dashboard overview' })
+  @ApiOperation({
+    summary: 'Get dashboard',
+    description: 'Returns the shop dashboard for the requested date range and shop currency.',
+  })
   @ApiParam({ name: 'shop_id', type: String })
   @ApiOkResponse({
     description: 'Shop dashboard overview.',

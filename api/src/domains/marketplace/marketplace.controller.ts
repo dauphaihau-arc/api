@@ -17,7 +17,10 @@ export class MarketplaceController {
   @Get('config')
   @Header('Cache-Control', 'public, max-age=300')
   @ApiErrorResponses(marketplaceErrorResponses.config)
-  @ApiOperation({ summary: 'Get marketplace client configuration' })
+  @ApiOperation({
+    summary: 'Get client config',
+    description: 'Returns public marketplace configuration for the client.',
+  })
   @ApiOkResponse({
     description: 'Marketplace configuration.',
     schema: { type: 'object' },

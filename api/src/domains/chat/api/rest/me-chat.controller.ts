@@ -66,7 +66,10 @@ export class MeChatController {
   @Post('conversations')
   @Header('Cache-Control', 'private, no-store')
   @ApiErrorResponses(meChatErrorResponses.createConversation)
-  @ApiOperation({ summary: 'Create or get a buyer chat conversation' })
+  @ApiOperation({
+    summary: 'Create conversation',
+    description: 'Creates or returns a chat conversation for the buyer and selected shop or product.',
+  })
   @ApiOkResponse({ description: 'Chat conversation.', schema: { type: 'object' } })
   async createOrGetConversation(
     @CurrentUser() currentUser: AuthenticatedUser,
@@ -85,7 +88,10 @@ export class MeChatController {
   @Get('conversations')
   @Header('Cache-Control', 'private, no-cache')
   @ApiErrorResponses(meChatErrorResponses.listConversations)
-  @ApiOperation({ summary: 'List my chat conversations' })
+  @ApiOperation({
+    summary: 'List conversations',
+    description: 'Returns the signed-in buyer’s chat conversations.',
+  })
   @ApiOkResponse({ description: 'Chat conversation list.', schema: { type: 'object' } })
   async listConversations(
     @CurrentUser() currentUser: AuthenticatedUser,
@@ -101,7 +107,10 @@ export class MeChatController {
 
   @Get('conversations/unread-count')
   @Header('Cache-Control', 'private, no-cache')
-  @ApiOperation({ summary: 'Get my unread chat conversation count' })
+  @ApiOperation({
+    summary: 'Get unread count',
+    description: 'Returns the signed-in buyer’s unread chat conversation count.',
+  })
   @ApiOkResponse({ description: 'Unread chat count.', schema: { type: 'object' } })
   async unreadCount(@CurrentUser() currentUser: AuthenticatedUser) {
     return {
@@ -112,7 +121,10 @@ export class MeChatController {
   @Get('conversations/:conversation_id/messages')
   @Header('Cache-Control', 'private, no-cache')
   @ApiErrorResponses(meChatErrorResponses.messages)
-  @ApiOperation({ summary: 'List my chat messages' })
+  @ApiOperation({
+    summary: 'List messages',
+    description: 'Returns messages in the specified buyer conversation.',
+  })
   @ApiParam({ name: 'conversation_id', type: String })
   @ApiOkResponse({ description: 'Chat message list.', schema: { type: 'object' } })
   async listMessages(
@@ -129,7 +141,10 @@ export class MeChatController {
   @Patch('conversations/:conversation_id/read')
   @Header('Cache-Control', 'private, no-store')
   @ApiErrorResponses(meChatErrorResponses.markRead)
-  @ApiOperation({ summary: 'Mark my chat conversation as read' })
+  @ApiOperation({
+    summary: 'Mark conversation read',
+    description: 'Marks the specified buyer conversation as read.',
+  })
   @ApiParam({ name: 'conversation_id', type: String })
   @ApiOkResponse({ description: 'Updated chat conversation.', schema: { type: 'object' } })
   async markConversationRead(
@@ -147,7 +162,10 @@ export class MeChatController {
   @Post('conversations/:conversation_id/messages')
   @Header('Cache-Control', 'private, no-store')
   @ApiErrorResponses(meChatErrorResponses.sendMessage)
-  @ApiOperation({ summary: 'Send a buyer chat message' })
+  @ApiOperation({
+    summary: 'Send message',
+    description: 'Sends a message in the specified buyer conversation.',
+  })
   @ApiParam({ name: 'conversation_id', type: String })
   @ApiOkResponse({ description: 'Created chat message.', schema: { type: 'object' } })
   async sendMessage(

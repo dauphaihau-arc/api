@@ -63,7 +63,10 @@ export class ShopProductImportController {
 
   @Get('template')
   @Header('Cache-Control', 'private, no-store')
-  @ApiOperation({ summary: 'Download product import XLSX template' })
+  @ApiOperation({
+    summary: 'Download import template',
+    description: 'Downloads the XLSX template for importing shop products.',
+  })
   @ApiErrorResponses(shopProductImportControllerErrorResponses.template)
   @ApiParam({ name: 'shop_id', type: String })
   async downloadTemplate(
@@ -99,7 +102,10 @@ export class ShopProductImportController {
       },
     },
   })
-  @ApiOperation({ summary: 'Start asynchronous product XLSX import' })
+  @ApiOperation({
+    summary: 'Start product import',
+    description: 'Starts an asynchronous product import from an XLSX file.',
+  })
   @ApiErrorResponses(shopProductImportControllerErrorResponses.start)
   @ApiParam({ name: 'shop_id', type: String })
   async startImport(
@@ -116,7 +122,10 @@ export class ShopProductImportController {
 
   @Get(':import_id')
   @Header('Cache-Control', 'private, no-cache')
-  @ApiOperation({ summary: 'Get product import status' })
+  @ApiOperation({
+    summary: 'Get import status',
+    description: 'Returns the status of a shop product import.',
+  })
   @ApiErrorResponses(shopProductImportControllerErrorResponses.detail)
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'import_id', type: String })
@@ -135,7 +144,10 @@ export class ShopProductImportController {
 
   @Get(':import_id/report')
   @Header('Cache-Control', 'private, no-store')
-  @ApiOperation({ summary: 'Download product import CSV report' })
+  @ApiOperation({
+    summary: 'Download import report',
+    description: 'Downloads the CSV report for a product import.',
+  })
   @ApiErrorResponses(shopProductImportControllerErrorResponses.report)
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'import_id', type: String })

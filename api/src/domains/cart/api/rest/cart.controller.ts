@@ -88,7 +88,10 @@ export class CartController {
 
   @Get()
   @Header('Cache-Control', 'private, no-cache')
-  @ApiOperation({ summary: 'Get the current cart' })
+  @ApiOperation({
+    summary: 'Get cart',
+    description: 'Returns the current guest or user cart.',
+  })
   @ApiOkResponse({
     description: 'Cart state.',
     schema: { type: 'object' },
@@ -110,7 +113,10 @@ export class CartController {
 
   @Get('promo-codes')
   @Header('Cache-Control', 'private, no-cache')
-  @ApiOperation({ summary: 'List eligible public promo codes for the current cart' })
+  @ApiOperation({
+    summary: 'List eligible promo codes',
+    description: 'Returns promo codes eligible for the selected shop items.',
+  })
   @ApiOkResponse({
     description: 'Eligible public promo codes for the selected shop items.',
     schema: { type: 'object' },
@@ -139,7 +145,10 @@ export class CartController {
 
   @Post('promo-codes/apply')
   @Header('Cache-Control', 'private, no-store')
-  @ApiOperation({ summary: 'Select a promo code for the current cart' })
+  @ApiOperation({
+    summary: 'Apply promo code',
+    description: 'Applies the selected promo code to the cart.',
+  })
   @ApiOkResponse({
     description: 'Promo codes the cart holds after the selection.',
     schema: { type: 'object' },
@@ -173,7 +182,10 @@ export class CartController {
 
   @Post('items')
   @Header('Cache-Control', 'private, no-store')
-  @ApiOperation({ summary: 'Add an item to the current cart' })
+  @ApiOperation({
+    summary: 'Add cart item',
+    description: 'Adds an inventory item to the current cart.',
+  })
   @ApiOkResponse({
     description: 'Updated cart state.',
     schema: { type: 'object' },
@@ -199,7 +211,10 @@ export class CartController {
 
   @Post('merge')
   @Header('Cache-Control', 'private, no-store')
-  @ApiOperation({ summary: 'Merge a guest cart into the signed-in user cart' })
+  @ApiOperation({
+    summary: 'Merge carts',
+    description: 'Merges the guest cart into the signed-in user’s cart.',
+  })
   @ApiOkResponse({
     description: 'Merged cart state.',
     schema: { type: 'object' },
@@ -241,7 +256,10 @@ export class CartController {
 
   @Patch('items')
   @Header('Cache-Control', 'private, no-store')
-  @ApiOperation({ summary: 'Update an item in the current cart' })
+  @ApiOperation({
+    summary: 'Update cart item',
+    description: 'Updates an item’s quantity or selection in the cart.',
+  })
   @ApiOkResponse({
     description: 'Updated cart state.',
     schema: { type: 'object' },
@@ -295,7 +313,10 @@ export class CartController {
 
   @Delete('items')
   @Header('Cache-Control', 'private, no-store')
-  @ApiOperation({ summary: 'Delete an item from the current cart' })
+  @ApiOperation({
+    summary: 'Remove cart item',
+    description: 'Removes an inventory item from the cart.',
+  })
   @ApiOkResponse({
     description: 'Updated cart state.',
     schema: { type: 'object' },

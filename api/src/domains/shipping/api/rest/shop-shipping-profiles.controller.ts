@@ -77,7 +77,10 @@ export class ShopShippingProfilesController {
 
   @Get()
   @Header('Cache-Control', 'private, no-cache')
-  @ApiOperation({ summary: 'List reusable shipping profiles for a shop' })
+  @ApiOperation({
+    summary: 'List shipping profiles',
+    description: 'Lists reusable shipping profiles for the shop.',
+  })
   @ApiErrorResponses(shopShippingProfilesControllerErrorResponses.list)
   @ApiParam({ name: 'shop_id', type: String })
   @ApiOkResponse({ description: 'Shop shipping profiles.', schema: { type: 'object' } })
@@ -106,7 +109,10 @@ export class ShopShippingProfilesController {
   @Header('Cache-Control', 'private, no-store')
   @UseInterceptors(IdempotencyKeyInterceptor)
   @Idempotent({ scope: 'shipping-profile:create' })
-  @ApiOperation({ summary: 'Create a reusable shipping profile' })
+  @ApiOperation({
+    summary: 'Create shipping profile',
+    description: 'Creates a reusable shipping profile for the shop.',
+  })
   @ApiParam({ name: 'shop_id', type: String })
   @ApiCreatedResponse({ description: 'Created shipping profile.', schema: { type: 'object' } })
   @ApiErrorResponses(shopShippingProfilesControllerErrorResponses.create)
@@ -136,7 +142,10 @@ export class ShopShippingProfilesController {
 
   @Get(':shipping_profile_id')
   @Header('Cache-Control', 'private, no-cache')
-  @ApiOperation({ summary: 'Read one shipping profile' })
+  @ApiOperation({
+    summary: 'Get shipping profile',
+    description: 'Returns one shipping profile for the shop.',
+  })
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'shipping_profile_id', type: String })
   @ApiOkResponse({ description: 'Shipping profile.', schema: { type: 'object' } })
@@ -161,7 +170,10 @@ export class ShopShippingProfilesController {
   @Header('Cache-Control', 'private, no-store')
   @UseInterceptors(IdempotencyKeyInterceptor)
   @Idempotent({ scope: 'shipping-profile:update' })
-  @ApiOperation({ summary: 'Edit a shipping profile and its destination rates' })
+  @ApiOperation({
+    summary: 'Update shipping profile',
+    description: 'Updates a shipping profile and its destination rates.',
+  })
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'shipping_profile_id', type: String })
   @ApiOkResponse({ description: 'Updated shipping profile.', schema: { type: 'object' } })
@@ -221,7 +233,10 @@ export class ShopShippingProfilesController {
   @Put(':shipping_profile_id/default')
   @HttpCode(HttpStatus.OK)
   @Header('Cache-Control', 'private, no-store')
-  @ApiOperation({ summary: 'Designate a shipping profile as the shop default' })
+  @ApiOperation({
+    summary: 'Set default shipping profile',
+    description: 'Designates the selected shipping profile as the shop default.',
+  })
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'shipping_profile_id', type: String })
   @ApiOkResponse({ description: 'Designated shipping profile.', schema: { type: 'object' } })
@@ -245,7 +260,10 @@ export class ShopShippingProfilesController {
   @Delete(':shipping_profile_id/default')
   @HttpCode(HttpStatus.OK)
   @Header('Cache-Control', 'private, no-store')
-  @ApiOperation({ summary: 'Clear the shop default shipping profile designation' })
+  @ApiOperation({
+    summary: 'Clear default shipping profile',
+    description: 'Removes the shop-default designation from the selected profile.',
+  })
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'shipping_profile_id', type: String })
   @ApiOkResponse({ description: 'Shipping profile with no default designation.', schema: { type: 'object' } })
@@ -269,7 +287,10 @@ export class ShopShippingProfilesController {
   @Post(':shipping_profile_id/preview')
   @HttpCode(HttpStatus.OK)
   @Header('Cache-Control', 'private, no-store')
-  @ApiOperation({ summary: 'Preview a shipping profile for a destination and quantity' })
+  @ApiOperation({
+    summary: 'Preview shipping rates',
+    description: 'Previews rates for the submitted destination and quantity.',
+  })
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'shipping_profile_id', type: String })
   @ApiOkResponse({ description: 'Shipping rate preview.', schema: { type: 'object' } })

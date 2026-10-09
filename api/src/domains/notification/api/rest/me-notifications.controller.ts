@@ -65,7 +65,10 @@ export class MeNotificationsController {
   @Get()
   @Header('Cache-Control', 'private, no-cache')
   @ApiErrorResponses(meNotificationsErrorResponses.list)
-  @ApiOperation({ summary: 'List my notifications' })
+  @ApiOperation({
+    summary: 'List notifications',
+    description: 'Returns the signed-in user’s paginated notifications.',
+  })
   @ApiOkResponse({
     description: 'Paginated notification list.',
     schema: { type: 'object' },
@@ -87,7 +90,10 @@ export class MeNotificationsController {
 
   @Get('unread-count')
   @Header('Cache-Control', 'private, no-cache')
-  @ApiOperation({ summary: 'Get my unread notification count' })
+  @ApiOperation({
+    summary: 'Get unread count',
+    description: 'Returns the signed-in user’s unread notification count.',
+  })
   @ApiOkResponse({
     description: 'Unread notification count.',
     schema: { type: 'object' },
@@ -103,7 +109,10 @@ export class MeNotificationsController {
   @Patch(':id/read')
   @Header('Cache-Control', 'private, no-store')
   @ApiErrorResponses(meNotificationsErrorResponses.markRead)
-  @ApiOperation({ summary: 'Mark one notification as read' })
+  @ApiOperation({
+    summary: 'Mark notification read',
+    description: 'Marks the specified notification as read.',
+  })
   @ApiParam({ name: 'id', type: String })
   @ApiOkResponse({
     description: 'Updated notification.',
@@ -122,7 +131,10 @@ export class MeNotificationsController {
 
   @Patch('read-all')
   @Header('Cache-Control', 'private, no-store')
-  @ApiOperation({ summary: 'Mark all notifications as read' })
+  @ApiOperation({
+    summary: 'Mark all read',
+    description: 'Marks all of the signed-in user’s notifications as read.',
+  })
   @ApiOkResponse({
     description: 'Bulk read result.',
     schema: { type: 'object' },
@@ -139,7 +151,10 @@ export class MeNotificationsController {
 
   @Get('web-push/public-key')
   @Header('Cache-Control', 'private, no-cache')
-  @ApiOperation({ summary: 'Get the web push public key' })
+  @ApiOperation({
+    summary: 'Get push public key',
+    description: 'Returns the public key and enabled status for web push.',
+  })
   @ApiOkResponse({
     description: 'Web push public key configuration.',
     schema: { type: 'object' },
@@ -154,7 +169,10 @@ export class MeNotificationsController {
   @Post('web-push/subscriptions')
   @Header('Cache-Control', 'private, no-store')
   @ApiErrorResponses(meNotificationsErrorResponses.registerPush)
-  @ApiOperation({ summary: 'Register a web push subscription' })
+  @ApiOperation({
+    summary: 'Register push subscription',
+    description: 'Registers a web push subscription for the signed-in user.',
+  })
   @ApiOkResponse({
     description: 'Registered web push subscription.',
     schema: { type: 'object' },
@@ -188,7 +206,10 @@ export class MeNotificationsController {
   @Delete('web-push/subscriptions')
   @Header('Cache-Control', 'private, no-store')
   @ApiErrorResponses(meNotificationsErrorResponses.unregisterPush)
-  @ApiOperation({ summary: 'Unregister a web push subscription' })
+  @ApiOperation({
+    summary: 'Remove push subscription',
+    description: 'Removes the signed-in user’s web push subscription.',
+  })
   @ApiOkResponse({
     description: 'Removal result.',
     schema: { type: 'object' },

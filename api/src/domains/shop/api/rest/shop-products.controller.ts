@@ -111,7 +111,10 @@ export class ShopProductsController {
 
   @Get()
   @Header('Cache-Control', 'private, no-cache')
-  @ApiOperation({ summary: 'List products for a shop' })
+  @ApiOperation({
+    summary: 'List products',
+    description: 'Returns the shop’s paginated products, optionally filtered by state, category, or search.',
+  })
   @ApiParam({ name: 'shop_id', type: String })
   @ApiOkResponse({
     description: 'Paginated shop product list.',
@@ -139,7 +142,10 @@ export class ShopProductsController {
 
   @Get(':id')
   @Header('Cache-Control', 'private, no-cache')
-  @ApiOperation({ summary: 'Get shop product detail' })
+  @ApiOperation({
+    summary: 'Get product',
+    description: 'Returns the specified shop product.',
+  })
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'id', type: String })
   @ApiOkResponse({
@@ -163,7 +169,10 @@ export class ShopProductsController {
 
   @Post()
   @Header('Cache-Control', 'private, no-store')
-  @ApiOperation({ summary: 'Create a shop product draft' })
+  @ApiOperation({
+    summary: 'Create product draft',
+    description: 'Creates a product draft for the shop.',
+  })
   @ApiParam({ name: 'shop_id', type: String })
   @ApiOkResponse({
     description: 'Created product draft.',
@@ -194,7 +203,10 @@ export class ShopProductsController {
   @Idempotent({
     scope: 'product:create-draft-facade',
   })
-  @ApiOperation({ summary: 'Create a shop product draft facade' })
+  @ApiOperation({
+    summary: 'Create product draft',
+    description: 'Creates a product draft using the shop draft workflow.',
+  })
   @ApiParam({ name: 'shop_id', type: String })
   @ApiOkResponse({
     description: 'Created product draft.',
@@ -223,7 +235,10 @@ export class ShopProductsController {
     default: shopProductRouteRateLimits.generateDescription,
   })
   @Header('Cache-Control', 'private, no-store')
-  @ApiOperation({ summary: 'Generate a product description with AI' })
+  @ApiOperation({
+    summary: 'Generate product description',
+    description: 'Generates a product description from the supplied product details.',
+  })
   @ApiParam({ name: 'shop_id', type: String })
   @ApiResponse({
     status: 200,
@@ -246,7 +261,10 @@ export class ShopProductsController {
   @UseInterceptors(IdempotencyKeyInterceptor)
   @Idempotent({ scope: 'product:bulk-mutate' })
   @Header('Cache-Control', 'private, no-store')
-  @ApiOperation({ summary: 'Bulk mutate shop products' })
+  @ApiOperation({
+    summary: 'Bulk update products',
+    description: 'Applies the requested bulk action to the specified shop products.',
+  })
   @ApiParam({ name: 'shop_id', type: String })
   @ApiOkResponse({
     description: 'Bulk mutation result.',
@@ -280,7 +298,10 @@ export class ShopProductsController {
   @Header('Cache-Control', 'private, no-store')
   @UseInterceptors(IdempotencyKeyInterceptor)
   @Idempotent({ scope: 'product:update-details' })
-  @ApiOperation({ summary: 'Update shop product details' })
+  @ApiOperation({
+    summary: 'Update product details',
+    description: 'Updates details for the specified shop product.',
+  })
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'id', type: String })
   @ApiOkResponse({ description: 'Product details updated.', schema: { type: 'object' } })
@@ -308,7 +329,10 @@ export class ShopProductsController {
   @UseInterceptors(IdempotencyKeyInterceptor)
   @Idempotent({ scope: 'product:publish' })
   @Header('Cache-Control', 'private, no-store')
-  @ApiOperation({ summary: 'Publish a shop product' })
+  @ApiOperation({
+    summary: 'Publish product',
+    description: 'Publishes the specified product draft.',
+  })
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'id', type: String })
   @ApiOkResponse({
@@ -339,7 +363,10 @@ export class ShopProductsController {
   @Header('Cache-Control', 'private, no-store')
   @UseInterceptors(FilesInterceptor('images', 10))
   @ApiConsumes('multipart/form-data')
-  @ApiOperation({ summary: 'Upload shop product images' })
+  @ApiOperation({
+    summary: 'Upload product images',
+    description: 'Uploads image files for the specified shop product.',
+  })
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'id', type: String })
   @ApiNoContentResponse({ description: 'Product images updated.' })
@@ -368,7 +395,10 @@ export class ShopProductsController {
   @UseInterceptors(IdempotencyKeyInterceptor)
   @Idempotent({ scope: 'product:set-images-by-keys' })
   @Header('Cache-Control', 'private, no-store')
-  @ApiOperation({ summary: 'Assign shop product images by storage keys' })
+  @ApiOperation({
+    summary: 'Set product images',
+    description: 'Assigns uploaded product images using their storage keys.',
+  })
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'id', type: String })
   @ApiOkResponse({ description: 'Product images updated.', schema: { type: 'object' } })
@@ -396,7 +426,10 @@ export class ShopProductsController {
   @UseInterceptors(IdempotencyKeyInterceptor)
   @Idempotent({ scope: 'product:set-attributes' })
   @Header('Cache-Control', 'private, no-store')
-  @ApiOperation({ summary: 'Set shop product attributes' })
+  @ApiOperation({
+    summary: 'Set product attributes',
+    description: 'Updates the specified product’s attributes.',
+  })
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'id', type: String })
   @ApiOkResponse({ description: 'Product attributes updated.', schema: { type: 'object' } })
@@ -424,7 +457,10 @@ export class ShopProductsController {
   @UseInterceptors(IdempotencyKeyInterceptor)
   @Idempotent({ scope: 'product:variant-configuration' })
   @Header('Cache-Control', 'private, no-store')
-  @ApiOperation({ summary: 'Configure normalized Product Options and Variants atomically' })
+  @ApiOperation({
+    summary: 'Configure product options and variants',
+    description: 'Atomically updates a product’s options and variants.',
+  })
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'product_id', type: String })
   @ApiOkResponse({ description: 'Product Variant configuration updated.', schema: { type: 'object' } })
@@ -462,7 +498,10 @@ export class ShopProductsController {
   @Idempotent({ scope: 'product:assign-shipping-profile' })
   @HttpCode(HttpStatus.NO_CONTENT)
   @Header('Cache-Control', 'private, no-store')
-  @ApiOperation({ summary: 'Assign a reusable shipping profile to a shop product' })
+  @ApiOperation({
+    summary: 'Assign shipping profile',
+    description: 'Assigns a reusable shipping profile to the shop product.',
+  })
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'id', type: String })
   @ApiNoContentResponse({ description: 'Product shipping profile assignment updated.' })

@@ -65,7 +65,10 @@ export class ShopChatController {
   @Get('conversations')
   @Header('Cache-Control', 'private, no-cache')
   @ApiErrorResponses(shopChatErrorResponses.listConversations)
-  @ApiOperation({ summary: 'List shop chat conversations' })
+  @ApiOperation({
+    summary: 'List conversations',
+    description: 'Returns conversations for the specified shop.',
+  })
   @ApiParam({ name: 'shop_id', type: String })
   @ApiOkResponse({ description: 'Chat conversation list.', schema: { type: 'object' } })
   async listConversations(
@@ -86,7 +89,10 @@ export class ShopChatController {
   @Get('conversations/unread-count')
   @Header('Cache-Control', 'private, no-cache')
   @ApiErrorResponses(shopChatErrorResponses.unreadCount)
-  @ApiOperation({ summary: 'Get shop unread chat conversation count' })
+  @ApiOperation({
+    summary: 'Get unread count',
+    description: 'Returns the unread chat conversation count for the shop.',
+  })
   @ApiParam({ name: 'shop_id', type: String })
   @ApiOkResponse({ description: 'Unread chat count.', schema: { type: 'object' } })
   async unreadCount(
@@ -103,7 +109,10 @@ export class ShopChatController {
   @Get('conversations/:conversation_id/messages')
   @Header('Cache-Control', 'private, no-cache')
   @ApiErrorResponses(shopChatErrorResponses.messages)
-  @ApiOperation({ summary: 'List shop chat messages' })
+  @ApiOperation({
+    summary: 'List messages',
+    description: 'Returns messages in the specified shop conversation.',
+  })
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'conversation_id', type: String })
   @ApiOkResponse({ description: 'Chat message list.', schema: { type: 'object' } })
@@ -130,7 +139,10 @@ export class ShopChatController {
   @Patch('conversations/:conversation_id/read')
   @Header('Cache-Control', 'private, no-store')
   @ApiErrorResponses(shopChatErrorResponses.markRead)
-  @ApiOperation({ summary: 'Mark shop chat conversation as read' })
+  @ApiOperation({
+    summary: 'Mark conversation read',
+    description: 'Marks the specified shop conversation as read.',
+  })
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'conversation_id', type: String })
   @ApiOkResponse({ description: 'Updated chat conversation.', schema: { type: 'object' } })
@@ -154,7 +166,10 @@ export class ShopChatController {
   @Post('conversations/:conversation_id/messages')
   @Header('Cache-Control', 'private, no-store')
   @ApiErrorResponses(shopChatErrorResponses.sendMessage)
-  @ApiOperation({ summary: 'Send a shop chat message' })
+  @ApiOperation({
+    summary: 'Send message',
+    description: 'Sends a message in the specified shop conversation.',
+  })
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'conversation_id', type: String })
   @ApiOkResponse({ description: 'Created chat message.', schema: { type: 'object' } })

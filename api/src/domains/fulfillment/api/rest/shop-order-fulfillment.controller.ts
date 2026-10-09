@@ -62,7 +62,10 @@ export class ShopOrderFulfillmentController {
   @Header('Cache-Control', 'private, no-store')
   @UseInterceptors(IdempotencyKeyInterceptor)
   @Idempotent({ scope: 'fulfillment:prepare-shipment' })
-  @ApiOperation({ summary: 'Prepare a seller fulfillment shipment' })
+  @ApiOperation({
+    summary: 'Prepare shipment',
+    description: 'Prepares a fulfillment shipment for the specified shop order.',
+  })
   @ApiErrorResponses(shopOrderFulfillmentControllerErrorResponses.prepare)
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'order_id', type: String })
@@ -97,7 +100,10 @@ export class ShopOrderFulfillmentController {
   @Header('Cache-Control', 'private, no-store')
   @UseInterceptors(IdempotencyKeyInterceptor)
   @Idempotent({ scope: 'fulfillment:amend-shipment' })
-  @ApiOperation({ summary: 'Amend a prepared shipment' })
+  @ApiOperation({
+    summary: 'Amend shipment',
+    description: 'Updates the items or shipping details of a prepared shipment.',
+  })
   @ApiErrorResponses(shopOrderFulfillmentControllerErrorResponses.amend)
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'order_id', type: String })
@@ -135,7 +141,10 @@ export class ShopOrderFulfillmentController {
   @Header('Cache-Control', 'private, no-store')
   @UseInterceptors(IdempotencyKeyInterceptor)
   @Idempotent({ scope: 'fulfillment:void-shipment' })
-  @ApiOperation({ summary: 'Void a prepared shipment' })
+  @ApiOperation({
+    summary: 'Void shipment',
+    description: 'Voids the specified prepared shipment.',
+  })
   @ApiErrorResponses(shopOrderFulfillmentControllerErrorResponses.void)
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'order_id', type: String })
@@ -166,7 +175,10 @@ export class ShopOrderFulfillmentController {
   @Header('Cache-Control', 'private, no-store')
   @UseInterceptors(IdempotencyKeyInterceptor)
   @Idempotent({ scope: 'fulfillment:update-shipment-journey' })
-  @ApiOperation({ summary: 'Record a shipment journey transition' })
+  @ApiOperation({
+    summary: 'Update shipment journey',
+    description: 'Records a status transition and shipping details for the shipment.',
+  })
   @ApiErrorResponses(shopOrderFulfillmentControllerErrorResponses.journey)
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'order_id', type: String })
@@ -204,7 +216,10 @@ export class ShopOrderFulfillmentController {
   @Header('Cache-Control', 'private, no-store')
   @UseInterceptors(IdempotencyKeyInterceptor)
   @Idempotent({ scope: 'fulfillment:reconcile-order' })
-  @ApiOperation({ summary: 'Reconcile legacy order fulfillment quantities' })
+  @ApiOperation({
+    summary: 'Reconcile fulfillment',
+    description: 'Reconciles fulfillment quantities for a legacy order.',
+  })
   @ApiErrorResponses(shopOrderFulfillmentControllerErrorResponses.reconcile)
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'order_id', type: String })

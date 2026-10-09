@@ -71,7 +71,10 @@ export class CheckoutController {
   ) {}
 
   @Get('session/:session_id')
-  @ApiOperation({ summary: 'Get guest checkout session orders' })
+  @ApiOperation({
+    summary: 'Get session orders',
+    description: 'Returns orders associated with the guest checkout session.',
+  })
   @ApiParam({ name: 'session_id', type: String })
   @ApiOkResponse({
     description: 'Checkout session orders.',
@@ -88,7 +91,10 @@ export class CheckoutController {
   @Throttle({
     default: checkoutRouteRateLimits.guestLookup,
   })
-  @ApiOperation({ summary: 'Look up guest orders' })
+  @ApiOperation({
+    summary: 'Find guest orders',
+    description: 'Looks up guest orders using the supplied tracking token or order details.',
+  })
   @ApiOkResponse({
     description: 'Matching guest orders.',
     schema: { type: 'object' },
@@ -123,7 +129,10 @@ export class CheckoutController {
   }
 
   @Post('cart/quote')
-  @ApiOperation({ summary: 'Create a guest checkout quote from the guest cart' })
+  @ApiOperation({
+    summary: 'Create cart quote',
+    description: 'Creates a checkout quote from the guest cart.',
+  })
   @ApiOkResponse({
     description: 'Guest checkout quote.',
     schema: { type: 'object' },
@@ -152,7 +161,10 @@ export class CheckoutController {
   }
 
   @Post('cart')
-  @ApiOperation({ summary: 'Create a guest order from the guest cart' })
+  @ApiOperation({
+    summary: 'Create cart order',
+    description: 'Creates a guest order from the guest cart.',
+  })
   @ApiOkResponse({
     description: 'Created guest order.',
     schema: { type: 'object' },
@@ -177,7 +189,10 @@ export class CheckoutController {
   }
 
   @Post('buy-now/quote')
-  @ApiOperation({ summary: 'Create a guest checkout quote for buy now' })
+  @ApiOperation({
+    summary: 'Create buy-now quote',
+    description: 'Creates a checkout quote for a guest buy-now purchase.',
+  })
   @ApiOkResponse({
     description: 'Guest checkout quote.',
     schema: { type: 'object' },
@@ -203,7 +218,10 @@ export class CheckoutController {
   }
 
   @Post('buy-now')
-  @ApiOperation({ summary: 'Create a guest order for buy now' })
+  @ApiOperation({
+    summary: 'Create buy-now order',
+    description: 'Creates a guest order for a buy-now purchase.',
+  })
   @ApiOkResponse({
     description: 'Created guest order.',
     schema: { type: 'object' },

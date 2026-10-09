@@ -61,7 +61,10 @@ export class MeCheckoutController {
   ) {}
 
   @Post('quote')
-  @ApiOperation({ summary: 'Create a checkout quote from my cart' })
+  @ApiOperation({
+    summary: 'Create cart quote',
+    description: 'Creates a checkout quote from the signed-in user’s cart.',
+  })
   @ApiOkResponse({
     description: 'Checkout quote.',
     schema: { type: 'object' },
@@ -81,7 +84,10 @@ export class MeCheckoutController {
   }
 
   @Post('buy-now/quote')
-  @ApiOperation({ summary: 'Create a buy-now checkout quote' })
+  @ApiOperation({
+    summary: 'Create buy-now quote',
+    description: 'Creates a checkout quote for a buy-now purchase.',
+  })
   @ApiOkResponse({
     description: 'Checkout quote.',
     schema: { type: 'object' },
@@ -98,7 +104,10 @@ export class MeCheckoutController {
   }
 
   @Post()
-  @ApiOperation({ summary: 'Create an order from my cart' })
+  @ApiOperation({
+    summary: 'Create cart order',
+    description: 'Creates an order from the signed-in user’s cart.',
+  })
   @ApiOkResponse({
     description: 'Created order.',
     schema: { type: 'object' },
@@ -114,7 +123,10 @@ export class MeCheckoutController {
   }
 
   @Put('buy-now')
-  @ApiOperation({ summary: 'Create a buy-now order' })
+  @ApiOperation({
+    summary: 'Create buy-now order',
+    description: 'Creates an order for a buy-now purchase.',
+  })
   @ApiOkResponse({
     description: 'Created order.',
     schema: { type: 'object' },
@@ -130,7 +142,10 @@ export class MeCheckoutController {
   }
 
   @Get('session/readiness')
-  @ApiOperation({ summary: 'Get checkout session readiness by order ids' })
+  @ApiOperation({
+    summary: 'Get session readiness',
+    description: 'Returns checkout-session readiness for the requested order IDs.',
+  })
   @ApiQuery({ name: 'order_ids', required: true, type: String })
   @ApiOkResponse({
     description: 'Checkout session readiness.',
@@ -155,7 +170,10 @@ export class MeCheckoutController {
   }
 
   @Get('session')
-  @ApiOperation({ summary: 'Get orders by checkout session' })
+  @ApiOperation({
+    summary: 'Get session orders',
+    description: 'Returns orders associated with the checkout session.',
+  })
   @ApiQuery({ name: 'session_id', required: false, type: String })
   @ApiOkResponse({
     description: 'Checkout session orders.',

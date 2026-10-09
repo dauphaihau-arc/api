@@ -92,7 +92,7 @@ export class ShopSalesController {
   }
 
   @Post(':sale_id/cancel')
-  @ApiOperation({ summary: 'Irreversibly cancel a scheduled sale' })
+  @ApiOperation({ summary: 'Cancel scheduled sale' })
   @ApiErrorResponses(shopSalesControllerErrorResponses.cancel)
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'sale_id', type: String })
@@ -111,7 +111,7 @@ export class ShopSalesController {
   }
 
   @Post(':sale_id/end')
-  @ApiOperation({ summary: 'Irreversibly end an active sale early' })
+  @ApiOperation({ summary: 'End active sale' })
   @ApiErrorResponses(shopSalesControllerErrorResponses.end)
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'sale_id', type: String })
@@ -131,7 +131,8 @@ export class ShopSalesController {
 
   @Post('bulk-stop')
   @ApiOperation({
-    summary: 'Cancel scheduled sales and end active sales in one request',
+    summary: 'Stop sales',
+    description: 'Cancels scheduled sales and ends active sales.',
   })
   @ApiErrorResponses(shopSalesControllerErrorResponses.bulkStop)
   @ApiParam({ name: 'shop_id', type: String })

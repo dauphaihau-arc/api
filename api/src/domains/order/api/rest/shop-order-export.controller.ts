@@ -75,7 +75,10 @@ export class ShopOrderExportController {
 
   @Post('exports')
   @Header('Cache-Control', 'private, no-store')
-  @ApiOperation({ summary: 'Start asynchronous shop order CSV export' })
+  @ApiOperation({
+    summary: 'Start order export',
+    description: 'Starts an asynchronous CSV export of shop orders.',
+  })
   @ApiParam({ name: 'shop_id', type: String })
   @ApiErrorResponses(shopOrderExportControllerErrorResponses.startExport)
   async startExport(
@@ -111,7 +114,10 @@ export class ShopOrderExportController {
 
   @Get('exports/:export_id/download')
   @Header('Cache-Control', 'private, no-store')
-  @ApiOperation({ summary: 'Download completed shop order export CSV' })
+  @ApiOperation({
+    summary: 'Download order export',
+    description: 'Downloads the completed shop order export as a CSV file.',
+  })
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'export_id', type: String })
   @ApiErrorResponses(shopOrderExportControllerErrorResponses.downloadExport)

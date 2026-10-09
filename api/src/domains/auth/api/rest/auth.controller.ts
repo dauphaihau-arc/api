@@ -112,7 +112,8 @@ export class AuthController {
     scope: 'auth:register',
   })
   @ApiOperation({
-    summary: 'Register a new user session',
+    summary: 'Register',
+    description: 'Creates a user account, starts a session, and sets authentication cookies.',
   })
   @ApiCreatedResponse({
     type: AuthUserResponseDto,
@@ -139,7 +140,8 @@ export class AuthController {
   @Header('Cache-Control', 'no-store')
   @HttpCode(200)
   @ApiOperation({
-    summary: 'Authenticate a user',
+    summary: 'Log in',
+    description: 'Authenticates the user and sets authentication cookies.',
   })
   @ApiOkResponse({
     type: AuthUserResponseDto,
@@ -166,7 +168,8 @@ export class AuthController {
   @Header('Cache-Control', 'no-store')
   @HttpCode(204)
   @ApiOperation({
-    summary: 'Refresh the current session',
+    summary: 'Refresh session',
+    description: 'Refreshes the session and its authentication cookies.',
   })
   @ApiNoContentResponse({
     description: 'Session cookies were refreshed.',
@@ -193,7 +196,8 @@ export class AuthController {
   @Header('Cache-Control', 'no-store')
   @HttpCode(204)
   @ApiOperation({
-    summary: 'Request a password reset email',
+    summary: 'Request password reset',
+    description: 'Requests a password-reset email.',
   })
   @ApiNoContentResponse({
     description: 'Password reset request accepted.',
@@ -207,7 +211,8 @@ export class AuthController {
   @Header('Cache-Control', 'public, max-age=300, stale-while-revalidate=86400')
   @HttpCode(200)
   @ApiOperation({
-    summary: 'Get auth client configuration',
+    summary: 'Get client config',
+    description: 'Returns configuration for the authentication client.',
   })
   @ApiOkResponse({
     type: AuthClientConfigResponseDto,
@@ -223,7 +228,8 @@ export class AuthController {
   @Header('Cache-Control', 'no-store')
   @HttpCode(200)
   @ApiOperation({
-    summary: 'Verify a reset-password token',
+    summary: 'Verify reset token',
+    description: 'Checks whether the reset-password token is valid.',
   })
   @ApiQuery({
     name: 'token',
@@ -253,7 +259,8 @@ export class AuthController {
   @Header('Cache-Control', 'no-store')
   @HttpCode(200)
   @ApiOperation({
-    summary: 'Reset a password with a token',
+    summary: 'Reset password',
+    description: 'Resets the password using the supplied token and sets authentication cookies.',
   })
   @ApiQuery({
     name: 'token',
@@ -288,7 +295,8 @@ export class AuthController {
   @HttpCode(204)
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @ApiOperation({
-    summary: 'Sign out the current user',
+    summary: 'Log out',
+    description: 'Ends the current session and clears authentication cookies.',
   })
   @ApiCookieAuth('accessCookie')
   @ApiNoContentResponse({
@@ -307,7 +315,8 @@ export class AuthController {
   @Header('Cache-Control', 'no-store')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @ApiOperation({
-    summary: 'Get the current authenticated user',
+    summary: 'Get current user',
+    description: 'Returns the authenticated user’s profile.',
   })
   @ApiCookieAuth('accessCookie')
   @ApiOkResponse({

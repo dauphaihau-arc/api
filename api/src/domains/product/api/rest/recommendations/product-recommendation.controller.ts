@@ -51,7 +51,10 @@ export class ProductRecommendationController {
 
   @Get('recently-viewed')
   @Header('Cache-Control', 'private, no-store')
-  @ApiOperation({ summary: 'List recently viewed public products' })
+  @ApiOperation({
+    summary: 'List recently viewed products',
+    description: 'Returns recently viewed public products for the current user or guest session.',
+  })
   @ApiOkResponse({
     description: 'Recently viewed public products.',
     schema: { type: 'object' },
@@ -71,7 +74,10 @@ export class ProductRecommendationController {
 
   @Get('trending')
   @Header('Vary', STOREFRONT_CACHE_VARY_HEADER)
-  @ApiOperation({ summary: 'List trending public products' })
+  @ApiOperation({
+    summary: 'List trending products',
+    description: 'Returns trending public products.',
+  })
   @ApiOkResponse({
     description: 'Trending public products.',
     schema: { type: 'object' },
@@ -96,7 +102,10 @@ export class ProductRecommendationController {
 
   @Get('best-sellers')
   @Header('Vary', STOREFRONT_CACHE_VARY_HEADER)
-  @ApiOperation({ summary: 'List best-selling public products' })
+  @ApiOperation({
+    summary: 'List best sellers',
+    description: 'Returns public products with the highest sales.',
+  })
   @ApiOkResponse({
     description: 'Best-selling public products.',
     schema: { type: 'object' },
@@ -121,7 +130,10 @@ export class ProductRecommendationController {
 
   @Get('by-slug/:shop_slug/:product_slug/recommendations')
   @Header('Vary', STOREFRONT_CACHE_VARY_HEADER)
-  @ApiOperation({ summary: 'Recommend similar public products from a product detail page' })
+  @ApiOperation({
+    summary: 'Recommend similar products',
+    description: 'Returns public product recommendations for the product identified by shop and product slugs.',
+  })
   @ApiParam({ name: 'shop_slug', type: String })
   @ApiParam({ name: 'product_slug', type: String })
   @ApiOkResponse({
@@ -156,7 +168,10 @@ export class ProductRecommendationController {
 
   @Get('by-slug/:shop_slug/:product_slug/recommendation-sections')
   @Header('Vary', STOREFRONT_CACHE_VARY_HEADER)
-  @ApiOperation({ summary: 'List recommendation sections for a product detail page' })
+  @ApiOperation({
+    summary: 'List product recommendations',
+    description: 'Returns recommendation sections for the product identified by shop and product slugs.',
+  })
   @ApiParam({ name: 'shop_slug', type: String })
   @ApiParam({ name: 'product_slug', type: String })
   @ApiOkResponse({

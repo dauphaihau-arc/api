@@ -59,7 +59,10 @@ export class SellerAuthController {
   @Idempotent({
     scope: 'seller-auth:register',
   })
-  @ApiOperation({ summary: 'Register a seller account and session' })
+  @ApiOperation({
+    summary: 'Register seller',
+    description: 'Creates a seller account, starts a session, and sets authentication cookies.',
+  })
   @ApiCreatedResponse({
     type: AuthUserResponseDto,
   })

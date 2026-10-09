@@ -69,7 +69,10 @@ export class ProductController {
   @Get('suggestions')
   @Header('Cache-Control', 'public, max-age=30')
   @Header('Vary', STOREFRONT_CACHE_VARY_HEADER)
-  @ApiOperation({ summary: 'Suggest public products for typeahead' })
+  @ApiOperation({
+    summary: 'Suggest products',
+    description: 'Returns public product suggestions for typeahead search.',
+  })
   @ApiErrorResponses(productControllerErrorResponses.suggestions)
   @ApiOkResponse({
     description: 'Matching public product suggestions.',
@@ -88,7 +91,10 @@ export class ProductController {
 
   @Get()
   @Header('Vary', STOREFRONT_CACHE_VARY_HEADER)
-  @ApiOperation({ summary: 'List public products' })
+  @ApiOperation({
+    summary: 'List products',
+    description: 'Returns public products matching the supplied filters.',
+  })
   @ApiErrorResponses(productControllerErrorResponses.list)
   @ApiOkResponse({
     description: 'Public product list.',
@@ -113,7 +119,10 @@ export class ProductController {
 
   @Get('facets')
   @Header('Vary', STOREFRONT_CACHE_VARY_HEADER)
-  @ApiOperation({ summary: 'List public product facets' })
+  @ApiOperation({
+    summary: 'List product facets',
+    description: 'Returns facets for filtering public products.',
+  })
   @ApiErrorResponses(productControllerErrorResponses.facets)
   @ApiOkResponse({
     description: 'Public product facets.',
@@ -139,7 +148,10 @@ export class ProductController {
   @Get('by-slug/:shop_slug/:product_slug')
   @SkipThrottle()
   @Header('Vary', STOREFRONT_CACHE_VARY_HEADER)
-  @ApiOperation({ summary: 'Get a public product by shop slug and product slug' })
+  @ApiOperation({
+    summary: 'Get product',
+    description: 'Returns public product details for the supplied shop and product slugs.',
+  })
   @ApiParam({ name: 'shop_slug', type: String })
   @ApiParam({ name: 'product_slug', type: String })
   @ApiErrorResponses(productControllerErrorResponses.bySlug)
@@ -174,7 +186,10 @@ export class ProductController {
   @Get('by-slug/:shop_slug/:product_slug/reviews')
   @Header('Cache-Control', 'public, max-age=60')
   @Header('Vary', STOREFRONT_CACHE_VARY_HEADER)
-  @ApiOperation({ summary: 'List public product reviews' })
+  @ApiOperation({
+    summary: 'List product reviews',
+    description: 'Returns public reviews for the product identified by shop and product slugs.',
+  })
   @ApiParam({ name: 'shop_slug', type: String })
   @ApiParam({ name: 'product_slug', type: String })
   @ApiErrorResponses(productControllerErrorResponses.reviews)
@@ -212,7 +227,10 @@ export class ProductController {
   @Get('by-slug/:shop_slug/:product_slug/review-images')
   @Header('Cache-Control', 'public, max-age=60')
   @Header('Vary', STOREFRONT_CACHE_VARY_HEADER)
-  @ApiOperation({ summary: 'List public product review images' })
+  @ApiOperation({
+    summary: 'List review images',
+    description: 'Returns public review images for the product identified by shop and product slugs.',
+  })
   @ApiParam({ name: 'shop_slug', type: String })
   @ApiParam({ name: 'product_slug', type: String })
   @ApiErrorResponses(productControllerErrorResponses.reviewImages)

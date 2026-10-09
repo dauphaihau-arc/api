@@ -54,7 +54,10 @@ export class ShopPromoCodesController {
   ) {}
 
   @Post()
-  @ApiOperation({ summary: 'Create a percentage or fixed-amount promo code' })
+  @ApiOperation({
+    summary: 'Create promo code',
+    description: 'Creates a percentage or fixed-amount promo code.',
+  })
   @ApiErrorResponses(shopPromoCodesControllerErrorResponses.create)
   @ApiParam({ name: 'shop_id', type: String })
   @ApiOkResponse({
@@ -92,7 +95,7 @@ export class ShopPromoCodesController {
   }
 
   @Post(':promo_code_id/cancel')
-  @ApiOperation({ summary: 'Irreversibly cancel a scheduled promo code' })
+  @ApiOperation({ summary: 'Cancel scheduled promo code' })
   @ApiErrorResponses(shopPromoCodesControllerErrorResponses.cancel)
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'promo_code_id', type: String })
@@ -117,7 +120,7 @@ export class ShopPromoCodesController {
   }
 
   @Post(':promo_code_id/end')
-  @ApiOperation({ summary: 'Irreversibly end an active promo code early' })
+  @ApiOperation({ summary: 'End active promo code' })
   @ApiErrorResponses(shopPromoCodesControllerErrorResponses.end)
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'promo_code_id', type: String })
@@ -143,7 +146,8 @@ export class ShopPromoCodesController {
 
   @Post('bulk-stop')
   @ApiOperation({
-    summary: 'Cancel scheduled promo codes and end active promo codes in one request',
+    summary: 'Stop promo codes',
+    description: 'Cancels scheduled promo codes and ends active promo codes.',
   })
   @ApiErrorResponses(shopPromoCodesControllerErrorResponses.bulkStop)
   @ApiParam({ name: 'shop_id', type: String })

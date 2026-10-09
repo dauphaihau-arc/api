@@ -50,7 +50,10 @@ export class ProductUploadController {
   @Header('Cache-Control', 'private, no-store')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @ApiCookieAuth('accessCookie')
-  @ApiOperation({ summary: 'Issue a product image upload URL' })
+  @ApiOperation({
+    summary: 'Issue upload URL',
+    description: 'Issues a URL for uploading an image to the specified product.',
+  })
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'product_id', type: String })
   @ApiErrorResponses(productUploadControllerErrorResponses.issue)
@@ -88,7 +91,10 @@ export class ProductUploadController {
   @Header('Cache-Control', 'no-store')
   @HttpCode(200)
   @ApiConsumes('application/octet-stream')
-  @ApiOperation({ summary: 'Upload a product image by upload ticket' })
+  @ApiOperation({
+    summary: 'Upload product image',
+    description: 'Uploads an image using its single-use upload ticket.',
+  })
   @ApiParam({ name: 'token', type: String })
   @ApiErrorResponses(productUploadControllerErrorResponses.upload)
   @ApiOkResponse({

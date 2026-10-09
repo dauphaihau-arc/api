@@ -43,7 +43,10 @@ export class MeProductReviewController {
   ) {}
 
   @Put(':order_item_id')
-  @ApiOperation({ summary: 'Create or update my product review' })
+  @ApiOperation({
+    summary: 'Save product review',
+    description: 'Creates or updates the signed-in user’s review for an order item.',
+  })
   @ApiParam({ name: 'order_item_id', type: String })
   @ApiErrorResponses(meProductReviewControllerErrorResponses.upsert)
   @ApiOkResponse({
