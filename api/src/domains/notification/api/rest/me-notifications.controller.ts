@@ -28,7 +28,7 @@ import {
 import { JwtAuthGuard } from '~/domains/auth/api/guard/jwt-auth.guard';
 import { PermissionsGuard } from '~/domains/auth/api/guard/permissions.guard';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
-import { buildListMyNotificationsQuery } from './notification.queries';
+import { buildListMyNotificationsQuery } from './queries/notification.queries';
 import { GetMyNotificationUnreadCountUseCase } from '../../app/use-cases/get-my-notification-unread-count/get-my-notification-unread-count.use-case';
 import { ListMyNotificationsUseCase } from '../../app/use-cases/list-my-notifications/list-my-notifications.use-case';
 import { MarkAllMyNotificationsAsReadUseCase } from '../../app/use-cases/mark-all-my-notifications-as-read/mark-all-my-notifications-as-read.use-case';
@@ -41,7 +41,7 @@ import { UnregisterWebPushSubscriptionDto } from './dto/unregister-web-push-subs
 import {
   toNotificationListResponse,
   toNotificationResponse,
-} from './notification.response';
+} from './responses/notification.response';
 
 @Controller('me/notifications')
 @UseGuards(JwtAuthGuard, PermissionsGuard)

@@ -25,7 +25,7 @@ import { VerifyResetPasswordTokenUseCase } from '../../app/use-cases/verify-rese
 import { SessionNotActiveError } from '../../app/errors/auth-app.error';
 import type { AuthenticatedUser, UserProfile } from '../../app/auth.types';
 import { UserStatus } from '../../domain/enums/user-status.enum';
-import { AuthCookieService } from '../rest/auth-cookie.utils';
+import { AuthCookieService } from '../rest/cookies/auth-cookie.utils';
 import { AuthController } from '../rest/auth.controller';
 
 const authConfig: AuthConfig = {

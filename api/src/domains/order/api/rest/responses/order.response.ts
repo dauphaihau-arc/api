@@ -1,0 +1,712 @@
+import type {
+  OrderFulfillmentSummary,
+  AdminOrderListResult,
+  CheckoutQuoteResult,
+  AdminOrderDetail,
+  CreateOrderResult,
+  MyOrderDetail,
+  OrderListResult,
+  OrderShippingQuote,
+  ShopDashboardResult,
+  ShopOrderDetail,
+  ShopOrderListResult,
+  ShopOrderSummary,
+} from '../../../app/order.types';
+import {
+  toPublicShippingDiscount,
+  toPublicShippingQuote,
+} from '../../../../checkout/app/checkout-shipping-snapshot.contract';
+import { toMinorUnits } from '~/platform/money/money';
+import type { CheckoutConfig } from '~/platform/config/checkout.config';
+import { getMaxOrderTotalMinor } from '~/platform/config/checkout.config';
+
+function toMyReviewResponse(review?: {
+  id: string;
+  rating: number;
+  title?: string;
+  body?: string;
+  status: 'published' | 'hidden';
+  createdAt: Date;
+  updatedAt: Date;
+  images: Array<{
+    id: string;
+    url?: string;
+    sizeBytes?: number;
+    rank: number;
+    variantStatus?: string;
+    variantError?: string;
+    variantsGeneratedAt?: Date;
+    variants?: Array<{
+      variant: string;
+      url?: string;
+      width?: number;
+      height?: number;
+      format?: string;
+    }>;
+  }>;
+}) {
+  if (!review) {
+    return undefined;
+  }
+
+  return {
+    id: review.id,
+    rating: review.rating,
+    title: review.title,
+    body: review.body,
+    status: review.status,
+    created_at: review.createdAt,
+    updated_at: review.updatedAt,
+    images: review.images.map((image) => ({
+      id: image.id,
+      url: image.url ?? '',
+      size_bytes: image.sizeBytes,
+      rank: image.rank,
+      ...(image.variantStatus ? { variant_status: image.variantStatus } : {}),
+      ...(image.variantError ? { variant_error: image.variantError } : {}),
+      ...(image.variantsGeneratedAt ? { variants_generated_at: image.variantsGeneratedAt } : {}),
+      ...(toVariantRecord(image.variants) ? { variants: toVariantRecord(image.variants) } : {}),
+    })),
+  };
+}
+
+function toVariantRecord(variants?: Array<{
+  variant: string;
+  url?: string;
+  width?: number;
+  height?: number;
+  format?: string;
+}>) {
+  if (!variants || variants.length === 0) {
+    return undefined;
+  }
+
+  return variants.reduce<Record<string, {
+    url: string;
+    width?: number;
+    height?: number;
+    format?: string;
+  }>>((accumulator, variant) => {
+    accumulator[variant.variant] = {
+      url: variant.url ?? '',
+      width: variant.width,
+      height: variant.height,
+      format: variant.format,
+    };
+    return accumulator;
+  }, {});
+}
+
+function toPaymentResponse(order: {
+  paymentType: string;
+  refundedAt?: Date;
+  paymentDetails?: Record<string, unknown>;
+}) {
+  const refundStatus = typeof order.paymentDetails?.['refund_status'] === 'string'
+    ? order.paymentDetails['refund_status']
+    : undefined;
+  const refundFailedReason = typeof order.paymentDetails?.['refund_failed_reason'] === 'string'
+    ? order.paymentDetails['refund_failed_reason']
+    : undefined;
+
+  return {
+    type: order.paymentType,
+    ...(refundStatus ? { refund_status: refundStatus } : {}),
+    ...(order.refundedAt ? { refunded_at: order.refundedAt } : {}),
+    ...(refundFailedReason ? { refund_failed_reason: refundFailedReason } : {}),
+  };
+}
+
+function toMinorTotals(input: {
+  currency: string;
+  subtotal: number;
+  subtotalMinor?: number;
+  totalShippingFee: number;
+  shippingMinor?: number;
+  totalDiscount: number;
+  discountMinor?: number;
+  saleDiscountMinor?: number;
+  total: number;
+  totalMinor?: number;
+}) {
+  return {
+    currency: input.currency,
+    subtotal_minor: input.subtotalMinor ?? toMinorUnits(input.subtotal, input.currency),
+    shipping_minor: input.shippingMinor ?? toMinorUnits(input.totalShippingFee, input.currency),
+    discount_minor: input.discountMinor ?? toMinorUnits(input.totalDiscount, input.currency),
+    sale_discount_minor: input.saleDiscountMinor ?? 0,
+    total_minor: input.totalMinor ?? toMinorUnits(input.total, input.currency),
+  };
+}
+
+export function toCreateOrderResponse(result: CreateOrderResult) {
+  return {
+    checkout_session_url: result.checkoutSessionUrl,
+    checkout_pending: result.checkoutPending ?? false,
+    order_shops: result.orderShops.map((orderShop) => ({
+      id: orderShop.publicId,
+      order_number: orderShop.orderNumber,
+      shop: {
+        id: orderShop.shopPublicId,
+        shop_name: orderShop.shopName,
+        slug: orderShop.shopSlug,
+      },
+    })),
+  };
+}
+
+export function toCheckoutQuoteResponse(
+  result: CheckoutQuoteResult,
+  checkoutConfig?: CheckoutConfig,
+) {
+  return {
+    quote_id: result.quoteId,
+    presentment_currency: result.presentmentCurrency,
+    checkout_currency: result.checkoutCurrency,
+    ...(checkoutConfig
+      ? {
+        checkout_policy: {
+          max_order_total_minor: getMaxOrderTotalMinor(
+            checkoutConfig,
+            result.checkoutCurrency,
+          ),
+        },
+      }
+      : {}),
+    subtotal_minor: result.subtotalMinor,
+    shipping_minor: result.shippingMinor,
+    discount_minor: result.discountMinor,
+    total_minor: result.totalMinor,
+    expires_at: result.expiresAt,
+    items: result.items.map((item) => ({
+      inventory_id: item.inventoryId,
+      title: item.title,
+      image_url: item.imageUrl,
+      quantity: item.quantity,
+      source_currency: item.sourceCurrency,
+      unit_price_source_minor: item.unitPriceSourceMinor,
+      line_total_source_minor: item.lineTotalSourceMinor,
+      checkout_currency: item.checkoutCurrency,
+      unit_price_checkout_minor: item.unitPriceCheckoutMinor,
+      line_total_checkout_minor: item.lineTotalCheckoutMinor,
+      original_amount_minor: item.originalAmountMinor,
+      currency: item.checkoutCurrency,
+      source_type: item.sourceType,
+      fx_rate: item.fxRate,
+      fx_source: item.fxSource,
+      fx_effective_at: item.fxEffectiveAt,
+      selected_options: (item.selectedOptions ?? []).map((selection) => ({
+        option_id: selection.optionId,
+        option_name: selection.optionName,
+        value_id: selection.valueId,
+        value: selection.value,
+      })),
+    })),
+  };
+}
+
+export function toCheckoutSessionOrderResponse(result: CreateOrderResult) {
+  return {
+    order_shops: result.orderShops.map((orderShop) => ({
+      id: orderShop.publicId,
+      order_number: orderShop.orderNumber,
+      shop: {
+        id: orderShop.shopPublicId,
+        shop_name: orderShop.shopName,
+        slug: orderShop.shopSlug,
+      },
+    })),
+  };
+}
+
+export function toOrderListResponse(result: OrderListResult) {
+  return {
+    order_shops: result.orderShops.map((orderShop) => ({
+      id: orderShop.publicId,
+      order_number: orderShop.orderNumber,
+      shop: {
+        id: orderShop.shopPublicId,
+        shop_name: orderShop.shopName,
+        slug: orderShop.shopSlug,
+      },
+      payment: toPaymentResponse(orderShop),
+      status: orderShop.status,
+      products: orderShop.products.map((product) => ({
+        product: {
+          id: product.productPublicId,
+          slug: product.slug,
+          shop: {
+            slug: product.shopSlug,
+          },
+          selected_options: (product.selectedOptions ?? []).map((selection) => ({
+            option_id: selection.optionId,
+            option_name: selection.optionName,
+            value_id: selection.valueId,
+            value: selection.value,
+          })),
+          shipping: {},
+        },
+        inventory: {
+          sku: product.sku,
+        },
+        id: product.id,
+        title: product.title,
+        image_url: product.imageUrl,
+        image_reference: product.imageReference,
+        quantity: product.quantity,
+        amount_minor: product.amountMinor,
+        original_amount_minor: product.originalAmountMinor,
+        promo_discount_minor: product.promoDiscountMinor,
+        currency: product.currency,
+        ...(product.myReview ? { my_review: toMyReviewResponse(product.myReview) } : {}),
+      })),
+      promo_codes: orderShop.promoCodes.map((code) => ({
+        id: code,
+        code,
+      })),
+      fulfillment: toFulfillmentSummaryResponse(orderShop.fulfillment),
+      ...toMinorTotals(orderShop),
+      ...toOrderShippingResponse(orderShop.shippingQuote, orderShop.shopPublicId, orderShop.products),
+      note: orderShop.note,
+      canceled_at: orderShop.canceledAt,
+      cancel_reason: orderShop.cancelReason,
+      customer_support_note: orderShop.customerSupportNote,
+      cancel_requested_at: orderShop.cancelRequestedAt,
+      created_at: orderShop.createdAt,
+    })),
+  };
+}
+
+function toShopOrderProductResponse(orderShop: ShopOrderSummary) {
+  return orderShop.products.map((product) => ({
+    id: product.id,
+    title: product.title,
+    image_url: product.imageUrl,
+    image_reference: product.imageReference,
+    quantity: product.quantity,
+    amount_minor: product.amountMinor,
+    original_amount_minor: product.originalAmountMinor,
+    promo_discount_minor: product.promoDiscountMinor,
+    currency: product.currency,
+    inventory: {
+      sku: product.sku,
+    },
+    product: {
+      id: product.productPublicId,
+      slug: product.slug,
+      shop: {
+        slug: product.shopSlug,
+      },
+      selected_options: (product.selectedOptions ?? []).map((selection) => ({
+        option_id: selection.optionId,
+        option_name: selection.optionName,
+        value_id: selection.valueId,
+        value: selection.value,
+      })),
+    },
+    ...(product.myReview ? { my_review: toMyReviewResponse(product.myReview) } : {}),
+  }));
+}
+
+
+export function toFulfillmentSummaryResponse(
+  fulfillment: OrderFulfillmentSummary,
+) {
+  return {
+    status: fulfillment.status,
+    requires_reconciliation: fulfillment.requiresReconciliation,
+    progress: toFulfillmentProgressResponse(fulfillment.progress),
+    groups: fulfillment.groups.map((group) => ({
+      id: group.id,
+      method: group.method,
+      operator: group.operator,
+      provenance: group.provenance,
+      items: group.items.map((item) => ({
+        order_item_id: item.orderItemId,
+        quantity: item.quantity,
+      })),
+      progress: toFulfillmentProgressResponse(group.progress),
+      shipments: group.shipments.map((shipment) => ({
+        id: shipment.publicId,
+        group_id: shipment.groupId,
+        status: shipment.status,
+        carrier: shipment.carrier,
+        tracking_number: shipment.trackingNumber,
+        shipment_note: shipment.note,
+        origin_countries: shipment.originCountries,
+        prepared_at: shipment.preparedAt,
+        dispatched_at: shipment.dispatchedAt,
+        delivered_at: shipment.deliveredAt,
+        voided_at: shipment.voidedAt,
+        created_at: shipment.createdAt,
+        updated_at: shipment.updatedAt,
+        items: shipment.items.map((item) => ({
+          order_item_id: item.orderItemId,
+          quantity: item.quantity,
+        })),
+        updates: shipment.updates.map((update) => ({
+          id: update.id,
+          status: update.status,
+          actor_type: update.actorType,
+          actor_id: update.actorId,
+          source: update.source,
+          occurred_at: update.occurredAt,
+          note: update.note,
+        })),
+      })),
+    })),
+    legacy_shipping: {
+      status: fulfillment.legacyShipping.status,
+      updated_at: fulfillment.legacyShipping.updatedAt,
+      to_country: fulfillment.legacyShipping.toCountry,
+      from_countries: fulfillment.legacyShipping.fromCountries,
+      estimated_delivery: fulfillment.legacyShipping.estimatedDelivery,
+      tracking_number: fulfillment.legacyShipping.trackingNumber,
+      carrier: fulfillment.legacyShipping.carrier,
+      note: fulfillment.legacyShipping.note,
+      shipped_at: fulfillment.legacyShipping.shippedAt,
+      delivered_at: fulfillment.legacyShipping.deliveredAt,
+    },
+  };
+}
+
+export function toFulfillmentProgressResponse(progress: OrderFulfillmentSummary['progress']) {
+  return {
+    ordered: progress.ordered,
+    prepared: progress.prepared,
+    dispatched: progress.dispatched,
+    delivered: progress.delivered,
+    canceled: progress.canceled,
+    outstanding: progress.outstanding,
+  };
+}
+
+/**
+ * The accepted shipping facts of a confirmed Order, in transport shape, beside
+ * `shipping_minor`. It is the purchase-time snapshot in the same snake_case
+ * shape a checkout quote shop returns, so a buyer, guest, seller, or admin view
+ * never re-derives shipping from current configuration.
+ */
+export function toOrderShippingResponse(
+  shippingQuote: OrderShippingQuote | undefined,
+  shopPublicId: string,
+  products: Array<{ productId: string; productPublicId: string }>,
+) {
+  if (!shippingQuote) {
+    return {};
+  }
+
+  return {
+    shipping: toPublicShippingQuote(shippingQuote.shipping, shopPublicId, products),
+    shipping_discount_minor: shippingQuote.shippingDiscountMinor,
+    shipping_discounts: shippingQuote.shippingDiscounts.map(toPublicShippingDiscount),
+  };
+}
+
+export function toShopOrderSummaryResponse(orderShop: ShopOrderSummary) {
+  return {
+    id: orderShop.publicId,
+    order_number: orderShop.orderNumber,
+    shop: {
+      id: orderShop.shopPublicId,
+      shop_name: orderShop.shopName,
+      slug: orderShop.shopSlug,
+    },
+    customer: {
+      email: orderShop.customerEmail,
+      full_name: orderShop.customerFullName,
+    },
+    payment: toPaymentResponse(orderShop),
+    status: orderShop.status,
+    products: toShopOrderProductResponse(orderShop),
+    promo_codes: orderShop.promoCodes.map((code) => ({
+      id: code,
+      code,
+    })),
+    fulfillment: toFulfillmentSummaryResponse(orderShop.fulfillment),
+    ...toMinorTotals(orderShop),
+    ...toOrderShippingResponse(orderShop.shippingQuote, orderShop.shopPublicId, orderShop.products),
+    note: orderShop.note,
+    canceled_at: orderShop.canceledAt,
+    cancel_reason: orderShop.cancelReason,
+    customer_support_note: orderShop.customerSupportNote,
+    cancel_requested_at: orderShop.cancelRequestedAt,
+    created_at: orderShop.createdAt,
+  };
+}
+
+export function toShopOrderListResponse(result: ShopOrderListResult) {
+  return {
+    results: result.results.map(toShopOrderSummaryResponse),
+    page: result.page,
+    limit: result.limit,
+    total_pages: result.totalPages,
+    total_results: result.totalResults,
+    status_counts: result.statusCounts,
+  };
+}
+
+export function toShopDashboardResponse(result: ShopDashboardResult) {
+  return {
+    period: {
+      range: result.period.range,
+      from: result.period.from,
+      to: result.period.to,
+    },
+    summary: {
+      revenue_minor: result.summary.revenueMinor,
+      order_count: result.summary.orderCount,
+      items_sold: result.summary.itemsSold,
+      average_order_value_minor: result.summary.averageOrderValueMinor,
+      currency: result.summary.currency,
+    },
+    revenue_series: result.revenueSeries.map((point) => ({
+      date: point.date,
+      label: point.label,
+      revenue_minor: point.revenueMinor,
+      order_count: point.orderCount,
+    })),
+    recent_orders: result.recentOrders.map(toShopOrderSummaryResponse),
+    top_selling_products: result.topSellingProducts.map((product) => ({
+      product_id: product.productPublicId,
+      title: product.title,
+      slug: product.slug,
+      image_url: product.imageUrl,
+      quantity_sold: product.quantitySold,
+      order_count: product.orderCount,
+      revenue_minor: product.revenueMinor,
+      currency: product.currency,
+    })),
+  };
+}
+
+export function toShopOrderDetailResponse(order: ShopOrderDetail) {
+  return {
+    order: {
+      ...toShopOrderSummaryResponse(order),
+      products: order.products.map((product) => ({
+        id: product.id,
+        title: product.title,
+        image_url: product.imageUrl,
+        image_reference: product.imageReference,
+        quantity: product.quantity,
+        amount_minor: product.amountMinor,
+        original_amount_minor: product.originalAmountMinor,
+        promo_discount_minor: product.promoDiscountMinor,
+        currency: product.currency,
+        inventory: {
+          sku: product.sku,
+        },
+        product: {
+          id: product.productPublicId,
+          slug: product.slug,
+          shop: {
+            slug: product.shopSlug,
+          },
+          selected_options: (product.selectedOptions ?? []).map((selection) => ({
+            option_id: selection.optionId,
+            option_name: selection.optionName,
+            value_id: selection.valueId,
+            value: selection.value,
+          })),
+        },
+      })),
+      shipping_address: {
+        full_name: order.shippingAddress.fullName,
+        address1: order.shippingAddress.address1,
+        address2: order.shippingAddress.address2,
+        city: order.shippingAddress.city,
+        country: order.shippingAddress.country,
+        state: order.shippingAddress.state,
+        zip: order.shippingAddress.zip,
+        phone: order.shippingAddress.phone,
+      },
+    },
+    timeline: order.timeline.map((event) => ({
+      id: event.id,
+      type: event.type,
+      occurred_at: event.occurredAt,
+      actor_type: event.actorType,
+      actor_id: event.actorId,
+      source: event.source,
+      payload: event.payload,
+    })),
+  };
+}
+
+export function toMyOrderDetailResponse(order: MyOrderDetail) {
+  return {
+    order_shop: {
+      id: order.publicId,
+      order_number: order.orderNumber,
+      shop: {
+        id: order.shopPublicId,
+        shop_name: order.shopName,
+        slug: order.shopSlug,
+      },
+      customer: {
+        email: order.customerEmail,
+      },
+      payment: toPaymentResponse(order),
+      status: order.status,
+      products: order.products.map((product) => ({
+        product: {
+          id: product.productPublicId,
+          slug: product.slug,
+          shop: {
+            slug: product.shopSlug,
+          },
+          selected_options: (product.selectedOptions ?? []).map((selection) => ({
+            option_id: selection.optionId,
+            option_name: selection.optionName,
+            value_id: selection.valueId,
+            value: selection.value,
+          })),
+          shipping: {},
+        },
+        inventory: {
+          sku: product.sku,
+        },
+        id: product.id,
+        title: product.title,
+        image_url: product.imageUrl,
+        image_reference: product.imageReference,
+        quantity: product.quantity,
+        amount_minor: product.amountMinor,
+        original_amount_minor: product.originalAmountMinor,
+        promo_discount_minor: product.promoDiscountMinor,
+        currency: product.currency,
+        ...(product.myReview ? { my_review: toMyReviewResponse(product.myReview) } : {}),
+      })),
+      promo_codes: order.promoCodes.map((code) => ({
+        id: code,
+        code,
+      })),
+      fulfillment: toFulfillmentSummaryResponse(order.fulfillment),
+      shipping_address: {
+        full_name: order.shippingAddress.fullName,
+        address1: order.shippingAddress.address1,
+        address2: order.shippingAddress.address2,
+        city: order.shippingAddress.city,
+        country: order.shippingAddress.country,
+        state: order.shippingAddress.state,
+        zip: order.shippingAddress.zip,
+        phone: order.shippingAddress.phone,
+      },
+      ...toMinorTotals(order),
+      ...toOrderShippingResponse(order.shippingQuote, order.shopPublicId, order.products),
+      note: order.note,
+      canceled_at: order.canceledAt,
+      cancel_reason: order.cancelReason,
+      customer_support_note: order.customerSupportNote,
+      cancel_requested_at: order.cancelRequestedAt,
+      created_at: order.createdAt,
+    },
+  };
+}
+
+export function toAdminOrderDetailResponse(order: AdminOrderDetail) {
+  return {
+    order: {
+      id: order.publicId,
+      order_number: order.orderNumber,
+      shop: {
+        id: order.shopPublicId,
+        shop_name: order.shopName,
+        slug: order.shopSlug,
+      },
+      customer: {
+        email: order.customerEmail,
+      },
+      payment: {
+        type: order.paymentType,
+        details: order.paymentDetails ?? null,
+      },
+      status: order.status,
+      products: order.products.map((product) => ({
+        product: {
+          id: product.productPublicId,
+          slug: product.slug,
+          shop: {
+            slug: product.shopSlug,
+          },
+          selected_options: (product.selectedOptions ?? []).map((selection) => ({
+            option_id: selection.optionId,
+            option_name: selection.optionName,
+            value_id: selection.valueId,
+            value: selection.value,
+          })),
+          shipping: {},
+        },
+        inventory: {
+          sku: product.sku,
+        },
+        id: product.id,
+        title: product.title,
+        image_url: product.imageUrl,
+        quantity: product.quantity,
+        amount_minor: product.amountMinor,
+        original_amount_minor: product.originalAmountMinor,
+        promo_discount_minor: product.promoDiscountMinor,
+        currency: product.currency,
+      })),
+      promo_codes: order.promoCodes.map((code) => ({
+        id: code,
+        code,
+      })),
+      fulfillment: toFulfillmentSummaryResponse(order.fulfillment),
+      shipping_address: {
+        full_name: order.shippingAddress.fullName,
+        address1: order.shippingAddress.address1,
+        address2: order.shippingAddress.address2,
+        city: order.shippingAddress.city,
+        country: order.shippingAddress.country,
+        state: order.shippingAddress.state,
+        zip: order.shippingAddress.zip,
+        phone: order.shippingAddress.phone,
+      },
+      ...toMinorTotals(order),
+      ...toOrderShippingResponse(order.shippingQuote, order.shopPublicId, order.products),
+      note: order.note,
+      support_note: order.supportNote,
+      canceled_at: order.canceledAt,
+      cancel_reason: order.cancelReason,
+      refunded_at: order.refundedAt,
+      created_at: order.createdAt,
+    },
+  };
+}
+
+export function toAdminOrderListResponse(result: AdminOrderListResult) {
+  return {
+    results: result.results.map((order) => ({
+      id: order.publicId,
+      order_number: order.orderNumber,
+      shop: {
+        id: order.shopPublicId,
+        shop_name: order.shopName,
+        slug: order.shopSlug,
+      },
+      customer: {
+        email: order.customerEmail,
+      },
+      payment: {
+        type: order.paymentType,
+      },
+      status: order.status,
+      fulfillment: {
+        status: order.fulfillmentStatus,
+      },
+      currency: order.currency,
+      total_minor: order.totalMinor ?? toMinorUnits(order.total, order.currency),
+      support_note: order.supportNote,
+      cancel_reason: order.cancelReason,
+      refunded_at: order.refundedAt,
+      created_at: order.createdAt,
+    })),
+    page: result.page,
+    limit: result.limit,
+    total_pages: result.totalPages,
+    total_results: result.totalResults,
+  };
+}

@@ -36,11 +36,11 @@ import {
   StartProductImportUseCase,
   type UploadedProductImportFile,
 } from '~/domains/product/app/use-cases/start-product-import/start-product-import.use-case';
-import { ProductImportExceptionsFilter } from './product-import-exceptions.filter';
+import { ProductImportExceptionsFilter } from './errors/product-import-exceptions.filter';
 import {
   toShopProductImportResponse,
   type ShopProductImportResponse,
-} from './product-import.response';
+} from './responses/product-import.response';
 
 @Controller('shops/:shop_id/products/imports')
 @UseFilters(ProductImportExceptionsFilter)

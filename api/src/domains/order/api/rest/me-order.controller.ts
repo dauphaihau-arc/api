@@ -30,8 +30,8 @@ import { ListMyOrdersQueryDto } from './dto/list-my-orders.query.dto';
 import {
   toMyOrderDetailResponse,
   toOrderListResponse,
-} from './order.response';
-import { OrderExceptionsFilter } from './order-exceptions.filter';
+} from './responses/order.response';
+import { OrderExceptionsFilter } from './errors/order-exceptions.filter';
 
 @Controller('me/orders')
 @UseFilters(OrderExceptionsFilter)

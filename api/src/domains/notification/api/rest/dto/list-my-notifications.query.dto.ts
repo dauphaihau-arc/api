@@ -9,7 +9,7 @@ import {
   NOTIFICATION_LIST_DEFAULT_LIMIT,
   NOTIFICATION_LIST_DEFAULT_PAGE,
   NOTIFICATION_LIST_MAX_LIMIT,
-} from '../notification.constants';
+} from '../queries/notification.constants';
 
 export class ListMyNotificationsQueryDto {
   @IsOptional()

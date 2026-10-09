@@ -43,9 +43,9 @@ import { VerifyResetPasswordTokenUseCase } from '../../app/use-cases/verify-rese
 import { CurrentUser } from '~/platform/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../guard/jwt-auth.guard';
 import { PermissionsGuard } from '../guard/permissions.guard';
-import { mapAuthAppErrorToHttpException } from './auth-error-mapper';
-import { AuthHttpExceptionFilter } from './auth-http-exception.filter';
-import { AuthCookieService } from './auth-cookie.utils';
+import { mapAuthAppErrorToHttpException } from './errors/auth-error-mapper';
+import { AuthHttpExceptionFilter } from './errors/auth-http-exception.filter';
+import { AuthCookieService } from './cookies/auth-cookie.utils';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { LoginDto } from './dto/login.dto';
 import { AuthUserResponseDto, CurrentUserResponseDto } from './dto/me-response.dto';

@@ -28,7 +28,7 @@ import {
 } from '../../../app/errors/product-app.error';
 import { UpsertMyProductReviewUseCase } from '../../../app/use-cases/upsert-my-product-review/upsert-my-product-review.use-case';
 import { UpsertMyProductReviewDto } from './dto/upsert-my-product-review.dto';
-import { toMyProductReviewResponse } from './me-product-review.response';
+import { toMyProductReviewResponse } from './responses/me-product-review.response';
 
 @Controller('me/product-reviews')
 @UseGuards(JwtAuthGuard, PermissionsGuard)

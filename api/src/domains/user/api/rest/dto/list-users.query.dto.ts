@@ -9,7 +9,7 @@ import {
   USER_LIST_DEFAULT_LIMIT,
   USER_LIST_DEFAULT_PAGE,
   USER_LIST_MAX_LIMIT,
-} from '../user.constants';
+} from '../queries/user.constants';
 
 export class ListUsersQueryDto {
   @IsOptional()

@@ -1,5 +1,5 @@
 import { CartController } from './cart.controller';
-import type { GuestCartSessionService } from './guest-cart-session.service';
+import type { GuestCartSessionService } from './cookies/guest-cart-session.service';
 import type { CartUpdatePricingService } from '../../app/services/cart-update-pricing.service';
 import type { CartPublicShopResolver } from '../../app/services/cart-public-shop-resolver.service';
 import type { CartSnapshot } from '../../app/cart.types';

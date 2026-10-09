@@ -25,8 +25,8 @@ import { CurrentUser } from '~/platform/decorators/current-user.decorator';
 import { JwtAuthGuard } from '~/domains/auth/api/guard/jwt-auth.guard';
 import { PermissionsGuard } from '~/domains/auth/api/guard/permissions.guard';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
-import { buildListMyAddressesQuery } from './user-address.queries';
-import { DEFAULT_USER_ADDRESS_LIST_SORT } from './user-address.constants';
+import { buildListMyAddressesQuery } from './queries/user-address.queries';
+import { DEFAULT_USER_ADDRESS_LIST_SORT } from './queries/user-address.constants';
 import { CreateMyAddressUseCase } from '../../app/use-cases/create-my-address/create-my-address.use-case';
 import { DeleteMyAddressUseCase } from '../../app/use-cases/delete-my-address/delete-my-address.use-case';
 import { GetMyAddressUseCase } from '../../app/use-cases/get-my-address/get-my-address.use-case';
@@ -38,7 +38,7 @@ import { UpdateMyAddressDto } from './dto/update-my-address.dto';
 import {
   toMyAddressListResponse,
   toMyAddressResponse,
-} from './me-address.response';
+} from './responses/me-address.response';
 
 @Controller('me/addresses')
 @UseGuards(JwtAuthGuard, PermissionsGuard)

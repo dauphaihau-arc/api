@@ -17,7 +17,7 @@ import { parseCorsAllowedOrigins } from '~/platform/config/cors.config';
 import { AuthTokenService } from '~/domains/auth/app/ports/auth-token.service';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import { LoadAuthenticatedUserUseCase } from '~/domains/auth/app/use-cases/load-authenticated-user/load-authenticated-user.use-case';
-import { extractCookieValue } from '~/domains/auth/api/rest/auth-cookie.utils';
+import { extractCookieValue } from '~/domains/auth/api/rest/cookies/auth-cookie.utils';
 import { ChatConversationEntity } from '~/domains/chat/infra/persistence/entities/chat-conversation.entity';
 import { buildConversationWsChannelKey, buildUserWsChannelKey } from '../app/channel-keys';
 import { WsRedisAdapterService } from '../infra/ws-redis-adapter.service';

@@ -1,6 +1,6 @@
 import type { PublicProductRecommendationSection } from '../../../../app/product.types';
 import { toPublicProductListItemResponse } from '../../storefront/presenters/public-product-list-item.presenter';
-import type { PublicProductRecommendationSectionsResponse } from '../response/public-product-recommendation-sections.response';
+import type { PublicProductRecommendationSectionsResponse } from '../responses/public-product-recommendation-sections.response';
 
 export const toPublicProductRecommendationSectionsResponse = (
   sections: PublicProductRecommendationSection[],

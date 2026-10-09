@@ -69,11 +69,11 @@ import { SetProductAttributesDto } from '~/domains/shop/api/rest/dto/set-product
 import { SetProductImagesByKeysDto } from '~/domains/shop/api/rest/dto/set-product-images-by-keys.dto';
 import { AssignProductShippingProfileDto } from '~/domains/shop/api/rest/dto/assign-product-shipping-profile.dto';
 import { UpdateProductDto } from '~/domains/shop/api/rest/dto/update-product.dto';
-import { mapProductAppErrorToHttpException } from '~/domains/shop/api/rest/product-http-error-mapper';
-import { toShopProductDetailResponse } from './shop-product-detail.presenter';
-import type { ShopProductDetailResponse } from './shop-product-detail.response';
-import { toShopProductListResponse } from './shop-product-list.presenter';
-import type { ShopProductListResponse } from './shop-product-list.response';
+import { mapProductAppErrorToHttpException } from '~/domains/shop/api/rest/errors/product-http-error-mapper';
+import { toShopProductDetailResponse } from './presenters/shop-product-detail.presenter';
+import type { ShopProductDetailResponse } from './responses/shop-product-detail.response';
+import { toShopProductListResponse } from './presenters/shop-product-list.presenter';
+import type { ShopProductListResponse } from './responses/shop-product-list.response';
 
 const shopProductRouteRateLimits = {
   generateDescription: {

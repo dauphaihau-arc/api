@@ -21,7 +21,7 @@ import { ListPublicProductReviewsUseCase } from '../../../app/use-cases/list-pub
 import { ListPublicProductReviewImagesQueryDto } from './dto/list-public-product-review-images.query.dto';
 import { ListPublicProductsQueryDto } from './dto/list-public-products.query.dto';
 import { ListPublicProductReviewsQueryDto } from './dto/list-public-product-reviews.query.dto';
-import { ListPublicProductsQueryPipe } from './list-public-products-query.pipe';
+import { ListPublicProductsQueryPipe } from './pipes/list-public-products-query.pipe';
 import { SuggestPublicProductsQueryDto } from './dto/suggest-public-products.query.dto';
 import { toPublicProductDetailResponse } from './presenters/public-product-detail.presenter';
 import type { PublicProductDetailResponse } from './responses/public-product-detail.response';

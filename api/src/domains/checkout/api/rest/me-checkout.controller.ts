@@ -25,7 +25,7 @@ import {
   toCheckoutQuoteResponse,
   toCheckoutSessionOrderResponse,
   toCreateOrderResponse,
-} from './checkout.response';
+} from './responses/checkout.response';
 import { CheckoutPublicIdResolver } from '../../app/services/checkout-public-id.resolver';
 import { CreateCheckoutQuoteForBuyNowUseCase } from '../../app/use-cases/create-checkout-quote-for-buy-now/create-checkout-quote-for-buy-now.use-case';
 import { CreateCheckoutQuoteFromCartUseCase } from '../../app/use-cases/create-checkout-quote-from-cart/create-checkout-quote-from-cart.use-case';
@@ -37,7 +37,7 @@ import { CreateCheckoutQuoteForBuyNowDto } from './dto/create-checkout-quote-for
 import { CreateCheckoutQuoteFromCartDto } from './dto/create-checkout-quote-from-cart.dto';
 import { CreateOrderForBuyNowDto } from './dto/create-order-for-buy-now.dto';
 import { CreateOrderFromCartDto } from './dto/create-order-from-cart.dto';
-import { CheckoutExceptionsFilter } from './checkout-exceptions.filter';
+import { CheckoutExceptionsFilter } from './errors/checkout-exceptions.filter';
 
 @Controller('me/checkout')
 @UseFilters(CheckoutExceptionsFilter)

@@ -28,12 +28,12 @@ import { ShopPromoCodeStopAction, StopShopPromoCodeUseCase } from '../../app/use
 import { BulkStopShopPromoCodesDto } from './dto/bulk-stop-shop-promo-codes.dto';
 import { CreateShopPromoCodeDto } from './dto/create-shop-promo-code.dto';
 import { ListShopPromoCodesQueryDto } from './dto/list-shop-promo-codes.query.dto';
-import { ShopExceptionsFilter } from './shop-exceptions.filter';
+import { ShopExceptionsFilter } from './errors/shop-exceptions.filter';
 import {
   toShopPromoCodeListResponse,
   toShopPromoCodeResponse,
   toShopPromoCodeStopListResponse,
-} from './shop-promo-code.response';
+} from './responses/shop-promo-code.response';
 
 @Controller('shops/:shop_id/promo-codes')
 @UseFilters(ShopExceptionsFilter)

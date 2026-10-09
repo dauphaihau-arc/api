@@ -31,8 +31,8 @@ import { GetShopOrderExportUseCase } from '../../app/use-cases/get-shop-order-ex
 import { DownloadShopOrderExportUseCase } from '../../app/use-cases/download-shop-order-export/download-shop-order-export.use-case';
 import { ExportShopOrdersQueryDto } from './dto/export-shop-orders.query.dto';
 
-import { toShopOrderExportResponse } from './order-export.response';
-import { OrderExceptionsFilter } from './order-exceptions.filter';
+import { toShopOrderExportResponse } from './responses/order-export.response';
+import { OrderExceptionsFilter } from './errors/order-exceptions.filter';
 
 @Controller('shops/:shop_id/orders')
 @UseFilters(OrderExceptionsFilter)

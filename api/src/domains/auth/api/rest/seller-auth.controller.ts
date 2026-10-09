@@ -22,13 +22,13 @@ import { RegisterSellerUseCase } from '../../app/use-cases/register-seller/regis
 import {
   isAuthAppError,
   mapAuthAppErrorToHttpException,
-} from './auth-error-mapper';
-import { AuthHttpExceptionFilter } from './auth-http-exception.filter';
-import { AuthCookieService } from './auth-cookie.utils';
+} from './errors/auth-error-mapper';
+import { AuthHttpExceptionFilter } from './errors/auth-http-exception.filter';
+import { AuthCookieService } from './cookies/auth-cookie.utils';
 import { AuthUserResponseDto } from './dto/me-response.dto';
 import { SellerRegisterDto } from './dto/seller-register.dto';
 import type { ShopAppError } from '~/domains/shop/app/errors/shop-app.error';
-import { mapShopAppErrorToHttpException } from '~/domains/shop/api/rest/shop-http-error-mapper';
+import { mapShopAppErrorToHttpException } from '~/domains/shop/api/rest/errors/shop-http-error-mapper';
 
 const sellerAuthRouteRateLimits = {
   register: {

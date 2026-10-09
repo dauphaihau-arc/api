@@ -36,22 +36,22 @@ import {
   type UploadedAvatarFile,
   UpdateUserUseCase,
 } from '~/domains/user/app/use-cases/update-user/update-user.use-case';
-import { buildListUsersQuery } from './user.queries';
+import { buildListUsersQuery } from './queries/user.queries';
 import {
   DEFAULT_USER_LIST_SORT,
   USER_LIST_SORT_FIELDS,
-} from './user.constants';
+} from './queries/user.constants';
 import { CreateUserDto } from './dto/create-user.dto';
 import { ListUsersQueryDto } from './dto/list-users.query.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { mapUserAppErrorToHttpException } from './user-http-error-mapper';
+import { mapUserAppErrorToHttpException } from './errors/user-http-error-mapper';
 import { JwtAuthGuard } from '~/domains/auth/api/guard/jwt-auth.guard';
 import {
   toUserListResponse,
   toUserResponse,
   type UserListResponse,
   type UserResponse,
-} from './user.response';
+} from './responses/user.response';
 
 @Controller('users')
 @UseGuards(JwtAuthGuard, PermissionsGuard)

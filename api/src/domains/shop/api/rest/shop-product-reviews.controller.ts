@@ -22,8 +22,8 @@ import { ListShopProductReviewsUseCase } from '~/domains/product/app/use-cases/l
 import { ShopAccessService } from '../../app/services/shop-access.service';
 import { ProductLookupService } from '~/domains/product/app/services/product-lookup.service';
 import { ListShopProductReviewsQueryDto } from './dto/list-shop-product-reviews.query.dto';
-import { toShopProductReviewListResponse } from './shop-product-review.presenter';
-import type { ShopProductReviewListResponse } from './shop-product-review.response';
+import { toShopProductReviewListResponse } from './presenters/shop-product-review.presenter';
+import type { ShopProductReviewListResponse } from './responses/shop-product-review.response';
 
 @Controller('shops/:shop_id/reviews')
 @UseGuards(JwtAuthGuard, PermissionsGuard)

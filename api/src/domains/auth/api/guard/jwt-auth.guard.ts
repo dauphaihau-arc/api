@@ -8,7 +8,7 @@ import { AuthGuard } from '@nestjs/passport';
 import type { Request } from 'express';
 import { AUTH_CONFIG } from '~/platform/config/auth.config';
 import type { AuthConfig } from '~/platform/config/auth.config';
-import { extractCookieValue } from '../rest/auth-cookie.utils';
+import { extractCookieValue } from '../rest/cookies/auth-cookie.utils';
 
 export type AuthTokenErrorCode =
   | 'ACCESS_TOKEN_EXPIRED'

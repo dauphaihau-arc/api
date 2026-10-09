@@ -28,12 +28,12 @@ import { ShopSaleStopAction, StopShopSaleUseCase } from '../../app/use-cases/sto
 import { BulkStopShopSalesDto } from './dto/bulk-stop-shop-sales.dto';
 import { CreateShopSaleDto } from './dto/create-shop-sale.dto';
 import { ListShopSalesQueryDto } from './dto/list-shop-sales.query.dto';
-import { ShopExceptionsFilter } from './shop-exceptions.filter';
+import { ShopExceptionsFilter } from './errors/shop-exceptions.filter';
 import {
   toShopSaleListResponse,
   toShopSaleResponse,
   toShopSaleStopListResponse,
-} from './shop-sale.response';
+} from './responses/shop-sale.response';
 
 @Controller('shops/:shop_id/sales')
 @UseFilters(ShopExceptionsFilter)

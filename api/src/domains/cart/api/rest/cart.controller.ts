@@ -45,20 +45,20 @@ import type {
   CartResponse,
   CartSnapshot,
 } from '../../app/cart.types';
-import { buildCartResponse } from './cart-response.mapper';
-import { mapCartAppErrorToHttpException } from './cart-http-error-mapper';
-import { CartExceptionsFilter } from './cart-exceptions.filter';
+import { buildCartResponse } from './presenters/cart-response.mapper';
+import { mapCartAppErrorToHttpException } from './errors/cart-http-error-mapper';
+import { CartExceptionsFilter } from './errors/cart-exceptions.filter';
 import {
   toCartPromoCodeListResponse,
   toCartPromoCodeApplyResponse,
-} from './cart-promo-code.response';
+} from './responses/cart-promo-code.response';
 import { AddCartItemDto } from './dto/add-cart-item.dto';
 import { ApplyCartPromoCodeDto } from './dto/apply-cart-promo-code.dto';
 import { DeleteCartItemQueryDto } from './dto/delete-cart-item.query.dto';
 import { GetCartPromoCodesQueryDto } from './dto/get-cart-promo-codes.query.dto';
 import { GetCartQueryDto } from './dto/get-cart.query.dto';
 import { UpdateCartItemDto } from './dto/update-cart-item.dto';
-import { GuestCartSessionService } from './guest-cart-session.service';
+import { GuestCartSessionService } from './cookies/guest-cart-session.service';
 
 type CartRequest = Request & { user?: AuthenticatedUser | null };
 

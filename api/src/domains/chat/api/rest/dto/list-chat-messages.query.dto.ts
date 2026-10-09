@@ -9,7 +9,7 @@ import {
 import {
   CHAT_MESSAGE_LIST_DEFAULT_LIMIT,
   CHAT_MESSAGE_LIST_MAX_LIMIT,
-} from '../chat.constants';
+} from '../queries/chat.constants';
 
 export class ListChatMessagesQueryDto {
   @IsOptional()

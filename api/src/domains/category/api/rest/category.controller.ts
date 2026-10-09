@@ -21,17 +21,17 @@ import {
   toCategoryAttributeResponse,
   toCategoryResponse,
   toCategorySuggestionResponse,
-} from './category-response.mapper';
+} from './presenters/category-response.mapper';
 import { CreateCategoryAttributeDto } from './dto/create-category-attribute.dto';
 import type {
   CategoryAttributeResponse,
   CategoryResponse,
   CategorySuggestionResponse,
-} from './dto/category.response';
+} from './responses/category.response';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { ListCategoriesQueryDto } from './dto/list-categories.query.dto';
 import { SuggestCategoriesQueryDto } from './dto/suggest-categories.query.dto';
-import { mapCategoryAppErrorToHttpException } from './category-http-error-mapper';
+import { mapCategoryAppErrorToHttpException } from './errors/category-http-error-mapper';
 
 @Controller('categories')
 @ApiTags('Categories')

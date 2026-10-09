@@ -20,7 +20,7 @@ import {
 import { Throttle } from '@nestjs/throttler';
 import type { Request } from 'express';
 import { CHECKOUT_CONFIG, type CheckoutConfig } from '~/platform/config/checkout.config';
-import { GuestCartSessionService } from '~/domains/cart/api/rest/guest-cart-session.service';
+import { GuestCartSessionService } from '~/domains/cart/api/rest/cookies/guest-cart-session.service';
 import { CreateGuestCheckoutQuoteForBuyNowUseCase } from '~/domains/checkout/app/use-cases/create-guest-checkout-quote-for-buy-now/create-guest-checkout-quote-for-buy-now.use-case';
 import { CreateGuestOrderForBuyNowUseCase } from '~/domains/checkout/app/use-cases/create-guest-order-for-buy-now/create-guest-order-for-buy-now.use-case';
 import { CreateGuestCheckoutQuoteFromCartUseCase } from '~/domains/checkout/app/use-cases/create-guest-checkout-quote-from-cart/create-guest-checkout-quote-from-cart.use-case';
@@ -34,13 +34,13 @@ import {
   toCheckoutSessionOrderResponse,
   toCreateOrderResponse,
   toCheckoutOrderListResponse,
-} from './checkout.response';
+} from './responses/checkout.response';
 import { CreateGuestCheckoutQuoteForBuyNowDto } from './dto/create-guest-checkout-quote-for-buy-now.dto';
 import { CreateGuestCheckoutQuoteFromCartDto } from './dto/create-guest-checkout-quote-from-cart.dto';
 import { CreateGuestOrderForBuyNowDto } from './dto/create-guest-order-for-buy-now.dto';
 import { CreateGuestOrderFromCartDto } from './dto/create-guest-order-from-cart.dto';
 import { LookupGuestOrdersQueryDto } from './dto/lookup-guest-orders.query.dto';
-import { CheckoutExceptionsFilter } from './checkout-exceptions.filter';
+import { CheckoutExceptionsFilter } from './errors/checkout-exceptions.filter';
 
 const checkoutRouteRateLimits = {
   guestLookup: {

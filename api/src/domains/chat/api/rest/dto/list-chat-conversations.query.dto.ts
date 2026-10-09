@@ -5,7 +5,7 @@ import {
   CHAT_LIST_DEFAULT_LIMIT,
   CHAT_LIST_DEFAULT_PAGE,
   CHAT_LIST_MAX_LIMIT,
-} from '../chat.constants';
+} from '../queries/chat.constants';
 
 export class ListChatConversationsQueryDto {
   @IsOptional()

@@ -1,18 +1,18 @@
 import type { ArgumentsHost, ExceptionFilter } from '@nestjs/common';
 import { HttpException, HttpStatus } from '@nestjs/common';
 import type { Request, Response } from 'express';
-import { CartExceptionsFilter } from '~/domains/cart/api/rest/cart-exceptions.filter';
+import { CartExceptionsFilter } from '~/domains/cart/api/rest/errors/cart-exceptions.filter';
 import { CartNotFoundError } from '~/domains/cart/app/errors/cart-app.error';
-import { ChatExceptionsFilter } from '~/domains/chat/api/rest/chat-exceptions.filter';
+import { ChatExceptionsFilter } from '~/domains/chat/api/rest/errors/chat-exceptions.filter';
 import { ChatConversationNotFoundError } from '~/domains/chat/app/errors/chat-app.error';
-import { CheckoutExceptionsFilter } from '~/domains/checkout/api/rest/checkout-exceptions.filter';
-import { FulfillmentExceptionsFilter } from '~/domains/fulfillment/api/rest/fulfillment-exceptions.filter';
+import { CheckoutExceptionsFilter } from '~/domains/checkout/api/rest/errors/checkout-exceptions.filter';
+import { FulfillmentExceptionsFilter } from '~/domains/fulfillment/api/rest/errors/fulfillment-exceptions.filter';
 import { ShipmentNotFoundError } from '~/domains/fulfillment/app/errors/fulfillment-app.error';
-import { OrderExceptionsFilter } from '~/domains/order/api/rest/order-exceptions.filter';
+import { OrderExceptionsFilter } from '~/domains/order/api/rest/errors/order-exceptions.filter';
 import { OrderNotFoundError } from '~/domains/order/app/errors/order-app.error';
 import { ProductImportNotFoundError } from '~/domains/product/app/product-import/product-import.errors';
-import { ShopExceptionsFilter } from '~/domains/shop/api/rest/shop-exceptions.filter';
-import { ProductImportExceptionsFilter } from '~/domains/shop/api/rest/product-import-exceptions.filter';
+import { ShopExceptionsFilter } from '~/domains/shop/api/rest/errors/shop-exceptions.filter';
+import { ProductImportExceptionsFilter } from '~/domains/shop/api/rest/errors/product-import-exceptions.filter';
 import { SaleNotFoundError } from '~/domains/shop/app/errors/shop-app.error';
 
 jest.mock('../sentry/sentry', () => ({

@@ -21,9 +21,9 @@ import { ShopAccessService } from '../../app/services/shop-access.service';
 import { UpdateShopSettingsUseCase } from '../../app/use-cases/update-shop-settings/update-shop-settings.use-case';
 import { CreateShopDto } from './dto/create-shop.dto';
 import { UpdateShopSettingsDto } from './dto/update-shop-settings.dto';
-import { mapShopAppErrorToHttpException } from './shop-http-error-mapper';
-import { ShopExceptionsFilter } from './shop-exceptions.filter';
-import { toShopResponse } from './shop.response';
+import { mapShopAppErrorToHttpException } from './errors/shop-http-error-mapper';
+import { ShopExceptionsFilter } from './errors/shop-exceptions.filter';
+import { toShopResponse } from './responses/shop.response';
 
 @Controller('shops')
 @UseFilters(ShopExceptionsFilter)

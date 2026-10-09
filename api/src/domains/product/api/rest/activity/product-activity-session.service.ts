@@ -4,7 +4,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import type { CookieOptions } from 'express';
 import { AUTH_CONFIG } from '~/platform/config/auth.config';
 import type { AuthConfig } from '~/platform/config/auth.config';
-import { extractCookieValue } from '~/domains/auth/api/rest/auth-cookie.utils';
+import { extractCookieValue } from '~/domains/auth/api/rest/cookies/auth-cookie.utils';
 
 const PRODUCT_ACTIVITY_SESSION_COOKIE = 'productActivitySession';
 const PRODUCT_ACTIVITY_SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30;

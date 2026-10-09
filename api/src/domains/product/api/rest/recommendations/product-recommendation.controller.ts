@@ -16,9 +16,9 @@ import { RecentPublicProductsQueryDto } from './dto/recent-public-products.query
 import { RecommendPublicProductsQueryDto } from './dto/recommend-public-products.query.dto';
 import { ProductActivitySessionService } from '../activity/product-activity-session.service';
 import { toPublicProductRecommendationSectionsResponse } from './presenters/public-product-recommendation-sections.presenter';
-import type { PublicProductRecommendationSectionsResponse } from './response/public-product-recommendation-sections.response';
+import type { PublicProductRecommendationSectionsResponse } from './responses/public-product-recommendation-sections.response';
 import { toPublicProductRecommendationsResponse } from './presenters/public-product-recommendations.presenter';
-import type { PublicProductRecommendationsResponse } from './response/public-product-recommendations.response';
+import type { PublicProductRecommendationsResponse } from './responses/public-product-recommendations.response';
 
 type ProductRequest = Request & { user?: AuthenticatedUser | null };
 const STOREFRONT_CACHE_VARY_HEADER = 'x-market-code, x-currency, x-locale, x-channel';

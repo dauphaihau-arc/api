@@ -6,8 +6,8 @@ import { resolveOrThrow } from '~/platform/application/result';
 import { RequestContextService } from '~/platform/request-context/request-context.service';
 import { AUTH_CONFIG } from '~/platform/config/auth.config';
 import type { AuthConfig } from '~/platform/config/auth.config';
-import { mapAuthAppErrorToHttpException } from '../api/rest/auth-error-mapper';
-import { extractCookieValue } from '../api/rest/auth-cookie.utils';
+import { mapAuthAppErrorToHttpException } from '../api/rest/errors/auth-error-mapper';
+import { extractCookieValue } from '../api/rest/cookies/auth-cookie.utils';
 import { LoadAuthenticatedUserUseCase } from '../app/use-cases/load-authenticated-user/load-authenticated-user.use-case';
 import { AccessTokenPayload, AuthenticatedUser } from '../app/auth.types';
 

@@ -22,7 +22,7 @@ import { CurrentUser } from '~/platform/decorators/current-user.decorator';
 import { RequirePermissions } from '~/platform/decorators/require-permissions.decorator';
 import { GetShopDashboardUseCase } from '../../app/use-cases/get-shop-dashboard/get-shop-dashboard.use-case';
 import { GetShopDashboardQueryDto } from './dto/get-shop-dashboard.query.dto';
-import { toShopDashboardResponse } from './order.response';
+import { toShopDashboardResponse } from './responses/order.response';
 
 @Controller('shops/:shop_id/dashboard')
 @UseGuards(JwtAuthGuard, PermissionsGuard)

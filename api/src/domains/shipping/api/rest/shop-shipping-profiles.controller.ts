@@ -42,17 +42,17 @@ import { CreateShippingProfileDto } from './dto/create-shipping-profile.dto';
 import { ListShippingProfilesQueryDto } from './dto/list-shipping-profiles.query.dto';
 import { PreviewShippingProfileDto } from './dto/preview-shipping-profile.dto';
 import { UpdateShippingProfileDto } from './dto/update-shipping-profile.dto';
-import { mapShippingAppErrorToHttpException } from './shipping-http-error-mapper';
+import { mapShippingAppErrorToHttpException } from './errors/shipping-http-error-mapper';
 import {
   toShippingProfileListResponse,
   toShippingProfileResponse,
   toShippingRatePreviewResponse,
-} from './shipping-profile.presenter';
+} from './presenters/shipping-profile.presenter';
 import type {
   ShippingProfileListResponse,
   ShippingProfileResponse,
   ShippingRatePreviewResponse,
-} from './shipping-profile.response';
+} from './responses/shipping-profile.response';
 
 @Controller('shops/:shop_id/shipping-profiles')
 @UseGuards(JwtAuthGuard, PermissionsGuard)

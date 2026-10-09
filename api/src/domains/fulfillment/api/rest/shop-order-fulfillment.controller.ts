@@ -35,8 +35,8 @@ import { AmendFulfillmentShipmentDto } from './dto/amend-fulfillment-shipment.dt
 import { PrepareFulfillmentShipmentDto } from './dto/prepare-fulfillment-shipment.dto';
 import { ReconcileOrderFulfillmentDto } from './dto/reconcile-order-fulfillment.dto';
 import { UpdateShipmentJourneyDto } from './dto/update-shipment-journey.dto';
-import { FulfillmentExceptionsFilter } from './fulfillment-exceptions.filter';
-import { toFulfillmentOrderResponse } from './fulfillment.response';
+import { FulfillmentExceptionsFilter } from './errors/fulfillment-exceptions.filter';
+import { toFulfillmentOrderResponse } from './responses/fulfillment.response';
 import type { FulfillmentCommandResult } from '../../app/services/fulfillment-command.runner';
 
 @Controller('shops/:shop_id/orders')

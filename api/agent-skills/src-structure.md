@@ -26,6 +26,27 @@ Use this file when adding files, moving code, or deciding where new behavior bel
 - `domain/` owns domain rules, value objects, and domain errors.
 - `infra/` owns persistence and implementation details.
 
+## REST Entry-Point Layout
+
+`domains/<domain>/api/rest/` is the HTTP entry-point root. Controllers
+(`*.controller.ts`) and their `*.controller.spec.ts` live directly in the
+endpoint area root so the exposed surface is scannable at a glance. Support
+files live in responsibility folders beside them:
+
+- `errors/` — HTTP error mappers, exception filters, and their specs.
+- `presenters/` — presenters and response mappers that shape app types into response shapes.
+- `responses/` — response contract types (`*.response.ts`) and their specs.
+- `queries/` — list/pagination query builders and the constants tightly coupled to them.
+- `cookies/` — cookie read/write utilities (`auth`).
+- `pipes/` — endpoint-scoped pipes (product storefront query pipe).
+- `dto/` and `validation/` keep request DTOs and validation helpers.
+
+Preserve endpoint-area nesting: a domain may expose several areas (for example
+`product/api/rest/storefront`, `recommendations`, `me`, `uploads`,
+`inventory-events`), each repeating the same shape — controllers at the area
+root and responsibility folders inside it. Do not add generic `helpers/` or
+`utils/` folders; name the responsibility.
+
 ## Dependency Direction
 
 - `bootstrap/` may compose `platform/`, `domains/`, and `integrations/`.
