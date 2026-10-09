@@ -14,7 +14,7 @@ import request from 'supertest';
 import type { Agent } from 'supertest';
 import type { App } from 'supertest/types';
 import { GlobalExceptionFilter } from '~/platform/filters/global-exception.filter';
-import { RequestLoggingInterceptor } from '~/platform/interceptors/request-logging.interceptor';
+import { RequestLoggingInterceptor } from '~/platform/logging/request-logging.interceptor';
 import { parseCorsAllowedOrigins } from '~/platform/config/cors.config';
 import { buildDatabaseConfig } from '~/platform/config/database.config';
 import type * as BootstrapAppModule from '~/bootstrap/app.module';

@@ -11,7 +11,7 @@ import type { AuthConfig } from '~/platform/config/auth.config';
 import { OPENAI_CONFIG } from '~/platform/config/openai.config';
 import { err, ok } from '~/platform/application/result';
 import { RequestContextService } from '~/platform/request-context/request-context.service';
-import { IdempotencyKeyInterceptor } from '~/platform/interceptors/idempotency-key.interceptor';
+import { IdempotencyKeyInterceptor } from '~/platform/idempotency/idempotency-key.interceptor';
 import { JwtStrategy } from '../../infra/jwt.strategy';
 import { LoadAuthenticatedUserUseCase } from '../../app/use-cases/load-authenticated-user/load-authenticated-user.use-case';
 import { GetCurrentUserUseCase } from '../../app/use-cases/get-current-user/get-current-user.use-case';

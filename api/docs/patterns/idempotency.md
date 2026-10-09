@@ -179,6 +179,6 @@ collide if clients reuse keys.
 ## Implementation References
 
 - [idempotency.module.ts](../../src/platform/idempotency/idempotency.module.ts)
-- [idempotency-key.interceptor.ts](../../src/platform/interceptors/idempotency-key.interceptor.ts)
-- [idempotent.decorator.ts](../../src/platform/decorators/idempotent.decorator.ts)
+- [idempotency-key.interceptor.ts](../../src/platform/idempotency/idempotency-key.interceptor.ts)
+- [idempotent.decorator.ts](../../src/platform/idempotency/idempotent.decorator.ts)
 - [auth.controller.ts](../../src/domains/auth/api/rest/auth.controller.ts)

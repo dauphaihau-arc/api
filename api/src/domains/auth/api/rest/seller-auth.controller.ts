@@ -14,10 +14,10 @@ import {
 } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import type { Response } from 'express';
-import { Idempotent } from '~/platform/decorators/idempotent.decorator';
+import { Idempotent } from '~/platform/idempotency/idempotent.decorator';
 import { resolveOrThrow } from '~/platform/application/result';
 import { parseDurationToMilliseconds } from '~/shared/libs/duration';
-import { IdempotencyKeyInterceptor } from '~/platform/interceptors/idempotency-key.interceptor';
+import { IdempotencyKeyInterceptor } from '~/platform/idempotency/idempotency-key.interceptor';
 import { RegisterSellerUseCase } from '../../app/use-cases/register-seller/register-seller.use-case';
 import {
   isAuthAppError,

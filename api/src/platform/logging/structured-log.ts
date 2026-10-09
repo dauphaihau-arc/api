@@ -1,7 +1,7 @@
 import type {
   StructuredLogRecord,
   StructuredLogValue,
-} from '../logging/structured-log.types';
+} from './structured-log.types';
 
 export function buildStructuredLog(
   payload: StructuredLogRecord,

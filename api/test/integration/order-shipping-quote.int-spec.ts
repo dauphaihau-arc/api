@@ -15,7 +15,7 @@ import type { App } from 'supertest/types';
 import { Client } from 'pg';
 import type * as BootstrapAppModule from '~/bootstrap/app.module';
 import { GlobalExceptionFilter } from '~/platform/filters/global-exception.filter';
-import { RequestLoggingInterceptor } from '~/platform/interceptors/request-logging.interceptor';
+import { RequestLoggingInterceptor } from '~/platform/logging/request-logging.interceptor';
 import { buildDatabaseConfig } from '~/platform/config/database.config';
 import { ProductWhoMade } from '~/domains/product/domain/enums/product-who-made.enum';
 import { PermissionEntity } from '~/domains/auth/infra/persistence/entities/permission.entity';

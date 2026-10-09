@@ -19,7 +19,7 @@ import type { Agent } from 'supertest';
 import type { App } from 'supertest/types';
 import type * as BootstrapAppModule from '~/bootstrap/app.module';
 import { GlobalExceptionFilter } from '~/platform/filters/global-exception.filter';
-import { RequestLoggingInterceptor } from '~/platform/interceptors/request-logging.interceptor';
+import { RequestLoggingInterceptor } from '~/platform/logging/request-logging.interceptor';
 import { buildDatabaseConfig } from '~/platform/config/database.config';
 import { ProductWhoMade } from '~/domains/product/domain/enums/product-who-made.enum';
 import { OrderInventoryOutboxPublisherService } from '~/domains/order/app/services/order-inventory-outbox-publisher.service';

@@ -11,7 +11,7 @@ import { PinoLogger } from 'nestjs-pino';
 import request from 'supertest';
 import type { App } from 'supertest/types';
 import { GlobalExceptionFilter } from '~/platform/filters/global-exception.filter';
-import { RequestLoggingInterceptor } from '~/platform/interceptors/request-logging.interceptor';
+import { RequestLoggingInterceptor } from '~/platform/logging/request-logging.interceptor';
 import { parseCorsAllowedOrigins } from '~/platform/config/cors.config';
 import type { AuthUserResponse } from '~/domains/auth/app/auth.types';
 import { UserSessionEntity } from '~/domains/auth/infra/persistence/entities/user-session.entity';

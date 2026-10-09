@@ -13,8 +13,8 @@ import { tap } from 'rxjs/operators';
 import { RequestContextService } from '~/platform/request-context/request-context.service';
 import { ObservabilityService } from '~/platform/observability/observability.service';
 import { getActiveTraceContext } from '~/platform/observability/tracing';
-import type { StructuredLogRecord } from '../logging/structured-log.types';
-import { buildStructuredLog } from '../logging/structured-log';
+import type { StructuredLogRecord } from './structured-log.types';
+import { buildStructuredLog } from './structured-log';
 
 function isSseRequest(request: Request): boolean {
   const acceptHeader = request.headers.accept;

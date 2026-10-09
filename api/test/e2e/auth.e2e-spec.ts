@@ -12,7 +12,7 @@ import { PinoLogger } from 'nestjs-pino';
 import request from 'supertest';
 import type { App } from 'supertest/types';
 import { GlobalExceptionFilter } from '~/platform/filters/global-exception.filter';
-import { RequestLoggingInterceptor } from '~/platform/interceptors/request-logging.interceptor';
+import { RequestLoggingInterceptor } from '~/platform/logging/request-logging.interceptor';
 import { parseCorsAllowedOrigins } from '~/platform/config/cors.config';
 import { UserPreferenceEntity } from '~/domains/auth/infra/persistence/entities/user-preference.entity';
 import { ObservabilityService } from '~/platform/observability/observability.service';

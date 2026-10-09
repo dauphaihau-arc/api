@@ -24,7 +24,7 @@ import {
 } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { Throttle } from '@nestjs/throttler';
-import { Idempotent } from '~/platform/decorators/idempotent.decorator';
+import { Idempotent } from '~/platform/idempotency/idempotent.decorator';
 import { resolveOrThrow } from '~/platform/application/result';
 import { parseDurationToMilliseconds } from '~/shared/libs/duration';
 import type { AuthConfig } from '~/platform/config/auth.config';
@@ -52,7 +52,7 @@ import { AuthUserResponseDto, CurrentUserResponseDto } from './dto/me-response.d
 import { AuthClientConfigResponseDto } from './dto/auth-client-config-response.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { RegisterDto } from './dto/register.dto';
-import { IdempotencyKeyInterceptor } from '~/platform/interceptors/idempotency-key.interceptor';
+import { IdempotencyKeyInterceptor } from '~/platform/idempotency/idempotency-key.interceptor';
 import { TokenQueryDto } from './dto/token-query.dto';
 import { VerifyTokenDto } from './dto/verify-token.dto';
 

@@ -10,7 +10,7 @@ import { Logger, PinoLogger } from 'nestjs-pino';
 import { setupApiDocs } from '~/platform/docs/setup-api-docs';
 import { setupBullBoard } from '~/platform/docs/setup-bull-board';
 import { GlobalExceptionFilter } from '~/platform/filters/global-exception.filter';
-import { RequestLoggingInterceptor } from '~/platform/interceptors/request-logging.interceptor';
+import { RequestLoggingInterceptor } from '~/platform/logging/request-logging.interceptor';
 import { captureException, initializeSentry } from '~/platform/sentry/sentry';
 import { parseCorsAllowedOrigins } from '~/platform/config/cors.config';
 import { AppModule } from '~/bootstrap/app.module';

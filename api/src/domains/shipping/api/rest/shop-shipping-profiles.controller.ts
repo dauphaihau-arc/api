@@ -23,9 +23,9 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { CurrentUser } from '~/platform/decorators/current-user.decorator';
-import { Idempotent } from '~/platform/decorators/idempotent.decorator';
+import { Idempotent } from '~/platform/idempotency/idempotent.decorator';
 import { RequirePermissions } from '~/platform/decorators/require-permissions.decorator';
-import { IdempotencyKeyInterceptor } from '~/platform/interceptors/idempotency-key.interceptor';
+import { IdempotencyKeyInterceptor } from '~/platform/idempotency/idempotency-key.interceptor';
 import { JwtAuthGuard } from '~/domains/auth/api/guard/jwt-auth.guard';
 import { PermissionsGuard } from '~/domains/auth/api/guard/permissions.guard';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
