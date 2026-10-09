@@ -110,7 +110,7 @@ export class BulkStopShopPromoCodesUseCase {
       if (!promotion) {
         failed.push({
           id: promoCodePublicId,
-          code: 'NotFound',
+          code: 'NOT_FOUND',
           reason: 'Promo code not found',
         });
         continue;
@@ -127,7 +127,7 @@ export class BulkStopShopPromoCodesUseCase {
       else {
         failed.push({
           id: promoCodePublicId,
-          code: 'NotStoppable',
+          code: 'NOT_STOPPABLE',
           reason: `This promo code is already ${status}`,
         });
         continue;

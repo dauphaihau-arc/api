@@ -19,6 +19,92 @@ Use this file when adding or changing HTTP API contracts.
 - Controllers should map request DTOs into internal `camelCase` use-case inputs explicitly.
 - Controllers should not return app or domain types directly.
 
+## Error Responses
+
+Every business JSON endpoint (`/v1/...`) returns one error envelope, emitted by
+`GlobalExceptionFilter`. No other top-level keys are ever produced:
+
+```json
+{
+  "status_code": 404,
+  "code": "ORDER_NOT_FOUND",
+  "message": "Order was not found",
+  "request_id": "3f6c1b1e-2b0f-4d5a-9d0e-7a1f2c3b4d5e",
+  "details": { "order_id": "ord_1" }
+}
+```
+
+- `status_code` (number) always matches the HTTP status line.
+- `code` (string) is always present and machine-readable. Public codes are
+  `UPPER_SNAKE_CASE` only — never PascalCase, class names, or legacy error
+  names (e.g. `PRODUCT_NOT_FOUND`, `PRODUCT_VERSION_CONFLICT`).
+- `message` (string) is a human-readable summary and is always a string.
+- `request_id` is present when the request could be correlated; it also appears
+  in the `X-Request-Id` response header and in the structured logs.
+- `details` is optional structured context. Validation failures use
+  `details.fields` (see below). Legacy transport fields (`statusCode`, `error`,
+  `timestamp`, `path`) are gone; do not reintroduce them, and never put
+  arbitrary extras at the top level — put them under `details`.
+
+The filter is authoritative: it resolves the status from the exception and the
+`request_id` from the request context. An exception payload can only contribute
+`code`, `message` and `details`; a payload can never override the status or
+request id.
+
+### Code Ownership
+
+- Domain mappers (`src/domains/*/api/rest/errors/*-http-error-mapper.ts`) own the
+  stable business codes and throw `new XException({ code, message, details? })`.
+- Every public code is `UPPER_SNAKE_CASE`. A mapper must assign one whether it
+  currently emits none, a PascalCase/class name, or an inherited
+  `DomainError` default — strip any `Error` suffix and convert to snake case
+  (e.g. `ProductDraftIncompleteError` -> `PRODUCT_DRAFT_INCOMPLETE`,
+  `ProductVersionConflictError` -> `PRODUCT_VERSION_CONFLICT`,
+  `ProductSkuConflict` -> `PRODUCT_SKU_CONFLICT`). No legacy PascalCase codes
+  remain and no aliases are kept.
+- Legacy PascalCase codes are not a stable contract and must be renamed; new
+  codes follow the same `UPPER_SNAKE_CASE` shape.
+- The same rule applies to every public `code` value outside the error
+  envelope: bulk/outcome payloads (e.g. failed-item `code`) and product-import
+  template/row `errorCode` are also `UPPER_SNAKE_CASE`.
+- Framework exceptions with no explicit code (native Nest exceptions, guards,
+  pipes, missing routes) receive a generic fallback code from the filter:
+  `BAD_REQUEST`, `UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND`, `METHOD_NOT_ALLOWED`,
+  `CONFLICT`, `UNPROCESSABLE_ENTITY`, `RATE_LIMIT_EXCEEDED`,
+  `INTERNAL_SERVER_ERROR`, `SERVICE_UNAVAILABLE`, and so on.
+
+### Validation Errors
+
+The global `ValidationPipe` maps class-validator failures to status `400` with
+code `VALIDATION_FAILED`, a `Validation failed` summary, and structured field
+errors keyed by the external snake_case request path:
+
+```json
+{
+  "status_code": 400,
+  "code": "VALIDATION_FAILED",
+  "message": "Validation failed",
+  "details": { "fields": [{ "field": "display_name", "messages": ["displayName must be a string"] }] }
+}
+```
+
+### Server Errors
+
+Server errors are redacted to public-safe values:
+
+- Any `500` renders `INTERNAL_SERVER_ERROR` with the generic
+  `Internal server error` message and no `details` — even when an
+  `HttpException` was thrown with a message.
+- `502`/`503`/`504` keep an authored `code`, `message` and `details` only when
+  the transport mapper supplied an explicit public `code`; otherwise they
+  render the generic status message (`Service Unavailable`, `Bad Gateway`,
+  `Gateway Timeout`) with no `details`.
+- Other 5xx statuses render their generic status code and message with no
+  `details` (e.g. `501` -> `NOT_IMPLEMENTED`).
+
+Internal diagnostics (connection strings, host names, config hints) never reach
+the client.
+
 ## Boundary Rule
 
 - Keep transport naming concerns in the HTTP layer.

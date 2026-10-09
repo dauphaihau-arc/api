@@ -75,7 +75,10 @@ export class ShopController {
     const shop = await this.getMyShopUseCase.execute(currentUser);
 
     if (!shop) {
-      throw new NotFoundException('Shop was not found');
+      throw new NotFoundException({
+        code: 'SHOP_NOT_FOUND',
+        message: 'Shop was not found',
+      });
     }
 
     return toShopResponse(shop);

@@ -168,15 +168,17 @@ describe('checkout quote shipping transport', () => {
     expect(exception).toBeInstanceOf(ConflictException);
     expect(exception.getResponse()).toMatchObject({
       code: 'CHECKOUT_SHIPPING_UNAVAILABLE',
-      products: [
-        {
-          product_id: 'prod_public1',
-          inventory_id: 'inventory-1',
-          quantity: 2,
-          reason: 'unsupported_destination',
-          readiness_issues: [],
-        },
-      ],
+      details: {
+        products: [
+          {
+            product_id: 'prod_public1',
+            inventory_id: 'inventory-1',
+            quantity: 2,
+            reason: 'unsupported_destination',
+            readiness_issues: [],
+          },
+        ],
+      },
     });
   });
 });

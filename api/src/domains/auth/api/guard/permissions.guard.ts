@@ -35,7 +35,10 @@ export class PermissionsGuard implements CanActivate {
     );
 
     if (!hasAllPermissions) {
-      throw new ForbiddenException('Missing required permissions');
+      throw new ForbiddenException({
+        code: 'MISSING_REQUIRED_PERMISSIONS',
+        message: 'Missing required permissions',
+      });
     }
 
     return true;

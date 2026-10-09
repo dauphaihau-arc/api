@@ -146,7 +146,10 @@ export class CartController {
     const actor = this.resolveReadActor(request);
 
     if (!actor) {
-      throw new NotFoundException('Cart not found');
+      throw new NotFoundException({
+        code: 'CART_NOT_FOUND',
+        message: 'Cart not found',
+      });
     }
 
     const shopId = await this.cartPublicShopResolver.resolveShopId(body.shopId);

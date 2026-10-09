@@ -17,6 +17,7 @@ import { AppModule } from '~/bootstrap/app.module';
 import { ObservabilityService } from '~/platform/observability/observability.service';
 import { BULLMQ_QUEUE } from '~/integrations/queue/infra/queue.constants';
 import { RequestContextService } from '~/platform/request-context/request-context.service';
+import { validationExceptionFactory } from '~/platform/pipes/validation-exception.factory';
 
 const API_PREFIX = 'v1';
 
@@ -55,6 +56,7 @@ async function bootstrap() {
       whitelist: true,
       transform: true,
       forbidNonWhitelisted: true,
+      exceptionFactory: validationExceptionFactory,
     }),
   );
   app.useGlobalFilters(

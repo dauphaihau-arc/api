@@ -36,9 +36,10 @@ export class GenerateProductDescriptionUseCase {
 
   async execute(input: GenerateProductDescriptionInput): Promise<string> {
     if (!this.openAiConfig.productDescriptionEnabled) {
-      throw new ServiceUnavailableException(
-        'AI description generation is temporarily unavailable.',
-      );
+      throw new ServiceUnavailableException({
+        code: 'PRODUCT_DESCRIPTION_GENERATION_UNAVAILABLE',
+        message: 'AI description generation is temporarily unavailable.',
+      });
     }
 
     const category = input.categoryId

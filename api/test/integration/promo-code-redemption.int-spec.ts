@@ -16,6 +16,7 @@ import type { App } from 'supertest/types';
 import { Client } from 'pg';
 import type * as BootstrapAppModule from '~/bootstrap/app.module';
 import { GlobalExceptionFilter } from '~/platform/filters/global-exception.filter';
+import { validationExceptionFactory } from '~/platform/pipes/validation-exception.factory';
 import { RequestLoggingInterceptor } from '~/platform/logging/request-logging.interceptor';
 import { buildDatabaseConfig } from '~/platform/config/database.config';
 import { ProductWhoMade } from '~/domains/product/domain/enums/product-who-made.enum';
@@ -172,6 +173,7 @@ describe('Promo code redemption (integration)', () => {
         whitelist: true,
         transform: true,
         forbidNonWhitelisted: true,
+        exceptionFactory: validationExceptionFactory,
       }),
     );
     const exceptionLogger = await app.resolve(PinoLogger);
@@ -1023,7 +1025,7 @@ describe('Promo code redemption (integration)', () => {
 
     const rejected = responses.find((response) => response.status === 409)!;
     expect(rejected.body.code).toBe('CHECKOUT_QUOTE_PRICES_CHANGED');
-    expect(rejected.body.refreshed_totals.discount_minor).toBe(0);
+    expect(rejected.body.details.refreshed_totals.discount_minor).toBe(0);
 
     const usages = await sql.query(
       'select count(*) as count from "promotion_usages" where "promotion_id" = $1',
@@ -1173,7 +1175,7 @@ describe('Promo code redemption (integration)', () => {
       .send({ shop_id: seller.shopPublicId, code: 'ONEPERBUYER', promo_codes: [] });
 
     expect(secondApply.status).toBe(422);
-    expect(secondApply.body.reason).toBe('user_usage_limit_reached');
+    expect(secondApply.body.code).toBe('PROMOTION_USER_USAGE_LIMIT_REACHED');
 
     const usages = await sql.query(
       'select count(*) as count from "promotion_usages" where "code" = $1',
@@ -1221,8 +1223,7 @@ describe('Promo code redemption (integration)', () => {
       .send({ shop_id: seller.shopPublicId, code: 'NOIRLIMIT', promo_codes: [] })
       .expect(422);
 
-    expect(rejected.body.reason).toBe('usage_limit_reached');
-    expect(rejected.body.message).toMatch(/cannot be applied/i);
+    expect(rejected.body.code).toBe('PROMOTION_USAGE_LIMIT_REACHED');
 
     const usages = await sql.query(
       'select count(*) as count from "promotion_usages" where "code" = $1',
@@ -2338,7 +2339,7 @@ describe('Promo code redemption (integration)', () => {
 
     const rejected = await submitCashOrder(buyer, quote.quote_id).expect(409);
     expect(rejected.body.code).toBe('CHECKOUT_QUOTE_PRICES_CHANGED');
-    expect(rejected.body.refreshed_totals).toMatchObject({
+    expect(rejected.body.details.refreshed_totals).toMatchObject({
       checkout_currency: 'USD',
       discount_minor: 0,
     });

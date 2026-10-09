@@ -58,15 +58,24 @@ export class MeProductReviewController {
     }
     catch (error) {
       if (error instanceof ProductReviewOrderItemNotFoundError) {
-        throw new NotFoundException(error.message);
+        throw new NotFoundException({
+          code: 'PRODUCT_REVIEW_ORDER_ITEM_NOT_FOUND',
+          message: error.message,
+        });
       }
 
       if (error instanceof ProductReviewNotEligibleError) {
-        throw new ForbiddenException(error.message);
+        throw new ForbiddenException({
+          code: 'PRODUCT_REVIEW_NOT_ELIGIBLE',
+          message: error.message,
+        });
       }
 
       if (error instanceof ProductReviewEditLimitExceededError) {
-        throw new HttpException(error.message, HttpStatus.TOO_MANY_REQUESTS);
+        throw new HttpException({
+          code: 'PRODUCT_REVIEW_EDIT_LIMIT_EXCEEDED',
+          message: error.message,
+        }, HttpStatus.TOO_MANY_REQUESTS);
       }
 
       if (error instanceof Error) {

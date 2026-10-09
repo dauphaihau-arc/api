@@ -18,6 +18,7 @@ import type { App } from 'supertest/types';
 import { Client } from 'pg';
 import type * as BootstrapAppModule from '~/bootstrap/app.module';
 import { GlobalExceptionFilter } from '~/platform/filters/global-exception.filter';
+import { validationExceptionFactory } from '~/platform/pipes/validation-exception.factory';
 import { RequestLoggingInterceptor } from '~/platform/logging/request-logging.interceptor';
 import { buildDatabaseConfig } from '~/platform/config/database.config';
 import { ProductWhoMade } from '~/domains/product/domain/enums/product-who-made.enum';
@@ -202,6 +203,7 @@ describe('Shop sales (integration)', () => {
         whitelist: true,
         transform: true,
         forbidNonWhitelisted: true,
+        exceptionFactory: validationExceptionFactory,
       }),
     );
     const exceptionLogger = await app.resolve(PinoLogger);
@@ -1025,8 +1027,8 @@ describe('Shop sales (integration)', () => {
 
     expect(bulk.body.succeeded_ids).toEqual([scheduledTwo.id, activeTwo.id]);
     expect(bulk.body.failed).toEqual(expect.arrayContaining([
-      expect.objectContaining({ id: scheduled.id, code: 'NotStoppable' }),
-      expect.objectContaining({ id: missingId, code: 'NotFound' }),
+      expect.objectContaining({ id: scheduled.id, code: 'NOT_STOPPABLE' }),
+      expect.objectContaining({ id: missingId, code: 'NOT_FOUND' }),
     ]));
     expect((await createQuote(buyer)).subtotal_minor).toBe(10000);
 
@@ -1126,7 +1128,7 @@ describe('Shop sales (integration)', () => {
 
     const rejected = await submitCashOrder(buyer, accepted.quote_id).expect(409);
     expect(rejected.body.code).toBe('CHECKOUT_QUOTE_PRICES_CHANGED');
-    expect(rejected.body.refreshed_totals).toMatchObject({
+    expect(rejected.body.details.refreshed_totals).toMatchObject({
       checkout_currency: 'USD',
       subtotal_minor: 10000,
       discount_minor: 0,

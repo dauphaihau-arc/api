@@ -39,6 +39,21 @@ describe('LookupGuestOrdersQueryDto', () => {
     dto.email = 'guest@example.com';
 
     expect(() => dto.validate()).toThrow(BadRequestException);
+
+    try {
+      dto.validate();
+    }
+    catch (error) {
+      expect((error as BadRequestException).getResponse()).toMatchObject({
+        code: 'VALIDATION_FAILED',
+        details: {
+          fields: [{
+            field: 'token',
+            messages: ['token cannot be combined with other guest order lookup filters'],
+          }],
+        },
+      });
+    }
   });
 
   it('rejects lookup without session id or email/order filters', () => {

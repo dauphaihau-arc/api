@@ -42,7 +42,7 @@ describe('DomainExceptionFilter', () => {
 
       expect(response.status).toHaveBeenCalledWith(HttpStatus.NOT_FOUND);
       expect(response.json).toHaveBeenCalledWith(
-        expect.objectContaining({ statusCode: HttpStatus.NOT_FOUND }),
+        expect.objectContaining({ status_code: HttpStatus.NOT_FOUND }),
       );
     });
 

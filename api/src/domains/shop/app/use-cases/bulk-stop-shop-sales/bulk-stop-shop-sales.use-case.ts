@@ -86,7 +86,7 @@ export class BulkStopShopSalesUseCase {
       if (!promotion) {
         failed.push({
           id: salePublicId,
-          code: 'NotFound',
+          code: 'NOT_FOUND',
           reason: 'Sale not found',
         });
         continue;
@@ -103,7 +103,7 @@ export class BulkStopShopSalesUseCase {
       else {
         failed.push({
           id: salePublicId,
-          code: 'NotStoppable',
+          code: 'NOT_STOPPABLE',
           reason: `This sale is already ${status}`,
         });
         continue;

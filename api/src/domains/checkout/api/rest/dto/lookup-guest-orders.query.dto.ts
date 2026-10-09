@@ -56,7 +56,8 @@ export class LookupGuestOrdersQueryDto {
     const hasZip = Boolean(this.zip?.trim());
 
     if (hasToken && (hasSessionId || hasEmail || hasOrderId || hasOrderIds || hasZip)) {
-      throw new BadRequestException(
+      throw validationFailed(
+        'token',
         'token cannot be combined with other guest order lookup filters',
       );
     }
@@ -66,29 +67,41 @@ export class LookupGuestOrdersQueryDto {
     }
 
     if (hasSessionId && (hasEmail || hasOrderId || hasOrderIds || hasZip)) {
-      throw new BadRequestException(
+      throw validationFailed(
+        'session_id',
         'session_id cannot be combined with email, order id, or zip filters',
       );
     }
 
     if (!hasSessionId) {
       if (!hasEmail) {
-        throw new BadRequestException(
+        throw validationFailed(
+          'email',
           'email is required when session_id is not provided',
         );
       }
 
       if (!hasOrderId && !hasOrderIds) {
-        throw new BadRequestException(
+        throw validationFailed(
+          'order_id',
           'order_id or order_ids is required when session_id is not provided',
         );
       }
 
       if (!hasZip) {
-        throw new BadRequestException(
+        throw validationFailed(
+          'zip',
           'zip is required when session_id is not provided',
         );
       }
     }
   }
+}
+
+function validationFailed(field: string, message: string): BadRequestException {
+  return new BadRequestException({
+    code: 'VALIDATION_FAILED',
+    message: 'Validation failed',
+    details: { fields: [{ field, messages: [message] }] },
+  });
 }

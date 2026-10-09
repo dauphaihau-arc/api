@@ -7,8 +7,14 @@ export function mapCategoryAppErrorToHttpException(
   error: CategoryAppError,
 ): HttpException {
   if (error instanceof CategoryNotFoundError) {
-    return new NotFoundException(error.message);
+    return new NotFoundException({
+      code: 'CATEGORY_NOT_FOUND',
+      message: error.message,
+    });
   }
 
-  return new NotFoundException(error.message);
+  return new NotFoundException({
+    code: 'CATEGORY_NOT_FOUND',
+    message: error.message,
+  });
 }

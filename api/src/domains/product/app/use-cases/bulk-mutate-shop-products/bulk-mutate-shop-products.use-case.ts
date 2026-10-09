@@ -84,7 +84,7 @@ export class BulkMutateShopProductsUseCase {
       if (!product || product.shopId !== input.shopId) {
         failed.push({
           id: productPublicId,
-          code: 'ProductNotFoundError',
+          code: 'PRODUCT_NOT_FOUND',
           reason: `Product "${productPublicId}" was not found`,
         });
         continue;
@@ -133,7 +133,7 @@ export class BulkMutateShopProductsUseCase {
       if (readinessError) {
         return {
           ok: false,
-          code: readinessError.code,
+          code: 'PRODUCT_NOT_READY_TO_PUBLISH',
           reason: readinessError.message,
         };
       }
@@ -143,7 +143,7 @@ export class BulkMutateShopProductsUseCase {
       if (outcome.status === 'product_not_found') {
         return {
           ok: false,
-          code: 'ProductNotFoundError',
+          code: 'PRODUCT_NOT_FOUND',
           reason: `Product "${product.publicId}" was not found`,
         };
       }
@@ -151,7 +151,7 @@ export class BulkMutateShopProductsUseCase {
       if (outcome.status === 'shipping_profile_unavailable') {
         return {
           ok: false,
-          code: 'ProductNotReadyToPublishError',
+          code: 'PRODUCT_NOT_READY_TO_PUBLISH',
           reason: `Product "${product.publicId}" lost its checkout-ready shipping profile before publishing`,
         };
       }
@@ -167,7 +167,7 @@ export class BulkMutateShopProductsUseCase {
     if (product.state === ProductState.UNAVAILABLE) {
       return {
         ok: false,
-        code: 'ProductStateConflict',
+        code: 'PRODUCT_STATE_CONFLICT',
         reason: 'Unavailable products cannot be changed by shop owners',
       };
     }
@@ -182,7 +182,7 @@ export class BulkMutateShopProductsUseCase {
     ) {
       return {
         ok: false,
-        code: 'ProductStateConflict',
+        code: 'PRODUCT_STATE_CONFLICT',
         reason: 'Draft products cannot be deactivated before they are published',
       };
     }
@@ -193,7 +193,7 @@ export class BulkMutateShopProductsUseCase {
     ) {
       return {
         ok: false,
-        code: 'ProductStateConflict',
+        code: 'PRODUCT_STATE_CONFLICT',
         reason: 'Removed products cannot be deactivated',
       };
     }
@@ -203,7 +203,7 @@ export class BulkMutateShopProductsUseCase {
     if (!updatedProduct) {
       return {
         ok: false,
-        code: 'ProductNotFoundError',
+        code: 'PRODUCT_NOT_FOUND',
         reason: `Product "${product.publicId}" was not found`,
       };
     }

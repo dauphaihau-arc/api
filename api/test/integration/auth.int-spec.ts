@@ -11,6 +11,7 @@ import { PinoLogger } from 'nestjs-pino';
 import request from 'supertest';
 import type { App } from 'supertest/types';
 import { GlobalExceptionFilter } from '~/platform/filters/global-exception.filter';
+import { validationExceptionFactory } from '~/platform/pipes/validation-exception.factory';
 import { RequestLoggingInterceptor } from '~/platform/logging/request-logging.interceptor';
 import { parseCorsAllowedOrigins } from '~/platform/config/cors.config';
 import type { AuthUserResponse } from '~/domains/auth/app/auth.types';
@@ -95,6 +96,7 @@ describe('Auth login (integration)', () => {
         whitelist: true,
         transform: true,
         forbidNonWhitelisted: true,
+        exceptionFactory: validationExceptionFactory,
       }),
     );
     const exceptionLogger = await app.resolve(PinoLogger);

@@ -212,14 +212,14 @@ export class ProcessProductImportJob {
   ): Promise<RowValidationResult> {
     if (row.formulaColumns.length > 0) {
       return invalidRow({
-        code: 'formula_cell',
+        code: 'FORMULA_CELL',
         message: `Formula cells are not supported: ${row.formulaColumns.join(', ')}`,
       });
     }
 
     if (row.invalidColumns.length > 0) {
       return invalidRow({
-        code: 'invalid_cell_value',
+        code: 'INVALID_CELL_VALUE',
         message: `Invalid values: ${row.invalidColumns.join(', ')}`,
       });
     }
@@ -227,37 +227,37 @@ export class ProcessProductImportJob {
     for (const field of ['title', 'description', 'categoryPath'] as const) {
       if (!row[field]) {
         return invalidRow({
-          code: 'missing_required_value',
+          code: 'MISSING_REQUIRED_VALUE',
           message: `${field} is required`,
         });
       }
     }
 
     if (row.price === undefined || Number.isNaN(row.price)) {
-      return invalidRow({ code: 'invalid_price', message: 'price must be a numeric value' });
+      return invalidRow({ code: 'INVALID_PRICE', message: 'price must be a numeric value' });
     }
 
     if (row.price < 0) {
-      return invalidRow({ code: 'invalid_price', message: 'price cannot be negative' });
+      return invalidRow({ code: 'INVALID_PRICE', message: 'price cannot be negative' });
     }
 
     if (toMinorUnits(row.price, currency) < 50) {
-      return invalidRow({ code: 'invalid_price', message: 'price is below the minimum amount' });
+      return invalidRow({ code: 'INVALID_PRICE', message: 'price is below the minimum amount' });
     }
 
 
     if (row.stock === undefined || Number.isNaN(row.stock) || row.stock < 0) {
-      return invalidRow({ code: 'invalid_stock', message: 'stock must be a non-negative whole number' });
+      return invalidRow({ code: 'INVALID_STOCK', message: 'stock must be a non-negative whole number' });
     }
 
     const categoryMatches = await this.productImportValidationQueryRepository.resolveCategoryPath(row.categoryPath ?? '');
     if (categoryMatches.length === 0) {
-      return invalidRow({ code: 'category_not_found', message: `Category "${row.categoryPath}" was not found` });
+      return invalidRow({ code: 'CATEGORY_NOT_FOUND', message: `Category "${row.categoryPath}" was not found` });
     }
 
     if (categoryMatches.length > 1) {
       return invalidRow({
-        code: 'category_ambiguous',
+        code: 'CATEGORY_AMBIGUOUS',
         message: `Category "${row.categoryPath}" matches multiple categories`,
       });
     }
@@ -265,13 +265,13 @@ export class ProcessProductImportJob {
     if (row.sku) {
       if ((skuCounts.get(row.sku.trim()) ?? 0) > 1) {
         return invalidRow({
-          code: 'duplicate_sku_in_file',
+          code: 'DUPLICATE_SKU_IN_FILE',
           message: `SKU "${row.sku}" appears more than once in the file`,
         });
       }
 
       if (await this.productImportValidationQueryRepository.skuExists(shopId, row.sku.trim())) {
-        return invalidRow({ code: 'sku_exists', message: `SKU "${row.sku}" already exists in this shop` });
+        return invalidRow({ code: 'SKU_EXISTS', message: `SKU "${row.sku}" already exists in this shop` });
       }
     }
 

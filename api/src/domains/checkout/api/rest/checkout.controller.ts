@@ -132,7 +132,10 @@ export class CheckoutController {
     const guestSessionId = this.guestCartSessionService.extractSessionId(request);
 
     if (!guestSessionId) {
-      throw new NotFoundException('Guest cart session not found');
+      throw new NotFoundException({
+        code: 'GUEST_CART_SESSION_NOT_FOUND',
+        message: 'Guest cart session not found',
+      });
     }
 
     return toCheckoutQuoteResponse(
@@ -158,7 +161,10 @@ export class CheckoutController {
     const guestSessionId = this.guestCartSessionService.extractSessionId(request);
 
     if (!guestSessionId) {
-      throw new NotFoundException('Guest cart session not found');
+      throw new NotFoundException({
+        code: 'GUEST_CART_SESSION_NOT_FOUND',
+        message: 'Guest cart session not found',
+      });
     }
 
     return toCreateOrderResponse(
@@ -180,7 +186,10 @@ export class CheckoutController {
     const guestSessionId = this.guestCartSessionService.extractSessionId(request);
 
     if (!guestSessionId) {
-      throw new NotFoundException('Guest cart session not found');
+      throw new NotFoundException({
+        code: 'GUEST_CART_SESSION_NOT_FOUND',
+        message: 'Guest cart session not found',
+      });
     }
 
     return toCheckoutQuoteResponse(
@@ -203,7 +212,10 @@ export class CheckoutController {
     const guestSessionId = this.guestCartSessionService.extractSessionId(request);
 
     if (!guestSessionId) {
-      throw new NotFoundException('Guest cart session not found');
+      throw new NotFoundException({
+        code: 'GUEST_CART_SESSION_NOT_FOUND',
+        message: 'Guest cart session not found',
+      });
     }
 
     return toCreateOrderResponse(

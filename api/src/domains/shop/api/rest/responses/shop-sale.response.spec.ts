@@ -38,7 +38,7 @@ describe('Sale public response references', () => {
     expect(toShopSaleStopListResponse({
       results: [sale],
       succeededIds: [sale.publicId],
-      failed: [{ id: 'prm_000000000004', code: 'NotFound', reason: 'Sale not found' }],
+      failed: [{ id: 'prm_000000000004', code: 'NOT_FOUND', reason: 'Sale not found' }],
     })).toMatchObject({
       succeeded_ids: ['prm_000000000001'],
       failed: [{ id: 'prm_000000000004' }],

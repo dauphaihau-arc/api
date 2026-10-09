@@ -32,6 +32,56 @@ Short rule:
 - A filter only translates errors its own domain owns and passes everything else through untouched, so guards,
   interceptors and other layers keep their existing responses.
 
+### Mapper Payload Shape
+
+A mapper throws `new XException({ code, message, details? })`:
+
+- `code` is the public `UPPER_SNAKE_CASE` business code. Assign one whenever the
+  mapper currently emits none, a PascalCase/class name, or an inherited
+  `DomainError` default, stripping any `Error` suffix
+  (e.g. `ProductDraftIncompleteError` -> `PRODUCT_DRAFT_INCOMPLETE`). No legacy
+  PascalCase codes or aliases remain.
+- `message` is the human-readable summary (always a string at the HTTP boundary).
+- `details` carries error-specific structured context. Any legacy extra fields
+  (`reason`, counts, currencies, ids) move under `details`; the renderer drops
+  unknown top-level keys.
+
+The renderer (`GlobalExceptionFilter`) owns the envelope, so it — not the mapper —
+decides the response status and `request_id`. A mapper payload can only supply
+`code`, `message` and `details`. See
+[the HTTP conventions](./http-api-conventions.md#error-responses) for the full
+public envelope.
+
+5xx responses are redacted: a `500` always renders the generic
+`INTERNAL_SERVER_ERROR` body, and a `502`/`503`/`504` keeps an authored
+`message`/`details` only when the mapper supplied an explicit public `code`.
+Never rely on an `HttpException` message to surface server-side diagnostics.
+
+#### Flattening Enumerated Reasons
+
+When a domain error carries an enumerated reason, flatten it to a distinct code
+instead of forwarding the raw reason. Promotion application failures are the
+reference case:
+
+| reason | code |
+| --- | --- |
+| `not_started` | `PROMOTION_NOT_STARTED` |
+| `expired` | `PROMOTION_EXPIRED` |
+| `usage_limit_reached` | `PROMOTION_USAGE_LIMIT_REACHED` |
+| `user_usage_limit_reached` | `PROMOTION_USER_USAGE_LIMIT_REACHED` |
+| `authentication_required` | `PROMOTION_AUTHENTICATION_REQUIRED` |
+| `product_scope` | `PROMOTION_PRODUCT_SCOPE_MISMATCH` |
+| `min_order_value` | `PROMOTION_MIN_ORDER_VALUE_NOT_MET` |
+| `min_products` | `PROMOTION_MIN_PRODUCTS_NOT_MET` |
+| `zero_benefit` | `PROMOTION_ZERO_BENEFIT` |
+
+Other promotion codes: `PROMOTION_CODE_NOT_FOUND` (404),
+`PROMOTION_CODE_NOT_APPLICABLE`, `PROMOTION_SLOT_CONFLICT`,
+`PROMOTION_CURRENCY_CONVERSION_UNAVAILABLE`. Success-response
+`ineligible_reason` and internal evaluator reasons are unchanged by this
+flattening.
+
+
 ## Expected Failures
 
 - Treat normal business failures as named errors, not generic exceptions.

@@ -21,24 +21,42 @@ export function mapUserAppErrorToHttpException(
   error: UserAppError,
 ): HttpException {
   if (error instanceof ActorNotAllowedToCreateUsersError) {
-    return new ForbiddenException(error.message);
+    return new ForbiddenException({
+      code: 'ACTOR_NOT_ALLOWED_TO_CREATE_USERS',
+      message: error.message,
+    });
   }
 
   if (error instanceof ActorNotAllowedToUpdateUsersError) {
-    return new ForbiddenException(error.message);
+    return new ForbiddenException({
+      code: 'ACTOR_NOT_ALLOWED_TO_UPDATE_USERS',
+      message: error.message,
+    });
   }
 
   if (error instanceof UserEmailAlreadyRegisteredError) {
-    return new ConflictException(error.message);
+    return new ConflictException({
+      code: 'EMAIL_ALREADY_REGISTERED',
+      message: error.message,
+    });
   }
 
   if (error instanceof UserVersionConflictError) {
-    return new ConflictException(error.message);
+    return new ConflictException({
+      code: 'USER_VERSION_CONFLICT',
+      message: error.message,
+    });
   }
 
   if (error instanceof UserNotFoundError) {
-    return new NotFoundException(error.message);
+    return new NotFoundException({
+      code: 'USER_NOT_FOUND',
+      message: error.message,
+    });
   }
 
-  return new ForbiddenException(error.message);
+  return new ForbiddenException({
+    code: 'USER_OPERATION_FORBIDDEN',
+    message: error.message,
+  });
 }

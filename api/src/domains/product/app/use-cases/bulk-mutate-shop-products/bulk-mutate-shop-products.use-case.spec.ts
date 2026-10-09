@@ -238,12 +238,12 @@ describe('BulkMutateShopProductsUseCase', () => {
     expect(result.failed).toEqual([
       {
         id: 'public-product-2',
-        code: 'ProductNotReadyToPublishError',
+        code: 'PRODUCT_NOT_READY_TO_PUBLISH',
         reason: 'A shipping profile is required before publishing',
       },
       {
         id: 'missing-product',
-        code: 'ProductNotFoundError',
+        code: 'PRODUCT_NOT_FOUND',
         reason: 'Product "missing-product" was not found',
       },
     ]);
@@ -316,7 +316,7 @@ describe('BulkMutateShopProductsUseCase', () => {
       failed: [
         {
           id: 'public-product-1',
-          code: 'ProductStateConflict',
+          code: 'PRODUCT_STATE_CONFLICT',
           reason: 'Draft products cannot be deactivated before they are published',
         },
       ],

@@ -15,6 +15,7 @@ import type { App } from 'supertest/types';
 import { Client } from 'pg';
 import type * as BootstrapAppModule from '~/bootstrap/app.module';
 import { GlobalExceptionFilter } from '~/platform/filters/global-exception.filter';
+import { validationExceptionFactory } from '~/platform/pipes/validation-exception.factory';
 import { RequestLoggingInterceptor } from '~/platform/logging/request-logging.interceptor';
 import { buildDatabaseConfig } from '~/platform/config/database.config';
 import { ProductWhoMade } from '~/domains/product/domain/enums/product-who-made.enum';
@@ -172,6 +173,7 @@ describe('Shop promo code creation (integration)', () => {
         whitelist: true,
         transform: true,
         forbidNonWhitelisted: true,
+        exceptionFactory: validationExceptionFactory,
       }),
     );
     const exceptionLogger = await app.resolve(PinoLogger);
@@ -477,7 +479,6 @@ describe('Shop promo code creation (integration)', () => {
     // The client branches and writes its own copy from `code`; the human
     // `message` stays a fallback for codes a client does not know yet.
     expect(duplicateResponse.body.code).toBe('PROMO_CODE_ALREADY_EXISTS');
-    expect(duplicateResponse.body.message).toMatch(/already exists/i);
   });
 
   it('allows the same code in a different shop', async () => {
@@ -514,7 +515,7 @@ describe('Shop promo code creation (integration)', () => {
       amountMinor: 4000,
     });
 
-    const response = await createPromoCode(sellerA, {
+    await createPromoCode(sellerA, {
       name: 'Bad Scope',
       code: 'FOREIGN',
       percent_off: 10,
@@ -524,8 +525,6 @@ describe('Shop promo code creation (integration)', () => {
       start_now: true,
       end_local: utcLocalDateTime(new Date(testNow.getTime() + DAY_MS)),
     }).expect(400);
-
-    expect(response.body.message).toMatch(/another shop/i);
   });
 
   it('rejects duplicate targets', async () => {
@@ -549,7 +548,6 @@ describe('Shop promo code creation (integration)', () => {
     }).expect(400);
 
     expect(response.body.code).toBe('PROMO_CODE_PRODUCT_SCOPE_INVALID');
-    expect(response.body.message).toMatch(/unique/i);
   });
 
   it('rejects start >= end', async () => {
@@ -693,8 +691,8 @@ describe('Shop promo code creation (integration)', () => {
 
     expect(bulk.body.succeeded_ids).toEqual([scheduledTwo.id, activeTwo.id]);
     expect(bulk.body.failed).toEqual(expect.arrayContaining([
-      expect.objectContaining({ id: scheduled.id, code: 'NotStoppable' }),
-      expect.objectContaining({ id: missingId, code: 'NotFound' }),
+      expect.objectContaining({ id: scheduled.id, code: 'NOT_STOPPABLE' }),
+      expect.objectContaining({ id: missingId, code: 'NOT_FOUND' }),
     ]));
 
     // Stopping retains the definition, schedule, timezone and allowance, so the

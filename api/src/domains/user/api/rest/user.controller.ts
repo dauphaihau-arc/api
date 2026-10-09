@@ -103,7 +103,10 @@ export class UserController {
     const user = await this.getUserByIdUseCase.execute(id);
 
     if (!user) {
-      throw new NotFoundException('User was not found');
+      throw new NotFoundException({
+        code: 'USER_NOT_FOUND',
+        message: 'User was not found',
+      });
     }
 
     return toUserResponse(user);
@@ -160,11 +163,17 @@ export class UserController {
     }
 
     if (!file.mimetype.startsWith('image/')) {
-      throw new BadRequestException('Avatar file must be an image');
+      throw new BadRequestException({
+        code: 'AVATAR_IMAGE_INVALID_TYPE',
+        message: 'Avatar file must be an image',
+      });
     }
 
     if (!file.buffer?.byteLength) {
-      throw new BadRequestException('Avatar file is empty');
+      throw new BadRequestException({
+        code: 'AVATAR_IMAGE_EMPTY',
+        message: 'Avatar file is empty',
+      });
     }
   }
 }

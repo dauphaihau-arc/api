@@ -187,8 +187,7 @@ describe('JwtAuthGuard token error contract through AuthController', () => {
     ]);
 
     expect(response.status).toBe(401);
-    expect(response.body.message).toBe('Session is not active');
-    expect(response.body.code).toBeUndefined();
+    expect(response.body.code).toBe('SESSION_NOT_ACTIVE');
   });
 
   it('accepts a valid access token and exposes the authenticated user', async () => {

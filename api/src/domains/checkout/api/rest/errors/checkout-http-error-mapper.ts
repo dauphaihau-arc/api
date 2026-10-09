@@ -132,28 +132,30 @@ export function mapCheckoutAppErrorToHttpException(
 function buildCheckoutErrorPayload(error: OrderAppError): {
   message: string;
   code: CheckoutHttpErrorCode;
-  products?: Array<{
-    product_id: string;
-    inventory_id: string;
-    quantity: number;
-    reason: string;
-    readiness_issues: string[];
-  }>;
-  refreshed_totals?: {
-    checkout_currency: string;
-    subtotal_minor: number;
-    shipping_minor: number;
-    discount_minor: number;
-    sale_discount_minor: number;
-    total_minor: number;
-    shops: Array<{
-      shop_id: string;
+  details?: {
+    products?: Array<{
+      product_id: string;
+      inventory_id: string;
+      quantity: number;
+      reason: string;
+      readiness_issues: string[];
+    }>;
+    refreshed_totals?: {
+      checkout_currency: string;
       subtotal_minor: number;
+      shipping_minor: number;
       discount_minor: number;
       sale_discount_minor: number;
-      shipping_minor: number;
       total_minor: number;
-    }>;
+      shops: Array<{
+        shop_id: string;
+        subtotal_minor: number;
+        discount_minor: number;
+        sale_discount_minor: number;
+        shipping_minor: number;
+        total_minor: number;
+      }>;
+    };
   };
 } {
   return {
@@ -161,32 +163,36 @@ function buildCheckoutErrorPayload(error: OrderAppError): {
     code: getCheckoutErrorCode(error),
     ...(error instanceof CheckoutShippingUnavailableError
       ? {
-        products: error.products.map((product) => ({
-          product_id: product.productPublicId,
-          inventory_id: product.inventoryId,
-          quantity: product.quantity,
-          reason: product.reason,
-          readiness_issues: product.readinessIssues,
-        })),
+        details: {
+          products: error.products.map((product) => ({
+            product_id: product.productPublicId,
+            inventory_id: product.inventoryId,
+            quantity: product.quantity,
+            reason: product.reason,
+            readiness_issues: product.readinessIssues,
+          })),
+        },
       }
       : {}),
     ...(error instanceof CheckoutQuotePricesChangedError
       ? {
-        refreshed_totals: {
-          checkout_currency: error.refreshedTotals.checkoutCurrency,
-          subtotal_minor: error.refreshedTotals.subtotalMinor,
-          shipping_minor: error.refreshedTotals.shippingMinor,
-          discount_minor: error.refreshedTotals.discountMinor,
-          sale_discount_minor: error.refreshedTotals.saleDiscountMinor,
-          total_minor: error.refreshedTotals.totalMinor,
-          shops: error.refreshedTotals.shops.map((shop) => ({
-            shop_id: shop.shopPublicId,
-            subtotal_minor: shop.subtotalMinor,
-            discount_minor: shop.discountMinor,
-            sale_discount_minor: shop.saleDiscountMinor,
-            shipping_minor: shop.shippingMinor,
-            total_minor: shop.totalMinor,
-          })),
+        details: {
+          refreshed_totals: {
+            checkout_currency: error.refreshedTotals.checkoutCurrency,
+            subtotal_minor: error.refreshedTotals.subtotalMinor,
+            shipping_minor: error.refreshedTotals.shippingMinor,
+            discount_minor: error.refreshedTotals.discountMinor,
+            sale_discount_minor: error.refreshedTotals.saleDiscountMinor,
+            total_minor: error.refreshedTotals.totalMinor,
+            shops: error.refreshedTotals.shops.map((shop) => ({
+              shop_id: shop.shopPublicId,
+              subtotal_minor: shop.subtotalMinor,
+              discount_minor: shop.discountMinor,
+              sale_discount_minor: shop.saleDiscountMinor,
+              shipping_minor: shop.shippingMinor,
+              total_minor: shop.totalMinor,
+            })),
+          },
         },
       }
       : {}),

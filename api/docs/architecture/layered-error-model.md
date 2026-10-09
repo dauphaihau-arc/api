@@ -73,6 +73,37 @@ Domain and application layers should not depend on HTTP exceptions or HTTP statu
 
 Instead of coupling business logic to transport concerns, this codebase prefers explicit error types with clear semantic meaning. Transport-facing layers are responsible for translating those errors into the appropriate response shape and status code.
 
+## HTTP Response Contract
+
+Every business JSON endpoint (`/v1/...`) renders errors through
+`GlobalExceptionFilter` as a single envelope:
+
+- `status_code` — number, always matching the HTTP status line.
+- `code` — stable machine-readable string, always present.
+- `message` — human-readable string summary, always present.
+- `request_id` — optional correlation id, echoed in `X-Request-Id` and logs.
+- `details` — optional structured context (validation uses `details.fields`).
+
+The filter is the single authority for the envelope: it resolves the status and
+`request_id`, and it never lets an exception payload override them. Legacy
+envelope fields (`statusCode`, `error`, `timestamp`, `path`) and arbitrary
+top-level extras are not emitted; structured extras live under `details`.
+
+Domain mappers own the business `code`s and throw
+`new XException({ code, message, details? })`. Every public code is
+`UPPER_SNAKE_CASE`: mappers assign one whether they previously emitted none, a
+PascalCase/class name, or an inherited `DomainError` default, stripping any
+`Error` suffix (`ProductDraftIncompleteError` -> `PRODUCT_DRAFT_INCOMPLETE`,
+`ProductVersionConflictError` -> `PRODUCT_VERSION_CONFLICT`). No legacy
+PascalCase codes or aliases remain. Framework failures (native Nest exceptions,
+guards, pipes, missing routes) receive a generic fallback code derived from the
+status. Enumerated sub-reasons are flattened to distinct codes — see the
+promotion table in the [layered error skill](../../agent-skills/layered-error-model.md).
+Server errors are redacted: a `500` always renders `INTERNAL_SERVER_ERROR` with
+the generic `Internal server error` message and no `details`, and `502`/`503`/`504`
+keep an authored payload only when an explicit public code was supplied. Internal
+diagnostics never reach the client.
+
 ## Expected Business Failures
 
 Not every business failure is an exceptional system failure. In a business domain, some failures are expected outcomes of normal logic, such as invalid credentials, an inactive session, or an invalid role key.

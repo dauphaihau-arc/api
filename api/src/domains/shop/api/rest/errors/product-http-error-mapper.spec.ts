@@ -12,9 +12,12 @@ describe('product HTTP public references', () => {
 
     expect(exception.getStatus()).toBe(422);
     expect(exception.getResponse()).toMatchObject({
-      product_id: 'prod_000000000001',
+      code: 'PRODUCT_DRAFT_INCOMPLETE',
       message: 'Product "prod_000000000001" was not found',
-      failed_step: 'shipping',
+      details: {
+        product_id: 'prod_000000000001',
+        failed_step: 'shipping',
+      },
     });
   });
 
@@ -22,6 +25,9 @@ describe('product HTTP public references', () => {
     const exception = mapProductAppErrorToHttpException(new ProductNotFoundError('internal-product-id'));
 
     expect(exception.getStatus()).toBe(404);
-    expect(exception.getResponse()).toMatchObject({ message: 'Product was not found' });
+    expect(exception.getResponse()).toMatchObject({
+      code: 'PRODUCT_NOT_FOUND',
+      message: 'Product was not found',
+    });
   });
 });

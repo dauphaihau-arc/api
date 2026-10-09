@@ -14,7 +14,10 @@ import { mapCartAppErrorToHttpException } from './cart-http-error-mapper';
 export class CartExceptionsFilter extends DomainExceptionFilter {
   protected mapDomainError(exception: unknown): Error | null {
     if (exception instanceof CartNotFoundError) {
-      return new NotFoundException('Cart not found');
+      return new NotFoundException({
+        code: 'CART_NOT_FOUND',
+        message: 'Cart not found',
+      });
     }
 
     if (exception instanceof CartAppError) {

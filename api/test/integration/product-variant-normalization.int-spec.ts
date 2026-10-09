@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { MikroORM, type EntityManager } from '@mikro-orm/postgresql';
 import { Client } from 'pg';
 import { buildDatabaseConfig } from '~/platform/config/database.config';
+import { validationExceptionFactory } from '~/platform/pipes/validation-exception.factory';
 import { UserStatus } from '~/domains/auth/domain/enums/user-status.enum';
 import { ProductVariantLifecycleState } from '~/domains/product/domain/enums/product-variant-lifecycle-state.enum';
 import { ProductState } from '~/domains/product/domain/enums/product-state.enum';
@@ -434,7 +435,12 @@ describe('product variant configuration command repository', () => {
         { findById: async () => shippingProfile! } as never,
       ),
     );
-    const body = await new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true }).transform({
+    const body = await new ValidationPipe({
+      transform: true,
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      exceptionFactory: validationExceptionFactory,
+    }).transform({
       category_id: '323d5ca8-8a2b-44d8-9eb5-d02e65cf5e0e',
       title: 'Túi Doom',
       description: 'Túi Doom',

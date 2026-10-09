@@ -11,6 +11,7 @@ import { captureException } from '../sentry/sentry';
 import { RequestContextService } from '~/platform/request-context/request-context.service';
 import { getActiveTraceContext } from '~/platform/observability/tracing';
 import { buildStructuredLog } from '../logging/structured-log';
+import { buildPublicHttpErrorResponse } from '~/platform/errors/http-error-response';
 
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
@@ -33,8 +34,14 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         ? exception.getStatus()
         : HttpStatus.INTERNAL_SERVER_ERROR;
 
-    const responseBody = buildErrorResponse(exception, statusCode, request.url);
     const requestContext = this.requestContextService.get();
+
+    const responseBody = buildPublicHttpErrorResponse(
+      exception,
+      statusCode,
+      requestContext.requestId,
+    );
+
     const traceContext = getActiveTraceContext();
 
     if (requestContext.requestId && !response.headersSent) {
@@ -122,67 +129,4 @@ function buildRequestSummary(
   statusCode: number,
 ): string {
   return `${method.toUpperCase()} ${path} ${statusCode}`;
-}
-
-function buildErrorResponse(
-  exception: unknown,
-  statusCode: number,
-  path: string,
-) {
-  const baseResponse = {
-    statusCode,
-    timestamp: new Date().toISOString(),
-    path,
-  };
-
-  if (!(exception instanceof HttpException)) {
-    return {
-      ...baseResponse,
-      error: 'Internal Server Error',
-      message: 'Internal server error',
-    };
-  }
-
-  const exceptionResponse = exception.getResponse();
-
-  if (typeof exceptionResponse === 'string') {
-    return {
-      ...baseResponse,
-      error: exception.name,
-      message: exceptionResponse,
-    };
-  }
-
-  if (
-    exceptionResponse
-    && typeof exceptionResponse === 'object'
-    && !Array.isArray(exceptionResponse)
-  ) {
-    const responsePayload = exceptionResponse as Record<string, unknown>;
-    const {
-      error,
-      message,
-      ...extraPayload
-    } = responsePayload;
-
-    return {
-      ...baseResponse,
-      error:
-        typeof error === 'string'
-          ? error
-          : exception.name,
-      message:
-        typeof message === 'string'
-        || Array.isArray(message)
-          ? message
-          : exception.message,
-      ...extraPayload,
-    };
-  }
-
-  return {
-    ...baseResponse,
-    error: exception.name,
-    message: exception.message,
-  };
 }

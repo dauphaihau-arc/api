@@ -4,6 +4,7 @@ import {
   type PipeTransform,
   ValidationPipe,
 } from '@nestjs/common';
+import { validationExceptionFactory } from '~/platform/pipes/validation-exception.factory';
 import { ListPublicProductsQueryDto } from '../dto/list-public-products.query.dto';
 
 type NormalizedAttributeFilter = {
@@ -21,6 +22,7 @@ implements PipeTransform<Record<string, unknown>, Promise<ListPublicProductsQuer
     whitelist: true,
     transform: true,
     forbidNonWhitelisted: true,
+    exceptionFactory: validationExceptionFactory,
   });
 
   async transform(

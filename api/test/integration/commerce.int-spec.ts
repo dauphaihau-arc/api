@@ -14,6 +14,7 @@ import request from 'supertest';
 import type { Agent } from 'supertest';
 import type { App } from 'supertest/types';
 import { GlobalExceptionFilter } from '~/platform/filters/global-exception.filter';
+import { validationExceptionFactory } from '~/platform/pipes/validation-exception.factory';
 import { RequestLoggingInterceptor } from '~/platform/logging/request-logging.interceptor';
 import { parseCorsAllowedOrigins } from '~/platform/config/cors.config';
 import { buildDatabaseConfig } from '~/platform/config/database.config';
@@ -144,6 +145,7 @@ describe('Commerce flow (integration)', () => {
         whitelist: true,
         transform: true,
         forbidNonWhitelisted: true,
+        exceptionFactory: validationExceptionFactory,
       }),
     );
     const exceptionLogger = await app.resolve(PinoLogger);
@@ -727,8 +729,8 @@ describe('Commerce flow (integration)', () => {
 
     expect(bulkBody.succeeded_ids).toEqual([removablePublicId]);
     expect(bulkBody.failed).toEqual([
-      expect.objectContaining({ id: foreignPublicId, code: 'ProductNotFoundError' }),
-      expect.objectContaining({ id: unknownPublicId, code: 'ProductNotFoundError' }),
+      expect.objectContaining({ id: foreignPublicId, code: 'PRODUCT_NOT_FOUND' }),
+      expect.objectContaining({ id: unknownPublicId, code: 'PRODUCT_NOT_FOUND' }),
     ]);
 
     const removedResponse = await ownerAgent
@@ -1106,7 +1108,7 @@ describe('Commerce flow (integration)', () => {
       .send({ shop_id: shopPublicId, cart_id: randomUUID(), code: 'FREESHIP' })
       .expect(404);
 
-    expect(response.body.message).toBe('Cart not found');
+    expect(response.body.code).toBe('CART_NOT_FOUND');
   });
 
   it('resolves Promo Code money in the Promotion Currency against a VND checkout currency', async () => {

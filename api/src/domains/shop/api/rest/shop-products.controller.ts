@@ -471,16 +471,25 @@ export class ShopProductsController {
 
   private validateImageFiles(files: UploadedProductImageFile[]): void {
     if (files.length === 0) {
-      throw new BadRequestException('At least one image file is required');
+      throw new BadRequestException({
+        code: 'PRODUCT_IMAGE_REQUIRED',
+        message: 'At least one image file is required',
+      });
     }
 
     for (const file of files) {
       if (!file.mimetype.startsWith('image/')) {
-        throw new BadRequestException('All product image files must be images');
+        throw new BadRequestException({
+          code: 'PRODUCT_IMAGE_INVALID_TYPE',
+          message: 'All product image files must be images',
+        });
       }
 
       if (!file.buffer?.byteLength) {
-        throw new BadRequestException('Product image file is empty');
+        throw new BadRequestException({
+          code: 'PRODUCT_IMAGE_EMPTY',
+          message: 'Product image file is empty',
+        });
       }
     }
   }

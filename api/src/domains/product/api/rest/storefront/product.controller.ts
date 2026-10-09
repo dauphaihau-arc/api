@@ -155,7 +155,10 @@ export class ProductController {
     );
 
     if (!product) {
-      throw new NotFoundException('Product was not found');
+      throw new NotFoundException({
+        code: 'PRODUCT_NOT_FOUND',
+        message: 'Product was not found',
+      });
     }
 
     return toPublicProductDetailResponse(product);
@@ -189,7 +192,10 @@ export class ProductController {
     });
 
     if (!result) {
-      throw new NotFoundException('Product was not found');
+      throw new NotFoundException({
+        code: 'PRODUCT_NOT_FOUND',
+        message: 'Product was not found',
+      });
     }
 
     return toPublicProductReviewListResponse(result);
@@ -219,7 +225,10 @@ export class ProductController {
     });
 
     if (!result) {
-      throw new NotFoundException('Product was not found');
+      throw new NotFoundException({
+        code: 'PRODUCT_NOT_FOUND',
+        message: 'Product was not found',
+      });
     }
 
     return toPublicProductReviewImageListResponse(result);

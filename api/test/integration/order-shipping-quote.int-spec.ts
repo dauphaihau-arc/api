@@ -15,6 +15,7 @@ import type { App } from 'supertest/types';
 import { Client } from 'pg';
 import type * as BootstrapAppModule from '~/bootstrap/app.module';
 import { GlobalExceptionFilter } from '~/platform/filters/global-exception.filter';
+import { validationExceptionFactory } from '~/platform/pipes/validation-exception.factory';
 import { RequestLoggingInterceptor } from '~/platform/logging/request-logging.interceptor';
 import { buildDatabaseConfig } from '~/platform/config/database.config';
 import { ProductWhoMade } from '~/domains/product/domain/enums/product-who-made.enum';
@@ -175,6 +176,7 @@ describe('Order accepted shipping facts (integration)', () => {
         whitelist: true,
         transform: true,
         forbidNonWhitelisted: true,
+        exceptionFactory: validationExceptionFactory,
       }),
     );
     const exceptionLogger = await app.resolve(PinoLogger);
@@ -883,7 +885,7 @@ describe('Order accepted shipping facts (integration)', () => {
     const response = await confirmOrder(buyer, quote.quote_id, 'cash');
     expect(response.status).toBe(409);
     expect(response.body.code).toBe('CHECKOUT_SHIPPING_UNAVAILABLE');
-    expect(response.body.products).toEqual([
+    expect(response.body.details.products).toEqual([
       expect.objectContaining({
         product_id: product.productId,
         reason: 'unsupported_destination',
@@ -926,7 +928,7 @@ describe('Order accepted shipping facts (integration)', () => {
 
     expect(response.status).toBe(409);
     expect(response.body.code).toBe('CHECKOUT_SHIPPING_UNAVAILABLE');
-    expect(response.body.products).toEqual([
+    expect(response.body.details.products).toEqual([
       expect.objectContaining({ product_id: product.productId, reason: 'unsupported_destination' }),
     ]);
   });
@@ -1198,7 +1200,7 @@ describe('Order accepted shipping facts (integration)', () => {
 
     expect(response.status).toBe(409);
     expect(response.body.code).toBe('CHECKOUT_SHIPPING_UNAVAILABLE');
-    expect(response.body.products).toEqual([
+    expect(response.body.details.products).toEqual([
       expect.objectContaining({
         product_id: unassigned.productId,
         reason: 'missing_assignment',

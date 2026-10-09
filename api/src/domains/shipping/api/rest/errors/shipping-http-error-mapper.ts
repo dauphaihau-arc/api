@@ -16,6 +16,18 @@ import {
   ShippingProfileVersionConflictError,
 } from '../../../app/errors/shipping-app.error';
 
+/** Stable UPPER_SNAKE_CASE public codes for shipping-profile failures. */
+type ShippingHttpErrorCode =
+  | 'SHIPPING_PROFILE_NOT_FOUND'
+  | 'SHIPPING_PROFILE_REQUEST_INVALID'
+  | 'SHIPPING_PROFILE_NOT_CHECKOUT_READY'
+  | 'SHIPPING_PROFILE_NAME_TAKEN'
+  | 'SHIPPING_PROFILE_ARCHIVED'
+  | 'SHIPPING_PROFILE_READINESS_REQUIRED'
+  | 'SHIPPING_PROFILE_IN_USE'
+  | 'SHIPPING_PROFILE_VERSION_CONFLICT'
+  | 'SHIPPING_PROFILE_INVALID';
+
 export function mapShippingAppErrorToHttpException(
   error:
     | InvalidShippingProfileError
@@ -28,48 +40,72 @@ export function mapShippingAppErrorToHttpException(
     | ShippingProfileVersionConflictError,
 ): HttpException {
   if (error instanceof ShippingProfileNotFoundError) {
-    return new NotFoundException(error.message);
+    return new NotFoundException({
+      code: 'SHIPPING_PROFILE_NOT_FOUND' satisfies ShippingHttpErrorCode,
+      message: error.message,
+    });
   }
 
   if (error instanceof ShippingProfileNotCheckoutReadyError) {
-    return new ConflictException({ code: error.code, message: error.message });
+    return new ConflictException({
+      code: 'SHIPPING_PROFILE_NOT_CHECKOUT_READY' satisfies ShippingHttpErrorCode,
+      message: error.message,
+    });
   }
 
   if (error instanceof ShippingProfileNameTakenError) {
-    return new ConflictException({ code: error.code, message: error.message });
+    return new ConflictException({
+      code: 'SHIPPING_PROFILE_NAME_TAKEN' satisfies ShippingHttpErrorCode,
+      message: error.message,
+    });
   }
 
   if (error instanceof ShippingProfileArchivedError) {
-    return new ConflictException({ code: error.code, message: error.message });
+    return new ConflictException({
+      code: 'SHIPPING_PROFILE_ARCHIVED' satisfies ShippingHttpErrorCode,
+      message: error.message,
+    });
   }
 
   if (error instanceof ShippingProfileReadinessRequiredError) {
     return new ConflictException({
-      code: error.code,
+      code: 'SHIPPING_PROFILE_READINESS_REQUIRED' satisfies ShippingHttpErrorCode,
       message: error.message,
-      published_product_count: error.publishedProductCount,
+      details: {
+        published_product_count: error.publishedProductCount,
+      },
     });
   }
 
   if (error instanceof ShippingProfileInUseError) {
     return new ConflictException({
-      code: error.code,
+      code: 'SHIPPING_PROFILE_IN_USE' satisfies ShippingHttpErrorCode,
       message: error.message,
-      assigned_product_count: error.assignedProductCount,
+      details: {
+        assigned_product_count: error.assignedProductCount,
+      },
     });
   }
 
   if (error instanceof ShippingProfileVersionConflictError) {
     return new ConflictException({
-      code: error.code,
+      code: 'SHIPPING_PROFILE_VERSION_CONFLICT' satisfies ShippingHttpErrorCode,
       message: error.message,
-      version: error.currentProfile.version,
+      details: {
+        version: error.currentProfile.version,
+      },
     });
   }
 
   if (error instanceof InvalidShippingProfileError) {
-    return new UnprocessableEntityException({ code: error.name, message: error.message });
+    return new UnprocessableEntityException({
+      code: 'SHIPPING_PROFILE_INVALID' satisfies ShippingHttpErrorCode,
+      message: error.message,
+    });
   }
 
-  return new BadRequestException('Bad shipping profile request');
+  return new BadRequestException({
+    code: 'SHIPPING_PROFILE_REQUEST_INVALID' satisfies ShippingHttpErrorCode,
+    message: 'Bad shipping profile request',
+  });
 }
