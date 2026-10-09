@@ -284,10 +284,6 @@ export interface UpdateProductDetailsRepositoryInput {
   tags: string[];
 }
 
-export const SHOP_PRODUCT_LIST_DEFAULT_PAGE = 1;
-export const SHOP_PRODUCT_LIST_DEFAULT_LIMIT = 20;
-export const SHOP_PRODUCT_LIST_MAX_LIMIT = 50;
-
 export interface ListShopProductsInput {
   shopId: string;
   page: number;
@@ -305,10 +301,6 @@ export interface ShopProductListResult extends PaginatedResult<ProductDraftSumma
     draft: number;
   };
 }
-
-export const PRODUCT_PUBLIC_LIST_DEFAULT_PAGE = 1;
-export const PRODUCT_PUBLIC_LIST_DEFAULT_LIMIT = 12;
-export const PRODUCT_PUBLIC_LIST_MAX_LIMIT = 50;
 
 export type PublicProductSortOrder = 'newest' | 'price_asc' | 'price_desc';
 
@@ -524,10 +516,6 @@ export interface MyProductReview {
   createdAt: Date;
   updatedAt: Date;
 }
-
-export const SHOP_PRODUCT_REVIEW_LIST_DEFAULT_PAGE = 1;
-export const SHOP_PRODUCT_REVIEW_LIST_DEFAULT_LIMIT = 20;
-export const SHOP_PRODUCT_REVIEW_LIST_MAX_LIMIT = 50;
 
 export type ShopProductReviewSortOrder =
   | 'newest'

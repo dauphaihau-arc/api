@@ -2,8 +2,10 @@ import { Injectable } from '@nestjs/common';
 import {
   PRODUCT_PUBLIC_LIST_DEFAULT_LIMIT,
   PRODUCT_PUBLIC_LIST_MAX_LIMIT,
-  type PublicProductReviewListResult,
-  type PublicProductReviewSortOrder,
+} from '../../product.constants';
+import type {
+  PublicProductReviewListResult,
+  PublicProductReviewSortOrder,
 } from '../../product.types';
 import { PublicProductReviewQueryRepository } from '../../ports/public-product-review-query.repository';
 

@@ -17,8 +17,8 @@ import {
   PRODUCT_PUBLIC_LIST_DEFAULT_LIMIT,
   PRODUCT_PUBLIC_LIST_DEFAULT_PAGE,
   PRODUCT_PUBLIC_LIST_MAX_LIMIT,
-  type PublicProductSortOrder,
-} from '../../../../app/product.types';
+} from '../../../../app/product.constants';
+import type { PublicProductSortOrder } from '../../../../app/product.types';
 
 const PUBLIC_PRODUCT_SORT_ORDERS: PublicProductSortOrder[] = [
   'newest',

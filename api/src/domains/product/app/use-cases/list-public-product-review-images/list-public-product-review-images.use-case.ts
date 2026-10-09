@@ -2,8 +2,8 @@ import { Injectable } from '@nestjs/common';
 import {
   PRODUCT_PUBLIC_LIST_DEFAULT_LIMIT,
   PRODUCT_PUBLIC_LIST_MAX_LIMIT,
-  type PublicProductReviewImageListResult,
-} from '../../product.types';
+} from '../../product.constants';
+import type { PublicProductReviewImageListResult } from '../../product.types';
 import { PublicProductReviewQueryRepository } from '../../ports/public-product-review-query.repository';
 
 @Injectable()
