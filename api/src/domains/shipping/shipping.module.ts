@@ -4,6 +4,7 @@ import { CacheModule } from '~/integrations/cache/cache.module';
 import { CurrencyModule } from '~/integrations/currency/currency.module';
 import { QueueModule } from '~/integrations/queue/queue.module';
 import { IdempotencyModule } from '~/platform/idempotency/idempotency.module';
+import { AuthModule } from '../auth/auth.module';
 import { ProductEntity } from '../product/infra/persistence/mikro-orm/entities/product.entity';
 import { ShopModule } from '../shop/shop.module';
 import { ShopShippingProfilesController } from './api/rest/shop-shipping-profiles.controller';
@@ -26,6 +27,7 @@ import { MikroOrmShippingProfileRepository } from './infra/persistence/repositor
 @Module({
   imports: [
     ShopModule,
+    AuthModule,
     CacheModule,
     CurrencyModule,
     IdempotencyModule,
