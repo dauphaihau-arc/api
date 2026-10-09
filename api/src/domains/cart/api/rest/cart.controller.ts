@@ -40,12 +40,12 @@ import { ListDiscoverablePromoCodesUseCase } from '../../app/use-cases/list-disc
 import { MergeGuestCartUseCase } from '../../app/use-cases/merge-guest-cart/merge-guest-cart.use-case';
 import { RemoveCartItemUseCase } from '../../app/use-cases/remove-cart-item/remove-cart-item.use-case';
 import { UpdateCartItemUseCase } from '../../app/use-cases/update-cart-item/update-cart-item.use-case';
-import {
-  buildCartResponse,
-  type CartActor,
-  type CartResponse,
-  type CartSnapshot,
+import type {
+  CartActor,
+  CartResponse,
+  CartSnapshot,
 } from '../../app/cart.types';
+import { buildCartResponse } from './cart-response.mapper';
 import { mapCartAppErrorToHttpException } from './cart-http-error-mapper';
 import { CartExceptionsFilter } from './cart-exceptions.filter';
 import {

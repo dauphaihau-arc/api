@@ -1,5 +1,6 @@
-import { buildCartResponse, type CartSnapshot } from './cart.types';
-import { CartKind } from '../domain/enums/cart-kind.enum';
+import { buildCartResponse } from './cart-response.mapper';
+import type { CartSnapshot } from '../../app/cart.types';
+import { CartKind } from '../../domain/enums/cart-kind.enum';
 
 describe('buildCartResponse', () => {
   it('groups items by shop and computes summary from selected items', () => {
