@@ -9,7 +9,7 @@ import {
   USER_ADDRESS_LIST_DEFAULT_LIMIT,
   USER_ADDRESS_LIST_DEFAULT_PAGE,
   USER_ADDRESS_LIST_MAX_LIMIT,
-} from '../../../app/user-address.types';
+} from '../user-address.constants';
 
 export class ListMyAddressesQueryDto {
   @IsOptional()

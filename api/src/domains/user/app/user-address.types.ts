@@ -16,22 +16,11 @@ export interface UserAddressSummary {
   updatedAt: Date;
 }
 
-export const USER_ADDRESS_LIST_DEFAULT_PAGE = 1;
-export const USER_ADDRESS_LIST_DEFAULT_LIMIT = 20;
-export const USER_ADDRESS_LIST_MAX_LIMIT = 100;
-export const USER_ADDRESS_LIST_SORT_FIELDS = [
-  'isPrimary',
-  'updatedAt',
-  'createdAt',
-] as const;
-
-export type UserAddressListSortField = typeof USER_ADDRESS_LIST_SORT_FIELDS[number];
+export type UserAddressListSortField =
+  | 'isPrimary'
+  | 'updatedAt'
+  | 'createdAt';
 export type UserAddressListSort = SortOption<UserAddressListSortField>;
-
-export const DEFAULT_USER_ADDRESS_LIST_SORT: UserAddressListSort = {
-  field: 'isPrimary',
-  direction: 'desc',
-};
 
 export interface ListMyAddressesQuery {
   page: number;
@@ -75,14 +64,4 @@ export interface UpdateMyAddressInput {
   country?: string;
   phone?: string;
   isPrimary?: boolean;
-}
-
-export function buildListMyAddressesQuery(
-  params: Partial<ListMyAddressesQuery>,
-): ListMyAddressesQuery {
-  return {
-    page: params.page ?? USER_ADDRESS_LIST_DEFAULT_PAGE,
-    limit: params.limit ?? USER_ADDRESS_LIST_DEFAULT_LIMIT,
-    sort: params.sort ?? DEFAULT_USER_ADDRESS_LIST_SORT,
-  };
 }

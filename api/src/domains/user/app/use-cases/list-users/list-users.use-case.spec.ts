@@ -1,11 +1,7 @@
 import { buildPaginationMeta } from '~/platform/application/pagination';
 import { UserStatus } from '~/domains/auth/domain/enums/user-status.enum';
 import type { UserRepository } from '../../ports/user.repository';
-import {
-  DEFAULT_USER_LIST_SORT,
-  type ListUsersQuery,
-  type UserSummary,
-} from '../../user.types';
+import type { ListUsersQuery, UserSummary } from '../../user.types';
 import { ListUsersUseCase } from './list-users.use-case';
 
 describe('ListUsersUseCase', () => {
@@ -22,9 +18,8 @@ describe('ListUsersUseCase', () => {
   const query: ListUsersQuery = {
     page: 2,
     limit: 10,
-    sort: DEFAULT_USER_LIST_SORT,
+    sort: { field: 'createdAt', direction: 'desc' },
   };
-
   function buildDeps() {
     const userRepository: jest.Mocked<UserRepository> = {
       findAll: jest.fn().mockResolvedValue({

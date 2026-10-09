@@ -36,11 +36,11 @@ import {
   type UploadedAvatarFile,
   UpdateUserUseCase,
 } from '~/domains/user/app/use-cases/update-user/update-user.use-case';
+import { buildListUsersQuery } from './user.queries';
 import {
-  buildListUsersQuery,
   DEFAULT_USER_LIST_SORT,
   USER_LIST_SORT_FIELDS,
-} from '../../app/user.types';
+} from './user.constants';
 import { CreateUserDto } from './dto/create-user.dto';
 import { ListUsersQueryDto } from './dto/list-users.query.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
