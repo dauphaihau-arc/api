@@ -1,8 +1,6 @@
 import { computeAggregateStatus } from '../../fulfillment/domain/fulfillment-progress';
-import {
-  emptyFulfillmentOrderView,
-  type FulfillmentOrderView,
-} from '../../fulfillment/app/fulfillment.types';
+import { emptyFulfillmentOrderView } from '../../fulfillment/app/fulfillment-view.factory';
+import type { FulfillmentOrderView } from '../../fulfillment/app/fulfillment.types';
 import type { FulfillmentAggregateStatus } from '../../fulfillment/domain/enums/fulfillment-aggregate-status.enum';
 import { OrderStatus } from '../domain/enums/order-status.enum';
 import type { OrderEntity } from '../infra/persistence/entities/order.entity';

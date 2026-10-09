@@ -4,7 +4,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { OrderStatus } from '~/domains/order/domain/enums/order-status.enum';
 import { computeAggregateStatus } from '../../domain/fulfillment-progress';
 import { FulfillmentAggregateStatus } from '../../domain/enums/fulfillment-aggregate-status.enum';
-import { emptyFulfillmentOrderView } from '../fulfillment.types';
+import { emptyFulfillmentOrderView } from '../fulfillment-view.factory';
 import {
   ORDER_FULFILLMENT_UPDATED_EVENT,
   type OrderFulfillmentUpdatedEventPayload,
