@@ -24,7 +24,7 @@ import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import {
   buildChatConversationListQuery,
   buildChatMessageListQuery,
-} from '../../app/chat.types';
+} from './chat.queries';
 import { GetMyChatUnreadCountUseCase } from '../../app/use-cases/get-my-chat-unread-count/get-my-chat-unread-count.use-case';
 import { CreateOrGetMyChatConversationUseCase } from '../../app/use-cases/create-or-get-my-chat-conversation/create-or-get-my-chat-conversation.use-case';
 import { GetMyChatMessagesUseCase } from '../../app/use-cases/get-my-chat-messages/get-my-chat-messages.use-case';

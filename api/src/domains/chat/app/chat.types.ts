@@ -1,9 +1,3 @@
-export const CHAT_LIST_DEFAULT_PAGE = 1;
-export const CHAT_LIST_DEFAULT_LIMIT = 20;
-export const CHAT_LIST_MAX_LIMIT = 100;
-export const CHAT_MESSAGE_LIST_DEFAULT_LIMIT = 50;
-export const CHAT_MESSAGE_LIST_MAX_LIMIT = 100;
-
 export interface ChatConversationSummary {
   id: string;
   publicId: string;
@@ -70,22 +64,4 @@ export interface ChatMessageListResult {
   results: ChatMessageSummary[];
   limit: number;
   pageInfo: ChatMessagePageInfo;
-}
-
-export function buildChatConversationListQuery(
-  input?: Partial<ChatConversationListQuery>,
-): ChatConversationListQuery {
-  return {
-    page: input?.page ?? CHAT_LIST_DEFAULT_PAGE,
-    limit: input?.limit ?? CHAT_LIST_DEFAULT_LIMIT,
-  };
-}
-
-export function buildChatMessageListQuery(
-  input?: Partial<ChatMessageListQuery>,
-): ChatMessageListQuery {
-  return {
-    limit: input?.limit ?? CHAT_MESSAGE_LIST_DEFAULT_LIMIT,
-    before: input?.before,
-  };
 }

@@ -26,7 +26,7 @@ import { ChatPublicReferenceService } from '../../app/services/chat-public-refer
 import {
   buildChatConversationListQuery,
   buildChatMessageListQuery,
-} from '../../app/chat.types';
+} from './chat.queries';
 import { GetShopChatUnreadCountUseCase } from '../../app/use-cases/get-shop-chat-unread-count/get-shop-chat-unread-count.use-case';
 import { GetShopChatMessagesUseCase } from '../../app/use-cases/get-shop-chat-messages/get-shop-chat-messages.use-case';
 import { ListShopChatConversationsUseCase } from '../../app/use-cases/list-shop-chat-conversations/list-shop-chat-conversations.use-case';

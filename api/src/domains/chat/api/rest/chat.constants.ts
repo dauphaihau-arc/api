@@ -1,0 +1,5 @@
+export const CHAT_LIST_DEFAULT_PAGE = 1;
+export const CHAT_LIST_DEFAULT_LIMIT = 20;
+export const CHAT_LIST_MAX_LIMIT = 100;
+export const CHAT_MESSAGE_LIST_DEFAULT_LIMIT = 50;
+export const CHAT_MESSAGE_LIST_MAX_LIMIT = 100;
