@@ -23,6 +23,8 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { CurrentUser } from '~/platform/decorators/current-user.decorator';
+import { ApiErrorResponses } from '~/platform/http/api-error-responses.decorator';
+import { shopShippingProfilesControllerErrorResponses } from './errors/shipping-error-responses';
 import { Idempotent } from '~/platform/idempotency/idempotent.decorator';
 import { RequirePermissions } from '~/platform/decorators/require-permissions.decorator';
 import { IdempotencyKeyInterceptor } from '~/platform/idempotency/idempotency-key.interceptor';
@@ -59,6 +61,7 @@ import type {
 @RequirePermissions('shops.manage')
 @ApiTags('Shop Shipping Profiles')
 @ApiCookieAuth('accessCookie')
+@ApiErrorResponses(shopShippingProfilesControllerErrorResponses.common)
 export class ShopShippingProfilesController {
   constructor(
     private readonly shopAccessService: ShopAccessService,
@@ -75,6 +78,7 @@ export class ShopShippingProfilesController {
   @Get()
   @Header('Cache-Control', 'private, no-cache')
   @ApiOperation({ summary: 'List reusable shipping profiles for a shop' })
+  @ApiErrorResponses(shopShippingProfilesControllerErrorResponses.list)
   @ApiParam({ name: 'shop_id', type: String })
   @ApiOkResponse({ description: 'Shop shipping profiles.', schema: { type: 'object' } })
   async profiles(
@@ -105,6 +109,7 @@ export class ShopShippingProfilesController {
   @ApiOperation({ summary: 'Create a reusable shipping profile' })
   @ApiParam({ name: 'shop_id', type: String })
   @ApiCreatedResponse({ description: 'Created shipping profile.', schema: { type: 'object' } })
+  @ApiErrorResponses(shopShippingProfilesControllerErrorResponses.create)
   async create(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('shop_id') shopPublicId: string,
@@ -135,6 +140,7 @@ export class ShopShippingProfilesController {
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'shipping_profile_id', type: String })
   @ApiOkResponse({ description: 'Shipping profile.', schema: { type: 'object' } })
+  @ApiErrorResponses(shopShippingProfilesControllerErrorResponses.detail)
   async profile(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('shop_id') shopPublicId: string,
@@ -159,6 +165,7 @@ export class ShopShippingProfilesController {
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'shipping_profile_id', type: String })
   @ApiOkResponse({ description: 'Updated shipping profile.', schema: { type: 'object' } })
+  @ApiErrorResponses(shopShippingProfilesControllerErrorResponses.update)
   async update(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('shop_id') shopPublicId: string,
@@ -194,6 +201,7 @@ export class ShopShippingProfilesController {
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'shipping_profile_id', type: String })
   @ApiOkResponse({ description: 'Archived shipping profile.', schema: { type: 'object' } })
+  @ApiErrorResponses(shopShippingProfilesControllerErrorResponses.archive)
   async archive(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('shop_id') shopPublicId: string,
@@ -217,6 +225,7 @@ export class ShopShippingProfilesController {
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'shipping_profile_id', type: String })
   @ApiOkResponse({ description: 'Designated shipping profile.', schema: { type: 'object' } })
+  @ApiErrorResponses(shopShippingProfilesControllerErrorResponses.setDefault)
   async setDefault(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('shop_id') shopPublicId: string,
@@ -240,6 +249,7 @@ export class ShopShippingProfilesController {
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'shipping_profile_id', type: String })
   @ApiOkResponse({ description: 'Shipping profile with no default designation.', schema: { type: 'object' } })
+  @ApiErrorResponses(shopShippingProfilesControllerErrorResponses.clearDefault)
   async clearDefault(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('shop_id') shopPublicId: string,
@@ -263,6 +273,7 @@ export class ShopShippingProfilesController {
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'shipping_profile_id', type: String })
   @ApiOkResponse({ description: 'Shipping rate preview.', schema: { type: 'object' } })
+  @ApiErrorResponses(shopShippingProfilesControllerErrorResponses.preview)
   async preview(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('shop_id') shopPublicId: string,

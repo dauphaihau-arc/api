@@ -10,10 +10,13 @@ import {
 } from '@nestjs/swagger';
 import type { Observable } from 'rxjs';
 import { SsePublisher } from '~/platform/sse/infra/sse.publisher';
+import { ApiErrorResponses } from '~/platform/http/api-error-responses.decorator';
+import { productInventoryEventsControllerErrorResponses } from '../errors/product-error-responses';
 import { buildProductInventoryChannelKey } from '../../../app/events/product-inventory-sse.event';
 
 @Controller('products/:product_id/inventory')
 @ApiTags('Product Inventory')
+@ApiErrorResponses(productInventoryEventsControllerErrorResponses.common)
 export class ProductInventoryEventsController {
   constructor(
     private readonly ssePublisher: SsePublisher,
@@ -24,6 +27,7 @@ export class ProductInventoryEventsController {
   @ApiOperation({ summary: 'Stream product inventory events over SSE' })
   @ApiParam({ name: 'product_id', type: String })
   @ApiProduces('text/event-stream')
+  @ApiErrorResponses(productInventoryEventsControllerErrorResponses.stream)
   @ApiOkResponse({
     description: 'Server-sent event stream.',
     schema: { type: 'string' },

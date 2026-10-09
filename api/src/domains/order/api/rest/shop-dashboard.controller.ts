@@ -20,6 +20,8 @@ import { ShopAccessService } from '~/domains/shop/app/services/shop-access.servi
 
 import { CurrentUser } from '~/platform/decorators/current-user.decorator';
 import { RequirePermissions } from '~/platform/decorators/require-permissions.decorator';
+import { ApiErrorResponses } from '~/platform/http/api-error-responses.decorator';
+import { shopDashboardControllerErrorResponses } from './errors/order-error-responses';
 import { GetShopDashboardUseCase } from '../../app/use-cases/get-shop-dashboard/get-shop-dashboard.use-case';
 import { GetShopDashboardQueryDto } from './dto/get-shop-dashboard.query.dto';
 import { toShopDashboardResponse } from './responses/order.response';
@@ -29,6 +31,7 @@ import { toShopDashboardResponse } from './responses/order.response';
 @RequirePermissions('shops.manage')
 @ApiTags('Shop Dashboard')
 @ApiCookieAuth('accessCookie')
+@ApiErrorResponses(shopDashboardControllerErrorResponses.controller)
 export class ShopDashboardController {
   constructor(
     private readonly shopAccessService: ShopAccessService,
@@ -43,6 +46,7 @@ export class ShopDashboardController {
     description: 'Shop dashboard overview.',
     schema: { type: 'object' },
   })
+  @ApiErrorResponses(shopDashboardControllerErrorResponses.overview)
   async overview(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('shop_id') shopPublicId: string,

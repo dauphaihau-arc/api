@@ -5,6 +5,8 @@ import {
   ApiOkResponse, ApiOperation, ApiParam, ApiTags, 
 } from '@nestjs/swagger';
 import { OptionalJwtAuthGuard } from '~/domains/auth/api/guard/optional-jwt-auth.guard';
+import { ApiErrorResponses } from '~/platform/http/api-error-responses.decorator';
+import { productActivityControllerErrorResponses } from '../errors/product-error-responses';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import type { Request, Response } from 'express';
 import { PublicProductViewHistoryService } from '../../../app/services/public-product-view-history.service';
@@ -15,6 +17,7 @@ type ProductRequest = Request & { user?: AuthenticatedUser | null };
 @Controller('products')
 @ApiTags('Product Activity')
 @UseGuards(OptionalJwtAuthGuard)
+@ApiErrorResponses(productActivityControllerErrorResponses.common)
 export class ProductActivityController {
   constructor(
     private readonly publicProductViewHistoryService: PublicProductViewHistoryService,

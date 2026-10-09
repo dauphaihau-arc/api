@@ -10,6 +10,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { RequirePermissions } from '~/platform/decorators/require-permissions.decorator';
+import { ApiErrorResponses } from '~/platform/http/api-error-responses.decorator';
 import { resolveOrThrow } from '~/platform/application/result';
 import { CurrentUser } from '~/platform/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
@@ -23,6 +24,7 @@ import { CreateShopDto } from './dto/create-shop.dto';
 import { UpdateShopSettingsDto } from './dto/update-shop-settings.dto';
 import { mapShopAppErrorToHttpException } from './errors/shop-http-error-mapper';
 import { ShopExceptionsFilter } from './errors/shop-exceptions.filter';
+import { shopControllerErrorResponses } from './errors/shop-error-responses';
 import { toShopResponse } from './responses/shop.response';
 
 @Controller('shops')
@@ -30,6 +32,7 @@ import { toShopResponse } from './responses/shop.response';
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @ApiTags('Shops')
 @ApiCookieAuth('accessCookie')
+@ApiErrorResponses(shopControllerErrorResponses.common)
 export class ShopController {
   constructor(
     private readonly createShopUseCase: CreateShopUseCase,
@@ -42,6 +45,7 @@ export class ShopController {
   @Header('Cache-Control', 'private, no-store')
   @RequirePermissions('shops.create')
   @ApiOperation({ summary: 'Create a shop' })
+  @ApiErrorResponses(shopControllerErrorResponses.create)
   @ApiOkResponse({
     description: 'Created shop.',
     schema: { type: 'object' },
@@ -64,6 +68,7 @@ export class ShopController {
   @Header('Cache-Control', 'private, no-cache')
   @RequirePermissions('shops.manage')
   @ApiOperation({ summary: 'Get the current user shop' })
+  @ApiErrorResponses(shopControllerErrorResponses.me)
   @ApiOkResponse({
     description: 'Current user shop.',
     schema: { type: 'object' },
@@ -88,6 +93,7 @@ export class ShopController {
   @Header('Cache-Control', 'private, no-store')
   @RequirePermissions('shops.manage')
   @ApiOperation({ summary: 'Update the shop store settings' })
+  @ApiErrorResponses(shopControllerErrorResponses.updateSettings)
   @ApiParam({ name: 'shop_id', type: String })
   @ApiOkResponse({
     description: 'Updated shop.',

@@ -12,11 +12,14 @@ import {
 } from '@nestjs/swagger';
 import { SkipThrottle } from '@nestjs/throttler';
 import type { Request } from 'express';
+import { ApiErrorResponses } from '~/platform/http/api-error-responses.decorator';
+import { orderWebhookControllerErrorResponses } from './errors/order-error-responses';
 import { PaymentGateway } from '~/integrations/payment/app/ports/payment-gateway';
 import { HandleStripeWebhookUseCase } from '../../app/use-cases/handle-stripe-webhook/handle-stripe-webhook.use-case';
 
 @Controller('webhooks/stripe')
 @ApiTags('Stripe Webhooks')
+@ApiErrorResponses(orderWebhookControllerErrorResponses.controller)
 export class OrderWebhookController {
   constructor(
     private readonly paymentGateway: PaymentGateway,
@@ -35,6 +38,7 @@ export class OrderWebhookController {
     description: 'Webhook accepted.',
     schema: { type: 'object' },
   })
+  @ApiErrorResponses(orderWebhookControllerErrorResponses.handle)
   async handle(
     @Req() request: Request & { rawBody?: Buffer },
     @Headers('stripe-signature') signature?: string,

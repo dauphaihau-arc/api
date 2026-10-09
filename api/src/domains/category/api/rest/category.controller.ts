@@ -32,8 +32,11 @@ import { CreateCategoryDto } from './dto/create-category.dto';
 import { ListCategoriesQueryDto } from './dto/list-categories.query.dto';
 import { SuggestCategoriesQueryDto } from './dto/suggest-categories.query.dto';
 import { mapCategoryAppErrorToHttpException } from './errors/category-http-error-mapper';
+import { ApiErrorResponses } from '~/platform/http/api-error-responses.decorator';
+import { categoryErrorResponses } from './errors/category-error-responses';
 
 @Controller('categories')
+@ApiErrorResponses(categoryErrorResponses.common)
 @ApiTags('Categories')
 export class CategoryController {
   constructor(
@@ -46,6 +49,7 @@ export class CategoryController {
 
   @Get('suggestions')
   @Header('Cache-Control', 'private, no-cache')
+  @ApiErrorResponses(categoryErrorResponses.suggestions)
   @ApiOperation({ summary: 'Suggest categories by name' })
   @ApiOkResponse({
     description: 'Matching category suggestions.',
@@ -64,6 +68,7 @@ export class CategoryController {
   @Get()
   @SkipThrottle()
   @Header('Cache-Control', 'private, no-cache')
+  @ApiErrorResponses(categoryErrorResponses.list)
   @ApiOperation({ summary: 'List categories' })
   @ApiOkResponse({
     description: 'Category list.',
@@ -79,6 +84,7 @@ export class CategoryController {
   @Get(':id/attributes')
   @SkipThrottle()
   @Header('Cache-Control', 'private, no-cache')
+  @ApiErrorResponses(categoryErrorResponses.attributes)
   @ApiOperation({ summary: 'Get category attributes' })
   @ApiParam({ name: 'id', type: String })
   @ApiOkResponse({
@@ -101,6 +107,7 @@ export class CategoryController {
   @Header('Cache-Control', 'private, no-store')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @ApiCookieAuth('accessCookie')
+  @ApiErrorResponses(categoryErrorResponses.create)
   @ApiOperation({ summary: 'Create a category' })
   @ApiOkResponse({
     description: 'Created category.',
@@ -118,6 +125,7 @@ export class CategoryController {
   @Header('Cache-Control', 'private, no-store')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @ApiCookieAuth('accessCookie')
+  @ApiErrorResponses(categoryErrorResponses.createAttribute)
   @ApiOperation({ summary: 'Create a category attribute' })
   @ApiParam({ name: 'id', type: String })
   @ApiOkResponse({

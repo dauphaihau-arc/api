@@ -19,6 +19,8 @@ import {
 } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { CurrentUser } from '~/platform/decorators/current-user.decorator';
+import { ApiErrorResponses } from '~/platform/http/api-error-responses.decorator';
+import { productUploadControllerErrorResponses } from '../errors/product-error-responses';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import { JwtAuthGuard } from '~/domains/auth/api/guard/jwt-auth.guard';
 import { PermissionsGuard } from '~/domains/auth/api/guard/permissions.guard';
@@ -36,6 +38,7 @@ interface UploadUrlResponse {
 
 @Controller('shops/:shop_id/products/:product_id/image-uploads')
 @ApiTags('Product Uploads')
+@ApiErrorResponses(productUploadControllerErrorResponses.common)
 export class ProductUploadController {
   constructor(
     private readonly issueProductImageUploadUrlUseCase: IssueProductImageUploadUrlUseCase,
@@ -50,6 +53,7 @@ export class ProductUploadController {
   @ApiOperation({ summary: 'Issue a product image upload URL' })
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'product_id', type: String })
+  @ApiErrorResponses(productUploadControllerErrorResponses.issue)
   @ApiOkResponse({
     description: 'Issued upload URL.',
     schema: { type: 'object' },
@@ -86,6 +90,7 @@ export class ProductUploadController {
   @ApiConsumes('application/octet-stream')
   @ApiOperation({ summary: 'Upload a product image by upload ticket' })
   @ApiParam({ name: 'token', type: String })
+  @ApiErrorResponses(productUploadControllerErrorResponses.upload)
   @ApiOkResponse({
     description: 'Uploaded asset key.',
     schema: { type: 'object' },

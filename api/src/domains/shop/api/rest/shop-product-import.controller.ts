@@ -22,6 +22,7 @@ import {
 } from '@nestjs/swagger';
 import { RequirePermissions } from '~/platform/decorators/require-permissions.decorator';
 import { CurrentUser } from '~/platform/decorators/current-user.decorator';
+import { ApiErrorResponses } from '~/platform/http/api-error-responses.decorator';
 import { Idempotent } from '~/platform/idempotency/idempotent.decorator';
 import { IdempotencyKeyInterceptor } from '~/platform/idempotency/idempotency-key.interceptor';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
@@ -37,6 +38,7 @@ import {
   type UploadedProductImportFile,
 } from '~/domains/product/app/use-cases/start-product-import/start-product-import.use-case';
 import { ProductImportExceptionsFilter } from './errors/product-import-exceptions.filter';
+import { shopProductImportControllerErrorResponses } from './errors/shop-error-responses';
 import {
   toShopProductImportResponse,
   type ShopProductImportResponse,
@@ -48,6 +50,7 @@ import {
 @RequirePermissions('shops.manage')
 @ApiTags('Shop Product Imports')
 @ApiCookieAuth('accessCookie')
+@ApiErrorResponses(shopProductImportControllerErrorResponses.common)
 export class ShopProductImportController {
   constructor(
     private readonly shopAccessService: ShopAccessService,
@@ -61,6 +64,7 @@ export class ShopProductImportController {
   @Get('template')
   @Header('Cache-Control', 'private, no-store')
   @ApiOperation({ summary: 'Download product import XLSX template' })
+  @ApiErrorResponses(shopProductImportControllerErrorResponses.template)
   @ApiParam({ name: 'shop_id', type: String })
   async downloadTemplate(
     @CurrentUser() currentUser: AuthenticatedUser,
@@ -96,6 +100,7 @@ export class ShopProductImportController {
     },
   })
   @ApiOperation({ summary: 'Start asynchronous product XLSX import' })
+  @ApiErrorResponses(shopProductImportControllerErrorResponses.start)
   @ApiParam({ name: 'shop_id', type: String })
   async startImport(
     @CurrentUser() currentUser: AuthenticatedUser,
@@ -112,6 +117,7 @@ export class ShopProductImportController {
   @Get(':import_id')
   @Header('Cache-Control', 'private, no-cache')
   @ApiOperation({ summary: 'Get product import status' })
+  @ApiErrorResponses(shopProductImportControllerErrorResponses.detail)
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'import_id', type: String })
   async importDetail(
@@ -130,6 +136,7 @@ export class ShopProductImportController {
   @Get(':import_id/report')
   @Header('Cache-Control', 'private, no-store')
   @ApiOperation({ summary: 'Download product import CSV report' })
+  @ApiErrorResponses(shopProductImportControllerErrorResponses.report)
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'import_id', type: String })
   async downloadReport(

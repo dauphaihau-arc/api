@@ -39,9 +39,12 @@ import {
   toMyAddressListResponse,
   toMyAddressResponse,
 } from './responses/me-address.response';
+import { ApiErrorResponses } from '~/platform/http/api-error-responses.decorator';
+import { meAddressesErrorResponses } from './errors/me-addresses-error-responses';
 
 @Controller('me/addresses')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
+@ApiErrorResponses(meAddressesErrorResponses.common)
 @ApiTags('My Addresses')
 @ApiCookieAuth('accessCookie')
 export class MeAddressesController {
@@ -55,6 +58,7 @@ export class MeAddressesController {
 
   @Get()
   @Header('Cache-Control', 'private, no-cache')
+  @ApiErrorResponses(meAddressesErrorResponses.list)
   @ApiOperation({ summary: 'List my addresses' })
   @ApiOkResponse({
     description: 'Paginated address list.',
@@ -78,6 +82,7 @@ export class MeAddressesController {
 
   @Post()
   @Header('Cache-Control', 'private, no-store')
+  @ApiErrorResponses(meAddressesErrorResponses.create)
   @ApiOperation({ summary: 'Create my address' })
   @ApiOkResponse({
     description: 'Created address.',
@@ -104,6 +109,7 @@ export class MeAddressesController {
 
   @Get(':id')
   @Header('Cache-Control', 'private, no-cache')
+  @ApiErrorResponses(meAddressesErrorResponses.detail)
   @ApiOperation({ summary: 'Get my address by id' })
   @ApiParam({ name: 'id', type: String })
   @ApiOkResponse({
@@ -118,7 +124,10 @@ export class MeAddressesController {
     const address = await this.getMyAddressUseCase.execute(currentUser, id);
 
     if (!address) {
-      throw new NotFoundException('Address not found');
+      throw new NotFoundException({
+        code: 'ADDRESS_NOT_FOUND',
+        message: 'Address not found',
+      });
     }
 
     return { address: toMyAddressResponse(address) };
@@ -126,6 +135,7 @@ export class MeAddressesController {
 
   @Patch(':id')
   @Header('Cache-Control', 'private, no-store')
+  @ApiErrorResponses(meAddressesErrorResponses.update)
   @ApiOperation({ summary: 'Update my address' })
   @ApiParam({ name: 'id', type: String })
   @ApiOkResponse({
@@ -155,6 +165,7 @@ export class MeAddressesController {
   @Delete(':id')
   @Header('Cache-Control', 'private, no-store')
   @HttpCode(204)
+  @ApiErrorResponses(meAddressesErrorResponses.remove)
   @ApiOperation({ summary: 'Delete my address' })
   @ApiParam({ name: 'id', type: String })
   @ApiNoContentResponse({ description: 'Address deleted.' })

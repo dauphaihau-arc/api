@@ -16,6 +16,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { CurrentUser } from '~/platform/decorators/current-user.decorator';
+import { ApiErrorResponses } from '~/platform/http/api-error-responses.decorator';
 import { JwtAuthGuard } from '~/domains/auth/api/guard/jwt-auth.guard';
 import { PermissionsGuard } from '~/domains/auth/api/guard/permissions.guard';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
@@ -32,12 +33,14 @@ import {
   toOrderListResponse,
 } from './responses/order.response';
 import { OrderExceptionsFilter } from './errors/order-exceptions.filter';
+import { meOrderControllerErrorResponses } from './errors/order-error-responses';
 
 @Controller('me/orders')
 @UseFilters(OrderExceptionsFilter)
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @ApiTags('My Orders')
 @ApiCookieAuth('accessCookie')
+@ApiErrorResponses(meOrderControllerErrorResponses.controller)
 export class MeOrderController {
   constructor(
     private readonly listOrdersUseCase: ListOrdersUseCase,
@@ -53,6 +56,7 @@ export class MeOrderController {
     description: 'Paginated order list.',
     schema: { type: 'object' },
   })
+  @ApiErrorResponses(meOrderControllerErrorResponses.list)
   async list(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Query() query: ListMyOrdersQueryDto,
@@ -69,6 +73,7 @@ export class MeOrderController {
     description: 'Order detail.',
     schema: { type: 'object' },
   })
+  @ApiErrorResponses(meOrderControllerErrorResponses.detail)
   async detail(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('order_id') publicId: string,
@@ -86,6 +91,7 @@ export class MeOrderController {
     description: 'Updated order detail.',
     schema: { type: 'object' },
   })
+  @ApiErrorResponses(meOrderControllerErrorResponses.requestCancel)
   async requestCancel(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('order_id') publicId: string,
@@ -104,6 +110,7 @@ export class MeOrderController {
     description: 'Updated order detail.',
     schema: { type: 'object' },
   })
+  @ApiErrorResponses(meOrderControllerErrorResponses.requestSupport)
   async requestSupport(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('order_id') publicId: string,

@@ -21,6 +21,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
+import { ApiErrorResponses } from '~/platform/http/api-error-responses.decorator';
 import { resolveOrThrow } from '~/platform/application/result';
 import { toMinorUnits } from '~/platform/money/money';
 import {
@@ -48,6 +49,7 @@ import type {
 import { buildCartResponse } from './presenters/cart-response.mapper';
 import { mapCartAppErrorToHttpException } from './errors/cart-http-error-mapper';
 import { CartExceptionsFilter } from './errors/cart-exceptions.filter';
+import { cartControllerErrorResponses } from './errors/cart-error-responses';
 import {
   toCartPromoCodeListResponse,
   toCartPromoCodeApplyResponse,
@@ -67,6 +69,7 @@ type CartRequest = Request & { user?: AuthenticatedUser | null };
 @UseGuards(OptionalJwtAuthGuard)
 @ApiTags('Cart')
 @ApiCookieAuth('accessCookie')
+@ApiErrorResponses(cartControllerErrorResponses.controller)
 export class CartController {
   constructor(
     @Inject(CHECKOUT_CONFIG)
@@ -90,6 +93,7 @@ export class CartController {
     description: 'Cart state.',
     schema: { type: 'object' },
   })
+  @ApiErrorResponses(cartControllerErrorResponses.cart)
   async cart(
     @Req() request: CartRequest,
     @Query() query: GetCartQueryDto,
@@ -111,6 +115,7 @@ export class CartController {
     description: 'Eligible public promo codes for the selected shop items.',
     schema: { type: 'object' },
   })
+  @ApiErrorResponses(cartControllerErrorResponses.promoCodes)
   async promoCodes(
     @Req() request: CartRequest,
     @Query() query: GetCartPromoCodesQueryDto,
@@ -139,6 +144,7 @@ export class CartController {
     description: 'Promo codes the cart holds after the selection.',
     schema: { type: 'object' },
   })
+  @ApiErrorResponses(cartControllerErrorResponses.applyPromoCode)
   async applyPromoCode(
     @Req() request: CartRequest,
     @Body() body: ApplyCartPromoCodeDto,
@@ -172,6 +178,7 @@ export class CartController {
     description: 'Updated cart state.',
     schema: { type: 'object' },
   })
+  @ApiErrorResponses(cartControllerErrorResponses.addItem)
   async addItem(
     @Req() request: CartRequest,
     @Res({ passthrough: true }) response: Response,
@@ -239,6 +246,7 @@ export class CartController {
     description: 'Updated cart state.',
     schema: { type: 'object' },
   })
+  @ApiErrorResponses(cartControllerErrorResponses.updateItem)
   async updateItem(
     @Req() request: CartRequest,
     @Res({ passthrough: true }) response: Response,
@@ -292,6 +300,7 @@ export class CartController {
     description: 'Updated cart state.',
     schema: { type: 'object' },
   })
+  @ApiErrorResponses(cartControllerErrorResponses.deleteItem)
   async deleteItem(
     @Req() request: CartRequest,
     @Res({ passthrough: true }) response: Response,

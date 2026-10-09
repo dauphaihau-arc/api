@@ -9,7 +9,9 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { SkipThrottle } from '@nestjs/throttler';
+import { ApiErrorResponses } from '~/platform/http/api-error-responses.decorator';
 import { OptionalJwtAuthGuard } from '~/domains/auth/api/guard/optional-jwt-auth.guard';
+import { productControllerErrorResponses } from '../errors/product-error-responses';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import type { Request, Response } from 'express';
 import { GetPublicProductBySlugsUseCase } from '../../../app/use-cases/get-public-product-by-slugs/get-public-product-by-slugs.use-case';
@@ -51,6 +53,7 @@ function setStorefrontProductCacheControl(response: Response, request: ProductRe
 @Controller('products')
 @ApiTags('Products')
 @UseGuards(OptionalJwtAuthGuard)
+@ApiErrorResponses(productControllerErrorResponses.common)
 export class ProductController {
   private readonly listPublicProductsQueryPipe = new ListPublicProductsQueryPipe();
 
@@ -67,6 +70,7 @@ export class ProductController {
   @Header('Cache-Control', 'public, max-age=30')
   @Header('Vary', STOREFRONT_CACHE_VARY_HEADER)
   @ApiOperation({ summary: 'Suggest public products for typeahead' })
+  @ApiErrorResponses(productControllerErrorResponses.suggestions)
   @ApiOkResponse({
     description: 'Matching public product suggestions.',
     schema: { type: 'object' },
@@ -85,6 +89,7 @@ export class ProductController {
   @Get()
   @Header('Vary', STOREFRONT_CACHE_VARY_HEADER)
   @ApiOperation({ summary: 'List public products' })
+  @ApiErrorResponses(productControllerErrorResponses.list)
   @ApiOkResponse({
     description: 'Public product list.',
     schema: { type: 'object' },
@@ -109,6 +114,7 @@ export class ProductController {
   @Get('facets')
   @Header('Vary', STOREFRONT_CACHE_VARY_HEADER)
   @ApiOperation({ summary: 'List public product facets' })
+  @ApiErrorResponses(productControllerErrorResponses.facets)
   @ApiOkResponse({
     description: 'Public product facets.',
     schema: { type: 'object' },
@@ -136,6 +142,7 @@ export class ProductController {
   @ApiOperation({ summary: 'Get a public product by shop slug and product slug' })
   @ApiParam({ name: 'shop_slug', type: String })
   @ApiParam({ name: 'product_slug', type: String })
+  @ApiErrorResponses(productControllerErrorResponses.bySlug)
   @ApiOkResponse({
     description: 'Public product detail.',
     schema: { type: 'object' },
@@ -170,6 +177,7 @@ export class ProductController {
   @ApiOperation({ summary: 'List public product reviews' })
   @ApiParam({ name: 'shop_slug', type: String })
   @ApiParam({ name: 'product_slug', type: String })
+  @ApiErrorResponses(productControllerErrorResponses.reviews)
   @ApiOkResponse({
     description: 'Public product reviews.',
     schema: { type: 'object' },
@@ -207,6 +215,7 @@ export class ProductController {
   @ApiOperation({ summary: 'List public product review images' })
   @ApiParam({ name: 'shop_slug', type: String })
   @ApiParam({ name: 'product_slug', type: String })
+  @ApiErrorResponses(productControllerErrorResponses.reviewImages)
   @ApiOkResponse({
     description: 'Public product review images.',
     schema: { type: 'object' },

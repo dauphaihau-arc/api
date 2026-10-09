@@ -20,6 +20,7 @@ import {
 import { CurrentUser } from '~/platform/decorators/current-user.decorator';
 import { Idempotent } from '~/platform/idempotency/idempotent.decorator';
 import { RequirePermissions } from '~/platform/decorators/require-permissions.decorator';
+import { ApiErrorResponses } from '~/platform/http/api-error-responses.decorator';
 import { IdempotencyKeyInterceptor } from '~/platform/idempotency/idempotency-key.interceptor';
 import { JwtAuthGuard } from '~/domains/auth/api/guard/jwt-auth.guard';
 import { PermissionsGuard } from '~/domains/auth/api/guard/permissions.guard';
@@ -36,6 +37,7 @@ import { PrepareFulfillmentShipmentDto } from './dto/prepare-fulfillment-shipmen
 import { ReconcileOrderFulfillmentDto } from './dto/reconcile-order-fulfillment.dto';
 import { UpdateShipmentJourneyDto } from './dto/update-shipment-journey.dto';
 import { FulfillmentExceptionsFilter } from './errors/fulfillment-exceptions.filter';
+import { shopOrderFulfillmentControllerErrorResponses } from './errors/fulfillment-error-responses';
 import { toFulfillmentOrderResponse } from './responses/fulfillment.response';
 import type { FulfillmentCommandResult } from '../../app/services/fulfillment-command.runner';
 
@@ -45,6 +47,7 @@ import type { FulfillmentCommandResult } from '../../app/services/fulfillment-co
 @RequirePermissions('shops.manage')
 @ApiTags('Shop Order Fulfillment')
 @ApiCookieAuth('accessCookie')
+@ApiErrorResponses(shopOrderFulfillmentControllerErrorResponses.common)
 export class ShopOrderFulfillmentController {
   constructor(
     private readonly fulfillmentTargetResolver: FulfillmentTargetResolver,
@@ -60,6 +63,7 @@ export class ShopOrderFulfillmentController {
   @UseInterceptors(IdempotencyKeyInterceptor)
   @Idempotent({ scope: 'fulfillment:prepare-shipment' })
   @ApiOperation({ summary: 'Prepare a seller fulfillment shipment' })
+  @ApiErrorResponses(shopOrderFulfillmentControllerErrorResponses.prepare)
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'order_id', type: String })
   @ApiOkResponse({ description: 'Updated order fulfillment.', schema: { type: 'object' } })
@@ -94,6 +98,7 @@ export class ShopOrderFulfillmentController {
   @UseInterceptors(IdempotencyKeyInterceptor)
   @Idempotent({ scope: 'fulfillment:amend-shipment' })
   @ApiOperation({ summary: 'Amend a prepared shipment' })
+  @ApiErrorResponses(shopOrderFulfillmentControllerErrorResponses.amend)
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'order_id', type: String })
   @ApiParam({ name: 'shipment_id', type: String })
@@ -131,6 +136,7 @@ export class ShopOrderFulfillmentController {
   @UseInterceptors(IdempotencyKeyInterceptor)
   @Idempotent({ scope: 'fulfillment:void-shipment' })
   @ApiOperation({ summary: 'Void a prepared shipment' })
+  @ApiErrorResponses(shopOrderFulfillmentControllerErrorResponses.void)
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'order_id', type: String })
   @ApiParam({ name: 'shipment_id', type: String })
@@ -161,6 +167,7 @@ export class ShopOrderFulfillmentController {
   @UseInterceptors(IdempotencyKeyInterceptor)
   @Idempotent({ scope: 'fulfillment:update-shipment-journey' })
   @ApiOperation({ summary: 'Record a shipment journey transition' })
+  @ApiErrorResponses(shopOrderFulfillmentControllerErrorResponses.journey)
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'order_id', type: String })
   @ApiParam({ name: 'shipment_id', type: String })
@@ -198,6 +205,7 @@ export class ShopOrderFulfillmentController {
   @UseInterceptors(IdempotencyKeyInterceptor)
   @Idempotent({ scope: 'fulfillment:reconcile-order' })
   @ApiOperation({ summary: 'Reconcile legacy order fulfillment quantities' })
+  @ApiErrorResponses(shopOrderFulfillmentControllerErrorResponses.reconcile)
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'order_id', type: String })
   @ApiOkResponse({ description: 'Updated order fulfillment.', schema: { type: 'object' } })

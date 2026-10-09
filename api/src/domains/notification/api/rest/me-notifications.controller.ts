@@ -42,9 +42,12 @@ import {
   toNotificationListResponse,
   toNotificationResponse,
 } from './responses/notification.response';
+import { ApiErrorResponses } from '~/platform/http/api-error-responses.decorator';
+import { meNotificationsErrorResponses } from './errors/me-notifications-error-responses';
 
 @Controller('me/notifications')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
+@ApiErrorResponses(meNotificationsErrorResponses.common)
 @ApiTags('My Notifications')
 @ApiCookieAuth('accessCookie')
 export class MeNotificationsController {
@@ -61,6 +64,7 @@ export class MeNotificationsController {
 
   @Get()
   @Header('Cache-Control', 'private, no-cache')
+  @ApiErrorResponses(meNotificationsErrorResponses.list)
   @ApiOperation({ summary: 'List my notifications' })
   @ApiOkResponse({
     description: 'Paginated notification list.',
@@ -98,6 +102,7 @@ export class MeNotificationsController {
 
   @Patch(':id/read')
   @Header('Cache-Control', 'private, no-store')
+  @ApiErrorResponses(meNotificationsErrorResponses.markRead)
   @ApiOperation({ summary: 'Mark one notification as read' })
   @ApiParam({ name: 'id', type: String })
   @ApiOkResponse({
@@ -148,6 +153,7 @@ export class MeNotificationsController {
 
   @Post('web-push/subscriptions')
   @Header('Cache-Control', 'private, no-store')
+  @ApiErrorResponses(meNotificationsErrorResponses.registerPush)
   @ApiOperation({ summary: 'Register a web push subscription' })
   @ApiOkResponse({
     description: 'Registered web push subscription.',
@@ -181,6 +187,7 @@ export class MeNotificationsController {
 
   @Delete('web-push/subscriptions')
   @Header('Cache-Control', 'private, no-store')
+  @ApiErrorResponses(meNotificationsErrorResponses.unregisterPush)
   @ApiOperation({ summary: 'Unregister a web push subscription' })
   @ApiOkResponse({
     description: 'Removal result.',

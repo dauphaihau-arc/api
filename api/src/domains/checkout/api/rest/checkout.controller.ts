@@ -11,7 +11,6 @@ import {
   UseFilters,
 } from '@nestjs/common';
 import {
-  ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
   ApiParam,
@@ -19,6 +18,7 @@ import {
 } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import type { Request } from 'express';
+import { ApiErrorResponses } from '~/platform/http/api-error-responses.decorator';
 import { CHECKOUT_CONFIG, type CheckoutConfig } from '~/platform/config/checkout.config';
 import { GuestCartSessionService } from '~/domains/cart/api/rest/cookies/guest-cart-session.service';
 import { CreateGuestCheckoutQuoteForBuyNowUseCase } from '~/domains/checkout/app/use-cases/create-guest-checkout-quote-for-buy-now/create-guest-checkout-quote-for-buy-now.use-case';
@@ -41,6 +41,7 @@ import { CreateGuestOrderForBuyNowDto } from './dto/create-guest-order-for-buy-n
 import { CreateGuestOrderFromCartDto } from './dto/create-guest-order-from-cart.dto';
 import { LookupGuestOrdersQueryDto } from './dto/lookup-guest-orders.query.dto';
 import { CheckoutExceptionsFilter } from './errors/checkout-exceptions.filter';
+import { checkoutControllerErrorResponses } from './errors/checkout-error-responses';
 
 const checkoutRouteRateLimits = {
   guestLookup: {
@@ -53,6 +54,7 @@ const checkoutRouteRateLimits = {
 @Controller('checkout')
 @UseFilters(CheckoutExceptionsFilter)
 @ApiTags('Checkout')
+@ApiErrorResponses(checkoutControllerErrorResponses.controller)
 export class CheckoutController {
   constructor(
     @Inject(CHECKOUT_CONFIG)
@@ -75,6 +77,7 @@ export class CheckoutController {
     description: 'Checkout session orders.',
     schema: { type: 'object' },
   })
+  @ApiErrorResponses(checkoutControllerErrorResponses.getBySession)
   async getBySession(@Param('session_id') sessionId: string) {
     return toCheckoutSessionOrderResponse(
       await this.getOrdersByCheckoutSessionUseCase.execute(sessionId),
@@ -90,6 +93,7 @@ export class CheckoutController {
     description: 'Matching guest orders.',
     schema: { type: 'object' },
   })
+  @ApiErrorResponses(checkoutControllerErrorResponses.lookupGuestOrders)
   async lookupGuestOrders(@Query() query: LookupGuestOrdersQueryDto) {
     query.validate();
 
@@ -124,7 +128,7 @@ export class CheckoutController {
     description: 'Guest checkout quote.',
     schema: { type: 'object' },
   })
-  @ApiNotFoundResponse({ description: 'Guest cart session not found.' })
+  @ApiErrorResponses(checkoutControllerErrorResponses.createQuoteFromCart)
   async createQuoteFromCart(
     @Req() request: Request,
     @Body() body: CreateGuestCheckoutQuoteFromCartDto,
@@ -153,7 +157,7 @@ export class CheckoutController {
     description: 'Created guest order.',
     schema: { type: 'object' },
   })
-  @ApiNotFoundResponse({ description: 'Guest cart session not found.' })
+  @ApiErrorResponses(checkoutControllerErrorResponses.createFromCart)
   async createFromCart(
     @Req() request: Request,
     @Body() body: CreateGuestOrderFromCartDto,
@@ -178,7 +182,7 @@ export class CheckoutController {
     description: 'Guest checkout quote.',
     schema: { type: 'object' },
   })
-  @ApiNotFoundResponse({ description: 'Guest cart session not found.' })
+  @ApiErrorResponses(checkoutControllerErrorResponses.createQuoteForBuyNow)
   async createQuoteForBuyNow(
     @Req() request: Request,
     @Body() body: CreateGuestCheckoutQuoteForBuyNowDto,
@@ -204,7 +208,7 @@ export class CheckoutController {
     description: 'Created guest order.',
     schema: { type: 'object' },
   })
-  @ApiNotFoundResponse({ description: 'Guest cart session not found.' })
+  @ApiErrorResponses(checkoutControllerErrorResponses.createForBuyNow)
   async createForBuyNow(
     @Req() request: Request,
     @Body() body: CreateGuestOrderForBuyNowDto,

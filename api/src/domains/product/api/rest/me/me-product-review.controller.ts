@@ -18,6 +18,8 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { CurrentUser } from '~/platform/decorators/current-user.decorator';
+import { ApiErrorResponses } from '~/platform/http/api-error-responses.decorator';
+import { meProductReviewControllerErrorResponses } from '../errors/product-error-responses';
 import { JwtAuthGuard } from '~/domains/auth/api/guard/jwt-auth.guard';
 import { PermissionsGuard } from '~/domains/auth/api/guard/permissions.guard';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
@@ -34,6 +36,7 @@ import { toMyProductReviewResponse } from './responses/me-product-review.respons
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @ApiTags('My Product Reviews')
 @ApiCookieAuth('accessCookie')
+@ApiErrorResponses(meProductReviewControllerErrorResponses.common)
 export class MeProductReviewController {
   constructor(
     private readonly upsertMyProductReviewUseCase: UpsertMyProductReviewUseCase,
@@ -42,6 +45,7 @@ export class MeProductReviewController {
   @Put(':order_item_id')
   @ApiOperation({ summary: 'Create or update my product review' })
   @ApiParam({ name: 'order_item_id', type: String })
+  @ApiErrorResponses(meProductReviewControllerErrorResponses.upsert)
   @ApiOkResponse({
     description: 'Created or updated product review.',
     schema: { type: 'object' },

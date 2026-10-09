@@ -42,11 +42,14 @@ import {
   toChatMessageResponse,
 } from './responses/chat.response';
 import { ChatExceptionsFilter } from './errors/chat-exceptions.filter';
+import { ApiErrorResponses } from '~/platform/http/api-error-responses.decorator';
+import { shopChatErrorResponses } from './errors/shop-chat-error-responses';
 
 @Controller('shops/:shop_id/chat')
 @UseFilters(ChatExceptionsFilter)
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @RequirePermissions('shops.manage')
+@ApiErrorResponses(shopChatErrorResponses.common)
 @ApiTags('Shop Chat')
 @ApiCookieAuth('accessCookie')
 export class ShopChatController {
@@ -61,6 +64,7 @@ export class ShopChatController {
 
   @Get('conversations')
   @Header('Cache-Control', 'private, no-cache')
+  @ApiErrorResponses(shopChatErrorResponses.listConversations)
   @ApiOperation({ summary: 'List shop chat conversations' })
   @ApiParam({ name: 'shop_id', type: String })
   @ApiOkResponse({ description: 'Chat conversation list.', schema: { type: 'object' } })
@@ -81,6 +85,7 @@ export class ShopChatController {
 
   @Get('conversations/unread-count')
   @Header('Cache-Control', 'private, no-cache')
+  @ApiErrorResponses(shopChatErrorResponses.unreadCount)
   @ApiOperation({ summary: 'Get shop unread chat conversation count' })
   @ApiParam({ name: 'shop_id', type: String })
   @ApiOkResponse({ description: 'Unread chat count.', schema: { type: 'object' } })
@@ -97,6 +102,7 @@ export class ShopChatController {
 
   @Get('conversations/:conversation_id/messages')
   @Header('Cache-Control', 'private, no-cache')
+  @ApiErrorResponses(shopChatErrorResponses.messages)
   @ApiOperation({ summary: 'List shop chat messages' })
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'conversation_id', type: String })
@@ -123,6 +129,7 @@ export class ShopChatController {
 
   @Patch('conversations/:conversation_id/read')
   @Header('Cache-Control', 'private, no-store')
+  @ApiErrorResponses(shopChatErrorResponses.markRead)
   @ApiOperation({ summary: 'Mark shop chat conversation as read' })
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'conversation_id', type: String })
@@ -146,6 +153,7 @@ export class ShopChatController {
 
   @Post('conversations/:conversation_id/messages')
   @Header('Cache-Control', 'private, no-store')
+  @ApiErrorResponses(shopChatErrorResponses.sendMessage)
   @ApiOperation({ summary: 'Send a shop chat message' })
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'conversation_id', type: String })

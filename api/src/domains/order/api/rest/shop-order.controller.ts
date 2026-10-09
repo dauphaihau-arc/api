@@ -17,6 +17,8 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { RequirePermissions } from '~/platform/decorators/require-permissions.decorator';
+import { ApiErrorResponses } from '~/platform/http/api-error-responses.decorator';
+import { shopOrderControllerErrorResponses } from './errors/order-error-responses';
 import { CurrentUser } from '~/platform/decorators/current-user.decorator';
 import { JwtAuthGuard } from '~/domains/auth/api/guard/jwt-auth.guard';
 import { PermissionsGuard } from '~/domains/auth/api/guard/permissions.guard';
@@ -42,6 +44,7 @@ import { OrderExceptionsFilter } from './errors/order-exceptions.filter';
 @RequirePermissions('shops.manage')
 @ApiTags('Shop Orders')
 @ApiCookieAuth('accessCookie')
+@ApiErrorResponses(shopOrderControllerErrorResponses.controller)
 export class ShopOrderController {
   constructor(
     private readonly shopAccessService: ShopAccessService,
@@ -60,6 +63,7 @@ export class ShopOrderController {
     description: 'Paginated shop order list.',
     schema: { type: 'object' },
   })
+  @ApiErrorResponses(shopOrderControllerErrorResponses.list)
   async list(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('shop_id') shopPublicId: string,
@@ -81,6 +85,7 @@ export class ShopOrderController {
     description: 'Shop order detail.',
     schema: { type: 'object' },
   })
+  @ApiErrorResponses(shopOrderControllerErrorResponses.detail)
   async detail(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('shop_id') shopPublicId: string,
@@ -103,6 +108,7 @@ export class ShopOrderController {
     description: 'Updated shop order detail.',
     schema: { type: 'object' },
   })
+  @ApiErrorResponses(shopOrderControllerErrorResponses.updateStatus)
   async updateStatus(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('shop_id') shopPublicId: string,
@@ -126,6 +132,7 @@ export class ShopOrderController {
     description: 'Updated shop order detail.',
     schema: { type: 'object' },
   })
+  @ApiErrorResponses(shopOrderControllerErrorResponses.updateRefund)
   async updateRefund(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('shop_id') shopPublicId: string,

@@ -105,7 +105,50 @@ Server errors are redacted to public-safe values:
 Internal diagnostics (connection strings, host names, config hints) never reach
 the client.
 
+### OpenAPI
+
+`ApiErrorResponseDto` is the single OpenAPI schema for the envelope. Endpoints
+declare their own error responses with `@ApiErrorResponses` from
+`src/platform/http/api-error-responses.decorator.ts` (or plain `@ApiResponse`
+for one-off cases); the docs pipeline only completes the schema and a generic
+fallback example on statuses an endpoint already declares — it never invents a
+status. Operational endpoints outside `/v1` (health, metrics, queue UI) are not
+part of this contract.
+
+Error examples are attached to individual HTTP responses, with matching
+`status_code`. The shared schema must not carry a domain-specific example.
+Explicit endpoint examples take precedence over any generated fallback.
+
+Document only statuses an endpoint can actually return. `429` applies to every
+route protected by the global `ThrottlerGuard` unless the handler or class is
+marked `@SkipThrottle`. A generic `500` may be declared once at class level
+(e.g. class-level `@ApiErrorResponses({ 500: [...] })`) for unexpected server
+failures. Do not document guard protection, validation failure, or conflict
+statuses an endpoint cannot produce.
+
+Class-level declarations fan out to every method, but a method-level response
+for the same status replaces the class-level one outright (Nest merges responses
+shallowly by status, not by example). When a method adds its own examples for a
+status also declared on the class, re-list the common examples at method level
+so they are not lost. Group all examples for one status in a single
+`@ApiErrorResponses` declaration — repeating the same status on one target
+overwrites it.
+
+Reusable example payloads live in `*.error-responses.ts` modules rather than
+inline in controllers. Platform-wide payloads are exported from
+`src/platform/http/api-error-examples.ts` (`rateLimitErrorExample`,
+`internalServerErrorExample`, `validationErrorExample(fields)`); domain payloads
+live next to their controller (e.g.
+`src/domains/<domain>/api/rest/<domain>-error-responses.ts`) and compose those
+`ApiErrorExample` values into per-method `Record<number, ApiErrorExample[]>`
+sets. The controller references the set through `@ApiErrorResponses(...)`, so
+every status stays explicit at the endpoint. Auth guard failures are owned by the
+auth domain: import `unauthorizedErrorExamples` (the four JWT `401` codes) and
+`missingRequiredPermissionsErrorExample` (`403 MISSING_REQUIRED_PERMISSIONS`)
+from `~/domains/auth/api/rest/errors/auth-error-examples`.
+
 ## Boundary Rule
+
 
 - Keep transport naming concerns in the HTTP layer.
 - Keep use cases, domain models, repositories, and shared application types in `camelCase`.

@@ -5,6 +5,8 @@ import {
   ApiOkResponse, ApiOperation, ApiParam, ApiTags, 
 } from '@nestjs/swagger';
 import { OptionalJwtAuthGuard } from '~/domains/auth/api/guard/optional-jwt-auth.guard';
+import { ApiErrorResponses } from '~/platform/http/api-error-responses.decorator';
+import { productRecommendationControllerErrorResponses } from '../errors/product-error-responses';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import { OptionalCacheService } from '~/integrations/cache/optional-cache.service';
 import type { Request, Response } from 'express';
@@ -36,6 +38,7 @@ function setStorefrontProductCacheControl(response: Response, request: ProductRe
 @Controller('products')
 @ApiTags('Product Recommendations')
 @UseGuards(OptionalJwtAuthGuard)
+@ApiErrorResponses(productRecommendationControllerErrorResponses.common)
 export class ProductRecommendationController {
   constructor(
     private readonly recommendPublicProductsUseCase: RecommendPublicProductsUseCase,

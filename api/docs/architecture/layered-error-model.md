@@ -104,6 +104,13 @@ the generic `Internal server error` message and no `details`, and `502`/`503`/`5
 keep an authored payload only when an explicit public code was supplied. Internal
 diagnostics never reach the client.
 
+The `ApiErrorResponseDto` OpenAPI schema documents this envelope. Endpoints
+declare the error statuses they can actually return via `@ApiErrorResponses`
+(`src/platform/http/api-error-responses.decorator.ts`); `setup-api-docs.ts` only
+fills the schema and a generic fallback example on already-declared error
+responses and never adds a status. Operational endpoints outside `/v1` (health,
+metrics, queue UI) are not part of the JSON API contract.
+
 ## Expected Business Failures
 
 Not every business failure is an exceptional system failure. In a business domain, some failures are expected outcomes of normal logic, such as invalid credentials, an inactive session, or an invalid role key.

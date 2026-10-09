@@ -19,6 +19,8 @@ import {
 } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { CurrentUser } from '~/platform/decorators/current-user.decorator';
+import { ApiErrorResponses } from '~/platform/http/api-error-responses.decorator';
+import { reviewImageUploadControllerErrorResponses } from '../errors/product-error-responses';
 import { readRawBody } from '~/platform/http/read-raw-body';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import { JwtAuthGuard } from '~/domains/auth/api/guard/jwt-auth.guard';
@@ -37,6 +39,7 @@ interface UploadUrlResponse {
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @ApiTags('My Product Reviews')
 @ApiCookieAuth('accessCookie')
+@ApiErrorResponses(reviewImageUploadControllerErrorResponses.common)
 export class ReviewImageUploadController {
   constructor(
     private readonly issueReviewImageUploadUrlUseCase: IssueReviewImageUploadUrlUseCase,
@@ -47,6 +50,7 @@ export class ReviewImageUploadController {
   @Header('Cache-Control', 'private, no-store')
   @ApiOperation({ summary: 'Issue a review image upload URL' })
   @ApiParam({ name: 'order_item_id', type: String })
+  @ApiErrorResponses(reviewImageUploadControllerErrorResponses.issue)
   @ApiOkResponse({
     description: 'Issued upload URL.',
     schema: { type: 'object' },
@@ -77,6 +81,7 @@ export class ReviewImageUploadController {
   @ApiConsumes('application/octet-stream')
   @ApiOperation({ summary: 'Upload a review image by upload ticket' })
   @ApiParam({ name: 'token', type: String })
+  @ApiErrorResponses(reviewImageUploadControllerErrorResponses.upload)
   @ApiOkResponse({
     description: 'Uploaded asset key.',
     schema: { type: 'object' },

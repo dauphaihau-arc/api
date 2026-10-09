@@ -24,6 +24,7 @@ import {
 } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { Throttle } from '@nestjs/throttler';
+import { ApiErrorResponses } from '~/platform/http/api-error-responses.decorator';
 import { Idempotent } from '~/platform/idempotency/idempotent.decorator';
 import { resolveOrThrow } from '~/platform/application/result';
 import { parseDurationToMilliseconds } from '~/shared/libs/duration';
@@ -44,6 +45,7 @@ import { CurrentUser } from '~/platform/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../guard/jwt-auth.guard';
 import { PermissionsGuard } from '../guard/permissions.guard';
 import { mapAuthAppErrorToHttpException } from './errors/auth-error-mapper';
+import { authControllerErrorResponses } from './errors/auth-error-responses';
 import { AuthHttpExceptionFilter } from './errors/auth-http-exception.filter';
 import { AuthCookieService } from './cookies/auth-cookie.utils';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
@@ -82,6 +84,7 @@ const authRouteRateLimits = {
 @Controller('auth')
 @UseFilters(AuthHttpExceptionFilter)
 @ApiTags('Auth')
+@ApiErrorResponses(authControllerErrorResponses.controller)
 export class AuthController {
   constructor(
     private readonly registerUseCase: RegisterUseCase,
@@ -114,6 +117,7 @@ export class AuthController {
   @ApiCreatedResponse({
     type: AuthUserResponseDto,
   })
+  @ApiErrorResponses(authControllerErrorResponses.register)
   async register(
     @Body() body: RegisterDto,
     @Res({ passthrough: true }) response: Response,
@@ -140,6 +144,7 @@ export class AuthController {
   @ApiOkResponse({
     type: AuthUserResponseDto,
   })
+  @ApiErrorResponses(authControllerErrorResponses.login)
   async login(
     @Body() body: LoginDto,
     @Res({ passthrough: true }) response: Response,
@@ -166,6 +171,7 @@ export class AuthController {
   @ApiNoContentResponse({
     description: 'Session cookies were refreshed.',
   })
+  @ApiErrorResponses(authControllerErrorResponses.refresh)
   async refresh(
     @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
@@ -192,6 +198,7 @@ export class AuthController {
   @ApiNoContentResponse({
     description: 'Password reset request accepted.',
   })
+  @ApiErrorResponses(authControllerErrorResponses.forgotPassword)
   async forgotPassword(@Body() body: ForgotPasswordDto): Promise<void> {
     await this.requestPasswordResetUseCase.execute(body.email, body.app);
   }
@@ -231,6 +238,7 @@ export class AuthController {
   @ApiOkResponse({
     description: 'Token is valid.',
   })
+  @ApiErrorResponses(authControllerErrorResponses.verifyToken)
   async verifyToken(@Query() query: VerifyTokenDto): Promise<void> {
     resolveOrThrow(
       await this.verifyResetPasswordTokenUseCase.execute(query.token),
@@ -255,6 +263,7 @@ export class AuthController {
   @ApiOkResponse({
     type: AuthUserResponseDto,
   })
+  @ApiErrorResponses(authControllerErrorResponses.resetPassword)
   async resetPassword(
     @Query() query: TokenQueryDto,
     @Body() body: ResetPasswordDto,
@@ -285,6 +294,7 @@ export class AuthController {
   @ApiNoContentResponse({
     description: 'Authentication cookies were cleared.',
   })
+  @ApiErrorResponses(authControllerErrorResponses.logout)
   async logout(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Res({ passthrough: true }) response: Response,
@@ -303,6 +313,7 @@ export class AuthController {
   @ApiOkResponse({
     type: CurrentUserResponseDto,
   })
+  @ApiErrorResponses(authControllerErrorResponses.me)
   async me(
     @CurrentUser() currentUser: AuthenticatedUser,
   ): Promise<CurrentUserResponseDto> {

@@ -11,6 +11,8 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
+import { ApiErrorResponses } from '~/platform/http/api-error-responses.decorator';
+import { meControllerErrorResponses } from './errors/auth-error-responses';
 import { CurrentUser } from '~/platform/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../../app/auth.types';
 import { UpdateCurrentUserPreferencesUseCase } from '../../app/use-cases/update-current-user-preferences/update-current-user-preferences.use-case';
@@ -22,6 +24,7 @@ import { UpdateMeDto } from './dto/update-me.dto';
 @Controller('me')
 @ApiTags('Auth')
 @ApiCookieAuth('accessCookie')
+@ApiErrorResponses(meControllerErrorResponses.controller)
 export class MeController {
   constructor(
     private readonly updateCurrentUserPreferencesUseCase: UpdateCurrentUserPreferencesUseCase,
@@ -34,6 +37,7 @@ export class MeController {
   @ApiOkResponse({
     type: MeResponseDto,
   })
+  @ApiErrorResponses(meControllerErrorResponses.updateMe)
   async updateMe(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() body: UpdateMeDto,

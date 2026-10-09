@@ -28,6 +28,8 @@ import {
 } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { RequirePermissions } from '~/platform/decorators/require-permissions.decorator';
+import { ApiErrorResponses } from '~/platform/http/api-error-responses.decorator';
+import { shopProductsControllerErrorResponses } from './errors/shop-error-responses';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { resolveOrThrow } from '~/platform/application/result';
 import { CurrentUser } from '~/platform/decorators/current-user.decorator';
@@ -88,6 +90,7 @@ const shopProductRouteRateLimits = {
 @RequirePermissions('shops.manage')
 @ApiTags('Shop Products')
 @ApiCookieAuth('accessCookie')
+@ApiErrorResponses(shopProductsControllerErrorResponses.common)
 export class ShopProductsController {
   constructor(
     private readonly shopAccessService: ShopAccessService,
@@ -114,6 +117,7 @@ export class ShopProductsController {
     description: 'Paginated shop product list.',
     schema: { type: 'object' },
   })
+  @ApiErrorResponses(shopProductsControllerErrorResponses.list)
   async products(
     @Param('shop_id') shopPublicId: string,
     @Query() query: ListShopProductsQueryDto,
@@ -142,6 +146,7 @@ export class ShopProductsController {
     description: 'Shop product detail.',
     schema: { type: 'object' },
   })
+  @ApiErrorResponses(shopProductsControllerErrorResponses.detail)
   async product(
     @Param('shop_id') shopPublicId: string,
     @Param('id') productPublicId: string,
@@ -164,6 +169,7 @@ export class ShopProductsController {
     description: 'Created product draft.',
     schema: { type: 'object' },
   })
+  @ApiErrorResponses(shopProductsControllerErrorResponses.createDraft)
   async createProductDraft(
     @Param('shop_id') shopPublicId: string,
     @CurrentUser() currentUser: AuthenticatedUser,
@@ -194,6 +200,7 @@ export class ShopProductsController {
     description: 'Created product draft.',
     schema: { type: 'object' },
   })
+  @ApiErrorResponses(shopProductsControllerErrorResponses.createDraftFacade)
   async createProductDraftFacade(
     @Param('shop_id') shopPublicId: string,
     @CurrentUser() currentUser: AuthenticatedUser,
@@ -222,6 +229,7 @@ export class ShopProductsController {
     status: 200,
     type: GenerateProductDescriptionResponseDto,
   })
+  @ApiErrorResponses(shopProductsControllerErrorResponses.generateDescription)
   async generateProductDescription(
     @Param('shop_id') shopPublicId: string,
     @CurrentUser() currentUser: AuthenticatedUser,
@@ -244,6 +252,7 @@ export class ShopProductsController {
     description: 'Bulk mutation result.',
     schema: { type: 'object' },
   })
+  @ApiErrorResponses(shopProductsControllerErrorResponses.bulkMutate)
   async bulkMutateProducts(
     @Param('shop_id') shopPublicId: string,
     @CurrentUser() currentUser: AuthenticatedUser,
@@ -275,6 +284,7 @@ export class ShopProductsController {
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'id', type: String })
   @ApiOkResponse({ description: 'Product details updated.', schema: { type: 'object' } })
+  @ApiErrorResponses(shopProductsControllerErrorResponses.updateDetails)
   async updateProductDetails(
     @Param('shop_id') shopPublicId: string,
     @Param('id') productPublicId: string,
@@ -305,6 +315,7 @@ export class ShopProductsController {
     description: 'Published product draft.',
     schema: { type: 'object' },
   })
+  @ApiErrorResponses(shopProductsControllerErrorResponses.publish)
   async publishProduct(
     @Param('shop_id') shopPublicId: string,
     @Param('id') productPublicId: string,
@@ -332,6 +343,7 @@ export class ShopProductsController {
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'id', type: String })
   @ApiNoContentResponse({ description: 'Product images updated.' })
+  @ApiErrorResponses(shopProductsControllerErrorResponses.setImages)
   async setProductImages(
     @Param('shop_id') shopPublicId: string,
     @Param('id') productPublicId: string,
@@ -360,6 +372,7 @@ export class ShopProductsController {
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'id', type: String })
   @ApiOkResponse({ description: 'Product images updated.', schema: { type: 'object' } })
+  @ApiErrorResponses(shopProductsControllerErrorResponses.setImagesByKeys)
   async setProductImagesByKeys(
     @Param('shop_id') shopPublicId: string,
     @Param('id') productPublicId: string,
@@ -387,6 +400,7 @@ export class ShopProductsController {
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'id', type: String })
   @ApiOkResponse({ description: 'Product attributes updated.', schema: { type: 'object' } })
+  @ApiErrorResponses(shopProductsControllerErrorResponses.setAttributes)
   async setProductAttributes(
     @Param('shop_id') shopPublicId: string,
     @Param('id') productPublicId: string,
@@ -414,6 +428,7 @@ export class ShopProductsController {
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'product_id', type: String })
   @ApiOkResponse({ description: 'Product Variant configuration updated.', schema: { type: 'object' } })
+  @ApiErrorResponses(shopProductsControllerErrorResponses.configureVariants)
   async configureProductVariantConfiguration(
     @Param('shop_id') shopPublicId: string,
     @Param('product_id') productPublicId: string,
@@ -451,6 +466,7 @@ export class ShopProductsController {
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'id', type: String })
   @ApiNoContentResponse({ description: 'Product shipping profile assignment updated.' })
+  @ApiErrorResponses(shopProductsControllerErrorResponses.assignShippingProfile)
   async assignProductShippingProfile(
     @Param('shop_id') shopPublicId: string,
     @Param('id') productPublicId: string,

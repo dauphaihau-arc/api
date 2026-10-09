@@ -16,6 +16,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { RequirePermissions } from '~/platform/decorators/require-permissions.decorator';
+import { ApiErrorResponses } from '~/platform/http/api-error-responses.decorator';
 import { CurrentUser } from '~/platform/decorators/current-user.decorator';
 import { JwtAuthGuard } from '~/domains/auth/api/guard/jwt-auth.guard';
 import { PermissionsGuard } from '~/domains/auth/api/guard/permissions.guard';
@@ -29,6 +30,7 @@ import { BulkStopShopPromoCodesDto } from './dto/bulk-stop-shop-promo-codes.dto'
 import { CreateShopPromoCodeDto } from './dto/create-shop-promo-code.dto';
 import { ListShopPromoCodesQueryDto } from './dto/list-shop-promo-codes.query.dto';
 import { ShopExceptionsFilter } from './errors/shop-exceptions.filter';
+import { shopPromoCodesControllerErrorResponses } from './errors/shop-error-responses';
 import {
   toShopPromoCodeListResponse,
   toShopPromoCodeResponse,
@@ -41,6 +43,7 @@ import {
 @RequirePermissions('shops.manage')
 @ApiTags('Shop Promo Codes')
 @ApiCookieAuth('accessCookie')
+@ApiErrorResponses(shopPromoCodesControllerErrorResponses.common)
 export class ShopPromoCodesController {
   constructor(
     private readonly createShopPromoCodeUseCase: CreateShopPromoCodeUseCase,
@@ -52,6 +55,7 @@ export class ShopPromoCodesController {
 
   @Post()
   @ApiOperation({ summary: 'Create a percentage or fixed-amount promo code' })
+  @ApiErrorResponses(shopPromoCodesControllerErrorResponses.create)
   @ApiParam({ name: 'shop_id', type: String })
   @ApiOkResponse({
     description: 'Created promo code.',
@@ -70,6 +74,7 @@ export class ShopPromoCodesController {
 
   @Get()
   @ApiOperation({ summary: 'List shop promo codes' })
+  @ApiErrorResponses(shopPromoCodesControllerErrorResponses.list)
   @ApiParam({ name: 'shop_id', type: String })
   @ApiOkResponse({
     description: 'Paginated promo code list.',
@@ -88,6 +93,7 @@ export class ShopPromoCodesController {
 
   @Post(':promo_code_id/cancel')
   @ApiOperation({ summary: 'Irreversibly cancel a scheduled promo code' })
+  @ApiErrorResponses(shopPromoCodesControllerErrorResponses.cancel)
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'promo_code_id', type: String })
   @ApiOkResponse({
@@ -112,6 +118,7 @@ export class ShopPromoCodesController {
 
   @Post(':promo_code_id/end')
   @ApiOperation({ summary: 'Irreversibly end an active promo code early' })
+  @ApiErrorResponses(shopPromoCodesControllerErrorResponses.end)
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'promo_code_id', type: String })
   @ApiOkResponse({
@@ -138,6 +145,7 @@ export class ShopPromoCodesController {
   @ApiOperation({
     summary: 'Cancel scheduled promo codes and end active promo codes in one request',
   })
+  @ApiErrorResponses(shopPromoCodesControllerErrorResponses.bulkStop)
   @ApiParam({ name: 'shop_id', type: String })
   @ApiOkResponse({
     description: 'Per-promo-code stop outcome.',

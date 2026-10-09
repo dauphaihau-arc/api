@@ -16,6 +16,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { RequirePermissions } from '~/platform/decorators/require-permissions.decorator';
+import { ApiErrorResponses } from '~/platform/http/api-error-responses.decorator';
 import { CurrentUser } from '~/platform/decorators/current-user.decorator';
 import { JwtAuthGuard } from '~/domains/auth/api/guard/jwt-auth.guard';
 import { PermissionsGuard } from '~/domains/auth/api/guard/permissions.guard';
@@ -29,6 +30,7 @@ import { BulkStopShopSalesDto } from './dto/bulk-stop-shop-sales.dto';
 import { CreateShopSaleDto } from './dto/create-shop-sale.dto';
 import { ListShopSalesQueryDto } from './dto/list-shop-sales.query.dto';
 import { ShopExceptionsFilter } from './errors/shop-exceptions.filter';
+import { shopSalesControllerErrorResponses } from './errors/shop-error-responses';
 import {
   toShopSaleListResponse,
   toShopSaleResponse,
@@ -41,6 +43,7 @@ import {
 @RequirePermissions('shops.manage')
 @ApiTags('Shop Sales')
 @ApiCookieAuth('accessCookie')
+@ApiErrorResponses(shopSalesControllerErrorResponses.common)
 export class ShopSalesController {
   constructor(
     private readonly createShopSaleUseCase: CreateShopSaleUseCase,
@@ -52,6 +55,7 @@ export class ShopSalesController {
 
   @Post()
   @ApiOperation({ summary: 'Create a percentage shop sale' })
+  @ApiErrorResponses(shopSalesControllerErrorResponses.create)
   @ApiParam({ name: 'shop_id', type: String })
   @ApiOkResponse({
     description: 'Created sale.',
@@ -70,6 +74,7 @@ export class ShopSalesController {
 
   @Get()
   @ApiOperation({ summary: 'List shop sales' })
+  @ApiErrorResponses(shopSalesControllerErrorResponses.list)
   @ApiParam({ name: 'shop_id', type: String })
   @ApiOkResponse({
     description: 'Paginated sale list.',
@@ -88,6 +93,7 @@ export class ShopSalesController {
 
   @Post(':sale_id/cancel')
   @ApiOperation({ summary: 'Irreversibly cancel a scheduled sale' })
+  @ApiErrorResponses(shopSalesControllerErrorResponses.cancel)
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'sale_id', type: String })
   @ApiOkResponse({
@@ -106,6 +112,7 @@ export class ShopSalesController {
 
   @Post(':sale_id/end')
   @ApiOperation({ summary: 'Irreversibly end an active sale early' })
+  @ApiErrorResponses(shopSalesControllerErrorResponses.end)
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'sale_id', type: String })
   @ApiOkResponse({
@@ -126,6 +133,7 @@ export class ShopSalesController {
   @ApiOperation({
     summary: 'Cancel scheduled sales and end active sales in one request',
   })
+  @ApiErrorResponses(shopSalesControllerErrorResponses.bulkStop)
   @ApiParam({ name: 'shop_id', type: String })
   @ApiOkResponse({
     description: 'Per-sale stop outcome.',

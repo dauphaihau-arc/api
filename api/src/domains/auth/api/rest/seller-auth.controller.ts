@@ -14,6 +14,8 @@ import {
 } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import type { Response } from 'express';
+import { ApiErrorResponses } from '~/platform/http/api-error-responses.decorator';
+import { sellerAuthControllerErrorResponses } from './errors/auth-error-responses';
 import { Idempotent } from '~/platform/idempotency/idempotent.decorator';
 import { resolveOrThrow } from '~/platform/application/result';
 import { parseDurationToMilliseconds } from '~/shared/libs/duration';
@@ -41,6 +43,7 @@ const sellerAuthRouteRateLimits = {
 @Controller('seller/auth')
 @UseFilters(AuthHttpExceptionFilter)
 @ApiTags('Seller Auth')
+@ApiErrorResponses(sellerAuthControllerErrorResponses.controller)
 export class SellerAuthController {
   constructor(
     private readonly registerSellerUseCase: RegisterSellerUseCase,
@@ -60,6 +63,7 @@ export class SellerAuthController {
   @ApiCreatedResponse({
     type: AuthUserResponseDto,
   })
+  @ApiErrorResponses(sellerAuthControllerErrorResponses.register)
   async register(
     @Body() body: SellerRegisterDto,
     @Res({ passthrough: true }) response: Response,

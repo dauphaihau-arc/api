@@ -18,6 +18,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { RequirePermissions } from '~/platform/decorators/require-permissions.decorator';
+import { ApiErrorResponses } from '~/platform/http/api-error-responses.decorator';
 import { CurrentUser } from '~/platform/decorators/current-user.decorator';
 import { JwtAuthGuard } from '~/domains/auth/api/guard/jwt-auth.guard';
 import { PermissionsGuard } from '~/domains/auth/api/guard/permissions.guard';
@@ -33,6 +34,7 @@ import { ExportShopOrdersQueryDto } from './dto/export-shop-orders.query.dto';
 
 import { toShopOrderExportResponse } from './responses/order-export.response';
 import { OrderExceptionsFilter } from './errors/order-exceptions.filter';
+import { shopOrderExportControllerErrorResponses } from './errors/order-error-responses';
 
 @Controller('shops/:shop_id/orders')
 @UseFilters(OrderExceptionsFilter)
@@ -40,6 +42,7 @@ import { OrderExceptionsFilter } from './errors/order-exceptions.filter';
 @RequirePermissions('shops.manage')
 @ApiTags('Shop Order Exports')
 @ApiCookieAuth('accessCookie')
+@ApiErrorResponses(shopOrderExportControllerErrorResponses.controller)
 export class ShopOrderExportController {
   constructor(
     private readonly shopAccessService: ShopAccessService,
@@ -54,6 +57,7 @@ export class ShopOrderExportController {
   @Header('Cache-Control', 'private, no-store')
   @ApiOperation({ summary: 'Export shop orders as CSV' })
   @ApiParam({ name: 'shop_id', type: String })
+  @ApiErrorResponses(shopOrderExportControllerErrorResponses.exportCsv)
   async exportCsv(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('shop_id') shopPublicId: string,
@@ -73,6 +77,7 @@ export class ShopOrderExportController {
   @Header('Cache-Control', 'private, no-store')
   @ApiOperation({ summary: 'Start asynchronous shop order CSV export' })
   @ApiParam({ name: 'shop_id', type: String })
+  @ApiErrorResponses(shopOrderExportControllerErrorResponses.startExport)
   async startExport(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('shop_id') shopPublicId: string,
@@ -90,6 +95,7 @@ export class ShopOrderExportController {
   @ApiOperation({ summary: 'Get shop order export status' })
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'export_id', type: String })
+  @ApiErrorResponses(shopOrderExportControllerErrorResponses.exportDetail)
   async exportDetail(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('shop_id') shopPublicId: string,
@@ -108,6 +114,7 @@ export class ShopOrderExportController {
   @ApiOperation({ summary: 'Download completed shop order export CSV' })
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'export_id', type: String })
+  @ApiErrorResponses(shopOrderExportControllerErrorResponses.downloadExport)
   async downloadExport(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('shop_id') shopPublicId: string,

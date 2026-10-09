@@ -17,6 +17,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { CurrentUser } from '~/platform/decorators/current-user.decorator';
+import { ApiErrorResponses } from '~/platform/http/api-error-responses.decorator';
 import { CHECKOUT_CONFIG, type CheckoutConfig } from '~/platform/config/checkout.config';
 import { JwtAuthGuard } from '~/domains/auth/api/guard/jwt-auth.guard';
 import { PermissionsGuard } from '~/domains/auth/api/guard/permissions.guard';
@@ -38,12 +39,14 @@ import { CreateCheckoutQuoteFromCartDto } from './dto/create-checkout-quote-from
 import { CreateOrderForBuyNowDto } from './dto/create-order-for-buy-now.dto';
 import { CreateOrderFromCartDto } from './dto/create-order-from-cart.dto';
 import { CheckoutExceptionsFilter } from './errors/checkout-exceptions.filter';
+import { meCheckoutControllerErrorResponses } from './errors/checkout-error-responses';
 
 @Controller('me/checkout')
 @UseFilters(CheckoutExceptionsFilter)
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @ApiTags('My Checkout')
 @ApiCookieAuth('accessCookie')
+@ApiErrorResponses(meCheckoutControllerErrorResponses.controller)
 export class MeCheckoutController {
   constructor(
     @Inject(CHECKOUT_CONFIG)
@@ -63,6 +66,7 @@ export class MeCheckoutController {
     description: 'Checkout quote.',
     schema: { type: 'object' },
   })
+  @ApiErrorResponses(meCheckoutControllerErrorResponses.createQuoteFromCart)
   async createQuoteFromCart(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() body: CreateCheckoutQuoteFromCartDto,
@@ -82,6 +86,7 @@ export class MeCheckoutController {
     description: 'Checkout quote.',
     schema: { type: 'object' },
   })
+  @ApiErrorResponses(meCheckoutControllerErrorResponses.createQuoteForBuyNow)
   async createQuoteForBuyNow(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() body: CreateCheckoutQuoteForBuyNowDto,
@@ -98,6 +103,7 @@ export class MeCheckoutController {
     description: 'Created order.',
     schema: { type: 'object' },
   })
+  @ApiErrorResponses(meCheckoutControllerErrorResponses.createFromCart)
   async createFromCart(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() body: CreateOrderFromCartDto,
@@ -113,6 +119,7 @@ export class MeCheckoutController {
     description: 'Created order.',
     schema: { type: 'object' },
   })
+  @ApiErrorResponses(meCheckoutControllerErrorResponses.createForBuyNow)
   async createForBuyNow(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() body: CreateOrderForBuyNowDto,
@@ -129,6 +136,7 @@ export class MeCheckoutController {
     description: 'Checkout session readiness.',
     schema: { type: 'object' },
   })
+  @ApiErrorResponses(meCheckoutControllerErrorResponses.getCheckoutSessionReadiness)
   async getCheckoutSessionReadiness(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Query('order_ids') orderIds: string | undefined,
@@ -153,6 +161,7 @@ export class MeCheckoutController {
     description: 'Checkout session orders.',
     schema: { type: 'object' },
   })
+  @ApiErrorResponses(meCheckoutControllerErrorResponses.getByCheckoutSession)
   async getByCheckoutSession(@Query('session_id') sessionId?: string) {
     return toCheckoutSessionOrderResponse(
       await this.getOrdersByCheckoutSessionUseCase.execute(sessionId ?? ''),

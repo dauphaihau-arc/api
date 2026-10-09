@@ -14,6 +14,8 @@ import { PermissionsGuard } from '~/domains/auth/api/guard/permissions.guard';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import { buildUserEventsChannelKey } from '../../app/user-events-channel';
 import { SsePublisher } from '../../infra/sse.publisher';
+import { ApiErrorResponses } from '~/platform/http/api-error-responses.decorator';
+import { meEventsErrorResponses } from './errors/me-events-error-responses';
 
 @Controller('me/events')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -23,6 +25,7 @@ export class MeEventsController {
   constructor(private readonly ssePublisher: SsePublisher) {}
 
   @Sse()
+  @ApiErrorResponses(meEventsErrorResponses.stream)
   @ApiOperation({ summary: 'Stream current user events over SSE' })
   @ApiProduces('text/event-stream')
   @ApiOkResponse({

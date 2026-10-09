@@ -43,10 +43,13 @@ import {
   toChatMessageResponse,
 } from './responses/chat.response';
 import { ChatExceptionsFilter } from './errors/chat-exceptions.filter';
+import { ApiErrorResponses } from '~/platform/http/api-error-responses.decorator';
+import { meChatErrorResponses } from './errors/me-chat-error-responses';
 
 @Controller('me/chat')
 @UseFilters(ChatExceptionsFilter)
 @UseGuards(JwtAuthGuard, PermissionsGuard)
+@ApiErrorResponses(meChatErrorResponses.common)
 @ApiTags('My Chat')
 @ApiCookieAuth('accessCookie')
 export class MeChatController {
@@ -62,6 +65,7 @@ export class MeChatController {
 
   @Post('conversations')
   @Header('Cache-Control', 'private, no-store')
+  @ApiErrorResponses(meChatErrorResponses.createConversation)
   @ApiOperation({ summary: 'Create or get a buyer chat conversation' })
   @ApiOkResponse({ description: 'Chat conversation.', schema: { type: 'object' } })
   async createOrGetConversation(
@@ -80,6 +84,7 @@ export class MeChatController {
 
   @Get('conversations')
   @Header('Cache-Control', 'private, no-cache')
+  @ApiErrorResponses(meChatErrorResponses.listConversations)
   @ApiOperation({ summary: 'List my chat conversations' })
   @ApiOkResponse({ description: 'Chat conversation list.', schema: { type: 'object' } })
   async listConversations(
@@ -106,6 +111,7 @@ export class MeChatController {
 
   @Get('conversations/:conversation_id/messages')
   @Header('Cache-Control', 'private, no-cache')
+  @ApiErrorResponses(meChatErrorResponses.messages)
   @ApiOperation({ summary: 'List my chat messages' })
   @ApiParam({ name: 'conversation_id', type: String })
   @ApiOkResponse({ description: 'Chat message list.', schema: { type: 'object' } })
@@ -122,6 +128,7 @@ export class MeChatController {
 
   @Patch('conversations/:conversation_id/read')
   @Header('Cache-Control', 'private, no-store')
+  @ApiErrorResponses(meChatErrorResponses.markRead)
   @ApiOperation({ summary: 'Mark my chat conversation as read' })
   @ApiParam({ name: 'conversation_id', type: String })
   @ApiOkResponse({ description: 'Updated chat conversation.', schema: { type: 'object' } })
@@ -139,6 +146,7 @@ export class MeChatController {
 
   @Post('conversations/:conversation_id/messages')
   @Header('Cache-Control', 'private, no-store')
+  @ApiErrorResponses(meChatErrorResponses.sendMessage)
   @ApiOperation({ summary: 'Send a buyer chat message' })
   @ApiParam({ name: 'conversation_id', type: String })
   @ApiOkResponse({ description: 'Created chat message.', schema: { type: 'object' } })
