@@ -24,6 +24,12 @@ export class CategoryEntity extends AbstractBaseEntity {
   @OneToMany(() => CategoryEntity, (category) => category.parent)
   children = new Collection<CategoryEntity>(this);
 
+  @Property({ fieldName: 'public_id', type: 'bigint', defaultRaw: 'nextval(\'category_public_id_seq\')' })
+  publicId!: string;
+
+  @Property({ fieldName: 'slug', length: 255 })
+  slug!: string;
+
   @Property({ fieldName: 'name', length: 255 })
   name!: string;
 

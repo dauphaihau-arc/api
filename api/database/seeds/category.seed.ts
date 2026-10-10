@@ -4,6 +4,7 @@ import { toSlug } from '~/shared/utils/slug';
 import { CategoryAttributeOptionEntity } from '~/domains/category/infra/persistence/entities/category-attribute-option.entity';
 import { CategoryAttributeEntity } from '~/domains/category/infra/persistence/entities/category-attribute.entity';
 import { CategoryEntity } from '~/domains/category/infra/persistence/entities/category.entity';
+import { normalizeCategorySlug } from '~/domains/category/infra/category-slug';
 import {
   buildStorageObjectKey,
   resolveStorageEnvironmentSegment,
@@ -122,16 +123,22 @@ async function upsertCategory(
   onProcessed?: () => void,
   parent?: CategoryEntity,
 ): Promise<void> {
-  const category =
-    (await em.findOne(CategoryEntity, {
-      name: node.name,
-      parent: parent ?? null,
-    })) ??
-    em.create(CategoryEntity, {
+  let category = await em.findOne(CategoryEntity, {
+    name: node.name,
+    parent: parent ?? null,
+  });
+  if (!category) {
+    const [identity] = await em.getConnection().execute<Array<{ public_id: string }>>(
+      'select nextval(\'category_public_id_seq\')::text as public_id',
+    );
+    category = em.create(CategoryEntity, {
+      publicId: identity.public_id,
+      slug: normalizeCategorySlug(node.name),
       name: node.name,
       parent,
       rank: node.rank,
     });
+  }
 
   category.rank = node.rank;
   category.featuredFacetKeys = node.featuredFacetKeys;

@@ -5,6 +5,7 @@ import { ProductWhoMade } from '~/domains/product/domain/enums/product-who-made.
 import { ProductImageVariant } from '~/domains/product/domain/enums/product-image-variant.enum';
 import { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
 import { CategoryEntity } from '~/domains/category/infra/persistence/entities/category.entity';
+import { normalizeCategorySlug } from '~/domains/category/infra/category-slug';
 import { ShopEntity } from '~/domains/shop/infra/persistence/entities/shop.entity';
 import { ShippingDestinationScope } from '~/domains/shipping/domain/enums/shipping-destination-scope.enum';
 import { ShippingProfileStatus } from '~/domains/shipping/domain/enums/shipping-profile-status.enum';
@@ -203,11 +204,13 @@ describe('MikroOrmSellerProductQueryRepository (integration)', () => {
     category = em.create(CategoryEntity, {
       id: '00000000-0000-4000-8000-000000000003',
       name: 'Sewing',
+      slug: normalizeCategorySlug('Sewing'),
       rank: 1,
     });
     const otherCategory = em.create(CategoryEntity, {
       id: '00000000-0000-4000-8000-000000000004',
       name: 'Other',
+      slug: normalizeCategorySlug('Other'),
       rank: 2,
     });
 

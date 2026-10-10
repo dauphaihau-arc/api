@@ -2,6 +2,7 @@ import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
 import { toSlug } from '~/shared/utils/slug';
 import { CategoryCommandRepository } from '../app/ports/category-command.repository';
+import { normalizeCategorySlug } from './category-slug';
 import type {
   CategorySummary,
   CreateCategoryAttributeInput,
@@ -22,12 +23,19 @@ export class MikroOrmCategoryCommandRepository implements CategoryCommandReposit
 
   async create(input: CreateCategoryInput): Promise<CategorySummary> {
     const entityManager = this.entityManager.fork();
+    const allocated = await entityManager.getConnection().execute<Array<{ public_id: string }>>(
+      'select nextval(\'category_public_id_seq\')::text as public_id',
+    );
+    const [identity] = allocated;
     const repository = entityManager.getRepository(CategoryEntity);
+
     const category = repository.create({
+      publicId: identity.public_id,
       parent: input.parentId
         ? entityManager.getReference(CategoryEntity, input.parentId)
         : undefined,
       name: input.name,
+      slug: normalizeCategorySlug(input.name),
       rank: input.rank,
       imageStorageKey: input.imageStorageKey,
       featuredFacetKeys: input.featuredFacetKeys,
