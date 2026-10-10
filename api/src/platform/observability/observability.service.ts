@@ -1,3 +1,4 @@
+import ms from 'ms';
 import { Injectable } from '@nestjs/common';
 import {
   collectDefaultMetrics,
@@ -13,7 +14,7 @@ import { RequestContextService } from '~/platform/request-context/request-contex
 import { getActiveTraceContext } from './tracing';
 
 const PG_INSTRUMENTED = Symbol.for('arc.pg.instrumented');
-const DEFAULT_SLOW_QUERY_THRESHOLD_MS = 250;
+const DEFAULT_SLOW_QUERY_THRESHOLD_MS = ms('250ms');
 
 function sanitizeRoute(route?: string): string {
   if (!route || route.trim().length === 0) {

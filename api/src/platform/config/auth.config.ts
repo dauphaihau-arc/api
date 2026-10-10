@@ -1,4 +1,5 @@
 import type { ConfigService } from '@nestjs/config';
+import ms from 'ms';
 import { parseDurationToSeconds } from '~/shared/libs/duration';
 
 export interface AuthConfig {
@@ -27,7 +28,7 @@ export function buildAuthConfig(
     ),
     jwtAccessTtlSeconds: parseDurationToSeconds(
       configService.get<string>('JWT_ACCESS_TTL', '15m'),
-      15 * 60,
+      ms('15m') / 1_000,
     ),
     jwtRefreshSecret: configService.get<string>(
       'JWT_REFRESH_SECRET',
@@ -35,7 +36,7 @@ export function buildAuthConfig(
     ),
     jwtRefreshTtlSeconds: parseDurationToSeconds(
       configService.get<string>('JWT_REFRESH_TTL', '7d'),
-      7 * 24 * 60 * 60,
+      ms('7d') / 1_000,
     ),
     accessCookieName: configService.get<string>(
       'AUTH_COOKIE_ACCESS_NAME',

@@ -1,4 +1,5 @@
 import type { ConfigService } from '@nestjs/config';
+import ms from 'ms';
 import { parseDurationToMilliseconds } from '~/shared/libs/duration';
 
 export interface RateLimitConfig {
@@ -18,7 +19,7 @@ export function buildRateLimitConfig(
   const nodeEnv = configService.get<string>('NODE_ENV');
   const ttlMilliseconds = parseDurationToMilliseconds(
     configService.get<string>('RATE_LIMIT_TTL', '60s'),
-    60_000,
+    ms('1m'),
   );
   const blockDurationMilliseconds = parseDurationToMilliseconds(
     configService.get<string>('RATE_LIMIT_BLOCK_DURATION'),

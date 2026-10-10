@@ -1,3 +1,4 @@
+import ms from 'ms';
 import 'reflect-metadata';
 import { MikroORM } from '@mikro-orm/postgresql';
 import { buildDatabaseConfig } from '~/platform/config/database.config';
@@ -32,7 +33,7 @@ type MongoDeleteManyCollectionLike = {
 async function runWithTimeout(
   label: string,
   operation: Promise<void>,
-  timeoutMs = 5_000,
+  timeoutMs = ms('5s'),
 ): Promise<void> {
   let timeoutHandle: NodeJS.Timeout | undefined;
 

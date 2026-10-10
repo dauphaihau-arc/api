@@ -1,6 +1,7 @@
 import {
   Controller, Get, Header, Param, Query, Req, Res, UseGuards,
 } from '@nestjs/common';
+import ms from 'ms';
 import {
   ApiOkResponse, ApiOperation, ApiParam, ApiTags, 
 } from '@nestjs/swagger';
@@ -30,7 +31,7 @@ type ProductRequest = Request & { user?: AuthenticatedUser | null };
 const STOREFRONT_CACHE_VARY_HEADER = 'x-market-code, x-currency, x-locale, x-channel';
 const PUBLIC_STOREFRONT_CACHE_CONTROL = 'public, max-age=60';
 const PRIVATE_STOREFRONT_CACHE_CONTROL = 'private, no-store';
-const PUBLIC_RESPONSE_CACHE_TTL_MS = 60_000;
+const PUBLIC_RESPONSE_CACHE_TTL_MS = ms('1m');
 
 function setStorefrontProductCacheControl(response: Response, request: ProductRequest) {
   response.setHeader(

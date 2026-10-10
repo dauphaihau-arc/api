@@ -1,3 +1,4 @@
+import ms from 'ms';
 import { EntityManager } from '@mikro-orm/postgresql';
 import {
   Inject,
@@ -83,13 +84,13 @@ import {
   type ResolvedCheckoutShop,
 } from './checkout-commit-resolution';
 
-const CHECKOUT_SESSION_INLINE_TIMEOUT_MS = 1_500;
+const CHECKOUT_SESSION_INLINE_TIMEOUT_MS = ms('1500ms');
 // Card Orders hold stock until the payment session resolves; the hold is
 // released by the provider expiry webhook, with this delayed cleanup as the
 // fallback when that webhook never arrives. The hold is the session lifetime
 // plus this grace, so the fallback can never release stock for a session the
 // buyer can still pay.
-const CHECKOUT_HOLD_RELEASE_GRACE_MS = 5 * 60 * 1000;
+const CHECKOUT_HOLD_RELEASE_GRACE_MS = ms('5m');
 
 export interface CreateOrdersInput {
   paymentType: PaymentType;

@@ -1,3 +1,4 @@
+import ms from 'ms';
 import type { ConfigService } from '@nestjs/config';
 
 export interface WebPushConfig {
@@ -22,6 +23,6 @@ export function buildWebPushConfig(
     subject: subject || undefined,
     publicKey: publicKey || undefined,
     privateKey: privateKey || undefined,
-    ttlSeconds: Number(configService.get<string>('WEB_PUSH_TTL_SECONDS', '60')),
+    ttlSeconds: Number(configService.get<string>('WEB_PUSH_TTL_SECONDS', String(ms('1m') / 1_000))),
   };
 }

@@ -1,3 +1,4 @@
+import ms from 'ms';
 import type { ConfigService } from '@nestjs/config';
 
 export interface OpenAiConfig {
@@ -28,6 +29,6 @@ export function buildOpenAiConfig(
         'gpt-5.4-nano',
       ),
     ),
-    timeoutMs: Number(configService.get<string>('OPENAI_TIMEOUT_MS', '10000')),
+    timeoutMs: Number(configService.get<string>('OPENAI_TIMEOUT_MS', String(ms('10s')))),
   };
 }

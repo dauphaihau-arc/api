@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import ms from 'ms';
 import { OptionalCacheService } from '~/integrations/cache/optional-cache.service';
 import { CategoryRepository } from '../app/ports/category.repository';
 import { CategoryCommandRepository } from '../app/ports/category-command.repository';
@@ -10,7 +11,7 @@ import type {
   CreateCategoryInput,
 } from '../app/category.types';
 
-const CATEGORY_TAXONOMY_SUBTREE_CACHE_TTL_MS = 5 * 60 * 1000;
+const CATEGORY_TAXONOMY_SUBTREE_CACHE_TTL_MS = ms('5m');
 
 @Injectable()
 export class DelegatingCategoryRepository implements CategoryRepository {

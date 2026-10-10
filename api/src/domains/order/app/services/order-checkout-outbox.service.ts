@@ -1,6 +1,7 @@
 import { LockMode } from '@mikro-orm/core';
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable, Logger } from '@nestjs/common';
+import ms from 'ms';
 import { PaymentGateway } from '../../../../integrations/payment/app/ports/payment-gateway';
 import { OrderEventActorType } from '../../domain/enums/order-event-actor-type.enum';
 import { OrderEventType } from '../../domain/enums/order-event-type.enum';
@@ -15,7 +16,7 @@ import { OrderEventsService } from './order-events.service';
 const CHECKOUT_OUTBOX_EVENT_NAME = 'order.checkout-session-requested';
 const CHECKOUT_OUTBOX_AGGREGATE_TYPE = 'order';
 const MAX_RETRY_ATTEMPTS = 5;
-const RETRY_DELAYS_MS = [15_000, 60_000, 300_000, 900_000, 3_600_000];
+const RETRY_DELAYS_MS = [ms('15s'), ms('1m'), ms('5m'), ms('15m'), ms('1h')];
 
 export interface CheckoutSessionLineItemPayload {
   name: string;
@@ -34,7 +35,7 @@ export interface CheckoutSessionShippingAddressPayload {
   zip: string;
   phone: string;
 }
-const PROCESSING_LEASE_MS = 30_000;
+const PROCESSING_LEASE_MS = ms('30s');
 
 
 export interface CheckoutSessionRequestedPayload {

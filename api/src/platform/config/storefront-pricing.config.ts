@@ -1,3 +1,4 @@
+import ms from 'ms';
 import type { ConfigService } from '@nestjs/config';
 
 export interface StorefrontPricingConfig {
@@ -20,7 +21,7 @@ export function buildStorefrontPricingConfig(
     rarePriceCacheTtlMs: Number.parseInt(
       configService.get<string>('STOREFRONT_RARE_PRICE_CACHE_TTL_MS', '300000'),
       10,
-    ) || 300_000,
+    ) || ms('5m'),
   };
 }
 

@@ -1,3 +1,4 @@
+import ms from 'ms';
 import 'reflect-metadata';
 import { buildCatalogConfig } from '~/platform/config/catalog.config';
 import { CatalogMongoAccess } from '~/domains/product/infra/catalog/mongo/access/catalog-mongo.access';
@@ -6,7 +7,7 @@ import { syncCatalogMongoIndexes } from '~/domains/product/infra/catalog/mongo/c
 async function runWithTimeout(
   label: string,
   operation: Promise<void>,
-  timeoutMs = 5_000,
+  timeoutMs = ms('5s'),
 ): Promise<void> {
   let timeoutHandle: NodeJS.Timeout | undefined;
 

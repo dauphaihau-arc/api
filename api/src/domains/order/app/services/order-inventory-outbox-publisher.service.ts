@@ -1,6 +1,7 @@
 import { LockMode } from '@mikro-orm/core';
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable, Logger } from '@nestjs/common';
+import ms from 'ms';
 import {
   ORDER_CREATED_INVENTORY_EVENT_TYPE,
   type OrderCreatedInventoryEvent,
@@ -12,7 +13,7 @@ import {
 } from '../../infra/persistence/entities/outbox-event.entity';
 
 const MAX_RETRY_ATTEMPTS = 5;
-const RETRY_DELAYS_MS = [15_000, 60_000, 300_000, 900_000, 3_600_000];
+const RETRY_DELAYS_MS = [ms('15s'), ms('1m'), ms('5m'), ms('15m'), ms('1h')];
 
 @Injectable()
 export class OrderInventoryOutboxPublisherService {

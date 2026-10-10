@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import ms from 'ms';
 import type { Request, Response } from 'express';
 import { Inject, Injectable } from '@nestjs/common';
 import type { CookieOptions } from 'express';
@@ -7,7 +8,7 @@ import type { AuthConfig } from '~/platform/config/auth.config';
 import { extractCookieValue } from '~/domains/auth/api/rest/cookies/auth-cookie.utils';
 
 const PRODUCT_ACTIVITY_SESSION_COOKIE = 'productActivitySession';
-const PRODUCT_ACTIVITY_SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30;
+const PRODUCT_ACTIVITY_SESSION_TTL_MS = ms('30d');
 
 @Injectable()
 export class ProductActivitySessionService {

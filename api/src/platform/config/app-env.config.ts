@@ -1,3 +1,4 @@
+import ms from 'ms';
 import { z } from 'zod';
 
 type AppEnv = NodeJS.ProcessEnv;
@@ -43,7 +44,7 @@ const appEnvBaseSchema = z.object({
   STOREFRONT_INDEXED_PRICE_PAIRS: z.string().trim().min(1).optional(),
   STOREFRONT_RARE_PRICE_CACHE_TTL_MS: positiveIntegerString.optional(),
   DB_LOG_QUERIES: z.enum(['true', 'false']).default('false'),
-  DB_SLOW_QUERY_THRESHOLD_MS: positiveIntegerString.default('250'),
+  DB_SLOW_QUERY_THRESHOLD_MS: positiveIntegerString.default(String(ms('250ms'))),
   REDIS_URL: z.url().default('redis://127.0.0.1:6379'),
   CACHE_DRIVER: z.enum(['memory', 'redis', 'disabled']).optional(),
   CACHE_ENABLED: z.enum(['true', 'false']).default('true'),
@@ -110,7 +111,7 @@ const appEnvBaseSchema = z.object({
   WEB_PUSH_SUBJECT: z.string().trim().min(1).optional(),
   WEB_PUSH_PUBLIC_KEY: z.string().trim().min(1).optional(),
   WEB_PUSH_PRIVATE_KEY: z.string().trim().min(1).optional(),
-  WEB_PUSH_TTL_SECONDS: positiveIntegerString.default('60'),
+  WEB_PUSH_TTL_SECONDS: positiveIntegerString.default(String(ms('1m') / 1_000)),
   STRIPE_SECRET_KEY: z.string().trim().min(1).optional(),
   STRIPE_WEBHOOK_SECRET_KEY: z.string().trim().min(1).optional(),
   CHECKOUT_SESSION_TTL: z.string().trim().min(1).default('60m'),
@@ -132,7 +133,7 @@ const appEnvBaseSchema = z.object({
     .trim()
     .min(1)
     .default('gpt-5.4-nano'),
-  OPENAI_TIMEOUT_MS: positiveIntegerString.default('10000'),
+  OPENAI_TIMEOUT_MS: positiveIntegerString.default(String(ms('10s'))),
   STORAGE_DRIVER: z.enum(['local', 'minio']).default('local'),
   STORAGE_LOCAL_ROOT: z.string().trim().min(1).default('./storage'),
   STORAGE_PUBLIC_BASE_URL: z.url().optional(),

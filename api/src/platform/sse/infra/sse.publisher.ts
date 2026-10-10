@@ -1,3 +1,4 @@
+import ms from 'ms';
 import { randomUUID } from 'node:crypto';
 import {
   Injectable,
@@ -18,8 +19,8 @@ type SseRedisEnvelope = {
   message: SseMessage;
 };
 
-const HEARTBEAT_INTERVAL_MS = 25_000;
-const RETRY_INTERVAL_MS = 5_000;
+const HEARTBEAT_INTERVAL_MS = ms('25s');
+const RETRY_INTERVAL_MS = ms('5s');
 
 @Injectable()
 export class SsePublisher implements OnModuleInit, OnApplicationShutdown {

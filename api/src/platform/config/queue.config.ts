@@ -1,4 +1,5 @@
 import type { ConfigService } from '@nestjs/config';
+import ms from 'ms';
 import { parseDurationToMilliseconds } from '~/shared/libs/duration';
 
 export interface QueueConfig {
@@ -35,14 +36,14 @@ export function buildQueueConfig(
     ),
     defaultBackoffMilliseconds: parseDurationToMilliseconds(
       configService.get<string>('QUEUE_JOB_BACKOFF', '5s'),
-      5_000,
+      ms('5s'),
     ),
     removeCompletedAfterSeconds: Math.max(
       0,
       Math.ceil(
         parseDurationToMilliseconds(
           configService.get<string>('QUEUE_REMOVE_COMPLETED_AFTER', '1d'),
-          24 * 60 * 60 * 1_000,
+          ms('1d'),
         ) / 1_000,
       ),
     ),
@@ -51,7 +52,7 @@ export function buildQueueConfig(
       Math.ceil(
         parseDurationToMilliseconds(
           configService.get<string>('QUEUE_REMOVE_FAILED_AFTER', '7d'),
-          7 * 24 * 60 * 60 * 1_000,
+          ms('7d'),
         ) / 1_000,
       ),
     ),

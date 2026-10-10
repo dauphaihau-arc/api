@@ -1,6 +1,7 @@
 import type { CacheModuleOptions } from '@nestjs/cache-manager';
 import type { ConfigService } from '@nestjs/config';
 import KeyvRedis from '@keyv/redis';
+import ms from 'ms';
 import { parseDurationToMilliseconds } from '~/shared/libs/duration';
 import { NoopKeyvStore } from '~/integrations/cache/noop-keyv.store';
 
@@ -34,7 +35,7 @@ export function buildCacheConfig(
 
     ttlMilliseconds: parseDurationToMilliseconds(
       configService.get<string>('CACHE_TTL', '60s'),
-      60_000,
+      ms('1m'),
     ),
 
     optionalCacheEnabled: configService.get<string>('CACHE_ENABLED', 'true') !== 'false',

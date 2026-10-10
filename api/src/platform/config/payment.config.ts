@@ -6,8 +6,8 @@ import { parseCorsAllowedOrigins } from './cors.config';
 // Stripe rejects `expires_at` outside 30 minutes to 24 hours after session
 // creation, so the configured session lifetime is validated against that window
 // instead of being clamped silently.
-const STRIPE_MIN_CHECKOUT_SESSION_TTL_MS = 30 * 60 * 1000;
-const STRIPE_MAX_CHECKOUT_SESSION_TTL_MS = 24 * 60 * 60 * 1000;
+const STRIPE_MIN_CHECKOUT_SESSION_TTL_MS = ms('30m');
+const STRIPE_MAX_CHECKOUT_SESSION_TTL_MS = ms('24h');
 
 export interface PaymentConfig {
   stripeSecretKey?: string;
