@@ -63,6 +63,8 @@ Preferred order:
 
 - Use bounded timeouts for external calls.
 
+- Express fixed durations with `ms` string literals (for example, `ms('5m')`) instead of numeric millisecond/second arithmetic. Keep unit conversion factors numeric and use duration parsers for configurable values.
+
 ## Request Path Work
 
 - Keep synchronous request paths limited to work required for the immediate response or correctness gate.
