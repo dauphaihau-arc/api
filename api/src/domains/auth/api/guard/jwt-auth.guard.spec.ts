@@ -22,7 +22,15 @@ import { RegisterUseCase } from '../../app/use-cases/register/register.use-case'
 import { RequestPasswordResetUseCase } from '../../app/use-cases/request-password-reset/request-password-reset.use-case';
 import { ResetPasswordUseCase } from '../../app/use-cases/reset-password/reset-password.use-case';
 import { VerifyResetPasswordTokenUseCase } from '../../app/use-cases/verify-reset-password-token/verify-reset-password-token.use-case';
-import { SessionNotActiveError } from '../../app/errors/auth-app.error';
+import {
+  InactiveUserError,
+  InvalidRefreshTokenError,
+  RefreshSessionInactiveError,
+  RefreshSessionNotFoundError,
+  RefreshTokenMismatchError,
+  SessionNotActiveError,
+  UserNotFoundError,
+} from '../../app/errors/auth-app.error';
 import type { AuthenticatedUser, UserProfile } from '../../app/auth.types';
 import { UserStatus } from '../../domain/enums/user-status.enum';
 import { AuthCookieService } from '../rest/cookies/auth-cookie.utils';
@@ -65,6 +73,7 @@ describe('JwtAuthGuard token error contract through AuthController', () => {
   let app: INestApplication<App>;
   const loadAuthenticatedUser = { execute: jest.fn() };
   const getCurrentUser = { execute: jest.fn() };
+  const refreshSession = { execute: jest.fn() };
   const unusedUseCase = { execute: jest.fn() };
   const jwtService = new JwtService({ secret: authConfig.jwtAccessSecret });
 
@@ -98,15 +107,12 @@ describe('JwtAuthGuard token error contract through AuthController', () => {
         { provide: GetCurrentUserUseCase, useValue: getCurrentUser },
         { provide: RegisterUseCase, useValue: unusedUseCase },
         { provide: LoginUseCase, useValue: unusedUseCase },
-        { provide: RefreshSessionUseCase, useValue: unusedUseCase },
+        { provide: RefreshSessionUseCase, useValue: refreshSession },
         { provide: LogoutUseCase, useValue: unusedUseCase },
         { provide: RequestPasswordResetUseCase, useValue: unusedUseCase },
         { provide: VerifyResetPasswordTokenUseCase, useValue: unusedUseCase },
         { provide: ResetPasswordUseCase, useValue: unusedUseCase },
-        {
-          provide: AuthCookieService,
-          useValue: { setAuthCookies: jest.fn(), clearAuthCookies: jest.fn() },
-        },
+        AuthCookieService,
         {
           provide: RequestContextService,
           useValue: { get: () => ({}), setAuthenticatedUser: jest.fn() },
@@ -125,7 +131,7 @@ describe('JwtAuthGuard token error contract through AuthController', () => {
     app.useGlobalFilters(
       new GlobalExceptionFilter(app.get(RequestContextService), app.get(PinoLogger)),
     );
-    await app.init();
+    await app.listen(0, '127.0.0.1');
   });
 
   afterAll(async () => {
@@ -133,8 +139,59 @@ describe('JwtAuthGuard token error contract through AuthController', () => {
   });
 
   beforeEach(() => {
+    refreshSession.execute.mockReset();
     loadAuthenticatedUser.execute.mockResolvedValue(ok(authenticatedUser));
     getCurrentUser.execute.mockResolvedValue(userProfile);
+  });
+
+  it.each([
+    new InvalidRefreshTokenError(),
+    new RefreshSessionNotFoundError(),
+    new RefreshSessionInactiveError(),
+    new RefreshTokenMismatchError(),
+    new UserNotFoundError(),
+    new InactiveUserError(),
+  ])('expires both cookies when refresh rejects with %s', async (error) => {
+    refreshSession.execute.mockResolvedValueOnce(ok({
+      accessToken: 'old-access',
+      refreshToken: 'old-refresh',
+    }));
+    const browser = request.agent(app.getHttpServer());
+    await browser.post('/auth/refresh').expect(204);
+    refreshSession.execute.mockResolvedValueOnce(err(error));
+    const response = await browser.post('/auth/refresh');
+
+    expect(response.status).toBe(error instanceof InactiveUserError ? 403 : 401);
+    expect(response.headers['set-cookie']).toEqual([
+      expect.stringContaining('accessToken=; Path=/; Expires=Thu, 01 Jan 1970'),
+      expect.stringContaining('refreshToken=; Path=/; Expires=Thu, 01 Jan 1970'),
+    ]);
+    const currentUser = await browser.get('/auth/me');
+    expect(currentUser.body).toMatchObject({ code: 'AUTH_REQUIRED' });
+  });
+
+  it('preserves cookies when refresh fails due to infrastructure', async () => {
+    refreshSession.execute.mockRejectedValueOnce(new Error('Database unavailable'));
+    const response = await request(app.getHttpServer()).post('/auth/refresh')
+      .set('Cookie', 'refreshToken=valid');
+
+    expect(response.status).toBe(500);
+    expect(response.headers['set-cookie']).toBeUndefined();
+  });
+
+  it('rotates both cookies on successful refresh', async () => {
+    refreshSession.execute.mockResolvedValueOnce(ok({
+      accessToken: 'new-access',
+      refreshToken: 'new-refresh',
+    }));
+    const response = await request(app.getHttpServer()).post('/auth/refresh')
+      .set('Cookie', 'refreshToken=valid');
+
+    expect(response.status).toBe(204);
+    expect(response.headers['set-cookie']).toEqual([
+      expect.stringContaining('accessToken=new-access;'),
+      expect.stringContaining('refreshToken=new-refresh;'),
+    ]);
   });
 
   it('classifies an expired access token as ACCESS_TOKEN_EXPIRED when a refresh cookie exists', async () => {

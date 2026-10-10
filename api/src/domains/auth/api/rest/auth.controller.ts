@@ -169,7 +169,7 @@ export class AuthController {
   @HttpCode(204)
   @ApiOperation({
     summary: 'Refresh session',
-    description: 'Refreshes the session and its authentication cookies.',
+    description: 'Refreshes the session and its authentication cookies. Definitive session rejection clears both cookies; infrastructure failures preserve them.',
   })
   @ApiNoContentResponse({
     description: 'Session cookies were refreshed.',
@@ -179,12 +179,15 @@ export class AuthController {
     @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
   ): Promise<void> {
-    const authResponse = resolveOrThrow(
-      await this.refreshSessionUseCase.execute(
-        this.authCookieService.extractRefreshToken(request),
-      ),
-      mapAuthAppErrorToHttpException,
+    const result = await this.refreshSessionUseCase.execute(
+      this.authCookieService.extractRefreshToken(request),
     );
+
+    if (!result.isOk) {
+      this.authCookieService.clearAuthCookies(response);
+    }
+
+    const authResponse = resolveOrThrow(result, mapAuthAppErrorToHttpException);
 
     this.authCookieService.setAuthCookies(response, authResponse);
   }
