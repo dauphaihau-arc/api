@@ -91,7 +91,7 @@ describe('ProductController', () => {
       {
         page: '1',
         limit: '12',
-        category_id: '19e56f7f-2dbd-4e4b-95fc-99f82f6d5b0e',
+        category_id: '9007199254740993',
         min_price: '20000',
         max_price: '50000',
         attr_material: 'cotton,linen',
@@ -110,7 +110,7 @@ describe('ProductController', () => {
     expect(listPublicProductFacetsUseCase.execute).toHaveBeenCalledWith({
       page: 1,
       limit: 12,
-      categoryId: '19e56f7f-2dbd-4e4b-95fc-99f82f6d5b0e',
+      categoryId: '9007199254740993',
       minPrice: 20000,
       maxPrice: 50000,
       attributeFilters: [
@@ -144,7 +144,7 @@ describe('ProductController', () => {
       {
         page: '1',
         limit: '16',
-        category_id: '19e56f7f-2dbd-4e4b-95fc-99f82f6d5b0e',
+        category_id: '9007199254740993',
         min_price: '20000',
         max_price: '50000',
         attr_bag_size: 'large',
@@ -155,7 +155,7 @@ describe('ProductController', () => {
     expect(listPublicProductsUseCase.execute).toHaveBeenCalledWith({
       page: 1,
       limit: 16,
-      categoryId: '19e56f7f-2dbd-4e4b-95fc-99f82f6d5b0e',
+      categoryId: '9007199254740993',
       minPrice: 20000,
       maxPrice: 50000,
       attributeFilters: [
@@ -223,6 +223,7 @@ describe('ProductController', () => {
         slug: 'arc-store',
       },
       categoryId: 'category-1',
+      categoryPublicId: '9007199254740993',
       categoryPath: [
         {
           id: 'category-root',
@@ -262,7 +263,7 @@ describe('ProductController', () => {
         shop_name: 'Arc Store',
         slug: 'arc-store',
       },
-      category_id: 'category-1',
+      category_id: '9007199254740993',
       category_path: [
         {
           id: 'category-root',

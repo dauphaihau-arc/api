@@ -71,6 +71,10 @@ export class DelegatingCategoryRepository implements CategoryRepository {
     return this.queryRepository.findById(id);
   }
 
+  findByPublicId(publicId: string): Promise<CategorySummary | null> {
+    return this.queryRepository.findByPublicId(publicId);
+  }
+
   searchSuggestions(name: string, limit: number): Promise<CategorySuggestion[]> {
     return this.queryRepository.searchSuggestions(name, limit);
   }

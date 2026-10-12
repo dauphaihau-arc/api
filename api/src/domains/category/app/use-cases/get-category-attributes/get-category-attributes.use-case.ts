@@ -11,7 +11,7 @@ export class GetCategoryAttributesUseCase {
   async execute(
     categoryId: string,
   ): Promise<Result<CategoryAttributeSummary[], CategoryNotFoundError>> {
-    const category = await this.categoryRepository.findById(categoryId);
+    const category = await this.categoryRepository.findByPublicId(categoryId);
 
     if (!category) {
       return err(new CategoryNotFoundError());

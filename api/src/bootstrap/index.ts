@@ -10,6 +10,8 @@ import { Logger, PinoLogger } from 'nestjs-pino';
 import { setupApiDocs } from '~/platform/docs/setup-api-docs';
 import { setupBullBoard } from '~/platform/docs/setup-bull-board';
 import { GlobalExceptionFilter } from '~/platform/filters/global-exception.filter';
+import { CategoryIdentityGenerationInterceptor } from '~/domains/category/api/rest/category-identity-generation.interceptor';
+import { API_GLOBAL_PREFIX } from '~/platform/http/api-global-prefix';
 import { RequestLoggingInterceptor } from '~/platform/logging/request-logging.interceptor';
 import { captureException, initializeSentry } from '~/platform/sentry/sentry';
 import { parseCorsAllowedOrigins } from '~/platform/config/cors.config';
@@ -19,7 +21,7 @@ import { BULLMQ_QUEUE } from '~/integrations/queue/infra/queue.constants';
 import { RequestContextService } from '~/platform/request-context/request-context.service';
 import { validationExceptionFactory } from '~/platform/pipes/validation-exception.factory';
 
-const API_PREFIX = 'v1';
+const API_PREFIX = API_GLOBAL_PREFIX;
 
 async function bootstrap() {
   initializeSentry('api');
@@ -66,6 +68,7 @@ async function bootstrap() {
     ),
   );
   app.useGlobalInterceptors(
+    new CategoryIdentityGenerationInterceptor(),
     new ClassSerializerInterceptor(app.get(Reflector)),
     new RequestLoggingInterceptor(
       app.get(RequestContextService),

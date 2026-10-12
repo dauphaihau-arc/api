@@ -21,17 +21,23 @@ export class ListPublicProductFacetsUseCase {
   ) {}
 
   async execute(query: ListPublicProductsQuery): Promise<PublicProductFacet[]> {
-    const taxonomyCategories = query.categoryId
-      ? await this.categoryRepository.findSelfAndDescendants?.(query.categoryId) ?? null
+    const anchorCategory = query.categoryId
+      ? await this.categoryRepository.findByPublicId(query.categoryId)
       : null;
 
-    if (query.categoryId && taxonomyCategories?.length === 0) {
+    if (query.categoryId && !anchorCategory) {
       return [];
     }
 
-    const category = taxonomyCategories?.[0] ?? (query.categoryId
-      ? await this.categoryRepository.findById(query.categoryId)
-      : null);
+    const taxonomyCategories = anchorCategory
+      ? await this.categoryRepository.findSelfAndDescendants?.(anchorCategory.id) ?? null
+      : null;
+
+    if (anchorCategory && taxonomyCategories?.length === 0) {
+      return [];
+    }
+
+    const category = taxonomyCategories?.[0] ?? anchorCategory;
 
     const featuredFacetCategory = category
       ? await this.resolveFeaturedFacetCategory(category)
@@ -39,10 +45,12 @@ export class ListPublicProductFacetsUseCase {
 
     const categoryIds = taxonomyCategories
       ? taxonomyCategories.map((item) => item.id)
-      : await resolveQueryCategoryIds(
-        this.categoryRepository,
-        query.categoryId,
-      );
+      : query.categoryId
+        ? await resolveQueryCategoryIds(
+          this.categoryRepository,
+          query.categoryId,
+        )
+        : undefined;
 
     if (query.categoryId && categoryIds?.length === 0) {
       return [];

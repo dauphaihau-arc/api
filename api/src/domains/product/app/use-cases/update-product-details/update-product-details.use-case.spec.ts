@@ -81,9 +81,16 @@ describe('UpdateProductDetailsUseCase', () => {
       findAllByParentId: jest.fn(),
       findById: jest.fn().mockResolvedValue({
         id: 'category-1',
+        publicId: '1',
         name: 'Sneakers',
         attributes: [],
       }),
+      findByPublicId: jest.fn().mockImplementation(async (publicId: string) => ({
+        id: publicId,
+        publicId,
+        name: 'Sneakers',
+        attributes: [],
+      })),
     } as unknown as jest.Mocked<CategoryRepository>;
 
     return {
@@ -160,7 +167,7 @@ describe('UpdateProductDetailsUseCase', () => {
     });
 
     expect(result.isOk).toBe(true);
-    expect(categoryRepository.findById).toHaveBeenCalledWith('category-2');
+    expect(categoryRepository.findByPublicId).toHaveBeenCalledWith('category-2');
     expect(productRepository.updateDetails).toHaveBeenCalledWith(
       expect.objectContaining({
         productId: product.id,

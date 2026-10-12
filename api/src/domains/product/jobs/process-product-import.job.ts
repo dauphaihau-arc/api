@@ -124,7 +124,7 @@ export class ProcessProductImportJob {
 
         const createResult = await this.createProductDraftFacadeUseCase.execute(actor, {
           shopId: productImport.shopId,
-          categoryId: validationResult.category.id,
+          categoryId: validationResult.category.publicId,
           title: parsedRow.title ?? '',
           description: parsedRow.description ?? '',
           whoMade: parsedRow.whoMade ?? ProductWhoMade.I_DID,

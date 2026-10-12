@@ -904,6 +904,38 @@
           "comment": null,
           "enumItems": [],
           "mappedType": "json"
+        },
+        "public_id": {
+          "name": "public_id",
+          "type": "int8",
+          "unsigned": true,
+          "autoincrement": true,
+          "primary": false,
+          "nullable": false,
+          "unique": true,
+          "length": null,
+          "precision": 64,
+          "scale": 0,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "bigint"
+        },
+        "slug": {
+          "name": "slug",
+          "type": "varchar(255)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": false,
+          "length": 255,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "string"
         }
       },
       "name": "categories",
@@ -939,9 +971,26 @@
           "keyName": "categories_pkey",
           "unique": true,
           "primary": true
+        },
+        {
+          "columnNames": [
+            "public_id"
+          ],
+          "composite": false,
+          "constraint": true,
+          "keyName": "categories_public_id_unique",
+          "unique": true,
+          "primary": false
         }
       ],
-      "checks": [],
+      "checks": [
+        {
+          "name": "categories_public_id_positive",
+          "columnName": "public_id",
+          "definition": "CHECK ((public_id > 0))",
+          "expression": "public_id > 0"
+        }
+      ],
       "foreignKeys": {
         "categories_parent_id_foreign": {
           "columnNames": [
@@ -1309,6 +1358,204 @@
           ],
           "updateRule": "cascade",
           "deleteRule": "cascade"
+        }
+      },
+      "nativeEnums": {},
+      "comment": null
+    },
+    {
+      "columns": {
+        "legacy_path": {
+          "name": "legacy_path",
+          "type": "text",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": true,
+          "nullable": false,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "text"
+        },
+        "category_id": {
+          "name": "category_id",
+          "type": "uuid",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "uuid"
+        }
+      },
+      "name": "category_legacy_path_aliases",
+      "schema": "public",
+      "indexes": [
+        {
+          "columnNames": [
+            "legacy_path"
+          ],
+          "composite": false,
+          "constraint": false,
+          "keyName": "category_legacy_path_aliases_pkey",
+          "unique": true,
+          "primary": true
+        }
+      ],
+      "checks": [
+        {
+          "name": "category_legacy_path_aliases_path_not_empty",
+          "columnName": "legacy_path",
+          "definition": "CHECK ((length(legacy_path) > 0))",
+          "expression": "length(legacy_path) > 0"
+        }
+      ],
+      "foreignKeys": {
+        "category_legacy_path_aliases_category_id_fkey": {
+          "columnNames": [
+            "category_id"
+          ],
+          "constraintName": "category_legacy_path_aliases_category_id_fkey",
+          "localTableName": "public.category_legacy_path_aliases",
+          "referencedTableName": "public.categories",
+          "referencedColumnNames": [
+            "id"
+          ],
+          "updateRule": "no action",
+          "deleteRule": "restrict"
+        }
+      },
+      "nativeEnums": {},
+      "comment": null
+    },
+    {
+      "columns": {
+        "legacy_path": {
+          "name": "legacy_path",
+          "type": "text",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": true,
+          "nullable": false,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "text"
+        },
+        "category_id": {
+          "name": "category_id",
+          "type": "uuid",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": true,
+          "nullable": false,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "uuid"
+        }
+      },
+      "name": "category_legacy_path_candidates",
+      "schema": "public",
+      "indexes": [
+        {
+          "columnNames": [
+            "legacy_path",
+            "category_id"
+          ],
+          "composite": true,
+          "constraint": false,
+          "keyName": "category_legacy_path_candidates_pkey",
+          "unique": true,
+          "primary": true
+        }
+      ],
+      "checks": [],
+      "foreignKeys": {},
+      "nativeEnums": {},
+      "comment": null
+    },
+    {
+      "columns": {
+        "legacy_path": {
+          "name": "legacy_path",
+          "type": "text",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": true,
+          "nullable": false,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "text"
+        },
+        "resolved_category_id": {
+          "name": "resolved_category_id",
+          "type": "uuid",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "uuid"
+        }
+      },
+      "name": "category_legacy_path_conflicts",
+      "schema": "public",
+      "indexes": [
+        {
+          "columnNames": [
+            "legacy_path"
+          ],
+          "composite": false,
+          "constraint": false,
+          "keyName": "category_legacy_path_conflicts_pkey",
+          "unique": true,
+          "primary": true
+        }
+      ],
+      "checks": [],
+      "foreignKeys": {
+        "category_legacy_path_conflicts_resolved_category_id_fkey": {
+          "columnNames": [
+            "resolved_category_id"
+          ],
+          "constraintName": "category_legacy_path_conflicts_resolved_category_id_fkey",
+          "localTableName": "public.category_legacy_path_conflicts",
+          "referencedTableName": "public.categories",
+          "referencedColumnNames": [
+            "id"
+          ],
+          "updateRule": "no action",
+          "deleteRule": "restrict"
         }
       },
       "nativeEnums": {},

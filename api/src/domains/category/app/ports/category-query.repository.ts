@@ -8,6 +8,7 @@ export abstract class CategoryQueryRepository {
   findSelfAndDescendants?(id: string): Promise<CategorySummary[] | null>;
   abstract findAllByParentId(parentId?: string): Promise<CategorySummary[]>;
   abstract findById(id: string): Promise<CategorySummary | null>;
+  abstract findByPublicId(publicId: string): Promise<CategorySummary | null>;
   abstract searchSuggestions(
     name: string,
     limit: number

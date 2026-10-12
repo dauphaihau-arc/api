@@ -44,7 +44,7 @@ export class GetPublicProductBySlugsUseCase {
       }
 
       path.push({
-        id: category.id,
+        id: category.publicId,
         name: category.name,
         slug: toSlug(category.name),
       });

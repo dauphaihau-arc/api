@@ -3,11 +3,12 @@ import {
   IsEnum,
   IsOptional,
   IsString,
-  IsUUID,
+  Matches,
   Max,
   Min,
 } from 'class-validator';
 import { ProductState } from '~/domains/product/domain/enums/product-state.enum';
+import { CATEGORY_PUBLIC_ID_PATTERN } from '~/domains/category/app/category-public-id';
 import {
   SHOP_PRODUCT_LIST_DEFAULT_LIMIT,
   SHOP_PRODUCT_LIST_DEFAULT_PAGE,
@@ -33,7 +34,7 @@ export class ListShopProductsQueryDto {
   @IsOptional()
   @Expose({ name: 'category_id' })
   @Transform(({ value, obj: source }) => value ?? source.category_id)
-  @IsUUID()
+  @Matches(CATEGORY_PUBLIC_ID_PATTERN)
   categoryId?: string;
 
   @IsOptional()

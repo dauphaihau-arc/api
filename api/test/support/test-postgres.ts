@@ -19,8 +19,9 @@ function normalizeDbPrefix(prefix: string): string {
 
 export async function createTestDatabase(
   suiteName = 'api',
-  options: { fresh?: boolean } = {},
+  options: { fresh?: boolean; signal?: AbortSignal } = {},
 ): Promise<TestDatabaseContext> {
+  options.signal?.throwIfAborted();
   // PostgreSQL truncates identifiers after 63 bytes; retain the entire UUID.
   const dbName = `arc_e2e_${normalizeDbPrefix(suiteName).slice(0, 22)}_${randomUUID().replace(/-/g, '')}`;
   const template = process.env.ARC_INT_TEMPLATE_DATABASE
@@ -51,11 +52,19 @@ export async function createTestDatabase(
     await adminClient.end();
   }
 
-  if (template && !options.fresh) return context;
+  let abortCleanup: Promise<void> | undefined;
+  const onAbort = () => {
+    // Terminating this database's sessions interrupts in-flight migration work.
+    abortCleanup = dropTestDatabase(context);
+    void abortCleanup.catch(() => undefined);
+  };
+  options.signal?.addEventListener('abort', onAbort, { once: true });
 
   try {
-    const orm = await MikroORM.init(
-      buildDatabaseConfig(
+    options.signal?.throwIfAborted();
+    if (template && !options.fresh) return context;
+    const orm = await MikroORM.init({
+      ...buildDatabaseConfig(
         {
           ...process.env,
           // The helper owns a DB_* database, never the developer DATABASE_URL.
@@ -68,18 +77,27 @@ export async function createTestDatabase(
         },
         { includeEntityGlobs: true, debug: false },
       ),
-    );
+      // Creation belongs to this helper; ORM must not recreate an aborted DB.
+      ensureDatabase: false,
+    });
 
     try {
+      options.signal?.throwIfAborted();
       await orm.getMigrator().up();
     }
     finally {
       await orm.close(true);
     }
+    options.signal?.throwIfAborted();
   }
   catch (error) {
+    await abortCleanup?.catch(() => undefined);
+    // A migration's database check can recreate it after the early abort drop.
     await dropTestDatabase(context);
     throw error;
+  }
+  finally {
+    options.signal?.removeEventListener('abort', onAbort);
   }
 
   return context;

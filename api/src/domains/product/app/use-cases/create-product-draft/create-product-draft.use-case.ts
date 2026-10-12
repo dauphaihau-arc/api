@@ -51,14 +51,17 @@ export class CreateProductDraftUseCase {
       return err(new ActorCannotCreateProductDraftError());
     }
 
+    let categoryId: string | undefined;
+
     if (input.categoryId) {
-      const category = await this.categoryRepository.findById(input.categoryId);
+      const category = await this.categoryRepository.findByPublicId(input.categoryId);
 
       if (!category) {
         return err(new CategoryNotFoundError(input.categoryId));
       }
-    }
 
+      categoryId = category.id;
+    }
 
     const slug = await this.createAvailableSlug(
       input.shopId,
@@ -67,7 +70,7 @@ export class CreateProductDraftUseCase {
 
     const product = await this.productCommandRepository.createDraft({
       shopId: input.shopId,
-      categoryId: input.categoryId,
+      categoryId,
       title: input.title.trim(),
       slug,
       description: input.description.trim(),

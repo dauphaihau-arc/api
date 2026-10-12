@@ -179,8 +179,11 @@ promotions (`prm_`), chat conversations (`cnv_`).
 - The owning module exports application lookup/access contracts needed by other domains, not HTTP
   lookup pipes. Internal jobs and events keep using explicitly internal identifiers.
 - Without a public id, expose and accept the internal id where required: promo codes, shipping
-  profiles, categories, users, addresses, notifications, order items, checkout sessions, product
-  variants, inventory. Sale and Promo Code summaries identify their Promotion with `prm_…` and use
+  profiles, users, addresses, notifications, order items, checkout sessions, product
+  variants, inventory. Categories expose a public decimal identity (`id`, `parent_id`,
+  `category_id`, category-valued nested references) that the backend resolves to the internal
+  relationship before querying; internal category UUIDs are never accepted or returned at the
+  boundary. Sale and Promo Code summaries identify their Promotion with `prm_…` and use
   shop/Product public ids for `shop` and `product_ids` (the Promo Code record stays non-public);
   storefront `auto_sale.promotion_id`, review `order_id`/`product.id`, and Shipping Profile/preview
   `shop_id` follow the same contract, while Shipping Profile and Order Item ids stay internal.

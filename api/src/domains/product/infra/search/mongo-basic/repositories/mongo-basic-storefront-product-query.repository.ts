@@ -446,6 +446,7 @@ function toPublicProductListItemFromSearchDocument(
       slug: document.shopSlug,
     },
     categoryId: document.categoryId,
+    categoryPublicId: document.categoryPublicId,
     title: document.title,
     slug: document.slug,
     image: document.image
@@ -516,6 +517,7 @@ export function toPublicProductDetail(
       slug: document.shopSlug,
     },
     categoryId: document.categoryId,
+    categoryPublicId: document.categoryPublicId,
     title: document.title,
     slug: document.slug,
     description: document.description,

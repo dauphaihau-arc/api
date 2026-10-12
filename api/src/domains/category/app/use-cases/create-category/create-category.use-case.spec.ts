@@ -5,7 +5,8 @@ describe('CreateCategoryUseCase', () => {
   function buildRepository(): jest.Mocked<CategoryRepository> {
     return {
       create: jest.fn().mockResolvedValue({
-        id: 'category-1',
+        id: 'internal-category-1',
+        publicId: '1',
         name: 'Mugs',
         rank: 1,
         attributes: [],
@@ -13,6 +14,7 @@ describe('CreateCategoryUseCase', () => {
       createAttribute: jest.fn(),
       findAllByParentId: jest.fn(),
       findById: jest.fn().mockResolvedValue(null),
+      findByPublicId: jest.fn().mockResolvedValue(null),
       searchSuggestions: jest.fn(),
     };
   }

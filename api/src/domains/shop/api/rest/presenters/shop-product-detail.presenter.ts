@@ -32,10 +32,10 @@ export const toShopProductDetailResponse = (
   return {
     id: product.publicId,
     shop_id: product.shopPublicId,
-    category_id: product.categoryId,
-    category: product.categoryId
+    category_id: product.categoryPublicId,
+    category: product.categoryPublicId
       ? {
-        id: product.categoryId,
+        id: product.categoryPublicId,
         name: product.categoryName ?? '',
       }
       : undefined,

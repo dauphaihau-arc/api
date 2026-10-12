@@ -104,7 +104,8 @@ describe('ProductRecommendationController', () => {
           shopName: 'Arc Store',
           slug: 'arc-store',
         },
-        categoryId: 'category-1',
+        categoryId: 'internal-category-1',
+        categoryPublicId: 'category-1',
         title: 'Handmade Bag 2',
         slug: 'handmade-bag-2',
         availability: {

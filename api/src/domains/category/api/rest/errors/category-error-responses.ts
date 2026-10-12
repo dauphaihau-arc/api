@@ -1,5 +1,6 @@
 import type { ApiErrorExample } from '~/platform/http/api-error-responses.decorator';
 import {
+  categoryIdentityGenerationMismatchExample,
   internalServerErrorExample,
   rateLimitErrorExample,
   validationErrorExample,
@@ -24,17 +25,20 @@ export const categoryErrorResponses = {
         { field: 'name', messages: ['name must be a string'] },
       ]),
     ],
+    409: [categoryIdentityGenerationMismatchExample],
     429: [rateLimitErrorExample],
   },
   list: {
     400: [
       validationErrorExample([
-        { field: 'parent_id', messages: ['parent_id must be a UUID'] },
+        { field: 'parent_id', messages: ['parent_id must be a positive decimal string'] },
       ]),
     ],
+    409: [categoryIdentityGenerationMismatchExample],
   },
   attributes: {
     404: [categoryNotFoundExample],
+    409: [categoryIdentityGenerationMismatchExample],
   },
   create: {
     400: [
@@ -44,6 +48,7 @@ export const categoryErrorResponses = {
     ],
     401: unauthorizedErrorExamples,
     404: [categoryNotFoundExample],
+    409: [categoryIdentityGenerationMismatchExample],
     429: [rateLimitErrorExample],
   },
   createAttribute: {
@@ -54,6 +59,7 @@ export const categoryErrorResponses = {
     ],
     401: unauthorizedErrorExamples,
     404: [categoryNotFoundExample],
+    409: [categoryIdentityGenerationMismatchExample],
     429: [rateLimitErrorExample],
   },
 } satisfies Record<string, ErrorResponses>;

@@ -26,6 +26,7 @@ export class MikroOrmProductImportValidationQueryRepository implements ProductIm
     return categories
       .map((category) => ({
         id: category.id,
+        publicId: category.publicId,
         path: buildPath(category, byId),
       }))
       .filter((category) => normalizeCategoryPath(category.path) === normalizedTarget);

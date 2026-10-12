@@ -13,6 +13,7 @@ export interface ProductDraftSummary {
   shopId: string;
   shopPublicId: string;
   categoryId?: string;
+  categoryPublicId?: string;
   categoryName?: string;
   title: string;
   slug: string;
@@ -314,6 +315,7 @@ export interface PublicProductListItem {
     slug: string;
   };
   categoryId?: string;
+  categoryPublicId?: string;
   title: string;
   slug: string;
   image?: {
@@ -396,6 +398,7 @@ export interface PublicProductDetail {
     slug: string;
   };
   categoryId?: string;
+  categoryPublicId?: string;
   categoryPath?: Array<{
     id: string;
     name: string;

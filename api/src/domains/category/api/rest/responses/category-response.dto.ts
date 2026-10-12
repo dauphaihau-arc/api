@@ -82,3 +82,8 @@ export class CategoryAttributeListResponseDto {
   @Type(() => CategoryAttributeResponseDto)
   attributes!: CategoryAttributeResponseDto[];
 }
+
+export class CategoryIdentityContractResponseDto {
+  @ApiProperty()
+  version!: string;
+}

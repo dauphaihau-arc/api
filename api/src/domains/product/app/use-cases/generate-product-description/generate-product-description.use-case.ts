@@ -43,7 +43,7 @@ export class GenerateProductDescriptionUseCase {
     }
 
     const category = input.categoryId
-      ? await this.categoryQueryRepository.findById(input.categoryId)
+      ? await this.categoryQueryRepository.findByPublicId(input.categoryId)
       : null;
 
     const promptInput = {

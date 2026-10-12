@@ -79,6 +79,18 @@ export class UpdateProductDetailsUseCase {
       return err(new ProductVersionConflictError(existingProduct));
     }
 
+    let categoryId = existingProduct.categoryId;
+
+    if (input.categoryId) {
+      const category = await this.categoryRepository.findByPublicId(input.categoryId);
+
+      if (!category) {
+        return err(new CategoryNotFoundError(input.categoryId));
+      }
+
+      categoryId = category.id;
+    }
+
     const nextProduct = {
       title: input.title?.trim() ?? existingProduct.title,
       description: input.description?.trim() ?? existingProduct.description,
@@ -86,7 +98,7 @@ export class UpdateProductDetailsUseCase {
       isDigital: input.isDigital ?? existingProduct.isDigital,
       nonTaxable: input.nonTaxable ?? existingProduct.nonTaxable,
       tags: sanitizeTags(input.tags) ?? existingProduct.tags ?? [],
-      categoryId: input.categoryId ?? existingProduct.categoryId,
+      categoryId,
     };
 
     // A published Product that becomes physical starts being delivered, so it
@@ -105,14 +117,6 @@ export class UpdateProductDetailsUseCase {
         return err(new ProductNotReadyToPublishError(
           `Shipping profile "${existingProduct.shipping.name}" cannot price a checkout yet: ${existingProduct.shipping.readinessIssues.join(', ')}`,
         ));
-      }
-    }
-
-    if (input.categoryId) {
-      const category = await this.categoryRepository.findById(input.categoryId);
-
-      if (!category) {
-        return err(new CategoryNotFoundError(input.categoryId));
       }
     }
 

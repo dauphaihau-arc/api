@@ -2,6 +2,7 @@ import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
 import { StorageService } from '~/integrations/storage/app/ports/storage.service';
 import { CategoryQueryRepository } from '../app/ports/category-query.repository';
+import { CATEGORY_PUBLIC_ID_PATTERN } from '../app/category-public-id';
 import type {
   CategorySuggestion,
   CategorySummary,
@@ -11,6 +12,7 @@ import { toCategorySummary } from './category-summary.projector';
 
 type CategorySubtreeRow = {
   category_id: string;
+  category_public_id: string;
   parent_id: string | null;
   category_name: string;
   category_rank: number;
@@ -66,6 +68,7 @@ export class MikroOrmCategoryQueryRepository implements CategoryQueryRepository 
         with recursive category_tree as (
           select
             id,
+            public_id,
             parent_id,
             name,
             rank,
@@ -79,6 +82,7 @@ export class MikroOrmCategoryQueryRepository implements CategoryQueryRepository 
 
           select
             child.id,
+            child.public_id,
             child.parent_id,
             child.name,
             child.rank,
@@ -90,6 +94,7 @@ export class MikroOrmCategoryQueryRepository implements CategoryQueryRepository 
         )
         select
           category_tree.id as category_id,
+          category_tree.public_id as category_public_id,
           category_tree.parent_id,
           category_tree.name as category_name,
           category_tree.rank as category_rank,
@@ -146,6 +151,21 @@ export class MikroOrmCategoryQueryRepository implements CategoryQueryRepository 
     const repository = this.entityManager.fork().getRepository(CategoryEntity);
     const category = await repository.findOne(
       { id },
+      { populate: ['parent', 'attributes', 'attributes.options'] },
+    );
+
+    return category ? toCategorySummary(category, this.storageService) : null;
+  }
+
+  async findByPublicId(publicId: string): Promise<CategorySummary | null> {
+    if (!CATEGORY_PUBLIC_ID_PATTERN.test(publicId)) {
+      return null;
+    }
+
+    const repository = this.entityManager.fork().getRepository(CategoryEntity);
+
+    const category = await repository.findOne(
+      { publicId },
       { populate: ['parent', 'attributes', 'attributes.options'] },
     );
 
@@ -228,7 +248,7 @@ export class MikroOrmCategoryQueryRepository implements CategoryQueryRepository 
 
       seenCategoryIds.add(match.id);
       results.push({
-        id: match.id,
+        id: match.publicId,
         lastNameCategory: match.name,
         categoriesRelated: pathToMatch,
       });
@@ -284,7 +304,7 @@ function collectLeafSuggestions(
 
     if (children.length === 0) {
       results.push({
-        id: current.category.id,
+        id: current.category.publicId,
         lastNameCategory: current.category.name,
         categoriesRelated: current.path,
       });
@@ -316,6 +336,7 @@ function toCategorySummariesFromSubtreeRows(
     if (!category) {
       category = {
         id: row.category_id,
+        publicId: row.category_public_id,
         parentId: row.parent_id ?? undefined,
         name: row.category_name,
         rank: Number(row.category_rank),

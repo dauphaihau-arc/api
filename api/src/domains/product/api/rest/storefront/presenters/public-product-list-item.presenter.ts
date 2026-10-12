@@ -10,7 +10,7 @@ export const toPublicProductListItemResponse = (
     shop_name: product.shop.shopName,
     slug: product.shop.slug,
   },
-  category_id: product.categoryId,
+  category_id: product.categoryPublicId,
   title: product.title,
   slug: product.slug,
   image: product.image

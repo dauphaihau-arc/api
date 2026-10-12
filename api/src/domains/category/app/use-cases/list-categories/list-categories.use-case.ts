@@ -6,7 +6,17 @@ import type { CategorySummary } from '../../category.types';
 export class ListCategoriesUseCase {
   constructor(private readonly categoryRepository: CategoryRepository) {}
 
-  async execute(parentId?: string): Promise<CategorySummary[]> {
-    return this.categoryRepository.findAllByParentId(parentId);
+  async execute(parentPublicId?: string): Promise<CategorySummary[]> {
+    if (!parentPublicId) {
+      return this.categoryRepository.findAllByParentId();
+    }
+
+    const parent = await this.categoryRepository.findByPublicId(parentPublicId);
+
+    if (!parent) {
+      return [];
+    }
+
+    return this.categoryRepository.findAllByParentId(parent.id);
   }
 }

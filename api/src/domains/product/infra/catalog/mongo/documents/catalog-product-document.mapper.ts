@@ -14,6 +14,7 @@ export interface CatalogProductDocument {
   shopSlug: string;
   shopName: string;
   categoryId?: string;
+  categoryPublicId?: string;
   slug: string;
   title: string;
   titleNormalized: string;
@@ -222,6 +223,7 @@ export function toCatalogProductDocument(
     shopSlug: product.shop.slug,
     shopName: product.shop.shopName,
     categoryId: product.category?.id,
+    categoryPublicId: product.category?.publicId,
     slug: product.slug,
     title: product.title,
     titleNormalized: normalizeSearchText(product.title),

@@ -245,6 +245,7 @@ function toPublicProductListItemFromSearchDocument(
       slug: document.shopSlug,
     },
     categoryId: document.categoryId,
+    categoryPublicId: document.categoryPublicId,
     title: document.title,
     slug: document.slug,
     image: document.image
@@ -280,6 +281,7 @@ function toRecommendationScorableSearchProduct(
   return {
     id: document.productId,
     categoryId: document.categoryId,
+    categoryPublicId: document.categoryPublicId,
     whoMade: document.whoMade,
     isDigital: document.isDigital,
     attributeOptionKeys: (document.attributes ?? [])

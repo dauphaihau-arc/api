@@ -42,6 +42,7 @@ describe('GetPublicProductBySlugsUseCase', () => {
           case 'category-1':
             return {
               id: 'category-1',
+              publicId: '11',
               parentId: 'category-root',
               name: 'Ceramic Mugs',
               rank: 1,
@@ -50,6 +51,7 @@ describe('GetPublicProductBySlugsUseCase', () => {
           case 'category-root':
             return {
               id: 'category-root',
+              publicId: '10',
               name: 'Home Decor',
               rank: 1,
               attributes: [],
@@ -81,12 +83,12 @@ describe('GetPublicProductBySlugsUseCase', () => {
       ...product,
       categoryPath: [
         {
-          id: 'category-root',
+          id: '10',
           name: 'Home Decor',
           slug: 'home-decor',
         },
         {
-          id: 'category-1',
+          id: '11',
           name: 'Ceramic Mugs',
           slug: 'ceramic-mugs',
         },

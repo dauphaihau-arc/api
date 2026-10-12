@@ -40,7 +40,8 @@ describe('CategoryController', () => {
   it('returns listed categories in snake_case for the HTTP boundary', async () => {
     listCategoriesUseCase.execute.mockResolvedValue([
       {
-        id: 'category-1',
+        id: 'internal-category-1',
+        publicId: 'category-1',
         parentId: undefined,
         name: 'Clothing',
         rank: 1,

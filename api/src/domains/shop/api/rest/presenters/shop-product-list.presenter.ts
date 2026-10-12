@@ -29,7 +29,7 @@ export const toShopProductListResponse = (
     return {
       id: product.publicId,
       shop_id: product.shopPublicId,
-      category_id: product.categoryId,
+      category_id: product.categoryPublicId,
       title: product.title,
       slug: product.slug,
       description: product.description,

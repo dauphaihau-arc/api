@@ -55,9 +55,25 @@ describe('ListShopProductsUseCase', () => {
     };
   }
 
+  function buildCategoryRepository() {
+    return {
+      findByPublicId: jest.fn().mockResolvedValue({
+        id: 'internal-category-1',
+        publicId: 'category-1',
+        name: 'Mugs',
+        rank: 1,
+        attributes: [],
+      }),
+    };
+  }
+
   it('returns paginated seller products with trimmed filters', async () => {
     const repository = buildRepository();
-    const useCase = new ListShopProductsUseCase(repository as never);
+    const categoryRepository = buildCategoryRepository();
+    const useCase = new ListShopProductsUseCase(
+      repository as never,
+      categoryRepository as never,
+    );
 
     const result = await useCase.execute({
       shopId: 'shop-1',
@@ -68,12 +84,13 @@ describe('ListShopProductsUseCase', () => {
       search: ' mug ',
     });
 
+    expect(categoryRepository.findByPublicId).toHaveBeenCalledWith('category-1');
     expect(repository.listByShop).toHaveBeenCalledWith({
       shopId: 'shop-1',
       page: 2,
       limit: 1,
       state: ProductState.DRAFT,
-      categoryId: 'category-1',
+      categoryId: 'internal-category-1',
       search: 'mug',
     });
     expect(repository.listByShop).toHaveBeenCalledTimes(1);

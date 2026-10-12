@@ -31,7 +31,7 @@ export const toPublicProductDetailResponse = (
       shop_name: product.shop.shopName,
       slug: product.shop.slug,
     },
-    category_id: product.categoryId,
+    category_id: product.categoryPublicId,
     category_path: product.categoryPath?.map((category) => ({
       id: category.id,
       name: category.name,

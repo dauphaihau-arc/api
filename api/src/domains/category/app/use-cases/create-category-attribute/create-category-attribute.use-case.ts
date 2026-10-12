@@ -22,8 +22,14 @@ export class CreateCategoryAttributeUseCase {
   async execute(
     input: CreateCategoryAttributeInput,
   ): Promise<Result<CategorySummary, CategoryNotFoundError>> {
-    const category = await this.categoryRepository.createAttribute({
-      categoryId: input.categoryId,
+    const category = await this.categoryRepository.findByPublicId(input.categoryId);
+
+    if (!category) {
+      return err(new CategoryNotFoundError());
+    }
+
+    const updatedCategory = await this.categoryRepository.createAttribute({
+      categoryId: category.id,
       key: input.key?.trim() || toSlug(input.name).replaceAll('-', '_'),
       name: input.name.trim(),
       inputType: input.inputType?.trim() || undefined,
@@ -35,10 +41,10 @@ export class CreateCategoryAttributeUseCase {
       })),
     });
 
-    if (!category) {
+    if (!updatedCategory) {
       return err(new CategoryNotFoundError());
     }
 
-    return ok(category);
+    return ok(updatedCategory);
   }
 }

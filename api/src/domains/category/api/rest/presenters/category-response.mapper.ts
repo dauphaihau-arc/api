@@ -33,8 +33,8 @@ export const toCategoryAttributeResponse = (
 export const toCategoryResponse = (
   category: CategorySummary,
 ): CategoryResponse => ({
-  id: category.id,
-  parent_id: category.parentId,
+  id: category.publicId,
+  parent_id: category.parentPublicId,
   name: category.name,
   rank: category.rank,
   image_url: category.imageUrl,

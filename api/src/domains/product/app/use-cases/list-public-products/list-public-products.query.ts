@@ -146,21 +146,21 @@ function normalizeAttributeFilters(
 
 async function resolveCategorySubtreeIds(
   categoryRepository: CategoryRepository,
-  categoryId: string,
+  categoryPublicId: string,
 ): Promise<string[]> {
-  if (categoryRepository.findSelfAndDescendantIds) {
-    const ids = await categoryRepository.findSelfAndDescendantIds(categoryId);
-    return ids ?? [];
-  }
-
-  const category = await categoryRepository.findById(categoryId);
+  const category = await categoryRepository.findByPublicId(categoryPublicId);
 
   if (!category) {
     return [];
   }
 
-  const resolvedIds = new Set<string>([categoryId]);
-  const pendingParentIds = [categoryId];
+  if (categoryRepository.findSelfAndDescendantIds) {
+    const ids = await categoryRepository.findSelfAndDescendantIds(category.id);
+    return ids ?? [];
+  }
+
+  const resolvedIds = new Set<string>([category.id]);
+  const pendingParentIds = [category.id];
 
   while (pendingParentIds.length > 0) {
     const parentId = pendingParentIds.shift();

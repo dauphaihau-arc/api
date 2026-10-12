@@ -1,0 +1,48 @@
+diff --git a/api/src/domains/category/api/rest/category-identity-contract.controller.ts b/api/src/domains/category/api/rest/category-identity-contract.controller.ts
+new file mode 100644
+index 0000000..359632f
+--- /dev/null
++++ b/api/src/domains/category/api/rest/category-identity-contract.controller.ts
+@@ -0,0 +1,21 @@
++import { Controller, Get, Header } from '@nestjs/common';
++import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
++
++/**
++ * Additive preparation endpoint for the category public-identity cutover.
++ *
++ * Deploy this on the still-internal-identity API (generation `1`) so prepared
++ * clients can probe the running generation and detect the later public
++ * activation. It changes no existing identifier semantics.
++ */
++@Controller('categories')
++@ApiTags('Categories')
++export class CategoryIdentityContractController {
++  @Get('contract')
++  @Header('Cache-Control', 'private, no-cache')
++  @ApiOperation({ summary: 'Get the category identity contract generation' })
++  @ApiOkResponse({ description: 'Category identity contract generation.' })
++  categoryIdentityContract(): { version: string } {
++    return { version: '1' };
++  }
++}
+diff --git a/api/src/domains/category/category.module.ts b/api/src/domains/category/category.module.ts
+index d056220..4e55d10 100644
+--- a/api/src/domains/category/category.module.ts
++++ b/api/src/domains/category/category.module.ts
+@@ -10,6 +10,7 @@ import { GetCategoryAttributesUseCase } from './app/use-cases/get-category-attri
+ import { ListCategoriesUseCase } from './app/use-cases/list-categories/list-categories.use-case';
+ import { SuggestCategoriesUseCase } from './app/use-cases/suggest-categories/suggest-categories.use-case';
+ import { CategoryController } from './api/rest/category.controller';
++import { CategoryIdentityContractController } from './api/rest/category-identity-contract.controller';
+ import { DelegatingCategoryRepository } from './infra/category.repository';
+ import { MikroOrmCategoryCommandRepository } from './infra/mikro-orm-category-command.repository';
+ import { MikroOrmCategoryQueryRepository } from './infra/mikro-orm-category-query.repository';
+@@ -32,7 +33,7 @@ import { AuthModule } from '../auth/auth.module';
+       CategoryAttributeOptionEntity,
+     ]),
+   ],
+-  controllers: [CategoryController],
++  controllers: [CategoryController, CategoryIdentityContractController],
+   providers: [
+     {
+       provide: CategoryCommandRepository,

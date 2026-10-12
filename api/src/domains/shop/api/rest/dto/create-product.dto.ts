@@ -10,18 +10,19 @@ import {
   IsEnum,
   IsOptional,
   IsString,
-  IsUUID,
   MaxLength,
+  Matches,
   MinLength,
 } from 'class-validator';
 import { ProductWhoMade } from '~/domains/product/domain/enums/product-who-made.enum';
+import { CATEGORY_PUBLIC_ID_PATTERN } from '~/domains/category/app/category-public-id';
 
 export class CreateProductDto {
   @IsOptional()
   @ApiPropertyOptional({ name: 'category_id' })
   @Expose({ name: 'category_id' })
   @Transform(({ value, obj: source }) => value ?? source.category_id)
-  @IsUUID()
+  @Matches(CATEGORY_PUBLIC_ID_PATTERN)
   categoryId?: string;
 
   @IsString()

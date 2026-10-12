@@ -1,4 +1,5 @@
 import {
+  categoryIdentityGenerationMismatchExample,
   internalServerErrorExample,
   rateLimitErrorExample,
   validationErrorExample,
@@ -35,10 +36,12 @@ export const productControllerErrorResponses = {
   },
   list: {
     400: [limitValidationExample],
+    409: [categoryIdentityGenerationMismatchExample],
     429: [rateLimitErrorExample],
   },
   facets: {
     400: [limitValidationExample],
+    409: [categoryIdentityGenerationMismatchExample],
     429: [rateLimitErrorExample],
   },
   bySlug: {

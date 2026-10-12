@@ -10,7 +10,7 @@ type ProductRepositoryMock = Pick<
 
 type CategoryRepositoryMock = Pick<
   jest.Mocked<CategoryRepository>,
-  'findById' | 'findAllByParentId' | 'findSelfAndDescendantIds' | 'findSelfAndDescendants'
+  'findById' | 'findByPublicId' | 'findAllByParentId' | 'findSelfAndDescendantIds' | 'findSelfAndDescendants'
 >;
 
 const createProductRepositoryMock = (): ProductRepositoryMock => ({
@@ -18,12 +18,19 @@ const createProductRepositoryMock = (): ProductRepositoryMock => ({
   listPublicFacets: jest.fn(),
 });
 
-const createCategoryRepositoryMock = (): CategoryRepositoryMock => ({
-  findById: jest.fn(),
-  findAllByParentId: jest.fn(),
-  findSelfAndDescendantIds: undefined,
-  findSelfAndDescendants: undefined,
-});
+const createCategoryRepositoryMock = (): CategoryRepositoryMock => {
+  // Tests use the same string for public and internal identity, so public
+  // resolution delegates to the existing internal-id behavior.
+  const findById = jest.fn();
+
+  return {
+    findById,
+    findByPublicId: jest.fn((publicId: string) => findById(publicId)),
+    findAllByParentId: jest.fn(),
+    findSelfAndDescendantIds: undefined,
+    findSelfAndDescendants: undefined,
+  };
+};
 
 const createUseCaseHarness = () => {
   const productRepository = createProductRepositoryMock();
@@ -90,6 +97,13 @@ describe('ListPublicProductsUseCase', function () {
   it('uses the batched category subtree lookup when the repository supports it', async () => {
     const batchedCategoryRepository: CategoryRepositoryMock = {
       findById: jest.fn(),
+      findByPublicId: jest.fn().mockResolvedValue({
+        id: 'category-1',
+        publicId: 'category-1',
+        name: 'Category',
+        rank: 1,
+        attributes: [],
+      }),
       findAllByParentId: jest.fn(),
       findSelfAndDescendantIds: jest.fn().mockResolvedValue([
         'category-1',
@@ -181,6 +195,14 @@ describe('ListPublicProductsUseCase', function () {
 
   it('uses one category subtree lookup when merging public product facets', async () => {
     const batchedCategoryRepository: CategoryRepositoryMock = {
+      findByPublicId: jest.fn().mockResolvedValue({
+        id: 'shoes-category',
+        publicId: 'shoes-category',
+        parentId: 'fashion-category',
+        name: 'Shoes',
+        rank: 1,
+        attributes: [],
+      }),
       findById: jest.fn().mockImplementation(async (categoryId: string) => {
         if (categoryId === 'fashion-category') {
           return {

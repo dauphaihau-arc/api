@@ -8,6 +8,7 @@ describe('SuggestCategoriesUseCase', () => {
       createAttribute: jest.fn(),
       findAllByParentId: jest.fn(),
       findById: jest.fn(),
+      findByPublicId: jest.fn(),
       searchSuggestions: jest.fn().mockResolvedValue([
         {
           id: 'category-1',

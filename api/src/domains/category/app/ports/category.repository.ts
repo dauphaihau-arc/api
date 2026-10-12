@@ -14,6 +14,12 @@ export abstract class CategoryRepository {
   ): Promise<CategorySummary | null>;
   abstract findAllByParentId(parentId?: string): Promise<CategorySummary[]>;
   abstract findById(id: string): Promise<CategorySummary | null>;
+  /**
+   * Resolve a public category identity to its summary. Returns null for
+   * unknown or non-public-identity input; it MUST NOT fall back to internal id
+   * lookup, so numeric collisions cannot resolve to the wrong category.
+   */
+  abstract findByPublicId(publicId: string): Promise<CategorySummary | null>;
   abstract searchSuggestions(
     name: string,
     limit: number

@@ -18,16 +18,20 @@ export class CreateCategoryUseCase {
   async execute(
     input: CreateCategoryInput,
   ): Promise<Result<CategorySummary, CategoryNotFoundError>> {
+    let parentId: string | undefined;
+
     if (input.parentId) {
-      const parent = await this.categoryRepository.findById(input.parentId);
+      const parent = await this.categoryRepository.findByPublicId(input.parentId);
 
       if (!parent) {
         return err(new CategoryNotFoundError());
       }
+
+      parentId = parent.id;
     }
 
     const category = await this.categoryRepository.create({
-      parentId: input.parentId,
+      parentId,
       name: input.name.trim(),
       rank: input.rank,
       imageStorageKey: input.imageStorageKey?.trim() || undefined,

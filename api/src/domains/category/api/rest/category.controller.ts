@@ -39,6 +39,8 @@ import { SuggestCategoriesQueryDto } from './dto/suggest-categories.query.dto';
 import { mapCategoryAppErrorToHttpException } from './errors/category-http-error-mapper';
 import { ApiErrorResponses } from '~/platform/http/api-error-responses.decorator';
 import { categoryErrorResponses } from './errors/category-error-responses';
+import { CATEGORY_IDENTITY_CONTRACT_VERSION } from '../../app/category-identity-contract';
+import { CategoryIdentityContractResponseDto } from './responses/category-response.dto';
 
 @Controller('categories')
 @ApiErrorResponses(categoryErrorResponses.common)
@@ -51,6 +53,18 @@ export class CategoryController {
     private readonly getCategoryAttributesUseCase: GetCategoryAttributesUseCase,
     private readonly suggestCategoriesUseCase: SuggestCategoriesUseCase,
   ) {}
+
+  @Get('contract')
+  @SkipThrottle()
+  @Header('Cache-Control', 'private, no-cache')
+  @ApiOperation({ summary: 'Get the category identity contract version' })
+  @ApiOkResponse({
+    description: 'Category identity contract version.',
+    type: CategoryIdentityContractResponseDto,
+  })
+  categoryIdentityContract(): { version: string } {
+    return { version: CATEGORY_IDENTITY_CONTRACT_VERSION };
+  }
 
   @Get('suggestions')
   @Header('Cache-Control', 'private, no-cache')

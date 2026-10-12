@@ -1,4 +1,5 @@
 import {
+  categoryIdentityGenerationMismatchExample,
   internalServerErrorExample,
   rateLimitErrorExample,
   validationErrorExample,
@@ -86,6 +87,7 @@ export const shopProductsControllerErrorResponses = {
   common: {
     401: unauthorizedErrorExamples,
     403: [missingRequiredPermissionsErrorExample, forbiddenOwnShopExample],
+    409: [categoryIdentityGenerationMismatchExample],
     429: [rateLimitErrorExample],
     500: [internalServerErrorExample],
   },

@@ -21,6 +21,7 @@ export interface CatalogSearchDocument {
   description: string;
   state: ProductState;
   categoryId?: string;
+  categoryPublicId?: string;
   isDigital: boolean;
   whoMade: ProductEntity['whoMade'];
   attributes: Array<{
@@ -136,6 +137,7 @@ export function toCatalogSearchDocument(
     description: product.description,
     state: product.state,
     categoryId: product.category?.id,
+    categoryPublicId: product.category?.publicId,
     isDigital: product.isDigital,
     whoMade: product.whoMade,
     attributes: product.attributeValues

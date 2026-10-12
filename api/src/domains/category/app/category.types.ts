@@ -1,6 +1,12 @@
 export interface CategorySummary {
+  /** Internal database identity (UUID). Never exposed at the API boundary. */
   id: string;
+  /** Public identity (positive decimal string). The externally visible category id. */
+  publicId: string;
+  /** Internal database identity of the parent (UUID). */
   parentId?: string;
+  /** Public identity of the parent, when present. */
+  parentPublicId?: string;
   name: string;
   rank: number;
   imageStorageKey?: string;

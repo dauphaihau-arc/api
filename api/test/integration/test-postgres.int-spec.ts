@@ -1,3 +1,5 @@
+/// <reference lib="es2024.promise" />
+import { setTimeout as delay } from 'node:timers/promises';
 import { randomUUID } from 'node:crypto';
 import { MikroORM } from '@mikro-orm/postgresql';
 import { Client } from 'pg';
@@ -84,7 +86,7 @@ describe('integration database templates', () => {
       ['public.clone_marker', 'public.users'],
     );
     expect(result.rows).toEqual([{ marker: null, users: 'users' }]);
-  });
+  }, 300_000);
 
   it('drops the database when ORM initialization fails after creation', async () => {
     const suiteName = `failed_${randomUUID().slice(0, 8)}`;
@@ -102,6 +104,56 @@ describe('integration database templates', () => {
       expect(remaining.rows).toEqual([]);
     }
     finally {
+      init.mockRestore();
+    }
+  });
+
+  it('removes an acquired database when bootstrap is aborted before initialization settles', async () => {
+    const suiteName = `cancel_${randomUUID().slice(0, 8)}`;
+    const prefix = `arc_e2e_${suiteName}_`;
+    const admin = await connect({ ...source, dbName: 'postgres' });
+    const controller = new AbortController();
+    const initializing = Promise.withResolvers<void>();
+    const blocked = Promise.withResolvers<never>();
+    const release = () => blocked.reject(new Error('interrupted bootstrap'));
+    const init = jest.spyOn(MikroORM, 'init').mockImplementationOnce(() => {
+      initializing.resolve();
+      return blocked.promise;
+    });
+    const bootstrap = createTestDatabase(suiteName, {
+      fresh: true,
+      signal: controller.signal,
+    });
+    // Attach rejection handling before releasing the initialization seam.
+    const settled = bootstrap.catch((error: unknown) => error);
+    try {
+      await initializing.promise;
+      const created = await admin.query(
+        'select datname from pg_database where left(datname, length($1)) = $1',
+        [prefix],
+      );
+      expect(created.rows).toHaveLength(1);
+      controller.abort();
+
+      const deadline = Date.now() + 5_000;
+      let remaining = created.rows;
+      while (remaining.length > 0 && Date.now() < deadline) {
+        remaining = (await admin.query(
+          'select datname from pg_database where left(datname, length($1)) = $1',
+          [prefix],
+        )).rows;
+        if (remaining.length > 0) {
+          await delay(20);
+        }
+      }
+      // Cleanup must precede initialization settling, not merely follow rejection.
+      expect(remaining).toEqual([]);
+      release();
+      expect(await settled).toEqual(new Error('interrupted bootstrap'));
+    }
+    finally {
+      release();
+      await settled;
       init.mockRestore();
     }
   });

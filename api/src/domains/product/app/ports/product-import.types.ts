@@ -44,5 +44,7 @@ export interface ProductImportSummary {
 
 export interface ResolvedImportCategory {
   id: string;
+  /** Public category identity, used by the public product-draft facade. */
+  publicId: string;
   path: string;
 }

@@ -615,6 +615,7 @@ implements ProductCommandRepository, ProductPricingRepository {
         ? entityManager.getReference(CategoryEntity, input.categoryId)
         : undefined;
       await entityManager.persist(product).flush();
+      await entityManager.populate(product, ['category']);
       return toProductDraftSummary(product, this.storageService);
     });
   }
@@ -777,6 +778,8 @@ implements ProductCommandRepository, ProductPricingRepository {
       onHandQuantity: 0,
       commandId: `${product.id}:draft`,
     });
+
+    await entityManager.populate(product, ['category']);
 
     return toProductDraftSummary(product, this.storageService);
   }
