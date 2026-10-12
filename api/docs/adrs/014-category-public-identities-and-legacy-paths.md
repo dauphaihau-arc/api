@@ -109,9 +109,11 @@ last entry):
   string so values beyond JavaScript's safe integer range survive transport
   unchanged. Values beyond PostgreSQL `bigint` range are treated as absent, never
   as a database error.
-- Malformed, unknown, and (once ticket 04 defines availability) unavailable
-  identities return `404 CATEGORY_NOT_FOUND`; the resolver never falls back to
-  internal-UUID lookup. Backend failures remain `5xx`.
+- Malformed and unknown identities return `404 CATEGORY_NOT_FOUND`; the resolver
+  never falls back to internal-UUID lookup. Backend failures remain `5xx`.
+  Category availability states are not modeled here or by the follow-up work in
+  this epic; any category hiding or deletion behavior that exists independently is
+  preserved as-is.
 - `canonical_path` is the flat canonical URL `/c/:slug-c:publicId`. `c` is a
   URL-layer marker only and is never persisted. The same policy generates
   navigation links and (ticket 06) redirect destinations, so aliases converge on
@@ -119,9 +121,36 @@ last entry):
 - `slug` is also exposed on the existing category list/detail responses so
   consumers can build canonical links without a second resolution call.
 - Resolution is authoritative on every request; breadcrumbs are derived from this
-  ancestry rather than from session state. Full ancestor-availability enforcement
-  (ticket 04) and alias canonicalization (ticket 06) are deliberately out of
-  scope here.
+  ancestry rather than from session state. Alias canonicalization (ticket 06) is
+  deliberately out of scope here; category availability states are not modeled by
+  this epic.
+
+## Subtree listings and facets
+
+`GET /v1/products` and `GET /v1/products/facets` resolve `category_id` through
+the same authoritative category lookup, so both describe the identical live
+descendant subtree:
+
+- A category listing and its facets include every eligible product whose current
+  category is the resolved category or one of its descendants. Scope is resolved
+  from `categories.parent_id` at query time; it is not projected into the catalog
+  read model, so no projection or backfill is required.
+- Products are deduplicated by product identity. The projected catalog document
+  carries a single internal `categoryId`, so the `$in` scope cannot return a
+  product twice.
+- Existing Product browse/purchase visibility rules are unchanged: the listing
+  still filters `state = active` and `flags.hasImages = true`, and facets run over
+  the same filtered document set.
+- An accessible category with no eligible products returns `200` with an empty
+  item list and empty facets; it is not a `404`.
+
+The hierarchy is fixed at runtime: this epic does not expose category moves or
+any other hierarchy mutation, so the seeded taxonomy is stable for the life of a
+deployment. Subtree reads are therefore served through the optional
+`category.taxonomy-subtree` cache (five-minute TTL). Because nothing mutates
+`parent_id` at runtime, the cached subtree stays aligned with the uncached listing
+scope, and no hierarchy-change invalidation hook is required or claimed. Category
+moves and immediate post-mutation consistency are deliberately out of scope.
 
 ## Migration and deployment
 
