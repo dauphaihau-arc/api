@@ -87,6 +87,41 @@ running JS older than the preparation release to reload, which is why the
 preparation release is mandatory and why the API rejects legacy ids.
 See [API deployment](../../docs/operations/deployment.md).
 
+## Direct resolution contract
+
+`GET /v1/categories/:id` is the authoritative storefront resolution for a
+category public identity. It returns the current category and its ordered
+root-to-current ancestry (the ancestry includes the resolved category as its
+last entry):
+
+```json
+{
+  "category": { "id": "34", "slug": "ceramic-mugs", "name": "Mugs", "featured_facet_keys": ["material"] },
+  "ancestry": [
+    { "id": "12", "slug": "home", "name": "Home" },
+    { "id": "34", "slug": "ceramic-mugs", "name": "Mugs" }
+  ],
+  "canonical_path": "/c/ceramic-mugs-c34"
+}
+```
+
+- `:id` is a positive decimal public identity without leading zeros, handled as a
+  string so values beyond JavaScript's safe integer range survive transport
+  unchanged. Values beyond PostgreSQL `bigint` range are treated as absent, never
+  as a database error.
+- Malformed, unknown, and (once ticket 04 defines availability) unavailable
+  identities return `404 CATEGORY_NOT_FOUND`; the resolver never falls back to
+  internal-UUID lookup. Backend failures remain `5xx`.
+- `canonical_path` is the flat canonical URL `/c/:slug-c:publicId`. `c` is a
+  URL-layer marker only and is never persisted. The same policy generates
+  navigation links and (ticket 06) redirect destinations, so aliases converge on
+  the current URL in one hop.
+- `slug` is also exposed on the existing category list/detail responses so
+  consumers can build canonical links without a second resolution call.
+- Resolution is authoritative on every request; breadcrumbs are derived from this
+  ancestry rather than from session state. Full ancestor-availability enforcement
+  (ticket 04) and alias canonicalization (ticket 06) are deliberately out of
+  scope here.
 
 ## Migration and deployment
 

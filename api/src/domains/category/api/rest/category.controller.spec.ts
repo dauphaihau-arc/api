@@ -7,6 +7,7 @@ import { CategoryController } from './category.controller';
 describe('CategoryController', () => {
   const createCategoryUseCase = { execute: jest.fn() };
   const listCategoriesUseCase = { execute: jest.fn() };
+  const resolveCategoryUseCase = { execute: jest.fn() };
   const createCategoryAttributeUseCase = { execute: jest.fn() };
   const getCategoryAttributesUseCase = { execute: jest.fn() };
   const suggestCategoriesUseCase = { execute: jest.fn() };
@@ -14,6 +15,7 @@ describe('CategoryController', () => {
   const controller = new CategoryController(
     createCategoryUseCase as never,
     listCategoriesUseCase as never,
+    resolveCategoryUseCase as never,
     createCategoryAttributeUseCase as never,
     getCategoryAttributesUseCase as never,
     suggestCategoriesUseCase as never,
@@ -42,6 +44,7 @@ describe('CategoryController', () => {
       {
         id: 'internal-category-1',
         publicId: 'category-1',
+        slug: 'clothing',
         parentId: undefined,
         name: 'Clothing',
         rank: 1,
@@ -70,6 +73,7 @@ describe('CategoryController', () => {
       {
         id: 'category-1',
         parent_id: undefined,
+        slug: 'clothing',
         name: 'Clothing',
         rank: 1,
         image_url: 'https://cdn.example.com/categories/clothing.jpg',

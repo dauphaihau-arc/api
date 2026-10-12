@@ -40,11 +40,14 @@ describe('GetPublicProductBySlugsUseCase', () => {
       findById: jest.fn(async (categoryId: string) => {
         switch (categoryId) {
           case 'category-1':
+            // Name deliberately differs from the persisted slug so the expected
+            // ancestry proves the persisted slug is used, not a name-derived one.
             return {
               id: 'category-1',
               publicId: '11',
+              slug: 'ceramic-mugs',
               parentId: 'category-root',
-              name: 'Ceramic Mugs',
+              name: 'Mugs & Cups',
               rank: 1,
               attributes: [],
             };
@@ -52,7 +55,8 @@ describe('GetPublicProductBySlugsUseCase', () => {
             return {
               id: 'category-root',
               publicId: '10',
-              name: 'Home Decor',
+              slug: 'home-decor',
+              name: 'Home & Living',
               rank: 1,
               attributes: [],
             };
@@ -84,12 +88,12 @@ describe('GetPublicProductBySlugsUseCase', () => {
       categoryPath: [
         {
           id: '10',
-          name: 'Home Decor',
+          name: 'Home & Living',
           slug: 'home-decor',
         },
         {
           id: '11',
-          name: 'Ceramic Mugs',
+          name: 'Mugs & Cups',
           slug: 'ceramic-mugs',
         },
       ],

@@ -36,6 +36,10 @@ export const categoryErrorResponses = {
     ],
     409: [categoryIdentityGenerationMismatchExample],
   },
+  resolve: {
+    404: [categoryNotFoundExample],
+    409: [categoryIdentityGenerationMismatchExample],
+  },
   attributes: {
     404: [categoryNotFoundExample],
     409: [categoryIdentityGenerationMismatchExample],

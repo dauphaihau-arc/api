@@ -8,6 +8,7 @@ import { CreateCategoryAttributeUseCase } from './app/use-cases/create-category-
 import { CreateCategoryUseCase } from './app/use-cases/create-category/create-category.use-case';
 import { GetCategoryAttributesUseCase } from './app/use-cases/get-category-attributes/get-category-attributes.use-case';
 import { ListCategoriesUseCase } from './app/use-cases/list-categories/list-categories.use-case';
+import { ResolveCategoryUseCase } from './app/use-cases/resolve-category/resolve-category.use-case';
 import { SuggestCategoriesUseCase } from './app/use-cases/suggest-categories/suggest-categories.use-case';
 import { CategoryController } from './api/rest/category.controller';
 import { DelegatingCategoryRepository } from './infra/category.repository';
@@ -51,6 +52,7 @@ import { AuthModule } from '../auth/auth.module';
     MikroOrmCategoryQueryRepository,
     CreateCategoryUseCase,
     ListCategoriesUseCase,
+    ResolveCategoryUseCase,
     CreateCategoryAttributeUseCase,
     GetCategoryAttributesUseCase,
     SuggestCategoriesUseCase,
@@ -60,6 +62,7 @@ import { AuthModule } from '../auth/auth.module';
     CategoryRepository,
     CreateCategoryUseCase,
     ListCategoriesUseCase,
+    ResolveCategoryUseCase,
     CreateCategoryAttributeUseCase,
     GetCategoryAttributesUseCase,
     SuggestCategoriesUseCase,

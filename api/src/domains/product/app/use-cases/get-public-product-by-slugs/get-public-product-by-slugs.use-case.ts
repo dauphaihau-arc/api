@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { toSlug } from '~/shared/utils/slug';
 import { CategoryRepository } from '~/domains/category/app/ports/category.repository';
 import { StorefrontProductQueryRepository } from '../../ports/storefront-product-query.repository';
 import type { PublicProductDetail } from '../../product.types';
@@ -46,7 +45,7 @@ export class GetPublicProductBySlugsUseCase {
       path.push({
         id: category.publicId,
         name: category.name,
-        slug: toSlug(category.name),
+        slug: category.slug,
       });
       currentCategoryId = category.parentId;
     }

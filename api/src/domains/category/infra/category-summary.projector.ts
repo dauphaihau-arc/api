@@ -9,6 +9,7 @@ export function toCategorySummary(
   return {
     id: category.id,
     publicId: category.publicId,
+    slug: category.slug,
     parentId: category.parent?.id,
     parentPublicId: category.parent?.publicId,
     name: category.name,

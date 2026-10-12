@@ -17,11 +17,29 @@ export type CategoryAttributeResponse = {
 export type CategoryResponse = {
   id: string;
   parent_id?: string;
+  slug: string;
   name: string;
   rank: number;
   image_url?: string;
   featured_facet_keys?: string[];
   attributes: CategoryAttributeResponse[];
+};
+
+export type CategoryAncestorResponse = {
+  id: string;
+  slug: string;
+  name: string;
+};
+
+export type CategoryResolutionResponse = {
+  category: {
+    id: string;
+    slug: string;
+    name: string;
+    featured_facet_keys?: string[];
+  };
+  ancestry: CategoryAncestorResponse[];
+  canonical_path: string;
 };
 
 export type CategorySuggestionResponse = {

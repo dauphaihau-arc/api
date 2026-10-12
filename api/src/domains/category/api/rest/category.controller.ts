@@ -16,20 +16,24 @@ import { CreateCategoryAttributeUseCase } from '../../app/use-cases/create-categ
 import { CreateCategoryUseCase } from '../../app/use-cases/create-category/create-category.use-case';
 import { GetCategoryAttributesUseCase } from '../../app/use-cases/get-category-attributes/get-category-attributes.use-case';
 import { ListCategoriesUseCase } from '../../app/use-cases/list-categories/list-categories.use-case';
+import { ResolveCategoryUseCase } from '../../app/use-cases/resolve-category/resolve-category.use-case';
 import { SuggestCategoriesUseCase } from '../../app/use-cases/suggest-categories/suggest-categories.use-case';
 import {
   toCategoryAttributeResponse,
+  toCategoryResolutionResponse,
   toCategoryResponse,
   toCategorySuggestionResponse,
 } from './presenters/category-response.mapper';
 import { CreateCategoryAttributeDto } from './dto/create-category-attribute.dto';
 import type {
   CategoryAttributeResponse,
+  CategoryResolutionResponse,
   CategoryResponse,
   CategorySuggestionResponse,
 } from './responses/category.response';
 import {
   CategoryAttributeListResponseDto,
+  CategoryResolutionResponseDto,
   CategoryResponseDto,
   CategorySuggestionListResponseDto,
 } from './responses/category-response.dto';
@@ -49,6 +53,7 @@ export class CategoryController {
   constructor(
     private readonly createCategoryUseCase: CreateCategoryUseCase,
     private readonly listCategoriesUseCase: ListCategoriesUseCase,
+    private readonly resolveCategoryUseCase: ResolveCategoryUseCase,
     private readonly createCategoryAttributeUseCase: CreateCategoryAttributeUseCase,
     private readonly getCategoryAttributesUseCase: GetCategoryAttributesUseCase,
     private readonly suggestCategoriesUseCase: SuggestCategoriesUseCase,
@@ -99,6 +104,24 @@ export class CategoryController {
   ): Promise<CategoryResponse[]> {
     return this.listCategoriesUseCase.execute(query.parentId)
       .then((categories) => categories.map(toCategoryResponse));
+  }
+
+  @Get(':id')
+  @SkipThrottle()
+  @Header('Cache-Control', 'private, no-cache')
+  @ApiErrorResponses(categoryErrorResponses.resolve)
+  @ApiOperation({ summary: 'Resolve a category by public identity' })
+  @ApiParam({ name: 'id', type: String })
+  @ApiOkResponse({
+    description: 'Resolved category with ordered root-to-current ancestry.',
+    type: CategoryResolutionResponseDto,
+  })
+  getCategory(@Param('id') id: string): Promise<CategoryResolutionResponse> {
+    return this.resolveCategoryUseCase.execute(id)
+      .then((result) =>
+        resolveOrThrow(result, mapCategoryAppErrorToHttpException),
+      )
+      .then(toCategoryResolutionResponse);
   }
 
   @Get(':id/attributes')

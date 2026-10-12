@@ -1,11 +1,16 @@
 import type {
+  CategoryAncestor,
   CategoryAttributeSummary,
+  CategoryResolution,
   CategorySuggestion,
   CategorySummary,
 } from '../../../app/category.types';
+import { buildCategoryCanonicalPath } from '../../../app/category-canonical-path';
 import type {
+  CategoryAncestorResponse,
   CategoryAttributeOptionResponse,
   CategoryAttributeResponse,
+  CategoryResolutionResponse,
   CategoryResponse,
   CategorySuggestionResponse,
 } from '../responses/category.response';
@@ -35,11 +40,31 @@ export const toCategoryResponse = (
 ): CategoryResponse => ({
   id: category.publicId,
   parent_id: category.parentPublicId,
+  slug: category.slug,
   name: category.name,
   rank: category.rank,
   image_url: category.imageUrl,
   featured_facet_keys: category.featuredFacetKeys,
   attributes: category.attributes.map(toCategoryAttributeResponse),
+});
+
+const toCategoryAncestorResponse = (
+  ancestor: CategoryAncestor,
+): CategoryAncestorResponse => ({
+  id: ancestor.id,
+  slug: ancestor.slug,
+  name: ancestor.name,
+});
+
+export const toCategoryResolutionResponse = (
+  resolution: CategoryResolution,
+): CategoryResolutionResponse => ({
+  category: {
+    ...toCategoryAncestorResponse(resolution.category),
+    featured_facet_keys: resolution.category.featuredFacetKeys,
+  },
+  ancestry: resolution.ancestry.map(toCategoryAncestorResponse),
+  canonical_path: buildCategoryCanonicalPath(resolution.category),
 });
 
 export const toCategorySuggestionResponse = (

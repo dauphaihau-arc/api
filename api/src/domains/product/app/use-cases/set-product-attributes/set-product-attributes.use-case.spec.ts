@@ -80,6 +80,7 @@ describe('SetProductAttributesUseCase', () => {
       findById: jest.fn().mockResolvedValue({
         id: 'category-1',
         publicId: '1',
+        slug: 'mugs',
         name: 'Mugs',
         rank: 1,
         attributes: [
@@ -100,6 +101,7 @@ describe('SetProductAttributesUseCase', () => {
         ],
       }),
       findByPublicId: jest.fn(),
+      resolveByPublicId: jest.fn(),
       searchSuggestions: jest.fn(),
     };
 

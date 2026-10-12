@@ -10,6 +10,7 @@ describe('GetCategoryAttributesUseCase', () => {
       findAllByParentId: jest.fn(),
       findById: jest.fn(),
       findByPublicId: jest.fn(),
+      resolveByPublicId: jest.fn(),
       searchSuggestions: jest.fn(),
     };
   }
@@ -19,6 +20,7 @@ describe('GetCategoryAttributesUseCase', () => {
     repository.findByPublicId.mockResolvedValue({
       id: 'internal-category-1',
       publicId: '1',
+      slug: 'hoodies',
       name: 'Hoodies',
       rank: 3,
       attributes: [

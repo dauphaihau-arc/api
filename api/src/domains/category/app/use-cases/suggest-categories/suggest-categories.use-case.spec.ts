@@ -9,6 +9,7 @@ describe('SuggestCategoriesUseCase', () => {
       findAllByParentId: jest.fn(),
       findById: jest.fn(),
       findByPublicId: jest.fn(),
+      resolveByPublicId: jest.fn(),
       searchSuggestions: jest.fn().mockResolvedValue([
         {
           id: 'category-1',

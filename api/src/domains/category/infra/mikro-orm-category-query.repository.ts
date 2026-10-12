@@ -2,8 +2,10 @@ import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
 import { StorageService } from '~/integrations/storage/app/ports/storage.service';
 import { CategoryQueryRepository } from '../app/ports/category-query.repository';
-import { CATEGORY_PUBLIC_ID_PATTERN } from '../app/category-public-id';
+import { isCategoryPublicId } from '../app/category-public-id';
 import type {
+  CategoryAncestor,
+  CategoryResolution,
   CategorySuggestion,
   CategorySummary,
 } from '../app/category.types';
@@ -15,6 +17,7 @@ type CategorySubtreeRow = {
   category_public_id: string;
   parent_id: string | null;
   category_name: string;
+  category_slug: string;
   category_rank: number;
   depth: number;
   image_storage_key: string | null;
@@ -28,6 +31,14 @@ type CategorySubtreeRow = {
   option_id: string | null;
   option_value: string | null;
   option_rank: number | null;
+};
+
+type CategoryAncestryRow = {
+  public_id: string;
+  name: string;
+  slug: string;
+  featured_facet_keys: string[] | string | null;
+  depth: number;
 };
 
 @Injectable()
@@ -71,6 +82,7 @@ export class MikroOrmCategoryQueryRepository implements CategoryQueryRepository 
             public_id,
             parent_id,
             name,
+            slug,
             rank,
             image_storage_key,
             featured_facet_keys,
@@ -85,6 +97,7 @@ export class MikroOrmCategoryQueryRepository implements CategoryQueryRepository 
             child.public_id,
             child.parent_id,
             child.name,
+            child.slug,
             child.rank,
             child.image_storage_key,
             child.featured_facet_keys,
@@ -97,6 +110,7 @@ export class MikroOrmCategoryQueryRepository implements CategoryQueryRepository 
           category_tree.public_id as category_public_id,
           category_tree.parent_id,
           category_tree.name as category_name,
+          category_tree.slug as category_slug,
           category_tree.rank as category_rank,
           category_tree.depth,
           category_tree.image_storage_key,
@@ -158,7 +172,7 @@ export class MikroOrmCategoryQueryRepository implements CategoryQueryRepository 
   }
 
   async findByPublicId(publicId: string): Promise<CategorySummary | null> {
-    if (!CATEGORY_PUBLIC_ID_PATTERN.test(publicId)) {
+    if (!isCategoryPublicId(publicId)) {
       return null;
     }
 
@@ -170,6 +184,62 @@ export class MikroOrmCategoryQueryRepository implements CategoryQueryRepository 
     );
 
     return category ? toCategorySummary(category, this.storageService) : null;
+  }
+
+  async resolveByPublicId(
+    publicId: string,
+  ): Promise<CategoryResolution | null> {
+    if (!isCategoryPublicId(publicId)) {
+      return null;
+    }
+
+    const rows = await this.entityManager.getConnection().execute<
+      CategoryAncestryRow[]
+    >(
+      `
+        with recursive ancestry as (
+          select id, parent_id, public_id, name, slug, featured_facet_keys, 0 as depth
+          from categories
+          where public_id = ?
+
+          union all
+
+          select
+            parent.id,
+            parent.parent_id,
+            parent.public_id,
+            parent.name,
+            parent.slug,
+            parent.featured_facet_keys,
+            child.depth + 1
+          from categories parent
+          inner join ancestry child on parent.id = child.parent_id
+        )
+        select public_id, name, slug, featured_facet_keys, depth
+        from ancestry
+        order by depth desc
+      `,
+      [publicId],
+    );
+
+    if (rows.length === 0) {
+      return null;
+    }
+
+    const ancestry: CategoryAncestor[] = rows.map((row) => ({
+      id: row.public_id,
+      slug: row.slug,
+      name: row.name,
+    }));
+    const current = rows[rows.length - 1];
+
+    return {
+      category: {
+        ...ancestry[ancestry.length - 1],
+        featuredFacetKeys: toFeaturedFacetKeys(current.featured_facet_keys),
+      },
+      ancestry,
+    };
   }
 
   async searchSuggestions(
@@ -337,6 +407,7 @@ function toCategorySummariesFromSubtreeRows(
       category = {
         id: row.category_id,
         publicId: row.category_public_id,
+        slug: row.category_slug,
         parentId: row.parent_id ?? undefined,
         name: row.category_name,
         rank: Number(row.category_rank),

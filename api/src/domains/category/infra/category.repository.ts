@@ -5,6 +5,7 @@ import { CategoryRepository } from '../app/ports/category.repository';
 import { CategoryCommandRepository } from '../app/ports/category-command.repository';
 import { CategoryQueryRepository } from '../app/ports/category-query.repository';
 import type {
+  CategoryResolution,
   CategorySuggestion,
   CategorySummary,
   CreateCategoryAttributeInput,
@@ -73,6 +74,10 @@ export class DelegatingCategoryRepository implements CategoryRepository {
 
   findByPublicId(publicId: string): Promise<CategorySummary | null> {
     return this.queryRepository.findByPublicId(publicId);
+  }
+
+  resolveByPublicId(publicId: string): Promise<CategoryResolution | null> {
+    return this.queryRepository.resolveByPublicId(publicId);
   }
 
   searchSuggestions(name: string, limit: number): Promise<CategorySuggestion[]> {

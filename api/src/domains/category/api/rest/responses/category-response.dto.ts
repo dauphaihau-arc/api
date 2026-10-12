@@ -44,6 +44,9 @@ export class CategoryResponseDto {
   parent_id?: string;
 
   @ApiProperty()
+  slug!: string;
+
+  @ApiProperty()
   name!: string;
 
   @ApiProperty()
@@ -81,6 +84,44 @@ export class CategoryAttributeListResponseDto {
   @ApiProperty({ type: [CategoryAttributeResponseDto] })
   @Type(() => CategoryAttributeResponseDto)
   attributes!: CategoryAttributeResponseDto[];
+}
+
+export class CategoryAncestorResponseDto {
+  @ApiProperty()
+  id!: string;
+
+  @ApiProperty()
+  slug!: string;
+
+  @ApiProperty()
+  name!: string;
+}
+
+export class CategoryResolutionCategoryResponseDto {
+  @ApiProperty()
+  id!: string;
+
+  @ApiProperty()
+  slug!: string;
+
+  @ApiProperty()
+  name!: string;
+
+  @ApiProperty({ type: [String], required: false })
+  featured_facet_keys?: string[];
+}
+
+export class CategoryResolutionResponseDto {
+  @ApiProperty({ type: CategoryResolutionCategoryResponseDto })
+  @Type(() => CategoryResolutionCategoryResponseDto)
+  category!: CategoryResolutionCategoryResponseDto;
+
+  @ApiProperty({ type: [CategoryAncestorResponseDto] })
+  @Type(() => CategoryAncestorResponseDto)
+  ancestry!: CategoryAncestorResponseDto[];
+
+  @ApiProperty()
+  canonical_path!: string;
 }
 
 export class CategoryIdentityContractResponseDto {

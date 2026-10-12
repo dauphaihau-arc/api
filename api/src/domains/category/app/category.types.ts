@@ -3,6 +3,8 @@ export interface CategorySummary {
   id: string;
   /** Public identity (positive decimal string). The externally visible category id. */
   publicId: string;
+  /** Current persisted slug, used to build canonical category URLs. */
+  slug: string;
   /** Internal database identity of the parent (UUID). */
   parentId?: string;
   /** Public identity of the parent, when present. */
@@ -13,6 +15,24 @@ export interface CategorySummary {
   imageUrl?: string;
   featuredFacetKeys?: string[];
   attributes: CategoryAttributeSummary[];
+}
+
+/**
+ * Identity, current slug, and display name of a category in a resolved
+ * ancestry. All identities are public (positive decimal strings).
+ */
+export interface CategoryAncestor {
+  /** Public identity (positive decimal string). */
+  id: string;
+  /** Current slug of the category. */
+  slug: string;
+  name: string;
+}
+
+export interface CategoryResolution {
+  category: CategoryAncestor & { featuredFacetKeys?: string[] };
+  /** Ordered root-to-current ancestry; includes the resolved category last. */
+  ancestry: CategoryAncestor[];
 }
 
 export interface CategoryAttributeSummary {

@@ -1,4 +1,5 @@
 import type {
+  CategoryResolution,
   CategorySuggestion,
   CategorySummary,
   CreateCategoryAttributeInput,
@@ -20,6 +21,14 @@ export abstract class CategoryRepository {
    * lookup, so numeric collisions cannot resolve to the wrong category.
    */
   abstract findByPublicId(publicId: string): Promise<CategorySummary | null>;
+  /**
+   * Authoritative resolution of a public identity to its current category and
+   * ordered root-to-current ancestry. Returns null for unknown, malformed, or
+   * out-of-range identities.
+   */
+  abstract resolveByPublicId(
+    publicId: string,
+  ): Promise<CategoryResolution | null>;
   abstract searchSuggestions(
     name: string,
     limit: number

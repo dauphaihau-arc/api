@@ -7,6 +7,7 @@ describe('CreateCategoryUseCase', () => {
       create: jest.fn().mockResolvedValue({
         id: 'internal-category-1',
         publicId: '1',
+        slug: 'mugs',
         name: 'Mugs',
         rank: 1,
         attributes: [],
@@ -15,6 +16,7 @@ describe('CreateCategoryUseCase', () => {
       findAllByParentId: jest.fn(),
       findById: jest.fn().mockResolvedValue(null),
       findByPublicId: jest.fn().mockResolvedValue(null),
+      resolveByPublicId: jest.fn().mockResolvedValue(null),
       searchSuggestions: jest.fn(),
     };
   }
