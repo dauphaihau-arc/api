@@ -337,26 +337,12 @@ describe('ListPublicProductsUseCase', function () {
       {
         facetKey: 'color',
         attributeName: 'Color',
-        options: [
-          { optionKey: 'black', value: 'Black' },
-          { optionKey: 'white', value: 'White' },
-        ],
+        options: [{ optionKey: 'black', value: 'Black' }],
       },
       {
         facetKey: 'material',
         attributeName: 'Material',
-        options: [
-          { optionKey: 'canvas', value: 'Canvas' },
-          { optionKey: 'leather', value: 'Leather' },
-        ],
-      },
-      {
-        facetKey: 'shoe_size',
-        attributeName: 'Size',
-        options: [
-          { optionKey: 'us_8_eu_41', value: 'US 8 / EU 41' },
-          { optionKey: 'us_9_eu_42', value: 'US 9 / EU 42' },
-        ],
+        options: [],
       },
     ]);
 
@@ -456,12 +442,12 @@ describe('ListPublicProductsUseCase', function () {
       {
         facetKey: 'gender',
         attributeName: 'Gender',
-        options: [{ optionKey: 'unisex', value: 'Unisex' }],
+        options: [],
       },
       {
         facetKey: 'material',
         attributeName: 'Material',
-        options: [{ optionKey: 'cotton', value: 'Cotton' }],
+        options: [],
       },
     ]);
   });
@@ -562,17 +548,17 @@ describe('ListPublicProductsUseCase', function () {
       {
         facetKey: 'color',
         attributeName: 'Color',
-        options: [{ optionKey: 'blue', value: 'Blue' }],
+        options: [],
       },
       {
         facetKey: 'gender',
         attributeName: 'Gender',
-        options: [{ optionKey: 'male', value: 'Male' }],
+        options: [],
       },
       {
         facetKey: 'material',
         attributeName: 'Material',
-        options: [{ optionKey: 'cotton', value: 'Cotton' }],
+        options: [],
       },
       {
         facetKey: 'size',
@@ -641,20 +627,17 @@ describe('ListPublicProductsUseCase', function () {
       {
         facetKey: 'color',
         attributeName: 'Color',
-        options: [
-          { optionKey: 'black', value: 'Black' },
-          { optionKey: 'white', value: 'White' },
-        ],
+        options: [{ optionKey: 'black', value: 'Black' }],
       },
       {
         facetKey: 'gender',
         attributeName: 'Gender',
-        options: [{ optionKey: 'unisex', value: 'Unisex' }],
+        options: [],
       },
       {
         facetKey: 'material',
         attributeName: 'Material',
-        options: [{ optionKey: 'canvas', value: 'Canvas' }],
+        options: [],
       },
     ]);
   });
@@ -749,39 +732,17 @@ describe('ListPublicProductsUseCase', function () {
       {
         facetKey: 'color',
         attributeName: 'Color',
-        options: [
-          { optionKey: 'black', value: 'Black' },
-          { optionKey: 'white', value: 'White' },
-        ],
+        options: [{ optionKey: 'black', value: 'Black' }],
       },
       {
         facetKey: 'gender',
         attributeName: 'Gender',
-        options: [{ optionKey: 'unisex', value: 'Unisex' }],
+        options: [],
       },
       {
         facetKey: 'material',
         attributeName: 'Material',
-        options: [
-          { optionKey: 'canvas', value: 'Canvas' },
-          { optionKey: 'leather', value: 'Leather' },
-        ],
-      },
-      {
-        facetKey: 'shoe_size',
-        attributeName: 'Size',
-        options: [
-          { optionKey: 'us_8_eu_41', value: 'US 8 / EU 41' },
-          { optionKey: 'us_9_eu_42', value: 'US 9 / EU 42' },
-        ],
-      },
-      {
-        facetKey: 'style',
-        attributeName: 'Style',
-        options: [
-          { optionKey: 'classic', value: 'Classic' },
-          { optionKey: 'minimal', value: 'Minimal' },
-        ],
+        options: [],
       },
     ]);
   });
@@ -813,7 +774,142 @@ describe('ListPublicProductsUseCase', function () {
       {
         facetKey: 'color',
         attributeName: 'Color',
+        options: [],
+      },
+    ]);
+  });
+
+  it('does not inject configured taxonomy options that no eligible product matches', async () => {
+    categoryRepository.findById.mockResolvedValue({
+      id: 'category-1',
+      featuredFacetKeys: ['color', 'material'],
+      attributes: [
+        {
+          id: 'attribute-color',
+          key: 'color',
+          name: 'Color',
+          options: [{ value: 'Black' }, { value: 'White' }, { value: 'Red' }],
+        },
+        {
+          id: 'attribute-material',
+          key: 'material',
+          name: 'Material',
+          options: [{ value: 'Cotton' }, { value: 'Linen' }],
+        },
+      ],
+    } as never);
+    categoryRepository.findAllByParentId.mockResolvedValue([]);
+    // The repository already applies the active filters (own filter excluded),
+    // so Color only reports the options an eligible product actually has.
+    productRepository.listPublicFacets.mockResolvedValue([
+      {
+        facetKey: 'color',
+        attributeName: 'Color',
         options: [{ optionKey: 'black', value: 'Black' }],
+      },
+    ]);
+
+    await expect(facetsUseCase.execute({
+      page: 1,
+      limit: 12,
+      categoryId: 'category-1',
+      attributeFilters: [{
+        attribute_id: 'color',
+        selected_option_keys: ['black'],
+        attribute_name: 'color',
+        selected_option_values: ['Black'],
+      }],
+    })).resolves.toEqual([
+      {
+        facetKey: 'color',
+        attributeName: 'Color',
+        options: [{ optionKey: 'black', value: 'Black' }],
+      },
+      {
+        facetKey: 'material',
+        attributeName: 'Material',
+        options: [],
+      },
+    ]);
+  });
+
+  it('keeps the shopper selection visible when other filters exclude it from the live buckets', async () => {
+    categoryRepository.findById.mockResolvedValue({
+      id: 'category-1',
+      featuredFacetKeys: ['color'],
+      attributes: [
+        {
+          id: 'attribute-color',
+          key: 'color',
+          name: 'Color',
+          options: [{ value: 'Black' }, { value: 'White' }],
+        },
+      ],
+    } as never);
+    categoryRepository.findAllByParentId.mockResolvedValue([]);
+    // Nothing eligible is Black under the other active filter, but the
+    // shopper's own selection must stay visible so it can be cleared.
+    productRepository.listPublicFacets.mockResolvedValue([
+      {
+        facetKey: 'color',
+        attributeName: 'Color',
+        options: [{ optionKey: 'white', value: 'White' }],
+      },
+    ]);
+
+    await expect(facetsUseCase.execute({
+      page: 1,
+      limit: 12,
+      categoryId: 'category-1',
+      attributeFilters: [{
+        attribute_id: 'color',
+        selected_option_keys: ['black'],
+        attribute_name: 'color',
+        selected_option_values: ['Black'],
+      }],
+    })).resolves.toEqual([
+      {
+        facetKey: 'color',
+        attributeName: 'Color',
+        options: [
+          { optionKey: 'black', value: 'Black' },
+          { optionKey: 'white', value: 'White' },
+        ],
+      },
+    ]);
+  });
+
+  it('keeps the repository deterministic label on a stable-key collision', async () => {
+    categoryRepository.findById.mockResolvedValue({
+      id: 'category-1',
+      featuredFacetKeys: ['material'],
+      attributes: [
+        {
+          id: 'attribute-material-z',
+          key: 'material',
+          name: 'Zzz Material',
+          options: [{ value: 'Cotton' }],
+        },
+      ],
+    } as never);
+    categoryRepository.findAllByParentId.mockResolvedValue([]);
+    productRepository.listPublicFacets.mockResolvedValue([
+      {
+        facetKey: 'material',
+        attributeName: 'Aaa Material',
+        options: [{ optionKey: 'cotton', value: 'Cotton' }],
+      },
+    ]);
+
+    await expect(facetsUseCase.execute({
+      page: 1,
+      limit: 12,
+      categoryId: 'category-1',
+    })).resolves.toEqual([
+      {
+        facetKey: 'material',
+        attributeName: 'Aaa Material',
+        options: [{ optionKey: 'cotton', value: 'Cotton' }],
       },
     ]);
   });

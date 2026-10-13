@@ -39,6 +39,23 @@ const GENERATION_HEADER = {
   [CATEGORY_IDENTITY_GENERATION_HEADER]: CATEGORY_IDENTITY_CONTRACT_VERSION,
 };
 
+interface PublicProductFacetResponse {
+  facet_key: string;
+  attribute_name: string;
+  options: Array<{ option_key: string; value: string }>;
+}
+
+interface PublicFacetsResponse {
+  facets: PublicProductFacetResponse[];
+}
+
+interface SeededProductAttribute {
+  key: string;
+  name: string;
+  optionValue: string;
+  id?: string;
+}
+
 const storageStub = { getPublicUrl: () => '' } as unknown as StorageService;
 
 /**
@@ -176,8 +193,12 @@ describe('category subtree listing and facets (integration)', () => {
     productId: string;
     category: CategorySummary;
     title: string;
-    attribute?: { key: string; name: string; optionValue: string };
+    attribute?: SeededProductAttribute;
+    attributes?: SeededProductAttribute[];
   }): CatalogSearchDocument {
+    const attributes: SeededProductAttribute[] = input.attributes ??
+      (input.attribute ? [input.attribute] : []);
+
     return {
       _id: input.productId,
       productId: input.productId,
@@ -194,16 +215,14 @@ describe('category subtree listing and facets (integration)', () => {
       categoryPublicId: input.category.publicId,
       isDigital: false,
       whoMade: ProductWhoMade.I_DID,
-      attributes: input.attribute
-        ? [{
-          categoryAttributeId: input.attribute.key,
-          categoryAttributeKey: input.attribute.key,
-          categoryAttributeName: input.attribute.name,
-          selectedOptionId: `${input.attribute.key}-${input.attribute.optionValue}`,
-          selectedOptionKey: input.attribute.optionValue.toLowerCase(),
-          selectedOptionValue: input.attribute.optionValue,
-        }]
-        : [],
+      attributes: attributes.map((attribute) => ({
+        categoryAttributeId: attribute.id ?? attribute.key,
+        categoryAttributeKey: attribute.key,
+        categoryAttributeName: attribute.name,
+        selectedOptionId: `${attribute.key}-${attribute.optionValue}`,
+        selectedOptionKey: attribute.optionValue.toLowerCase(),
+        selectedOptionValue: attribute.optionValue,
+      })),
       inferredFacets: [],
       suggest: [input.title.toLowerCase()],
       keywords: [input.title.toLowerCase()],
@@ -237,19 +256,16 @@ describe('category subtree listing and facets (integration)', () => {
     };
   }
 
-  async function listFacets(categoryPublicId: string) {
+  async function listFacets(
+    categoryPublicId: string,
+    extraQuery: Record<string, string | number> = {},
+  ): Promise<PublicFacetsResponse> {
     const response = await request(app.getHttpServer())
       .get(`${API_PREFIX}/products/facets`)
       .set(GENERATION_HEADER)
-      .query({ category_id: categoryPublicId });
+      .query({ category_id: categoryPublicId, ...extraQuery });
     expect(response.status).toBe(200);
-    return response.body as {
-      facets: Array<{
-        facet_key: string;
-        attribute_name: string;
-        options: Array<{ option_key: string; value: string }>;
-      }>;
-    };
+    return response.body as PublicFacetsResponse;
   }
 
   async function resolveCategory(categoryPublicId: string) {
@@ -398,5 +414,252 @@ describe('category subtree listing and facets (integration)', () => {
 
     const resolution = await resolveCategory(empty.publicId);
     expect(resolution.category.id).toBe(empty.publicId);
+  });
+
+  function facetOptionKeys(body: PublicFacetsResponse): Record<string, string[]> {
+    return Object.fromEntries(
+      body.facets.map((facet) => [
+        facet.facet_key,
+        facet.options.map((option) => option.option_key),
+      ]),
+    );
+  }
+
+  it('honors active filters in facet alternatives except the facet own filter', async () => {
+    const root = await createRoot('Facet Filter Root');
+
+    await seedProducts([
+      buildSearchDocument({
+        productId: 'product-filter-black-cotton',
+        category: root,
+        title: 'Black Cotton Product',
+        attributes: [
+          { key: 'color', name: 'Color', optionValue: 'Black' },
+          { key: 'material', name: 'Material', optionValue: 'Cotton' },
+        ],
+      }),
+      buildSearchDocument({
+        productId: 'product-filter-white-linen',
+        category: root,
+        title: 'White Linen Product',
+        attributes: [
+          { key: 'color', name: 'Color', optionValue: 'White' },
+          { key: 'material', name: 'Material', optionValue: 'Linen' },
+        ],
+      }),
+    ]);
+
+    expect(facetOptionKeys(await listFacets(root.publicId))).toEqual({
+      color: ['black', 'white'],
+      material: ['cotton', 'linen'],
+    });
+
+    // Selecting Color=Black keeps every Color alternative (own filter excluded)
+    // while Material is narrowed to the products that match the Color filter.
+    expect(facetOptionKeys(await listFacets(root.publicId, { attr_color: 'black' }))).toEqual({
+      color: ['black', 'white'],
+      material: ['cotton'],
+    });
+
+    // The symmetric case: Material=White keeps Material alternatives and
+    // narrows Color to the products that match the Material filter.
+    expect(facetOptionKeys(await listFacets(root.publicId, { attr_material: 'linen' }))).toEqual({
+      color: ['white'],
+      material: ['cotton', 'linen'],
+    });
+  });
+
+  it('does not let pagination or sorting change facet alternatives', async () => {
+    const root = await createRoot('Facet Paging Root');
+
+    await seedProducts([
+      buildSearchDocument({
+        productId: 'product-paging-1',
+        category: root,
+        title: 'Paging One',
+        attributes: [{ key: 'color', name: 'Color', optionValue: 'Black' }],
+      }),
+      buildSearchDocument({
+        productId: 'product-paging-2',
+        category: root,
+        title: 'Paging Two',
+        attributes: [{ key: 'color', name: 'Color', optionValue: 'White' }],
+      }),
+    ]);
+
+    const baseline = await listFacets(root.publicId);
+    const paged = await listFacets(root.publicId, { page: 2, limit: 1, order: 'price_desc' });
+
+    expect(paged.facets).toEqual(baseline.facets);
+  });
+
+  it('merges by stable key and keeps same-label attributes distinct', async () => {
+    const root = await createRoot('Facet Identity Root');
+
+    await seedProducts([
+      buildSearchDocument({
+        productId: 'product-identity-1',
+        category: root,
+        title: 'Identity One',
+        attributes: [
+          {
+            id: 'identity-color', key: 'color', name: 'Color', optionValue: 'Black', 
+          },
+          {
+            id: 'identity-colour', key: 'colour', name: 'Color', optionValue: 'White', 
+          },
+          {
+            id: 'identity-material-fabric', key: 'material', name: 'Fabric', optionValue: 'Cotton', 
+          },
+        ],
+      }),
+      buildSearchDocument({
+        productId: 'product-identity-2',
+        category: root,
+        title: 'Identity Two',
+        attributes: [
+          {
+            id: 'identity-material-textile', key: 'material', name: 'Material', optionValue: 'Linen', 
+          },
+        ],
+      }),
+    ]);
+
+    const facets = (await listFacets(root.publicId)).facets;
+
+    // Distinct stable keys that share the "Color" label stay separate facets.
+    expect(facets.map((facet) => facet.facet_key).sort()).toEqual(['color', 'colour', 'material']);
+    expect(facets.find((facet) => facet.facet_key === 'color')?.attribute_name).toBe('Color');
+    expect(facets.find((facet) => facet.facet_key === 'colour')?.attribute_name).toBe('Color');
+
+    // One stable key contributed by two attribute identities resolves its label
+    // deterministically and unions both identities' options.
+    expect(facets.find((facet) => facet.facet_key === 'material')).toEqual({
+      facet_key: 'material',
+      attribute_name: 'Fabric',
+      options: [
+        { option_key: 'cotton', value: 'Cotton' },
+        { option_key: 'linen', value: 'Linen' },
+      ],
+    });
+  });
+
+  it('exposes filter-aware alternatives for configured taxonomy facets', async () => {
+    const root = await createRoot('Facet Taxonomy Root');
+
+    await buildCommandRepository().createAttribute({
+      categoryId: root.id,
+      key: 'color',
+      name: 'Color',
+      options: [
+        { value: 'Black', rank: 1 },
+        { value: 'White', rank: 2 },
+        { value: 'Red', rank: 3 },
+      ],
+    });
+    await buildCommandRepository().createAttribute({
+      categoryId: root.id,
+      key: 'material',
+      name: 'Material',
+      options: [
+        { value: 'Cotton', rank: 1 },
+        { value: 'Linen', rank: 2 },
+        { value: 'Silk', rank: 3 },
+      ],
+    });
+
+    await seedProducts([
+      buildSearchDocument({
+        productId: 'product-taxonomy-black-cotton',
+        category: root,
+        title: 'Taxonomy Black Cotton',
+        attributes: [
+          { key: 'color', name: 'Color', optionValue: 'Black' },
+          { key: 'material', name: 'Material', optionValue: 'Cotton' },
+        ],
+      }),
+      buildSearchDocument({
+        productId: 'product-taxonomy-white-linen',
+        category: root,
+        title: 'Taxonomy White Linen',
+        attributes: [
+          { key: 'color', name: 'Color', optionValue: 'White' },
+          { key: 'material', name: 'Material', optionValue: 'Linen' },
+        ],
+      }),
+    ]);
+
+    // Configured options that no eligible product matches (Red, Silk) are never
+    // injected, so the exposed facets describe the eligible products.
+    expect(facetOptionKeys(await listFacets(root.publicId))).toEqual({
+      color: ['black', 'white'],
+      material: ['cotton', 'linen'],
+    });
+
+    // Own filter excluded, other filters honored, for configured facets too.
+    expect(facetOptionKeys(await listFacets(root.publicId, { attr_color: 'black' }))).toEqual({
+      color: ['black', 'white'],
+      material: ['cotton'],
+    });
+    expect(facetOptionKeys(await listFacets(root.publicId, { attr_material: 'linen' }))).toEqual({
+      color: ['white'],
+      material: ['cotton', 'linen'],
+    });
+  });
+
+  it('exposes a deterministic label when configured attributes collide on a stable key', async () => {
+    const root = await createRoot('Facet Collision Root');
+    const child = await createChild(root, 'Facet Collision Child');
+    const grandchild = await createChild(child, 'Facet Collision Grandchild');
+
+    await buildCommandRepository().createAttribute({
+      categoryId: child.id,
+      key: 'material',
+      name: 'Zzz Material',
+      options: [{ value: 'Cotton', rank: 1 }],
+    });
+    await buildCommandRepository().createAttribute({
+      categoryId: grandchild.id,
+      key: 'material',
+      name: 'Aaa Material',
+      options: [{ value: 'Linen', rank: 1 }],
+    });
+
+    await seedProducts([
+      buildSearchDocument({
+        productId: 'product-collision-child',
+        category: child,
+        title: 'Collision Child',
+        attributes: [{
+          id: 'identity-zzz-material',
+          key: 'material',
+          name: 'Zzz Material',
+          optionValue: 'Cotton',
+        }],
+      }),
+      buildSearchDocument({
+        productId: 'product-collision-grandchild',
+        category: grandchild,
+        title: 'Collision Grandchild',
+        attributes: [{
+          id: 'identity-aaa-material',
+          key: 'material',
+          name: 'Aaa Material',
+          optionValue: 'Linen',
+        }],
+      }),
+    ]);
+
+    // The configured taxonomy defines the same stable key on two categories with
+    // different labels; the exposed label is the deterministic one, not the
+    // first ancestor definition a traversal happens to visit.
+    expect((await listFacets(root.publicId)).facets.find((facet) => facet.facet_key === 'material')).toEqual({
+      facet_key: 'material',
+      attribute_name: 'Aaa Material',
+      options: [
+        { option_key: 'cotton', value: 'Cotton' },
+        { option_key: 'linen', value: 'Linen' },
+      ],
+    });
   });
 });

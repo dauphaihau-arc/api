@@ -27,8 +27,6 @@ import type {
   PublicProductSuggestion,
   SuggestPublicProductsInput,
 } from '../../../../app/product.types';
-import { PUBLIC_PRODUCT_FACET_PRIORITY } from '../../../../app/product-facet.constants';
-import { toCanonicalFacetOption } from '../../../../app/shoe-size-groups';
 import { PRODUCT_STOCK_NOTICE_THRESHOLD } from '../../../../app/product-stock.constants';
 import { ProductState } from '../../../../domain/enums/product-state.enum';
 import { CatalogMongoAccess } from '../../../catalog/mongo/access/catalog-mongo.access';
@@ -36,6 +34,12 @@ import type { CatalogProductDocument } from '../../../catalog/mongo/documents/ca
 import type { CatalogProductPriceDocument } from '../../../catalog/mongo/documents/catalog-product-price-document.mapper';
 import type { CatalogSearchDocument } from '../../../catalog/mongo/documents/catalog-search-document.mapper';
 import { isInferredFacetSupported } from '../../../inferred-facets';
+import {
+  buildFacetAggregationPipeline,
+  buildFacetFilterVariants,
+  mergeFacetFilterVariants,
+  type FacetAggregationRow,
+} from '../../public-product-facets';
 
 type MongoFindCursorLike<TDocument> = {
   sort(sort: Record<string, 1 | -1>): MongoFindCursorLike<TDocument>;
@@ -160,59 +164,21 @@ implements StorefrontProductQueryRepository {
     const pricingSelection = this.toIndexedPricingSelection(resolveIndexedPricingSelection(
       await this.storefrontMarketContextService.resolveCurrentRequest(),
     ));
+
     const collection = await this.getSearchCollection();
-    const documents = await collection.aggregate<{
-      _id: {
-        attributeKey: string;
-        attributeName: string;
-        optionValue: string;
-      };
-    }>([
-      { $match: this.buildFilter(input, pricingSelection) },
-      { $unwind: '$attributes' },
-      {
-        $match: {
-          'attributes.categoryAttributeName': { $exists: true, $ne: null },
-          'attributes.categoryAttributeKey': { $exists: true, $ne: null },
-          'attributes.selectedOptionValue': { $exists: true, $ne: null },
-        },
-      },
-      {
-        $group: {
-          _id: {
-            attributeKey: '$attributes.categoryAttributeKey',
-            attributeName: '$attributes.categoryAttributeName',
-            optionValue: '$attributes.selectedOptionValue',
-          },
-        },
-      },
-      {
-        $sort: {
-          '_id.attributeName': 1,
-          '_id.optionValue': 1,
-        },
-      },
-    ]).toArray();
+    const variants = buildFacetFilterVariants(input);
+    const rowsByVariant: FacetAggregationRow[][] = [];
 
-    const facets = new Map<string, PublicProductFacet>();
+    // Facet keys come from client-supplied `attr_*` params, so the variant count
+    // is not server-bounded. Run the aggregations sequentially to bound
+    // concurrent database work while keeping every active filter.
+    for (const variant of variants) {
+      rowsByVariant.push(
+        await this.aggregateFacetRows(collection, variant.input, pricingSelection),
+      );
+    }
 
-    documents.forEach((row) => {
-      const facet = facets.get(row._id.attributeKey) ?? {
-        facetKey: row._id.attributeKey,
-        attributeName: row._id.attributeName,
-        options: [] as PublicProductFacet['options'],
-      };
-      const canonicalOption = toCanonicalFacetOption(row._id.attributeKey, row._id.optionValue);
-      const hasOption = facet.options.some((option) => option.optionKey === canonicalOption.optionKey);
-
-      if (!hasOption) {
-        facet.options.push(canonicalOption);
-      }
-
-      facets.set(row._id.attributeKey, facet);
-    });
-
-    return Array.from(facets.values()).sort(compareFacetNames);
+    return mergeFacetFilterVariants(variants, rowsByVariant);
   }
 
   async suggestPublic(
@@ -246,6 +212,16 @@ implements StorefrontProductQueryRepository {
         slug: document.shopSlug,
       },
     }));
+  }
+
+  private async aggregateFacetRows(
+    collection: MongoCollectionLike<CatalogSearchDocument>,
+    input: ListPublicProductsInput,
+    pricingSelection: StorefrontIndexedPricingSelection | undefined,
+  ): Promise<FacetAggregationRow[]> {
+    return collection.aggregate<FacetAggregationRow>(
+      buildFacetAggregationPipeline({ $match: this.buildFilter(input, pricingSelection) }),
+    ).toArray();
   }
 
   private buildFilter(
@@ -412,22 +388,6 @@ function buildTextFilter(search: string): Record<string, unknown> {
 
 function escapeRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-function compareFacetNames(
-  left: Pick<PublicProductFacet, 'attributeName'>,
-  right: Pick<PublicProductFacet, 'attributeName'>,
-): number {
-  const leftIndex = PUBLIC_PRODUCT_FACET_PRIORITY.indexOf(left.attributeName as never);
-  const rightIndex = PUBLIC_PRODUCT_FACET_PRIORITY.indexOf(right.attributeName as never);
-  const normalizedLeftIndex = leftIndex === -1 ? Number.MAX_SAFE_INTEGER : leftIndex;
-  const normalizedRightIndex = rightIndex === -1 ? Number.MAX_SAFE_INTEGER : rightIndex;
-
-  if (normalizedLeftIndex !== normalizedRightIndex) {
-    return normalizedLeftIndex - normalizedRightIndex;
-  }
-
-  return left.attributeName.localeCompare(right.attributeName);
 }
 
 function toPublicProductListItemFromSearchDocument(

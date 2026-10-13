@@ -65,6 +65,7 @@ export class ListPublicProductFacetsUseCase {
       featuredFacetCategory,
       facets,
       taxonomyCategories,
+      attributeFilters: query.attributeFilters,
     });
   }
 
@@ -73,13 +74,17 @@ export class ListPublicProductFacetsUseCase {
     featuredFacetCategory,
     facets,
     taxonomyCategories,
+    attributeFilters,
   }: {
     category: CategorySummary | null;
     featuredFacetCategory: CategorySummary | null;
     facets: PublicProductFacet[];
     taxonomyCategories: CategorySummary[] | null;
+    attributeFilters?: ListPublicProductsQuery['attributeFilters'];
   }): Promise<PublicProductFacet[]> {
     const featuredFacetKeys = featuredFacetCategory?.featuredFacetKeys ?? [];
+    const featuredFacetKeySet = new Set(featuredFacetKeys);
+
     const leafCategories = category
       ? await this.resolveLeafCategories(category, taxonomyCategories)
       : [];
@@ -93,29 +98,13 @@ export class ListPublicProductFacetsUseCase {
       ...subtreeFacetKeys,
     ]));
 
-    const taxonomyFacetKeySet = new Set(taxonomyFacetKeys);
+    const selectedOptionKeysByFacet = buildSelectedOptionKeysByFacet(attributeFilters);
 
-    if (taxonomyFacetKeys.length === 0) {
-      return facets.filter((facet) => facet.options.length > 0);
-    }
-
-    const mergedFacets = facets
-      .filter((facet) => taxonomyFacetKeySet.has(facet.facetKey) || facet.options.length > 0)
-      .map((facet) => ({
-        ...facet,
-        options: [...facet.options],
-      }));
-
-    const facetsByKey = new Map(mergedFacets.map((facet) => [facet.facetKey, facet]));
+    const facetsByKey = new Map<string, PublicProductFacet>(
+      facets.map((facet) => [facet.facetKey, { ...facet, options: [...facet.options] }]),
+    );
 
     for (const facetKey of taxonomyFacetKeys) {
-      const attribute = await this.resolveFacetAttributeForDisplay({
-        category,
-        featuredFacetCategory,
-        facetKey,
-        taxonomyCategories,
-      });
-
       const taxonomyOptions = await this.resolveFacetTaxonomyOptions({
         category,
         featuredFacetCategory,
@@ -123,28 +112,48 @@ export class ListPublicProductFacetsUseCase {
         leafCategories,
       });
 
+      // The configured taxonomy supplies the facet identity (key), the display
+      // name for a configured-only facet, and the label for a shopper's own
+      // selection. It must not add alternatives that no eligible product
+      // matches: live option membership governs the offered choices once
+      // filters are active.
+      const selectedOptions = pickSelectedOptions(
+        facetKey,
+        taxonomyOptions,
+        selectedOptionKeysByFacet.get(facetKey) ?? [],
+      );
+
       const existingFacet = facetsByKey.get(facetKey);
 
       if (!existingFacet) {
-        if (!attribute) {
+        if (selectedOptions.length === 0 && !featuredFacetKeySet.has(facetKey)) {
           continue;
         }
 
-        const facet: PublicProductFacet = {
+        const attribute = await this.resolveFacetAttributeForDisplay({
+          category,
+          featuredFacetCategory,
           facetKey,
-          attributeName: attribute.name,
-          options: taxonomyOptions,
-        };
-        mergedFacets.push(facet);
-        facetsByKey.set(facetKey, facet);
+          taxonomyCategories,
+        });
+
+        facetsByKey.set(facetKey, {
+          facetKey,
+          attributeName: attribute?.name ?? facetKey,
+          options: selectedOptions,
+        });
         continue;
       }
 
-      existingFacet.attributeName = attribute?.name ?? existingFacet.attributeName;
-      existingFacet.options = mergeFacetOptions(existingFacet.options, taxonomyOptions);
+      // A live facet keeps the repository's label: it resolves a stable-key
+      // collision deterministically over the product rows, so the exposed label
+      // never depends on this traversal order.
+      existingFacet.options = mergeFacetOptions(existingFacet.options, selectedOptions);
     }
 
-    return mergedFacets.sort(compareFacetNames);
+    return Array.from(facetsByKey.values())
+      .filter((facet) => facet.options.length > 0 || featuredFacetKeySet.has(facet.facetKey))
+      .sort(compareFacetNames);
   }
 
   private resolveCommonLeafFacetKeys(leafCategories: CategorySummary[]): string[] {
@@ -358,6 +367,67 @@ function compareFacetNames(
   right: Pick<PublicProductFacet, 'attributeName'>,
 ): number {
   return left.attributeName.localeCompare(right.attributeName);
+}
+
+/**
+ * The shopper's own selections per facet key. `selected_option_keys` are the
+ * canonical public keys; `selected_option_values` are the display values the
+ * public query surface also carries, so both are folded into one key set.
+ */
+function buildSelectedOptionKeysByFacet(
+  attributeFilters?: ListPublicProductsQuery['attributeFilters'],
+): Map<string, string[]> {
+  const selectedOptionKeysByFacet = new Map<string, string[]>();
+
+  (attributeFilters ?? []).forEach((attributeFilter) => {
+    const facetKey = attributeFilter.attribute_id?.trim();
+
+    if (!facetKey) {
+      return;
+    }
+
+    const optionKeys = [
+      ...(attributeFilter.selected_option_keys ?? []),
+      ...(attributeFilter.selected_option_values ?? []),
+    ]
+      .map((optionKey) => optionKey.trim())
+      .filter(Boolean);
+
+    if (optionKeys.length === 0) {
+      return;
+    }
+
+    selectedOptionKeysByFacet.set(
+      facetKey,
+      Array.from(new Set([...(selectedOptionKeysByFacet.get(facetKey) ?? []), ...optionKeys])),
+    );
+  });
+
+  return selectedOptionKeysByFacet;
+}
+
+/**
+ * Resolves the shopper's own selections into public options so a selected
+ * choice always stays visible (and deselectable), using the configured
+ * taxonomy for its display label when one exists.
+ */
+function pickSelectedOptions(
+  facetKey: string,
+  taxonomyOptions: PublicProductFacetOption[],
+  selectedOptionKeys: string[],
+): PublicProductFacetOption[] {
+  const taxonomyOptionByKey = new Map(
+    taxonomyOptions.map((option) => [option.optionKey, option]),
+  );
+  const optionsByKey = new Map<string, PublicProductFacetOption>();
+
+  selectedOptionKeys.forEach((optionKey) => {
+    const canonicalOption = toCanonicalFacetOption(facetKey, optionKey);
+    const resolvedOption = taxonomyOptionByKey.get(canonicalOption.optionKey) ?? canonicalOption;
+    optionsByKey.set(resolvedOption.optionKey, resolvedOption);
+  });
+
+  return Array.from(optionsByKey.values());
 }
 
 function buildChildrenByParentId(categories: CategorySummary[]): Map<string, CategorySummary[]> {

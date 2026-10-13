@@ -110,11 +110,14 @@ Shape:
 Important properties:
 
 - `facet_key` is the public storefront filter key used in URL params
-- `attribute_name` is the category attribute name shown in storefront filters
+- `attribute_name` is the facet label: the repository's label for a facet with
+  live options (a stable-key collision resolves to the smallest label among the
+  matching product rows), otherwise the configured category attribute name
 - `options[].option_key` is the public storefront option key used in URL params
-- `options` may come from two sources:
-  - live matching product values
-  - category taxonomy options injected for featured facets
+- `options` are the live eligible products' options for the active filters; the
+  category taxonomy supplies the facet identity, the label of a configured-only
+  facet, and the label of the shopper's own selection, but never adds an option
+  no eligible product matches
 
 ## Flow
 
@@ -189,6 +192,55 @@ Means:
 
 - product may match `Red` or `Blue` for `Color`
 - product must also match `M` for `Size`
+
+### Filter-aware facet alternatives
+
+Facet alternatives are computed with every active filter **except that facet's
+own** filter, so a shopper who has selected `Color = Black` still sees the other
+`Color` options to switch to, while every other facet is narrowed to the products
+that match `Color = Black`.
+
+- Each facet with an active selection runs its own aggregation that drops only
+  that facet's filter; facet keys without a selection reuse the full-filter run.
+- Own-filter exclusion is implemented in the repository adapters through
+  `buildFacetFilterVariants` / `mergeFacetFilterVariants` in
+  [public-product-facets.ts](../../src/domains/product/infra/search/public-product-facets.ts).
+  Only the excluded facet is taken from its exclusion run; all other facets keep
+  the full-filter result.
+- Pagination (`page`, `limit`) and sorting (`order`) never change facet
+  alternatives: they are not part of the facet aggregation.
+- Facets merge by the stable facet key (`categoryAttributeKey`), never by the
+  display label. Attributes that share a label but have distinct keys stay
+  distinct facets; when one stable key is contributed by more than one attribute
+  identity, the display name is resolved deterministically instead of depending
+  on row order, and the option union is preserved.
+- The configured featured/subtree taxonomy never re-adds options that no
+  eligible product matches: it supplies a facet's identity, display name,
+  position, and the label of the shopper's own selection only.
+- The storefront sends the same active filter subset (`is_digital`, `who_made`,
+  `min_price`, `max_price`, `attr_<facetKey>`) to `GET /products/facets` that it
+  sends to `GET /products`, so the behavior is observable end to end.
+
+### Storefront presentation of unavailable options
+
+The facets endpoint contract is unchanged: it still returns only the eligible
+options for the current query. The storefront combines two requests to that same
+endpoint to keep a useful panel without hiding choices:
+
+- a **baseline** request with only `category_id` (no active filters) supplies the
+  option list and heading — the options eligible in the category before the
+  shopper's filters narrow them
+- the **filtered** request supplies availability only, per the own-filter
+  exclusion rule above
+
+`buildFacetOptionView` in `apps/web/apps/storefront/src/domains/product/ui/filters`
+unions the baseline options with the shopper's current selections and marks an
+option disabled when it is unselected and the filtered availability omits it — or
+has not resolved yet (pending/error), so an unselected choice is never enabled
+from an absent response. This is a presentation concern: an option that no
+eligible product matches stays visible but disabled instead of disappearing, and
+a selected option stays checked and clearable even when the active filters make
+it incompatible. No `products/facets` backend behavior changed.
 
 ### Key-based filter matching
 
@@ -351,15 +403,26 @@ broad storefront facets from an ancestor like `Fashion`.
 
 ### Featured facet option sourcing
 
-Featured facets are taxonomy-backed, not product-bucket-only.
+Featured facets keep their configured identity, display name, and position, but
+their **options always come from the live filter-aware result set**.
 
-For each featured facet key:
+For each featured or subtree-common facet key:
 
-- keep live options returned by the repository
-- if the current category or ancestor category has taxonomy options for that
-  attribute, merge them in
-- if the current node has no attribute definition, search descendants in the
-  current subtree for the first matching attribute definition
+- options are the live options the repository returned for the active filters
+  (with the facet's own filter excluded)
+- configured taxonomy options are **not** injected when no eligible product
+  matches them; a configured choice that no eligible product has would be a
+  filter the shopper cannot satisfy
+- the configured taxonomy still supplies the display name for a facet that has
+  no live options, and the display label for the shopper's own selection, which
+  stays visible so it can be cleared
+- if the current node has no attribute definition, descendants in the current
+  subtree supply the name
+
+If a stable key is contributed by more than one attribute identity, the
+displayed name is the repository's deterministic label resolution (smallest
+label among the matching product rows); the use case never re-resolves it by
+traversal order.
 
 This is important for branch categories such as `Shoes` or `Accessories`, where
 the branch itself may not define `Color` or `Material`, but descendants such as
@@ -369,12 +432,16 @@ the branch itself may not define `Color` or `Material`, but descendants such as
 
 The final facet list follows this rule:
 
-- featured facets may render even if no current products contribute live values,
-  because category taxonomy options can still populate them
+- featured facets always render, even with zero live options, so the configured
+  facet surface stays selectable; an empty configured group is the accepted
+  presentation (the facet heading with no options)
 - non-featured facets with zero options are removed
+- an empty group is never "filled in" with configured options that no eligible
+  product matches: unselected non-matching options are never inserted
 
 This prevents empty leaf-only buckets such as `Size` from showing up as blank
-headings on broad branch pages.
+headings on broad branch pages, while still letting a configured featured facet
+stay visible when the active filters leave it with no eligible option.
 
 ## Facet Ordering
 
@@ -406,10 +473,8 @@ The category endpoint:
 returns the configured attribute definition for a category, including all known
 options.
 
-The product facets endpoint returns a storefront-shaped mix of:
-
-- live product-driven buckets
-- category-featured taxonomy buckets
+The product facets endpoint returns the eligible product-driven buckets for the
+current query, shaped by the configured featured facets.
 
 Example:
 
@@ -420,13 +485,14 @@ Example:
 Expected behavior:
 
 - `GET /categories/:id/attributes` returns the configured category definition
-- `GET /products/facets` may return:
-  - live values such as `Red`, `Black`
-  - merged taxonomy values for featured facets when the storefront wants the
-    broader filter surface
+  (all options)
+- `GET /products/facets` returns the eligible values only — `Red`, `Black` —
+  with `Color` still rendered as a configured facet even when the active filters
+  leave it with no eligible option
 
-That merge behavior is the main reason this feature still belongs to product
-storefront querying rather than the category module alone.
+The category module owns the configured definition; the product storefront query
+owns resolving which of those options the current eligible products actually
+have.
 
 ## Related Documents
 
