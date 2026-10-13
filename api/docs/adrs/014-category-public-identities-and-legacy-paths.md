@@ -1,4 +1,4 @@
-# 014: Prepare permanent category public identities and legacy path ownership
+# 014: Separate category public identity from persistence and URL ancestry
 
 Status: Accepted
 
@@ -6,11 +6,11 @@ Status: Accepted
 
 Category APIs and existing category relationships use internal UUID primary keys. Flat canonical routing requires a durable public identity without changing those live contracts before a coordinated cutover. Historical hierarchical links must remain bound to their original category rather than a precomputed destination URL.
 
-## Decision
+## Decision: additive preparation
 
 Add a positive bigint public ID allocated from a PostgreSQL sequence and a persisted current slug to categories. Keep the UUID primary/foreign keys. The database enforces uniqueness, positivity, and public-ID immutability. The sequence is shared by migration backfill and future category creation; gaps are valid and IDs are not reused.
 
-Automatic slug creation lowercases Unicode letters and numbers, removes other punctuation, normalizes whitespace, underscores, and hyphens into single hyphens, trims edge hyphens, and falls back to `category` when the result is empty. Slugs are not unique. Current API responses and requests continue using internal UUIDs until the coordinated cutover.
+Automatic slug creation lowercases Unicode letters and numbers, removes other punctuation, normalizes whitespace, underscores, and hyphens into single hyphens, trims edge hyphens, and falls back to `category` when the result is empty. Slugs are not unique. During additive preparation only, API responses and requests continue using internal UUIDs; the implemented cutover below replaces that boundary contract.
 
 Store captured legacy path candidates against category UUID identity. Publish only paths with exactly one candidate into the unique alias table. Preserve ambiguous candidates in a separate conflict set and expose a cutover gate that validates an explicit resolution against both the candidate and permanent alias owner. Database triggers prevent alias/candidate mutation or deletion. Alias ownership restricts physical category deletion.
 
@@ -18,7 +18,7 @@ Keep the current category API and frontend identifier behavior unchanged in this
 
 ## Consequences
 
-- The current API still returns/accepts internal IDs until cutover; the new database identity is not yet a replacement contract.
+- Additive preparation preserves internal-ID API semantics; activation switches all category-bearing boundaries together, without compatibility fallbacks.
 - Current slugs are initialized on creation and are not automatically coupled to later name edits.
 - Migration blocks concurrent category writes while it snapshots current names and ancestry. Schedule it with a brief category-write pause.
 - Operators must inspect and resolve conflicts through `resolve_category_legacy_path(path, candidate_category_uuid)`; the function accepts only a recorded candidate and cannot replace an existing alias owner.
@@ -52,9 +52,9 @@ primary and foreign keys unchanged:
   for the public id field to appear.
 
 The cutover is gated and staged. Each build has an intrinsic category identity
-generation (`1` internal UUIDs, `2` public decimal identity; the current source
-advertises `3` as a simulated newer generation); `GET /v1/categories/contract`
-advertises the generation that build speaks (no configurable override that could
+generation (`1` internal UUIDs, `2` public decimal identity; this source speaks
+and advertises `2`); `GET /v1/categories/contract` advertises the generation that
+build speaks (no configurable override that could
 claim other semantics). Only the actual
 category-bearing endpoints (`/categories*` except the probe, `/products`,
 `/products/facets`, `/shops/*/products*`) carry and require
@@ -85,7 +85,7 @@ The web bundle's persisted-version check only invalidates stored state for a
 client already running the new bundle — it cannot force an already-open tab
 running JS older than the preparation release to reload, which is why the
 preparation release is mandatory and why the API rejects legacy ids.
-See [API deployment](../../docs/operations/deployment.md).
+See [category cutover deployment](../../../docs/operations/deployment/category-public-identity-cutover.md).
 
 ## Direct resolution contract
 
@@ -184,11 +184,20 @@ descendant subtree:
 The hierarchy is fixed at runtime: this epic does not expose category moves or
 any other hierarchy mutation, so the seeded taxonomy is stable for the life of a
 deployment. Subtree reads are therefore served through the optional
-`category.taxonomy-subtree` cache (five-minute TTL). Because nothing mutates
-`parent_id` at runtime, the cached subtree stays aligned with the uncached listing
-scope, and no hierarchy-change invalidation hook is required or claimed. Category
-moves and immediate post-mutation consistency are deliberately out of scope.
+`category.taxonomy-subtree` cache (five-minute TTL). Because `parent_id` is not
+changed during supported operation, the cached subtree stays
+aligned with the uncached listing scope. Unsupported create/move/delete changes
+can leave cached facet scope stale for up to five minutes; no hierarchy-change
+invalidation hook or immediate post-mutation consistency is claimed.
 
 ## Migration and deployment
 
-Run the standard API migration command (`pnpm db:migration:up` from `apps/api/api`) before deploying any later public-ID routing cutover. Verify category identity backfill completeness, then inspect `category_legacy_path_cutover_gate` and its conflict candidates. Do not enable the later router while `ready` is false. This migration does not alter live API IDs, category relationships, or storefront routing. Coordinate the later contract change as one deployment, including old-client invalidation and persisted category-state handling.
+Run `pnpm db:migration:up` from `apps/api/api` before activation. The additive
+migration preserves internal relationships while backfilling public identity
+and capturing historical path ownership. Activate only after identity/path
+completeness and `category_legacy_path_cutover_gate.ready` pass, existing catalog
+documents are reprojected with `categoryPublicId`, and API/seller/storefront
+releases are coordinated. Keep the preparation patch as old-release tooling,
+not a runtime compatibility shim. The
+[deployment runbook](../../../docs/operations/deployment/category-public-identity-cutover.md)
+defines SQL preflight, conflict resolution, rollout, and verification evidence.

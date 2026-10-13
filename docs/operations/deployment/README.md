@@ -26,3 +26,9 @@ If you want, add a follow-up workflow that:
 1. waits for API CI to pass
 2. only runs on `production`
 3. calls the Render deploy hook
+
+## Release runbooks
+
+- [Category public identity cutover](./category-public-identity-cutover.md)
+  — preparation, migration preflight, legacy ownership, coordinated activation,
+  and verification.
