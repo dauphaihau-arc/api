@@ -80,6 +80,10 @@ export class DelegatingCategoryRepository implements CategoryRepository {
     return this.queryRepository.resolveByPublicId(publicId);
   }
 
+  resolveLegacyPath(legacyPath: string): Promise<CategoryResolution | null> {
+    return this.queryRepository.resolveLegacyPath(legacyPath);
+  }
+
   searchSuggestions(name: string, limit: number): Promise<CategorySuggestion[]> {
     return this.queryRepository.searchSuggestions(name, limit);
   }

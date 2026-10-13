@@ -6,6 +6,7 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiParam,
+  ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
 import { SkipThrottle } from '@nestjs/throttler';
@@ -17,6 +18,7 @@ import { CreateCategoryUseCase } from '../../app/use-cases/create-category/creat
 import { GetCategoryAttributesUseCase } from '../../app/use-cases/get-category-attributes/get-category-attributes.use-case';
 import { ListCategoriesUseCase } from '../../app/use-cases/list-categories/list-categories.use-case';
 import { ResolveCategoryUseCase } from '../../app/use-cases/resolve-category/resolve-category.use-case';
+import { ResolveLegacyPathUseCase } from '../../app/use-cases/resolve-legacy-path/resolve-legacy-path.use-case';
 import { SuggestCategoriesUseCase } from '../../app/use-cases/suggest-categories/suggest-categories.use-case';
 import {
   toCategoryAttributeResponse,
@@ -54,6 +56,7 @@ export class CategoryController {
     private readonly createCategoryUseCase: CreateCategoryUseCase,
     private readonly listCategoriesUseCase: ListCategoriesUseCase,
     private readonly resolveCategoryUseCase: ResolveCategoryUseCase,
+    private readonly resolveLegacyPathUseCase: ResolveLegacyPathUseCase,
     private readonly createCategoryAttributeUseCase: CreateCategoryAttributeUseCase,
     private readonly getCategoryAttributesUseCase: GetCategoryAttributesUseCase,
     private readonly suggestCategoriesUseCase: SuggestCategoriesUseCase,
@@ -104,6 +107,32 @@ export class CategoryController {
   ): Promise<CategoryResponse[]> {
     return this.listCategoriesUseCase.execute(query.parentId)
       .then((categories) => categories.map(toCategoryResponse));
+  }
+
+  @Get('legacy-path')
+  @SkipThrottle()
+  @Header('Cache-Control', 'private, no-cache')
+  @ApiErrorResponses(categoryErrorResponses.legacyPath)
+  @ApiOperation({ summary: 'Resolve a legacy hierarchical category path' })
+  @ApiQuery({
+    name: 'path',
+    type: String,
+    required: true,
+    description: 'Recorded legacy path, e.g. /c/home/gaming-laptops.',
+  })
+  @ApiOkResponse({
+    description:
+      'Current category with ordered root-to-current ancestry for the legacy path owner.',
+    type: CategoryResolutionResponseDto,
+  })
+  resolveLegacyPath(
+    @Query('path') path: string,
+  ): Promise<CategoryResolutionResponse> {
+    return this.resolveLegacyPathUseCase.execute(path)
+      .then((result) =>
+        resolveOrThrow(result, mapCategoryAppErrorToHttpException),
+      )
+      .then(toCategoryResolutionResponse);
   }
 
   @Get(':id')

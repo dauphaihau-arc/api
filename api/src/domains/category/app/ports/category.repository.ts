@@ -29,6 +29,13 @@ export abstract class CategoryRepository {
   abstract resolveByPublicId(
     publicId: string,
   ): Promise<CategoryResolution | null>;
+  /**
+   * Resolve a permanently owned legacy hierarchical path to the current
+   * category and ancestry, or null when malformed or unowned.
+   */
+  abstract resolveLegacyPath(
+    legacyPath: string,
+  ): Promise<CategoryResolution | null>;
   abstract searchSuggestions(
     name: string,
     limit: number

@@ -8,6 +8,7 @@ describe('CategoryController', () => {
   const createCategoryUseCase = { execute: jest.fn() };
   const listCategoriesUseCase = { execute: jest.fn() };
   const resolveCategoryUseCase = { execute: jest.fn() };
+  const resolveLegacyPathUseCase = { execute: jest.fn() };
   const createCategoryAttributeUseCase = { execute: jest.fn() };
   const getCategoryAttributesUseCase = { execute: jest.fn() };
   const suggestCategoriesUseCase = { execute: jest.fn() };
@@ -16,6 +17,7 @@ describe('CategoryController', () => {
     createCategoryUseCase as never,
     listCategoriesUseCase as never,
     resolveCategoryUseCase as never,
+    resolveLegacyPathUseCase as never,
     createCategoryAttributeUseCase as never,
     getCategoryAttributesUseCase as never,
     suggestCategoriesUseCase as never,
@@ -37,6 +39,42 @@ describe('CategoryController', () => {
 
     expect(Reflect.getMetadata(PATH_METADATA, handler)).toBe('suggestions');
     expect(Reflect.getMetadata(METHOD_METADATA, handler)).toBe(RequestMethod.GET);
+  });
+
+  it('registers GET legacy-path on the controller method', () => {
+    const handler = CategoryController.prototype.resolveLegacyPath;
+
+    expect(Reflect.getMetadata(PATH_METADATA, handler)).toBe('legacy-path');
+    expect(Reflect.getMetadata(METHOD_METADATA, handler)).toBe(RequestMethod.GET);
+  });
+
+  it('returns the current canonical resolution for an owned legacy path', async () => {
+    resolveLegacyPathUseCase.execute.mockResolvedValue(ok({
+      category: { id: '34', slug: 'ceramic-mugs', name: 'Mugs' },
+      ancestry: [
+        { id: '12', slug: 'home', name: 'Home' },
+        { id: '34', slug: 'ceramic-mugs', name: 'Mugs' },
+      ],
+    }));
+
+    await expect(controller.resolveLegacyPath('/c/home/mugs')).resolves.toEqual({
+      category: { id: '34', slug: 'ceramic-mugs', name: 'Mugs' },
+      ancestry: [
+        { id: '12', slug: 'home', name: 'Home' },
+        { id: '34', slug: 'ceramic-mugs', name: 'Mugs' },
+      ],
+      canonical_path: '/c/ceramic-mugs-c34',
+    });
+    expect(resolveLegacyPathUseCase.execute).toHaveBeenCalledWith('/c/home/mugs');
+  });
+
+  it('throws not found for an unowned legacy path', async () => {
+    resolveLegacyPathUseCase.execute.mockResolvedValue(
+      err(new CategoryNotFoundError()),
+    );
+
+    await expect(controller.resolveLegacyPath('/c/home/unknown'))
+      .rejects.toBeInstanceOf(NotFoundException);
   });
 
   it('returns listed categories in snake_case for the HTTP boundary', async () => {

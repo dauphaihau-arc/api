@@ -18,6 +18,15 @@ export abstract class CategoryQueryRepository {
   abstract resolveByPublicId(
     publicId: string,
   ): Promise<CategoryResolution | null>;
+  /**
+   * Resolve a permanently owned legacy hierarchical path to the current
+   * category and ancestry. Ownership is bound to category identity, so the
+   * result always reflects the latest slug. Returns null for malformed or
+   * unowned paths; it never falls back to a parent path or a first match.
+   */
+  abstract resolveLegacyPath(
+    legacyPath: string,
+  ): Promise<CategoryResolution | null>;
   abstract searchSuggestions(
     name: string,
     limit: number

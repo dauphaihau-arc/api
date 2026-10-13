@@ -17,6 +17,7 @@ describe('CreateCategoryUseCase', () => {
       findById: jest.fn().mockResolvedValue(null),
       findByPublicId: jest.fn().mockResolvedValue(null),
       resolveByPublicId: jest.fn().mockResolvedValue(null),
+      resolveLegacyPath: jest.fn().mockResolvedValue(null),
       searchSuggestions: jest.fn(),
     };
   }

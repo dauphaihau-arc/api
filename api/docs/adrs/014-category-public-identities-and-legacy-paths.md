@@ -116,14 +116,51 @@ last entry):
   preserved as-is.
 - `canonical_path` is the flat canonical URL `/c/:slug-c:publicId`. `c` is a
   URL-layer marker only and is never persisted. The same policy generates
-  navigation links and (ticket 06) redirect destinations, so aliases converge on
-  the current URL in one hop.
+  navigation links and redirect destinations, so aliases converge on the current
+  URL in one hop.
 - `slug` is also exposed on the existing category list/detail responses so
   consumers can build canonical links without a second resolution call.
 - Resolution is authoritative on every request; breadcrumbs are derived from this
-  ancestry rather than from session state. Alias canonicalization (ticket 06) is
-  deliberately out of scope here; category availability states are not modeled by
-  this epic.
+  ancestry rather than from session state. Alias canonicalization consumes
+  `canonical_path` (see "Canonical redirects" below). Category availability
+  states are not modeled here or by the follow-up work in this epic; any category
+  hiding or deletion behavior that exists independently is preserved as-is.
+
+## Canonical redirects
+
+Status: Implemented.
+
+The storefront canonicalizes every category URL from the authoritative
+resolution; the API exposes no redirect of its own.
+
+- `GET /v1/categories/legacy-path?path=/c/<segments>` resolves a recorded
+  legacy path through its permanent alias owner and returns the same
+  `{ category, ancestry, canonical_path }` shape as `GET /v1/categories/:id`.
+  The path is matched as an opaque key: malformed, unknown, and unowned paths
+  return `404 CATEGORY_NOT_FOUND` and never fall back to a parent path or a
+  first match. Backend failures stay `5xx`.
+- The storefront resolves a flat `/c/:slug-c:publicId` segment by public
+  identity, or a hierarchical `/c/...` path through the legacy-path endpoint,
+  then compares the requested URL against `canonical_path`.
+- A mismatch — a wrong or outdated slug, a trailing slash, or a legacy path — is
+  answered with a single HTTP `301` whose `Location` is the current canonical URL
+  with the original query preserved. A direct request receives `301`; an in-app
+  SPA transition replaces the route in place, preserving the query. The
+  destination then serves `200` with no further redirect.
+- Navigation links and `link[rel="canonical"]` metadata use the same
+  `canonical_path` policy, so generated links and redirect destinations agree.
+- Legacy ownership is bound to category identity, so a legacy URL always
+  converges on the category's *current* slug. Because slugs are set only at
+  creation and no rename path exists, ordinary name edits leave persisted slugs
+  unchanged.
+
+Deferred (not built by this epic): admin slug-edit APIs and interfaces,
+explicit-edit normalization/validation, slug-edit and repeated-edit journeys,
+new category availability states, and new ancestor-unavailability enforcement.
+Existing category hiding/deletion behavior is preserved; the alias table's
+`on delete restrict` still blocks deleting a category that owns a legacy path.
+No slug-history table is introduced for ID-bearing aliases: an `/c/:slug-c:id`
+URL is canonicalized from the live slug rather than from stored history.
 
 ## Subtree listings and facets
 

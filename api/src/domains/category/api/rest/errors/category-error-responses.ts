@@ -40,6 +40,10 @@ export const categoryErrorResponses = {
     404: [categoryNotFoundExample],
     409: [categoryIdentityGenerationMismatchExample],
   },
+  legacyPath: {
+    404: [categoryNotFoundExample],
+    409: [categoryIdentityGenerationMismatchExample],
+  },
   attributes: {
     404: [categoryNotFoundExample],
     409: [categoryIdentityGenerationMismatchExample],

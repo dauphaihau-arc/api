@@ -4,6 +4,7 @@ import request from 'supertest';
 import type { App } from 'supertest/types';
 import { CategoryController } from './category.controller';
 import { ResolveCategoryUseCase } from '../../app/use-cases/resolve-category/resolve-category.use-case';
+import { ResolveLegacyPathUseCase } from '../../app/use-cases/resolve-legacy-path/resolve-legacy-path.use-case';
 import { CategoryRepository } from '../../app/ports/category.repository';
 import { CreateCategoryUseCase } from '../../app/use-cases/create-category/create-category.use-case';
 import { ListCategoriesUseCase } from '../../app/use-cases/list-categories/list-categories.use-case';
@@ -19,13 +20,14 @@ import { SuggestCategoriesUseCase } from '../../app/use-cases/suggest-categories
  */
 describe('Public category resolution HTTP', () => {
   let app: INestApplication<App>;
-  const repository = { resolveByPublicId: jest.fn() };
+  const repository = { resolveByPublicId: jest.fn(), resolveLegacyPath: jest.fn() };
 
   beforeAll(async () => {
     const module = await Test.createTestingModule({
       controllers: [CategoryController],
       providers: [
         ResolveCategoryUseCase,
+        ResolveLegacyPathUseCase,
         { provide: CategoryRepository, useValue: repository },
         ...[
           CreateCategoryUseCase,
@@ -46,6 +48,7 @@ describe('Public category resolution HTTP', () => {
 
   beforeEach(() => {
     repository.resolveByPublicId.mockReset();
+    repository.resolveLegacyPath.mockReset();
   });
 
   it('resolves a decimal identity to its current category and root-to-current ancestry', async () => {
@@ -127,5 +130,54 @@ describe('Public category resolution HTTP', () => {
     repository.resolveByPublicId.mockRejectedValue(new Error('database unavailable'));
 
     await request(app.getHttpServer()).get('/categories/42').expect(500);
+  });
+
+  it('resolves an owned legacy path to the current canonical URL', async () => {
+    repository.resolveLegacyPath.mockResolvedValue({
+      category: { id: '34', slug: 'ceramic-mugs', name: 'Mugs' },
+      ancestry: [
+        { id: '12', slug: 'home', name: 'Home' },
+        { id: '34', slug: 'ceramic-mugs', name: 'Mugs' },
+      ],
+    });
+
+    const response = await request(app.getHttpServer())
+      .get('/categories/legacy-path')
+      .query({ path: '/c/home/mugs' })
+      .expect(200);
+
+    expect(response.body).toEqual({
+      category: { id: '34', slug: 'ceramic-mugs', name: 'Mugs' },
+      ancestry: [
+        { id: '12', slug: 'home', name: 'Home' },
+        { id: '34', slug: 'ceramic-mugs', name: 'Mugs' },
+      ],
+      canonical_path: '/c/ceramic-mugs-c34',
+    });
+    expect(repository.resolveLegacyPath).toHaveBeenCalledWith('/c/home/mugs');
+  });
+
+  it('returns 404 for a malformed or unowned legacy path without a parent fallback', async () => {
+    repository.resolveLegacyPath.mockResolvedValue(null);
+
+    await request(app.getHttpServer())
+      .get('/categories/legacy-path')
+      .query({ path: '/c/home/unknown' })
+      .expect(404);
+    await request(app.getHttpServer())
+      .get('/categories/legacy-path')
+      .query({ path: '/c/home/' })
+      .expect(404);
+    await request(app.getHttpServer()).get('/categories/legacy-path').expect(404);
+    expect(repository.resolveLegacyPath).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps legacy path backend failures as server errors', async () => {
+    repository.resolveLegacyPath.mockRejectedValue(new Error('database unavailable'));
+
+    await request(app.getHttpServer())
+      .get('/categories/legacy-path')
+      .query({ path: '/c/home/mugs' })
+      .expect(500);
   });
 });

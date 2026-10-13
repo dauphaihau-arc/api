@@ -102,6 +102,7 @@ describe('SetProductAttributesUseCase', () => {
       }),
       findByPublicId: jest.fn(),
       resolveByPublicId: jest.fn(),
+      resolveLegacyPath: jest.fn(),
       searchSuggestions: jest.fn(),
     };
 

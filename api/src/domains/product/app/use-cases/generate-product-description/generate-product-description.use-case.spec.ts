@@ -13,6 +13,7 @@ describe('GenerateProductDescriptionUseCase', () => {
       findById: jest.fn(),
       findByPublicId: jest.fn(),
       resolveByPublicId: jest.fn(),
+      resolveLegacyPath: jest.fn(),
       searchSuggestions: jest.fn(),
     } as jest.Mocked<CategoryQueryRepository>;
 

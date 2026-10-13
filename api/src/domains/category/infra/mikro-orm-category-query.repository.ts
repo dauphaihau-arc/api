@@ -3,6 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { StorageService } from '~/integrations/storage/app/ports/storage.service';
 import { CategoryQueryRepository } from '../app/ports/category-query.repository';
 import { isCategoryPublicId } from '../app/category-public-id';
+import { isCategoryLegacyPath } from '../app/category-legacy-path';
 import type {
   CategoryAncestor,
   CategoryResolution,
@@ -240,6 +241,33 @@ export class MikroOrmCategoryQueryRepository implements CategoryQueryRepository 
       },
       ancestry,
     };
+  }
+
+  async resolveLegacyPath(
+    legacyPath: string,
+  ): Promise<CategoryResolution | null> {
+    if (!isCategoryLegacyPath(legacyPath)) {
+      return null;
+    }
+
+    const owners = await this.entityManager.getConnection().execute<
+      Array<{ public_id: string }>
+    >(
+      `
+        select category.public_id
+        from category_legacy_path_aliases alias
+        inner join categories category on category.id = alias.category_id
+        where alias.legacy_path = ?
+      `,
+      [legacyPath],
+    );
+
+    const [owner] = owners;
+
+    // The alias table is immutable, so an owned path keeps resolving to the same
+    // category identity; the canonical slug is read from the category, which is
+    // why a later slug change converges on the new canonical URL.
+    return owner ? this.resolveByPublicId(owner.public_id) : null;
   }
 
   async searchSuggestions(
