@@ -77,6 +77,72 @@ describe('CategoryController', () => {
       .rejects.toBeInstanceOf(NotFoundException);
   });
 
+  it('serves the generated image variants as public urls', async () => {
+    const variantBase = 'https://cdn.example.com/dev/public/categories/uuid/images';
+
+    listCategoriesUseCase.execute.mockResolvedValue([
+      {
+        id: 'internal-category-2',
+        publicId: 'category-2',
+        slug: 'mugs',
+        parentId: undefined,
+        name: 'Mugs',
+        rank: 1,
+        imageStorageKey: 'dev/public/categories/uuid/images/original/mugs.png',
+        imageUrl: `${variantBase}/original/mugs.png`,
+        imageVariantUrls: {
+          root_2x3: `${variantBase}/variants/root_2x3.webp`,
+          recommended_1x1: `${variantBase}/variants/recommended_1x1.webp`,
+        },
+        attributes: [],
+      },
+    ]);
+
+    await expect(controller.categories({ parentId: undefined })).resolves.toEqual([
+      {
+        id: 'category-2',
+        parent_id: undefined,
+        slug: 'mugs',
+        name: 'Mugs',
+        rank: 1,
+        image_url: `${variantBase}/variants/root_2x3.webp`,
+        image_url_1x1: `${variantBase}/variants/recommended_1x1.webp`,
+        featured_facet_keys: undefined,
+        attributes: [],
+      },
+    ]);
+  });
+
+  it('falls back to the original image url when no variant was generated', async () => {
+    listCategoriesUseCase.execute.mockResolvedValue([
+      {
+        id: 'internal-category-3',
+        publicId: 'category-3',
+        slug: 'jewelry',
+        parentId: undefined,
+        name: 'Jewelry',
+        rank: 1,
+        imageStorageKey: 'categories/jewelry.jpg',
+        imageUrl: 'https://cdn.example.com/categories/jewelry.jpg',
+        attributes: [],
+      },
+    ]);
+
+    await expect(controller.categories({ parentId: undefined })).resolves.toEqual([
+      {
+        id: 'category-3',
+        parent_id: undefined,
+        slug: 'jewelry',
+        name: 'Jewelry',
+        rank: 1,
+        image_url: 'https://cdn.example.com/categories/jewelry.jpg',
+        image_url_1x1: undefined,
+        featured_facet_keys: undefined,
+        attributes: [],
+      },
+    ]);
+  });
+
   it('returns listed categories in snake_case for the HTTP boundary', async () => {
     listCategoriesUseCase.execute.mockResolvedValue([
       {

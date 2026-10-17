@@ -6,6 +6,7 @@ import type {
   CategorySummary,
 } from '../../../app/category.types';
 import { buildCategoryCanonicalPath } from '../../../app/category-canonical-path';
+import { CATEGORY_IMAGE_VARIANTS } from '../../../app/config/category-image-variant.config';
 import type {
   CategoryAncestorResponse,
   CategoryAttributeOptionResponse,
@@ -43,7 +44,9 @@ export const toCategoryResponse = (
   slug: category.slug,
   name: category.name,
   rank: category.rank,
-  image_url: category.imageUrl,
+  image_url: category.imageVariantUrls?.[CATEGORY_IMAGE_VARIANTS.ROOT_2X3] ??
+    category.imageUrl,
+  image_url_1x1: category.imageVariantUrls?.[CATEGORY_IMAGE_VARIANTS.RECOMMENDED_1X1],
   featured_facet_keys: category.featuredFacetKeys,
   attributes: category.attributes.map(toCategoryAttributeResponse),
 });

@@ -20,7 +20,13 @@ export type CategoryResponse = {
   slug: string;
   name: string;
   rank: number;
+  /**
+   * Primary image URL. Points at the `root_2x3` variant (420x630) when it has
+   * been generated, otherwise at the untouched original.
+   */
   image_url?: string;
+  /** Square (1:1, 200x200) variant for compact and round category tiles. */
+  image_url_1x1?: string;
   featured_facet_keys?: string[];
   attributes: CategoryAttributeResponse[];
 };

@@ -12,6 +12,7 @@ import type {
 } from '../app/category.types';
 import { CategoryEntity } from './persistence/entities/category.entity';
 import { toCategorySummary } from './category-summary.projector';
+import { resolveCategoryImageVariantUrls } from './category-image-urls';
 
 type CategorySubtreeRow = {
   category_id: string;
@@ -444,6 +445,10 @@ function toCategorySummariesFromSubtreeRows(
         imageUrl: row.image_storage_key
           ? storageService.getPublicUrl(row.image_storage_key)
           : undefined,
+        imageVariantUrls: resolveCategoryImageVariantUrls(
+          storageService,
+          row.image_storage_key ?? undefined,
+        ),
         attributes: [],
       };
       categories.set(row.category_id, category);

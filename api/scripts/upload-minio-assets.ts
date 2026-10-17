@@ -15,6 +15,7 @@ import {
 } from '~/platform/config/storage.config';
 import {
   CATEGORY_IMAGE_VARIANT_SPECS,
+  buildCategoryVariantStorageKey,
   type CategoryImageVariant,
 } from '~/domains/category/app/config/category-image-variant.config';
 import { CategoryEntity } from '~/domains/category/infra/persistence/entities/category.entity';
@@ -440,6 +441,10 @@ async function putCategorySeedVariants(
       const transformed = await imageTransformService.transform(original, spec);
       const key = buildCategoryVariantStorageKey(originalKey, variant);
 
+      if (!key) {
+        throw new Error(`Unsupported category image storage key "${originalKey}".`);
+      }
+
       await storageService.putObject({
         key,
         body: transformed,
@@ -448,25 +453,6 @@ async function putCategorySeedVariants(
       console.log(`Uploaded category asset variant -> ${key}`);
     },
   );
-}
-
-function buildCategoryVariantStorageKey(
-  originalKey: string,
-  variant: CategoryImageVariant,
-): string {
-  const segments = originalKey.split('/').filter(Boolean);
-  const imageSegmentIndex = segments.lastIndexOf('images');
-  const originalSegment = segments[imageSegmentIndex + 1];
-
-  if (imageSegmentIndex === -1 || originalSegment !== 'original') {
-    throw new Error(`Unsupported category image storage key "${originalKey}".`);
-  }
-
-  return [
-    ...segments.slice(0, imageSegmentIndex + 1),
-    'variants',
-    `${variant}.webp`,
-  ].join('/');
 }
 
 function resolveImageVariantContentType(

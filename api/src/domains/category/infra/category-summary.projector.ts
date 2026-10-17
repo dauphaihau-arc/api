@@ -1,5 +1,6 @@
 import type { StorageService } from '~/integrations/storage/app/ports/storage.service';
 import type { CategorySummary } from '../app/category.types';
+import { resolveCategoryImageVariantUrls } from './category-image-urls';
 import type { CategoryEntity } from './persistence/entities/category.entity';
 
 export function toCategorySummary(
@@ -19,6 +20,10 @@ export function toCategorySummary(
     imageUrl: category.imageStorageKey
       ? storageService.getPublicUrl(category.imageStorageKey)
       : undefined,
+    imageVariantUrls: resolveCategoryImageVariantUrls(
+      storageService,
+      category.imageStorageKey,
+    ),
     attributes: category.attributes
       .getItems()
       .sort((left, right) => left.rank - right.rank)

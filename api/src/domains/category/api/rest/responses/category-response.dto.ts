@@ -52,8 +52,17 @@ export class CategoryResponseDto {
   @ApiProperty()
   rank!: number;
 
-  @ApiProperty({ required: false })
+  @ApiProperty({
+    required: false,
+    description: 'Primary image URL: the root_2x3 variant, or the original when no variant exists.',
+  })
   image_url?: string;
+
+  @ApiProperty({
+    required: false,
+    description: 'Square 1:1 variant URL, for compact and round category tiles.',
+  })
+  image_url_1x1?: string;
 
   @ApiProperty({ type: [String], required: false })
   featured_facet_keys?: string[];

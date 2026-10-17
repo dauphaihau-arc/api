@@ -1,18 +1,31 @@
+import type { CategoryImageVariant } from './config/category-image-variant.config';
+
 export interface CategorySummary {
   /** Internal database identity (UUID). Never exposed at the API boundary. */
   id: string;
+
   /** Public identity (positive decimal string). The externally visible category id. */
   publicId: string;
+
   /** Current persisted slug, used to build canonical category URLs. */
   slug: string;
+
   /** Internal database identity of the parent (UUID). */
   parentId?: string;
+
   /** Public identity of the parent, when present. */
   parentPublicId?: string;
+
   name: string;
   rank: number;
   imageStorageKey?: string;
+
+  /** Original (untransformed) image URL. */
   imageUrl?: string;
+
+  /** Public URLs of the generated variants, keyed by variant name. */
+  imageVariantUrls?: Partial<Record<CategoryImageVariant, string>>;
+
   featuredFacetKeys?: string[];
   attributes: CategoryAttributeSummary[];
 }
@@ -24,6 +37,7 @@ export interface CategorySummary {
 export interface CategoryAncestor {
   /** Public identity (positive decimal string). */
   id: string;
+
   /** Current slug of the category. */
   slug: string;
   name: string;
