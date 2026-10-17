@@ -51,7 +51,7 @@ import { ShopDashboardQueryRepository } from './app/ports/shop-dashboard-query.r
 import { ShopOrderExportQueryRepository } from './app/ports/shop-order-export-query.repository';
 import { ShopOrderExportRepository } from './app/ports/shop-order-export.repository';
 import { OrderEventEntity } from './infra/persistence/entities/order-event.entity';
-import { OutboxEventEntity } from './infra/persistence/entities/outbox-event.entity';
+import { OutboxEventEntity } from '~/platform/outbox/outbox-event.entity';
 import { OrderEntity } from './infra/persistence/entities/order.entity';
 import { OrderExportEntity } from './infra/persistence/entities/order-export.entity';
 import { OrderItemEntity } from './infra/persistence/entities/order-item.entity';

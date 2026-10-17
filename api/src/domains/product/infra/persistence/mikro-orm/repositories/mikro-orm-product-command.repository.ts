@@ -37,7 +37,7 @@ import { isShippingProfileCheckoutReady } from '~/domains/shipping/domain/shippi
 import { ShippingProfileEntity } from '~/domains/shipping/infra/persistence/entities/shipping-profile.entity';
 import { ProductVariantEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-variant.entity';
 import { VARIANT_PRICE_TYPES, VariantPriceEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/variant-price.entity';
-import { OutboxEventEntity, OutboxEventStatus } from '~/domains/order/infra/persistence/entities/outbox-event.entity';
+import { OutboxEventEntity, OutboxEventStatus } from '~/platform/outbox/outbox-event.entity';
 import { getInventoryPricingSnapshot } from '../reads/variant-price-read';
 import { toProductDraftSummary } from '../../../projection/product-draft-summary.projector';
 import {

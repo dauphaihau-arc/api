@@ -1,6 +1,6 @@
 import type { EntityManager } from '@mikro-orm/postgresql';
 import { ORDER_CREATED_INVENTORY_EVENT_TYPE } from '../events/order-created-inventory.event';
-import { OutboxEventStatus } from '../../infra/persistence/entities/outbox-event.entity';
+import { OutboxEventStatus } from '../../../../platform/outbox/outbox-event.entity';
 import { OrderInventoryOutboxService } from './order-inventory-outbox.service';
 
 describe('OrderInventoryOutboxService', () => {

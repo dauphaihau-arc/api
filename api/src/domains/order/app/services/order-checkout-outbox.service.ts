@@ -1,8 +1,11 @@
 import { LockMode } from '@mikro-orm/core';
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable, Logger } from '@nestjs/common';
-import ms from 'ms';
 import { PaymentGateway } from '../../../../integrations/payment/app/ports/payment-gateway';
+import {
+  DURABLE_OUTBOX_BATCH_SIZE,
+  DurableOutboxProcessor,
+} from '../../../../platform/outbox/durable-outbox.processor';
 import { OrderEventActorType } from '../../domain/enums/order-event-actor-type.enum';
 import { OrderEventType } from '../../domain/enums/order-event-type.enum';
 import { OrderStatus } from '../../domain/enums/order-status.enum';
@@ -10,13 +13,11 @@ import { OrderEntity } from '../../infra/persistence/entities/order.entity';
 import {
   OutboxEventEntity,
   OutboxEventStatus,
-} from '../../infra/persistence/entities/outbox-event.entity';
+} from '../../../../platform/outbox/outbox-event.entity';
 import { OrderEventsService } from './order-events.service';
 
 const CHECKOUT_OUTBOX_EVENT_NAME = 'order.checkout-session-requested';
 const CHECKOUT_OUTBOX_AGGREGATE_TYPE = 'order';
-const MAX_RETRY_ATTEMPTS = 5;
-const RETRY_DELAYS_MS = [ms('15s'), ms('1m'), ms('5m'), ms('15m'), ms('1h')];
 
 export interface CheckoutSessionLineItemPayload {
   name: string;
@@ -35,8 +36,6 @@ export interface CheckoutSessionShippingAddressPayload {
   zip: string;
   phone: string;
 }
-const PROCESSING_LEASE_MS = ms('30s');
-
 
 export interface CheckoutSessionRequestedPayload {
   userId?: string;
@@ -53,12 +52,28 @@ export interface CheckoutSessionRequestedPayload {
 @Injectable()
 export class OrderCheckoutOutboxService {
   private readonly logger = new Logger(OrderCheckoutOutboxService.name);
+  private readonly outboxProcessor: DurableOutboxProcessor;
 
   constructor(
     private readonly entityManager: EntityManager,
     private readonly paymentGateway: PaymentGateway,
     private readonly orderEventsService: OrderEventsService,
-  ) {}
+  ) {
+    this.outboxProcessor = new DurableOutboxProcessor(
+      entityManager,
+      this.logger,
+      {
+        eventName: CHECKOUT_OUTBOX_EVENT_NAME,
+        // A crashed session creation is recovered once its lease expires.
+        dueStatuses: [
+          OutboxEventStatus.PENDING,
+          OutboxEventStatus.PROCESSING,
+        ],
+        failureLogPrefix: 'Failed processing outbox event',
+        unknownErrorMessage: 'Unknown checkout outbox failure',
+      },
+    );
+  }
 
   async createCheckoutSessionRequestedEvent(
     entityManager: EntityManager,
@@ -83,7 +98,8 @@ export class OrderCheckoutOutboxService {
   async processEventById(
     eventId: string,
   ): Promise<{ id: string; url: string } | undefined> {
-    const claimed = await this.claimEvent(eventId);
+    const claimed =
+      await this.outboxProcessor.claim<CheckoutSessionRequestedPayload>(eventId);
 
     if (!claimed) {
       return undefined;
@@ -139,9 +155,7 @@ export class OrderCheckoutOutboxService {
           };
         }
 
-        event.status = OutboxEventStatus.PROCESSED;
-        event.processedAt = new Date();
-        event.lastError = undefined;
+        this.outboxProcessor.applyProcessedState(event);
 
         await entityManager.flush();
       });
@@ -152,7 +166,7 @@ export class OrderCheckoutOutboxService {
       };
     }
     catch (error) {
-      await this.markProcessingFailure(
+      await this.outboxProcessor.markFailed(
         claimed.eventId,
         claimed.attemptCount,
         error,
@@ -162,114 +176,11 @@ export class OrderCheckoutOutboxService {
     }
   }
 
-  async processPendingEvents(limit = 10): Promise<number> {
-    const entityManager = this.entityManager.fork();
-    const pendingEvents = await entityManager.find(
-      OutboxEventEntity,
-      {
-        eventName: CHECKOUT_OUTBOX_EVENT_NAME,
-        status: { $in: [OutboxEventStatus.PENDING, OutboxEventStatus.PROCESSING] },
-        availableAt: { $lte: new Date() },
-      },
-      {
-        orderBy: { createdAt: 'asc' },
-        limit,
-      },
-    );
+  async processPendingEvents(limit = DURABLE_OUTBOX_BATCH_SIZE): Promise<number> {
+    return this.outboxProcessor.processDueEvents(async (eventId) => {
+      const result = await this.processEventById(eventId);
 
-    let processedCount = 0;
-
-    for (const event of pendingEvents) {
-      const result = await this.processEventById(event.id);
-      if (result?.url) {
-        processedCount += 1;
-      }
-    }
-
-    return processedCount;
-  }
-
-  private async claimEvent(eventId: string): Promise<{
-    eventId: string;
-    attemptCount: number;
-    payload: CheckoutSessionRequestedPayload;
-  } | null> {
-    return this.entityManager.fork().transactional(async (entityManager) => {
-      const event = await entityManager.findOne(
-        OutboxEventEntity,
-        { id: eventId },
-        { lockMode: LockMode.PESSIMISTIC_WRITE },
-      );
-
-      if (!event) {
-        return null;
-      }
-
-      if (
-        event.status === OutboxEventStatus.PROCESSED
-        || event.status === OutboxEventStatus.FAILED
-      ) {
-        return null;
-      }
-
-      if (event.availableAt > new Date()) {
-        return null;
-      }
-
-      event.status = OutboxEventStatus.PROCESSING;
-      event.attemptCount += 1;
-      event.availableAt = new Date(Date.now() + PROCESSING_LEASE_MS);
-      event.lastError = undefined;
-
-      await entityManager.flush();
-
-      return {
-        eventId: event.id,
-        attemptCount: event.attemptCount,
-        payload: event.payload as unknown as CheckoutSessionRequestedPayload,
-      };
-    });
-  }
-
-  private async markProcessingFailure(
-    eventId: string,
-    attemptCount: number,
-    error: unknown,
-  ): Promise<void> {
-    const message = error instanceof Error
-      ? error.message
-      : 'Unknown checkout outbox failure';
-    const stack = error instanceof Error ? error.stack : undefined;
-
-    this.logger.error(
-      `Failed processing outbox event ${eventId}: ${message}`,
-      stack,
-    );
-
-    await this.entityManager.fork().transactional(async (entityManager) => {
-      const event = await entityManager.findOneOrFail(
-        OutboxEventEntity,
-        { id: eventId },
-        { lockMode: LockMode.PESSIMISTIC_WRITE },
-      );
-
-      event.lastError = message;
-
-      if (attemptCount >= MAX_RETRY_ATTEMPTS) {
-        event.status = OutboxEventStatus.FAILED;
-        await entityManager.flush();
-        return;
-      }
-
-      event.status = OutboxEventStatus.PENDING;
-      event.availableAt = new Date(
-        Date.now() +
-          RETRY_DELAYS_MS[
-            Math.min(attemptCount - 1, RETRY_DELAYS_MS.length - 1)
-          ],
-      );
-
-      await entityManager.flush();
-    });
+      return Boolean(result?.url);
+    }, limit);
   }
 }

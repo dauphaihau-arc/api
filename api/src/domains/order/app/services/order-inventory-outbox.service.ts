@@ -7,7 +7,7 @@ import {
 import {
   OutboxEventEntity,
   OutboxEventStatus,
-} from '../../infra/persistence/entities/outbox-event.entity';
+} from '../../../../platform/outbox/outbox-event.entity';
 
 const ORDER_INVENTORY_OUTBOX_AGGREGATE_TYPE = 'order';
 

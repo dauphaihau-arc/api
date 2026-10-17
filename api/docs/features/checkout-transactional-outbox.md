@@ -76,7 +76,7 @@ Optional future state:
 
 Checkout uses the shared `outbox_events` table through:
 
-- [outbox-event.entity.ts](../../src/domains/order/infra/persistence/entities/outbox-event.entity.ts)
+- [outbox-event.entity.ts](../../src/platform/outbox/outbox-event.entity.ts)
 
 For this flow, the important event is:
 

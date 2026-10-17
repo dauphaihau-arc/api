@@ -39,7 +39,7 @@ import { ProductEntity } from '~/domains/product/infra/persistence/mikro-orm/ent
 import { ExchangeRateEntity } from '~/integrations/currency/infra/persistence/entities/exchange-rate.entity';
 import { OrderEntity } from '~/domains/order/infra/persistence/entities/order.entity';
 import { OrderItemEntity } from '~/domains/order/infra/persistence/entities/order-item.entity';
-import { OutboxEventEntity } from '~/domains/order/infra/persistence/entities/outbox-event.entity';
+import { OutboxEventEntity } from '~/platform/outbox/outbox-event.entity';
 import { ShopEntity } from '~/domains/shop/infra/persistence/entities/shop.entity';
 import { UserAddressEntity } from '~/domains/user/infra/persistence/entities/user-address.entity';
 import { VariantPriceEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/variant-price.entity';

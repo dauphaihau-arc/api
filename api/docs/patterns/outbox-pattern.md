@@ -39,7 +39,7 @@ Typical candidates:
 
 The shared outbox entity is:
 
-- [outbox-event.entity.ts](../../src/domains/order/infra/persistence/entities/outbox-event.entity.ts)
+- [outbox-event.entity.ts](../../src/platform/outbox/outbox-event.entity.ts)
 
 It persists:
 
@@ -89,10 +89,35 @@ If retry budget is exhausted:
 - make processors idempotent where possible
 - use `event_name` to route behavior, not table-specific logic
 
+## Shared Processor
+
+Claim, lease, retry-backoff, and terminal-failure behaviour is one component:
+
+- [durable-outbox.processor.ts](../../src/platform/outbox/durable-outbox.processor.ts)
+
+A processor owns one event name and declares the lifecycle it wants:
+
+- `eventName` — only that name is scanned and claimed
+- `dueStatuses` — which statuses count as due for the pending scan
+- `failureLogPrefix` / `unknownErrorMessage` — the processor's own failure wording
+
+The tuning is fixed and shared: 30s lease, 5 attempts, the 15s/1m/5m/15m/1h
+backoff schedule, and a batch size of 10. A processor must not invent its own.
+
+`claim` locks the row, refuses an event that is processed, failed, leased, or
+owned by another event name, then moves it to `processing`, increments
+`attempt_count`, and leases `available_at`. `markProcessed` (or `release` inside
+a caller's transaction) records success; `markFailed` re-arms the event with the
+next backoff step or marks it `failed` past the attempt limit.
+
+`dueStatuses` is the one deliberate difference between processors. Scanning
+`processing` recovers an event whose lease expired after a poller crashed;
+scanning only `pending` leaves such an event untouched.
+
 ## Current Usage
 
-The first implemented use case is checkout session creation:
-
-- [checkout-transactional-outbox.md](../features/checkout-transactional-outbox.md)
-
-That flow uses a checkout-specific processor on top of the shared `outbox_events` table.
+- Checkout session creation uses `OrderCheckoutOutboxService`, which scans
+  `pending` **and** `processing` so a crashed session creation is recovered:
+  [checkout-transactional-outbox.md](../features/checkout-transactional-outbox.md)
+- Inventory publish fan-out uses `OrderInventoryOutboxPublisherService`, which
+  scans only `pending`.
