@@ -38,6 +38,7 @@ import { UpdateAdminOrderStatusUseCase } from './app/use-cases/update-admin-orde
 import { UpdateAdminOrderRefundUseCase } from './app/use-cases/update-admin-order-refund/update-admin-order-refund.use-case';
 import { UpdateAdminOrderSupportNoteUseCase } from './app/use-cases/update-admin-order-support-note/update-admin-order-support-note.use-case';
 import { OrderCheckoutOutboxService } from './app/services/order-checkout-outbox.service';
+import { OrderPaidOutboxService } from './app/services/order-paid-outbox.service';
 import { OrderEventsService } from './app/services/order-events.service';
 import { OrderCartCleanupRepository } from './app/ports/order-cart-cleanup.repository';
 import { OrderCheckoutSessionRepository } from './app/ports/order-checkout-session.repository';
@@ -164,6 +165,7 @@ import { UpdateShopOrderRefundUseCase } from './app/use-cases/update-shop-order-
     OrderRefundService,
     OrderCheckoutOutboxService,
     OrderInventoryOutboxService,
+    OrderPaidOutboxService,
     OrderInventoryOutboxPublisherService,
     {
       provide: AMQP_CONNECT,
@@ -207,6 +209,7 @@ import { UpdateShopOrderRefundUseCase } from './app/use-cases/update-shop-order-
     OrderTotalPolicyService,
     OrderCheckoutOutboxService,
     OrderInventoryOutboxService,
+    OrderPaidOutboxService,
     OrderInventoryOutboxPublisherService,
     OrderRefundService,
     ProcessOrderRefundJob,

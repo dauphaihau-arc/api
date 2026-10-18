@@ -16,6 +16,7 @@ import type { CreateOrderResult } from '../order.types';
 import { OrderCartCleanupRepository } from '../ports/order-cart-cleanup.repository';
 import { OrderCheckoutSessionRepository } from '../ports/order-checkout-session.repository';
 import { OrderInventoryOutboxService } from './order-inventory-outbox.service';
+import { OrderPaidOutboxService } from './order-paid-outbox.service';
 
 @Injectable()
 export class OrderPaymentService {
@@ -24,6 +25,7 @@ export class OrderPaymentService {
     private readonly jobDispatcher: JobDispatcher,
     private readonly checkoutStockReservationService: CheckoutStockReservationPort,
     private readonly orderInventoryOutboxService: OrderInventoryOutboxService,
+    private readonly orderPaidOutboxService: OrderPaidOutboxService,
     private readonly orderEventsService: OrderEventsService,
     private readonly orderCheckoutSessionRepository: OrderCheckoutSessionRepository,
     private readonly orderCartCleanupRepository: OrderCartCleanupRepository,
@@ -104,6 +106,7 @@ export class OrderPaymentService {
 
       for (const order of actionableOrders) {
         const previousStatus = order.status;
+        const paidAt = input.completedAt ?? new Date();
 
         order.status = OrderStatus.PAID;
         order.paymentDetails = {
@@ -111,7 +114,7 @@ export class OrderPaymentService {
           checkout_session_id: sessionId,
           payment_intent_id: input.paymentIntentId ?? undefined,
           payment_status: input.paymentStatus ?? 'paid',
-          paid_at: input.completedAt?.toISOString() ?? new Date().toISOString(),
+          paid_at: paidAt.toISOString(),
         };
 
         await this.orderEventsService.record(entityManager, {
@@ -127,6 +130,18 @@ export class OrderPaymentService {
             payment_status: input.paymentStatus ?? 'paid',
             checkout_session_id: sessionId,
           },
+        });
+
+        await this.orderPaidOutboxService.createOrderPaidEvent(entityManager, {
+          orderId: order.id,
+          orderPublicId: order.publicId,
+          shopId: order.shop.id,
+          currency: order.currency,
+          subtotalMinor: order.subtotalMinor,
+          discountMinor: order.discountMinor,
+          shippingMinor: order.shippingMinor,
+          totalMinor: order.totalMinor,
+          occurredAt: paidAt,
         });
 
         const fulfillmentItems = orderItems

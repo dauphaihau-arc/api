@@ -7,6 +7,7 @@ import type { OrderCartCleanupRepository } from '../ports/order-cart-cleanup.rep
 import type { OrderCheckoutSessionRepository } from '../ports/order-checkout-session.repository';
 import type { OrderEventsService } from './order-events.service';
 import type { OrderInventoryOutboxService } from './order-inventory-outbox.service';
+import type { OrderPaidOutboxService } from './order-paid-outbox.service';
 import { OrderPaymentService } from './order-payment.service';
 
 describe('OrderPaymentService', () => {
@@ -16,6 +17,7 @@ describe('OrderPaymentService', () => {
       order,
       checkoutStockReservationService,
       orderInventoryOutboxService,
+      orderPaidOutboxService,
       orderCartCleanupRepository,
       fulfillmentService,
     } = buildService();
@@ -40,6 +42,21 @@ describe('OrderPaymentService', () => {
         orderIds: ['order-1'],
         reservationId: 'reservation-1',
         items: [{ inventoryId: 'inventory-1', quantity: 2 }],
+      },
+    );
+    expect(orderPaidOutboxService.createOrderPaidEvent).toHaveBeenCalledTimes(1);
+    expect(orderPaidOutboxService.createOrderPaidEvent).toHaveBeenCalledWith(
+      expect.anything(),
+      {
+        orderId: 'order-1',
+        orderPublicId: 'ord_1',
+        shopId: 'shop-1',
+        currency: 'USD',
+        subtotalMinor: 1800,
+        discountMinor: 0,
+        shippingMinor: 1150,
+        totalMinor: 2950,
+        occurredAt: new Date('2026-09-09T07:00:00.000Z'),
       },
     );
     expect(fulfillmentService.assignSellerGroupToOrder).toHaveBeenCalledWith(
@@ -93,6 +110,7 @@ describe('OrderPaymentService', () => {
     const {
       service,
       checkoutStockReservationService,
+      orderPaidOutboxService,
       fakeEntityManager,
     } = buildService();
     const expiredAt = new Date('2026-09-09T07:15:00.000Z');
@@ -108,12 +126,14 @@ describe('OrderPaymentService', () => {
       },
     );
     expect(checkoutStockReservationService.restoreInventoryForOrderItems).not.toHaveBeenCalled();
+    expect(orderPaidOutboxService.createOrderPaidEvent).not.toHaveBeenCalled();
   });
 });
 
 function buildService() {
   const order = {
     id: 'order-1',
+    publicId: 'ord_1',
     status: OrderStatus.AWAITING_PAYMENT,
     shop: { id: 'shop-1' },
     currency: 'USD',
@@ -207,6 +227,9 @@ function buildService() {
   const orderInventoryOutboxService = {
     createOrderCreatedEvent: jest.fn().mockResolvedValue(undefined),
   } as unknown as jest.Mocked<OrderInventoryOutboxService>;
+  const orderPaidOutboxService = {
+    createOrderPaidEvent: jest.fn().mockResolvedValue(undefined),
+  } as unknown as jest.Mocked<OrderPaidOutboxService>;
   const orderEventsService = {
     record: jest.fn().mockResolvedValue(undefined),
   } as unknown as jest.Mocked<OrderEventsService>;
@@ -225,6 +248,7 @@ function buildService() {
     jobDispatcher,
     checkoutStockReservationService,
     orderInventoryOutboxService,
+    orderPaidOutboxService,
     orderEventsService,
     orderCheckoutSessionRepository,
     orderCartCleanupRepository,
@@ -237,6 +261,7 @@ function buildService() {
     fakeEntityManager,
     checkoutStockReservationService,
     orderInventoryOutboxService,
+    orderPaidOutboxService,
     orderCartCleanupRepository,
     fulfillmentService,
   };
