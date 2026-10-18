@@ -15,6 +15,7 @@ This directory contains HTTP-level smoke tests for the API using [Hurl](https://
 - `internal/catalog-status.hurl` checks the internal catalog status endpoint.
 - `internal/catalog-refresh.hurl` triggers a best-seller refresh on the internal catalog endpoint.
 - `finance/seller-payable.hurl` checks the shop-scoped Seller Payable endpoint as a signed-in seller.
+- `finance/commission-schedule.hurl` checks the admin Commission Schedule endpoint is 401 for anonymous, 403 for a seller, and 200 for a signed-in admin.
 - `checkout/create-card-order.manual.hurl` + `finance/settle-paid-card-order.manual.hurl` are the two halves of one flow: open a card checkout, pay it in Stripe test mode, then assert the Seller Payable the paid Order credits. The `.manual.` infix keeps them out of `suite` and `pnpm test:hurl`.
 
 ## Run

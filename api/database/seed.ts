@@ -41,11 +41,13 @@ import { OrderEntity } from '~/domains/order/infra/persistence/entities/order.en
 import { OrderItemEntity } from '~/domains/order/infra/persistence/entities/order-item.entity';
 import { OutboxEventEntity } from '~/platform/outbox/outbox-event.entity';
 import { ShopEntity } from '~/domains/shop/infra/persistence/entities/shop.entity';
+import { CommissionScheduleEntity } from '~/domains/finance/infra/persistence/entities/commission-schedule.entity';
 import { UserAddressEntity } from '~/domains/user/infra/persistence/entities/user-address.entity';
 import { VariantPriceEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/variant-price.entity';
 import { seedAuth } from './seeds/auth.seed';
 import { seedCategories } from './seeds/category.seed';
 import { seedChat } from './seeds/chat.seed';
+import { seedCommissionSchedules } from './seeds/commission-schedule.seed';
 import { seedPromotions } from './seeds/promotion.seed';
 import { seedExchangeRates } from './seeds/exchange-rate.seed';
 import { seedLocalOrderScenarios } from './seeds/local-order-scenario.seed';
@@ -107,6 +109,7 @@ async function main() {
       OrderEntity,
       OrderItemEntity,
       ShopEntity,
+      CommissionScheduleEntity,
       ProductEntity,
       ProductImageEntity,
       ProductAttributeValueEntity,
@@ -141,6 +144,9 @@ async function main() {
 
     const { shopsBySlug } = await runSeedStep('Seeding shops', async () =>
       seedShops(em, usersByEmail),
+    );
+    await runSeedStep('Seeding commission schedules', async () =>
+      seedCommissionSchedules(em, shopsBySlug),
     );
     await runSeedStep('Seeding exchange rates', async () => seedExchangeRates(em));
     await runSeedStep('Seeding products', async () => seedProducts(em, shopsBySlug));

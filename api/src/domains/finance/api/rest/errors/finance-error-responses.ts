@@ -31,3 +31,27 @@ export const shopFinanceControllerErrorResponses = {
     404: [...shopNotFound],
   },
 };
+
+/**
+ * Public error response sets for the admin Commission Schedule controller. The
+ * endpoint is gated by `finance.manage` and resolves the shop from its public
+ * id without an ownership check.
+ */
+export const adminCommissionScheduleControllerErrorResponses = {
+  controller: {
+    401: unauthorizedErrorExamples,
+    403: [missingRequiredPermissionsErrorExample],
+    429: [rateLimitErrorExample],
+    500: [internalServerErrorExample],
+  },
+  record: {
+    400: [
+      {
+        code: 'INVALID_COMMISSION_RATE',
+        message:
+          'Commission rate 20000 basis points is outside the allowed range 0 to 10000',
+      },
+    ],
+    404: [...shopNotFound],
+  },
+};

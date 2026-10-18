@@ -14,3 +14,7 @@ buyer_login_password=Password123!
 # checkout/create-card-order.manual.hurl before running
 # finance/settle-paid-card-order.manual.hurl.
 checkout_session_id=
+
+# Platform admin (seeded in seed-data/auth-users.tsv), for admin finance routes.
+admin_login_email=admin@example.com
+admin_login_password=Password123!

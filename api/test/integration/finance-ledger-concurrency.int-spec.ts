@@ -4,6 +4,7 @@ import { buildDatabaseConfig } from '~/platform/config/database.config';
 import { UserStatus } from '~/domains/auth/domain/enums/user-status.enum';
 import { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
 import { ShopEntity } from '~/domains/shop/infra/persistence/entities/shop.entity';
+import { MikroOrmCommissionScheduleRepository } from '~/domains/finance/infra/persistence/repositories/mikro-orm-commission-schedule.repository';
 import { MikroOrmJournalEntryRepository } from '~/domains/finance/infra/persistence/repositories/mikro-orm-journal-entry.repository';
 import { MikroOrmSellerPayableCommandRepository } from '~/domains/finance/infra/persistence/repositories/mikro-orm-seller-payable-command.repository';
 import { RecordOrderPaidJournalEntryUseCase } from '~/domains/finance/app/use-cases/record-order-paid-journal-entry/record-order-paid-journal-entry.use-case';
@@ -100,6 +101,7 @@ describe('Finance ledger concurrency (integration)', () => {
       entityManager,
       new MikroOrmJournalEntryRepository(entityManager),
       new MikroOrmSellerPayableCommandRepository(entityManager),
+      new MikroOrmCommissionScheduleRepository(entityManager),
     );
   }
 

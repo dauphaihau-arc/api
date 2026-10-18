@@ -60,6 +60,14 @@ export const SHIPPING_PROFILES_LOCAL_TSV_PATH = path.join(
   SEED_DATA_DIR,
   'shipping-profiles.local.tsv',
 );
+export const COMMISSION_SCHEDULES_TSV_PATH = path.join(
+  SEED_DATA_DIR,
+  'commission-schedules.tsv',
+);
+export const COMMISSION_SCHEDULES_LOCAL_TSV_PATH = path.join(
+  SEED_DATA_DIR,
+  'commission-schedules.local.tsv',
+);
 
 export const PRODUCT_IMAGE_ROOT_DIRS = [
   path.join(SEED_DATA_DIR, 'images', 'products-local'),

@@ -113,6 +113,90 @@ describe('buildPaidOrderPostings', () => {
     );
   });
 
+  it('charges no commission line when the rate is zero', () => {
+    const postings = buildPaidOrderPostings({ ...BASE_FACTS, commissionMinor: 0 });
+
+    expect(postings.map((posting) => posting.account.kind)).toEqual([
+      LedgerAccountKind.SELLER_PAYABLE,
+      LedgerAccountKind.PLATFORM_CLEARING,
+    ]);
+  });
+
+  it('deducts the commission from the seller payable and credits it to platform commission', () => {
+    // 10_000 - 1_500 discount = 8_500 items, + 500 shipping; 15% of 8_500 = 1_275.
+    const postings = buildPaidOrderPostings({
+      ...BASE_FACTS,
+      subtotalMinor: 10_000,
+      discountMinor: 1_500,
+      shippingMinor: 500,
+      commissionMinor: 1_275,
+    });
+
+    expect(amountFor(LedgerAccountKind.SELLER_PAYABLE, postings)).toBe(7_725);
+    expect(amountFor(LedgerAccountKind.PLATFORM_COMMISSION, postings)).toBe(1_275);
+  });
+
+  it('still passes the whole shipping charge through when commission is charged', () => {
+    const withoutShipping = buildPaidOrderPostings({
+      ...BASE_FACTS,
+      subtotalMinor: 10_000,
+      shippingMinor: 0,
+      commissionMinor: 1_275,
+    });
+    const withShipping = buildPaidOrderPostings({
+      ...BASE_FACTS,
+      subtotalMinor: 10_000,
+      shippingMinor: 500,
+      commissionMinor: 1_275,
+    });
+
+    expect(
+      amountFor(LedgerAccountKind.SELLER_PAYABLE, withShipping) -
+        amountFor(LedgerAccountKind.SELLER_PAYABLE, withoutShipping),
+    ).toBe(500);
+  });
+
+  it('sums to zero once commission is charged', () => {
+    const postings = buildPaidOrderPostings({
+      ...BASE_FACTS,
+      subtotalMinor: 10_000,
+      discountMinor: 1_500,
+      shippingMinor: 500,
+      commissionMinor: 1_275,
+    });
+
+    expect(postings.reduce((total, posting) => total + posting.amountMinor, 0)).toBe(0);
+  });
+
+  it('still debits platform clearing exactly what was collected', () => {
+    const postings = buildPaidOrderPostings({
+      ...BASE_FACTS,
+      subtotalMinor: 10_000,
+      discountMinor: 1_500,
+      shippingMinor: 500,
+      commissionMinor: 1_275,
+    });
+
+    // Collected = item subtotal less discount, plus shipping, and is unchanged by commission.
+    expect(amountFor(LedgerAccountKind.PLATFORM_CLEARING, postings)).toBe(-9_000);
+  });
+
+  it('scopes the commission account to the platform and the payable account to the order shop', () => {
+    const postings = buildPaidOrderPostings({
+      ...BASE_FACTS,
+      commissionMinor: 1_275,
+    });
+
+    const commission = postings.find(
+      (posting) => posting.account.kind === LedgerAccountKind.PLATFORM_COMMISSION,
+    );
+
+    expect(commission?.account).toEqual({
+      kind: LedgerAccountKind.PLATFORM_COMMISSION,
+      currency: 'USD',
+    });
+  });
+
   it('scopes the seller payable account to the order shop and the platform account to no shop', () => {
     const postings = buildPaidOrderPostings(BASE_FACTS);
 
