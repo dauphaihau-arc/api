@@ -1,3 +1,16 @@
 base_url=http://127.0.0.1:4000
 auth_login_email=member@example.com
 auth_login_password=Password123!
+
+seller_login_email=maker.olive@example.com
+seller_login_password=Password123!
+
+# Dedicated buyer for the paid card Order flow. Registering twice is not an
+# error, so the flow can re-use this account.
+buyer_login_email=paid-card-order-buyer@example.com
+buyer_login_password=Password123!
+
+# Paste the Stripe Checkout Session id (cs_...) printed by
+# checkout/create-card-order.manual.hurl before running
+# finance/settle-paid-card-order.manual.hurl.
+checkout_session_id=

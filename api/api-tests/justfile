@@ -8,7 +8,7 @@ default:
   @just --list
 
 suite:
-  hurl --test --glob "**/*.hurl" --variables-file {{vars_file}}
+  hurl --test --variables-file {{vars_file}} $(find . -name '*.hurl' ! -name '*.manual.hurl' -print)
 
 run file:
   file_path="{{file}}"; \

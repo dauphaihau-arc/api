@@ -47,7 +47,7 @@
     "test:e2e": "jest --config ./jest-e2e.json",
     "e2e:seller": "node ./scripts/run-seller-e2e.mjs",
     "test:int": "jest --config ./jest-int.json",
-    "test:hurl": "hurl --test --glob \"api-tests/**/*.hurl\" --variables-file api-tests/hurl.variables",
+    "test:hurl": "hurl --test $(find api-tests -name '*.hurl' ! -name '*.manual.hurl' -print) --variables-file api-tests/hurl.variables",
     "storage:clear": "ts-node -r tsconfig-paths/register ./scripts/clear-seed-storage.ts"
   },
   "lint-staged": {
