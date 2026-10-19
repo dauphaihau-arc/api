@@ -13,4 +13,16 @@ export abstract class SellerPayableCommandRepository {
     amountMinor: number,
     context: FinanceRepositoryContext,
   ): Promise<void>;
+
+  /**
+   * Moves `amountMinor` from a shop's not-yet-available Seller Payable into its
+   * available Seller Payable in one currency: available rises by the amount and
+   * not-yet-available falls by it in a single race-safe upsert.
+   */
+  abstract releaseToAvailable(
+    shopId: string,
+    currency: string,
+    amountMinor: number,
+    context: FinanceRepositoryContext,
+  ): Promise<void>;
 }

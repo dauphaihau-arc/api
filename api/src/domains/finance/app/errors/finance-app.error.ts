@@ -11,6 +11,19 @@ export abstract class FinanceAppError extends DomainError {
 }
 
 /**
+ * Raised while recording a delivered Order's payout when its `order.paid`
+ * Journal Entry is not recorded yet and the paid event that produces it is
+ * still pending or in flight. Transient by construction: the shared outbox
+ * processor retries the delivery once the paid event lands, so recorded
+ * availability is never lost to event ordering.
+ */
+export class PaidOrderPostingNotRecordedError extends FinanceAppError {
+  constructor(orderId: string) {
+    super(`Order ${orderId}'s paid posting is not recorded yet`);
+  }
+}
+
+/**
  * Raised when an Order's money cannot be settled because no exchange rate
  * reaches the shop's Settlement Currency. Transient by construction: rates sync
  * on a schedule, and the shared outbox processor retries the money event, so the

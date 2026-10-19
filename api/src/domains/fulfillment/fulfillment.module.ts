@@ -2,11 +2,13 @@ import { MikroOrmModule } from '@mikro-orm/nestjs';
 import { forwardRef, Module } from '@nestjs/common';
 import { CacheModule } from '~/integrations/cache/cache.module';
 import { IdempotencyModule } from '~/platform/idempotency/idempotency.module';
+import { OutboxEventEntity } from '~/platform/outbox/outbox-event.entity';
 import { OrderModule } from '../order/order.module';
 import { ShopModule } from '../shop/shop.module';
 import { FulfillmentCommandRunner } from './app/services/fulfillment-command.runner';
 import { FulfillmentTargetResolver } from './app/services/fulfillment-target-resolver.service';
 import { FulfillmentService } from './app/services/fulfillment.service';
+import { OrderDeliveredOutboxService } from './app/services/order-delivered-outbox.service';
 import { AmendFulfillmentShipmentUseCase } from './app/use-cases/amend-fulfillment-shipment/amend-fulfillment-shipment.use-case';
 import { PrepareFulfillmentShipmentUseCase } from './app/use-cases/prepare-fulfillment-shipment/prepare-fulfillment-shipment.use-case';
 import { ReconcileOrderFulfillmentUseCase } from './app/use-cases/reconcile-order-fulfillment/reconcile-order-fulfillment.use-case';
@@ -38,12 +40,14 @@ import { MikroOrmShipmentQueryRepository } from './infra/persistence/repositorie
       ShipmentEntity,
       ShipmentItemEntity,
       ShipmentUpdateEntity,
+      OutboxEventEntity,
     ]),
   ],
   controllers: [ShopOrderFulfillmentController],
   providers: [
     FulfillmentService,
     FulfillmentCommandRunner,
+    OrderDeliveredOutboxService,
     PrepareFulfillmentShipmentUseCase,
     AmendFulfillmentShipmentUseCase,
     VoidFulfillmentShipmentUseCase,

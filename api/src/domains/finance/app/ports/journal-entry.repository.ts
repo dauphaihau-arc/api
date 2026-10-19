@@ -14,4 +14,14 @@ export abstract class JournalEntryRepository {
     entry: JournalEntry,
     context: FinanceRepositoryContext,
   ): Promise<boolean>;
+
+  /**
+   * Resolves the Seller Payable a Money Event credited, or `null` when the
+   * event produced no Seller Payable Posting. Identifies the shop and currency
+   * whose position later becomes available.
+   */
+  abstract findSellerPayableByMoneyEventKey(
+    moneyEventKey: string,
+    context?: FinanceRepositoryContext,
+  ): Promise<{ shopId: string; currency: string; amountMinor: number } | null>;
 }

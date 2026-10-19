@@ -11,20 +11,26 @@ import { ShopFinanceController } from './api/rest/shop-finance.controller';
 import { FinanceMoneyEventProcessorService } from './app/services/finance-money-event-processor.service';
 import { CommissionScheduleRepository } from './app/ports/commission-schedule.repository';
 import { JournalEntryRepository } from './app/ports/journal-entry.repository';
+import { OrderPaidEventRepository } from './app/ports/order-paid-event.repository';
+import { PayoutAvailabilityRepository } from './app/ports/payout-availability.repository';
 import { SellerPayableCommandRepository } from './app/ports/seller-payable-command.repository';
 import { SellerPayableQueryRepository } from './app/ports/seller-payable-query.repository';
 import { SettlementCurrencyRepository } from './app/ports/settlement-currency.repository';
 import { GetShopSellerPayableUseCase } from './app/use-cases/get-shop-seller-payable/get-shop-seller-payable.use-case';
 import { RecordCommissionScheduleUseCase } from './app/use-cases/record-commission-schedule/record-commission-schedule.use-case';
 import { RecordOrderPaidJournalEntryUseCase } from './app/use-cases/record-order-paid-journal-entry/record-order-paid-journal-entry.use-case';
+import { RecordPayoutAvailabilityUseCase } from './app/use-cases/record-payout-availability/record-payout-availability.use-case';
 import { CommissionScheduleEntity } from './infra/persistence/entities/commission-schedule.entity';
 import { JournalEntryEntity } from './infra/persistence/entities/journal-entry.entity';
 import { LedgerAccountEntity } from './infra/persistence/entities/ledger-account.entity';
+import { PayoutAvailabilityEntity } from './infra/persistence/entities/payout-availability.entity';
 import { PostingEntity } from './infra/persistence/entities/posting.entity';
 import { SellerPayablePositionEntity } from './infra/persistence/entities/seller-payable-position.entity';
 import { SettlementCurrencyHistoryEntity } from './infra/persistence/entities/settlement-currency-history.entity';
 import { MikroOrmCommissionScheduleRepository } from './infra/persistence/repositories/mikro-orm-commission-schedule.repository';
 import { MikroOrmJournalEntryRepository } from './infra/persistence/repositories/mikro-orm-journal-entry.repository';
+import { MikroOrmOrderPaidEventRepository } from './infra/persistence/repositories/mikro-orm-order-paid-event.repository';
+import { MikroOrmPayoutAvailabilityRepository } from './infra/persistence/repositories/mikro-orm-payout-availability.repository';
 import { MikroOrmSellerPayableQueryRepository } from './infra/persistence/repositories/mikro-orm-seller-payable-query.repository';
 import { MikroOrmSellerPayableCommandRepository } from './infra/persistence/repositories/mikro-orm-seller-payable-command.repository';
 import { MikroOrmSettlementCurrencyRepository } from './infra/persistence/repositories/mikro-orm-settlement-currency.repository';
@@ -43,6 +49,7 @@ import { MikroOrmSettlementCurrencyRepository } from './infra/persistence/reposi
       SellerPayablePositionEntity,
       SettlementCurrencyHistoryEntity,
       CommissionScheduleEntity,
+      PayoutAvailabilityEntity,
       OutboxEventEntity,
     ]),
   ],
@@ -53,8 +60,16 @@ import { MikroOrmSettlementCurrencyRepository } from './infra/persistence/reposi
       useClass: MikroOrmJournalEntryRepository,
     },
     {
+      provide: OrderPaidEventRepository,
+      useClass: MikroOrmOrderPaidEventRepository,
+    },
+    {
       provide: SellerPayableCommandRepository,
       useClass: MikroOrmSellerPayableCommandRepository,
+    },
+    {
+      provide: PayoutAvailabilityRepository,
+      useClass: MikroOrmPayoutAvailabilityRepository,
     },
     {
       provide: SellerPayableQueryRepository,
@@ -69,6 +84,7 @@ import { MikroOrmSettlementCurrencyRepository } from './infra/persistence/reposi
       useClass: MikroOrmCommissionScheduleRepository,
     },
     RecordOrderPaidJournalEntryUseCase,
+    RecordPayoutAvailabilityUseCase,
     RecordCommissionScheduleUseCase,
     GetShopSellerPayableUseCase,
     FinanceMoneyEventProcessorService,

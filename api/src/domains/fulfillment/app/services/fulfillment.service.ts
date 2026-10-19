@@ -43,6 +43,7 @@ import type {
   FulfillmentOrderView,
   FulfillmentRequestedItem,
 } from '../fulfillment.types';
+import { OrderDeliveredOutboxService } from './order-delivered-outbox.service';
 
 export type AssignOrderFulfillmentInput = {
   orderId: string;
@@ -88,6 +89,10 @@ export type RecordJourneyInput = {
 
 @Injectable()
 export class FulfillmentService {
+  constructor(
+    private readonly orderDeliveredOutboxService: OrderDeliveredOutboxService,
+  ) {}
+
   /**
    * Assigns the seller group and its exact Order Item quantities to a newly
    * confirmed Order. Replay-safe: an existing group for the order is returned
@@ -390,6 +395,13 @@ export class FulfillmentService {
     }
 
     const occurredAt = input.occurredAt ?? new Date();
+
+    // Captured before the delivered timestamp is assigned: only the transition
+    // that first establishes delivery may publish the order's delivery event.
+    const becameDelivered = statusChanged
+      && input.status === ShipmentStatus.DELIVERED
+      && !shipment.deliveredAt;
+
     shipment.status = input.status;
     shipment.carrier = carrier;
     shipment.trackingNumber = trackingNumber;
@@ -415,6 +427,15 @@ export class FulfillmentService {
     }));
 
     await entityManager.flush();
+
+    if (becameDelivered) {
+      await this.publishOrderDeliveredEvent(
+        entityManager,
+        input.orderId,
+        shipment.deliveredAt ?? occurredAt,
+        new Date(),
+      );
+    }
 
     return shipment;
   }
@@ -495,6 +516,42 @@ export class FulfillmentService {
     if (shipments.length > 0) {
       await entityManager.flush();
     }
+  }
+
+  /**
+   * Publishes the order's delivery event once every required unit of the order is
+   * delivered. Partial delivery, an order without groups, and fully voided units
+   * publish nothing. Runs on the caller's EntityManager so the delivery fact and
+   * its event commit together.
+   */
+  private async publishOrderDeliveredEvent(
+    entityManager: EntityManager,
+    orderId: string,
+    deliveredAt: Date,
+    occurredAt: Date,
+  ): Promise<void> {
+    const views = await this.loadOrderFulfillment(entityManager, [orderId]);
+    const view = views.get(orderId);
+
+    if (!view || view.progress.ordered === 0 || view.progress.delivered < view.progress.ordered) {
+      return;
+    }
+
+    const evidence = view.groups
+      .flatMap((group) => group.shipments)
+      .filter((shipment) => shipment.status === ShipmentStatus.DELIVERED)
+      .map((shipment) => ({
+        shipmentId: shipment.id,
+        shipmentPublicId: shipment.publicId,
+        deliveredAt: shipment.deliveredAt ?? deliveredAt,
+      }));
+
+    await this.orderDeliveredOutboxService.createOrderDeliveredEvent(entityManager, {
+      orderId,
+      deliveredAt,
+      occurredAt,
+      evidence,
+    });
   }
 
   private async loadGroupForWrite(
