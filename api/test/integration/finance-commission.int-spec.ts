@@ -636,6 +636,51 @@ describe('Platform Commission from a Commission Schedule (integration)', () => {
       .send(body);
   }
 
+  /**
+   * The canonical FX seam reads live rates from `exchange_rates`; a scenario that
+   * prices in one currency and settles in another seeds both directions.
+   */
+  async function seedExchangeRate(fromCurrency: string, toCurrency: string, rate: string) {
+    await sql.query(
+      `insert into "exchange_rates"
+         ("id", "created_at", "updated_at", "from_currency", "to_currency", "rate", "effective_at", "expires_at", "source", "source_timestamp")
+       values ($1, now(), now(), $2, $3, $4, now() - interval '1 day', null, 'test-rates', now() - interval '1 day')`,
+      [randomUUID(), fromCurrency, toCurrency, rate],
+    );
+  }
+
+  /**
+   * The buyer's saved market preference is authoritative over request headers, so
+   * a buyer who pays in another currency is set up through the public profile
+   * endpoint rather than through a header.
+   */
+  async function setBuyerMarket(
+    target: TestBuyer,
+    preferences: { region: string, language: string, currency: string },
+  ): Promise<void> {
+    await target.agent
+      .patch(`${API_PREFIX}/me`)
+      .set('Idempotency-Key', randomUUID())
+      .send({ preferences })
+      .expect(200);
+  }
+
+  async function readJournalEntry(moneyEventKey: string): Promise<{
+    currency: string;
+    charge_currency: string | null;
+    charge_amount_minor: number | null;
+    fx_rate: string | null;
+  } | undefined> {
+    const result = await sql.query(
+      `select "currency", "charge_currency", "charge_amount_minor", "fx_rate"
+       from "journal_entries"
+       where "money_event_key" = $1`,
+      [moneyEventKey],
+    );
+
+    return result.rows[0];
+  }
+
   async function countCommissionSchedules(internalShopId: string): Promise<number> {
     const result = await sql.query(
       'select count(*)::int as "count" from "commission_schedules" where "shop_id" = $1',
@@ -948,5 +993,66 @@ describe('Platform Commission from a Commission Schedule (integration)', () => {
 
     const position = await readPayablePosition(plainShopInternalId);
     expect(position?.not_yet_available_minor).toBe(fullCollect);
+  });
+
+  it('Commission is charged on the converted discounted subtotal when the buyer pays in another currency', async () => {
+    // The shop prices in USD and this buyer pays in VND, so the base the rate
+    // applies to is the converted one, not the charge-currency amount.
+    await seedExchangeRate('USD', 'VND', '25000');
+    await seedExchangeRate('VND', 'USD', '0.00004');
+
+    const fxSeller = await registerSeller('fin-commission-fx');
+    const fxProfile = await createActiveProfile(fxSeller);
+    const fxProduct = await createPublishableProduct({
+      seller: fxSeller,
+      shippingProfileId: fxProfile.id,
+      title: 'Converted Commission Mug',
+      sku: `FIN-COMMISSION-FX-${randomUUID()}`,
+      amountMinor: 1000,
+      stock: 5,
+    });
+    const fxShopInternalId = await resolveShopId(sql, fxSeller.shopPublicId);
+
+    const schedule = await putCommissionSchedule(fxSeller.shopPublicId, {
+      effective_from: SCHEDULE_EFFECTIVE_FROM,
+      rate_basis_points: 1500,
+    });
+    expect(schedule.status).toBe(200);
+
+    const fxBuyer = await registerBuyer('fin-commission-fx-buyer');
+    await setBuyerMarket(fxBuyer, { region: 'Vietnam', language: 'la', currency: 'VND' });
+
+    await addCartItem(fxBuyer, fxProduct.inventoryId, 1);
+    const quote = await createQuote(fxBuyer);
+    expect(quote.checkout_currency).toBe('VND');
+
+    const orderResponse = await confirmCardOrder(fxBuyer, quote.quote_id);
+    expect(orderResponse.status).toBe(201);
+
+    const orderPublicId = orderResponse.body.order_shops[0].id as string;
+    const checkoutSessionId = await readOrderSessionId(orderPublicId);
+    await completeCardSession(checkoutSessionId);
+    await pumpFinance();
+
+    const orderRow = await readOrderMoneyRow(orderPublicId);
+    const moneyEventKey = `order.paid:${orderRow.id}`;
+
+    // The entry settles in the shop's currency and keeps what the buyer paid.
+    const entry = await readJournalEntry(moneyEventKey);
+    expect(entry).toMatchObject({
+      currency: 'USD',
+      charge_currency: 'VND',
+      charge_amount_minor: orderRow.total_minor,
+      fx_rate: '0.0000400000',
+    });
+
+    // 250000 VND of goods converts to exactly 1000 USD minor; 15.00% of that is
+    // the commission, and the converted shipping charge passes through in full.
+    expect(await sumPostingsByKindForEntry(moneyEventKey, 'platform_commission')).toBe(150);
+    expect(await sumPostingsByKindForEntry(moneyEventKey, 'seller_payable')).toBe(1449);
+    expect(await sumPostingsForEntry(moneyEventKey)).toBe(0);
+
+    const position = await readPayablePosition(fxShopInternalId);
+    expect(position).toMatchObject({ currency: 'USD', not_yet_available_minor: 1449 });
   });
 });
