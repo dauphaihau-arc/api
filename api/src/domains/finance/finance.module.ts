@@ -3,6 +3,7 @@ import { forwardRef, Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { OutboxEventEntity } from '~/platform/outbox/outbox-event.entity';
 import { AuditModule } from '~/integrations/audit/audit.module';
+import { CurrencyModule } from '~/integrations/currency/currency.module';
 import { AuthModule } from '../auth/auth.module';
 import { ShopModule } from '../shop/shop.module';
 import { AdminCommissionScheduleController } from './api/rest/admin-commission-schedule.controller';
@@ -12,6 +13,7 @@ import { CommissionScheduleRepository } from './app/ports/commission-schedule.re
 import { JournalEntryRepository } from './app/ports/journal-entry.repository';
 import { SellerPayableCommandRepository } from './app/ports/seller-payable-command.repository';
 import { SellerPayableQueryRepository } from './app/ports/seller-payable-query.repository';
+import { SettlementCurrencyRepository } from './app/ports/settlement-currency.repository';
 import { GetShopSellerPayableUseCase } from './app/use-cases/get-shop-seller-payable/get-shop-seller-payable.use-case';
 import { RecordCommissionScheduleUseCase } from './app/use-cases/record-commission-schedule/record-commission-schedule.use-case';
 import { RecordOrderPaidJournalEntryUseCase } from './app/use-cases/record-order-paid-journal-entry/record-order-paid-journal-entry.use-case';
@@ -20,15 +22,18 @@ import { JournalEntryEntity } from './infra/persistence/entities/journal-entry.e
 import { LedgerAccountEntity } from './infra/persistence/entities/ledger-account.entity';
 import { PostingEntity } from './infra/persistence/entities/posting.entity';
 import { SellerPayablePositionEntity } from './infra/persistence/entities/seller-payable-position.entity';
+import { SettlementCurrencyHistoryEntity } from './infra/persistence/entities/settlement-currency-history.entity';
 import { MikroOrmCommissionScheduleRepository } from './infra/persistence/repositories/mikro-orm-commission-schedule.repository';
 import { MikroOrmJournalEntryRepository } from './infra/persistence/repositories/mikro-orm-journal-entry.repository';
 import { MikroOrmSellerPayableQueryRepository } from './infra/persistence/repositories/mikro-orm-seller-payable-query.repository';
 import { MikroOrmSellerPayableCommandRepository } from './infra/persistence/repositories/mikro-orm-seller-payable-command.repository';
+import { MikroOrmSettlementCurrencyRepository } from './infra/persistence/repositories/mikro-orm-settlement-currency.repository';
 
 @Module({
   imports: [
     ConfigModule,
     AuditModule,
+    CurrencyModule,
     forwardRef(() => AuthModule),
     ShopModule,
     MikroOrmModule.forFeature([
@@ -36,6 +41,7 @@ import { MikroOrmSellerPayableCommandRepository } from './infra/persistence/repo
       LedgerAccountEntity,
       PostingEntity,
       SellerPayablePositionEntity,
+      SettlementCurrencyHistoryEntity,
       CommissionScheduleEntity,
       OutboxEventEntity,
     ]),
@@ -53,6 +59,10 @@ import { MikroOrmSellerPayableCommandRepository } from './infra/persistence/repo
     {
       provide: SellerPayableQueryRepository,
       useClass: MikroOrmSellerPayableQueryRepository,
+    },
+    {
+      provide: SettlementCurrencyRepository,
+      useClass: MikroOrmSettlementCurrencyRepository,
     },
     {
       provide: CommissionScheduleRepository,

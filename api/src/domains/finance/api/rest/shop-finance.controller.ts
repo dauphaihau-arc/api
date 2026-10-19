@@ -43,7 +43,7 @@ export class ShopFinanceController {
   @ApiOperation({ summary: 'Get shop Seller Payable' })
   @ApiParam({ name: 'shop_id', type: String })
   @ApiOkResponse({
-    description: 'The shop Seller Payable by currency.',
+    description: 'The shop Seller Payable in its Settlement Currency.',
     type: ShopSellerPayableResponseDto,
   })
   @ApiErrorResponses(shopFinanceControllerErrorResponses.payable)

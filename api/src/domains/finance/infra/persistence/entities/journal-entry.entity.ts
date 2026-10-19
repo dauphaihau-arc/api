@@ -10,6 +10,11 @@ import { ShopEntity } from '~/domains/shop/infra/persistence/entities/shop.entit
 /**
  * The immutable record of one Money Event's money consequences. One row per
  * Money Event, identified by its unique money event key.
+ *
+ * The entry is denominated in the shop's Settlement Currency. When the buyer
+ * paid in another currency the entry keeps what was collected — the charge
+ * currency, the amount collected in it, and the rate the conversion used — as
+ * evidence; a same-currency Order carries none of it.
  */
 @Entity({ tableName: 'journal_entries' })
 export class JournalEntryEntity extends AbstractBaseEntity {
@@ -31,4 +36,22 @@ export class JournalEntryEntity extends AbstractBaseEntity {
 
   @Property({ fieldName: 'occurred_at', type: 'timestamptz' })
   occurredAt!: Date;
+
+  @Property({ fieldName: 'charge_currency', length: 3, nullable: true })
+  chargeCurrency?: string;
+
+  @Property({ fieldName: 'charge_amount_minor', nullable: true })
+  chargeAmountMinor?: number;
+
+  @Property({ fieldName: 'fx_rate', type: 'text', nullable: true })
+  fxRate?: string;
+
+  @Property({ fieldName: 'fx_rate_source', length: 100, nullable: true })
+  fxRateSource?: string;
+
+  @Property({ fieldName: 'fx_rate_effective_at', nullable: true })
+  fxRateEffectiveAt?: Date;
+
+  @Property({ fieldName: 'fx_rate_source_timestamp', nullable: true })
+  fxRateSourceTimestamp?: Date;
 }

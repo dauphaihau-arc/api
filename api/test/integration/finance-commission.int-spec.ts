@@ -82,7 +82,7 @@ type PayablePosition = {
   not_yet_available_minor: number;
 };
 
-type PayableResponse = { positions: PayablePosition[] };
+type PayableResponse = PayablePosition;
 
 type PaidOrder = {
   orderInternalId: string;
@@ -700,13 +700,12 @@ describe('Platform Commission from a Commission Schedule (integration)', () => {
 
   async function readPayablePosition(
     internalShopId: string,
-    currency: string,
   ): Promise<PayablePosition | undefined> {
     const result = await sql.query(
       `select "currency", "available_minor", "not_yet_available_minor"
        from "seller_payable_positions"
-       where "shop_id" = $1 and "currency" = $2`,
-      [internalShopId, currency],
+       where "shop_id" = $1`,
+      [internalShopId],
     );
 
     return result.rows[0] as PayablePosition | undefined;
@@ -839,7 +838,7 @@ describe('Platform Commission from a Commission Schedule (integration)', () => {
       .toBe(netMinor);
 
     // The shop's position carries that net, not the undiminished collected total.
-    const position = await readPayablePosition(shopInternalId, orderRow.currency);
+    const position = await readPayablePosition(shopInternalId);
     expect(position?.not_yet_available_minor).toBe(netMinor);
 
     firstOrderPostingsSnapshot = await readPostingsSnapshot(firstPaidOrder.moneyEventKey);
@@ -851,8 +850,7 @@ describe('Platform Commission from a Commission Schedule (integration)', () => {
       expectedCommissionMinor(orderRow.subtotal_minor - orderRow.discount_minor, 1500);
 
     const payable = await readPayable(seller, seller.shopPublicId);
-    expect(payable.positions).toHaveLength(1);
-    expect(payable.positions[0]!.not_yet_available_minor).toBe(expectedNet);
+    expect(payable.not_yet_available_minor).toBe(expectedNet);
 
     await unrelatedSeller.agent
       .get(`${API_PREFIX}/shops/${seller.shopPublicId}/finance/payable`)
@@ -871,7 +869,7 @@ describe('Platform Commission from a Commission Schedule (integration)', () => {
     expect(postingsAfter).toEqual(firstOrderPostingsSnapshot);
 
     const orderRow = await readOrderMoneyRow(firstPaidOrder.orderPublicId);
-    const positionAfter = await readPayablePosition(shopInternalId, orderRow.currency);
+    const positionAfter = await readPayablePosition(shopInternalId);
     const firstNet = orderRow.subtotal_minor - orderRow.discount_minor + orderRow.shipping_minor -
       expectedCommissionMinor(orderRow.subtotal_minor - orderRow.discount_minor, 1500);
     expect(positionAfter?.not_yet_available_minor).toBe(firstNet);
@@ -948,7 +946,7 @@ describe('Platform Commission from a Commission Schedule (integration)', () => {
     expect(await sumPostingsByKindForEntry(paidOrder.moneyEventKey, 'seller_payable'))
       .toBe(fullCollect);
 
-    const position = await readPayablePosition(plainShopInternalId, orderRow.currency);
+    const position = await readPayablePosition(plainShopInternalId);
     expect(position?.not_yet_available_minor).toBe(fullCollect);
   });
 });

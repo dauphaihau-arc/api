@@ -2,15 +2,35 @@ import { UnbalancedJournalEntryError } from '../errors/finance-domain.error';
 import type { Posting } from './posting';
 
 /**
+ * The rate provenance of an Order whose money was converted into the shop's
+ * Settlement Currency. One rate covers the whole entry, and it is stored
+ * verbatim at full precision so a later refund reverses at the same rate.
+ */
+export interface JournalEntryFxEvidence {
+  rate: string;
+  source: string;
+  effectiveAt: Date;
+  sourceTimestamp?: Date;
+}
+
+/**
  * The immutable record of one Money Event's money consequences, identified by
  * the Money Event that caused it. Its Postings move money between Ledger
- * Accounts and must sum to zero in the entry's currency.
+ * Accounts and must sum to zero in the entry's currency — the shop's Settlement
+ * Currency.
+ *
+ * When the buyer paid in another currency, the entry keeps what was collected
+ * as evidence: the charge currency, the amount collected in it, and the rate the
+ * conversion used. A same-currency Order carries none of it.
  */
 export interface JournalEntry {
   moneyEventKey: string;
   moneyEventKind: string;
   shopId: string;
   currency: string;
+  chargeCurrency?: string;
+  chargeAmountMinor?: number;
+  fx?: JournalEntryFxEvidence;
   occurredAt: Date;
   postings: Posting[];
 }

@@ -8,12 +8,15 @@ import { AbstractBaseEntity } from '~/platform/database/abstract-base.entity';
 import { ShopEntity } from '~/domains/shop/infra/persistence/entities/shop.entity';
 
 /**
- * The projected Seller Payable of one shop in one currency, summed from that
- * shop's Postings. It is a projection, never an authority, and holds the
- * available and not-yet-available parts separately.
+ * The projected Seller Payable of one shop, summed from that shop's Postings
+ * and held in the shop's Settlement Currency. It is a projection, never an
+ * authority, and holds the available and not-yet-available parts separately.
+ *
+ * One row per shop: every Posting already settles in the shop's Settlement
+ * Currency, so a shop never holds a balance in two currencies at once.
  */
 @Entity({ tableName: 'seller_payable_positions' })
-@Unique({ properties: ['shop', 'currency'] })
+@Unique({ properties: ['shop'] })
 export class SellerPayablePositionEntity extends AbstractBaseEntity {
   @ManyToOne(() => ShopEntity, {
     fieldName: 'shop_id',

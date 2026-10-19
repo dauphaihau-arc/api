@@ -4,6 +4,11 @@ import { randomUUID } from 'node:crypto';
 import type { FinanceRepositoryContext } from '../../../app/ports/finance-repository-context';
 import { SellerPayableCommandRepository } from '../../../app/ports/seller-payable-command.repository';
 
+/**
+ * Maintains the shop's one Seller Payable position. Every amount passed here is
+ * already in the shop's Settlement Currency, and the position records that
+ * currency, so a later currency change updates the row rather than splitting it.
+ */
 @Injectable()
 export class MikroOrmSellerPayableCommandRepository implements SellerPayableCommandRepository {
   constructor(private readonly entityManager: EntityManager) {}
@@ -14,6 +19,30 @@ export class MikroOrmSellerPayableCommandRepository implements SellerPayableComm
     amountMinor: number,
     context: FinanceRepositoryContext,
   ): Promise<void> {
+    await this.applyDelta(shopId, currency, 0, amountMinor, context);
+  }
+
+  async releaseToAvailable(
+    shopId: string,
+    currency: string,
+    amountMinor: number,
+    context: FinanceRepositoryContext,
+  ): Promise<void> {
+    await this.applyDelta(shopId, currency, amountMinor, -amountMinor, context);
+  }
+
+  /**
+   * Applies one delta to the shop's position, creating it when absent. The
+   * upsert is race-safe: concurrent deltas for one shop must all land rather
+   * than one overwriting the other.
+   */
+  private async applyDelta(
+    shopId: string,
+    currency: string,
+    availableDeltaMinor: number,
+    notYetAvailableDeltaMinor: number,
+    context: FinanceRepositoryContext,
+  ): Promise<void> {
     const now = new Date();
 
     await this.getEntityManager(context).execute(
@@ -21,14 +50,25 @@ export class MikroOrmSellerPayableCommandRepository implements SellerPayableComm
          id, shop_id, currency, available_minor, not_yet_available_minor,
          created_at, updated_at
        )
-       values (?, ?, ?, 0, ?, ?, ?)
-       on conflict (shop_id, currency) do update
+       values (?, ?, ?, ?, ?, ?, ?)
+       on conflict (shop_id) do update
        set
+         currency = excluded.currency,
+         available_minor =
+           seller_payable_positions.available_minor + excluded.available_minor,
          not_yet_available_minor =
            seller_payable_positions.not_yet_available_minor
            + excluded.not_yet_available_minor,
          updated_at = now()`,
-      [randomUUID(), shopId, currency, amountMinor, now, now],
+      [
+        randomUUID(),
+        shopId,
+        currency,
+        availableDeltaMinor,
+        notYetAvailableDeltaMinor,
+        now,
+        now,
+      ],
     );
   }
 

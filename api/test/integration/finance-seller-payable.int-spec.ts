@@ -83,7 +83,7 @@ type PayablePosition = {
   not_yet_available_minor: number;
 };
 
-type PayableResponse = { positions: PayablePosition[] };
+type PayableResponse = PayablePosition;
 
 type PaidOrder = {
   orderInternalId: string;
@@ -315,7 +315,7 @@ describe('Seller Payable from a paid Order (integration)', () => {
     }
   });
 
-  async function registerSeller(prefix: string): Promise<TestSeller> {
+  async function registerSeller(prefix: string, currency = 'USD'): Promise<TestSeller> {
     const agent = request.agent(app.getHttpServer());
     const email = `${prefix}-${Date.now()}-${Math.floor(Math.random() * 10_000)}@example.com`;
 
@@ -338,7 +338,7 @@ describe('Seller Payable from a paid Order (integration)', () => {
       .set('Idempotency-Key', randomUUID())
       .send({
         shop_name: `fin${Date.now().toString().slice(-6)}${Math.floor(Math.random() * 100)}`,
-        currency: 'USD',
+        currency,
       })
       .expect(201);
 
@@ -604,6 +604,36 @@ describe('Seller Payable from a paid Order (integration)', () => {
   }
 
   /**
+   * The canonical FX seam reads live rates from `exchange_rates`; integration
+   * tests seed the pair they exercise. Rates are directional, so a scenario that
+   * prices in one currency and settles in another seeds both.
+   */
+  async function seedExchangeRate(fromCurrency: string, toCurrency: string, rate: string) {
+    await sql.query(
+      `insert into "exchange_rates"
+         ("id", "created_at", "updated_at", "from_currency", "to_currency", "rate", "effective_at", "expires_at", "source", "source_timestamp")
+       values ($1, now(), now(), $2, $3, $4, now() - interval '1 day', null, 'test-rates', now() - interval '1 day')`,
+      [randomUUID(), fromCurrency, toCurrency, rate],
+    );
+  }
+
+  /**
+   * The buyer's saved market preference is authoritative over request headers,
+   * so a buyer who pays in another currency is set up through the public profile
+   * endpoint rather than through a header.
+   */
+  async function setBuyerMarket(
+    target: TestBuyer,
+    preferences: { region: string, language: string, currency: string },
+  ): Promise<void> {
+    await target.agent
+      .patch(`${API_PREFIX}/me`)
+      .set('Idempotency-Key', randomUUID())
+      .send({ preferences })
+      .expect(200);
+  }
+
+  /**
    * Places a card Order through the real checkout, pays it through the real
    * webhook, then pumps the Finance side. Returns the frozen money facts.
    */
@@ -679,30 +709,45 @@ describe('Seller Payable from a paid Order (integration)', () => {
 
   async function sumSellerPayablePostingsForShop(
     internalShopId: string,
-    currency: string,
   ): Promise<number> {
     const result = await sql.query(
       `select coalesce(sum(p."amount_minor"), 0)::int as "total"
        from "postings" p
        join "ledger_accounts" la on la."id" = p."ledger_account_id"
        where la."kind" = 'seller_payable'
-         and la."shop_id" = $1
-         and la."currency" = $2`,
-      [internalShopId, currency],
+         and la."shop_id" = $1`,
+      [internalShopId],
     );
 
     return result.rows[0].total as number;
   }
 
+  async function readJournalEntryMoneyEvent(moneyEventKey: string): Promise<{
+    currency: string;
+    charge_currency: string | null;
+    charge_amount_minor: number | null;
+    fx_rate: string | null;
+    fx_rate_source: string | null;
+  } | undefined> {
+    const result = await sql.query(
+      `select "currency", "charge_currency", "charge_amount_minor",
+              "fx_rate", "fx_rate_source"
+       from "journal_entries"
+       where "money_event_key" = $1`,
+      [moneyEventKey],
+    );
+
+    return result.rows[0];
+  }
+
   async function readPayablePosition(
     internalShopId: string,
-    currency: string,
   ): Promise<PayablePosition | undefined> {
     const result = await sql.query(
       `select "currency", "available_minor", "not_yet_available_minor"
        from "seller_payable_positions"
-       where "shop_id" = $1 and "currency" = $2`,
-      [internalShopId, currency],
+       where "shop_id" = $1`,
+      [internalShopId],
     );
 
     return result.rows[0] as PayablePosition | undefined;
@@ -737,7 +782,7 @@ describe('Seller Payable from a paid Order (integration)', () => {
     expect(await sumSellerPayablePostingsForEntry(order.moneyEventKey)).toBe(order.creditMinor);
 
     // The shop's Seller Payable position projected that same credit.
-    const position = await readPayablePosition(shopInternalId, order.currency);
+    const position = await readPayablePosition(shopInternalId);
     expect(position).toMatchObject({
       currency: 'USD',
       available_minor: 0,
@@ -749,22 +794,19 @@ describe('Seller Payable from a paid Order (integration)', () => {
     const order = firstPaidOrder;
     const payable = await readPayable(seller, seller.shopPublicId);
 
-    expect(payable.positions).toHaveLength(1);
-    const position = payable.positions[0]!;
+    expect(payable.currency).toBe(order.currency);
+    expect(payable.available_minor).toBe(0);
+    expect(payable.not_yet_available_minor).toBe(order.creditMinor);
 
-    expect(position.currency).toBe(order.currency);
-    expect(position.available_minor).toBe(0);
-    expect(position.not_yet_available_minor).toBe(order.creditMinor);
-
-    // Integer minor units only: no major-unit or decimal field crosses the contract.
-    expect(Object.keys(payable).sort()).toEqual(['positions']);
-    expect(Object.keys(position).sort()).toEqual([
+    // One position in the shop's Settlement Currency, integer minor units only:
+    // no list of currencies, no major-unit field, no decimal.
+    expect(Object.keys(payable).sort()).toEqual([
       'available_minor',
       'currency',
       'not_yet_available_minor',
     ]);
-    expect(Number.isInteger(position.available_minor)).toBe(true);
-    expect(Number.isInteger(position.not_yet_available_minor)).toBe(true);
+    expect(Number.isInteger(payable.available_minor)).toBe(true);
+    expect(Number.isInteger(payable.not_yet_available_minor)).toBe(true);
     expect(JSON.stringify(payable)).not.toContain('_major');
   });
 
@@ -772,25 +814,21 @@ describe('Seller Payable from a paid Order (integration)', () => {
     const secondOrder = await placeAndPayCardOrder(2);
     expect(secondOrder.currency).toBe(firstPaidOrder.currency);
 
-    const position = await readPayablePosition(shopInternalId, firstPaidOrder.currency);
+    const position = await readPayablePosition(shopInternalId);
     expect(position).toBeDefined();
 
-    const postingsSum = await sumSellerPayablePostingsForShop(
-      shopInternalId,
-      firstPaidOrder.currency,
-    );
+    const postingsSum = await sumSellerPayablePostingsForShop(shopInternalId);
 
     expect(postingsSum).toBe(firstPaidOrder.creditMinor + secondOrder.creditMinor);
     expect(position!.not_yet_available_minor).toBe(postingsSum);
 
     const payable = await readPayable(seller, seller.shopPublicId);
-    expect(payable.positions).toHaveLength(1);
-    expect(payable.positions[0]!.not_yet_available_minor).toBe(postingsSum);
+    expect(payable.not_yet_available_minor).toBe(postingsSum);
   });
 
   it('Replay is a no-op', async () => {
     const order = firstPaidOrder;
-    const before = await readPayablePosition(shopInternalId, order.currency);
+    const before = await readPayablePosition(shopInternalId);
 
     const reset = await sql.query(
       `update "outbox_events"
@@ -810,12 +848,12 @@ describe('Seller Payable from a paid Order (integration)', () => {
     expect(await countPostingsForEntry(order.moneyEventKey)).toBe(2);
     expect(await sumPostingsForEntry(order.moneyEventKey)).toBe(0);
 
-    const after = await readPayablePosition(shopInternalId, order.currency);
+    const after = await readPayablePosition(shopInternalId);
     expect(after).toEqual(before);
   });
 
   it('An expired checkout session produces no Journal Entry', async () => {
-    const before = await readPayablePosition(shopInternalId, firstPaidOrder.currency);
+    const before = await readPayablePosition(shopInternalId);
 
     await addCartItem(buyer, inventoryId, 1);
     const quote = await createQuote(buyer);
@@ -833,7 +871,7 @@ describe('Seller Payable from a paid Order (integration)', () => {
 
     expect(await countJournalEntries(expiredKey)).toBe(0);
 
-    const after = await readPayablePosition(shopInternalId, firstPaidOrder.currency);
+    const after = await readPayablePosition(shopInternalId);
     expect(after).toEqual(before);
   });
 
@@ -843,7 +881,7 @@ describe('Seller Payable from a paid Order (integration)', () => {
       .expect(403);
 
     const payable = await readPayable(seller, seller.shopPublicId);
-    expect(payable.positions).toHaveLength(1);
+    expect(payable.not_yet_available_minor).toBeGreaterThan(0);
   });
 
   it('a paid card Order credits Seller Payable with the discount subtracted', async () => {
@@ -902,19 +940,93 @@ describe('Seller Payable from a paid Order (integration)', () => {
     expect(orderRow.shipping_minor).toBeGreaterThan(0);
 
     const payable = await readPayable(discountSeller, discountSeller.shopPublicId);
-    expect(payable.positions).toHaveLength(1);
-
-    const position = payable.positions[0]!;
-    expect(position.currency).toBe(orderRow.currency);
-    expect(position.available_minor).toBe(0);
-    expect(position.not_yet_available_minor).toBe(
+    expect(payable.currency).toBe(orderRow.currency);
+    expect(payable.available_minor).toBe(0);
+    expect(payable.not_yet_available_minor).toBe(
       orderRow.subtotal_minor - orderRow.discount_minor + orderRow.shipping_minor,
     );
 
     // Strictly below subtotal + shipping: the discount reduced the payable
     // rather than being ignored or double-counted.
-    expect(position.not_yet_available_minor).toBeLessThan(
+    expect(payable.not_yet_available_minor).toBeLessThan(
       orderRow.subtotal_minor + orderRow.shipping_minor,
     );
+  });
+
+  it('A same-currency Order records no conversion evidence', async () => {
+    const entry = await readJournalEntryMoneyEvent(firstPaidOrder.moneyEventKey);
+
+    expect(entry).toMatchObject({
+      currency: firstPaidOrder.currency,
+      charge_currency: null,
+      charge_amount_minor: null,
+      fx_rate: null,
+      fx_rate_source: null,
+    });
+  });
+
+  it('An Order paid in another currency settles into the shop Settlement Currency at one frozen rate', async () => {
+    // The shop prices in USD and this buyer pays in VND, so the Order is charged
+    // in VND and settles back into the shop's own currency.
+    await seedExchangeRate('USD', 'VND', '25000');
+    await seedExchangeRate('VND', 'USD', '0.00004');
+
+    const settlingSeller = await registerSeller('fin-settling');
+    const profile = await createActiveProfile(settlingSeller);
+    const product = await createPublishableProduct({
+      seller: settlingSeller,
+      shippingProfileId: profile.id,
+      title: 'Settled Mug',
+      sku: `FIN-SETTLE-${randomUUID()}`,
+      amountMinor: 1000,
+      stock: 5,
+    });
+
+    const settlingBuyer = await registerBuyer('fin-settling-buyer');
+    await setBuyerMarket(settlingBuyer, {
+      region: 'Vietnam',
+      language: 'la',
+      currency: 'VND',
+    });
+
+    await addCartItem(settlingBuyer, product.inventoryId, 1);
+    const quote = await createQuote(settlingBuyer);
+    expect(quote.checkout_currency).toBe('VND');
+
+    const orderResponse = await confirmCardOrder(settlingBuyer, quote.quote_id);
+    expect(orderResponse.status).toBe(201);
+
+    const orderPublicId = orderResponse.body.order_shops[0].id as string;
+    const checkoutSessionId = await readOrderSessionId(orderPublicId);
+    await completeCardSession(checkoutSessionId);
+    await pumpFinance();
+
+    const orderRow = await readOrderMoneyRow(orderPublicId);
+    const settlingShopId = await resolveShopId(sql, settlingSeller.shopPublicId);
+
+    expect(orderRow.currency).toBe('VND');
+
+    // The entry is denominated in the shop's currency and keeps what the buyer
+    // paid, at the one rate the conversion used — verbatim as the rate source
+    // stores it.
+    const entry = await readJournalEntryMoneyEvent(`order.paid:${orderRow.id}`);
+    expect(entry).toMatchObject({
+      currency: 'USD',
+      charge_currency: 'VND',
+      charge_amount_minor: orderRow.total_minor,
+      fx_rate: '0.0000400000',
+      fx_rate_source: 'test-rates',
+    });
+
+    // $10.00 of goods plus $5.99 of shipping, charged in VND, settled to USD.
+    const payable = await readPayable(settlingSeller, settlingSeller.shopPublicId);
+    expect(payable.currency).toBe('USD');
+    expect(payable.available_minor).toBe(0);
+    expect(payable.not_yet_available_minor).toBe(1000 + 599);
+
+    // One position, in the shop currency, and the Postings agree with it.
+    const position = await readPayablePosition(settlingShopId);
+    expect(position).toMatchObject({ currency: 'USD', not_yet_available_minor: 1599 });
+    expect(await sumSellerPayablePostingsForShop(settlingShopId)).toBe(1599);
   });
 });

@@ -1,8 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
 import type { SellerPayablePosition } from '../../../app/ports/seller-payable-query.repository';
 
-export class SellerPayablePositionResponseDto {
-  @ApiProperty({ description: 'Currency the payable accrues in.', example: 'USD' })
+export class ShopSellerPayableResponseDto {
+  @ApiProperty({
+    description: 'The shop Settlement Currency the payable accrues in.',
+    example: 'VND',
+  })
   currency!: string;
 
   @ApiProperty({ description: 'Available Seller Payable in minor units.', example: 0 })
@@ -15,27 +18,16 @@ export class SellerPayablePositionResponseDto {
   not_yet_available_minor!: number;
 }
 
-export class ShopSellerPayableResponseDto {
-  @ApiProperty({ type: [SellerPayablePositionResponseDto] })
-  positions!: SellerPayablePositionResponseDto[];
-}
-
 /**
- * The shop's Seller Payable by currency: integer minor units only, sorted by
- * currency, and an empty list for a shop with no payable yet.
+ * The shop's Seller Payable: one position, in the shop's Settlement Currency,
+ * in integer minor units only.
  */
 export function toSellerPayableResponse(
-  positions: SellerPayablePosition[],
+  position: SellerPayablePosition,
 ): ShopSellerPayableResponseDto {
-  const sortedPositions = [...positions].sort((left, right) =>
-    left.currency.localeCompare(right.currency),
-  );
-
   return {
-    positions: sortedPositions.map((position) => ({
-      currency: position.currency,
-      available_minor: position.availableMinor,
-      not_yet_available_minor: position.notYetAvailableMinor,
-    })),
+    currency: position.currency,
+    available_minor: position.availableMinor,
+    not_yet_available_minor: position.notYetAvailableMinor,
   };
 }

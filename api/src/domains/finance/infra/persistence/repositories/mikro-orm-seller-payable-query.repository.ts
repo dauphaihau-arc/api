@@ -5,27 +5,39 @@ import {
   SellerPayableQueryRepository,
   type SellerPayablePosition,
 } from '../../../app/ports/seller-payable-query.repository';
-import { SellerPayablePositionEntity } from '../entities/seller-payable-position.entity';
 
+/** Reads a shop's Seller Payable position, projected from its Postings. */
 @Injectable()
 export class MikroOrmSellerPayableQueryRepository
 implements SellerPayableQueryRepository {
   constructor(private readonly entityManager: EntityManager) {}
 
-  async listByShopId(
+  async findPositionByShopId(
     shopId: string,
     context?: FinanceRepositoryContext,
-  ): Promise<SellerPayablePosition[]> {
-    const positions = await this.getEntityManager(context)
-      .getRepository(SellerPayablePositionEntity)
-      .find({ shop: shopId }, { orderBy: { currency: 'asc' } });
+  ): Promise<SellerPayablePosition | null> {
+    const rows = await this.getEntityManager(context).execute<
+      Array<SellerPayablePosition>
+    >(
+      `select s."id" as "shopId",
+              coalesce(p."currency", h."currency", s."currency") as "currency",
+              coalesce(p."available_minor", 0) as "availableMinor",
+              coalesce(p."not_yet_available_minor", 0) as "notYetAvailableMinor"
+       from "shops" s
+       left join "seller_payable_positions" p on p."shop_id" = s."id"
+       left join lateral (
+         select "currency"
+         from "settlement_currency_history"
+         where "shop_id" = s."id" and "effective_to" is null
+         order by "effective_from" desc
+         limit 1
+       ) h on true
+       where s."id" = ?
+       limit 1`,
+      [shopId],
+    );
 
-    return positions.map((position) => ({
-      shopId: position.shop.id,
-      currency: position.currency,
-      availableMinor: position.availableMinor,
-      notYetAvailableMinor: position.notYetAvailableMinor,
-    }));
+    return rows[0] ?? null;
   }
 
   private getEntityManager(context?: FinanceRepositoryContext): EntityManager {

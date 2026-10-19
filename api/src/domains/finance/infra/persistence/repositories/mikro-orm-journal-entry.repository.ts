@@ -25,9 +25,11 @@ export class MikroOrmJournalEntryRepository implements JournalEntryRepository {
     const insertedEntries = await entityManager.execute<Array<{ id: string }>>(
       `insert into journal_entries (
          id, money_event_key, money_event_kind, shop_id, currency,
-         occurred_at, created_at, updated_at
+         occurred_at, charge_currency, charge_amount_minor,
+         fx_rate, fx_rate_source, fx_rate_effective_at, fx_rate_source_timestamp,
+         created_at, updated_at
        )
-       values (?, ?, ?, ?, ?, ?, ?, ?)
+       values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        on conflict (money_event_key) do nothing
        returning id`,
       [
@@ -37,6 +39,12 @@ export class MikroOrmJournalEntryRepository implements JournalEntryRepository {
         entry.shopId,
         entry.currency,
         entry.occurredAt,
+        entry.chargeCurrency ?? null,
+        entry.chargeAmountMinor ?? null,
+        entry.fx?.rate ?? null,
+        entry.fx?.source ?? null,
+        entry.fx?.effectiveAt ?? null,
+        entry.fx?.sourceTimestamp ?? null,
         now,
         now,
       ],
@@ -73,6 +81,27 @@ export class MikroOrmJournalEntryRepository implements JournalEntryRepository {
     }
 
     return true;
+  }
+
+  async findSellerPayableByMoneyEventKey(
+    moneyEventKey: string,
+    context?: FinanceRepositoryContext,
+  ): Promise<{ shopId: string; currency: string; amountMinor: number } | null> {
+    const rows = await this.getEntityManager(context).execute<
+      Array<{ shopId: string; currency: string; amountMinor: number }>
+    >(
+      `select je.shop_id as "shopId", je.currency as "currency",
+              p.amount_minor as "amountMinor"
+       from journal_entries je
+       join postings p on p.journal_entry_id = je.id
+       join ledger_accounts la on la.id = p.ledger_account_id
+       where je.money_event_key = ?
+         and la.kind = 'seller_payable'
+       limit 1`,
+      [moneyEventKey],
+    );
+
+    return rows[0] ?? null;
   }
 
   /**

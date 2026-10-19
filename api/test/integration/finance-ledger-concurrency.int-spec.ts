@@ -7,7 +7,12 @@ import { ShopEntity } from '~/domains/shop/infra/persistence/entities/shop.entit
 import { MikroOrmCommissionScheduleRepository } from '~/domains/finance/infra/persistence/repositories/mikro-orm-commission-schedule.repository';
 import { MikroOrmJournalEntryRepository } from '~/domains/finance/infra/persistence/repositories/mikro-orm-journal-entry.repository';
 import { MikroOrmSellerPayableCommandRepository } from '~/domains/finance/infra/persistence/repositories/mikro-orm-seller-payable-command.repository';
+import { MikroOrmSettlementCurrencyRepository } from '~/domains/finance/infra/persistence/repositories/mikro-orm-settlement-currency.repository';
 import { RecordOrderPaidJournalEntryUseCase } from '~/domains/finance/app/use-cases/record-order-paid-journal-entry/record-order-paid-journal-entry.use-case';
+import { FxRateService } from '~/integrations/currency/fx-rate.service';
+import { MoneyConversionService } from '~/integrations/currency/money-conversion.service';
+import { RoundingPolicyService } from '~/integrations/currency/rounding-policy.service';
+import { DEFAULT_ROUNDING_POLICY_CONFIG } from '~/platform/config/rounding.config';
 import { paidOrderMoneyEventKey } from '~/domains/finance/domain/rules/paid-order-postings';
 import type { OrderPaidMoneyEvent } from '~/domains/finance/app/ports/order-paid-money-event';
 import {
@@ -19,6 +24,7 @@ import {
 jest.setTimeout(120_000);
 
 type PayablePositionRow = {
+  currency: string;
   available_minor: number;
   not_yet_available_minor: number;
 };
@@ -96,12 +102,18 @@ describe('Finance ledger concurrency (integration)', () => {
    */
   function buildUseCase(): RecordOrderPaidJournalEntryUseCase {
     const entityManager: EntityManager = orm.em.fork();
+    const moneyConversionService = new MoneyConversionService(
+      new FxRateService(entityManager),
+      new RoundingPolicyService(DEFAULT_ROUNDING_POLICY_CONFIG),
+    );
 
     return new RecordOrderPaidJournalEntryUseCase(
       entityManager,
       new MikroOrmJournalEntryRepository(entityManager),
       new MikroOrmSellerPayableCommandRepository(entityManager),
       new MikroOrmCommissionScheduleRepository(entityManager),
+      new MikroOrmSettlementCurrencyRepository(entityManager),
+      moneyConversionService,
     );
   }
 
@@ -127,15 +139,14 @@ describe('Finance ledger concurrency (integration)', () => {
 
   async function readPayablePosition(
     shopId: string,
-    currency: string,
   ): Promise<PayablePositionRow> {
     const rows = await orm.em.execute<PayablePositionRow[]>(
       `
-        select available_minor, not_yet_available_minor
+        select currency, available_minor, not_yet_available_minor
         from seller_payable_positions
-        where shop_id = ?::uuid and currency = ?
+        where shop_id = ?::uuid
       `,
-      [shopId, currency],
+      [shopId],
     );
 
     return rows[0];
@@ -176,13 +187,14 @@ describe('Finance ledger concurrency (integration)', () => {
     expect(postings[0]).toEqual({ posting_count: 2, total_minor: 0 });
 
     // The credit landed exactly once, not twice.
-    expect(await readPayablePosition(shopId, 'USD')).toEqual({
+    expect(await readPayablePosition(shopId)).toEqual({
+      currency: 'USD',
       available_minor: 0,
       not_yet_available_minor: 3000,
     });
   });
 
-  it('lands both concurrent credits for one shop and currency', async () => {
+  it('lands both concurrent credits for one shop', async () => {
     const shopId = await seedShop();
     const firstEvent = paidEvent({
       orderId: randomUUID(),
@@ -225,7 +237,8 @@ describe('Finance ledger concurrency (integration)', () => {
     expect(entries).toHaveLength(2);
 
     // The upsert must add, not overwrite: 1000 + 2900.
-    expect(await readPayablePosition(shopId, 'USD')).toEqual({
+    expect(await readPayablePosition(shopId)).toEqual({
+      currency: 'USD',
       available_minor: 0,
       not_yet_available_minor: 3900,
     });
