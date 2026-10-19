@@ -69,6 +69,12 @@ export const COMMISSION_SCHEDULES_LOCAL_TSV_PATH = path.join(
   'commission-schedules.local.tsv',
 );
 
+export const PAYOUT_ACCOUNTS_TSV_PATH = path.join(SEED_DATA_DIR, 'payout-accounts.tsv');
+export const PAYOUT_ACCOUNTS_LOCAL_TSV_PATH = path.join(
+  SEED_DATA_DIR,
+  'payout-accounts.local.tsv',
+);
+
 export const PRODUCT_IMAGE_ROOT_DIRS = [
   path.join(SEED_DATA_DIR, 'images', 'products-local'),
   path.join(SEED_DATA_DIR, 'images', 'products'),

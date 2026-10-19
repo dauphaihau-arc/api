@@ -1,0 +1,7 @@
+shop_slug	type	holder_name	bank_name	country	account_reference	status
+olive-atelier	bank	Olive Atelier	Chase Bank	US	100000000001	active
+reed-workshop	bank	Reed Workshop	Commerzbank	DE	100000000002	active
+juno-console	bank	Juno Console	ANZ Bank	AU	100000000003	active
+hazel-home	bank	Hazel Home	RBC Royal Bank	CA	100000000005	active
+bulk-catalog-lab	bank	Bulk Catalog Lab	DBS Bank	SG	100000000006	active
+sage-studio	bank	Sage Studio	MUFG Bank	JP	100000000011	pending

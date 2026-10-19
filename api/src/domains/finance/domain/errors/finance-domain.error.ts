@@ -16,6 +16,17 @@ export class InvalidCommissionRateError extends FinanceDomainError {
 }
 
 /**
+ * Raised when a Payout Account cannot describe a destination a payout could be
+ * sent to: an unknown type, a blank holder or bank name, a country that is not
+ * an ISO 3166-1 alpha-2 code, or a malformed account reference.
+ */
+export class PayoutAccountInvalidError extends FinanceDomainError {
+  constructor(reason: string) {
+    super(`Payout Account is invalid: ${reason}`);
+  }
+}
+
+/**
  * Raised when a Journal Entry's Postings do not sum to zero in their currency.
  * Names the offending Money Event key and the sum that failed the invariant.
  */

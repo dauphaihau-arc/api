@@ -42,6 +42,30 @@ export class OrderMoneyConversionUnavailableError extends FinanceAppError {
 }
 
 /**
+ * Raised when a shop's active Payout Account was recorded in a currency that no
+ * longer matches the shop's Settlement Currency. Reachable only through a
+ * Settlement Currency change, and refused rather than shown as if it could be
+ * paid into.
+ */
+export class PayoutAccountCurrencyMismatchError extends FinanceAppError {
+  constructor(accountCurrency: string, settlementCurrency: string) {
+    super(
+      `Payout Account currency ${accountCurrency} does not match the shop's Settlement Currency ${settlementCurrency}`,
+    );
+  }
+}
+
+/**
+ * Raised when an operator verifies a shop's Payout Account but the shop has
+ * none open to verify.
+ */
+export class PayoutAccountNotFoundError extends FinanceAppError {
+  constructor(shopId: string) {
+    super(`Shop ${shopId} has no Payout Account to verify`);
+  }
+}
+
+/**
  * Raised when a shop's Settlement Currency cannot be resolved at all, which
  * means the shop row itself could not be read. An invariant breach rather than
  * a caller-fixable failure, so it is deliberately unmapped and surfaces as a

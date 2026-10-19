@@ -16,8 +16,13 @@ export class AuditLogService {
   async record(input: RecordAuditLogInput): Promise<void> {
     const requestContext = this.requestContextService.get();
 
+    // A fresh fork: the injected EntityManager is the global context, which
+    // MikroORM refuses to write through. Auditing also must never join or abort
+    // a caller's transaction, so it gets its own.
+    const entityManager = this.entityManager.fork();
+
     try {
-      const auditLog = this.entityManager.create(AuditLogEntity, {
+      const auditLog = entityManager.create(AuditLogEntity, {
         action: input.action,
         entityType: input.entityType,
         entityId: input.entityId,
@@ -31,7 +36,7 @@ export class AuditLogService {
         summary: input.summary,
       });
 
-      await this.entityManager.persistAndFlush(auditLog);
+      await entityManager.persist(auditLog).flush();
     }
     catch (error) {
       this.logger.error(
