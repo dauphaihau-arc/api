@@ -32,6 +32,24 @@ export class MikroOrmSellerPayableCommandRepository implements SellerPayableComm
   }
 
   /**
+   * Removes the paid amount from the shop's available Seller Payable. The row
+   * already exists: only recorded availability ever reaches this path.
+   */
+  async dischargeAvailable(
+    shopId: string,
+    currency: string,
+    amountMinor: number,
+    context: FinanceRepositoryContext,
+  ): Promise<void> {
+    await this.getEntityManager(context).execute(
+      `update seller_payable_positions
+       set available_minor = available_minor - ?, updated_at = ?
+       where shop_id = ? and currency = ?`,
+      [amountMinor, new Date(), shopId, currency],
+    );
+  }
+
+  /**
    * Applies one delta to the shop's position, creating it when absent. The
    * upsert is race-safe: concurrent deltas for one shop must all land rather
    * than one overwriting the other.

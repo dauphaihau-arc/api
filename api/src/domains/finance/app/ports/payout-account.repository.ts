@@ -23,6 +23,25 @@ export interface PayoutAccountRecord {
   verifiedAt: Date | null;
 }
 
+/**
+ * A Payout Account as the payout run needs it: the open, verified account plus
+ * the reference the provider must receive. The reference is encrypted here and
+ * decrypted only at the port that moves the money, so no read surface and no
+ * audit entry ever carries it.
+ */
+export interface PayoutAccountPaymentTarget {
+  id: string;
+  shopId: string;
+  type: PayoutAccountType;
+  provider: string;
+  holderName: string;
+  bankName: string;
+  country: string;
+  currency: string;
+  last4: string;
+  providerRefEncrypted: string;
+}
+
 /** The row to activate, already validated, encrypted and normalized. */
 export interface ReplacePayoutAccountInput {
   shopId: string;
@@ -49,6 +68,16 @@ export abstract class PayoutAccountRepository {
     shopId: string,
     context?: FinanceRepositoryContext,
   ): Promise<PayoutAccountRecord | null>;
+
+  /**
+   * The shop's open Payout Account when an operator has verified it, or `null`
+   * when the shop has none or its account is still pending or disabled. Only a
+   * verified account is a destination a Payout may be sent to.
+   */
+  abstract findPayableByShopId(
+    shopId: string,
+    context?: FinanceRepositoryContext,
+  ): Promise<PayoutAccountPaymentTarget | null>;
 
   /**
    * Sets the open Payout Account's status and `verified_at`. Returns `null` when

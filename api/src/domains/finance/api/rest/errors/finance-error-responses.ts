@@ -51,6 +51,10 @@ export const shopFinanceControllerErrorResponses = {
     403: [...shopForbidden],
     404: [...shopNotFound],
   },
+  payouts: {
+    403: [...shopForbidden],
+    404: [...shopNotFound],
+  },
   payoutAccountRecord: {
     400: [...payoutAccountInvalid],
     403: [...shopForbidden],

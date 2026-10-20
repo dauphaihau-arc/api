@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import type { FinanceRepositoryContext } from '../../../app/ports/finance-repository-context';
 import {
   PayoutAccountRepository,
+  type PayoutAccountPaymentTarget,
   type PayoutAccountRecord,
   type ReplacePayoutAccountInput,
   type UpdatePayoutAccountStatusInput,
@@ -49,39 +50,32 @@ export class MikroOrmPayoutAccountRepository implements PayoutAccountRepository 
         [shopId],
       );
 
-    const row = rows[0];
-
-    if (!row) {
-      return null;
-    }
-
-    return {
-      id: row.id,
-      shopId: row.shop_id,
-      type: row.type,
-      provider: row.provider,
-      holderName: row.holder_name,
-      bankName: row.bank_name,
-      country: row.country,
-      currency: row.currency,
-      last4: row.last4,
-      status: row.status,
-      verifiedAt: row.verified_at ? new Date(row.verified_at) : null,
-    };
+    return rows[0] ? this.toRecord(rows[0]) : null;
   }
 
-  async updateStatus(
-    input: UpdatePayoutAccountStatusInput,
+  async findPayableByShopId(
+    shopId: string,
     context?: FinanceRepositoryContext,
-  ): Promise<PayoutAccountRecord | null> {
+  ): Promise<PayoutAccountPaymentTarget | null> {
     const rows = await (context?.entityManager ?? this.entityManager.fork())
-      .execute<PayoutAccountRow[]>(
-        `update payout_accounts
-       set status = ?, verified_at = ?, updated_at = ?
-       where shop_id = ? and deactivated_at is null
-       returning id, shop_id, type, provider, holder_name, bank_name, country,
-                 currency, last4, status, verified_at`,
-        [input.status, input.verifiedAt, new Date(), input.shopId],
+      .execute<Array<{
+      id: string;
+      shop_id: string;
+      type: PayoutAccountPaymentTarget['type'];
+      provider: string;
+      holder_name: string;
+      bank_name: string;
+      country: string;
+      currency: string;
+      last4: string;
+      provider_ref_encrypted: string;
+    }>>(
+        `select id, shop_id, type, provider, holder_name, bank_name, country,
+              currency, last4, provider_ref_encrypted
+       from payout_accounts
+       where shop_id = ? and deactivated_at is null and status = 'active'
+       limit 1`,
+        [shopId],
       );
 
     const row = rows[0];
@@ -100,9 +94,25 @@ export class MikroOrmPayoutAccountRepository implements PayoutAccountRepository 
       country: row.country,
       currency: row.currency,
       last4: row.last4,
-      status: row.status,
-      verifiedAt: row.verified_at ? new Date(row.verified_at) : null,
+      providerRefEncrypted: row.provider_ref_encrypted,
     };
+  }
+
+  async updateStatus(
+    input: UpdatePayoutAccountStatusInput,
+    context?: FinanceRepositoryContext,
+  ): Promise<PayoutAccountRecord | null> {
+    const rows = await (context?.entityManager ?? this.entityManager.fork())
+      .execute<PayoutAccountRow[]>(
+        `update payout_accounts
+       set status = ?, verified_at = ?, updated_at = ?
+       where shop_id = ? and deactivated_at is null
+       returning id, shop_id, type, provider, holder_name, bank_name, country,
+                 currency, last4, status, verified_at`,
+        [input.status, input.verifiedAt, new Date(), input.shopId],
+      );
+
+    return rows[0] ? this.toRecord(rows[0]) : null;
   }
 
   async replaceActive(
@@ -152,8 +162,10 @@ export class MikroOrmPayoutAccountRepository implements PayoutAccountRepository 
       ],
     );
 
-    const row = rows[0];
+    return this.toRecord(rows[0]);
+  }
 
+  private toRecord(row: PayoutAccountRow): PayoutAccountRecord {
     return {
       id: row.id,
       shopId: row.shop_id,

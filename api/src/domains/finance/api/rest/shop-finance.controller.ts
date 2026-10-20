@@ -23,6 +23,7 @@ import { PermissionsGuard } from '~/domains/auth/api/guard/permissions.guard';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import { ShopAccessService } from '~/domains/shop/app/services/shop-access.service';
 import { GetShopPayoutAccountUseCase } from '../../app/use-cases/get-shop-payout-account/get-shop-payout-account.use-case';
+import { GetShopPayoutsUseCase } from '../../app/use-cases/get-shop-payouts/get-shop-payouts.use-case';
 import { GetShopSellerPayableUseCase } from '../../app/use-cases/get-shop-seller-payable/get-shop-seller-payable.use-case';
 import { RecordShopPayoutAccountUseCase } from '../../app/use-cases/record-shop-payout-account/record-shop-payout-account.use-case';
 import { RecordPayoutAccountDto } from './dto/record-payout-account.dto';
@@ -32,6 +33,10 @@ import {
   ShopPayoutAccountResponseDto,
   toShopPayoutAccountResponse,
 } from './responses/payout-account.response';
+import {
+  ShopPayoutHistoryResponseDto,
+  toShopPayoutHistoryResponse,
+} from './responses/payout.response';
 import {
   ShopSellerPayableResponseDto,
   toSellerPayableResponse,
@@ -49,6 +54,7 @@ export class ShopFinanceController {
     private readonly shopAccessService: ShopAccessService,
     private readonly getShopSellerPayableUseCase: GetShopSellerPayableUseCase,
     private readonly getShopPayoutAccountUseCase: GetShopPayoutAccountUseCase,
+    private readonly getShopPayoutsUseCase: GetShopPayoutsUseCase,
     private readonly recordShopPayoutAccountUseCase: RecordShopPayoutAccountUseCase,
   ) {}
 
@@ -69,6 +75,26 @@ export class ShopFinanceController {
 
     return toSellerPayableResponse(
       await this.getShopSellerPayableUseCase.execute(shopId),
+    );
+  }
+
+  @Get('payouts')
+  @Header('Cache-Control', 'private, no-cache')
+  @ApiOperation({ summary: 'Get the shop Payout history' })
+  @ApiParam({ name: 'shop_id', type: String })
+  @ApiOkResponse({
+    description: 'The shop Payouts, newest first.',
+    type: ShopPayoutHistoryResponseDto,
+  })
+  @ApiErrorResponses(shopFinanceControllerErrorResponses.payouts)
+  async payouts(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('shop_id') shopPublicId: string,
+  ): Promise<ShopPayoutHistoryResponseDto> {
+    const shopId = (await this.shopAccessService.resolveManageableShopByPublicId(currentUser, shopPublicId)).id;
+
+    return toShopPayoutHistoryResponse(
+      await this.getShopPayoutsUseCase.execute({ shopId }),
     );
   }
 

@@ -15,7 +15,8 @@ export type PublicIdPrefix =
   | 'cnv'
   | 'exp'
   | 'imp'
-  | 'prm';
+  | 'prm'
+  | 'pay';
 
 export function createPublicId(prefix: PublicIdPrefix): string {
   return `${prefix}_${randomBytes(PUBLIC_ID_BYTES).toString('hex')}`;

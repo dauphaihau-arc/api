@@ -15,6 +15,18 @@ export abstract class SellerPayableCommandRepository {
   ): Promise<void>;
 
   /**
+   * Removes `amountMinor` from a shop's available Seller Payable in one
+   * currency, because a Payout paid it. The not-yet-available part is untouched:
+   * a Payout never pays money whose availability is not recorded.
+   */
+  abstract dischargeAvailable(
+    shopId: string,
+    currency: string,
+    amountMinor: number,
+    context: FinanceRepositoryContext,
+  ): Promise<void>;
+
+  /**
    * Moves `amountMinor` from a shop's not-yet-available Seller Payable into its
    * available Seller Payable in one currency: available rises by the amount and
    * not-yet-available falls by it in a single race-safe upsert.

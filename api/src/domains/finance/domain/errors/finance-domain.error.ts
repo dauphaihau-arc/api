@@ -27,6 +27,17 @@ export class PayoutAccountInvalidError extends FinanceDomainError {
 }
 
 /**
+ * Raised when a Payout cannot be built for the amount asked of it: a Payout
+ * moves a positive amount of Available Seller Payable, so zero and negative
+ * amounts are refused rather than posted as money that did not move.
+ */
+export class PayoutAmountNotPositiveError extends FinanceDomainError {
+  constructor(amountMinor: number) {
+    super(`Payout amount ${amountMinor} minor units is not positive`);
+  }
+}
+
+/**
  * Raised when a Journal Entry's Postings do not sum to zero in their currency.
  * Names the offending Money Event key and the sum that failed the invariant.
  */
