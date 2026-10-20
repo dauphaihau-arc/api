@@ -92,6 +92,16 @@ console.log(
   - record creation progress
   - aggregate recalculation progress
 
+## Payout Seeder Rules
+
+- Only shops whose `seed-data/payout-accounts*.tsv` row is `active` get Payout history; a `pending` shop keeps an empty history, which is what distinguishes a payable shop from a non-payable one.
+- Credit Seller Payable, record Payout Availability and discharge Payouts through the finance repositories (`JournalEntryRepository`, `SellerPayableCommandRepository`, `PayoutAvailabilityRepository`, `PayoutCommandRepository`), never by writing the finance tables directly, so a seeded position always equals its Postings.
+- Only delivered Orders in the shop's own Settlement Currency are used, with no conversion, and an Order that already has Payout Availability is never credited again.
+- The Payout Account's provider must be `manual_bank`, whose provider reference is the Payout's own public id.
+- Seeded Payouts use a `pay_seed_` public-id prefix and past run days (`today - 8`, `today - 3`), paying a deterministic slice of the available Orders and leaving the remainder available.
+- A shop that already has a seeded Payout is skipped entirely, so re-running the seed adds no Payout, Posting, availability or position movement.
+- A shop with fewer than two delivered, uncredited Orders in its Settlement Currency is skipped with a log line, because a Payout must leave some payable available.
+
 ## Before Opening A PR
 
 - Run `git diff --check`.

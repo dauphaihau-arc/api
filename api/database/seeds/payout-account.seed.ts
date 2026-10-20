@@ -49,7 +49,7 @@ const PAYOUT_ACCOUNT_STATUSES: readonly PayoutAccountStatus[] = [
  * Each row goes through the same domain rules a seller's write does, so the seed
  * cannot create an account the API would refuse.
  */
-function loadPayoutAccountSeeds(): PayoutAccountSeed[] {
+export function loadPayoutAccountSeeds(): PayoutAccountSeed[] {
   const rowsBySlug = new Map<string, PayoutAccountCsvRow>();
 
   for (const row of [

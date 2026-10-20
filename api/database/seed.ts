@@ -42,7 +42,14 @@ import { OrderItemEntity } from '~/domains/order/infra/persistence/entities/orde
 import { OutboxEventEntity } from '~/platform/outbox/outbox-event.entity';
 import { ShopEntity } from '~/domains/shop/infra/persistence/entities/shop.entity';
 import { CommissionScheduleEntity } from '~/domains/finance/infra/persistence/entities/commission-schedule.entity';
+import { JournalEntryEntity } from '~/domains/finance/infra/persistence/entities/journal-entry.entity';
+import { LedgerAccountEntity } from '~/domains/finance/infra/persistence/entities/ledger-account.entity';
 import { PayoutAccountEntity } from '~/domains/finance/infra/persistence/entities/payout-account.entity';
+import { PayoutAvailabilityEntity } from '~/domains/finance/infra/persistence/entities/payout-availability.entity';
+import { PayoutLineEntity } from '~/domains/finance/infra/persistence/entities/payout-line.entity';
+import { PayoutEntity } from '~/domains/finance/infra/persistence/entities/payout.entity';
+import { PostingEntity } from '~/domains/finance/infra/persistence/entities/posting.entity';
+import { SellerPayablePositionEntity } from '~/domains/finance/infra/persistence/entities/seller-payable-position.entity';
 import { UserAddressEntity } from '~/domains/user/infra/persistence/entities/user-address.entity';
 import { VariantPriceEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/variant-price.entity';
 import { seedAuth } from './seeds/auth.seed';
@@ -50,6 +57,7 @@ import { seedCategories } from './seeds/category.seed';
 import { seedChat } from './seeds/chat.seed';
 import { seedCommissionSchedules } from './seeds/commission-schedule.seed';
 import { seedPayoutAccounts } from './seeds/payout-account.seed';
+import { seedPayouts } from './seeds/payout.seed';
 import { seedPromotions } from './seeds/promotion.seed';
 import { seedExchangeRates } from './seeds/exchange-rate.seed';
 import { seedLocalOrderScenarios } from './seeds/local-order-scenario.seed';
@@ -113,6 +121,13 @@ async function main() {
       ShopEntity,
       CommissionScheduleEntity,
       PayoutAccountEntity,
+      PayoutEntity,
+      PayoutLineEntity,
+      PayoutAvailabilityEntity,
+      JournalEntryEntity,
+      LedgerAccountEntity,
+      PostingEntity,
+      SellerPayablePositionEntity,
       ProductEntity,
       ProductImageEntity,
       ProductAttributeValueEntity,
@@ -177,6 +192,9 @@ async function main() {
     );
     await runSeedStep('Seeding product reviews', async () =>
       seedProductReviews(em),
+    );
+    await runSeedStep('Seeding payout history', async () =>
+      seedPayouts(em, shopsBySlug),
     );
 
     console.log('Seed completed');
