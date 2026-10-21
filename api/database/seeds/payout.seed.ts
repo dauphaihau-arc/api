@@ -327,21 +327,26 @@ export async function seedPayouts(
                   currency: shop.currency,
                   amountMinor,
                   runDay: payoutRunDay(paidAt),
+                  // Seeded history predates the monthly schedule: it belongs to
+                  // no platform month and never uses up a live allowance.
+                  source: 'scheduled',
+                  periodKey: null,
+                  quotaConsumed: false,
                 },
                 { entityManager },
               );
 
-              if (!claimed) {
+              if (!claimed.payout) {
                 throw new Error(
-                  `[seed][payouts] ${shop.slug}: could not claim the ${payoutRunDay(paidAt)} Payout`,
+                  `[seed][payouts] ${shop.slug}: could not claim the ${payoutRunDay(paidAt)} Payout (${claimed.rejection})`,
                 );
               }
 
               // The manual adapter's reference is the Payout's own public id.
               const settled = await payoutCommandRepository.settle(
                 {
-                  payoutId: claimed.id,
-                  providerReference: claimed.publicId,
+                  payoutId: claimed.payout.id,
+                  providerReference: claimed.payout.publicId,
                   paidAt,
                   orders: slice.map((order) => ({
                     orderId: order.orderId,
@@ -353,12 +358,12 @@ export async function seedPayouts(
 
               if (!settled) {
                 throw new Error(
-                  `[seed][payouts] ${shop.slug}: Payout ${claimed.publicId} was not pending at settle time`,
+                  `[seed][payouts] ${shop.slug}: Payout ${claimed.payout.publicId} was not pending at settle time`,
                 );
               }
 
               const payoutEntry = {
-                moneyEventKey: paidPayoutMoneyEventKey(claimed.id),
+                moneyEventKey: paidPayoutMoneyEventKey(claimed.payout.id),
                 moneyEventKind: PAID_PAYOUT_MONEY_EVENT_KIND,
                 shopId: shop.id,
                 currency: shop.currency,

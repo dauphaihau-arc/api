@@ -13,12 +13,13 @@ import { PayoutEntity } from './payout.entity';
  * Order so what a Payout paid is explainable Order by Order rather than as a
  * single lump. The Order is referenced by identity, never by a foreign key.
  *
- * The unique index on `order_id` makes an Order's available payable payable
- * exactly once, whichever run reached it first.
+ * The unique index on `(payout_id, order_id)` keeps one Payout from recording
+ * the same Order twice, while a netted negative balance may discharge one Order
+ * across several Payouts, so `order_id` alone is not unique.
  */
 @Entity({ tableName: 'payout_lines' })
-@Unique({ properties: ['orderId'] })
-@Index({ properties: ['payout'] })
+@Unique({ properties: ['payout', 'orderId'] })
+@Index({ properties: ['orderId'] })
 export class PayoutLineEntity extends AbstractBaseEntity {
   @ManyToOne(() => PayoutEntity, {
     fieldName: 'payout_id',

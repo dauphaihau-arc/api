@@ -11,11 +11,13 @@ import type {
  */
 export abstract class PayoutQueryRepository {
   /**
-   * Every shop that is owed an available amount no Payout has discharged, with
-   * its Settlement Currency. This is the run's scan: only recorded availability
-   * is in it, so a not-yet-available balance can never reach a Payout.
+   * Every shop that opted in to automatic payouts and is owed an available
+   * amount no Payout has discharged, with its Settlement Currency. This is the
+   * automatic run's scan: only recorded availability is in it, so a
+   * not-yet-available balance can never reach a Payout.
    */
-  abstract findPayableShops(
+  abstract findAutoPayoutShops(
+    payoutDayStartUtc: Date,
     context?: FinanceRepositoryContext,
   ): Promise<PayableShop[]>;
 
@@ -28,9 +30,26 @@ export abstract class PayoutQueryRepository {
     context?: FinanceRepositoryContext,
   ): Promise<PayableOrderAmount[]>;
 
+  /**
+   * Whether the shop already used its manual withdrawal allowance for the
+   * platform month. Only manual rows count: a scheduled Payout is a separate
+   * allowance.
+   */
+  abstract hasConsumedManualPayout(
+    shopId: string,
+    periodKey: string,
+    context?: FinanceRepositoryContext,
+  ): Promise<boolean>;
+
   /** The shop's Payout history, newest first. */
   abstract findByShopId(
     shopId: string,
     context?: FinanceRepositoryContext,
   ): Promise<PayoutRecord[]>;
+
+  /** One Payout by its internal id, or `null` when it no longer exists. */
+  abstract findById(
+    payoutId: string,
+    context?: FinanceRepositoryContext,
+  ): Promise<PayoutRecord | null>;
 }
