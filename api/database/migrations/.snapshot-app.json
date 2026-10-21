@@ -8644,7 +8644,7 @@
           "autoincrement": false,
           "primary": false,
           "nullable": false,
-          "unique": false,
+          "unique": true,
           "length": null,
           "precision": null,
           "scale": null,
@@ -8660,7 +8660,7 @@
           "autoincrement": false,
           "primary": false,
           "nullable": false,
-          "unique": true,
+          "unique": false,
           "length": null,
           "precision": null,
           "scale": null,
@@ -8691,6 +8691,16 @@
       "indexes": [
         {
           "columnNames": [
+            "order_id"
+          ],
+          "composite": false,
+          "constraint": false,
+          "keyName": "payout_lines_order_id_index",
+          "unique": false,
+          "primary": false
+        },
+        {
+          "columnNames": [
             "payout_id"
           ],
           "composite": false,
@@ -8701,11 +8711,12 @@
         },
         {
           "columnNames": [
+            "payout_id",
             "order_id"
           ],
-          "composite": false,
+          "composite": true,
           "constraint": true,
-          "keyName": "payout_lines_order_id_unique",
+          "keyName": "payout_lines_payout_id_order_id_unique",
           "unique": true,
           "primary": false
         },
@@ -8729,6 +8740,122 @@
           "constraintName": "payout_lines_payout_id_foreign",
           "localTableName": "public.payout_lines",
           "referencedTableName": "public.payouts",
+          "referencedColumnNames": [
+            "id"
+          ],
+          "updateRule": "cascade",
+          "deleteRule": "restrict"
+        }
+      },
+      "nativeEnums": {},
+      "comment": null
+    },
+    {
+      "columns": {
+        "shop_id": {
+          "name": "shop_id",
+          "type": "uuid",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": true,
+          "nullable": false,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "uuid"
+        },
+        "auto_payout_enabled": {
+          "name": "auto_payout_enabled",
+          "type": "bool",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": "false",
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "boolean"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamptz(6)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": false,
+          "length": 6,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "datetime"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamptz(6)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": false,
+          "length": 6,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "datetime"
+        },
+        "auto_payout_enabled_at": {
+          "name": "auto_payout_enabled_at",
+          "type": "timestamptz(6)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": 6,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "datetime"
+        }
+      },
+      "name": "payout_settings",
+      "schema": "public",
+      "indexes": [
+        {
+          "columnNames": [
+            "shop_id"
+          ],
+          "composite": false,
+          "constraint": false,
+          "keyName": "payout_settings_pkey",
+          "unique": true,
+          "primary": true
+        }
+      ],
+      "checks": [],
+      "foreignKeys": {
+        "payout_settings_shop_id_foreign": {
+          "columnNames": [
+            "shop_id"
+          ],
+          "constraintName": "payout_settings_shop_id_foreign",
+          "localTableName": "public.payout_settings",
+          "referencedTableName": "public.shops",
           "referencedColumnNames": [
             "id"
           ],
@@ -8812,7 +8939,7 @@
           "autoincrement": false,
           "primary": false,
           "nullable": false,
-          "unique": false,
+          "unique": true,
           "length": null,
           "precision": null,
           "scale": null,
@@ -8827,7 +8954,7 @@
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
-          "nullable": false,
+          "nullable": true,
           "unique": false,
           "length": null,
           "precision": null,
@@ -8948,11 +9075,146 @@
           "comment": null,
           "enumItems": [],
           "mappedType": "datetime"
+        },
+        "reason": {
+          "name": "reason",
+          "type": "varchar(64)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": 64,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "string"
+        },
+        "source": {
+          "name": "source",
+          "type": "varchar(16)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": false,
+          "length": 16,
+          "precision": null,
+          "scale": null,
+          "default": "'scheduled'",
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "string"
+        },
+        "period_key": {
+          "name": "period_key",
+          "type": "varchar(7)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": 7,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "string"
+        },
+        "quota_consumed": {
+          "name": "quota_consumed",
+          "type": "bool",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": "true",
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "boolean"
+        },
+        "requested_by_user_id": {
+          "name": "requested_by_user_id",
+          "type": "uuid",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "uuid"
         }
       },
       "name": "payouts",
       "schema": "public",
       "indexes": [
+        {
+          "columnNames": [
+            "shop_id",
+            "period_key"
+          ],
+          "composite": true,
+          "constraint": false,
+          "keyName": "payouts_manual_period_unique",
+          "unique": true,
+          "primary": false,
+          "expression": "CREATE UNIQUE INDEX payouts_manual_period_unique ON public.payouts USING btree (shop_id, period_key) WHERE (((source)::text = 'manual'::text) AND quota_consumed AND (period_key IS NOT NULL))"
+        },
+        {
+          "columnNames": [
+            "shop_id"
+          ],
+          "composite": false,
+          "constraint": false,
+          "keyName": "payouts_one_pending_per_shop",
+          "unique": true,
+          "primary": false,
+          "expression": "CREATE UNIQUE INDEX payouts_one_pending_per_shop ON public.payouts USING btree (shop_id) WHERE ((state)::text = 'pending'::text)"
+        },
+        {
+          "columnNames": [
+            "id"
+          ],
+          "composite": false,
+          "constraint": false,
+          "keyName": "payouts_pkey",
+          "unique": true,
+          "primary": true
+        },
+        {
+          "columnNames": [
+            "public_id"
+          ],
+          "composite": false,
+          "constraint": true,
+          "keyName": "payouts_public_id_unique",
+          "unique": true,
+          "primary": false
+        },
+        {
+          "columnNames": [
+            "shop_id",
+            "period_key"
+          ],
+          "composite": true,
+          "constraint": false,
+          "keyName": "payouts_scheduled_period_unique",
+          "unique": true,
+          "primary": false,
+          "expression": "CREATE UNIQUE INDEX payouts_scheduled_period_unique ON public.payouts USING btree (shop_id, period_key) WHERE (((source)::text = 'scheduled'::text) AND quota_consumed AND (period_key IS NOT NULL))"
+        },
         {
           "columnNames": [
             "shop_id",
@@ -8967,50 +9229,18 @@
         {
           "columnNames": [
             "shop_id",
-            "run_day"
+            "source",
+            "period_key"
           ],
           "composite": true,
-          "constraint": true,
-          "keyName": "payouts_shop_id_run_day_unique",
-          "unique": true,
-          "primary": false
-        },
-        {
-          "columnNames": [
-            "public_id"
-          ],
-          "composite": false,
-          "constraint": true,
-          "keyName": "payouts_public_id_unique",
-          "unique": true,
-          "primary": false
-        },
-        {
-          "columnNames": [
-            "id"
-          ],
-          "composite": false,
           "constraint": false,
-          "keyName": "payouts_pkey",
-          "unique": true,
-          "primary": true
+          "keyName": "payouts_shop_id_source_period_key_index",
+          "unique": false,
+          "primary": false
         }
       ],
       "checks": [],
       "foreignKeys": {
-        "payouts_shop_id_foreign": {
-          "columnNames": [
-            "shop_id"
-          ],
-          "constraintName": "payouts_shop_id_foreign",
-          "localTableName": "public.payouts",
-          "referencedTableName": "public.shops",
-          "referencedColumnNames": [
-            "id"
-          ],
-          "updateRule": "cascade",
-          "deleteRule": "restrict"
-        },
         "payouts_payout_account_id_foreign": {
           "columnNames": [
             "payout_account_id"
@@ -9018,6 +9248,32 @@
           "constraintName": "payouts_payout_account_id_foreign",
           "localTableName": "public.payouts",
           "referencedTableName": "public.payout_accounts",
+          "referencedColumnNames": [
+            "id"
+          ],
+          "updateRule": "cascade",
+          "deleteRule": "restrict"
+        },
+        "payouts_requested_by_user_id_foreign": {
+          "columnNames": [
+            "requested_by_user_id"
+          ],
+          "constraintName": "payouts_requested_by_user_id_foreign",
+          "localTableName": "public.payouts",
+          "referencedTableName": "public.users",
+          "referencedColumnNames": [
+            "id"
+          ],
+          "updateRule": "cascade",
+          "deleteRule": "restrict"
+        },
+        "payouts_shop_id_foreign": {
+          "columnNames": [
+            "shop_id"
+          ],
+          "constraintName": "payouts_shop_id_foreign",
+          "localTableName": "public.payouts",
+          "referencedTableName": "public.shops",
           "referencedColumnNames": [
             "id"
           ],
