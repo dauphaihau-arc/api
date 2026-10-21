@@ -56,6 +56,17 @@ export class PayoutAccountCurrencyMismatchError extends FinanceAppError {
 }
 
 /**
+ * Raised when a shop opts in to automatic payouts without a destination the
+ * scheduled run could pay: no open account, an unverified or disabled one, or
+ * one in another Settlement Currency.
+ */
+export class AutoPayoutIneligibleError extends FinanceAppError {
+  constructor(shopId: string, reason: string) {
+    super(`Shop ${shopId} is not eligible for automatic payouts: ${reason}`);
+  }
+}
+
+/**
  * Raised when an operator verifies a shop's Payout Account but the shop has
  * none open to verify.
  */
@@ -74,5 +85,68 @@ export class PayoutAccountNotFoundError extends FinanceAppError {
 export class ShopSettlementCurrencyUnresolvedError extends FinanceAppError {
   constructor(shopId: string) {
     super(`Shop ${shopId} has no Settlement Currency to resolve`);
+  }
+}
+
+/**
+ * Raised when a seller asks to withdraw but the shop has no Payout Account that
+ * can receive the money. A manual withdrawal is refused before any row is
+ * written: a Blocked Payout records a scheduled run's decision, not a seller's
+ * request that could never have been sent.
+ */
+export class PayoutAccountUnusableError extends FinanceAppError {
+  constructor(shopId: string, reason: string) {
+    super(
+      `Shop ${shopId} has no usable Payout Account for a manual withdrawal: ${reason}`,
+    );
+  }
+}
+
+/**
+ * Raised when the shop's monthly manual withdrawal allowance is already used.
+ * The platform month's allowance is what keeps a manual withdrawal from draining
+ * a balance that the next scheduled run should pay.
+ */
+export class ManualPayoutAlreadyUsedError extends FinanceAppError {
+  constructor(shopId: string, periodKey: string) {
+    super(
+      `Shop ${shopId} already used its manual withdrawal for ${periodKey}`,
+    );
+  }
+}
+
+/**
+ * Raised when a manual withdrawal cannot proceed because an earlier Payout is
+ * still `pending`: its provider transfer may yet move the same balance.
+ */
+export class PayoutPendingError extends FinanceAppError {
+  constructor(shopId: string) {
+    super(
+      `Shop ${shopId} has a Payout that is still pending; wait for it to settle before withdrawing again`,
+    );
+  }
+}
+
+/**
+ * Raised when a requested manual amount is more than the shop can be paid right
+ * now, after netting a negative balance. The caller is told the ceiling rather
+ * than having the amount silently reduced.
+ */
+export class PayoutAmountExceedsAvailableError extends FinanceAppError {
+  constructor(amountMinor: number, availableMinor: number) {
+    super(
+      `Payout amount ${amountMinor} minor units exceeds the available ${availableMinor} minor units`,
+    );
+  }
+}
+
+/**
+ * Raised when a seller asks to withdraw but the shop has nothing available to
+ * pay: a net position of zero, or availability already discharged by another
+ * Payout. Nothing is recorded, because no money would move.
+ */
+export class NoPayableAmountError extends FinanceAppError {
+  constructor(shopId: string) {
+    super(`Shop ${shopId} has no available Seller Payable to withdraw`);
   }
 }

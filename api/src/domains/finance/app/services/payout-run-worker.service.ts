@@ -12,8 +12,8 @@ import { RunPayoutsUseCase } from '../use-cases/run-payouts/run-payouts.use-case
 /**
  * The worker-process interval that decides whether a Payout Run is due: the same
  * shape as the outbox workers, avoiding a new scheduling library. It ticks on a
- * coarse cadence and leaves the decision to the run itself, which pays a shop at
- * most once per platform day.
+ * coarse cadence and leaves the decision to the run itself, which pays an
+ * opted-in shop at most once per platform month.
  */
 @Injectable()
 export class PayoutRunWorkerService
