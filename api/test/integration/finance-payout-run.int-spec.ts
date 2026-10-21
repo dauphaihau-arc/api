@@ -44,6 +44,9 @@ import {
 import { ObservabilityService } from '~/platform/observability/observability.service';
 import { RequestContextService } from '~/platform/request-context/request-context.service';
 import { FinanceMoneyEventProcessorService } from '~/domains/finance/app/services/finance-money-event-processor.service';
+import { PayoutCommandRepository } from '~/domains/finance/app/ports/payout-command.repository';
+import { PayoutQueryRepository } from '~/domains/finance/app/ports/payout-query.repository';
+import { PayShopUseCase } from '~/domains/finance/app/use-cases/pay-shop/pay-shop.use-case';
 import { RunPayoutsUseCase } from '~/domains/finance/app/use-cases/run-payouts/run-payouts.use-case';
 import { createTestDatabase, dropTestDatabase } from '../support/test-postgres';
 import type { TestDatabaseContext } from '../support/test-postgres';
@@ -55,6 +58,7 @@ jest.setTimeout(240_000);
 const API_PREFIX = '/v1';
 const VALID_TEST_PASSWORD = 'Password123!';
 const ACCOUNT_REFERENCE = '0123456789';
+const AUTO_PAYOUT_DAY = new Date().getUTCDate();
 
 type TestDatabase = TestDatabaseContext;
 
@@ -100,14 +104,27 @@ type PayoutRow = {
   id: string;
   public_id: string;
   shop_id: string;
-  payout_account_id: string;
+  payout_account_id: string | null;
   currency: string;
   amount_minor: number;
   state: string;
+  reason: string | null;
   provider_reference: string | null;
   attempt_count: number;
   run_day: string;
   paid_at: string | null;
+  source: string;
+  period_key: string | null;
+  quota_consumed: boolean;
+  requested_by_user_id: string | null;
+};
+
+type PayoutSettingsResponse = {
+  auto_payout_enabled: boolean;
+  auto_payout_day_of_month: number;
+  auto_payout_eligible: boolean;
+  auto_payout_ineligible_reason: string | null;
+  manual_withdrawals_remaining: number | null;
 };
 
 type PayoutLineRow = {
@@ -187,9 +204,15 @@ class FakePaymentGateway extends PaymentGateway {
  */
 class FakePayoutGateway extends PayoutGateway {
   readonly calls: PayoutTransferInput[] = [];
+  failNextCall = false;
 
   async send(input: PayoutTransferInput): Promise<PayoutTransferResult> {
     this.calls.push(input);
+
+    if (this.failNextCall) {
+      this.failNextCall = false;
+      throw new Error('provider declined the transfer');
+    }
 
     return { reference: `mb_transfer_${this.calls.length}` };
   }
@@ -233,6 +256,11 @@ describe('Payout Run pays available balances (integration)', () => {
     process.env.STORAGE_DRIVER = 'local';
     process.env.STORAGE_LOCAL_ROOT = storageRoot;
     process.env.FIELD_ENCRYPTION_KEY = '0123456789abcdef'.repeat(4);
+    // Match today's platform UTC day so the exact-day scheduler is due during
+    // ordinary payout-run tests. The before-day cases use a fake clock.
+    process.env.PAYOUT_AUTO_DAY_OF_MONTH = String(AUTO_PAYOUT_DAY);
+    process.env.PAYOUT_AUTO_PAYOUT_FORCE = 'false';
+    process.env.PAYOUT_MANUAL_WITHDRAWAL_UNLIMITED = 'false';
 
     sql = new Client({
       host: testDb.rootConfig.host,
@@ -308,6 +336,7 @@ describe('Payout Run pays available balances (integration)', () => {
   // own run caused, rather than on every call the suite has made so far.
   beforeEach(() => {
     payoutGateway.calls.length = 0;
+    payoutGateway.failNextCall = false;
   });
 
   afterAll(async () => {
@@ -642,11 +671,82 @@ describe('Payout Run pays available balances (integration)', () => {
     return app.get(RunPayoutsUseCase).execute();
   }
 
+  /** Opts a shop in to (or out of) automatic payouts; off is the default. */
+  async function setAutoPayout(
+    seller: TestSeller,
+    enabled: boolean,
+  ): Promise<PayoutSettingsResponse> {
+    const response = await seller.agent
+      .put(`${API_PREFIX}/shops/${seller.shopPublicId}/finance/payout-settings`)
+      .send({ auto_payout_enabled: enabled })
+      .expect(200);
+
+    return response.body as PayoutSettingsResponse;
+  }
+
+  async function enableAutoPayout(seller: TestSeller): Promise<void> {
+    const settings = await setAutoPayout(seller, true);
+
+    expect(settings.auto_payout_enabled).toBe(true);
+    // Scheduled-run fixtures must represent an opt-in that predates the day's
+    // UTC start, rather than a seller enabling payouts during the day.
+    await sql.query(
+      `update "payout_settings"
+       set "auto_payout_enabled_at" =
+         ((timezone('UTC', now())::date)::timestamp at time zone 'UTC')
+           - interval '1 second'
+       where "shop_id" = $1`,
+      [seller.shopId],
+    );
+  }
+
+  /**
+   * Enables auto payout without the seller API, for scenarios the seller surface
+   * now refuses (such as an unverified account) but a scheduled run can still
+   * encounter after an account becomes unusable.
+   */
+  async function forceAutoPayoutSettings(seller: TestSeller): Promise<void> {
+    await sql.query(
+      `insert into "payout_settings" (
+         "shop_id", "auto_payout_enabled", "auto_payout_enabled_at",
+         "created_at", "updated_at"
+       )
+       values ($1, true, now() - interval '1 day', now(), now())
+       on conflict ("shop_id") do update
+       set "auto_payout_enabled" = true,
+           "auto_payout_enabled_at" = now() - interval '1 day',
+           "updated_at" = now()`,
+      [seller.shopId],
+    );
+  }
+
+  async function readPayoutSettings(
+    seller: TestSeller,
+  ): Promise<PayoutSettingsResponse> {
+    const response = await seller.agent
+      .get(`${API_PREFIX}/shops/${seller.shopPublicId}/finance/payout-settings`)
+      .expect(200);
+
+    return response.body as PayoutSettingsResponse;
+  }
+
+  /** Requests a manual withdrawal; the caller asserts the response status. */
+  function requestManualPayout(
+    seller: TestSeller,
+    body: { amount_minor?: number } = {},
+  ) {
+    return seller.agent
+      .post(`${API_PREFIX}/shops/${seller.shopPublicId}/finance/payouts/manual`)
+      .set('Idempotency-Key', randomUUID())
+      .send(body);
+  }
+
   async function readPayouts(shopId: string): Promise<PayoutRow[]> {
     return (await sql.query(
       `select "id", "public_id", "shop_id", "payout_account_id", "currency",
-              "amount_minor", "state", "provider_reference", "attempt_count",
-              "run_day"::text as "run_day", "paid_at"
+              "amount_minor", "state", "reason", "provider_reference", "attempt_count",
+              "run_day"::text as "run_day", "paid_at", "source",
+              "period_key", "quota_consumed", "requested_by_user_id"
        from "payouts" where "shop_id" = $1 order by "created_at" asc`,
       [shopId],
     )).rows as PayoutRow[];
@@ -689,6 +789,26 @@ describe('Payout Run pays available balances (integration)', () => {
     return response.body as { payouts: Array<Record<string, unknown>> };
   }
 
+  async function readAdminPayouts(
+    seller: TestSeller,
+  ): Promise<{ payouts: Array<Record<string, unknown>> }> {
+    const response = await admin.agent
+      .get(`${API_PREFIX}/admin/shops/${seller.shopPublicId}/finance/payouts`)
+      .expect(200);
+
+    return response.body as { payouts: Array<Record<string, unknown>> };
+  }
+
+  async function readAdminPayable(
+    seller: TestSeller,
+  ): Promise<PayablePosition> {
+    const response = await admin.agent
+      .get(`${API_PREFIX}/admin/shops/${seller.shopPublicId}/finance/payable`)
+      .expect(200);
+
+    return response.body as PayablePosition;
+  }
+
   it('pays the available balance once, discharging it per Order and leaving a readable history', async () => {
     const { seller, inventoryId } = await createShopWithProduct('run-full', {
       amountMinor: 4_000,
@@ -698,6 +818,7 @@ describe('Payout Run pays available balances (integration)', () => {
     const order = await placeAndPayCardOrder(buyer, inventoryId, 1);
     await deliverOrder(seller, order);
     const accountId = await recordPayoutAccount(seller);
+    await enableAutoPayout(seller);
 
     const before = await readPayablePosition(seller.shopId);
     expect(before).toMatchObject({
@@ -791,6 +912,7 @@ describe('Payout Run pays available balances (integration)', () => {
     const undeliveredOrder = await placeAndPayCardOrder(buyer, inventoryId, 1);
     await deliverOrder(seller, deliveredOrder);
     await recordPayoutAccount(seller);
+    await enableAutoPayout(seller);
 
     const before = await readPayablePosition(seller.shopId);
     expect(before).toMatchObject({
@@ -814,7 +936,7 @@ describe('Payout Run pays available balances (integration)', () => {
     });
   });
 
-  it('does not pay a shop whose Payout Account an operator has not verified', async () => {
+  it('records a Blocked Payout for an unverified account and leaves the balance alone', async () => {
     const { seller, inventoryId } = await createShopWithProduct('run-unverified', {
       amountMinor: 2_500,
       stock: 4,
@@ -823,15 +945,42 @@ describe('Payout Run pays available balances (integration)', () => {
     const order = await placeAndPayCardOrder(buyer, inventoryId, 1);
     await deliverOrder(seller, order);
     await recordPayoutAccount(seller, { verify: false });
+    await forceAutoPayoutSettings(seller);
 
-    await runPayouts();
+    const summary = await runPayouts();
+    expect(summary.blockedShopCount).toBe(1);
 
-    expect(await readPayouts(seller.shopId)).toHaveLength(0);
+    // A Blocked Payout is a recorded fact, not a failure and not a transfer.
+    const payouts = await readPayouts(seller.shopId);
+    expect(payouts).toHaveLength(1);
+    expect(payouts[0]).toMatchObject({
+      payout_account_id: null,
+      amount_minor: order.creditMinor,
+      state: 'blocked',
+      reason: 'payout_account_unverified',
+      provider_reference: null,
+      attempt_count: 0,
+      paid_at: null,
+    });
     expect(payoutGateway.calls).toHaveLength(0);
     expect(await readPayablePosition(seller.shopId)).toMatchObject({
       available_minor: order.creditMinor,
     });
-    expect((await readPayoutHistory(seller)).payouts).toHaveLength(0);
+
+    // Both the shop and an operator can read the outcome and why it happened.
+    expect((await readPayoutHistory(seller)).payouts[0]).toMatchObject({
+      state: 'blocked',
+      reason: 'payout_account_unverified',
+    });
+    expect((await readAdminPayouts(seller)).payouts[0]).toMatchObject({
+      state: 'blocked',
+      reason: 'payout_account_unverified',
+    });
+
+    // Re-running the same day cannot turn the block into a second Payout.
+    await runPayouts();
+    expect(await readPayouts(seller.shopId)).toHaveLength(1);
+    expect(payoutGateway.calls).toHaveLength(0);
   });
 
   it('does not claim a new Payout while an earlier one is still pending', async () => {
@@ -843,6 +992,7 @@ describe('Payout Run pays available balances (integration)', () => {
     const order = await placeAndPayCardOrder(buyer, inventoryId, 1);
     await deliverOrder(seller, order);
     const accountId = await recordPayoutAccount(seller);
+    await enableAutoPayout(seller);
 
     const before = await readPayablePosition(seller.shopId);
     expect(before).toMatchObject({
@@ -892,5 +1042,432 @@ describe('Payout Run pays available balances (integration)', () => {
       available_minor: order.creditMinor,
       not_yet_available_minor: 0,
     });
+  });
+
+  it('nets a negative Seller Payable before sending anything', async () => {
+    const { seller, inventoryId } = await createShopWithProduct('run-netted', {
+      amountMinor: 5_000,
+      stock: 2,
+    });
+    const buyer = await registerBuyer('run-netted-buyer');
+    const order = await placeAndPayCardOrder(buyer, inventoryId, 1);
+    await deliverOrder(seller, order);
+    await recordPayoutAccount(seller);
+    await enableAutoPayout(seller);
+
+    // A refund has left the shop owing more than its pending settlement covers.
+    await sql.query(
+      `update "seller_payable_positions"
+       set "not_yet_available_minor" = -1000
+       where "shop_id" = $1`,
+      [seller.shopId],
+    );
+
+    const summary = await runPayouts();
+    expect(summary.paidShopCount).toBe(1);
+
+    const netAmount = order.creditMinor - 1_000;
+    const payouts = await readPayouts(seller.shopId);
+    expect(payouts).toHaveLength(1);
+    expect(payouts[0]).toMatchObject({
+      amount_minor: netAmount,
+      state: 'paid',
+    });
+    expect(await readPayoutLines(payouts[0]!.id)).toEqual([
+      {
+        payout_id: payouts[0]!.id,
+        order_id: order.orderInternalId,
+        amount_minor: netAmount,
+      },
+    ]);
+    expect(await readPayoutPostings(payouts[0]!.id)).toEqual([
+      { kind: 'seller_payable', amount_minor: -netAmount },
+      { kind: 'platform_clearing', amount_minor: netAmount },
+    ]);
+
+    // The debt is netted, not paid around: the position ends at zero overall.
+    expect(await readPayablePosition(seller.shopId)).toMatchObject({
+      available_minor: 1_000,
+      not_yet_available_minor: -1_000,
+    });
+    expect(await readAdminPayable(seller)).toMatchObject({
+      available_minor: 1_000,
+      not_yet_available_minor: -1_000,
+    });
+  });
+
+  it('pays nothing when the shop owes more than it is owed, carrying the shortfall', async () => {
+    const { seller, inventoryId } = await createShopWithProduct('run-negative', {
+      amountMinor: 3_000,
+      stock: 2,
+    });
+    const buyer = await registerBuyer('run-negative-buyer');
+    const order = await placeAndPayCardOrder(buyer, inventoryId, 1);
+    await deliverOrder(seller, order);
+    await recordPayoutAccount(seller);
+    await enableAutoPayout(seller);
+
+    await sql.query(
+      `update "seller_payable_positions"
+       set "not_yet_available_minor" = $2
+       where "shop_id" = $1`,
+      [seller.shopId, -(order.creditMinor + 1)],
+    );
+
+    const summary = await runPayouts();
+    expect(summary.paidShopCount).toBe(0);
+    expect(await readPayouts(seller.shopId)).toHaveLength(0);
+    expect(payoutGateway.calls).toHaveLength(0);
+    expect(await readPayablePosition(seller.shopId)).toMatchObject({
+      available_minor: order.creditMinor,
+      not_yet_available_minor: -(order.creditMinor + 1),
+    });
+
+    // The negative outcome is visible to the shop and to an operator rather
+    // than being replaced by a Payout that overpaid.
+    expect(await readAdminPayable(seller)).toMatchObject({
+      available_minor: order.creditMinor,
+      not_yet_available_minor: -(order.creditMinor + 1),
+    });
+  });
+
+  it('keeps one shop provider failure from changing another shop Payout', async () => {
+    const first = await createShopWithProduct('run-isolation-a', {
+      amountMinor: 2_400,
+      stock: 2,
+    });
+    const second = await createShopWithProduct('run-isolation-b', {
+      amountMinor: 3_100,
+      stock: 2,
+    });
+    const buyer = await registerBuyer('run-isolation-buyer');
+    const firstOrder = await placeAndPayCardOrder(buyer, first.inventoryId, 1);
+    const secondOrder = await placeAndPayCardOrder(buyer, second.inventoryId, 1);
+    await deliverOrder(first.seller, firstOrder);
+    await deliverOrder(second.seller, secondOrder);
+    await recordPayoutAccount(first.seller);
+    await recordPayoutAccount(second.seller);
+    await enableAutoPayout(first.seller);
+    await enableAutoPayout(second.seller);
+
+    payoutGateway.failNextCall = true;
+
+    const summary = await runPayouts();
+    expect(summary.paidShopCount).toBe(1);
+    expect(summary.skippedShopCount).toBeGreaterThanOrEqual(1);
+
+    const firstPayouts = await readPayouts(first.seller.shopId);
+    const secondPayouts = await readPayouts(second.seller.shopId);
+    const outcomes = [
+      { seller: first.seller, order: firstOrder, payouts: firstPayouts },
+      { seller: second.seller, order: secondOrder, payouts: secondPayouts },
+    ];
+    const paid = outcomes.find((entry) => entry.payouts[0]?.state === 'paid');
+    const failed = outcomes.find((entry) => entry.payouts[0]?.state === 'pending');
+
+    expect(paid).toBeDefined();
+    expect(failed).toBeDefined();
+    expect(paid!.payouts[0]).toMatchObject({
+      amount_minor: paid!.order.creditMinor,
+      provider_reference: expect.stringContaining('mb_transfer_'),
+    });
+    expect(paid!.payouts[0]!.paid_at).not.toBeNull();
+    expect(await readPayablePosition(paid!.seller.shopId)).toMatchObject({
+      available_minor: 0,
+    });
+
+    // The failed shop is untouched: its transfer is unresolved, so no provider
+    // reference, no discharge, and its available balance still stands.
+    expect(failed!.payouts[0]).toMatchObject({
+      amount_minor: failed!.order.creditMinor,
+      provider_reference: null,
+      paid_at: null,
+    });
+    expect(await readPayoutLines(failed!.payouts[0]!.id)).toHaveLength(0);
+    expect(await readPayablePosition(failed!.seller.shopId)).toMatchObject({
+      available_minor: failed!.order.creditMinor,
+    });
+  });
+
+  it('pays nothing until the shop opts in, then pays once per platform month', async () => {
+    const { seller, inventoryId } = await createShopWithProduct('run-optin', {
+      amountMinor: 4_200,
+      stock: 3,
+    });
+    const buyer = await registerBuyer('run-optin-buyer');
+    const order = await placeAndPayCardOrder(buyer, inventoryId, 1);
+    await deliverOrder(seller, order);
+    await recordPayoutAccount(seller);
+
+    // Automatic payouts are opt-in. A shop with available money and a usable
+    // account is invisible to the run until it enables them.
+    expect(await readPayoutSettings(seller)).toMatchObject({
+      auto_payout_enabled: false,
+      // The suite pins the auto day to today's UTC day.
+      auto_payout_day_of_month: AUTO_PAYOUT_DAY,
+    });
+    const beforeOptIn = await runPayouts();
+    expect(beforeOptIn.paidShopCount).toBe(0);
+    expect(await readPayouts(seller.shopId)).toHaveLength(0);
+    expect(payoutGateway.calls).toHaveLength(0);
+    expect(await readPayablePosition(seller.shopId)).toMatchObject({
+      available_minor: order.creditMinor,
+    });
+
+    await enableAutoPayout(seller);
+
+    const firstRun = await runPayouts();
+    expect(firstRun.paidShopCount).toBe(1);
+
+    const payouts = await readPayouts(seller.shopId);
+    expect(payouts).toHaveLength(1);
+    expect(payouts[0]).toMatchObject({
+      amount_minor: order.creditMinor,
+      state: 'paid',
+      source: 'scheduled',
+      period_key: new Date().toISOString().slice(0, 7),
+      quota_consumed: true,
+      requested_by_user_id: null,
+    });
+
+    // The monthly claim, not the tick cadence, is what stops a second payment:
+    // another tick in the same platform month pays nothing.
+    const secondRun = await runPayouts();
+    expect(secondRun.paidShopCount).toBe(0);
+    expect(await readPayouts(seller.shopId)).toHaveLength(1);
+    expect(payoutGateway.calls).toHaveLength(1);
+  });
+
+  it('withdraws manually, uses the monthly allowance, and refuses a second withdrawal', async () => {
+    const { seller, inventoryId } = await createShopWithProduct('run-manual', {
+      amountMinor: 4_500,
+      stock: 3,
+    });
+    const buyer = await registerBuyer('run-manual-buyer');
+    const order = await placeAndPayCardOrder(buyer, inventoryId, 1);
+    await deliverOrder(seller, order);
+    await recordPayoutAccount(seller);
+
+    expect(await readPayoutSettings(seller)).toMatchObject({
+      manual_withdrawals_remaining: 1,
+    });
+
+    // Omitting the amount withdraws the whole net available balance.
+    const response = await requestManualPayout(seller).expect(200);
+    const body = response.body as { payout: Record<string, unknown> };
+    expect(body.payout).toMatchObject({
+      amount_minor: order.creditMinor,
+      currency: 'USD',
+      state: 'paid',
+      source: 'manual',
+      period: new Date().toISOString().slice(0, 7),
+    });
+
+    const payouts = await readPayouts(seller.shopId);
+    expect(payouts).toHaveLength(1);
+    expect(payouts[0]).toMatchObject({
+      amount_minor: order.creditMinor,
+      state: 'paid',
+      source: 'manual',
+      period_key: new Date().toISOString().slice(0, 7),
+      quota_consumed: true,
+      requested_by_user_id: seller.userId,
+    });
+    expect(payoutGateway.calls).toHaveLength(1);
+    expect(await readPayablePosition(seller.shopId)).toMatchObject({
+      available_minor: 0,
+    });
+
+    // The manual withdrawal used this platform month's allowance.
+    expect(await readPayoutSettings(seller)).toMatchObject({
+      manual_withdrawals_remaining: 0,
+    });
+
+    const second = await requestManualPayout(seller).expect(409);
+    expect(second.body.code).toBe('MANUAL_PAYOUT_ALREADY_USED');
+    expect(await readPayouts(seller.shopId)).toHaveLength(1);
+    expect(payoutGateway.calls).toHaveLength(1);
+  });
+
+  it('rejects a manual amount above what is available without claiming anything', async () => {
+    const { seller, inventoryId } = await createShopWithProduct('run-manual-high', {
+      amountMinor: 3_800,
+      stock: 3,
+    });
+    const buyer = await registerBuyer('run-manual-high-buyer');
+    const order = await placeAndPayCardOrder(buyer, inventoryId, 1);
+    await deliverOrder(seller, order);
+    await recordPayoutAccount(seller);
+
+    const response = await requestManualPayout(seller, {
+      amount_minor: order.creditMinor + 1,
+    }).expect(400);
+    expect(response.body.code).toBe('PAYOUT_AMOUNT_EXCEEDS_AVAILABLE');
+
+    expect(await readPayouts(seller.shopId)).toHaveLength(0);
+    expect(payoutGateway.calls).toHaveLength(0);
+    expect(await readPayablePosition(seller.shopId)).toMatchObject({
+      available_minor: order.creditMinor,
+    });
+    // A rejected amount never uses the month's allowance.
+    expect(await readPayoutSettings(seller)).toMatchObject({
+      manual_withdrawals_remaining: 1,
+    });
+  });
+
+  it('rejects a manual withdrawal with no usable Payout Account and records no Blocked Payout', async () => {
+    const { seller, inventoryId } = await createShopWithProduct('run-manual-blocked', {
+      amountMinor: 2_900,
+      stock: 3,
+    });
+    const buyer = await registerBuyer('run-manual-blocked-buyer');
+    const order = await placeAndPayCardOrder(buyer, inventoryId, 1);
+    await deliverOrder(seller, order);
+
+    const response = await requestManualPayout(seller).expect(400);
+    expect(response.body.code).toBe('PAYOUT_ACCOUNT_UNUSABLE');
+
+    // Blocked Payouts belong to scheduled runs, not to a seller's request.
+    expect(await readPayouts(seller.shopId)).toHaveLength(0);
+    expect(payoutGateway.calls).toHaveLength(0);
+    expect(await readPayablePosition(seller.shopId)).toMatchObject({
+      available_minor: order.creditMinor,
+    });
+  });
+
+  it('does nothing after the configured automatic payout day was missed', async () => {
+    const { seller, inventoryId } = await createShopWithProduct('run-not-due', {
+      amountMinor: 3_600,
+      stock: 2,
+    });
+    const buyer = await registerBuyer('run-not-due-buyer');
+    const order = await placeAndPayCardOrder(buyer, inventoryId, 1);
+    await deliverOrder(seller, order);
+    await recordPayoutAccount(seller);
+    await enableAutoPayout(seller);
+
+    // Day 16 is after day 15, but Option A does not catch up a missed tick.
+    const notDue = new RunPayoutsUseCase(
+      {
+        autoPayoutDayOfMonth: 15,
+        manualWithdrawalUnlimited: false,
+        autoPayoutForceDue: false,
+      },
+      app.get(PayoutQueryRepository),
+      app.get(PayShopUseCase),
+      { now: () => new Date('2026-10-16T10:00:00.000Z') },
+    );
+
+    const summary = await notDue.execute();
+    expect(summary).toEqual({
+      runDay: '2026-10-16',
+      paidShopCount: 0,
+      blockedShopCount: 0,
+      skippedShopCount: 0,
+    });
+    expect(await readPayouts(seller.shopId)).toHaveLength(0);
+    expect(payoutGateway.calls).toHaveLength(0);
+    expect(await readPayablePosition(seller.shopId)).toMatchObject({
+      available_minor: order.creditMinor,
+    });
+  });
+
+  it('does not schedule a shop enabled after the configured day started', async () => {
+    const { seller, inventoryId } = await createShopWithProduct('run-enabled-late', {
+      amountMinor: 3_900,
+      stock: 2,
+    });
+    const buyer = await registerBuyer('run-enabled-late-buyer');
+    const order = await placeAndPayCardOrder(buyer, inventoryId, 1);
+    await deliverOrder(seller, order);
+    await recordPayoutAccount(seller);
+
+    // This path intentionally does not use enableAutoPayout(), which backdates
+    // settings for the ordinary scheduled-run fixtures.
+    await setAutoPayout(seller, true);
+    const dayStart = new Date();
+    dayStart.setUTCHours(0, 0, 0, 0);
+    await sql.query(
+      `update "payout_settings"
+       set "auto_payout_enabled_at" = $1
+       where "shop_id" = $2`,
+      [new Date(dayStart.getTime() + 1_000), seller.shopId],
+    );
+    const row = (await sql.query(
+      `select "auto_payout_enabled_at"
+       from "payout_settings"
+       where "shop_id" = $1`,
+      [seller.shopId],
+    )).rows[0] as { auto_payout_enabled_at: Date };
+    expect(new Date(row.auto_payout_enabled_at).getTime())
+      .toBeGreaterThanOrEqual(dayStart.getTime());
+
+    await runPayouts();
+    expect(await readPayouts(seller.shopId)).toHaveLength(0);
+    expect(await readPayablePosition(seller.shopId)).toMatchObject({
+      available_minor: order.creditMinor,
+    });
+  });
+
+  it('lets only one of two concurrent claims for a shop become pending', async () => {
+    const { seller, inventoryId } = await createShopWithProduct('run-claim-race', {
+      amountMinor: 3_300,
+      stock: 2,
+    });
+    const buyer = await registerBuyer('run-claim-race-buyer');
+    const order = await placeAndPayCardOrder(buyer, inventoryId, 1);
+    await deliverOrder(seller, order);
+    const accountId = await recordPayoutAccount(seller);
+
+    const commandRepository = app.get(PayoutCommandRepository);
+    const runDay = new Date().toISOString().slice(0, 10);
+    const periodKey = new Date().toISOString().slice(0, 7);
+    const claimBase = {
+      shopId: seller.shopId,
+      payoutAccountId: accountId,
+      currency: 'USD',
+      amountMinor: order.creditMinor,
+      runDay,
+      periodKey,
+    };
+
+    // Two sources claim the same shop at the same time. The pending backstop
+    // index, not the read, is what keeps one shop from having two open
+    // transfers; the loser must name that reason rather than a period conflict.
+    const results = await Promise.all([
+      commandRepository.claim(
+        {
+          ...claimBase,
+          publicId: `pay_race_${randomUUID().replace(/-/g, '').slice(0, 12)}`,
+          source: 'scheduled',
+          quotaConsumed: true,
+        },
+        {},
+      ),
+      commandRepository.claim(
+        {
+          ...claimBase,
+          publicId: `pay_race_${randomUUID().replace(/-/g, '').slice(0, 12)}`,
+          source: 'manual',
+          requestedByUserId: seller.userId,
+          quotaConsumed: true,
+        },
+        {},
+      ),
+    ]);
+
+    expect(results.filter((result) => result.payout !== null)).toHaveLength(1);
+    const rejected = results.filter((result) => result.payout === null);
+    expect(rejected).toHaveLength(1);
+    expect(rejected[0]).toMatchObject({ rejection: 'pending' });
+
+    const payouts = await readPayouts(seller.shopId);
+    expect(payouts).toHaveLength(1);
+    expect(payouts[0]).toMatchObject({
+      amount_minor: order.creditMinor,
+      state: 'pending',
+      provider_reference: null,
+    });
+    expect(payoutGateway.calls).toHaveLength(0);
   });
 });

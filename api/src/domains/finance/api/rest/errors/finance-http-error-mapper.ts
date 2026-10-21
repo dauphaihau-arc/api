@@ -1,13 +1,24 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import type { HttpException } from '@nestjs/common';
 import {
   InvalidCommissionRateError,
   PayoutAccountInvalidError,
+  PayoutAmountNotPositiveError,
 } from '../../../domain/errors/finance-domain.error';
 import type { FinanceDomainError } from '../../../domain/errors/finance-domain.error';
 import {
+  AutoPayoutIneligibleError,
+  ManualPayoutAlreadyUsedError,
+  NoPayableAmountError,
   PayoutAccountCurrencyMismatchError,
   PayoutAccountNotFoundError,
+  PayoutAccountUnusableError,
+  PayoutAmountExceedsAvailableError,
+  PayoutPendingError,
 } from '../../../app/errors/finance-app.error';
 import type { FinanceAppError } from '../../../app/errors/finance-app.error';
 
@@ -39,6 +50,13 @@ export function mapFinanceDomainErrorToHttpException(
     });
   }
 
+  if (error instanceof PayoutAmountNotPositiveError) {
+    return new BadRequestException({
+      message: error.message,
+      code: 'PAYOUT_AMOUNT_NOT_POSITIVE',
+    });
+  }
+
   return null;
 }
 
@@ -66,6 +84,48 @@ export function mapFinanceAppErrorToHttpException(
     return new NotFoundException({
       message: error.message,
       code: 'PAYOUT_ACCOUNT_NOT_FOUND',
+    });
+  }
+
+  if (error instanceof AutoPayoutIneligibleError) {
+    return new ConflictException({
+      message: error.message,
+      code: 'AUTO_PAYOUT_NOT_ELIGIBLE',
+    });
+  }
+
+  if (error instanceof PayoutAccountUnusableError) {
+    return new BadRequestException({
+      message: error.message,
+      code: 'PAYOUT_ACCOUNT_UNUSABLE',
+    });
+  }
+
+  if (error instanceof PayoutAmountExceedsAvailableError) {
+    return new BadRequestException({
+      message: error.message,
+      code: 'PAYOUT_AMOUNT_EXCEEDS_AVAILABLE',
+    });
+  }
+
+  if (error instanceof NoPayableAmountError) {
+    return new BadRequestException({
+      message: error.message,
+      code: 'NO_PAYABLE_AMOUNT',
+    });
+  }
+
+  if (error instanceof ManualPayoutAlreadyUsedError) {
+    return new ConflictException({
+      message: error.message,
+      code: 'MANUAL_PAYOUT_ALREADY_USED',
+    });
+  }
+
+  if (error instanceof PayoutPendingError) {
+    return new ConflictException({
+      message: error.message,
+      code: 'PAYOUT_PENDING',
     });
   }
 
