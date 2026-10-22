@@ -30,10 +30,12 @@ import { PayoutSettingsRepository } from './app/ports/payout-settings.repository
 import { SellerPayableCommandRepository } from './app/ports/seller-payable-command.repository';
 import { SellerPayableQueryRepository } from './app/ports/seller-payable-query.repository';
 import { SettlementCurrencyRepository } from './app/ports/settlement-currency.repository';
+import { TransactionsQueryRepository } from './app/ports/transactions-query.repository';
 import { GetPayoutSettingsUseCase } from './app/use-cases/get-payout-settings/get-payout-settings.use-case';
 import { GetShopPayoutAccountUseCase } from './app/use-cases/get-shop-payout-account/get-shop-payout-account.use-case';
 import { GetShopPayoutsUseCase } from './app/use-cases/get-shop-payouts/get-shop-payouts.use-case';
 import { GetShopSellerPayableUseCase } from './app/use-cases/get-shop-seller-payable/get-shop-seller-payable.use-case';
+import { GetShopTransactionsUseCase } from './app/use-cases/get-shop-transactions/get-shop-transactions.use-case';
 import { PayShopUseCase } from './app/use-cases/pay-shop/pay-shop.use-case';
 import { RecordCommissionScheduleUseCase } from './app/use-cases/record-commission-schedule/record-commission-schedule.use-case';
 import { RecordOrderPaidJournalEntryUseCase } from './app/use-cases/record-order-paid-journal-entry/record-order-paid-journal-entry.use-case';
@@ -66,6 +68,7 @@ import { MikroOrmPayoutSettingsRepository } from './infra/persistence/repositori
 import { MikroOrmSellerPayableQueryRepository } from './infra/persistence/repositories/mikro-orm-seller-payable-query.repository';
 import { MikroOrmSellerPayableCommandRepository } from './infra/persistence/repositories/mikro-orm-seller-payable-command.repository';
 import { MikroOrmSettlementCurrencyRepository } from './infra/persistence/repositories/mikro-orm-settlement-currency.repository';
+import { MikroOrmTransactionsQueryRepository } from './infra/persistence/repositories/mikro-orm-transactions-query.repository';
 
 @Module({
   imports: [
@@ -146,6 +149,10 @@ import { MikroOrmSettlementCurrencyRepository } from './infra/persistence/reposi
       useClass: MikroOrmSettlementCurrencyRepository,
     },
     {
+      provide: TransactionsQueryRepository,
+      useClass: MikroOrmTransactionsQueryRepository,
+    },
+    {
       provide: CommissionScheduleRepository,
       useClass: MikroOrmCommissionScheduleRepository,
     },
@@ -158,6 +165,7 @@ import { MikroOrmSettlementCurrencyRepository } from './infra/persistence/reposi
     RecordShopPayoutAccountVerificationUseCase,
     GetShopPayoutAccountUseCase,
     GetShopPayoutsUseCase,
+    GetShopTransactionsUseCase,
     GetPayoutSettingsUseCase,
     SetAutoPayoutEnabledUseCase,
     PayShopUseCase,

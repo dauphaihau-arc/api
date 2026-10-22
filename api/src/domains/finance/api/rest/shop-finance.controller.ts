@@ -7,6 +7,7 @@ import {
   HttpStatus,
   Param,
   Post,
+  Query,
   Put,
   UseFilters,
   UseGuards,
@@ -32,9 +33,11 @@ import { GetPayoutSettingsUseCase } from '../../app/use-cases/get-payout-setting
 import { GetShopPayoutAccountUseCase } from '../../app/use-cases/get-shop-payout-account/get-shop-payout-account.use-case';
 import { GetShopPayoutsUseCase } from '../../app/use-cases/get-shop-payouts/get-shop-payouts.use-case';
 import { GetShopSellerPayableUseCase } from '../../app/use-cases/get-shop-seller-payable/get-shop-seller-payable.use-case';
+import { GetShopTransactionsUseCase } from '../../app/use-cases/get-shop-transactions/get-shop-transactions.use-case';
 import { RecordShopPayoutAccountUseCase } from '../../app/use-cases/record-shop-payout-account/record-shop-payout-account.use-case';
 import { RequestManualPayoutUseCase } from '../../app/use-cases/request-manual-payout/request-manual-payout.use-case';
 import { SetAutoPayoutEnabledUseCase } from '../../app/use-cases/set-auto-payout-enabled/set-auto-payout-enabled.use-case';
+import { ListShopTransactionsQueryDto } from './dto/list-shop-transactions.query.dto';
 import { RecordPayoutAccountDto } from './dto/record-payout-account.dto';
 import { RequestManualPayoutDto } from './dto/request-manual-payout.dto';
 import { UpdatePayoutSettingsDto } from './dto/update-payout-settings.dto';
@@ -58,6 +61,10 @@ import {
   ShopSellerPayableResponseDto,
   toSellerPayableResponse,
 } from './responses/seller-payable.response';
+import {
+  ShopTransactionsResponseDto,
+  toShopTransactionsResponse,
+} from './responses/transactions.response';
 
 @Controller('shops/:shop_id/finance')
 @UseFilters(FinanceExceptionsFilter)
@@ -70,6 +77,7 @@ export class ShopFinanceController {
   constructor(
     private readonly shopAccessService: ShopAccessService,
     private readonly getShopSellerPayableUseCase: GetShopSellerPayableUseCase,
+    private readonly getShopTransactionsUseCase: GetShopTransactionsUseCase,
     private readonly getShopPayoutAccountUseCase: GetShopPayoutAccountUseCase,
     private readonly getShopPayoutsUseCase: GetShopPayoutsUseCase,
     private readonly getPayoutSettingsUseCase: GetPayoutSettingsUseCase,
@@ -95,6 +103,36 @@ export class ShopFinanceController {
 
     return toSellerPayableResponse(
       await this.getShopSellerPayableUseCase.execute(shopId),
+    );
+  }
+
+  @Get('transactions')
+  @Header('Cache-Control', 'private, no-cache')
+  @ApiOperation({ summary: 'Get the shop transaction timeline' })
+  @ApiParam({ name: 'shop_id', type: String })
+  @ApiOkResponse({
+    description:
+      'Order income, Refunds, and Payouts as one signed timeline, newest first.',
+    type: ShopTransactionsResponseDto,
+  })
+  @ApiErrorResponses(shopFinanceControllerErrorResponses.transactions)
+  async transactions(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('shop_id') shopPublicId: string,
+    @Query() query: ListShopTransactionsQueryDto,
+  ): Promise<ShopTransactionsResponseDto> {
+    const shopId = (await this.shopAccessService.resolveManageableShopByPublicId(currentUser, shopPublicId)).id;
+
+    return toShopTransactionsResponse(
+      await this.getShopTransactionsUseCase.execute({
+        shopId,
+        page: query.page,
+        limit: query.limit,
+        type: query.type,
+        status: query.status,
+        dateFrom: query.dateFrom,
+        dateTo: query.dateTo,
+      }),
     );
   }
 

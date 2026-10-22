@@ -55,6 +55,16 @@ export const shopFinanceControllerErrorResponses = {
     403: [...shopForbidden],
     404: [...shopNotFound],
   },
+  transactions: {
+    400: [
+      {
+        code: 'VALIDATION_ERROR',
+        message: 'limit must not be greater than 100',
+      },
+    ],
+    403: [...shopForbidden],
+    404: [...shopNotFound],
+  },
   payoutAccountRecord: {
     400: [...payoutAccountInvalid],
     403: [...shopForbidden],
