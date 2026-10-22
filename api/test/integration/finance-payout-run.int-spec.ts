@@ -103,6 +103,7 @@ type Fulfillment = { groups: Group[] };
 type PayoutRow = {
   id: string;
   public_id: string;
+  payout_number: string;
   shop_id: string;
   payout_account_id: string | null;
   currency: string;
@@ -747,7 +748,7 @@ describe('Payout Run pays available balances (integration)', () => {
 
   async function readPayouts(shopId: string): Promise<PayoutRow[]> {
     return (await sql.query(
-      `select "id", "public_id", "shop_id", "payout_account_id", "currency",
+      `select "id", "public_id", "payout_number", "shop_id", "payout_account_id", "currency",
               "amount_minor", "state", "reason", "provider_reference", "attempt_count",
               "run_day"::text as "run_day", "paid_at", "source",
               "period_key", "quota_consumed", "requested_by_user_id"
@@ -846,6 +847,7 @@ describe('Payout Run pays available balances (integration)', () => {
       attempt_count: 1,
       run_day: new Date().toISOString().slice(0, 10),
     });
+    expect(payouts[0]!.payout_number).toMatch(/^PAY-\d{8}-\d{6}$/);
     expect(payouts[0]!.paid_at).not.toBeNull();
 
     // The discharge is explainable Order by Order.
@@ -893,6 +895,7 @@ describe('Payout Run pays available balances (integration)', () => {
     expect(history.payouts).toHaveLength(1);
     expect(history.payouts[0]).toMatchObject({
       id: payouts[0]!.public_id,
+      payout_number: payouts[0]!.payout_number,
       amount_minor: order.creditMinor,
       currency: 'USD',
       state: 'paid',
@@ -1171,6 +1174,11 @@ describe('Payout Run pays available balances (integration)', () => {
 
     expect(paid).toBeDefined();
     expect(failed).toBeDefined();
+
+    const payoutNumbers = outcomes.map(entry => entry.payouts[0]!.payout_number);
+    expect(payoutNumbers.every(number => /^PAY-\d{8}-\d{6}$/.test(number))).toBe(true);
+    expect(new Set(payoutNumbers).size).toBe(payoutNumbers.length);
+
     expect(paid!.payouts[0]).toMatchObject({
       amount_minor: paid!.order.creditMinor,
       provider_reference: expect.stringContaining('mb_transfer_'),
@@ -1265,6 +1273,7 @@ describe('Payout Run pays available balances (integration)', () => {
       state: 'paid',
       source: 'manual',
       period: new Date().toISOString().slice(0, 7),
+      payout_number: expect.stringMatching(/^PAY-\d{8}-\d{6}$/),
     });
 
     const payouts = await readPayouts(seller.shopId);

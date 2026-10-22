@@ -9,6 +9,12 @@ export class ShopPayoutResponseDto {
   id!: string;
 
   @ApiProperty({
+    description: 'Human-facing Payout number.',
+    example: 'PAY-20261019-000042',
+  })
+  payout_number!: string;
+
+  @ApiProperty({
     description: 'Amount paid, in the shop Settlement Currency minor units.',
     example: 12_500,
   })
@@ -83,6 +89,7 @@ export class ShopPayoutResponseWrapperDto {
 export function toShopPayoutResponse(payout: PayoutRecord): ShopPayoutResponseDto {
   return {
     id: payout.publicId,
+    payout_number: payout.payoutNumber,
     amount_minor: payout.amountMinor,
     currency: payout.currency,
     state: payout.state,

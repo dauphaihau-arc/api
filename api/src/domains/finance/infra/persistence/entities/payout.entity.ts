@@ -2,6 +2,7 @@ import {
   Entity,
   Index,
   ManyToOne,
+  Opt,
   Property,
   Unique,
 } from '@mikro-orm/core';
@@ -28,6 +29,11 @@ import { PayoutAccountEntity } from './payout-account.entity';
 export class PayoutEntity extends AbstractBaseEntity {
   @Property({ fieldName: 'public_id', length: 32 })
   publicId!: string;
+
+  /** Human-facing number, assigned by the database trigger on insert. */
+  @Property({ fieldName: 'payout_number', length: 25 })
+  @Unique()
+  payoutNumber?: Opt<string>;
 
   @ManyToOne(() => ShopEntity, {
     fieldName: 'shop_id',

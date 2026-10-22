@@ -16,6 +16,8 @@ export interface PayableOrderAmount {
 export interface PayoutRecord {
   id: string;
   publicId: string;
+  /** Human-facing Payout number (`PAY-YYYYMMDD-NNNNNN`). */
+  payoutNumber: string;
   amountMinor: number;
   currency: string;
   state: PayoutState;

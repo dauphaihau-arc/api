@@ -13,6 +13,7 @@ import type { PayoutSource, PayoutState } from '../../../domain/rules/payout';
 interface PayoutRow {
   id: string;
   public_id: string;
+  payout_number: string;
   amount_minor: number;
   currency: string;
   state: PayoutState;
@@ -24,13 +25,14 @@ interface PayoutRow {
   created_at: Date;
 }
 
-const PAYOUT_COLUMNS = `id, public_id, amount_minor, currency, state, source,
+const PAYOUT_COLUMNS = `id, public_id, payout_number, amount_minor, currency, state, source,
        period_key, reason, provider_reference, paid_at, created_at`;
 
 function toPayoutRecord(row: PayoutRow): PayoutRecord {
   return {
     id: row.id,
     publicId: row.public_id,
+    payoutNumber: row.payout_number,
     amountMinor: row.amount_minor,
     currency: row.currency,
     state: row.state,

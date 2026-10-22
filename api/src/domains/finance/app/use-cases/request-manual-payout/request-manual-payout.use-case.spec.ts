@@ -12,6 +12,7 @@ const USER_ID = 'user-1';
 const PAID: PayoutRecord = {
   id: 'payout-1',
   publicId: 'pay_1',
+  payoutNumber: 'PAY-20261020-000001',
   amountMinor: 12_500,
   currency: 'USD',
   state: 'paid',
