@@ -1,6 +1,5 @@
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
-import { paidOrderMoneyEventKey } from '../../../domain/rules/paid-order-postings';
 import type { PayoutAvailability } from '../../../domain/value-objects/payout-availability';
 import { PaidOrderPostingNotRecordedError } from '../../errors/finance-app.error';
 import type { OrderDeliveredEvent } from '../../ports/order-delivered-event';
@@ -12,15 +11,22 @@ import { SellerPayableCommandRepository } from '../../ports/seller-payable-comma
 /**
  * Makes one delivered Order's Seller Payable available for payout. Resolves the
  * Order's Seller Payable from the ledger (never from the Order's commercial
- * status), records the availability as its idempotency anchor, and moves the
- * amount from the shop's not-yet-available balance into its available balance
- * in one transaction. A replay of the same delivery records nothing further.
+ * status) net of any refund already recorded for it, records the availability
+ * as its idempotency anchor, and moves that amount from the shop's
+ * not-yet-available balance into its available balance in one transaction. A
+ * replay of the same delivery records nothing further.
  *
  * A delivery can be processed before the Order's `order.paid` Journal Entry
  * exists. When the paid event is still queued or in flight that posting is
  * merely late, so the delivery fails to stay retryable rather than retiring and
  * losing the payout; a delivered Order with no paid event at all (a cash Order)
  * is a no-op.
+ *
+ * A delivery can also arrive after the Order was refunded (a shipment already
+ * handed to a carrier survives cancellation). The refund then already debited
+ * the Order's money from the shop, so the net payable is zero and nothing is
+ * released. The per-Order lock makes that decision serial with the refund's
+ * debit, so the two can never both act on the same money.
  */
 @Injectable()
 export class RecordPayoutAvailabilityUseCase {
@@ -33,34 +39,40 @@ export class RecordPayoutAvailabilityUseCase {
   ) {}
 
   async execute(event: OrderDeliveredEvent): Promise<{ recorded: boolean }> {
-    const sellerPayable = await this.journalEntryRepository
-      .findSellerPayableByMoneyEventKey(paidOrderMoneyEventKey(event.orderId));
+    return this.entityManager.transactional(async (entityManager) => {
+      await this.lockOrder(entityManager, event.orderId);
 
-    if (!sellerPayable) {
-      const paidEventStatus = await this.orderPaidEventRepository
-        .findStatusByOrderId(event.orderId);
+      const sellerPayable = await this.journalEntryRepository
+        .findOrderSellerPayable(event.orderId, { entityManager });
 
-      if (paidEventStatus === 'pending' || paidEventStatus === 'processing') {
-        throw new PaidOrderPostingNotRecordedError(event.orderId);
+      if (!sellerPayable) {
+        const paidEventStatus = await this.orderPaidEventRepository
+          .findStatusByOrderId(event.orderId);
+
+        if (paidEventStatus === 'pending' || paidEventStatus === 'processing') {
+          throw new PaidOrderPostingNotRecordedError(event.orderId);
+        }
+
+        return { recorded: false };
       }
 
-      return { recorded: false };
-    }
+      if (sellerPayable.amountMinor <= 0) {
+        return { recorded: false };
+      }
 
-    const availability: PayoutAvailability = {
-      orderId: event.orderId,
-      shopId: sellerPayable.shopId,
-      currency: sellerPayable.currency,
-      amountMinor: sellerPayable.amountMinor,
-      deliveredAt: new Date(event.deliveredAt),
-      evidence: event.evidence.map((shipment) => ({
-        shipmentId: shipment.shipmentId,
-        shipmentPublicId: shipment.shipmentPublicId,
-        deliveredAt: new Date(shipment.deliveredAt),
-      })),
-    };
+      const availability: PayoutAvailability = {
+        orderId: event.orderId,
+        shopId: sellerPayable.shopId,
+        currency: sellerPayable.currency,
+        amountMinor: sellerPayable.amountMinor,
+        deliveredAt: new Date(event.deliveredAt),
+        evidence: event.evidence.map((shipment) => ({
+          shipmentId: shipment.shipmentId,
+          shipmentPublicId: shipment.shipmentPublicId,
+          deliveredAt: new Date(shipment.deliveredAt),
+        })),
+      };
 
-    return this.entityManager.transactional(async (entityManager) => {
       const recorded = await this.payoutAvailabilityRepository.record(
         availability,
         { entityManager },
@@ -81,5 +93,19 @@ export class RecordPayoutAvailabilityUseCase {
 
       return { recorded: true };
     });
+  }
+
+  /**
+   * Serializes the availability decision with a refund of the same Order, which
+   * takes the same lock before choosing which balance bucket to debit.
+   */
+  private async lockOrder(
+    entityManager: EntityManager,
+    orderId: string,
+  ): Promise<void> {
+    await entityManager.execute(
+      'select pg_advisory_xact_lock(hashtext(?))',
+      [`finance.seller-payable.order:${orderId}`],
+    );
   }
 }

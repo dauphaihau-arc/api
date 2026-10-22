@@ -1,7 +1,10 @@
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
 import type { FinanceRepositoryContext } from '../../../app/ports/finance-repository-context';
-import { SettlementCurrencyRepository } from '../../../app/ports/settlement-currency.repository';
+import {
+  SettlementCurrencyRepository,
+  type SettlementCurrencyCutoverStep,
+} from '../../../app/ports/settlement-currency.repository';
 
 /**
  * Reads the shop's current Settlement Currency from its dated history, seeding
@@ -43,5 +46,73 @@ implements SettlementCurrencyRepository {
     );
 
     return rows[0]?.currency ?? null;
+  }
+
+  async findCutoverRates(
+    shopId: string,
+    fromCurrency: string,
+    at: Date,
+    context?: FinanceRepositoryContext,
+  ): Promise<SettlementCurrencyCutoverStep[] | null> {
+    const rows = await (context?.entityManager ?? this.entityManager.fork()).execute<
+      Array<{
+        currency: string;
+        previousCurrency: string | null;
+        cutoverRate: string | null;
+        effectiveFrom: Date;
+        effectiveTo: Date | null;
+      }>
+    >(
+      `select "currency", "previous_currency" as "previousCurrency",
+              "cutover_rate" as "cutoverRate",
+              "effective_from" as "effectiveFrom", "effective_to" as "effectiveTo"
+       from "settlement_currency_history"
+       where "shop_id" = ?
+       order by "effective_from" asc`,
+      [shopId],
+    );
+
+    if (rows.length === 0) {
+      return null;
+    }
+
+    const recordedAt = at.getTime();
+    // The row that was open when the original entry was recorded. A shop's
+    // history may return to a currency it used before, so take the latest such
+    // row rather than the first.
+    const originIndex = rows.reduce((found, row, index) => {
+      const from = new Date(row.effectiveFrom).getTime();
+      const to = row.effectiveTo ? new Date(row.effectiveTo).getTime() : Number.POSITIVE_INFINITY;
+
+      return row.currency === fromCurrency && from <= recordedAt && recordedAt < to
+        ? index
+        : found;
+    }, -1);
+
+    if (originIndex === -1) {
+      return null;
+    }
+
+    const steps: SettlementCurrencyCutoverStep[] = [];
+    let currentCurrency = fromCurrency;
+
+    for (const row of rows.slice(originIndex + 1)) {
+      if (row.currency === currentCurrency) {
+        continue;
+      }
+
+      if (!row.cutoverRate) {
+        return null;
+      }
+
+      steps.push({
+        fromCurrency: currentCurrency,
+        toCurrency: row.currency,
+        rate: row.cutoverRate,
+      });
+      currentCurrency = row.currency;
+    }
+
+    return steps;
   }
 }

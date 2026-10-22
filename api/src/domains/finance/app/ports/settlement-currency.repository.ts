@@ -1,5 +1,12 @@
 import type { FinanceRepositoryContext } from './finance-repository-context';
 
+/** One recorded Settlement Currency change, and the rate that crossed it. */
+export interface SettlementCurrencyCutoverStep {
+  fromCurrency: string;
+  toCurrency: string;
+  rate: string;
+}
+
 /**
  * The shop's Settlement Currency: the currency Seller Payable accrues in, read
  * from the shop's dated history rather than from the shop row, so a currency
@@ -18,4 +25,20 @@ export abstract class SettlementCurrencyRepository {
     shopId: string,
     context?: FinanceRepositoryContext,
   ): Promise<string | null>;
+
+  /**
+   * The Cutover Rates a Money Event recorded in `fromCurrency` at `at` must
+   * cross to reach the shop's current Settlement Currency, in order. `at` is the
+   * instant the original Journal Entry was recorded, so the history row that was
+   * open then is the one whose later changes are crossed — never the row open
+   * today. An empty list means the currency never changed since that instant.
+   * `null` means the history cannot explain the conversion, which is refused
+   * rather than guessed.
+   */
+  abstract findCutoverRates(
+    shopId: string,
+    fromCurrency: string,
+    at: Date,
+    context?: FinanceRepositoryContext,
+  ): Promise<SettlementCurrencyCutoverStep[] | null>;
 }

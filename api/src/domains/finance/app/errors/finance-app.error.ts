@@ -150,3 +150,34 @@ export class NoPayableAmountError extends FinanceAppError {
     super(`Shop ${shopId} has no available Seller Payable to withdraw`);
   }
 }
+
+/**
+ * Raised when an Order Refund's amount cannot be expressed in the shop's
+ * current Settlement Currency because the recorded rates do not explain the
+ * conversion. The refund event stays retryable rather than posting a guessed
+ * amount that would move a seller's balance by an exchange rate.
+ */
+export class OrderRefundConversionUnavailableError extends FinanceAppError {
+  constructor(
+    refundId: string,
+    fromCurrency: string,
+    toCurrency: string,
+  ) {
+    super(
+      `Order Refund ${refundId} cannot be converted from ${fromCurrency} to ${toCurrency} using its recorded rates`,
+    );
+  }
+}
+
+/**
+ * Raised when a refund event's currency disagrees with the currency the Order
+ * was actually charged in. A refund is always expressed in the charge currency,
+ * so a mismatch would convert money that never moved.
+ */
+export class OrderRefundCurrencyMismatchError extends FinanceAppError {
+  constructor(refundId: string, refundCurrency: string, chargeCurrency: string) {
+    super(
+      `Order Refund ${refundId} is recorded in ${refundCurrency} but the Order was charged in ${chargeCurrency}`,
+    );
+  }
+}

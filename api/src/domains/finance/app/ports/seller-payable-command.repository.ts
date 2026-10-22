@@ -27,6 +27,25 @@ export abstract class SellerPayableCommandRepository {
   ): Promise<void>;
 
   /**
+   * Removes `amountMinor` from a shop's Seller Payable in one currency, because
+   * an Order Refund gave it back to a buyer.
+   *
+   * The debit lands in the bucket that holds the refunded Order's money: the
+   * Order's Payout Availability, once recorded, lives in the available part, so
+   * its refund reduces available; an Order whose availability is not recorded
+   * yet lives in the not-yet-available part, so its refund reduces that part and
+   * leaves other Orders' available money untouched. The position may go
+   * negative, so a refund is never refused because of the shop's account state.
+   */
+  abstract debitForRefund(
+    orderId: string,
+    shopId: string,
+    currency: string,
+    amountMinor: number,
+    context: FinanceRepositoryContext,
+  ): Promise<void>;
+
+  /**
    * Moves `amountMinor` from a shop's not-yet-available Seller Payable into its
    * available Seller Payable in one currency: available rises by the amount and
    * not-yet-available falls by it in a single race-safe upsert.

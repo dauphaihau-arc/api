@@ -50,6 +50,73 @@ export class MikroOrmSellerPayableCommandRepository implements SellerPayableComm
   }
 
   /**
+   * Reduces the balance bucket that holds the refunded Order's money, in one
+   * statement so the bucket choice and the debit are atomic under concurrent
+   * refunds. A recorded Payout Availability means the Order's money moved into
+   * the available part, so the refund reduces available; otherwise it reduces
+   * the not-yet-available part. The part may go negative rather than being
+   * clamped, so a refund debt is carried and netted by a later Payout.
+   */
+  async debitForRefund(
+    orderId: string,
+    shopId: string,
+    currency: string,
+    amountMinor: number,
+    context: FinanceRepositoryContext,
+  ): Promise<void> {
+    const entityManager = this.getEntityManager(context);
+    const now = new Date();
+
+    // Serialize with this Order's delivery, which takes the same lock before
+    // deciding whether it has anything left to make available. Whichever of the
+    // two runs second sees the other's committed state, so a refund is never
+    // debited from one bucket while availability lands in the other.
+    await entityManager.execute(
+      'select pg_advisory_xact_lock(hashtext(?))',
+      [`finance.seller-payable.order:${orderId}`],
+    );
+
+    await entityManager.execute(
+      `insert into seller_payable_positions (
+         id, shop_id, currency, available_minor, not_yet_available_minor,
+         created_at, updated_at
+       )
+       select
+         ?,
+         ?,
+         ?,
+         case when exists (
+           select 1 from payout_availabilities where order_id = ?
+         ) then -(?::bigint) else 0 end,
+         case when exists (
+           select 1 from payout_availabilities where order_id = ?
+         ) then 0 else -(?::bigint) end,
+         ?,
+         ?
+       on conflict (shop_id) do update
+       set
+         currency = excluded.currency,
+         available_minor =
+           seller_payable_positions.available_minor + excluded.available_minor,
+         not_yet_available_minor =
+           seller_payable_positions.not_yet_available_minor
+           + excluded.not_yet_available_minor,
+         updated_at = now()`,
+      [
+        randomUUID(),
+        shopId,
+        currency,
+        orderId,
+        amountMinor,
+        orderId,
+        amountMinor,
+        now,
+        now,
+      ],
+    );
+  }
+
+  /**
    * Applies one delta to the shop's position, creating it when absent. The
    * upsert is race-safe: concurrent deltas for one shop must all land rather
    * than one overwriting the other.

@@ -35,4 +35,15 @@ export class SettlementCurrencyHistoryEntity extends AbstractBaseEntity {
 
   @Property({ fieldName: 'effective_to', nullable: true })
   effectiveTo?: Date;
+
+  /**
+   * The currency this row replaced, and the provider rate that converts it into
+   * this row's currency, recorded verbatim at full precision. Both are absent
+   * on a shop's opening row, which replaced nothing.
+   */
+  @Property({ fieldName: 'previous_currency', length: 3, nullable: true })
+  previousCurrency?: string;
+
+  @Property({ fieldName: 'cutover_rate', type: 'text', nullable: true })
+  cutoverRate?: string;
 }

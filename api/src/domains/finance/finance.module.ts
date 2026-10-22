@@ -37,6 +37,7 @@ import { GetShopSellerPayableUseCase } from './app/use-cases/get-shop-seller-pay
 import { PayShopUseCase } from './app/use-cases/pay-shop/pay-shop.use-case';
 import { RecordCommissionScheduleUseCase } from './app/use-cases/record-commission-schedule/record-commission-schedule.use-case';
 import { RecordOrderPaidJournalEntryUseCase } from './app/use-cases/record-order-paid-journal-entry/record-order-paid-journal-entry.use-case';
+import { RecordOrderRefundJournalEntryUseCase } from './app/use-cases/record-order-refund-journal-entry/record-order-refund-journal-entry.use-case';
 import { RecordPayoutAvailabilityUseCase } from './app/use-cases/record-payout-availability/record-payout-availability.use-case';
 import { RecordShopPayoutAccountUseCase } from './app/use-cases/record-shop-payout-account/record-shop-payout-account.use-case';
 import { RecordShopPayoutAccountVerificationUseCase } from './app/use-cases/record-shop-payout-account-verification/record-shop-payout-account-verification.use-case';
@@ -149,6 +150,7 @@ import { MikroOrmSettlementCurrencyRepository } from './infra/persistence/reposi
       useClass: MikroOrmCommissionScheduleRepository,
     },
     RecordOrderPaidJournalEntryUseCase,
+    RecordOrderRefundJournalEntryUseCase,
     RecordPayoutAvailabilityUseCase,
     RecordCommissionScheduleUseCase,
     GetShopSellerPayableUseCase,
