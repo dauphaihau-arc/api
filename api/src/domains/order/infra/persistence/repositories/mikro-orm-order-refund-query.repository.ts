@@ -1,3 +1,4 @@
+import { LockMode } from '@mikro-orm/core';
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
 import { OrderRefundQueryRepository } from '../../../app/ports/order-refund-query.repository';
@@ -16,6 +17,15 @@ implements OrderRefundQueryRepository {
     return this.getEntityManager(context)
       .getRepository(OrderEntity)
       .findOne({ id: orderId });
+  }
+
+  findByIdForUpdate(
+    orderId: string,
+    context?: OrderRepositoryContext,
+  ): Promise<OrderEntity | null> {
+    return this.getEntityManager(context)
+      .getRepository(OrderEntity)
+      .findOne({ id: orderId }, { lockMode: LockMode.PESSIMISTIC_WRITE });
   }
 
   findByIdWithShopOwner(

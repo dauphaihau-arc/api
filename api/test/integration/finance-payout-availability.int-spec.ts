@@ -189,8 +189,12 @@ class FakePaymentGateway extends PaymentGateway {
     return { id: sessionId, status: 'complete', paymentStatus: 'paid' };
   }
 
-  async createRefund(): Promise<{ id: string; status: string; amount: number }> {
-    return { id: 're_test', status: 'succeeded', amount: 0 };
+  async createRefund(_paymentIntentId: string) {
+    return { id: `re_test_${randomUUID()}`, status: 'succeeded', amount: 0 };
+  }
+
+  async retrieveRefund(refundId: string): Promise<never> {
+    throw new Error(`No refund ${refundId} on this gateway`);
   }
 }
 

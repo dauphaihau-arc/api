@@ -57,6 +57,22 @@ export interface RefundResult {
   failureReason?: string | null;
 }
 
+/**
+ * One provider refund as a webhook reports it. `paymentIntentId` is what lets
+ * Finance find the Order before the create response has stored the refund id.
+ */
+export interface RefundDetails extends RefundResult {
+  paymentIntentId?: string;
+}
+
+export interface CreateRefundOptions {
+  /**
+   * Provider idempotency key for the refund request, so a retried job that
+   * never saw the first response cannot create a second refund.
+   */
+  idempotencyKey?: string;
+}
+
 export abstract class PaymentGateway {
   abstract createCheckoutSession(
     input: CreateCheckoutSessionInput
@@ -71,5 +87,21 @@ export abstract class PaymentGateway {
     sessionId: string
   ): Promise<CheckoutSessionDetails>;
 
-  abstract createRefund(paymentIntentId: string): Promise<RefundResult>;
+  /**
+   * Refunds the remaining charge of the payment intent. An Order Refund always
+   * returns the whole refundable amount, so the provider decides the sum and
+   * reports it back on the result. The response is an acknowledgement, not a
+   * final outcome: a refund can be created as `pending` and only later be
+   * confirmed or refused, which arrives as a `refund.*` webhook.
+   */
+  abstract createRefund(
+    paymentIntentId: string,
+    options?: CreateRefundOptions,
+  ): Promise<RefundResult>;
+
+  /**
+   * Reads one refund's current state, so a missed webhook does not leave a
+   * refund pending forever.
+   */
+  abstract retrieveRefund(refundId: string): Promise<RefundResult>;
 }

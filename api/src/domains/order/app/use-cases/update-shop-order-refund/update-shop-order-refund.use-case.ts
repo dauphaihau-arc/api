@@ -1,3 +1,4 @@
+import { LockMode } from '@mikro-orm/core';
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -19,6 +20,8 @@ import {
   SellerRefundRequiresCardPaymentError,
 } from '../../errors/order-app.error';
 import { OrderEventsService } from '../../services/order-events.service';
+import { OrderRefundRepository } from '../../ports/order-refund.repository';
+import { OrderRefundStatus } from '../../../domain/enums/order-refund-status.enum';
 import { buildScopedOrderIdentifierWhere } from '../../order-identifier';
 import { FulfillmentService } from '../../../../fulfillment/app/services/fulfillment.service';
 import { OrderFulfillmentViewPort } from '../../../../fulfillment/app/ports/order-fulfillment-view.port';
@@ -36,6 +39,7 @@ export class UpdateShopOrderRefundUseCase {
     private readonly jobDispatcher: JobDispatcher,
     private readonly eventEmitter: EventEmitter2,
     private readonly orderEventsService: OrderEventsService,
+    private readonly orderRefundRepository: OrderRefundRepository,
     private readonly fulfillmentService: FulfillmentService,
     private readonly orderFulfillmentViewPort: OrderFulfillmentViewPort,
   ) {}
@@ -48,9 +52,10 @@ export class UpdateShopOrderRefundUseCase {
     const entityManager = this.entityManager.fork();
 
     const result = await entityManager.transactional(async (transactionalEntityManager) => {
+
       const order = await transactionalEntityManager.getRepository(OrderEntity).findOne(
         buildScopedOrderIdentifierWhere(orderId, { shop: shopId }),
-        { populate: ['shop', 'user'] },
+        { populate: ['shop', 'user'], lockMode: LockMode.PESSIMISTIC_WRITE },
       );
 
       if (!order) {
@@ -62,12 +67,28 @@ export class UpdateShopOrderRefundUseCase {
       }
 
       const refundStatus = this.getRefundStatus(order.paymentDetails);
+
+      const [succeededAmountMinor, pendingAmountMinor] = await Promise.all([
+        this.orderRefundRepository.sumAmountMinorByStatus(
+          order.id,
+          [OrderRefundStatus.SUCCEEDED],
+          { entityManager: transactionalEntityManager },
+        ),
+        this.orderRefundRepository.sumAmountMinorByStatus(
+          order.id,
+          [OrderRefundStatus.PENDING],
+          { entityManager: transactionalEntityManager },
+        ),
+      ]);
+
       const dispatchState = await this.fulfillmentService.getDispatchState(
         transactionalEntityManager,
         order.id,
       );
+
       const legacyDispatched = !dispatchState.hasGroups
         && order.shippingStatus !== OrderShippingStatus.PRE_TRANSIT;
+
       this.assertRefundActionAllowed(
         order.status,
         dispatchState.hasDispatched || legacyDispatched,
@@ -75,7 +96,25 @@ export class UpdateShopOrderRefundUseCase {
         input.action,
       );
 
+      // A seller refund always returns the whole remaining amount: what the
+      // buyer paid less anything already returned or already committed.
+      const amountMinor = order.totalMinor - succeededAmountMinor - pendingAmountMinor;
+
+      if (amountMinor <= 0) {
+        throw new SellerRefundActionNotAllowedError();
+      }
+
       const now = new Date();
+
+      await this.orderRefundRepository.createPending(
+        {
+          orderId: order.id,
+          currency: order.currency,
+          amountMinor,
+          requestedAt: now,
+        },
+        { entityManager: transactionalEntityManager },
+      );
 
       order.refundedAt = undefined;
       order.paymentDetails = {
@@ -96,6 +135,8 @@ export class UpdateShopOrderRefundUseCase {
         payload: {
           action: input.action,
           status: order.status,
+          amount_minor: amountMinor,
+          currency: order.currency,
         },
       });
 
@@ -158,7 +199,14 @@ export class UpdateShopOrderRefundUseCase {
       throw new SellerRefundNotAllowedError();
     }
 
-    if (refundStatus === 'pending' || refundStatus === 'succeeded' || refundStatus === 'not_required') {
+    // Any refund already in flight, finished, or waived blocks a new request:
+    // a refund returns the whole remaining amount, so a succeeded one means
+    // nothing is left to return.
+    if (
+      refundStatus === 'pending'
+      || refundStatus === 'succeeded'
+      || refundStatus === 'not_required'
+    ) {
       throw new SellerRefundActionNotAllowedError();
     }
 

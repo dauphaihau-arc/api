@@ -44,9 +44,13 @@ describe('UpdateAdminOrderRefundUseCase', () => {
       shippingToCountry: 'US',
       shippingEstimatedDelivery: new Date('2026-05-30T00:00:00.000Z'),
       subtotal: 25,
+      subtotalMinor: 2500,
+      shippingMinor: 500,
+      discountMinor: 0,
       totalShippingFee: 5,
       totalDiscount: 0,
       total: 30,
+      totalMinor: 3000,
       note: undefined,
       trackingNumber: undefined,
       shippingCarrier: undefined,
@@ -119,15 +123,41 @@ describe('UpdateAdminOrderRefundUseCase', () => {
       record: jest.fn().mockResolvedValue(undefined),
     };
 
+    // The repository's succeeded total is what was actually marked succeeded:
+    // the use case re-reads it after marking, so the projection reflects the
+    // recorded facts rather than an assumption.
+    let succeededTotalMinor = 0;
+    const markSucceeded = jest.fn().mockImplementation(async (_id, input) => {
+      succeededTotalMinor += input.refundedAmountMinor;
+      return true;
+    });
+    const outboxService = {
+      createOrderRefundedEvent: jest.fn().mockResolvedValue(undefined),
+    };
+    const sumAmountMinorByStatus = jest.fn(
+      (_orderId: string, statuses: readonly string[]) => Promise.resolve(
+        statuses.includes('succeeded') ? succeededTotalMinor : 0,
+      ),
+    );
+
     return {
       order,
       fakeEntityManager,
       jobDispatcher,
+      outboxService,
       useCase: new UpdateAdminOrderRefundUseCase(
         entityManager,
         jobDispatcher,
         eventEmitter as unknown as EventEmitter2,
         orderEventsService as never,
+        {
+          findPendingByOrderId: jest.fn().mockResolvedValue(null),
+          createPending: jest.fn().mockResolvedValue({ id: 'refund-1', amountMinor: 3000 }),
+          sumAmountMinorByStatus,
+          markSucceeded,
+          markFailed: jest.fn().mockResolvedValue(true),
+        } as never,
+        outboxService as never,
         { load: jest.fn(async () => new Map()) } as never,
       ),
     };
@@ -151,12 +181,21 @@ describe('UpdateAdminOrderRefundUseCase', () => {
   });
 
   it('marks a canceled order refund as succeeded', async () => {
-    const { useCase, order, jobDispatcher } = buildUseCase();
+    const {
+      useCase, order, jobDispatcher, outboxService,
+    } = buildUseCase();
 
     const result = await useCase.execute('order-1', {
       action: AdminOrderRefundAction.MARK_SUCCEEDED,
     });
 
+    expect(outboxService.createOrderRefundedEvent).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        orderId: 'order-1',
+        refundedAmountMinor: 3000,
+      }),
+    );
     expect(order.status).toBe(OrderStatus.REFUNDED);
     expect(order.refundedAt).toBeInstanceOf(Date);
     expect(order.paymentDetails?.refund_status).toBe('succeeded');

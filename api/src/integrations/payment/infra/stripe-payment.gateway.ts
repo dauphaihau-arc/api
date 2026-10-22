@@ -7,6 +7,7 @@ import type {
   CheckoutLineItemInput,
   CheckoutSessionDetails,
   CreateCheckoutSessionInput,
+  CreateRefundOptions,
   PaymentWebhookEvent,
 } from '../app/ports/payment-gateway';
 
@@ -125,10 +126,29 @@ export class StripePaymentGateway extends PaymentGateway {
     return this.toCheckoutSessionDetails(session);
   }
 
-  async createRefund(paymentIntentId: string) {
-    const refund = await this.requireStripe().refunds.create({
-      payment_intent: paymentIntentId,
-    });
+  async createRefund(paymentIntentId: string, options?: CreateRefundOptions) {
+    // No amount: Stripe refunds the whole remaining charge, which is what a
+    // full Order Refund returns. The idempotency key makes a retried job that
+    // lost the first response safe.
+    const refund = await this.requireStripe().refunds.create(
+      {
+        payment_intent: paymentIntentId,
+      },
+      options?.idempotencyKey
+        ? { idempotencyKey: options.idempotencyKey }
+        : undefined,
+    );
+
+    return {
+      id: refund.id,
+      status: refund.status ?? 'unknown',
+      amount: refund.amount,
+      failureReason: refund.failure_reason,
+    };
+  }
+
+  async retrieveRefund(refundId: string) {
+    const refund = await this.requireStripe().refunds.retrieve(refundId);
 
     return {
       id: refund.id,
@@ -186,9 +206,25 @@ export class StripePaymentGateway extends PaymentGateway {
         return this.toCheckoutSessionDetails(
           event.data.object as Stripe.Checkout.Session,
         );
+      case 'refund.created':
+      case 'refund.updated':
+      case 'refund.failed':
+        return this.toRefundDetails(event.data.object as Stripe.Refund);
       default:
         return event.data.object;
     }
+  }
+
+  private toRefundDetails(refund: Stripe.Refund) {
+    return {
+      id: refund.id,
+      paymentIntentId: typeof refund.payment_intent === 'string'
+        ? refund.payment_intent
+        : refund.payment_intent?.id,
+      status: refund.status ?? 'unknown',
+      amount: refund.amount,
+      failureReason: refund.failure_reason,
+    };
   }
 
   private toCheckoutSessionDetails(

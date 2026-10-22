@@ -7,6 +7,11 @@ export abstract class OrderRefundQueryRepository {
     context?: OrderRepositoryContext
   ): Promise<OrderEntity | null>;
 
+  abstract findByIdForUpdate(
+    orderId: string,
+    context?: OrderRepositoryContext
+  ): Promise<OrderEntity | null>;
+
   abstract findByIdWithShopOwner(
     orderId: string,
     context?: OrderRepositoryContext

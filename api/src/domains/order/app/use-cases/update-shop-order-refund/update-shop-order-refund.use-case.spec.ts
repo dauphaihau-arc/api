@@ -53,9 +53,13 @@ describe('UpdateShopOrderRefundUseCase', () => {
       shippingToCountry: 'US',
       shippingEstimatedDelivery: new Date('2026-05-30T00:00:00.000Z'),
       subtotal: 25,
+      subtotalMinor: 2500,
+      shippingMinor: 500,
+      discountMinor: 0,
       totalShippingFee: 5,
       totalDiscount: 0,
       total: 30,
+      totalMinor: 3000,
       note: undefined,
       trackingNumber: undefined,
       shippingCarrier: undefined,
@@ -144,15 +148,22 @@ describe('UpdateShopOrderRefundUseCase', () => {
       assignSellerGroupToOrder: jest.fn().mockResolvedValue(undefined),
     } as unknown as FulfillmentService;
 
+    const orderRefundRepository = {
+      createPending: jest.fn().mockResolvedValue({ id: 'refund-1' }),
+      sumAmountMinorByStatus: jest.fn().mockResolvedValue(0),
+    };
+
     return {
       order,
       fakeEntityManager,
       jobDispatcher,
+      orderRefundRepository,
       useCase: new UpdateShopOrderRefundUseCase(
         entityManager,
         jobDispatcher,
         eventEmitter as unknown as EventEmitter2,
         orderEventsService as never,
+        orderRefundRepository as never,
         fulfillmentService,
         { load: jest.fn(async () => new Map()) } as never,
       ),

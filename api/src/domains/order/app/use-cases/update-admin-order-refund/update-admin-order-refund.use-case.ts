@@ -1,4 +1,6 @@
+import { LockMode } from '@mikro-orm/core';
 import { EntityManager } from '@mikro-orm/postgresql';
+import { fromMinorUnits } from '~/platform/money/money';
 import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { appJobDeduplicationKey } from '~/platform/jobs/app-job-deduplication';
@@ -12,6 +14,9 @@ import { OrderStatus } from '../../../domain/enums/order-status.enum';
 import { OrderEntity } from '../../../infra/persistence/entities/order.entity';
 import { OrderItemEntity } from '../../../infra/persistence/entities/order-item.entity';
 import { OrderEventsService } from '../../services/order-events.service';
+import { OrderRefundOutboxService } from '../../services/order-refund-outbox.service';
+import { OrderRefundRepository } from '../../ports/order-refund.repository';
+import { OrderRefundStatus } from '../../../domain/enums/order-refund-status.enum';
 import { OrderFulfillmentViewPort } from '../../../../fulfillment/app/ports/order-fulfillment-view.port';
 import { canceledFulfillmentOrderIds } from '../../order-fulfillment';
 import { toAdminOrderDetail } from '../../admin-order-read-model';
@@ -36,6 +41,8 @@ export class UpdateAdminOrderRefundUseCase {
     private readonly jobDispatcher: JobDispatcher,
     private readonly eventEmitter: EventEmitter2,
     private readonly orderEventsService: OrderEventsService,
+    private readonly orderRefundRepository: OrderRefundRepository,
+    private readonly orderRefundOutboxService: OrderRefundOutboxService,
     private readonly orderFulfillmentViewPort: OrderFulfillmentViewPort,
   ) {}
 
@@ -48,7 +55,7 @@ export class UpdateAdminOrderRefundUseCase {
     const result = await entityManager.transactional(async (transactionalEntityManager) => {
       const order = await transactionalEntityManager.getRepository(OrderEntity).findOne(
         buildOrderIdentifierWhere(orderId),
-        { populate: ['shop', 'user'] },
+        { populate: ['shop', 'user'], lockMode: LockMode.PESSIMISTIC_WRITE },
       );
 
       if (!order) {
@@ -64,8 +71,116 @@ export class UpdateAdminOrderRefundUseCase {
 
       const now = new Date();
       const previousStatus = order.status;
+      const pendingRefund = await this.orderRefundRepository.findPendingByOrderId(
+        order.id,
+        { entityManager: transactionalEntityManager },
+      );
+      const refundFailureReason = input.reason?.trim()
+        || 'Manual refund review required';
 
-      if (input.action === AdminOrderRefundAction.RETRY) {
+      if (input.action === AdminOrderRefundAction.MARK_FAILED) {
+        await this.failPendingRefund(
+          transactionalEntityManager,
+          pendingRefund?.id,
+          refundFailureReason,
+          now,
+        );
+      }
+
+      if (input.action === AdminOrderRefundAction.MARK_NOT_REQUIRED) {
+        await this.failPendingRefund(
+          transactionalEntityManager,
+          pendingRefund?.id,
+          input.reason?.trim() || 'Refund not required',
+          now,
+        );
+      }
+
+      const succeedsNow =
+        input.action === AdminOrderRefundAction.MARK_SUCCEEDED;
+      const requestsProviderRefund =
+        input.action === AdminOrderRefundAction.RETRY;
+      let succeededAmountMinor: number | undefined;
+
+      if (succeedsNow || requestsProviderRefund) {
+        const [alreadySucceededMinor, alreadyPendingMinor] = await Promise.all([
+          this.orderRefundRepository.sumAmountMinorByStatus(
+            order.id,
+            [OrderRefundStatus.SUCCEEDED],
+            { entityManager: transactionalEntityManager },
+          ),
+          this.orderRefundRepository.sumAmountMinorByStatus(
+            order.id,
+            [OrderRefundStatus.PENDING],
+            { entityManager: transactionalEntityManager },
+          ),
+        ]);
+
+        // Marking an already-requested refund succeeded uses that request's own
+        // amount; otherwise the operator returns the whole remaining amount.
+        const pendingAfterActionMinor = requestsProviderRefund
+          ? alreadyPendingMinor
+          : alreadyPendingMinor - (pendingRefund?.amountMinor ?? 0);
+
+        const amountMinor = (!requestsProviderRefund && pendingRefund)
+          ? pendingRefund.amountMinor
+          : order.totalMinor - alreadySucceededMinor - pendingAfterActionMinor;
+
+        if (amountMinor <= 0) {
+          throw new AdminRefundActionNotAllowedError();
+        }
+
+        if (requestsProviderRefund) {
+          await this.orderRefundRepository.createPending(
+            {
+              orderId: order.id,
+              currency: order.currency,
+              amountMinor,
+              requestedAt: now,
+            },
+            { entityManager: transactionalEntityManager },
+          );
+        }
+        else {
+          succeededAmountMinor = amountMinor;
+          const refund = pendingRefund ??
+            await this.orderRefundRepository.createPending(
+              {
+                orderId: order.id,
+                currency: order.currency,
+                amountMinor,
+                requestedAt: now,
+              },
+              { entityManager: transactionalEntityManager },
+            );
+
+          const marked = await this.orderRefundRepository.markSucceeded(
+            refund.id,
+            {
+              refundedAmountMinor: amountMinor,
+              completedAt: now,
+            },
+            { entityManager: transactionalEntityManager },
+          );
+
+          if (marked) {
+            await this.orderRefundOutboxService.createOrderRefundedEvent(
+              transactionalEntityManager,
+              {
+                refundId: refund.id,
+                orderId: order.id,
+                orderPublicId: order.publicId,
+                shopId: order.shop.id,
+                currency: order.currency,
+                refundedAmountMinor: amountMinor,
+                occurredAt: now,
+              },
+            );
+          }
+        }
+      }
+
+      if (requestsProviderRefund) {
         order.status = OrderStatus.CANCELED;
         order.refundedAt = undefined;
         order.paymentDetails = {
@@ -78,12 +193,22 @@ export class UpdateAdminOrderRefundUseCase {
         };
       }
 
-      if (input.action === AdminOrderRefundAction.MARK_SUCCEEDED) {
-        order.status = OrderStatus.REFUNDED;
+      if (succeedsNow) {
+        const succeededTotal = await this.orderRefundRepository
+          .sumAmountMinorByStatus(
+            order.id,
+            [OrderRefundStatus.SUCCEEDED],
+            { entityManager: transactionalEntityManager },
+          );
+        const fullyRefunded = succeededTotal >= order.totalMinor;
+
+        order.status = fullyRefunded ? OrderStatus.REFUNDED : OrderStatus.CANCELED;
         order.refundedAt = now;
         order.paymentDetails = {
           ...order.paymentDetails,
           refund_status: 'succeeded' satisfies RefundStatus,
+          refund_amount: fromMinorUnits(succeededAmountMinor ?? 0, order.currency),
+          refunded_total_amount: fromMinorUnits(succeededTotal, order.currency),
           refund_failed_reason: undefined,
           refunded_at: now.toISOString(),
           refund_note: undefined,
@@ -96,7 +221,7 @@ export class UpdateAdminOrderRefundUseCase {
         order.paymentDetails = {
           ...order.paymentDetails,
           refund_status: 'failed' satisfies RefundStatus,
-          refund_failed_reason: input.reason?.trim() || 'Manual refund review required',
+          refund_failed_reason: refundFailureReason,
           refunded_at: undefined,
           refund_note: undefined,
         };
@@ -131,6 +256,13 @@ export class UpdateAdminOrderRefundUseCase {
           from_status: previousStatus,
           to_status: order.status,
           reason: input.reason?.trim() || undefined,
+          ...(succeededAmountMinor !== undefined
+            ? {
+              refund_amount: fromMinorUnits(succeededAmountMinor, order.currency),
+              refund_amount_minor: succeededAmountMinor,
+              full_refund: order.status === OrderStatus.REFUNDED,
+            }
+            : {}),
         },
       });
 
@@ -207,6 +339,23 @@ export class UpdateAdminOrderRefundUseCase {
     }
 
     return result.detail;
+  }
+
+  private async failPendingRefund(
+    entityManager: EntityManager,
+    refundId: string | undefined,
+    reason: string,
+    at: Date,
+  ): Promise<void> {
+    if (!refundId) {
+      return;
+    }
+
+    await this.orderRefundRepository.markFailed(
+      refundId,
+      { failureReason: reason, completedAt: at },
+      { entityManager },
+    );
   }
 
   private getRefundStatus(paymentDetails?: Record<string, unknown>): RefundStatus | undefined {

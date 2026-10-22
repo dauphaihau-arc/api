@@ -45,6 +45,9 @@ import { OrderCheckoutSessionRepository } from './app/ports/order-checkout-sessi
 import { OrderInventoryEventPublisher } from './app/ports/order-inventory-event.publisher';
 import { OrderInventoryQueryRepository } from './app/ports/order-inventory-query.repository';
 import { OrderRefundQueryRepository } from './app/ports/order-refund-query.repository';
+import { OrderRefundRepository } from './app/ports/order-refund.repository';
+import { MikroOrmOrderRefundRepository } from './infra/persistence/repositories/mikro-orm-order-refund.repository';
+import { OrderRefundOutboxService } from './app/services/order-refund-outbox.service';
 import { OrderShopQueryRepository } from './app/ports/order-shop-query.repository';
 import { OrderInventoryOutboxPublisherService } from './app/services/order-inventory-outbox-publisher.service';
 import { OrderInventoryOutboxService } from './app/services/order-inventory-outbox.service';
@@ -52,6 +55,7 @@ import { ShopDashboardQueryRepository } from './app/ports/shop-dashboard-query.r
 import { ShopOrderExportQueryRepository } from './app/ports/shop-order-export-query.repository';
 import { ShopOrderExportRepository } from './app/ports/shop-order-export.repository';
 import { OrderEventEntity } from './infra/persistence/entities/order-event.entity';
+import { OrderRefundEntity } from './infra/persistence/entities/order-refund.entity';
 import { OutboxEventEntity } from '~/platform/outbox/outbox-event.entity';
 import { OrderEntity } from './infra/persistence/entities/order.entity';
 import { OrderExportEntity } from './infra/persistence/entities/order-export.entity';
@@ -108,6 +112,7 @@ import { UpdateShopOrderRefundUseCase } from './app/use-cases/update-shop-order-
       OutboxEventEntity,
       OrderEventEntity,
       OrderEntity,
+      OrderRefundEntity,
       OrderExportEntity,
       OrderItemEntity,
     ]),
@@ -156,6 +161,10 @@ import { UpdateShopOrderRefundUseCase } from './app/use-cases/update-shop-order-
       useClass: MikroOrmOrderRefundQueryRepository,
     },
     {
+      provide: OrderRefundRepository,
+      useClass: MikroOrmOrderRefundRepository,
+    },
+    {
       provide: OrderShopQueryRepository,
       useClass: MikroOrmOrderShopQueryRepository,
     },
@@ -166,6 +175,7 @@ import { UpdateShopOrderRefundUseCase } from './app/use-cases/update-shop-order-
     OrderCheckoutOutboxService,
     OrderInventoryOutboxService,
     OrderPaidOutboxService,
+    OrderRefundOutboxService,
     OrderInventoryOutboxPublisherService,
     {
       provide: AMQP_CONNECT,

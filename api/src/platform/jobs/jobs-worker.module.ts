@@ -8,6 +8,7 @@ import { PayoutRunWorkerService } from '~/domains/finance/app/services/payout-ru
 import { FinanceModule } from '~/domains/finance/finance.module';
 import { OrderCheckoutOutboxWorkerService } from '~/domains/order/app/services/order-checkout-outbox-worker.service';
 import { OrderInventoryOutboxWorkerService } from '~/domains/order/app/services/order-inventory-outbox-worker.service';
+import { RefundReconciliationWorkerService } from '~/domains/order/app/services/refund-reconciliation-worker.service';
 import { OrderModule } from '~/domains/order/order.module';
 import { QueueModule } from '~/integrations/queue/queue.module';
 import { BullMqWorkerService } from '~/integrations/queue/infra/bullmq-worker.service';
@@ -40,6 +41,7 @@ import { JobsModule } from './jobs.module';
     BullMqWorkerService,
     OrderCheckoutOutboxWorkerService,
     OrderInventoryOutboxWorkerService,
+    RefundReconciliationWorkerService,
     FinanceOutboxWorkerService,
     PayoutRunWorkerService,
   ],

@@ -13,6 +13,10 @@ export enum AdminOrderRefundAction {
   MARK_NOT_REQUIRED = 'mark_not_required',
 }
 
+/**
+ * An operator refund action. A retry or a manual success returns the whole
+ * remaining refundable amount of the Order, so the caller never names a sum.
+ */
 export class UpdateAdminOrderRefundDto {
   @IsEnum(AdminOrderRefundAction)
   action!: AdminOrderRefundAction;

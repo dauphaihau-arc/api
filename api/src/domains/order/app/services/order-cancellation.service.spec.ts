@@ -58,6 +58,8 @@ describe('OrderCancellationService', () => {
         findByPublicId: jest.fn(),
         findByIdWithShopOwner: jest.fn(),
       } as unknown as OrderRefundQueryRepository,
+      {} as never,
+      {} as never,
     );
     const fulfillmentService = {
       getDispatchState: jest.fn().mockResolvedValue({ hasGroups: true, hasDispatched: false }),
