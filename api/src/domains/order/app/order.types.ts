@@ -420,6 +420,11 @@ export interface ShopDashboardResult {
 export interface ShopOrderDetail extends ShopOrderSummary {
   shippingAddress: OrderShippingAddressSummary;
   timeline: OrderTimelineEvent[];
+  /**
+   * Platform Commission the ledger charged on this Order's paid entry, in the
+   * Order's currency. `null` when the Order has no paid entry.
+   */
+  platformCommissionMinor?: number | null;
 }
 
 export interface ShopAdjustmentInput {

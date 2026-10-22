@@ -948,6 +948,13 @@ export class ShopOrderDetailOrderResponseDto extends ShopOrderSummaryResponseDto
   @ApiProperty({ type: OrderShippingAddressResponseDto })
   @Type(() => OrderShippingAddressResponseDto)
   shipping_address!: OrderShippingAddressResponseDto;
+
+  @ApiProperty({
+    nullable: true,
+    description:
+      'Platform Commission the ledger charged on this Order, in the Order currency.',
+  })
+  platform_commission_minor!: number | null;
 }
 
 export class ShopOrderDetailResponseDto {
@@ -1746,6 +1753,7 @@ export function toShopOrderDetailResponse(order: ShopOrderDetail) {
         zip: order.shippingAddress.zip,
         phone: order.shippingAddress.phone,
       },
+      platform_commission_minor: order.platformCommissionMinor ?? null,
     },
     timeline: order.timeline.map((event) => ({
       id: event.id,

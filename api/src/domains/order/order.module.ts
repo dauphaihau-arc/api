@@ -8,6 +8,7 @@ import {
   buildRabbitMqConfig,
 } from '~/platform/config/rabbitmq.config';
 import { AuthModule } from '../auth/auth.module';
+import { FinanceModule } from '../finance/finance.module';
 import { AdminOrderController } from './api/rest/admin-order.controller';
 import { MeOrderController } from './api/rest/me-order.controller';
 import { OrderPublicIdLookup } from './app/services/order-public-id-lookup.service';
@@ -108,6 +109,7 @@ import { UpdateShopOrderRefundUseCase } from './app/use-cases/update-shop-order-
     ShippingModule,
     forwardRef(() => FulfillmentModule),
     PromotionModule,
+    FinanceModule,
     MikroOrmModule.forFeature([
       OutboxEventEntity,
       OrderEventEntity,

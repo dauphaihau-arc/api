@@ -6,12 +6,14 @@ import { buildScopedOrderIdentifierWhere } from '../../order-identifier';
 import { OrderFulfillmentViewPort } from '../../../../fulfillment/app/ports/order-fulfillment-view.port';
 import { buildShopOrderDetail } from '../../shop-order-detail.loader';
 import type { ShopOrderDetail } from '../../order.types';
+import { JournalEntryRepository } from '../../../../finance/app/ports/journal-entry.repository';
 
 @Injectable()
 export class GetShopOrderByIdUseCase {
   constructor(
     private readonly entityManager: EntityManager,
     private readonly orderFulfillmentViewPort: OrderFulfillmentViewPort,
+    private readonly journalEntryRepository: JournalEntryRepository,
   ) {}
 
   async execute(shopId: string, orderId: string): Promise<ShopOrderDetail> {
@@ -25,6 +27,16 @@ export class GetShopOrderByIdUseCase {
       throw new OrderNotFoundError();
     }
 
-    return buildShopOrderDetail(entityManager, order, this.orderFulfillmentViewPort);
+    const detail = await buildShopOrderDetail(
+      entityManager,
+      order,
+      this.orderFulfillmentViewPort,
+    );
+    const basis = await this.journalEntryRepository.findOrderMoneyBasis(order.id);
+
+    return {
+      ...detail,
+      platformCommissionMinor: basis ? basis.commissionMinor : null,
+    };
   }
 }

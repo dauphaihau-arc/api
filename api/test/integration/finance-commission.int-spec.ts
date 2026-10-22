@@ -1059,4 +1059,51 @@ describe('Platform Commission from a Commission Schedule (integration)', () => {
     const position = await readPayablePosition(fxShopInternalId);
     expect(position).toMatchObject({ currency: 'USD', not_yet_available_minor: 1449 });
   });
+
+  it('The seller Order detail exposes the Platform Commission frozen in the ledger', async () => {
+    const detailSeller = await registerSeller('fin-detail-commission');
+    const detailProfile = await createActiveProfile(detailSeller);
+    const detailProduct = await createPublishableProduct({
+      seller: detailSeller,
+      shippingProfileId: detailProfile.id,
+      title: 'Ledger Detail Mug',
+      sku: `FIN-DETAIL-COMMISSION-${randomUUID()}`,
+      amountMinor: 2500,
+      stock: 10,
+    });
+
+    const schedule = await putCommissionSchedule(detailSeller.shopPublicId, {
+      effective_from: SCHEDULE_EFFECTIVE_FROM,
+      rate_basis_points: 1500,
+    });
+    expect(schedule.status).toBe(200);
+
+    const detailBuyer = await registerBuyer('fin-detail-commission-buyer');
+    const paidOrder = await placeAndPayCardOrder(detailBuyer, detailProduct.inventoryId, 1);
+    const ledgerCommission = await sumPostingsByKindForEntry(
+      paidOrder.moneyEventKey,
+      'platform_commission',
+    );
+    expect(ledgerCommission).toBeGreaterThan(0);
+
+    // The detail response reports the frozen `platform_commission` posting, not
+    // a recomputation from the current schedule.
+    const paidDetail = await detailSeller.agent
+      .get(`${API_PREFIX}/shops/${detailSeller.shopPublicId}/orders/${paidOrder.orderPublicId}`)
+      .expect(200);
+    expect(paidDetail.body.order.platform_commission_minor).toBe(ledgerCommission);
+
+    // A card Order that has not been paid has no `order.paid` entry, so the
+    // detail response reports null rather than zero.
+    await addCartItem(detailBuyer, detailProduct.inventoryId, 1);
+    const unpaidQuote = await createQuote(detailBuyer);
+    const unpaidOrder = await confirmCardOrder(detailBuyer, unpaidQuote.quote_id);
+    expect(unpaidOrder.status).toBe(201);
+    const unpaidOrderPublicId = unpaidOrder.body.order_shops[0].id as string;
+
+    const unpaidDetail = await detailSeller.agent
+      .get(`${API_PREFIX}/shops/${detailSeller.shopPublicId}/orders/${unpaidOrderPublicId}`)
+      .expect(200);
+    expect(unpaidDetail.body.order.platform_commission_minor).toBeNull();
+  });
 });

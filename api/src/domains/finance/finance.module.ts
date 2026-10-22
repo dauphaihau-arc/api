@@ -173,6 +173,6 @@ import { MikroOrmTransactionsQueryRepository } from './infra/persistence/reposit
     RunPayoutsUseCase,
     FinanceMoneyEventProcessorService,
   ],
-  exports: [FinanceMoneyEventProcessorService, RunPayoutsUseCase],
+  exports: [FinanceMoneyEventProcessorService, RunPayoutsUseCase, JournalEntryRepository],
 })
 export class FinanceModule {}
