@@ -100,6 +100,18 @@ export abstract class PayoutAccountRepository {
   ): Promise<PayoutAccountRecord | null>;
 
   /**
+   * Closes the shop's open Payout Account without replacing it, stamping
+   * `deactivated_at` so the row becomes historical. Used by a Settlement
+   * Currency change: the old account can no longer receive this shop's money,
+   * and the next payout must wait for an account in the new currency.
+   */
+  abstract closeActive(
+    shopId: string,
+    at: Date,
+    context?: FinanceRepositoryContext,
+  ): Promise<void>;
+
+  /**
    * Inserts the new Payout Account and closes the shop's previous open row in
    * one transaction, so exactly one row per shop stays active and a Payout that
    * already happened keeps pointing at the row it paid. Concurrent replacements

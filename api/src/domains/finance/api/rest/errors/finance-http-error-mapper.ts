@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   NotFoundException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import type { HttpException } from '@nestjs/common';
 import {
@@ -19,6 +20,12 @@ import {
   PayoutAccountUnusableError,
   PayoutAmountExceedsAvailableError,
   PayoutPendingError,
+  SettlementCurrencyBalanceNotZeroError,
+  SettlementCurrencyChangePayoutPendingError,
+  SettlementCurrencyChangeTooSoonError,
+  SettlementCurrencyRateUnavailableError,
+  SettlementCurrencyUnchangedError,
+  SettlementCurrencyUnsupportedError,
 } from '../../../app/errors/finance-app.error';
 import type { FinanceAppError } from '../../../app/errors/finance-app.error';
 
@@ -126,6 +133,48 @@ export function mapFinanceAppErrorToHttpException(
     return new ConflictException({
       message: error.message,
       code: 'PAYOUT_PENDING',
+    });
+  }
+
+  if (error instanceof SettlementCurrencyUnsupportedError) {
+    return new BadRequestException({
+      message: error.message,
+      code: 'SETTLEMENT_CURRENCY_UNSUPPORTED',
+    });
+  }
+
+  if (error instanceof SettlementCurrencyUnchangedError) {
+    return new BadRequestException({
+      message: error.message,
+      code: 'SETTLEMENT_CURRENCY_UNCHANGED',
+    });
+  }
+
+  if (error instanceof SettlementCurrencyBalanceNotZeroError) {
+    return new ConflictException({
+      message: error.message,
+      code: 'SETTLEMENT_CURRENCY_BALANCE_NOT_ZERO',
+    });
+  }
+
+  if (error instanceof SettlementCurrencyChangePayoutPendingError) {
+    return new ConflictException({
+      message: error.message,
+      code: 'SETTLEMENT_CURRENCY_PAYOUT_PENDING',
+    });
+  }
+
+  if (error instanceof SettlementCurrencyChangeTooSoonError) {
+    return new ConflictException({
+      message: error.message,
+      code: 'SETTLEMENT_CURRENCY_CHANGE_TOO_SOON',
+    });
+  }
+
+  if (error instanceof SettlementCurrencyRateUnavailableError) {
+    return new ServiceUnavailableException({
+      message: error.message,
+      code: 'SETTLEMENT_CURRENCY_RATE_UNAVAILABLE',
     });
   }
 

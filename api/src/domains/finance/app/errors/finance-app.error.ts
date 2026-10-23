@@ -181,3 +181,82 @@ export class OrderRefundCurrencyMismatchError extends FinanceAppError {
     );
   }
 }
+
+/**
+ * Raised when a seller asks for a Settlement Currency the marketplace does not
+ * accept. The marketplace currency list is the source of truth, so an accepted
+ * currency is never inferred from an exchange rate existing for it.
+ */
+export class SettlementCurrencyUnsupportedError extends FinanceAppError {
+  constructor(currency: string) {
+    super(`Settlement Currency ${currency} is not accepted by the marketplace`);
+  }
+}
+
+/**
+ * Raised when a seller asks to change to the currency the shop already settles
+ * in. Nothing would be recorded, so the request is refused instead of writing a
+ * no-op history row.
+ */
+export class SettlementCurrencyUnchangedError extends FinanceAppError {
+  constructor(shopId: string, currency: string) {
+    super(`Shop ${shopId} already settles in ${currency}`);
+  }
+}
+
+/**
+ * Raised when a Settlement Currency change is requested while the shop holds
+ * Seller Payable in any state — available, not-yet-available, or negative. A
+ * change is only ever a zero-balance move, so no money is left in two
+ * currencies.
+ */
+export class SettlementCurrencyBalanceNotZeroError extends FinanceAppError {
+  constructor(
+    shopId: string,
+    availableMinor: number,
+    notYetAvailableMinor: number,
+  ) {
+    super(
+      `Shop ${shopId} still holds Seller Payable (${availableMinor} available, ${notYetAvailableMinor} not yet available) and cannot change Settlement Currency`,
+    );
+  }
+}
+
+/**
+ * Raised when a Settlement Currency change is requested while a Payout is still
+ * `pending`: its provider transfer may yet move money recorded in the retired
+ * currency.
+ */
+export class SettlementCurrencyChangePayoutPendingError extends FinanceAppError {
+  constructor(shopId: string) {
+    super(
+      `Shop ${shopId} has a Payout that is still pending; wait for it to settle before changing Settlement Currency`,
+    );
+  }
+}
+
+/**
+ * Raised when a shop asks for a second Settlement Currency change inside the
+ * configured interval. The refusal names the instant the next change becomes
+ * allowed, so the seller is not left guessing.
+ */
+export class SettlementCurrencyChangeTooSoonError extends FinanceAppError {
+  constructor(shopId: string, nextChangeAllowedAt: Date, intervalDays: number) {
+    super(
+      `Shop ${shopId} changed Settlement Currency less than ${intervalDays} days ago; the next change is allowed from ${nextChangeAllowedAt.toISOString()}`,
+    );
+  }
+}
+
+/**
+ * Raised when no exchange rate converts the retired Settlement Currency into the
+ * requested one. Rates sync on a schedule, so the change stays retryable rather
+ * than recording a rate nobody quoted.
+ */
+export class SettlementCurrencyRateUnavailableError extends FinanceAppError {
+  constructor(fromCurrency: string, toCurrency: string) {
+    super(
+      `No exchange rate converts the Settlement Currency from ${fromCurrency} to ${toCurrency}`,
+    );
+  }
+}

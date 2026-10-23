@@ -29,7 +29,9 @@ import { JwtAuthGuard } from '~/domains/auth/api/guard/jwt-auth.guard';
 import { PermissionsGuard } from '~/domains/auth/api/guard/permissions.guard';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import { ShopAccessService } from '~/domains/shop/app/services/shop-access.service';
+import { ChangeSettlementCurrencyUseCase } from '../../app/use-cases/change-settlement-currency/change-settlement-currency.use-case';
 import { GetPayoutSettingsUseCase } from '../../app/use-cases/get-payout-settings/get-payout-settings.use-case';
+import { GetSettlementCurrencyUseCase } from '../../app/use-cases/get-settlement-currency/get-settlement-currency.use-case';
 import { GetShopPayoutAccountUseCase } from '../../app/use-cases/get-shop-payout-account/get-shop-payout-account.use-case';
 import { GetShopPayoutsUseCase } from '../../app/use-cases/get-shop-payouts/get-shop-payouts.use-case';
 import { GetShopSellerPayableUseCase } from '../../app/use-cases/get-shop-seller-payable/get-shop-seller-payable.use-case';
@@ -37,6 +39,7 @@ import { GetShopTransactionsUseCase } from '../../app/use-cases/get-shop-transac
 import { RecordShopPayoutAccountUseCase } from '../../app/use-cases/record-shop-payout-account/record-shop-payout-account.use-case';
 import { RequestManualPayoutUseCase } from '../../app/use-cases/request-manual-payout/request-manual-payout.use-case';
 import { SetAutoPayoutEnabledUseCase } from '../../app/use-cases/set-auto-payout-enabled/set-auto-payout-enabled.use-case';
+import { ChangeSettlementCurrencyDto } from './dto/change-settlement-currency.dto';
 import { ListShopTransactionsQueryDto } from './dto/list-shop-transactions.query.dto';
 import { RecordPayoutAccountDto } from './dto/record-payout-account.dto';
 import { RequestManualPayoutDto } from './dto/request-manual-payout.dto';
@@ -62,6 +65,12 @@ import {
   toSellerPayableResponse,
 } from './responses/seller-payable.response';
 import {
+  ShopSettlementCurrencyChangeResponseDto,
+  ShopSettlementCurrencyResponseDto,
+  toShopSettlementCurrencyChangeResponse,
+  toShopSettlementCurrencyResponse,
+} from './responses/settlement-currency.response';
+import {
   ShopTransactionsResponseDto,
   toShopTransactionsResponse,
 } from './responses/transactions.response';
@@ -84,6 +93,8 @@ export class ShopFinanceController {
     private readonly setAutoPayoutEnabledUseCase: SetAutoPayoutEnabledUseCase,
     private readonly requestManualPayoutUseCase: RequestManualPayoutUseCase,
     private readonly recordShopPayoutAccountUseCase: RecordShopPayoutAccountUseCase,
+    private readonly getSettlementCurrencyUseCase: GetSettlementCurrencyUseCase,
+    private readonly changeSettlementCurrencyUseCase: ChangeSettlementCurrencyUseCase,
   ) {}
 
   @Get('payable')
@@ -103,6 +114,63 @@ export class ShopFinanceController {
 
     return toSellerPayableResponse(
       await this.getShopSellerPayableUseCase.execute(shopId),
+    );
+  }
+
+  @Get('settlement-currency')
+  @Header('Cache-Control', 'private, no-cache')
+  @ApiOperation({ summary: 'Get the shop Settlement Currency' })
+  @ApiParam({ name: 'shop_id', type: String })
+  @ApiOkResponse({
+    description:
+      'The currency the shop settles in, read from its dated history, and when ' +
+      'it may change again.',
+    type: ShopSettlementCurrencyResponseDto,
+  })
+  @ApiErrorResponses(shopFinanceControllerErrorResponses.settlementCurrencyRead)
+  async settlementCurrency(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('shop_id') shopPublicId: string,
+  ): Promise<ShopSettlementCurrencyResponseDto> {
+    const shopId = (await this.shopAccessService.resolveManageableShopByPublicId(currentUser, shopPublicId)).id;
+
+    return toShopSettlementCurrencyResponse(
+      await this.getSettlementCurrencyUseCase.execute({ shopId }),
+    );
+  }
+
+  @Post('settlement-currency')
+  @HttpCode(HttpStatus.OK)
+  @Header('Cache-Control', 'private, no-store')
+  @UseInterceptors(IdempotencyKeyInterceptor)
+  @Idempotent({ scope: 'finance:settlement-currency' })
+  @ApiOperation({
+    summary: 'Change the shop Settlement Currency',
+    description:
+      'Moves the shop to another marketplace currency at a zero Seller Payable ' +
+      'position with no pending Payout. Takes effect immediately, writes the ' +
+      'dated history row with its Cutover Rate, and turns automatic payouts off ' +
+      'until a Payout Account in the new currency is recorded and verified.',
+  })
+  @ApiParam({ name: 'shop_id', type: String })
+  @ApiOkResponse({
+    description: 'The Settlement Currency the shop now settles in.',
+    type: ShopSettlementCurrencyChangeResponseDto,
+  })
+  @ApiErrorResponses(shopFinanceControllerErrorResponses.settlementCurrencyChange)
+  async changeSettlementCurrency(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('shop_id') shopPublicId: string,
+    @Body() body: ChangeSettlementCurrencyDto,
+  ): Promise<ShopSettlementCurrencyChangeResponseDto> {
+    const shopId = (await this.shopAccessService.resolveManageableShopByPublicId(currentUser, shopPublicId)).id;
+
+    return toShopSettlementCurrencyChangeResponse(
+      await this.changeSettlementCurrencyUseCase.execute({
+        shopId,
+        shopPublicId,
+        currency: body.currency,
+      }),
     );
   }
 

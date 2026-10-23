@@ -3,7 +3,9 @@ import { Injectable } from '@nestjs/common';
 import type { FinanceRepositoryContext } from '../../../app/ports/finance-repository-context';
 import {
   SettlementCurrencyRepository,
+  type RecordSettlementCurrencyChangeInput,
   type SettlementCurrencyCutoverStep,
+  type SettlementCurrencyPeriod,
 } from '../../../app/ports/settlement-currency.repository';
 
 /**
@@ -114,5 +116,105 @@ implements SettlementCurrencyRepository {
     }
 
     return steps;
+  }
+
+  async findOpenPeriod(
+    shopId: string,
+    context?: FinanceRepositoryContext,
+  ): Promise<SettlementCurrencyPeriod | null> {
+    const rows = await (context?.entityManager ?? this.entityManager.fork()).execute<
+      Array<{
+        currency: string;
+        effectiveFrom: Date;
+        previousCurrency: string | null;
+        cutoverRate: string | null;
+      }>
+    >(
+      `select "currency", "effective_from" as "effectiveFrom",
+              "previous_currency" as "previousCurrency",
+              "cutover_rate" as "cutoverRate"
+       from "settlement_currency_history"
+       where "shop_id" = ? and "effective_to" is null
+       order by "effective_from" desc
+       limit 1`,
+      [shopId],
+    );
+    const row = rows[0];
+
+    if (!row) {
+      return null;
+    }
+
+    return {
+      currency: row.currency,
+      effectiveFrom: new Date(row.effectiveFrom),
+      previousCurrency: row.previousCurrency,
+      cutoverRate: row.cutoverRate,
+    };
+  }
+
+  async lockShopForChange(
+    shopId: string,
+    context: FinanceRepositoryContext,
+  ): Promise<void> {
+    await (context.entityManager ?? this.entityManager.fork()).execute(
+      'select "id" from "shops" where "id" = ? for update',
+      [shopId],
+    );
+  }
+
+  async recordChange(
+    input: RecordSettlementCurrencyChangeInput,
+    context: FinanceRepositoryContext,
+  ): Promise<SettlementCurrencyPeriod> {
+    const entityManager = context.entityManager ?? this.entityManager.fork();
+    const now = new Date();
+
+    await entityManager.execute(
+      `update "settlement_currency_history"
+       set "effective_to" = ?, "updated_at" = ?
+       where "shop_id" = ? and "effective_to" is null`,
+      [input.effectiveFrom, now, input.shopId],
+    );
+
+    const rows = await entityManager.execute<
+      Array<{
+        currency: string;
+        effectiveFrom: Date;
+        previousCurrency: string;
+        cutoverRate: string;
+      }>
+    >(
+      `insert into "settlement_currency_history" (
+         "id", "created_at", "updated_at", "shop_id", "currency",
+         "effective_from", "effective_to", "previous_currency", "cutover_rate"
+       )
+       values (gen_random_uuid(), ?, ?, ?, ?, ?, null, ?, ?)
+       returning "currency", "effective_from" as "effectiveFrom",
+                 "previous_currency" as "previousCurrency",
+                 "cutover_rate" as "cutoverRate"`,
+      [
+        now,
+        now,
+        input.shopId,
+        input.currency,
+        input.effectiveFrom,
+        input.previousCurrency,
+        input.cutoverRate,
+      ],
+    );
+    const row = rows[0]!;
+
+    await entityManager.execute(
+      'update "shops" set "currency" = ?, "updated_at" = ? where "id" = ?',
+      [input.currency, now, input.shopId],
+    );
+
+    return {
+      currency: row.currency,
+      effectiveFrom: new Date(row.effectiveFrom),
+      previousCurrency: row.previousCurrency,
+      cutoverRate: row.cutoverRate,
+    };
   }
 }

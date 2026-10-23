@@ -159,6 +159,19 @@ export class MikroOrmPayoutAccountRepository implements PayoutAccountRepository 
     return rows[0] ? this.toRecord(rows[0]) : null;
   }
 
+  async closeActive(
+    shopId: string,
+    at: Date,
+    context?: FinanceRepositoryContext,
+  ): Promise<void> {
+    await (context?.entityManager ?? this.entityManager.fork()).execute(
+      `update payout_accounts
+       set deactivated_at = ?, updated_at = ?
+       where shop_id = ? and deactivated_at is null`,
+      [at, at, shopId],
+    );
+  }
+
   async replaceActive(
     input: ReplacePayoutAccountInput,
     context: FinanceRepositoryContext,

@@ -14,6 +14,10 @@ import {
   PAYOUT_CONFIG,
   buildPayoutConfig,
 } from '~/platform/config/payout.config';
+import {
+  SETTLEMENT_CURRENCY_CONFIG,
+  buildSettlementCurrencyConfig,
+} from '~/platform/config/settlement-currency.config';
 import { AuthModule } from '../auth/auth.module';
 import { ShopModule } from '../shop/shop.module';
 import { AdminCommissionScheduleController } from './api/rest/admin-commission-schedule.controller';
@@ -35,7 +39,9 @@ import { SellerPayableCommandRepository } from './app/ports/seller-payable-comma
 import { SellerPayableQueryRepository } from './app/ports/seller-payable-query.repository';
 import { SettlementCurrencyRepository } from './app/ports/settlement-currency.repository';
 import { TransactionsQueryRepository } from './app/ports/transactions-query.repository';
+import { ChangeSettlementCurrencyUseCase } from './app/use-cases/change-settlement-currency/change-settlement-currency.use-case';
 import { GetPayoutSettingsUseCase } from './app/use-cases/get-payout-settings/get-payout-settings.use-case';
+import { GetSettlementCurrencyUseCase } from './app/use-cases/get-settlement-currency/get-settlement-currency.use-case';
 import { GetShopPayoutAccountUseCase } from './app/use-cases/get-shop-payout-account/get-shop-payout-account.use-case';
 import { GetShopPayoutsUseCase } from './app/use-cases/get-shop-payouts/get-shop-payouts.use-case';
 import { GetShopSellerPayableUseCase } from './app/use-cases/get-shop-seller-payable/get-shop-seller-payable.use-case';
@@ -148,6 +154,12 @@ import { MikroOrmTransactionsQueryRepository } from './infra/persistence/reposit
       useFactory: (configService: ConfigService) => buildPayoutConfig(configService),
     },
     {
+      provide: SETTLEMENT_CURRENCY_CONFIG,
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) =>
+        buildSettlementCurrencyConfig(configService),
+    },
+    {
       provide: SellerPayableQueryRepository,
       useClass: MikroOrmSellerPayableQueryRepository,
     },
@@ -174,6 +186,8 @@ import { MikroOrmTransactionsQueryRepository } from './infra/persistence/reposit
     GetShopPayoutsUseCase,
     GetShopTransactionsUseCase,
     GetPayoutSettingsUseCase,
+    GetSettlementCurrencyUseCase,
+    ChangeSettlementCurrencyUseCase,
     SetAutoPayoutEnabledUseCase,
     PayShopUseCase,
     RequestManualPayoutUseCase,

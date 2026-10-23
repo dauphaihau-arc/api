@@ -119,6 +119,20 @@ export class MikroOrmPayoutQueryRepository implements PayoutQueryRepository {
     return rows[0]?.exists === true;
   }
 
+  async hasPendingByShopId(
+    shopId: string,
+    context?: FinanceRepositoryContext,
+  ): Promise<boolean> {
+    const rows = await this.getEntityManager(context).execute<Array<{ pending: boolean }>>(
+      `select exists(
+         select 1 from payouts where shop_id = ? and state = 'pending'
+       ) as "pending"`,
+      [shopId],
+    );
+
+    return rows[0]?.pending ?? false;
+  }
+
   async findByShopId(
     shopId: string,
     context?: FinanceRepositoryContext,

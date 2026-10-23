@@ -91,6 +91,51 @@ export const shopFinanceControllerErrorResponses = {
       },
     ],
   },
+  settlementCurrencyRead: {
+    403: [...shopForbidden],
+    404: [...shopNotFound],
+  },
+  settlementCurrencyChange: {
+    400: [
+      {
+        code: 'VALIDATION_ERROR',
+        message: 'currency must be one of the following values: USD, EUR',
+      },
+      {
+        code: 'SETTLEMENT_CURRENCY_UNSUPPORTED',
+        message: 'Settlement Currency XXX is not accepted by the marketplace',
+      },
+      {
+        code: 'SETTLEMENT_CURRENCY_UNCHANGED',
+        message: 'Shop 8f1c2e5a-3b7d-4c9e-9a01-2d5e7a9c4b18 already settles in EUR',
+      },
+    ],
+    403: [...shopForbidden],
+    404: [...shopNotFound],
+    409: [
+      {
+        code: 'SETTLEMENT_CURRENCY_BALANCE_NOT_ZERO',
+        message:
+          'Shop 8f1c2e5a-3b7d-4c9e-9a01-2d5e7a9c4b18 still holds Seller Payable (1200 available, 0 not yet available) and cannot change Settlement Currency',
+      },
+      {
+        code: 'SETTLEMENT_CURRENCY_PAYOUT_PENDING',
+        message:
+          'Shop 8f1c2e5a-3b7d-4c9e-9a01-2d5e7a9c4b18 has a Payout that is still pending; wait for it to settle before changing Settlement Currency',
+      },
+      {
+        code: 'SETTLEMENT_CURRENCY_CHANGE_TOO_SOON',
+        message:
+          'Shop 8f1c2e5a-3b7d-4c9e-9a01-2d5e7a9c4b18 changed Settlement Currency less than 90 days ago; the next change is allowed from 2027-01-20T09:30:00.000Z',
+      },
+    ],
+    503: [
+      {
+        code: 'SETTLEMENT_CURRENCY_RATE_UNAVAILABLE',
+        message: 'No exchange rate converts the Settlement Currency from USD to EUR',
+      },
+    ],
+  },
   manualPayout: {
     400: [
       {

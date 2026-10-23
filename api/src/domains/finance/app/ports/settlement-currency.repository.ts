@@ -7,6 +7,33 @@ export interface SettlementCurrencyCutoverStep {
   rate: string;
 }
 
+/** The history row that is currently open for a shop. */
+export interface SettlementCurrencyPeriod {
+  currency: string;
+
+  /** When this currency took effect; the change instant for a change row. */
+  effectiveFrom: Date;
+
+  /**
+   * The currency this row replaced. Absent on a shop's opening row, which is
+   * seeded from the shop's own currency rather than from a change, so it does
+   * not start the rate-limit interval.
+   */
+  previousCurrency: string | null;
+
+  /** The provider rate that converted `previousCurrency` into `currency`. */
+  cutoverRate: string | null;
+}
+
+/** A Settlement Currency change to record as one closed and one opened row. */
+export interface RecordSettlementCurrencyChangeInput {
+  shopId: string;
+  currency: string;
+  previousCurrency: string;
+  cutoverRate: string;
+  effectiveFrom: Date;
+}
+
 /**
  * The shop's Settlement Currency: the currency Seller Payable accrues in, read
  * from the shop's dated history rather than from the shop row, so a currency
@@ -41,4 +68,36 @@ export abstract class SettlementCurrencyRepository {
     at: Date,
     context?: FinanceRepositoryContext,
   ): Promise<SettlementCurrencyCutoverStep[] | null>;
+
+  /**
+   * The shop's open history row, or `null` when the shop has no history yet.
+   * `ensureCurrentCurrency` seeds it first, so a shop that recorded money always
+   * has one.
+   */
+  abstract findOpenPeriod(
+    shopId: string,
+    context?: FinanceRepositoryContext,
+  ): Promise<SettlementCurrencyPeriod | null>;
+
+  /**
+   * Serializes Settlement Currency changes for one shop by locking its shop row
+   * for the rest of the caller's transaction. Every change takes this lock
+   * before re-reading the history, so two concurrent requests cannot both see
+   * an old open row and race a second change into the same interval.
+   */
+  abstract lockShopForChange(
+    shopId: string,
+    context: FinanceRepositoryContext,
+  ): Promise<void>;
+
+  /**
+   * Records a change: closes the open row, opens the new one with its previous
+   * currency and Cutover Rate, and moves `shops.currency` to match. Every write
+   * joins the caller's transaction, so the history and the shop row cannot
+   * disagree.
+   */
+  abstract recordChange(
+    input: RecordSettlementCurrencyChangeInput,
+    context: FinanceRepositoryContext,
+  ): Promise<SettlementCurrencyPeriod>;
 }

@@ -42,6 +42,16 @@ export abstract class PayoutQueryRepository {
     context?: FinanceRepositoryContext,
   ): Promise<boolean>;
 
+  /**
+   * Whether the shop has a Payout whose provider transfer may still move
+   * money. A Settlement Currency change is refused while one is open, because
+   * that Payout was recorded in the currency the shop is retiring.
+   */
+  abstract hasPendingByShopId(
+    shopId: string,
+    context?: FinanceRepositoryContext,
+  ): Promise<boolean>;
+
   /** The shop's Payout history, newest first. */
   abstract findByShopId(
     shopId: string,
