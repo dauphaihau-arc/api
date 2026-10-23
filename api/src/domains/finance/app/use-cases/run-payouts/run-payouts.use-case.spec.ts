@@ -9,6 +9,7 @@ function buildConfig(overrides: Partial<PayoutConfig> = {}): PayoutConfig {
     autoPayoutDayOfMonth: 15,
     manualWithdrawalUnlimited: false,
     autoPayoutForceDue: false,
+    retryDelaysMs: [60_000, 300_000, 900_000],
     ...overrides,
   };
 }

@@ -1,5 +1,5 @@
 import type { FinanceRepositoryContext } from './finance-repository-context';
-import type { PayoutSource } from '../../domain/rules/payout';
+import type { PayoutAllocation, PayoutSource } from '../../domain/rules/payout';
 import type { PayableOrderAmount } from './payout.types';
 
 /** The Payout row to claim for one shop on one platform month, before the provider is called. */
@@ -22,6 +22,13 @@ export interface ClaimPayoutInput {
 
   /** Whether the claim uses up its source's monthly allowance. */
   quotaConsumed: boolean;
+
+  /**
+   * The Orders the claimed amount is discharged against, saved with the claim so
+   * a retry settles the amount it originally claimed rather than recomputing it
+   * from availability a refund may have changed in the meantime.
+   */
+  allocations: PayoutAllocation[];
 }
 
 /** A claimed Payout, as the run that claimed it reads it back. */
@@ -52,6 +59,27 @@ export interface BlockedPayoutInput {
   runDay: string;
   source: PayoutSource;
   periodKey: string | null;
+}
+
+/** A still-`pending` Payout, read back so a scheduled retry resumes exactly what was claimed. */
+export interface PendingPayoutAttempt {
+  id: string;
+  publicId: string;
+  shopId: string;
+  payoutAccountId: string;
+  currency: string;
+  amountMinor: number;
+  source: PayoutSource;
+  attemptCount: number;
+  allocations: PayoutAllocation[];
+}
+
+/** The terminal failure to record on a still-`pending` Payout. */
+export interface FailPayoutInput {
+  payoutId: string;
+
+  /** The provider's reason, bounded to the column's width by the repository. */
+  reason: string;
 }
 
 /** The provider outcome that settles a claimed Payout and the Orders it discharged. */
@@ -108,6 +136,37 @@ export abstract class PayoutCommandRepository {
   abstract settle(
     input: SettlePayoutInput,
     context: FinanceRepositoryContext,
+  ): Promise<boolean>;
+
+  /**
+   * The still-`pending` Payout a scheduled retry resumes, with the destination
+   * account, amount, and the Order allocations saved at claim time. `null` when
+   * the Payout already reached `paid`, `failed`, or `blocked`, so a stale retry
+   * never sends a transfer for a resolved Payout.
+   */
+  abstract findPendingAttempt(
+    payoutId: string,
+    context?: FinanceRepositoryContext,
+  ): Promise<PendingPayoutAttempt | null>;
+
+  /**
+   * Records one failed provider attempt on a still-`pending` Payout, returning
+   * how many attempts have now failed, or `null` when the Payout is no longer
+   * pending. The caller uses the count to schedule the next bounded retry.
+   */
+  abstract recordAttemptFailure(
+    payoutId: string,
+    context?: FinanceRepositoryContext,
+  ): Promise<number | null>;
+
+  /**
+   * Makes a still-`pending` Payout `failed` with the provider's reason, returning
+   * `true` only when this call made that terminal transition. No balance or
+   * Journal Entry is written: nothing was discharged.
+   */
+  abstract markFailed(
+    input: FailPayoutInput,
+    context?: FinanceRepositoryContext,
   ): Promise<boolean>;
 
   /**

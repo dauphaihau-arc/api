@@ -80,6 +80,16 @@ export abstract class PayoutAccountRepository {
   ): Promise<PayoutAccountPaymentTarget | null>;
 
   /**
+   * One Payout Account by its id, whichever row a Payout was already claimed
+   * against, so a retry keeps sending to the destination it captured instead of
+   * one the shop replaced in the meantime.
+   */
+  abstract findPaymentTargetById(
+    payoutAccountId: string,
+    context?: FinanceRepositoryContext,
+  ): Promise<PayoutAccountPaymentTarget | null>;
+
+  /**
    * Sets the open Payout Account's status and `verified_at`. Returns `null` when
    * the shop has no open row — a replacement may have closed it — so the caller
    * never reports a status it did not persist.

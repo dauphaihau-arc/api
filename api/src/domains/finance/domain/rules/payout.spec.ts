@@ -5,9 +5,11 @@ import {
   allocatePayoutOrders,
   buildPaidPayoutPostings,
   isAutoPayoutDue,
+  MAX_PAYOUT_ATTEMPTS,
   netPayableMinor,
   paidPayoutMoneyEventKey,
   payoutPeriodKey,
+  payoutRetryDelayMs,
   payoutRunDay,
 } from './payout';
 
@@ -141,5 +143,38 @@ describe('allocatePayoutOrders', () => {
       [{ orderId: 'order-1', amountMinor: 4_000 }],
       0,
     )).toEqual([]);
+  });
+});
+
+describe('payoutRetryDelayMs', () => {
+  it('backs off one, five, and fifteen minutes for attempts two to four', () => {
+    expect(payoutRetryDelayMs(2)).toBe(60_000);
+    expect(payoutRetryDelayMs(3)).toBe(300_000);
+    expect(payoutRetryDelayMs(4)).toBe(900_000);
+  });
+
+  it('uses an override schedule by index, attempt 2 first', () => {
+    const delays = [1_000, 2_000, 3_000];
+
+    expect(payoutRetryDelayMs(2, delays)).toBe(1_000);
+    expect(payoutRetryDelayMs(3, delays)).toBe(2_000);
+    expect(payoutRetryDelayMs(4, delays)).toBe(3_000);
+  });
+
+  it('schedules nothing beyond the bounded attempt count', () => {
+    // The first attempt is made inline, so a fourth failed attempt is terminal.
+    expect(payoutRetryDelayMs(MAX_PAYOUT_ATTEMPTS + 1)).toBeNull();
+    expect(payoutRetryDelayMs(1)).toBeNull();
+  });
+
+  it('applies the same bounds to an override schedule', () => {
+    const delays = [1_000, 2_000, 3_000];
+
+    expect(payoutRetryDelayMs(1, delays)).toBeNull();
+    expect(payoutRetryDelayMs(MAX_PAYOUT_ATTEMPTS + 1, delays)).toBeNull();
+  });
+
+  it('gives one Payout four attempts in total', () => {
+    expect(MAX_PAYOUT_ATTEMPTS).toBe(4);
   });
 });

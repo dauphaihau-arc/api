@@ -6,6 +6,8 @@ import { AuditModule } from '~/integrations/audit/audit.module';
 import { CacheModule } from '~/integrations/cache/cache.module';
 import { CurrencyModule } from '~/integrations/currency/currency.module';
 import { PaymentModule } from '~/integrations/payment/payment.module';
+import { QueueModule } from '~/integrations/queue/queue.module';
+import { NotificationModule } from '~/domains/notification/notification.module';
 import { CryptoModule } from '~/platform/crypto/crypto.module';
 import { IdempotencyModule } from '~/platform/idempotency/idempotency.module';
 import {
@@ -19,6 +21,8 @@ import { AdminPayoutAccountController } from './api/rest/admin-payout-account.co
 import { AdminShopFinanceController } from './api/rest/admin-shop-finance.controller';
 import { ShopFinanceController } from './api/rest/shop-finance.controller';
 import { FinanceMoneyEventProcessorService } from './app/services/finance-money-event-processor.service';
+import { PayoutAttemptService } from './app/services/payout-attempt.service';
+import { PayoutNotificationService } from './app/services/payout-notification.service';
 import { CommissionScheduleRepository } from './app/ports/commission-schedule.repository';
 import { JournalEntryRepository } from './app/ports/journal-entry.repository';
 import { OrderPaidEventRepository } from './app/ports/order-paid-event.repository';
@@ -44,6 +48,7 @@ import { RecordPayoutAvailabilityUseCase } from './app/use-cases/record-payout-a
 import { RecordShopPayoutAccountUseCase } from './app/use-cases/record-shop-payout-account/record-shop-payout-account.use-case';
 import { RecordShopPayoutAccountVerificationUseCase } from './app/use-cases/record-shop-payout-account-verification/record-shop-payout-account-verification.use-case';
 import { RequestManualPayoutUseCase } from './app/use-cases/request-manual-payout/request-manual-payout.use-case';
+import { RetryPayoutUseCase } from './app/use-cases/retry-payout/retry-payout.use-case';
 import { RunPayoutsUseCase } from './app/use-cases/run-payouts/run-payouts.use-case';
 import { SetAutoPayoutEnabledUseCase } from './app/use-cases/set-auto-payout-enabled/set-auto-payout-enabled.use-case';
 import { CommissionScheduleEntity } from './infra/persistence/entities/commission-schedule.entity';
@@ -79,6 +84,8 @@ import { MikroOrmTransactionsQueryRepository } from './infra/persistence/reposit
     CryptoModule,
     IdempotencyModule,
     PaymentModule,
+    NotificationModule,
+    QueueModule,
     forwardRef(() => AuthModule),
     ShopModule,
     MikroOrmModule.forFeature([
@@ -171,8 +178,17 @@ import { MikroOrmTransactionsQueryRepository } from './infra/persistence/reposit
     PayShopUseCase,
     RequestManualPayoutUseCase,
     RunPayoutsUseCase,
+    RetryPayoutUseCase,
+    PayoutAttemptService,
+    PayoutNotificationService,
     FinanceMoneyEventProcessorService,
   ],
-  exports: [FinanceMoneyEventProcessorService, RunPayoutsUseCase, JournalEntryRepository],
+  exports: [
+    FinanceMoneyEventProcessorService,
+    RunPayoutsUseCase,
+    RetryPayoutUseCase,
+    PayoutQueryRepository,
+    JournalEntryRepository,
+  ],
 })
 export class FinanceModule {}

@@ -10,6 +10,18 @@ const DEFAULT_AUTO_PAYOUT_DAY_OF_MONTH = 15;
 const MIN_AUTO_PAYOUT_DAY_OF_MONTH = 1;
 const MAX_AUTO_PAYOUT_DAY_OF_MONTH = 28;
 
+/**
+ * Attempts 2, 3, and 4 each wait one configured delay, so exactly three are
+ * required. Mirrors the domain's `DEFAULT_PAYOUT_RETRY_DELAYS_MS`; kept here so
+ * platform config does not depend on a domain rule.
+ */
+const DEFAULT_PAYOUT_RETRY_DELAYS_MS: readonly number[] = [
+  60_000,
+  300_000,
+  900_000,
+];
+const PAYOUT_RETRY_DELAYS_COUNT = DEFAULT_PAYOUT_RETRY_DELAYS_MS.length;
+
 export interface PayoutConfig {
   /**
    * The platform day of month (UTC) on and after which the automatic Payout Run
@@ -29,6 +41,13 @@ export interface PayoutConfig {
    * shop twice in one month. Refused in production.
    */
   autoPayoutForceDue: boolean;
+
+  /**
+   * The delays before attempts 2, 3, and 4, in milliseconds. Defaults to the
+   * 1m/5m/15m schedule; `PAYOUT_RETRY_DELAYS_MS` shrinks it for local tests and
+   * is refused in production.
+   */
+  retryDelaysMs: readonly number[];
 }
 
 export const PAYOUT_CONFIG = Symbol('PAYOUT_CONFIG');
@@ -52,6 +71,17 @@ export function buildPayoutConfig(
     );
   }
 
+  const rawRetryDelaysMs = configService.get<string>('PAYOUT_RETRY_DELAYS_MS');
+
+  if (
+    rawRetryDelaysMs !== undefined
+    && configService.get<string>('NODE_ENV') === 'production'
+  ) {
+    throw new Error(
+      'PAYOUT_RETRY_DELAYS_MS is a local/test-only switch and must not be set in production',
+    );
+  }
+
   return {
     autoPayoutDayOfMonth: resolveAutoPayoutDayOfMonth(
       configService.get<string>(
@@ -68,6 +98,9 @@ export function buildPayoutConfig(
         .toLowerCase(),
     ),
     autoPayoutForceDue,
+    retryDelaysMs: rawRetryDelaysMs === undefined
+      ? DEFAULT_PAYOUT_RETRY_DELAYS_MS
+      : resolvePayoutRetryDelaysMs(rawRetryDelaysMs),
   };
 }
 
@@ -85,4 +118,20 @@ function resolveAutoPayoutDayOfMonth(value: string): number {
   }
 
   return day;
+}
+
+function resolvePayoutRetryDelaysMs(value: string): readonly number[] {
+  const parts = value.split(',').map((part) => part.trim());
+  const delays = parts.map((part) => Number(part));
+
+  if (
+    parts.length !== PAYOUT_RETRY_DELAYS_COUNT
+    || delays.some((delay) => !Number.isInteger(delay) || delay <= 0)
+  ) {
+    throw new Error(
+      `PAYOUT_RETRY_DELAYS_MS must be ${PAYOUT_RETRY_DELAYS_COUNT} comma-separated positive integers (milliseconds for attempts 2 to 4), received "${value}"`,
+    );
+  }
+
+  return delays;
 }

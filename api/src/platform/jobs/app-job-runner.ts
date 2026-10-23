@@ -24,6 +24,9 @@ import { SendRefundSucceededEmailJob } from '~/domains/order/jobs/send-refund-su
 import { SendSellerOrderUpdateEmailJob } from '~/domains/order/jobs/send-seller-order-update-email.job';
 import { SendWebPushNotificationJob } from '~/domains/notification/jobs/send-web-push-notification.job';
 import { SendWelcomeEmailJob } from '~/domains/user/jobs/send-welcome-email.job';
+import { RetryPayoutJob } from '~/domains/finance/jobs/retry-payout.job';
+import { SendPayoutFailedEmailJob } from '~/domains/finance/jobs/send-payout-failed-email.job';
+import { SendPayoutSucceededEmailJob } from '~/domains/finance/jobs/send-payout-succeeded-email.job';
 
 @Injectable()
 export class AppJobRunner extends JobRunner {
@@ -49,6 +52,9 @@ export class AppJobRunner extends JobRunner {
     private readonly cleanupPendingReviewImageJob: CleanupPendingReviewImageJob,
     private readonly cleanupExpiredOrderReservationsJob: CleanupExpiredOrderReservationsJob,
     private readonly refreshBestSellerRankingsJob: RefreshBestSellerRankingsJob,
+    private readonly retryPayoutJob: RetryPayoutJob,
+    private readonly sendPayoutSucceededEmailJob: SendPayoutSucceededEmailJob,
+    private readonly sendPayoutFailedEmailJob: SendPayoutFailedEmailJob,
   ) {
     super();
   }
@@ -157,6 +163,21 @@ export class AppJobRunner extends JobRunner {
           case appJobName.refreshBestSellerRankings:
             await this.refreshBestSellerRankingsJob.run(
               payload as AppJobPayloadMap[typeof appJobName.refreshBestSellerRankings],
+            );
+            return;
+          case appJobName.retryPayout:
+            await this.retryPayoutJob.run(
+              payload as AppJobPayloadMap[typeof appJobName.retryPayout],
+            );
+            return;
+          case appJobName.sendPayoutSucceededEmail:
+            await this.sendPayoutSucceededEmailJob.run(
+              payload as AppJobPayloadMap[typeof appJobName.sendPayoutSucceededEmail],
+            );
+            return;
+          case appJobName.sendPayoutFailedEmail:
+            await this.sendPayoutFailedEmailJob.run(
+              payload as AppJobPayloadMap[typeof appJobName.sendPayoutFailedEmail],
             );
             return;
         }

@@ -1,10 +1,7 @@
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable, Logger } from '@nestjs/common';
-import { FieldEncryptionService } from '~/platform/crypto/field-encryption.service';
 import { createPublicId } from '~/platform/ids/public-id';
-import { Clock } from '~/platform/time/clock';
-import { PayoutGateway } from '~/integrations/payment/app/ports/payout-gateway';
-import { JournalEntryRepository } from '../../ports/journal-entry.repository';
+import { PayoutAttemptService } from '../../services/payout-attempt.service';
 import {
   PayoutAccountRepository,
   type PayoutAccountPaymentTarget,
@@ -17,7 +14,6 @@ import {
 } from '../../ports/payout-command.repository';
 import { PayoutQueryRepository } from '../../ports/payout-query.repository';
 import type { PayoutRecord } from '../../ports/payout.types';
-import { SellerPayableCommandRepository } from '../../ports/seller-payable-command.repository';
 import { SellerPayableQueryRepository } from '../../ports/seller-payable-query.repository';
 import {
   ManualPayoutAlreadyUsedError,
@@ -29,16 +25,14 @@ import {
 import { PayoutAmountNotPositiveError } from '../../../domain/errors/finance-domain.error';
 import {
   allocatePayoutOrders,
-  buildPaidPayoutPostings,
   netPayableMinor,
-  paidPayoutMoneyEventKey,
   type PayoutAllocation,
   type PayoutBlockReason,
   type PayoutSource,
 } from '../../../domain/rules/payout';
 
 /** What one shop's Payout attempt did. */
-export type PayShopOutcome = 'paid' | 'blocked' | 'skipped';
+export type PayShopOutcome = 'paid' | 'retrying' | 'failed' | 'blocked' | 'skipped';
 
 export interface PayShopInput {
   shopId: string;
@@ -71,8 +65,6 @@ export interface PayShopResult {
   /** The created Payout, when one was recorded; a skip has none. */
   payout: PayoutRecord | null;
 }
-
-const PAID_PAYOUT_MONEY_EVENT_KIND = 'payout.paid';
 
 /** What the locked read-and-claim decision produced for one shop. */
 type PayoutDecision =
@@ -111,12 +103,8 @@ export class PayShopUseCase {
     private readonly payoutQueryRepository: PayoutQueryRepository,
     private readonly payoutCommandRepository: PayoutCommandRepository,
     private readonly payoutAccountRepository: PayoutAccountRepository,
-    private readonly sellerPayableRepository: SellerPayableCommandRepository,
     private readonly sellerPayableQueryRepository: SellerPayableQueryRepository,
-    private readonly journalEntryRepository: JournalEntryRepository,
-    private readonly payoutGateway: PayoutGateway,
-    private readonly fieldEncryptionService: FieldEncryptionService,
-    private readonly clock: Clock,
+    private readonly payoutAttemptService: PayoutAttemptService,
   ) {}
 
   async execute(input: PayShopInput): Promise<PayShopResult> {
@@ -182,14 +170,17 @@ export class PayShopUseCase {
         }
 
         const allocations = allocatePayoutOrders(orders, requestedMinor);
+
         const amountMinor = allocations.reduce(
           (total, allocation) => total + allocation.amountMinor,
           0,
         );
+
         const account = await this.payoutAccountRepository.findActiveByShopId(
           input.shopId,
           context,
         );
+
         const blockReason = this.resolveBlockReason(account, input.currency);
 
         if (blockReason) {
@@ -248,6 +239,7 @@ export class PayShopUseCase {
             periodKey: input.periodKey,
             requestedByUserId: input.requestedByUserId,
             quotaConsumed: input.quotaConsumed,
+            allocations,
           },
           context,
         );
@@ -285,75 +277,24 @@ export class PayShopUseCase {
       allocations,
     } = decision;
 
-    const transfer = await this.payoutGateway.send({
-      payoutPublicId: payout.publicId,
-      provider: target.provider,
-      amountMinor,
-      currency: payout.currency,
-      destination: {
-        type: target.type,
-        holderName: target.holderName,
-        bankName: target.bankName,
-        country: target.country,
-        last4: target.last4,
-        reference: this.fieldEncryptionService.decrypt(target.providerRefEncrypted),
-      },
-    });
-
-    const outcome = await this.entityManager.transactional(async (entityManager) => {
-      const paidAt = this.clock.now();
-
-      // The transition from `pending` to `paid` is what the Journal Entry and
-      // the discharge hang on, so a Payout already settled (a retried run) is
-      // never discharged a second time.
-      const settled = await this.payoutCommandRepository.settle(
-        {
-          payoutId: payout.id,
-          providerReference: transfer.reference,
-          paidAt,
-          orders: allocations,
-        },
-        { entityManager },
-      );
-
-      if (!settled) {
-        this.logger.error(
-          `Payout ${payout.id} for shop ${input.shopId} was not pending at settle time; nothing was discharged`,
-        );
-
-        return 'skipped' as const;
-      }
-
-      await this.journalEntryRepository.append(
-        {
-          moneyEventKey: paidPayoutMoneyEventKey(payout.id),
-          moneyEventKind: PAID_PAYOUT_MONEY_EVENT_KIND,
-          shopId: input.shopId,
-          currency: payout.currency,
-          occurredAt: paidAt,
-          postings: buildPaidPayoutPostings({
-            shopId: input.shopId,
-            currency: payout.currency,
-            amountMinor,
-          }),
-        },
-        { entityManager },
-      );
-
-      await this.sellerPayableRepository.dischargeAvailable(
-        input.shopId,
-        payout.currency,
+    // One provider attempt, bounded and shared with the retry job. A failure
+    // leaves the same row `pending` with a scheduled retry, so neither this
+    // request nor the run waits on a provider outage.
+    const outcome = await this.payoutAttemptService.attempt({
+      payout: {
+        id: payout.id,
+        publicId: payout.publicId,
+        shopId: input.shopId,
+        currency: payout.currency,
         amountMinor,
-        { entityManager },
-      );
-
-      await entityManager.flush();
-
-      return 'paid' as const;
+        source: input.source,
+      },
+      target,
+      allocations,
     });
 
     if (outcome === 'skipped') {
-      return { outcome, payout: null };
+      return { outcome: 'skipped', payout: null };
     }
 
     return {

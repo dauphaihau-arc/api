@@ -98,6 +98,50 @@ export class MikroOrmPayoutAccountRepository implements PayoutAccountRepository 
     };
   }
 
+  async findPaymentTargetById(
+    payoutAccountId: string,
+    context?: FinanceRepositoryContext,
+  ): Promise<PayoutAccountPaymentTarget | null> {
+    const rows = await (context?.entityManager ?? this.entityManager.fork())
+      .execute<Array<{
+      id: string;
+      shop_id: string;
+      type: PayoutAccountPaymentTarget['type'];
+      provider: string;
+      holder_name: string;
+      bank_name: string;
+      country: string;
+      currency: string;
+      last4: string;
+      provider_ref_encrypted: string;
+    }>>(
+        `select id, shop_id, type, provider, holder_name, bank_name, country,
+              currency, last4, provider_ref_encrypted
+       from payout_accounts
+       where id = ?`,
+        [payoutAccountId],
+      );
+
+    const row = rows[0];
+
+    if (!row) {
+      return null;
+    }
+
+    return {
+      id: row.id,
+      shopId: row.shop_id,
+      type: row.type,
+      provider: row.provider,
+      holderName: row.holder_name,
+      bankName: row.bank_name,
+      country: row.country,
+      currency: row.currency,
+      last4: row.last4,
+      providerRefEncrypted: row.provider_ref_encrypted,
+    };
+  }
+
   async updateStatus(
     input: UpdatePayoutAccountStatusInput,
     context?: FinanceRepositoryContext,

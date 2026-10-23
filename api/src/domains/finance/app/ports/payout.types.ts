@@ -35,3 +35,20 @@ export interface PayoutRecord {
   paidAt: Date | null;
   createdAt: Date;
 }
+
+/** Who to tell, and what to say, when a Payout reaches a terminal outcome. */
+export interface PayoutNotificationFacts {
+  payoutId: string;
+  payoutPublicId: string;
+  payoutNumber: string;
+  payoutAmountMinor: number;
+  currency: string;
+  source: PayoutSource;
+  reason: string | null;
+  shopId: string;
+  shopPublicId: string;
+  shopName: string;
+  recipientUserId: string | null;
+  recipientEmail: string | null;
+  recipientDisplayName: string | null;
+}

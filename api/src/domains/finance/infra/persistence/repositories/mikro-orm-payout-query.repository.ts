@@ -5,6 +5,7 @@ import { PayoutQueryRepository } from '../../../app/ports/payout-query.repositor
 import type {
   PayableOrderAmount,
   PayableShop,
+  PayoutNotificationFacts,
   PayoutRecord,
 } from '../../../app/ports/payout.types';
 import type { PayoutSource, PayoutState } from '../../../domain/rules/payout';
@@ -145,6 +146,68 @@ export class MikroOrmPayoutQueryRepository implements PayoutQueryRepository {
     );
 
     return rows[0] ? toPayoutRecord(rows[0]) : null;
+  }
+
+  async findNotificationFacts(
+    payoutId: string,
+    context?: FinanceRepositoryContext,
+  ): Promise<PayoutNotificationFacts | null> {
+    const rows = await this.getEntityManager(context).execute<Array<{
+      payout_id: string;
+      payout_public_id: string;
+      payout_number: string;
+      payout_amount_minor: number;
+      currency: string;
+      source: PayoutSource;
+      reason: string | null;
+      shop_id: string;
+      shop_public_id: string;
+      shop_name: string;
+      recipient_user_id: string | null;
+      recipient_email: string | null;
+      recipient_display_name: string | null;
+    }>>(
+      `select p.id as "payout_id",
+              p.public_id as "payout_public_id",
+              p.payout_number as "payout_number",
+              p.amount_minor as "payout_amount_minor",
+              p.currency as "currency",
+              p.source as "source",
+              p.reason as "reason",
+              s.id as "shop_id",
+              s.public_id as "shop_public_id",
+              s.shop_name as "shop_name",
+              u.id as "recipient_user_id",
+              u.email as "recipient_email",
+              u.display_name as "recipient_display_name"
+       from payouts p
+       join shops s on s.id = p.shop_id
+       left join users u on u.id = s.owner_user_id
+       where p.id = ?`,
+      [payoutId],
+    );
+
+    const row = rows[0];
+
+    if (!row) {
+      return null;
+    }
+
+    return {
+      payoutId: row.payout_id,
+      payoutPublicId: row.payout_public_id,
+      payoutNumber: row.payout_number,
+      payoutAmountMinor: row.payout_amount_minor,
+      currency: row.currency,
+      source: row.source,
+      reason: row.reason,
+      shopId: row.shop_id,
+      shopPublicId: row.shop_public_id,
+      shopName: row.shop_name,
+      recipientUserId: row.recipient_user_id,
+      recipientEmail: row.recipient_email,
+      recipientDisplayName: row.recipient_display_name,
+    };
   }
 
   private getEntityManager(context?: FinanceRepositoryContext): EntityManager {

@@ -17,4 +17,7 @@ export const appJobName = {
   processProductImport: 'product.process-import',
   cleanupExpiredOrderReservations: 'order.cleanup-expired-order-reservations',
   refreshBestSellerRankings: 'product.refresh-best-seller-rankings',
+  retryPayout: 'payout.retry',
+  sendPayoutSucceededEmail: 'finance.send-payout-succeeded-email',
+  sendPayoutFailedEmail: 'finance.send-payout-failed-email',
 } as const;

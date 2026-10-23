@@ -9435,6 +9435,22 @@
           "comment": null,
           "enumItems": [],
           "mappedType": "string"
+        },
+        "claimed_allocations": {
+          "name": "claimed_allocations",
+          "type": "jsonb",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "json"
         }
       },
       "name": "payouts",

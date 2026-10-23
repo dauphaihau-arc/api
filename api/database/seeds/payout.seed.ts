@@ -332,6 +332,10 @@ export async function seedPayouts(
                   source: 'scheduled',
                   periodKey: null,
                   quotaConsumed: false,
+                  allocations: slice.map((order) => ({
+                    orderId: order.orderId,
+                    amountMinor: order.amountMinor,
+                  })),
                 },
                 { entityManager },
               );

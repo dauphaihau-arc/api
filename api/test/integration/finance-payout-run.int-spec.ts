@@ -48,6 +48,7 @@ import { PayoutCommandRepository } from '~/domains/finance/app/ports/payout-comm
 import { PayoutQueryRepository } from '~/domains/finance/app/ports/payout-query.repository';
 import { PayShopUseCase } from '~/domains/finance/app/use-cases/pay-shop/pay-shop.use-case';
 import { RunPayoutsUseCase } from '~/domains/finance/app/use-cases/run-payouts/run-payouts.use-case';
+import { RetryPayoutJob } from '~/domains/finance/jobs/retry-payout.job';
 import { createTestDatabase, dropTestDatabase } from '../support/test-postgres';
 import type { TestDatabaseContext } from '../support/test-postgres';
 import { seedAuthReferenceData } from '../../database/seeds/auth.seed';
@@ -118,6 +119,7 @@ type PayoutRow = {
   period_key: string | null;
   quota_consumed: boolean;
   requested_by_user_id: string | null;
+  claimed_allocations: Array<{ orderId: string; amountMinor: number }> | null;
 };
 
 type PayoutSettingsResponse = {
@@ -157,12 +159,31 @@ function restoreProcessEnv(originalEnv: NodeJS.ProcessEnv) {
   }
 }
 
-class NoopJobDispatcher extends JobDispatcher {
+type DispatchedJob = {
+  name: AppJobName;
+  payload: AppJobPayloadMap[AppJobName];
+  options?: DispatchJobOptions;
+};
+
+/**
+ * Records dispatched jobs instead of running them, so a test can assert the
+ * delayed retry's payload and delay and can drive the handler itself rather than
+ * waiting for a real minute.
+ */
+class RecordingJobDispatcher extends JobDispatcher {
+  readonly jobs: DispatchedJob[] = [];
+
   async dispatch<TName extends AppJobName>(
-    _name: TName,
-    _payload: AppJobPayloadMap[TName],
-    _options?: DispatchJobOptions,
-  ): Promise<void> {}
+    name: TName,
+    payload: AppJobPayloadMap[TName],
+    options?: DispatchJobOptions,
+  ): Promise<void> {
+    this.jobs.push({ name, payload, options });
+  }
+
+  named(name: AppJobName): DispatchedJob[] {
+    return this.jobs.filter(job => job.name === name);
+  }
 }
 
 class FakePaymentGateway extends PaymentGateway {
@@ -210,16 +231,22 @@ class FakePaymentGateway extends PaymentGateway {
 class FakePayoutGateway extends PayoutGateway {
   readonly calls: PayoutTransferInput[] = [];
   failNextCall = false;
+  failuresRemaining = 0;
 
   async send(input: PayoutTransferInput): Promise<PayoutTransferResult> {
     this.calls.push(input);
 
-    if (this.failNextCall) {
+    if (this.failNextCall || this.failuresRemaining > 0) {
       this.failNextCall = false;
+      this.failuresRemaining = Math.max(0, this.failuresRemaining - 1);
       throw new Error('provider declined the transfer');
     }
 
     return { reference: `mb_transfer_${this.calls.length}` };
+  }
+
+  failNextCalls(count: number): void {
+    this.failuresRemaining = count;
   }
 }
 
@@ -231,6 +258,7 @@ describe('Payout Run pays available balances (integration)', () => {
   let storageRoot: string;
   let sql: Client;
   let payoutGateway: FakePayoutGateway;
+  let jobDispatcher: RecordingJobDispatcher;
   let admin: TestAgent;
   let categoryId: string | undefined;
 
@@ -239,6 +267,7 @@ describe('Payout Run pays available balances (integration)', () => {
     testDb = await createTestDatabase('finance_payout_run');
     storageRoot = await mkdtemp(path.join(os.tmpdir(), 'api-payout-run-int-'));
     payoutGateway = new FakePayoutGateway();
+    jobDispatcher = new RecordingJobDispatcher();
 
     process.env.NODE_ENV = 'test';
     process.env.DB_HOST = testDb.rootConfig.host;
@@ -298,7 +327,7 @@ describe('Payout Run pays available balances (integration)', () => {
       .overrideProvider(StorageService)
       .useValue(new LocalFileStorageService({ driver: 'local', localRoot: storageRoot }))
       .overrideProvider(JobDispatcher)
-      .useValue(new NoopJobDispatcher())
+      .useValue(jobDispatcher)
       .overrideProvider(PaymentGateway)
       .useValue(new FakePaymentGateway())
       .overrideProvider(PayoutGateway)
@@ -342,6 +371,8 @@ describe('Payout Run pays available balances (integration)', () => {
   beforeEach(() => {
     payoutGateway.calls.length = 0;
     payoutGateway.failNextCall = false;
+    payoutGateway.failuresRemaining = 0;
+    jobDispatcher.jobs.length = 0;
   });
 
   afterAll(async () => {
@@ -751,7 +782,8 @@ describe('Payout Run pays available balances (integration)', () => {
       `select "id", "public_id", "payout_number", "shop_id", "payout_account_id", "currency",
               "amount_minor", "state", "reason", "provider_reference", "attempt_count",
               "run_day"::text as "run_day", "paid_at", "source",
-              "period_key", "quota_consumed", "requested_by_user_id"
+              "period_key", "quota_consumed", "requested_by_user_id",
+              "claimed_allocations"
        from "payouts" where "shop_id" = $1 order by "created_at" asc`,
       [shopId],
     )).rows as PayoutRow[];
@@ -782,6 +814,38 @@ describe('Payout Run pays available balances (integration)', () => {
        from "seller_payable_positions" where "shop_id" = $1`,
       [shopId],
     )).rows[0] as PayablePosition | undefined;
+  }
+
+  async function readPayoutNotifications(
+    userId: string,
+  ): Promise<Array<{
+    type: string; title: string; body: string; data: Record<string, unknown> 
+  }>> {
+    return (await sql.query(
+      `select "type", "title", "body", "data"
+       from "notifications"
+       where "user_id" = $1 and "type" like 'seller.payout.%'
+       order by "created_at" asc`,
+      [userId],
+    )).rows as Array<{
+      type: string; title: string; body: string; data: Record<string, unknown> 
+    }>;
+  }
+
+  /** Runs the retry handler directly: tests drive delayed jobs instead of sleeping. */
+  async function runRetryJob(payoutId: string): Promise<void> {
+    await app.get(RetryPayoutJob).run({ payoutId });
+  }
+
+  function retryJobs(): DispatchedJob[] {
+    return jobDispatcher.named('payout.retry');
+  }
+
+  function payoutEmailJobs(): DispatchedJob[] {
+    return [
+      ...jobDispatcher.named('finance.send-payout-succeeded-email'),
+      ...jobDispatcher.named('finance.send-payout-failed-email'),
+    ];
   }
 
   async function readPayoutHistory(
@@ -1365,6 +1429,7 @@ describe('Payout Run pays available balances (integration)', () => {
         autoPayoutDayOfMonth: 15,
         manualWithdrawalUnlimited: false,
         autoPayoutForceDue: false,
+        retryDelaysMs: [60_000, 300_000, 900_000],
       },
       app.get(PayoutQueryRepository),
       app.get(PayShopUseCase),
@@ -1442,6 +1507,10 @@ describe('Payout Run pays available balances (integration)', () => {
       amountMinor: order.creditMinor,
       runDay,
       periodKey,
+      allocations: [{
+        orderId: order.orderInternalId,
+        amountMinor: order.creditMinor,
+      }],
     };
 
     // Two sources claim the same shop at the same time. The pending backstop
@@ -1482,5 +1551,265 @@ describe('Payout Run pays available balances (integration)', () => {
       provider_reference: null,
     });
     expect(payoutGateway.calls).toHaveLength(0);
+  });
+  it('keeps a failed manual attempt pending with a delayed retry and no ledger movement', async () => {
+    const { seller, inventoryId } = await createShopWithProduct('run-manual-retry', {
+      amountMinor: 2_800,
+      stock: 2,
+    });
+    const buyer = await registerBuyer('run-manual-retry-buyer');
+    const order = await placeAndPayCardOrder(buyer, inventoryId, 1);
+    await deliverOrder(seller, order);
+    await recordPayoutAccount(seller);
+
+    payoutGateway.failNextCall = true;
+
+    const response = await requestManualPayout(seller).expect(200);
+    expect(response.body.payout).toMatchObject({ state: 'pending', source: 'manual' });
+
+    const payouts = await readPayouts(seller.shopId);
+    expect(payouts).toHaveLength(1);
+    expect(payouts[0]).toMatchObject({
+      amount_minor: order.creditMinor,
+      state: 'pending',
+      reason: null,
+      provider_reference: null,
+      paid_at: null,
+      attempt_count: 1,
+      source: 'manual',
+      quota_consumed: true,
+    });
+
+    // What a retry must settle was frozen at claim time.
+    expect(payouts[0]!.claimed_allocations).toEqual([
+      { orderId: order.orderInternalId, amountMinor: order.creditMinor },
+    ]);
+
+    // Nothing was sent twice, discharged, or posted for a failed attempt.
+    expect(payoutGateway.calls).toHaveLength(1);
+    expect(payoutGateway.calls[0]!.payoutPublicId).toBe(payouts[0]!.public_id);
+    expect(await readPayablePosition(seller.shopId)).toMatchObject({
+      available_minor: order.creditMinor,
+    });
+    expect(await readPayoutLines(payouts[0]!.id)).toHaveLength(0);
+    expect(await readPayoutPostings(payouts[0]!.id)).toHaveLength(0);
+
+    // The next attempt is a delayed job, not a blocked request.
+    expect(retryJobs()).toHaveLength(1);
+    expect(retryJobs()[0]!.payload).toEqual({ payoutId: payouts[0]!.id });
+    expect(retryJobs()[0]!.options?.delayMs).toBe(60_000);
+
+    expect(await readPayoutNotifications(seller.userId)).toHaveLength(0);
+    expect(payoutEmailJobs()).toHaveLength(0);
+  });
+
+  it('settles a retried manual Payout exactly once and notifies once', async () => {
+    const { seller, inventoryId } = await createShopWithProduct('run-manual-recover', {
+      amountMinor: 3_200,
+      stock: 2,
+    });
+    const buyer = await registerBuyer('run-manual-recover-buyer');
+    const order = await placeAndPayCardOrder(buyer, inventoryId, 1);
+    await deliverOrder(seller, order);
+    await recordPayoutAccount(seller);
+
+    payoutGateway.failNextCall = true;
+    await requestManualPayout(seller).expect(200);
+
+    const [pending] = await readPayouts(seller.shopId);
+    expect(pending).toMatchObject({ state: 'pending', attempt_count: 1 });
+
+    await runRetryJob(pending!.id);
+
+    const [paid] = await readPayouts(seller.shopId);
+    expect(paid).toMatchObject({
+      state: 'paid',
+      attempt_count: 2,
+      provider_reference: 'mb_transfer_2',
+      quota_consumed: true,
+    });
+    expect(paid!.paid_at).not.toBeNull();
+    expect(await readPayoutLines(paid!.id)).toEqual([
+      {
+        payout_id: paid!.id,
+        order_id: order.orderInternalId,
+        amount_minor: order.creditMinor,
+      },
+    ]);
+    expect(await readPayoutPostings(paid!.id)).toEqual([
+      { kind: 'seller_payable', amount_minor: -order.creditMinor },
+      { kind: 'platform_clearing', amount_minor: order.creditMinor },
+    ]);
+    expect(await readPayablePosition(seller.shopId)).toMatchObject({ available_minor: 0 });
+
+    // Both attempts used the same idempotency key.
+    expect(payoutGateway.calls).toHaveLength(2);
+    expect(new Set(payoutGateway.calls.map(call => call.payoutPublicId))).toEqual(
+      new Set([paid!.public_id]),
+    );
+
+    const notifications = await readPayoutNotifications(seller.userId);
+    expect(notifications).toHaveLength(1);
+    expect(notifications[0]).toMatchObject({ type: 'seller.payout.succeeded' });
+    expect(notifications[0]!.body).toContain(`${order.creditMinor / 100} USD`);
+    expect(payoutEmailJobs()).toEqual([
+      expect.objectContaining({
+        name: 'finance.send-payout-succeeded-email',
+        payload: { payoutId: paid!.id },
+      }),
+    ]);
+
+    // A duplicated retry job finds nothing pending: no send, no second discharge.
+    await runRetryJob(paid!.id);
+    expect(payoutGateway.calls).toHaveLength(2);
+    expect(await readPayoutLines(paid!.id)).toHaveLength(1);
+    expect(await readPayoutNotifications(seller.userId)).toHaveLength(1);
+    expect(payoutEmailJobs()).toHaveLength(1);
+  });
+
+  it('exhausts a manual Payout, marks it failed, releases the quota and notifies once', async () => {
+    const { seller, inventoryId } = await createShopWithProduct('run-manual-fail', {
+      amountMinor: 2_600,
+      stock: 2,
+    });
+    const buyer = await registerBuyer('run-manual-fail-buyer');
+    const order = await placeAndPayCardOrder(buyer, inventoryId, 1);
+    await deliverOrder(seller, order);
+    await recordPayoutAccount(seller);
+
+    payoutGateway.failNextCalls(4);
+    const response = await requestManualPayout(seller).expect(200);
+    const payoutPublicId = response.body.payout.id as string;
+    const payoutId = (await readPayouts(seller.shopId))[0]!.id;
+
+    expect((await readPayouts(seller.shopId))[0]).toMatchObject({
+      public_id: payoutPublicId,
+      state: 'pending',
+      attempt_count: 1,
+      quota_consumed: true,
+    });
+
+    await runRetryJob(payoutId);
+    expect((await readPayouts(seller.shopId))[0]).toMatchObject({
+      state: 'pending',
+      attempt_count: 2,
+    });
+    expect(retryJobs().map(job => job.options?.delayMs)).toEqual([60_000, 300_000]);
+
+    await runRetryJob(payoutId);
+    expect((await readPayouts(seller.shopId))[0]).toMatchObject({
+      state: 'pending',
+      attempt_count: 3,
+    });
+    expect(retryJobs().map(job => job.options?.delayMs)).toEqual([
+      60_000,
+      300_000,
+      900_000,
+    ]);
+
+    await runRetryJob(payoutId);
+
+    const [failed] = await readPayouts(seller.shopId);
+    expect(failed).toMatchObject({
+      id: payoutId,
+      state: 'failed',
+      attempt_count: 4,
+      reason: 'provider declined the transfer',
+      provider_reference: null,
+      paid_at: null,
+      // A manual failure gives the month back so the seller can try again.
+      quota_consumed: false,
+    });
+    expect(payoutGateway.calls).toHaveLength(4);
+    expect(retryJobs()).toHaveLength(3);
+
+    // A terminal failure is a recorded fact, not a balance movement.
+    expect(await readPayablePosition(seller.shopId)).toMatchObject({
+      available_minor: order.creditMinor,
+    });
+    expect(await readPayoutLines(payoutId)).toHaveLength(0);
+    expect(await readPayoutPostings(payoutId)).toHaveLength(0);
+
+    const notifications = await readPayoutNotifications(seller.userId);
+    expect(notifications).toHaveLength(1);
+    expect(notifications[0]).toMatchObject({ type: 'seller.payout.failed' });
+    expect(notifications[0]!.body).toContain('provider declined the transfer');
+    expect(payoutEmailJobs()).toEqual([
+      expect.objectContaining({
+        name: 'finance.send-payout-failed-email',
+        payload: { payoutId },
+      }),
+    ]);
+
+    // The failed row is not pending, and the released quota lets the seller try
+    // the same month again.
+    const retried = await requestManualPayout(seller).expect(200);
+    expect(retried.body.payout.id).not.toBe(payoutPublicId);
+    expect(retried.body.payout.state).toBe('paid');
+    expect(await readPayouts(seller.shopId)).toHaveLength(2);
+    expect(await readPayablePosition(seller.shopId)).toMatchObject({ available_minor: 0 });
+    expect(await readPayoutNotifications(seller.userId)).toHaveLength(2);
+  });
+
+  it('makes a scheduled failure terminal without touching the balance or its month', async () => {
+    const { seller, inventoryId } = await createShopWithProduct('run-scheduled-fail', {
+      amountMinor: 3_600,
+      stock: 2,
+    });
+    const buyer = await registerBuyer('run-scheduled-fail-buyer');
+    const order = await placeAndPayCardOrder(buyer, inventoryId, 1);
+    await deliverOrder(seller, order);
+    await recordPayoutAccount(seller);
+    await enableAutoPayout(seller);
+
+    payoutGateway.failNextCalls(4);
+    const summary = await runPayouts();
+    expect(summary.paidShopCount).toBe(0);
+
+    const [pending] = await readPayouts(seller.shopId);
+    expect(pending).toMatchObject({
+      state: 'pending',
+      attempt_count: 1,
+      source: 'scheduled',
+      quota_consumed: true,
+    });
+    expect(pending!.claimed_allocations).toHaveLength(1);
+    expect(retryJobs()).toHaveLength(1);
+    expect(retryJobs()[0]!.options?.delayMs).toBe(60_000);
+
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      await runRetryJob(pending!.id);
+    }
+
+    const [failed] = await readPayouts(seller.shopId);
+    expect(failed).toMatchObject({
+      id: pending!.id,
+      state: 'failed',
+      attempt_count: 4,
+      reason: 'provider declined the transfer',
+      // A scheduled failure keeps the month consumed; it retries next month.
+      quota_consumed: true,
+    });
+    expect(payoutGateway.calls).toHaveLength(4);
+
+    expect(await readPayablePosition(seller.shopId)).toMatchObject({
+      available_minor: order.creditMinor,
+    });
+    expect(await readPayoutLines(failed!.id)).toHaveLength(0);
+    expect(await readPayoutPostings(failed!.id)).toHaveLength(0);
+
+    const notifications = await readPayoutNotifications(seller.userId);
+    expect(notifications).toHaveLength(1);
+    expect(notifications[0]).toMatchObject({ type: 'seller.payout.failed' });
+    expect(payoutEmailJobs()).toEqual([
+      expect.objectContaining({ name: 'finance.send-payout-failed-email' }),
+    ]);
+
+    // Re-running the same platform day neither claims a second row nor calls
+    // the provider: the failed row itself does not block; the month is spent.
+    const rerun = await runPayouts();
+    expect(rerun.paidShopCount).toBe(0);
+    expect(await readPayouts(seller.shopId)).toHaveLength(1);
+    expect(payoutGateway.calls).toHaveLength(4);
   });
 });

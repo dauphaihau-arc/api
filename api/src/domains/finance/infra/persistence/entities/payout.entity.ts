@@ -9,7 +9,11 @@ import {
 import { AbstractBaseEntity } from '~/platform/database/abstract-base.entity';
 import { ShopEntity } from '~/domains/shop/infra/persistence/entities/shop.entity';
 import { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
-import type { PayoutSource, PayoutState } from '../../../domain/rules/payout';
+import type {
+  PayoutAllocation,
+  PayoutSource,
+  PayoutState,
+} from '../../../domain/rules/payout';
 import { PayoutAccountEntity } from './payout-account.entity';
 
 /**
@@ -101,6 +105,15 @@ export class PayoutEntity extends AbstractBaseEntity {
 
   @Property({ fieldName: 'attempt_count', default: 1 })
   attemptCount = 1;
+
+  /**
+   * The Orders and amounts this Payout claimed, frozen at claim time so a
+   * scheduled retry settles exactly what was claimed. Recomputing from current
+   * availability would let a refund in between change what the transfer
+   * discharges; null on rows claimed before retries existed.
+   */
+  @Property({ fieldName: 'claimed_allocations', type: 'json', nullable: true })
+  claimedAllocations?: PayoutAllocation[];
 
   /** The platform day the run that created this Payout belonged to, as `YYYY-MM-DD`. */
   @Property({ fieldName: 'run_day', type: 'date' })

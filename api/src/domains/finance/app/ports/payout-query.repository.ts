@@ -2,6 +2,7 @@ import type { FinanceRepositoryContext } from './finance-repository-context';
 import type {
   PayableOrderAmount,
   PayableShop,
+  PayoutNotificationFacts,
   PayoutRecord,
 } from './payout.types';
 
@@ -46,6 +47,15 @@ export abstract class PayoutQueryRepository {
     shopId: string,
     context?: FinanceRepositoryContext,
   ): Promise<PayoutRecord[]>;
+
+  /**
+   * The shop owner and Payout facts a terminal notification needs, or `null`
+   * when the Payout no longer exists.
+   */
+  abstract findNotificationFacts(
+    payoutId: string,
+    context?: FinanceRepositoryContext,
+  ): Promise<PayoutNotificationFacts | null>;
 
   /** One Payout by its internal id, or `null` when it no longer exists. */
   abstract findById(

@@ -91,6 +91,39 @@ export function allocatePayoutOrders(
  */
 export type PayoutSource = 'scheduled' | 'manual';
 
+/** How many provider attempts one Payout gets before it is recorded as `failed`. */
+export const MAX_PAYOUT_ATTEMPTS = 4;
+
+/**
+ * The delays before attempts 2, 3, and 4, in milliseconds: a Payout's first
+ * attempt is made inline, so the second waits a minute, the third five minutes,
+ * and the fourth fifteen minutes. Index 0 belongs to attempt 2.
+ *
+ * A local/test `PAYOUT_RETRY_DELAYS_MS` shrinks these so a whole retry path can
+ * be exercised in seconds; production never overrides them.
+ */
+export const DEFAULT_PAYOUT_RETRY_DELAYS_MS: readonly number[] = [
+  60_000,
+  300_000,
+  900_000,
+];
+
+/**
+ * The delay before the given attempt, in milliseconds: `null` means no attempt
+ * is left to schedule, which is what makes a repeated failure terminal.
+ *
+ * The delay is handed to the job queue rather than slept through, so neither a
+ * manual withdrawal request nor a run's worker is held open by a provider
+ * outage.
+ */
+export function payoutRetryDelayMs(
+  attempt: number,
+  delaysMs: readonly number[] = DEFAULT_PAYOUT_RETRY_DELAYS_MS,
+): number | null {
+  // The first attempt is inline, so attempt 2 reads index 0.
+  return delaysMs[attempt - 2] ?? null;
+}
+
 /**
  * The platform month a Payout belongs to, as `YYYY-MM` in UTC. Used as the
  * once-per-month claim key for both sources.

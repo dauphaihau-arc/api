@@ -27,7 +27,10 @@ import { StripePaymentGateway } from './infra/stripe-payment.gateway';
     },
     {
       provide: PayoutGateway,
-      useClass: ManualBankPayoutGateway,
+      // The `manual_bank` adapter reads its local/test stub switches from the
+      // environment at construction, so it is built explicitly instead of by
+      // class injection.
+      useFactory: () => new ManualBankPayoutGateway(),
     },
   ],
   exports: [PAYMENT_CONFIG, PaymentGateway, PayoutGateway],

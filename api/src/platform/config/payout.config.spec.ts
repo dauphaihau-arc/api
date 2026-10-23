@@ -14,6 +14,7 @@ describe('buildPayoutConfig', () => {
       autoPayoutDayOfMonth: 15,
       manualWithdrawalUnlimited: false,
       autoPayoutForceDue: false,
+      retryDelaysMs: [60_000, 300_000, 900_000],
     });
   });
 
@@ -92,6 +93,51 @@ describe('buildPayoutConfig', () => {
         NODE_ENV: 'production',
         PAYOUT_AUTO_PAYOUT_FORCE: 'false',
       })),
+    ).not.toThrow();
+  });
+
+  it('reads a shrunken retry schedule', () => {
+    expect(
+      buildPayoutConfig(
+        configFrom({ PAYOUT_RETRY_DELAYS_MS: '1000,2000,3000' }),
+      ).retryDelaysMs,
+    ).toEqual([1000, 2000, 3000]);
+  });
+
+  it('tolerates whitespace around the retry delays', () => {
+    expect(
+      buildPayoutConfig(
+        configFrom({ PAYOUT_RETRY_DELAYS_MS: ' 500 , 600 , 700 ' }),
+      ).retryDelaysMs,
+    ).toEqual([500, 600, 700]);
+  });
+
+  it.each([
+    '',
+    '1000',
+    '1000,2000',
+    '1000,2000,3000,4000',
+    '1000,2000,abc',
+    '1000,2000,0',
+    '1000,2000,-1',
+    '1000,2000,1.5',
+    '1000,,2000',
+  ])('rejects the invalid retry schedule %p', (value) => {
+    expect(() =>
+      buildPayoutConfig(configFrom({ PAYOUT_RETRY_DELAYS_MS: value })),
+    ).toThrow(/PAYOUT_RETRY_DELAYS_MS/);
+  });
+
+  it('refuses the retry schedule switch in production', () => {
+    expect(() =>
+      buildPayoutConfig(configFrom({
+        NODE_ENV: 'production',
+        PAYOUT_RETRY_DELAYS_MS: '1000,2000,3000',
+      })),
+    ).toThrow(/PAYOUT_RETRY_DELAYS_MS/);
+
+    expect(() =>
+      buildPayoutConfig(configFrom({ NODE_ENV: 'production' })),
     ).not.toThrow();
   });
 });

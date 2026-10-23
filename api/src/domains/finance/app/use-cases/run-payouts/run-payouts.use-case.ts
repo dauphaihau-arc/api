@@ -100,9 +100,9 @@ export class RunPayoutsUseCase {
         }
       }
       catch (error) {
-        // A provider failure leaves the shop's claimed Payout pending and skips
-        // this shop for the month; turning exhausted attempts into a failed
-        // Payout belongs to the Payout failure slice, not to the run's loop.
+        // A provider failure never reaches here: the attempt records it and
+        // schedules a bounded retry as a job. This catch is for an unexpected
+        // error, which skips the shop without stopping the others.
         summary.skippedShopCount += 1;
 
         this.logger.error(

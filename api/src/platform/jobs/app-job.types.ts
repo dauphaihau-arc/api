@@ -61,6 +61,15 @@ export interface AppJobPayloadMap {
   'product.process-import': {
     importId: string;
   };
+  'payout.retry': {
+    payoutId: string;
+  };
+  'finance.send-payout-succeeded-email': {
+    payoutId: string;
+  };
+  'finance.send-payout-failed-email': {
+    payoutId: string;
+  };
   'order.cleanup-expired-order-reservations': {
     orderId: string;
     reservationId?: string;

@@ -2,6 +2,10 @@ import { Module } from '@nestjs/common';
 import { AuthModule } from '~/domains/auth/auth.module';
 import { SendPasswordResetEmailJob } from '~/domains/auth/jobs/send-password-reset-email.job';
 import { CheckoutModule } from '~/domains/checkout/checkout.module';
+import { FinanceModule } from '~/domains/finance/finance.module';
+import { RetryPayoutJob } from '~/domains/finance/jobs/retry-payout.job';
+import { SendPayoutFailedEmailJob } from '~/domains/finance/jobs/send-payout-failed-email.job';
+import { SendPayoutSucceededEmailJob } from '~/domains/finance/jobs/send-payout-succeeded-email.job';
 import { CleanupExpiredOrderReservationsJob } from '~/domains/checkout/jobs/cleanup-expired-order-reservations.job';
 import { NotificationModule } from '~/domains/notification/notification.module';
 import { SendWebPushNotificationJob } from '~/domains/notification/jobs/send-web-push-notification.job';
@@ -33,6 +37,7 @@ import { JobRunner } from './job-runner';
     AuthModule,
     CheckoutModule,
     CurrencyModule,
+    FinanceModule,
     MailModule,
     NotificationModule,
     OrderModule,
@@ -63,6 +68,9 @@ import { JobRunner } from './job-runner';
     CleanupPendingReviewImageJob,
     CleanupExpiredOrderReservationsJob,
     RefreshBestSellerRankingsJob,
+    RetryPayoutJob,
+    SendPayoutSucceededEmailJob,
+    SendPayoutFailedEmailJob,
   ],
   exports: [AppJobRunner, JobRunner],
 })

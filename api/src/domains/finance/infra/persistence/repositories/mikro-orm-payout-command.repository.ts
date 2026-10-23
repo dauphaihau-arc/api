@@ -6,8 +6,14 @@ import {
   type BlockedPayoutInput,
   type ClaimPayoutInput,
   type ClaimPayoutResult,
+  type FailPayoutInput,
+  type PendingPayoutAttempt,
   type SettlePayoutInput,
 } from '../../../app/ports/payout-command.repository';
+import type {
+  PayoutAllocation,
+  PayoutSource,
+} from '../../../domain/rules/payout';
 import type { FinanceRepositoryContext } from '../../../app/ports/finance-repository-context';
 
 /** The claimed row's columns, as Postgres returns them. */
@@ -16,6 +22,22 @@ interface ClaimedPayoutRow {
   public_id: string;
   currency: string;
 }
+
+/** A `pending` row as the retry job reads it back. */
+interface PendingPayoutRow {
+  id: string;
+  public_id: string;
+  shop_id: string;
+  payout_account_id: string;
+  currency: string;
+  amount_minor: number;
+  source: PayoutSource;
+  attempt_count: number;
+  claimed_allocations: PayoutAllocation[] | null;
+}
+
+/** The `reason` column's width. */
+const REASON_MAX_LENGTH = 64;
 
 /**
  * Persists claimed Payouts and their per-Order discharge lines. Raw SQL through
@@ -45,9 +67,9 @@ export class MikroOrmPayoutCommandRepository implements PayoutCommandRepository 
          id, created_at, updated_at, public_id, shop_id, payout_account_id,
          currency, amount_minor, state, provider_reference, attempt_count,
          run_day, paid_at, source, period_key, quota_consumed,
-         requested_by_user_id
+         requested_by_user_id, claimed_allocations
        )
-       select ?, ?, ?, ?, ?, ?, ?, ?, 'pending', null, 1, ?, null, ?, ?, ?, ?
+       select ?, ?, ?, ?, ?, ?, ?, ?, 'pending', null, 0, ?, null, ?, ?, ?, ?, ?
        where not exists (
          select 1 from payouts where shop_id = ? and state = 'pending'
        )
@@ -67,6 +89,7 @@ export class MikroOrmPayoutCommandRepository implements PayoutCommandRepository 
         input.periodKey,
         input.quotaConsumed,
         input.requestedByUserId ?? null,
+        JSON.stringify(input.allocations),
         input.shopId,
       ],
     );
@@ -158,7 +181,8 @@ export class MikroOrmPayoutCommandRepository implements PayoutCommandRepository 
 
     const settled = await entityManager.execute<Array<{ id: string }>>(
       `update payouts
-       set state = 'paid', provider_reference = ?, paid_at = ?, updated_at = ?
+       set state = 'paid', provider_reference = ?, paid_at = ?, updated_at = ?,
+           attempt_count = attempt_count + 1
        where id = ? and state = 'pending'
        returning id`,
       [input.providerReference, input.paidAt, now, input.payoutId],
@@ -183,6 +207,67 @@ export class MikroOrmPayoutCommandRepository implements PayoutCommandRepository 
     }
 
     return true;
+  }
+
+  async findPendingAttempt(
+    payoutId: string,
+    context?: FinanceRepositoryContext,
+  ): Promise<PendingPayoutAttempt | null> {
+    const rows = await this.getEntityManager(context).execute<PendingPayoutRow[]>(
+      `select id, public_id, shop_id, payout_account_id, currency, amount_minor,
+              source, attempt_count, claimed_allocations
+       from payouts
+       where id = ? and state = 'pending'`,
+      [payoutId],
+    );
+
+    const row = rows[0];
+
+    if (!row) {
+      return null;
+    }
+
+    return {
+      id: row.id,
+      publicId: row.public_id,
+      shopId: row.shop_id,
+      payoutAccountId: row.payout_account_id,
+      currency: row.currency,
+      amountMinor: row.amount_minor,
+      source: row.source,
+      attemptCount: row.attempt_count,
+      allocations: row.claimed_allocations ?? [],
+    };
+  }
+
+  async recordAttemptFailure(
+    payoutId: string,
+    context?: FinanceRepositoryContext,
+  ): Promise<number | null> {
+    const rows = await this.getEntityManager(context).execute<Array<{ attempt_count: number }>>(
+      `update payouts
+       set attempt_count = attempt_count + 1, updated_at = ?
+       where id = ? and state = 'pending'
+       returning attempt_count`,
+      [new Date(), payoutId],
+    );
+
+    return rows[0]?.attempt_count ?? null;
+  }
+
+  async markFailed(
+    input: FailPayoutInput,
+    context?: FinanceRepositoryContext,
+  ): Promise<boolean> {
+    const rows = await this.getEntityManager(context).execute<Array<{ id: string }>>(
+      `update payouts
+       set state = 'failed', reason = ?, updated_at = ?
+       where id = ? and state = 'pending'
+       returning id`,
+      [input.reason.slice(0, REASON_MAX_LENGTH), new Date(), input.payoutId],
+    );
+
+    return rows.length > 0;
   }
 
   async releaseQuota(

@@ -54,6 +54,7 @@ function setup(options: {
       autoPayoutDayOfMonth: 15,
       manualWithdrawalUnlimited: options.unlimited,
       autoPayoutForceDue: false,
+      retryDelaysMs: [60_000, 300_000, 900_000],
     },
     payoutSettingsRepository,
     payoutQueryRepository,
