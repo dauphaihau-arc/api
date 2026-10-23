@@ -49,7 +49,7 @@ import { PayoutAvailabilityEntity } from '~/domains/finance/infra/persistence/en
 import { PayoutLineEntity } from '~/domains/finance/infra/persistence/entities/payout-line.entity';
 import { PayoutEntity } from '~/domains/finance/infra/persistence/entities/payout.entity';
 import { PostingEntity } from '~/domains/finance/infra/persistence/entities/posting.entity';
-import { SellerPayablePositionEntity } from '~/domains/finance/infra/persistence/entities/seller-payable-position.entity';
+import { SellerPayableBalanceEntity } from '~/domains/finance/infra/persistence/entities/seller-payable-balance.entity';
 import { UserAddressEntity } from '~/domains/user/infra/persistence/entities/user-address.entity';
 import { VariantPriceEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/variant-price.entity';
 import { seedAuth } from './seeds/auth.seed';
@@ -127,7 +127,7 @@ async function main() {
       JournalEntryEntity,
       LedgerAccountEntity,
       PostingEntity,
-      SellerPayablePositionEntity,
+      SellerPayableBalanceEntity,
       ProductEntity,
       ProductImageEntity,
       ProductAttributeValueEntity,

@@ -14,7 +14,6 @@ import type { PayoutAccountStatus } from '../../../domain/rules/payout-account';
 interface PayoutAccountRow {
   id: string;
   shop_id: string;
-  type: PayoutAccountRecord['type'];
   provider: string;
   holder_name: string;
   bank_name: string;
@@ -42,7 +41,7 @@ export class MikroOrmPayoutAccountRepository implements PayoutAccountRepository 
   ): Promise<PayoutAccountRecord | null> {
     const rows = await (context?.entityManager ?? this.entityManager.fork())
       .execute<PayoutAccountRow[]>(
-        `select id, shop_id, type, provider, holder_name, bank_name, country,
+        `select id, shop_id, provider, holder_name, bank_name, country,
               currency, last4, status, verified_at
        from payout_accounts
        where shop_id = ? and deactivated_at is null
@@ -61,7 +60,6 @@ export class MikroOrmPayoutAccountRepository implements PayoutAccountRepository 
       .execute<Array<{
       id: string;
       shop_id: string;
-      type: PayoutAccountPaymentTarget['type'];
       provider: string;
       holder_name: string;
       bank_name: string;
@@ -70,7 +68,7 @@ export class MikroOrmPayoutAccountRepository implements PayoutAccountRepository 
       last4: string;
       provider_ref_encrypted: string;
     }>>(
-        `select id, shop_id, type, provider, holder_name, bank_name, country,
+        `select id, shop_id, provider, holder_name, bank_name, country,
               currency, last4, provider_ref_encrypted
        from payout_accounts
        where shop_id = ? and deactivated_at is null and status = 'active'
@@ -87,7 +85,6 @@ export class MikroOrmPayoutAccountRepository implements PayoutAccountRepository 
     return {
       id: row.id,
       shopId: row.shop_id,
-      type: row.type,
       provider: row.provider,
       holderName: row.holder_name,
       bankName: row.bank_name,
@@ -106,7 +103,6 @@ export class MikroOrmPayoutAccountRepository implements PayoutAccountRepository 
       .execute<Array<{
       id: string;
       shop_id: string;
-      type: PayoutAccountPaymentTarget['type'];
       provider: string;
       holder_name: string;
       bank_name: string;
@@ -115,7 +111,7 @@ export class MikroOrmPayoutAccountRepository implements PayoutAccountRepository 
       last4: string;
       provider_ref_encrypted: string;
     }>>(
-        `select id, shop_id, type, provider, holder_name, bank_name, country,
+        `select id, shop_id, provider, holder_name, bank_name, country,
               currency, last4, provider_ref_encrypted
        from payout_accounts
        where id = ?`,
@@ -131,7 +127,6 @@ export class MikroOrmPayoutAccountRepository implements PayoutAccountRepository 
     return {
       id: row.id,
       shopId: row.shop_id,
-      type: row.type,
       provider: row.provider,
       holderName: row.holder_name,
       bankName: row.bank_name,
@@ -151,7 +146,7 @@ export class MikroOrmPayoutAccountRepository implements PayoutAccountRepository 
         `update payout_accounts
        set status = ?, verified_at = ?, updated_at = ?
        where shop_id = ? and deactivated_at is null
-       returning id, shop_id, type, provider, holder_name, bank_name, country,
+       returning id, shop_id, provider, holder_name, bank_name, country,
                  currency, last4, status, verified_at`,
         [input.status, input.verifiedAt, new Date(), input.shopId],
       );
@@ -195,19 +190,18 @@ export class MikroOrmPayoutAccountRepository implements PayoutAccountRepository 
 
     const rows = await entityManager.execute<PayoutAccountRow[]>(
       `insert into payout_accounts (
-         id, created_at, updated_at, shop_id, type, provider,
+         id, created_at, updated_at, shop_id, provider,
          provider_ref_encrypted, holder_name, bank_name, country, currency,
          last4, status, verified_at, deactivated_at
        )
-       values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, null, null)
-       returning id, shop_id, type, provider, holder_name, bank_name, country,
+       values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, null, null)
+       returning id, shop_id, provider, holder_name, bank_name, country,
                  currency, last4, status, verified_at`,
       [
         randomUUID(),
         now,
         now,
         input.shopId,
-        input.type,
         input.provider,
         input.providerRefEncrypted,
         input.holderName,
@@ -226,7 +220,6 @@ export class MikroOrmPayoutAccountRepository implements PayoutAccountRepository 
     return {
       id: row.id,
       shopId: row.shop_id,
-      type: row.type,
       provider: row.provider,
       holderName: row.holder_name,
       bankName: row.bank_name,

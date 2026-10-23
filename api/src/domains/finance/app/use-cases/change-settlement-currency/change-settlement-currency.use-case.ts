@@ -48,7 +48,7 @@ export interface SettlementCurrencyChange {
 
 /**
  * Moves a shop to a different Settlement Currency at a zero Seller Payable
- * position.
+ * balance.
  *
  * A change never re-denominates anything already recorded. It closes the open
  * Settlement Currency history row, opens the new one with the provider's
@@ -103,10 +103,10 @@ export class ChangeSettlementCurrencyUseCase {
         throw new SettlementCurrencyUnchangedError(input.shopId, currency);
       }
 
-      const position = await this.sellerPayableQueryRepository
-        .findPositionByShopId(input.shopId, context);
+      const balance = await this.sellerPayableQueryRepository
+        .findBalanceByShopId(input.shopId, context);
 
-      if (!position) {
+      if (!balance) {
         throw new ShopSettlementCurrencyUnresolvedError(input.shopId);
       }
 
@@ -118,8 +118,8 @@ export class ChangeSettlementCurrencyUseCase {
       // The settings read makes the same decision from the same state, so a
       // refusal shown there is this refusal, in this precedence.
       const eligibility = evaluateSettlementCurrencyChange({
-        availableMinor: position.availableMinor,
-        notYetAvailableMinor: position.notYetAvailableMinor,
+        availableMinor: balance.availableMinor,
+        notYetAvailableMinor: balance.notYetAvailableMinor,
         hasPendingPayout,
         openPeriod,
         intervalDays: this.config.changeIntervalDays,
@@ -131,8 +131,8 @@ export class ChangeSettlementCurrencyUseCase {
           case 'balance_not_zero':
             throw new SettlementCurrencyBalanceNotZeroError(
               input.shopId,
-              position.availableMinor,
-              position.notYetAvailableMinor,
+              balance.availableMinor,
+              balance.notYetAvailableMinor,
             );
           case 'payout_pending':
             throw new SettlementCurrencyChangePayoutPendingError(input.shopId);

@@ -3,28 +3,28 @@ import { Injectable } from '@nestjs/common';
 import type { FinanceRepositoryContext } from '../../../app/ports/finance-repository-context';
 import {
   SellerPayableQueryRepository,
-  type SellerPayablePosition,
+  type SellerPayableBalance,
 } from '../../../app/ports/seller-payable-query.repository';
 
-/** Reads a shop's Seller Payable position, projected from its Postings. */
+/** Reads a shop's Seller Payable balance, projected from its Postings. */
 @Injectable()
 export class MikroOrmSellerPayableQueryRepository
 implements SellerPayableQueryRepository {
   constructor(private readonly entityManager: EntityManager) {}
 
-  async findPositionByShopId(
+  async findBalanceByShopId(
     shopId: string,
     context?: FinanceRepositoryContext,
-  ): Promise<SellerPayablePosition | null> {
+  ): Promise<SellerPayableBalance | null> {
     const rows = await this.getEntityManager(context).execute<
-      Array<SellerPayablePosition>
+      Array<SellerPayableBalance>
     >(
       `select s."id" as "shopId",
               coalesce(p."currency", h."currency", s."currency") as "currency",
-              coalesce(p."available_minor", 0) as "availableMinor",
-              coalesce(p."not_yet_available_minor", 0) as "notYetAvailableMinor"
+              coalesce(p."available_balance_minor", 0) as "availableMinor",
+              coalesce(p."pending_balance_minor", 0) as "notYetAvailableMinor"
        from "shops" s
-       left join "seller_payable_positions" p on p."shop_id" = s."id"
+       left join "seller_payable_balances" p on p."shop_id" = s."id"
        left join lateral (
          select "currency"
          from "settlement_currency_history"

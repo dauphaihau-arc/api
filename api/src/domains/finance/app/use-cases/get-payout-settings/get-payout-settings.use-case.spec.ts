@@ -28,7 +28,6 @@ function setup(options: {
         : {
           id: 'account-1',
           shopId: 'shop-1',
-          type: 'bank',
           provider: 'manual_bank',
           holderName: 'Seller',
           bankName: 'Bank',
@@ -41,7 +40,7 @@ function setup(options: {
     ),
   } as unknown as PayoutAccountRepository;
   const sellerPayableQueryRepository = {
-    findPositionByShopId: jest.fn().mockResolvedValue({
+    findBalanceByShopId: jest.fn().mockResolvedValue({
       shopId: 'shop-1',
       currency: 'USD',
       availableMinor: 0,

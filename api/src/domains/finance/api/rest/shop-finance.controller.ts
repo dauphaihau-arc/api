@@ -351,7 +351,6 @@ export class ShopFinanceController {
       await this.recordShopPayoutAccountUseCase.execute({
         shopId,
         shopPublicId,
-        type: body.type,
         holderName: body.holderName,
         bankName: body.bankName,
         country: body.country,

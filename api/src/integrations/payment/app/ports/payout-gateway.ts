@@ -4,7 +4,6 @@
  * boundary: no read surface and no audit entry ever carries it.
  */
 export interface PayoutDestinationInput {
-  type: string;
   holderName: string;
   bankName: string;
   country: string;

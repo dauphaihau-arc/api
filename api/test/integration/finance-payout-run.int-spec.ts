@@ -18,6 +18,7 @@ import { GlobalExceptionFilter } from '~/platform/filters/global-exception.filte
 import { validationExceptionFactory } from '~/platform/pipes/validation-exception.factory';
 import { RequestLoggingInterceptor } from '~/platform/logging/request-logging.interceptor';
 import { buildDatabaseConfig } from '~/platform/config/database.config';
+import { PAYOUT_CONFIG } from '~/platform/config/payout.config';
 import { ProductWhoMade } from '~/domains/product/domain/enums/product-who-made.enum';
 import { PermissionEntity } from '~/domains/auth/infra/persistence/entities/permission.entity';
 import { RolePermissionEntity } from '~/domains/auth/infra/persistence/entities/role-permission.entity';
@@ -682,7 +683,6 @@ describe('Payout Run pays available balances (integration)', () => {
       .put(`${API_PREFIX}/shops/${seller.shopPublicId}/finance/payout-account`)
       .set('Idempotency-Key', randomUUID())
       .send({
-        type: 'bank',
         holder_name: 'Jane Seller',
         bank_name: 'Example Bank',
         country: 'US',
@@ -810,8 +810,9 @@ describe('Payout Run pays available balances (integration)', () => {
 
   async function readPayablePosition(shopId: string): Promise<PayablePosition | undefined> {
     return (await sql.query(
-      `select "currency", "available_minor", "not_yet_available_minor"
-       from "seller_payable_positions" where "shop_id" = $1`,
+      `select "currency", "available_balance_minor" as "available_minor",
+              "pending_balance_minor" as "not_yet_available_minor"
+       from "seller_payable_balances" where "shop_id" = $1`,
       [shopId],
     )).rows[0] as PayablePosition | undefined;
   }
@@ -839,6 +840,15 @@ describe('Payout Run pays available balances (integration)', () => {
 
   function retryJobs(): DispatchedJob[] {
     return jobDispatcher.named('payout.retry');
+  }
+
+  /**
+   * The retry schedule the application resolved from its environment. A local
+   * `PAYOUT_RETRY_DELAYS_MS` override must not make the suite fail, so
+   * assertions compare against the running config rather than the defaults.
+   */
+  function configuredRetryDelays(): readonly number[] {
+    return app.get<{ retryDelaysMs: readonly number[] }>(PAYOUT_CONFIG).retryDelaysMs;
   }
 
   function payoutEmailJobs(): DispatchedJob[] {
@@ -1128,8 +1138,8 @@ describe('Payout Run pays available balances (integration)', () => {
 
     // A refund has left the shop owing more than its pending settlement covers.
     await sql.query(
-      `update "seller_payable_positions"
-       set "not_yet_available_minor" = -1000
+      `update "seller_payable_balances"
+       set "pending_balance_minor" = -1000
        where "shop_id" = $1`,
       [seller.shopId],
     );
@@ -1179,8 +1189,8 @@ describe('Payout Run pays available balances (integration)', () => {
     await enableAutoPayout(seller);
 
     await sql.query(
-      `update "seller_payable_positions"
-       set "not_yet_available_minor" = $2
+      `update "seller_payable_balances"
+       set "pending_balance_minor" = $2
        where "shop_id" = $1`,
       [seller.shopId, -(order.creditMinor + 1)],
     );
@@ -1597,7 +1607,7 @@ describe('Payout Run pays available balances (integration)', () => {
     // The next attempt is a delayed job, not a blocked request.
     expect(retryJobs()).toHaveLength(1);
     expect(retryJobs()[0]!.payload).toEqual({ payoutId: payouts[0]!.id });
-    expect(retryJobs()[0]!.options?.delayMs).toBe(60_000);
+    expect(retryJobs()[0]!.options?.delayMs).toBe(configuredRetryDelays()[0]);
 
     expect(await readPayoutNotifications(seller.userId)).toHaveLength(0);
     expect(payoutEmailJobs()).toHaveLength(0);
@@ -1694,18 +1704,18 @@ describe('Payout Run pays available balances (integration)', () => {
       state: 'pending',
       attempt_count: 2,
     });
-    expect(retryJobs().map(job => job.options?.delayMs)).toEqual([60_000, 300_000]);
+    expect(retryJobs().map(job => job.options?.delayMs)).toEqual(
+      configuredRetryDelays().slice(0, 2),
+    );
 
     await runRetryJob(payoutId);
     expect((await readPayouts(seller.shopId))[0]).toMatchObject({
       state: 'pending',
       attempt_count: 3,
     });
-    expect(retryJobs().map(job => job.options?.delayMs)).toEqual([
-      60_000,
-      300_000,
-      900_000,
-    ]);
+    expect(retryJobs().map(job => job.options?.delayMs)).toEqual(
+      configuredRetryDelays(),
+    );
 
     await runRetryJob(payoutId);
 
@@ -1775,7 +1785,7 @@ describe('Payout Run pays available balances (integration)', () => {
     });
     expect(pending!.claimed_allocations).toHaveLength(1);
     expect(retryJobs()).toHaveLength(1);
-    expect(retryJobs()[0]!.options?.delayMs).toBe(60_000);
+    expect(retryJobs()[0]!.options?.delayMs).toBe(configuredRetryDelays()[0]);
 
     for (let attempt = 0; attempt < 3; attempt += 1) {
       await runRetryJob(pending!.id);

@@ -120,12 +120,12 @@ export class PayShopUseCase {
           [input.shopId],
         );
 
-        const position = await this.sellerPayableQueryRepository
-          .findPositionByShopId(input.shopId, context);
+        const balance = await this.sellerPayableQueryRepository
+          .findBalanceByShopId(input.shopId, context);
 
-        if (!position || position.currency !== input.currency) {
+        if (!balance || balance.currency !== input.currency) {
           this.logger.error(
-            `Shop ${input.shopId} has Payout Availability in ${input.currency} but its Seller Payable resolves in ${position?.currency ?? 'no currency'}`,
+            `Shop ${input.shopId} has Payout Availability in ${input.currency} but its Seller Payable resolves in ${balance?.currency ?? 'no currency'}`,
           );
           return { kind: 'skipped' };
         }
@@ -141,9 +141,9 @@ export class PayShopUseCase {
         );
 
         // Netting happens before the manual amount is checked, so a seller is
-        // never allowed to withdraw around a negative not-yet-available position.
+        // never allowed to withdraw around a negative not-yet-available balance.
         const netPayable = Math.min(
-          netPayableMinor(position.availableMinor, position.notYetAvailableMinor),
+          netPayableMinor(balance.availableMinor, balance.notYetAvailableMinor),
           orderTotalMinor,
         );
 

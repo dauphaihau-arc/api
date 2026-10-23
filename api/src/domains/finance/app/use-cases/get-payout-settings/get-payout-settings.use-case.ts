@@ -58,13 +58,13 @@ export class GetPayoutSettingsUseCase {
       )
         ? 0
         : 1);
-    const [account, position] = await Promise.all([
+    const [account, balance] = await Promise.all([
       this.payoutAccountRepository.findActiveByShopId(input.shopId),
-      this.sellerPayableQueryRepository.findPositionByShopId(input.shopId),
+      this.sellerPayableQueryRepository.findBalanceByShopId(input.shopId),
     ]);
     const eligibility = resolveAutoPayoutEligibility(
       account,
-      position?.currency ?? null,
+      balance?.currency ?? null,
     );
 
     return {

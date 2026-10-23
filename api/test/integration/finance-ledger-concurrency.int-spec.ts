@@ -142,8 +142,9 @@ describe('Finance ledger concurrency (integration)', () => {
   ): Promise<PayablePositionRow> {
     const rows = await orm.em.execute<PayablePositionRow[]>(
       `
-        select currency, available_minor, not_yet_available_minor
-        from seller_payable_positions
+        select currency, available_balance_minor as available_minor,
+               pending_balance_minor as not_yet_available_minor
+        from seller_payable_balances
         where shop_id = ?::uuid
       `,
       [shopId],

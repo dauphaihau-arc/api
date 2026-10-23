@@ -253,7 +253,6 @@ describe('Shop Payout Account (integration)', () => {
 
   function accountBody(overrides: Record<string, unknown> = {}): Record<string, unknown> {
     return {
-      type: 'bank',
       holder_name: '  Jane Seller  ',
       bank_name: '  Example Bank  ',
       country: 'us',
@@ -289,7 +288,6 @@ describe('Shop Payout Account (integration)', () => {
       .send(accountBody())
       .expect(200);
     expect(firstWrite.body.payout_account).toMatchObject({
-      type: 'bank',
       holder_name: 'Jane Seller',
       bank_name: 'Example Bank',
       last4: '6789',
@@ -456,7 +454,6 @@ describe('Shop Payout Account (integration)', () => {
   it.each([
     ['malformed reference', { account_reference: '12 34' }],
     ['blank holder', { holder_name: '   ' }],
-    ['bad type', { type: 'cash' }],
     ['bad country', { country: 'USA' }],
   ])('refuses a %s with PAYOUT_ACCOUNT_INVALID', async (_name, invalidField) => {
     const response = await seller.agent

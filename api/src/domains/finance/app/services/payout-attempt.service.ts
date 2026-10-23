@@ -242,7 +242,6 @@ export class PayoutAttemptService {
       amountMinor: payout.amountMinor,
       currency: payout.currency,
       destination: {
-        type: target.type,
         holderName: target.holderName,
         bankName: target.bankName,
         country: target.country,

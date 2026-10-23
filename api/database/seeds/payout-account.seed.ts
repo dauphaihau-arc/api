@@ -5,7 +5,6 @@ import {
   assertValidPayoutAccount,
   maskReference,
   type PayoutAccountStatus,
-  type PayoutAccountType,
 } from '~/domains/finance/domain/rules/payout-account';
 import { PayoutAccountEntity } from '~/domains/finance/infra/persistence/entities/payout-account.entity';
 import { FieldEncryptionService } from '~/platform/crypto/field-encryption.service';
@@ -17,7 +16,6 @@ import { readOptionalTsvRows } from './shared/read-tsv-rows';
 
 type PayoutAccountCsvRow = {
   shop_slug: string;
-  type: string;
   holder_name: string;
   bank_name: string;
   country: string;
@@ -27,7 +25,6 @@ type PayoutAccountCsvRow = {
 
 type PayoutAccountSeed = {
   shopSlug: string;
-  type: PayoutAccountType;
   holderName: string;
   bankName: string;
   country: string;
@@ -61,7 +58,6 @@ export function loadPayoutAccountSeeds(): PayoutAccountSeed[] {
 
   return [...rowsBySlug.values()].map((row) => {
     const input = {
-      type: row.type,
       holderName: row.holder_name,
       bankName: row.bank_name,
       country: row.country,
@@ -78,7 +74,6 @@ export function loadPayoutAccountSeeds(): PayoutAccountSeed[] {
 
     return {
       shopSlug: row.shop_slug,
-      type: input.type,
       holderName: input.holderName,
       bankName: input.bankName,
       country: input.country,
@@ -150,7 +145,6 @@ export async function seedPayoutAccounts(
     const account = existingByShopId.get(shop.id);
 
     if (account) {
-      account.type = seed.type;
       account.provider = MANUAL_BANK_PROVIDER;
       account.providerRefEncrypted = providerRefEncrypted;
       account.holderName = seed.holderName;
@@ -167,7 +161,6 @@ export async function seedPayoutAccounts(
     else {
       em.persist(em.create(PayoutAccountEntity, {
         shop,
-        type: seed.type,
         provider: MANUAL_BANK_PROVIDER,
         providerRefEncrypted,
         holderName: seed.holderName,

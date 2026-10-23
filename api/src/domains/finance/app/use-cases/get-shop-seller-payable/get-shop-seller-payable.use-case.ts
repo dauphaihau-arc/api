@@ -2,13 +2,13 @@ import { Injectable } from '@nestjs/common';
 import { ShopSettlementCurrencyUnresolvedError } from '../../errors/finance-app.error';
 import {
   SellerPayableQueryRepository,
-  type SellerPayablePosition,
+  type SellerPayableBalance,
 } from '../../ports/seller-payable-query.repository';
 
 /**
- * Reads a shop's Seller Payable: one position, in the shop's Settlement
+ * Reads a shop's Seller Payable: one balance, in the shop's Settlement
  * Currency, projected from its Postings. A shop with no Postings yet reads as
- * zero in its Settlement Currency rather than as a missing position.
+ * zero in its Settlement Currency rather than as a missing balance.
  */
 @Injectable()
 export class GetShopSellerPayableUseCase {
@@ -16,14 +16,14 @@ export class GetShopSellerPayableUseCase {
     private readonly sellerPayableQueryRepository: SellerPayableQueryRepository,
   ) {}
 
-  async execute(shopId: string): Promise<SellerPayablePosition> {
-    const position = await this.sellerPayableQueryRepository
-      .findPositionByShopId(shopId);
+  async execute(shopId: string): Promise<SellerPayableBalance> {
+    const balance = await this.sellerPayableQueryRepository
+      .findBalanceByShopId(shopId);
 
-    if (!position) {
+    if (!balance) {
       throw new ShopSettlementCurrencyUnresolvedError(shopId);
     }
 
-    return position;
+    return balance;
   }
 }

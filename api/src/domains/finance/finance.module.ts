@@ -66,7 +66,7 @@ import { PayoutLineEntity } from './infra/persistence/entities/payout-line.entit
 import { PayoutSettingsEntity } from './infra/persistence/entities/payout-settings.entity';
 import { PayoutEntity } from './infra/persistence/entities/payout.entity';
 import { PostingEntity } from './infra/persistence/entities/posting.entity';
-import { SellerPayablePositionEntity } from './infra/persistence/entities/seller-payable-position.entity';
+import { SellerPayableBalanceEntity } from './infra/persistence/entities/seller-payable-balance.entity';
 import { SettlementCurrencyHistoryEntity } from './infra/persistence/entities/settlement-currency-history.entity';
 import { MikroOrmCommissionScheduleRepository } from './infra/persistence/repositories/mikro-orm-commission-schedule.repository';
 import { MikroOrmJournalEntryRepository } from './infra/persistence/repositories/mikro-orm-journal-entry.repository';
@@ -98,7 +98,7 @@ import { MikroOrmTransactionsQueryRepository } from './infra/persistence/reposit
       JournalEntryEntity,
       LedgerAccountEntity,
       PostingEntity,
-      SellerPayablePositionEntity,
+      SellerPayableBalanceEntity,
       SettlementCurrencyHistoryEntity,
       CommissionScheduleEntity,
       PayoutAccountEntity,

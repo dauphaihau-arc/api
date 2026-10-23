@@ -8429,22 +8429,6 @@
           "enumItems": [],
           "mappedType": "uuid"
         },
-        "type": {
-          "name": "type",
-          "type": "varchar(16)",
-          "unsigned": false,
-          "autoincrement": false,
-          "primary": false,
-          "nullable": false,
-          "unique": false,
-          "length": 16,
-          "precision": null,
-          "scale": null,
-          "default": null,
-          "comment": null,
-          "enumItems": [],
-          "mappedType": "string"
-        },
         "provider": {
           "name": "provider",
           "type": "varchar(32)",
@@ -15559,8 +15543,8 @@
           "enumItems": [],
           "mappedType": "string"
         },
-        "available_minor": {
-          "name": "available_minor",
+        "available_balance_minor": {
+          "name": "available_balance_minor",
           "type": "int4",
           "unsigned": false,
           "autoincrement": false,
@@ -15575,8 +15559,8 @@
           "enumItems": [],
           "mappedType": "integer"
         },
-        "not_yet_available_minor": {
-          "name": "not_yet_available_minor",
+        "pending_balance_minor": {
+          "name": "pending_balance_minor",
           "type": "int4",
           "unsigned": false,
           "autoincrement": false,
@@ -15592,7 +15576,7 @@
           "mappedType": "integer"
         }
       },
-      "name": "seller_payable_positions",
+      "name": "seller_payable_balances",
       "schema": "public",
       "indexes": [
         {
@@ -15623,7 +15607,7 @@
             "shop_id"
           ],
           "constraintName": "seller_payable_positions_shop_id_foreign",
-          "localTableName": "public.seller_payable_positions",
+          "localTableName": "public.seller_payable_balances",
           "referencedTableName": "public.shops",
           "referencedColumnNames": [
             "id"

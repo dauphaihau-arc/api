@@ -1,7 +1,4 @@
-import type {
-  PayoutAccountStatus,
-  PayoutAccountType,
-} from '../../domain/rules/payout-account';
+import type { PayoutAccountStatus } from '../../domain/rules/payout-account';
 import type { FinanceRepositoryContext } from './finance-repository-context';
 
 /**
@@ -12,7 +9,6 @@ import type { FinanceRepositoryContext } from './finance-repository-context';
 export interface PayoutAccountRecord {
   id: string;
   shopId: string;
-  type: PayoutAccountType;
   provider: string;
   holderName: string;
   bankName: string;
@@ -32,7 +28,6 @@ export interface PayoutAccountRecord {
 export interface PayoutAccountPaymentTarget {
   id: string;
   shopId: string;
-  type: PayoutAccountType;
   provider: string;
   holderName: string;
   bankName: string;
@@ -45,7 +40,6 @@ export interface PayoutAccountPaymentTarget {
 /** The row to activate, already validated, encrypted and normalized. */
 export interface ReplacePayoutAccountInput {
   shopId: string;
-  type: PayoutAccountType;
   provider: string;
   providerRefEncrypted: string;
   holderName: string;

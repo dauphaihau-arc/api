@@ -748,8 +748,9 @@ describe('Seller Payable from a paid Order (integration)', () => {
     internalShopId: string,
   ): Promise<PayablePosition | undefined> {
     const result = await sql.query(
-      `select "currency", "available_minor", "not_yet_available_minor"
-       from "seller_payable_positions"
+      `select "currency", "available_balance_minor" as "available_minor",
+              "pending_balance_minor" as "not_yet_available_minor"
+       from "seller_payable_balances"
        where "shop_id" = $1`,
       [internalShopId],
     );

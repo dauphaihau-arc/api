@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import type { SellerPayablePosition } from '../../../app/ports/seller-payable-query.repository';
+import type { SellerPayableBalance } from '../../../app/ports/seller-payable-query.repository';
 
 export class ShopSellerPayableResponseDto {
   @ApiProperty({
@@ -19,15 +19,15 @@ export class ShopSellerPayableResponseDto {
 }
 
 /**
- * The shop's Seller Payable: one position, in the shop's Settlement Currency,
+ * The shop's Seller Payable: one balance, in the shop's Settlement Currency,
  * in integer minor units only.
  */
 export function toSellerPayableResponse(
-  position: SellerPayablePosition,
+  balance: SellerPayableBalance,
 ): ShopSellerPayableResponseDto {
   return {
-    currency: position.currency,
-    available_minor: position.availableMinor,
-    not_yet_available_minor: position.notYetAvailableMinor,
+    currency: balance.currency,
+    available_minor: balance.availableMinor,
+    not_yet_available_minor: balance.notYetAvailableMinor,
   };
 }

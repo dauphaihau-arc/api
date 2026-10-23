@@ -12,9 +12,6 @@ export class PayoutAccountResponseDto {
   })
   id!: string;
 
-  @ApiProperty({ description: 'Destination kind: bank or wallet.', example: 'bank' })
-  type!: string;
-
   @ApiProperty({ description: 'Name the account is held in.', example: 'Jane Seller' })
   holder_name!: string;
 
@@ -77,7 +74,6 @@ export function toPayoutAccountResponse(
 ): PayoutAccountResponseDto {
   return {
     id: account.id,
-    type: account.type,
     holder_name: account.holderName,
     bank_name: account.bankName,
     last4: account.last4,

@@ -49,7 +49,7 @@ export interface SettlementCurrencyView {
   /** The state that blocks a change, or `null` when the shop may change. */
   blockedReason: SettlementCurrencyChangeBlockedReason | null;
 
-  /** The shop's available Seller Payable, zero when it has no position row. */
+  /** The shop's available Seller Payable, zero when it has no balance row. */
   availableMinor: number;
 
   /** The shop's not-yet-available Seller Payable, zero when it has no row. */
@@ -88,15 +88,15 @@ export class GetSettlementCurrencyUseCase {
 
     const now = this.clock.now();
 
-    const [period, settings, position, hasPendingPayout] = await Promise.all([
+    const [period, settings, balance, hasPendingPayout] = await Promise.all([
       this.settlementCurrencyRepository.findOpenPeriod(input.shopId),
       this.payoutSettingsRepository.find(input.shopId),
-      this.sellerPayableQueryRepository.findPositionByShopId(input.shopId),
+      this.sellerPayableQueryRepository.findBalanceByShopId(input.shopId),
       this.payoutQueryRepository.hasPendingByShopId(input.shopId),
     ]);
 
-    const availableMinor = position?.availableMinor ?? 0;
-    const notYetAvailableMinor = position?.notYetAvailableMinor ?? 0;
+    const availableMinor = balance?.availableMinor ?? 0;
+    const notYetAvailableMinor = balance?.notYetAvailableMinor ?? 0;
 
     // The command evaluates the same state with the same rule, so this reason
     // is the refusal the seller would get from POST.

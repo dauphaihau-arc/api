@@ -17,7 +17,6 @@ import {
 export interface RecordShopPayoutAccountInput {
   shopId: string;
   shopPublicId: string;
-  type: string;
   holderName: string;
   bankName: string;
   country: string;
@@ -58,7 +57,6 @@ export class RecordShopPayoutAccountUseCase {
       async (entityManager) => this.payoutAccountRepository.replaceActive(
         {
           shopId: input.shopId,
-          type: input.type,
           provider: MANUAL_BANK_PROVIDER,
           providerRefEncrypted: this.fieldEncryptionService.encrypt(input.accountReference),
           holderName: input.holderName.trim(),

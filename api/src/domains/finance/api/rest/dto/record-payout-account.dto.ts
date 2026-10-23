@@ -4,21 +4,12 @@ import { IsString } from 'class-validator';
 
 /**
  * Body of the seller Payout Account record/replace endpoint. Field values are
- * only asserted to be strings here: what makes a type, holder name, bank name,
+ * only asserted to be strings here: what makes a holder name, bank name,
  * country or reference acceptable is the Finance domain rule, so a malformed
  * value surfaces as `PAYOUT_ACCOUNT_INVALID` rather than as a validation
  * failure. The currency is resolved server-side and is never accepted.
  */
 export class RecordPayoutAccountDto {
-  @ApiProperty({
-    description: 'The kind of destination: bank or wallet.',
-    example: 'bank',
-  })
-  @Expose({ name: 'type' })
-  @Transform(({ value, obj: source }) => value ?? source.type)
-  @IsString()
-  type!: string;
-
   @ApiProperty({
     description: 'Name the account is held in.',
     example: 'Jane Seller',
@@ -48,8 +39,8 @@ export class RecordPayoutAccountDto {
 
   @ApiProperty({
     description:
-      'The account number or wallet address payouts are sent to. Stored ' +
-      'encrypted and never returned.',
+      'The account number payouts are sent to. Stored encrypted and never ' +
+      'returned.',
     example: '0123456789',
   })
   @Expose({ name: 'account_reference' })

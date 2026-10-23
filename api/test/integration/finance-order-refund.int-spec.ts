@@ -995,8 +995,9 @@ describe('Order Refunds reverse Seller Payable and Platform Commission (integrat
     shopInternalId: string,
   ): Promise<PayablePosition | undefined> {
     const result = await sql.query(
-      `select "currency", "available_minor", "not_yet_available_minor"
-       from "seller_payable_positions"
+      `select "currency", "available_balance_minor" as "available_minor",
+              "pending_balance_minor" as "not_yet_available_minor"
+       from "seller_payable_balances"
        where "shop_id" = $1`,
       [shopInternalId],
     );
@@ -1567,8 +1568,8 @@ describe('Order Refunds reverse Seller Payable and Platform Commission (integrat
     // The currency change (a separate ticket) is allowed only at a zero
     // position; zeroing the row here is exactly what a Payout would leave.
     await sql.query(
-      `update "seller_payable_positions"
-       set "available_minor" = 0, "not_yet_available_minor" = 0
+      `update "seller_payable_balances"
+       set "available_balance_minor" = 0, "pending_balance_minor" = 0
        where "shop_id" = $1`,
       [shop.shopInternalId],
     );

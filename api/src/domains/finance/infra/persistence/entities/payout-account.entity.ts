@@ -6,10 +6,7 @@ import {
 } from '@mikro-orm/core';
 import { AbstractBaseEntity } from '~/platform/database/abstract-base.entity';
 import { ShopEntity } from '~/domains/shop/infra/persistence/entities/shop.entity';
-import type {
-  PayoutAccountStatus,
-  PayoutAccountType,
-} from '../../../domain/rules/payout-account';
+import type { PayoutAccountStatus } from '../../../domain/rules/payout-account';
 
 /**
  * Where a shop wants to be paid. One open row per shop — enforced by the
@@ -25,9 +22,6 @@ export class PayoutAccountEntity extends AbstractBaseEntity {
     deleteRule: 'restrict',
   })
   shop!: ShopEntity;
-
-  @Property({ fieldName: 'type', length: 16 })
-  type!: PayoutAccountType;
 
   /** The adapter token that would move the money; `manual_bank` for now. */
   @Property({ fieldName: 'provider', length: 32 })

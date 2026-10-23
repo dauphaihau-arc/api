@@ -10,7 +10,6 @@ function payoutAccount(
   overrides: Partial<PayoutAccountInput> = {},
 ): PayoutAccountInput {
   return {
-    type: 'bank',
     holderName: 'Jane Seller',
     bankName: 'Example Bank',
     country: 'US',
@@ -20,18 +19,12 @@ function payoutAccount(
 }
 
 describe('assertValidPayoutAccount', () => {
-  it('accepts a bank account and a wallet', () => {
+  it('accepts a bank account', () => {
     expect(() => assertValidPayoutAccount(payoutAccount())).not.toThrow();
-    expect(() => assertValidPayoutAccount(payoutAccount({ type: 'wallet' }))).not.toThrow();
   });
 
   it('accepts a country typed in lower case', () => {
     expect(() => assertValidPayoutAccount(payoutAccount({ country: 'vn' }))).not.toThrow();
-  });
-
-  it('refuses an unknown type', () => {
-    expect(() => assertValidPayoutAccount(payoutAccount({ type: 'cheque' })))
-      .toThrow(PayoutAccountInvalidError);
   });
 
   it('refuses a blank or whitespace-only holder name', () => {

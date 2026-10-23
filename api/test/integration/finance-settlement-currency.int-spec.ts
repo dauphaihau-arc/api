@@ -243,15 +243,15 @@ describe('Shop Settlement Currency change (integration)', () => {
     notYetAvailableMinor: number,
   ): Promise<void> {
     await sql.query(
-      `insert into "seller_payable_positions" (
+      `insert into "seller_payable_balances" (
          "id", "created_at", "updated_at", "shop_id", "currency",
-         "available_minor", "not_yet_available_minor"
+         "available_balance_minor", "pending_balance_minor"
        )
        values ($1, now(), now(), $2, $3, $4, $5)
        on conflict ("shop_id") do update
          set "currency" = excluded."currency",
-             "available_minor" = excluded."available_minor",
-             "not_yet_available_minor" = excluded."not_yet_available_minor",
+             "available_balance_minor" = excluded."available_balance_minor",
+             "pending_balance_minor" = excluded."pending_balance_minor",
              "updated_at" = now()`,
       [randomUUID(), shopId, currency, availableMinor, notYetAvailableMinor],
     );
@@ -264,11 +264,11 @@ describe('Shop Settlement Currency change (integration)', () => {
     const id = randomUUID();
     await sql.query(
       `insert into "payout_accounts" (
-         "id", "created_at", "updated_at", "shop_id", "type", "provider",
+         "id", "created_at", "updated_at", "shop_id", "provider",
          "provider_ref_encrypted", "holder_name", "bank_name", "country",
          "currency", "last4", "status", "verified_at", "deactivated_at"
        )
-       values ($1, now(), now(), $2, 'bank', 'manual_bank', 'v1:test-ciphertext',
+       values ($1, now(), now(), $2, 'manual_bank', 'v1:test-ciphertext',
                'Jane Seller', 'Example Bank', 'US', $3, '6789', 'active', now(), null)`,
       [id, shopId, currency],
     );

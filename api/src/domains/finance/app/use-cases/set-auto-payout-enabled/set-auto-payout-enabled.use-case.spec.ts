@@ -19,7 +19,6 @@ function setup(options: { hasPayoutAccount: boolean }) {
         ? {
           id: 'account-1',
           shopId: 'shop-1',
-          type: 'bank',
           provider: 'manual_bank',
           holderName: 'Seller',
           bankName: 'Bank',

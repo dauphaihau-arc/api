@@ -5,8 +5,8 @@ import type { FinanceRepositoryContext } from '../../../app/ports/finance-reposi
 import { SellerPayableCommandRepository } from '../../../app/ports/seller-payable-command.repository';
 
 /**
- * Maintains the shop's one Seller Payable position. Every amount passed here is
- * already in the shop's Settlement Currency, and the position records that
+ * Maintains the shop's one Seller Payable balance. Every amount passed here is
+ * already in the shop's Settlement Currency, and the row records that
  * currency, so a later currency change updates the row rather than splitting it.
  */
 @Injectable()
@@ -42,8 +42,8 @@ export class MikroOrmSellerPayableCommandRepository implements SellerPayableComm
     context: FinanceRepositoryContext,
   ): Promise<void> {
     await this.getEntityManager(context).execute(
-      `update seller_payable_positions
-       set available_minor = available_minor - ?, updated_at = ?
+      `update seller_payable_balances
+       set available_balance_minor = available_balance_minor - ?, updated_at = ?
        where shop_id = ? and currency = ?`,
       [amountMinor, new Date(), shopId, currency],
     );
@@ -77,8 +77,8 @@ export class MikroOrmSellerPayableCommandRepository implements SellerPayableComm
     );
 
     await entityManager.execute(
-      `insert into seller_payable_positions (
-         id, shop_id, currency, available_minor, not_yet_available_minor,
+      `insert into seller_payable_balances (
+         id, shop_id, currency, available_balance_minor, pending_balance_minor,
          created_at, updated_at
        )
        select
@@ -96,11 +96,11 @@ export class MikroOrmSellerPayableCommandRepository implements SellerPayableComm
        on conflict (shop_id) do update
        set
          currency = excluded.currency,
-         available_minor =
-           seller_payable_positions.available_minor + excluded.available_minor,
-         not_yet_available_minor =
-           seller_payable_positions.not_yet_available_minor
-           + excluded.not_yet_available_minor,
+         available_balance_minor =
+           seller_payable_balances.available_balance_minor + excluded.available_balance_minor,
+         pending_balance_minor =
+           seller_payable_balances.pending_balance_minor
+           + excluded.pending_balance_minor,
          updated_at = now()`,
       [
         randomUUID(),
@@ -117,7 +117,7 @@ export class MikroOrmSellerPayableCommandRepository implements SellerPayableComm
   }
 
   /**
-   * Applies one delta to the shop's position, creating it when absent. The
+   * Applies one delta to the shop's balance, creating it when absent. The
    * upsert is race-safe: concurrent deltas for one shop must all land rather
    * than one overwriting the other.
    */
@@ -131,19 +131,19 @@ export class MikroOrmSellerPayableCommandRepository implements SellerPayableComm
     const now = new Date();
 
     await this.getEntityManager(context).execute(
-      `insert into seller_payable_positions (
-         id, shop_id, currency, available_minor, not_yet_available_minor,
+      `insert into seller_payable_balances (
+         id, shop_id, currency, available_balance_minor, pending_balance_minor,
          created_at, updated_at
        )
        values (?, ?, ?, ?, ?, ?, ?)
        on conflict (shop_id) do update
        set
          currency = excluded.currency,
-         available_minor =
-           seller_payable_positions.available_minor + excluded.available_minor,
-         not_yet_available_minor =
-           seller_payable_positions.not_yet_available_minor
-           + excluded.not_yet_available_minor,
+         available_balance_minor =
+           seller_payable_balances.available_balance_minor + excluded.available_balance_minor,
+         pending_balance_minor =
+           seller_payable_balances.pending_balance_minor
+           + excluded.pending_balance_minor,
          updated_at = now()`,
       [
         randomUUID(),

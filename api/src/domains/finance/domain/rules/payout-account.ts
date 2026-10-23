@@ -1,8 +1,5 @@
 import { PayoutAccountInvalidError } from '../errors/finance-domain.error';
 
-/** The kinds of destination a shop can be paid into. */
-export type PayoutAccountType = 'bank' | 'wallet';
-
 /**
  * The payout adapter that moves the money. There is one for now: an operator
  * pays out against the recorded bank details, and a provider integration would
@@ -19,26 +16,22 @@ export type PayoutAccountStatus = 'pending' | 'active' | 'disabled';
  * the caller.
  */
 export interface PayoutAccountInput {
-  type: string;
   holderName: string;
   bankName: string;
   country: string;
   accountReference: string;
 }
 
-/** A Payout Account input whose `type` survives validation. */
-export type ValidatedPayoutAccountInput = PayoutAccountInput & {
-  type: PayoutAccountType;
-};
+/** A Payout Account input once validation has accepted it. */
+export type ValidatedPayoutAccountInput = PayoutAccountInput;
 
-const PAYOUT_ACCOUNT_TYPES: readonly PayoutAccountType[] = ['bank', 'wallet'];
 const MIN_REFERENCE_LENGTH = 4;
 const MAX_REFERENCE_LENGTH = 34;
 const REFERENCE_PATTERN = /^[A-Za-z0-9-]+$/;
 const COUNTRY_PATTERN = /^[A-Z]{2}$/;
 
 /**
- * Refuses a Payout Account that cannot be paid into: an unknown type, a blank
+ * Refuses a Payout Account that cannot be paid into: a blank
  * holder or bank name, a country that is not an ISO 3166-1 alpha-2 code, or a
  * reference shorter than 4 characters, longer than 34, or carrying characters
  * outside letters, digits and dash.
@@ -46,12 +39,6 @@ const COUNTRY_PATTERN = /^[A-Z]{2}$/;
 export function assertValidPayoutAccount(
   input: PayoutAccountInput,
 ): asserts input is ValidatedPayoutAccountInput {
-  if (!PAYOUT_ACCOUNT_TYPES.includes(input.type as PayoutAccountType)) {
-    throw new PayoutAccountInvalidError(
-      `type must be one of ${PAYOUT_ACCOUNT_TYPES.join(', ')}`,
-    );
-  }
-
   if (input.holderName.trim().length === 0) {
     throw new PayoutAccountInvalidError('holder name must not be blank');
   }
