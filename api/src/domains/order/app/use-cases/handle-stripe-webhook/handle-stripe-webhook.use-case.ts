@@ -1,9 +1,13 @@
 import { Injectable } from '@nestjs/common';
+import { JobDispatcher } from '~/integrations/queue/app/ports/job-dispatcher';
 import type {
+  ChargeBalanceTransactionReference,
   CheckoutSessionDetails,
+  DisputeBalanceTransactionsReference,
   PaymentWebhookEvent,
   RefundDetails,
 } from '~/integrations/payment/app/ports/payment-gateway';
+import { appJobName } from '~/platform/jobs/app-job.names';
 import { OrderRefundService } from '../../services/order-refund.service';
 import { OrderPaymentService } from '../../services/order-payment.service';
 
@@ -12,6 +16,7 @@ export class HandleStripeWebhookUseCase {
   constructor(
     private readonly orderPaymentService: OrderPaymentService,
     private readonly orderRefundService: OrderRefundService,
+    private readonly jobDispatcher: JobDispatcher,
   ) {}
 
   async execute(event: PaymentWebhookEvent): Promise<void> {
@@ -47,10 +52,51 @@ export class HandleStripeWebhookUseCase {
           amountMinor: refund.amount,
           failureReason: refund.failureReason,
         });
+
+        await this.dispatchProviderFee(refund.balanceTransactionId);
+        return;
+      }
+      case 'charge.succeeded':
+      case 'charge.updated':
+      case 'charge.refunded': {
+        // The charge is already known from the Checkout Session; what these
+        // events add is the balance transaction that carries its fee. Stripe
+        // often has `balance_transaction: null` on `charge.succeeded` and fills
+        // it on the following `charge.updated`, which is why both are handled.
+        const charge = event.data.object as ChargeBalanceTransactionReference;
+
+        await this.dispatchProviderFee(charge.balanceTransactionId);
+        return;
+      }
+      case 'charge.dispute.created': {
+        const dispute = event.data.object as DisputeBalanceTransactionsReference;
+
+        // A dispute moves money in several balance transactions. Only the fee
+        // ingestion is in scope here; dispute accounting is not.
+        for (const balanceTransactionId of dispute.balanceTransactionIds) {
+          await this.dispatchProviderFee(balanceTransactionId);
+        }
+
         return;
       }
       default:
         return;
     }
+  }
+
+  /**
+   * The webhook answers fast: it enqueues the fee ingestion instead of reading
+   * the balance transaction and writing the ledger itself.
+   */
+  private async dispatchProviderFee(
+    balanceTransactionId: string | null | undefined,
+  ): Promise<void> {
+    if (!balanceTransactionId) {
+      return;
+    }
+
+    await this.jobDispatcher.dispatch(appJobName.recordProviderFee, {
+      balanceTransactionId,
+    });
   }
 }

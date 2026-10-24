@@ -16,6 +16,16 @@ export abstract class JournalEntryRepository {
   ): Promise<boolean>;
 
   /**
+   * The internal id of the Journal Entry recorded under a Money Event key, or
+   * `null` when no entry exists for it yet. Used by callers that must point a
+   * fact row at the entry they just appended.
+   */
+  abstract findIdByMoneyEventKey(
+    moneyEventKey: string,
+    context?: FinanceRepositoryContext,
+  ): Promise<string | null>;
+
+  /**
    * Resolves the Seller Payable an Order still holds in the ledger: what its
    * paid Money Event credited, less what any recorded refund of that Order
    * reversed. `null` when the Order has no paid entry. A fully refunded Order

@@ -20,4 +20,5 @@ export const appJobName = {
   retryPayout: 'payout.retry',
   sendPayoutSucceededEmail: 'finance.send-payout-succeeded-email',
   sendPayoutFailedEmail: 'finance.send-payout-failed-email',
+  recordProviderFee: 'finance.record-provider-fee',
 } as const;

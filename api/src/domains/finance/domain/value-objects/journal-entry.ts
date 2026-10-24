@@ -26,7 +26,11 @@ export interface JournalEntryFxEvidence {
 export interface JournalEntry {
   moneyEventKey: string;
   moneyEventKind: string;
-  shopId: string;
+  /**
+   * The shop whose money the entry moves; absent for a platform-level entry
+   * such as a Provider Fee, which expenses the platform itself.
+   */
+  shopId?: string;
   currency: string;
   chargeCurrency?: string;
   chargeAmountMinor?: number;

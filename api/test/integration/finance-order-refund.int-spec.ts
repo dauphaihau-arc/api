@@ -237,6 +237,10 @@ class FakePaymentGateway extends PaymentGateway {
     return refund;
   }
 
+  async retrieveBalanceTransaction(reference: string): Promise<never> {
+    throw new Error(`No balance transaction ${reference} on FakePaymentGateway`);
+  }
+
   settleRefund(
     refundId: string,
     status: 'succeeded' | 'failed',

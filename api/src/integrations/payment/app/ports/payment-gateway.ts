@@ -63,6 +63,43 @@ export interface RefundResult {
  */
 export interface RefundDetails extends RefundResult {
   paymentIntentId?: string;
+  /** The provider's record of this refund movement, which carries its fee. */
+  balanceTransactionId: string | null;
+}
+
+/**
+ * One provider balance transaction: the provider's own record of a single
+ * movement of money and the fee it charged for it.
+ *
+ * Values are in minor units. `feeMinor` is signed by the provider: positive is
+ * a fee it charged, negative reverses a previously charged fee (a refund).
+ */
+export interface ProviderBalanceTransaction {
+  id: string;
+  amountMinor: number;
+  feeMinor: number;
+  netMinor: number;
+  currency: string;
+  createdAt: Date;
+  availableAt?: Date;
+}
+
+/**
+ * A `charge.*` webhook reports its balance transaction, which is what carries
+ * the fee. Expanded objects are reduced to the id.
+ */
+export interface ChargeBalanceTransactionReference {
+  chargeId: string;
+  balanceTransactionId: string | null;
+}
+
+/**
+ * A dispute moves money in one or more balance transactions, each of which
+ * carries the fee the provider charged for it.
+ */
+export interface DisputeBalanceTransactionsReference {
+  disputeId: string;
+  balanceTransactionIds: string[];
 }
 
 export interface CreateRefundOptions {
@@ -104,4 +141,14 @@ export abstract class PaymentGateway {
    * refund pending forever.
    */
   abstract retrieveRefund(refundId: string): Promise<RefundResult>;
+
+  /**
+   * Reads one balance transaction, the provider's record of a movement and the
+   * fee it charged for it. The webhook only carries the reference; its body can
+   * arrive before the transaction is readable, in which case this rejects and
+   * the caller retries.
+   */
+  abstract retrieveBalanceTransaction(
+    reference: string,
+  ): Promise<ProviderBalanceTransaction>;
 }

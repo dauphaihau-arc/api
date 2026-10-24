@@ -28,8 +28,9 @@ export class JournalEntryEntity extends AbstractBaseEntity {
   @ManyToOne(() => ShopEntity, {
     fieldName: 'shop_id',
     deleteRule: 'restrict',
+    nullable: true,
   })
-  shop!: ShopEntity;
+  shop?: ShopEntity;
 
   @Property({ fieldName: 'currency', length: 3 })
   currency!: string;

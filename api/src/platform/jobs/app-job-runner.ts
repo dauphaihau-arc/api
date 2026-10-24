@@ -25,6 +25,7 @@ import { SendSellerOrderUpdateEmailJob } from '~/domains/order/jobs/send-seller-
 import { SendWebPushNotificationJob } from '~/domains/notification/jobs/send-web-push-notification.job';
 import { SendWelcomeEmailJob } from '~/domains/user/jobs/send-welcome-email.job';
 import { RetryPayoutJob } from '~/domains/finance/jobs/retry-payout.job';
+import { RecordProviderFeeJob } from '~/domains/finance/jobs/record-provider-fee.job';
 import { SendPayoutFailedEmailJob } from '~/domains/finance/jobs/send-payout-failed-email.job';
 import { SendPayoutSucceededEmailJob } from '~/domains/finance/jobs/send-payout-succeeded-email.job';
 
@@ -55,6 +56,7 @@ export class AppJobRunner extends JobRunner {
     private readonly retryPayoutJob: RetryPayoutJob,
     private readonly sendPayoutSucceededEmailJob: SendPayoutSucceededEmailJob,
     private readonly sendPayoutFailedEmailJob: SendPayoutFailedEmailJob,
+    private readonly recordProviderFeeJob: RecordProviderFeeJob,
   ) {
     super();
   }
@@ -178,6 +180,11 @@ export class AppJobRunner extends JobRunner {
           case appJobName.sendPayoutFailedEmail:
             await this.sendPayoutFailedEmailJob.run(
               payload as AppJobPayloadMap[typeof appJobName.sendPayoutFailedEmail],
+            );
+            return;
+          case appJobName.recordProviderFee:
+            await this.recordProviderFeeJob.run(
+              payload as AppJobPayloadMap[typeof appJobName.recordProviderFee],
             );
             return;
         }

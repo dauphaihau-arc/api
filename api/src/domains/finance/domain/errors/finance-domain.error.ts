@@ -48,3 +48,15 @@ export class UnbalancedJournalEntryError extends FinanceDomainError {
     );
   }
 }
+
+/**
+ * Raised when a Provider Fee amount cannot describe money that moved: the
+ * amount is a signed integer number of minor units, so a non-integer and zero
+ * are refused. A positive amount is a fee the provider charged; a negative one
+ * reverses a previously charged fee.
+ */
+export class InvalidProviderFeeAmountError extends FinanceDomainError {
+  constructor(reason: string) {
+    super(`Provider Fee amount is invalid: ${reason}`);
+  }
+}

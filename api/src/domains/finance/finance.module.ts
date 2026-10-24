@@ -25,10 +25,12 @@ import { AdminPayoutAccountController } from './api/rest/admin-payout-account.co
 import { AdminShopFinanceController } from './api/rest/admin-shop-finance.controller';
 import { ShopFinanceController } from './api/rest/shop-finance.controller';
 import { FinanceMoneyEventProcessorService } from './app/services/finance-money-event-processor.service';
+import { RecordProviderFeeJob } from './jobs/record-provider-fee.job';
 import { PayoutAttemptService } from './app/services/payout-attempt.service';
 import { PayoutNotificationService } from './app/services/payout-notification.service';
 import { CommissionScheduleRepository } from './app/ports/commission-schedule.repository';
 import { JournalEntryRepository } from './app/ports/journal-entry.repository';
+import { ProviderFeeRepository } from './app/ports/provider-fee.repository';
 import { OrderPaidEventRepository } from './app/ports/order-paid-event.repository';
 import { PayoutAccountRepository } from './app/ports/payout-account.repository';
 import { PayoutCommandRepository } from './app/ports/payout-command.repository';
@@ -49,6 +51,7 @@ import { GetShopTransactionsUseCase } from './app/use-cases/get-shop-transaction
 import { PayShopUseCase } from './app/use-cases/pay-shop/pay-shop.use-case';
 import { RecordCommissionScheduleUseCase } from './app/use-cases/record-commission-schedule/record-commission-schedule.use-case';
 import { RecordOrderPaidJournalEntryUseCase } from './app/use-cases/record-order-paid-journal-entry/record-order-paid-journal-entry.use-case';
+import { RecordProviderFeeUseCase } from './app/use-cases/record-provider-fee/record-provider-fee.use-case';
 import { RecordOrderRefundJournalEntryUseCase } from './app/use-cases/record-order-refund-journal-entry/record-order-refund-journal-entry.use-case';
 import { RecordPayoutAvailabilityUseCase } from './app/use-cases/record-payout-availability/record-payout-availability.use-case';
 import { RecordShopPayoutAccountUseCase } from './app/use-cases/record-shop-payout-account/record-shop-payout-account.use-case';
@@ -66,6 +69,7 @@ import { PayoutLineEntity } from './infra/persistence/entities/payout-line.entit
 import { PayoutSettingsEntity } from './infra/persistence/entities/payout-settings.entity';
 import { PayoutEntity } from './infra/persistence/entities/payout.entity';
 import { PostingEntity } from './infra/persistence/entities/posting.entity';
+import { ProviderFeeEntity } from './infra/persistence/entities/provider-fee.entity';
 import { SellerPayableBalanceEntity } from './infra/persistence/entities/seller-payable-balance.entity';
 import { SettlementCurrencyHistoryEntity } from './infra/persistence/entities/settlement-currency-history.entity';
 import { MikroOrmCommissionScheduleRepository } from './infra/persistence/repositories/mikro-orm-commission-schedule.repository';
@@ -76,6 +80,7 @@ import { MikroOrmPayoutAvailabilityRepository } from './infra/persistence/reposi
 import { MikroOrmPayoutCommandRepository } from './infra/persistence/repositories/mikro-orm-payout-command.repository';
 import { MikroOrmPayoutQueryRepository } from './infra/persistence/repositories/mikro-orm-payout-query.repository';
 import { MikroOrmPayoutSettingsRepository } from './infra/persistence/repositories/mikro-orm-payout-settings.repository';
+import { MikroOrmProviderFeeRepository } from './infra/persistence/repositories/mikro-orm-provider-fee.repository';
 import { MikroOrmSellerPayableQueryRepository } from './infra/persistence/repositories/mikro-orm-seller-payable-query.repository';
 import { MikroOrmSellerPayableCommandRepository } from './infra/persistence/repositories/mikro-orm-seller-payable-command.repository';
 import { MikroOrmSettlementCurrencyRepository } from './infra/persistence/repositories/mikro-orm-settlement-currency.repository';
@@ -97,6 +102,7 @@ import { MikroOrmTransactionsQueryRepository } from './infra/persistence/reposit
     MikroOrmModule.forFeature([
       JournalEntryEntity,
       LedgerAccountEntity,
+      ProviderFeeEntity,
       PostingEntity,
       SellerPayableBalanceEntity,
       SettlementCurrencyHistoryEntity,
@@ -127,6 +133,10 @@ import { MikroOrmTransactionsQueryRepository } from './infra/persistence/reposit
     {
       provide: SellerPayableCommandRepository,
       useClass: MikroOrmSellerPayableCommandRepository,
+    },
+    {
+      provide: ProviderFeeRepository,
+      useClass: MikroOrmProviderFeeRepository,
     },
     {
       provide: PayoutAvailabilityRepository,
@@ -193,9 +203,11 @@ import { MikroOrmTransactionsQueryRepository } from './infra/persistence/reposit
     RequestManualPayoutUseCase,
     RunPayoutsUseCase,
     RetryPayoutUseCase,
+    RecordProviderFeeUseCase,
     PayoutAttemptService,
     PayoutNotificationService,
     FinanceMoneyEventProcessorService,
+    RecordProviderFeeJob,
   ],
   exports: [
     FinanceMoneyEventProcessorService,
@@ -203,6 +215,7 @@ import { MikroOrmTransactionsQueryRepository } from './infra/persistence/reposit
     RetryPayoutUseCase,
     PayoutQueryRepository,
     JournalEntryRepository,
+    RecordProviderFeeJob,
   ],
 })
 export class FinanceModule {}

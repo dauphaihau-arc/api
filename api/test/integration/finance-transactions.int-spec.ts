@@ -101,6 +101,10 @@ class UnusedPaymentGateway extends PaymentGateway {
   async retrieveRefund(): Promise<never> {
     throw new Error('PaymentGateway is not used by the transactions suite');
   }
+
+  async retrieveBalanceTransaction(): Promise<never> {
+    throw new Error('PaymentGateway is not used by the transactions suite');
+  }
 }
 
 function restoreProcessEnv(originalEnv: NodeJS.ProcessEnv) {

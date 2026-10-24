@@ -215,6 +215,10 @@ class FakePaymentGateway extends PaymentGateway {
   async retrieveRefund(refundId: string): Promise<never> {
     throw new Error(`No refund ${refundId} on this gateway`);
   }
+
+  async retrieveBalanceTransaction(reference: string): Promise<never> {
+    throw new Error(`No balance transaction ${reference} on this gateway`);
+  }
 }
 
 /**

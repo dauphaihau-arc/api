@@ -18,4 +18,5 @@ export abstract class SellerPayableQueryRepository {
     shopId: string,
     context?: FinanceRepositoryContext,
   ): Promise<SellerPayableBalance | null>;
+
 }

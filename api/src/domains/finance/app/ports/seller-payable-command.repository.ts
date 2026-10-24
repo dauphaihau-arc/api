@@ -56,4 +56,5 @@ export abstract class SellerPayableCommandRepository {
     amountMinor: number,
     context: FinanceRepositoryContext,
   ): Promise<void>;
+
 }

@@ -70,6 +70,10 @@ export interface AppJobPayloadMap {
   'finance.send-payout-failed-email': {
     payoutId: string;
   };
+  'finance.record-provider-fee': {
+    /** The provider's balance transaction, which carries the fee. */
+    balanceTransactionId: string;
+  };
   'order.cleanup-expired-order-reservations': {
     orderId: string;
     reservationId?: string;

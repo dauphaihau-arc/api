@@ -1,8 +1,6 @@
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
-import type { LedgerAccount } from '../../../domain/value-objects/ledger-account';
-import { ledgerAccountKey } from '../../../domain/value-objects/ledger-account';
 import type { JournalEntry } from '../../../domain/value-objects/journal-entry';
 import type { FinanceRepositoryContext } from '../../../app/ports/finance-repository-context';
 import {
@@ -10,6 +8,7 @@ import {
   type OrderMoneyBasis,
 } from '../../../app/ports/journal-entry.repository';
 import { paidOrderMoneyEventKey } from '../../../domain/rules/paid-order-postings';
+import { ensureLedgerAccountRow } from '../ledger-account';
 import { orderRefundMoneyEventKey } from '../../../domain/rules/order-refund-postings';
 
 @Injectable()
@@ -41,7 +40,7 @@ export class MikroOrmJournalEntryRepository implements JournalEntryRepository {
         randomUUID(),
         entry.moneyEventKey,
         entry.moneyEventKind,
-        entry.shopId,
+        entry.shopId ?? null,
         entry.currency,
         entry.occurredAt,
         entry.chargeCurrency ?? null,
@@ -62,9 +61,9 @@ export class MikroOrmJournalEntryRepository implements JournalEntryRepository {
     const journalEntryId = insertedEntries[0].id;
 
     for (const posting of entry.postings) {
-      const ledgerAccountId = await this.ensureLedgerAccount(
-        posting.account,
+      const ledgerAccountId = await ensureLedgerAccountRow(
         entityManager,
+        posting.account,
         now,
       );
 
@@ -86,6 +85,18 @@ export class MikroOrmJournalEntryRepository implements JournalEntryRepository {
     }
 
     return true;
+  }
+
+  async findIdByMoneyEventKey(
+    moneyEventKey: string,
+    context?: FinanceRepositoryContext,
+  ): Promise<string | null> {
+    const rows = await this.getEntityManager(context).execute<Array<{ id: string }>>(
+      'select "id" from journal_entries where "money_event_key" = ? limit 1',
+      [moneyEventKey],
+    );
+
+    return rows[0]?.id ?? null;
   }
 
   async findOrderSellerPayable(
@@ -197,42 +208,6 @@ export class MikroOrmJournalEntryRepository implements JournalEntryRepository {
     );
 
     return rows.map((row) => Number(row.chargeAmountMinor));
-  }
-
-  /**
-   * Resolves the ledger account row for a posting's account, creating it on
-   * first posting. Race-safe: the conflict-safe insert then a read by key.
-   */
-  private async ensureLedgerAccount(
-    account: LedgerAccount,
-    entityManager: EntityManager,
-    now: Date,
-  ): Promise<string> {
-    const accountKey = ledgerAccountKey(account);
-
-    // `DO UPDATE` rather than `DO NOTHING` so the insert always returns its row:
-    // with `DO NOTHING` a concurrent uncommitted insert would leave this select
-    // empty. Assigning the column to itself keeps the row unchanged.
-    const rows = await entityManager.execute<Array<{ id: string }>>(
-      `insert into ledger_accounts (
-         id, account_key, kind, currency, shop_id, created_at, updated_at
-       )
-       values (?, ?, ?, ?, ?, ?, ?)
-       on conflict (account_key) do update
-       set updated_at = ledger_accounts.updated_at
-       returning id`,
-      [
-        randomUUID(),
-        accountKey,
-        account.kind,
-        account.currency,
-        account.shopId ?? null,
-        now,
-        now,
-      ],
-    );
-
-    return rows[0].id;
   }
 
   private getEntityManager(context?: FinanceRepositoryContext): EntityManager {

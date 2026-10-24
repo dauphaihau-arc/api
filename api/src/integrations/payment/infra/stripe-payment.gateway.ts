@@ -4,11 +4,15 @@ import { MARKETPLACE_CURRENCIES } from '~/platform/config/marketplace.config';
 import type { PaymentConfig } from '~/platform/config/payment.config';
 import { PaymentGateway } from '../app/ports/payment-gateway';
 import type {
+  ChargeBalanceTransactionReference,
   CheckoutLineItemInput,
   CheckoutSessionDetails,
   CreateCheckoutSessionInput,
   CreateRefundOptions,
+  DisputeBalanceTransactionsReference,
   PaymentWebhookEvent,
+  ProviderBalanceTransaction,
+  RefundDetails,
 } from '../app/ports/payment-gateway';
 
 @Injectable()
@@ -158,6 +162,25 @@ export class StripePaymentGateway extends PaymentGateway {
     };
   }
 
+  async retrieveBalanceTransaction(
+    reference: string,
+  ): Promise<ProviderBalanceTransaction> {
+    const transaction = await this.requireStripe().balanceTransactions.retrieve(reference);
+
+    return {
+      id: transaction.id,
+      amountMinor: transaction.amount,
+      feeMinor: transaction.fee,
+      netMinor: transaction.net,
+      // Stripe reports currencies in lower case; the ledger stores ISO upper.
+      currency: transaction.currency.toUpperCase(),
+      createdAt: new Date(transaction.created * 1000),
+      availableAt: transaction.available_on
+        ? new Date(transaction.available_on * 1000)
+        : undefined,
+    };
+  }
+
   private requireStripe(): Stripe {
     if (!this.stripe) {
       throw new InternalServerErrorException('Stripe is not configured');
@@ -210,12 +233,18 @@ export class StripePaymentGateway extends PaymentGateway {
       case 'refund.updated':
       case 'refund.failed':
         return this.toRefundDetails(event.data.object as Stripe.Refund);
+      case 'charge.succeeded':
+      case 'charge.updated':
+      case 'charge.refunded':
+        return this.toChargeDetails(event.data.object as Stripe.Charge);
+      case 'charge.dispute.created':
+        return this.toDisputeDetails(event.data.object as Stripe.Dispute);
       default:
         return event.data.object;
     }
   }
 
-  private toRefundDetails(refund: Stripe.Refund) {
+  private toRefundDetails(refund: Stripe.Refund): RefundDetails {
     return {
       id: refund.id,
       paymentIntentId: typeof refund.payment_intent === 'string'
@@ -224,7 +253,42 @@ export class StripePaymentGateway extends PaymentGateway {
       status: refund.status ?? 'unknown',
       amount: refund.amount,
       failureReason: refund.failure_reason,
+      balanceTransactionId: this.toBalanceTransactionId(refund.balance_transaction),
     };
+  }
+
+  private toChargeDetails(charge: Stripe.Charge): ChargeBalanceTransactionReference {
+    return {
+      chargeId: charge.id,
+      balanceTransactionId: this.toBalanceTransactionId(charge.balance_transaction),
+    };
+  }
+
+  private toDisputeDetails(
+    dispute: Stripe.Dispute,
+  ): DisputeBalanceTransactionsReference {
+    // Stripe expands `balance_transactions`, but the id may arrive unexpanded,
+    // so both shapes are accepted.
+    const transactions =
+      (dispute.balance_transactions ?? []) as Array<string | Stripe.BalanceTransaction>;
+
+    return {
+      disputeId: dispute.id,
+      balanceTransactionIds: transactions
+        .map((transaction) =>
+          typeof transaction === 'string' ? transaction : transaction.id)
+        .filter((id): id is string => Boolean(id)),
+    };
+  }
+
+  private toBalanceTransactionId(
+    reference: string | Stripe.BalanceTransaction | null | undefined,
+  ): string | null {
+    if (!reference) {
+      return null;
+    }
+
+    return typeof reference === 'string' ? reference : reference.id;
   }
 
   private toCheckoutSessionDetails(
