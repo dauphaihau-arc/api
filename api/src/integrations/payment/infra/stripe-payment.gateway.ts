@@ -3,15 +3,19 @@ import Stripe from 'stripe';
 import { MARKETPLACE_CURRENCIES } from '~/platform/config/marketplace.config';
 import type { PaymentConfig } from '~/platform/config/payment.config';
 import { PaymentGateway } from '../app/ports/payment-gateway';
+import { toConnectAccountDetails } from './stripe-connect-account.mapper';
 import type {
   ChargeBalanceTransactionReference,
   CheckoutLineItemInput,
+  ConnectAccountChangedEvent,
   CheckoutSessionDetails,
+  ConnectedPayoutEventDetails,
   CreateCheckoutSessionInput,
   CreateRefundOptions,
   DisputeBalanceTransactionsReference,
   PaymentWebhookEvent,
   ProviderBalanceTransaction,
+  ProviderTransferEventDetails,
   RefundDetails,
 } from '../app/ports/payment-gateway';
 
@@ -216,6 +220,7 @@ export class StripePaymentGateway extends PaymentGateway {
     return {
       id: event.id,
       type: event.type,
+      account: event.account ?? undefined,
       data: {
         object: this.toWebhookObject(event),
       },
@@ -224,6 +229,18 @@ export class StripePaymentGateway extends PaymentGateway {
 
   private toWebhookObject(event: Stripe.Event): unknown {
     switch (event.type) {
+      case 'account.updated':
+        return toConnectAccountDetails(event.data.object as Stripe.Account);
+      case 'capability.updated':
+        return toConnectAccountChangedEvent(
+          event.data.object as Stripe.Capability,
+          event.account,
+        );
+      case 'person.updated':
+        return toConnectAccountChangedEvent(
+          event.data.object as Stripe.Person,
+          event.account,
+        );
       case 'checkout.session.completed':
       case 'checkout.session.expired':
         return this.toCheckoutSessionDetails(
@@ -239,9 +256,81 @@ export class StripePaymentGateway extends PaymentGateway {
         return this.toChargeDetails(event.data.object as Stripe.Charge);
       case 'charge.dispute.created':
         return this.toDisputeDetails(event.data.object as Stripe.Dispute);
+      case 'transfer.created':
+      case 'transfer.updated':
+      case 'transfer.reversed':
+        return this.toTransferEventDetails(event);
+      case 'payout.paid':
+      case 'payout.failed':
+        return this.toConnectedPayoutEventDetails(event);
       default:
         return event.data.object;
     }
+  }
+
+  /**
+   * A `transfer.*` event carries the transfer the platform created for a
+   * Payout. The object is reduced to the evidence Finance stores; the reversal
+   * list is summed here so the amount is one number regardless of how many
+   * partial reversals Stripe reported.
+   */
+  private toTransferEventDetails(event: Stripe.Event): ProviderTransferEventDetails {
+    const transfer = event.data.object as Stripe.Transfer;
+    const destination = transfer.destination;
+
+    const destinationAccountId =
+      (typeof destination === 'string' ? destination : destination?.id) ??
+      event.account ??
+      null;
+
+    const reversals = transfer.reversals?.data ?? [];
+
+    const reversedAmountMinor = reversals.reduce(
+      (sum, reversal) => sum + reversal.amount,
+      0,
+    );
+
+    return {
+      transferId: transfer.id,
+      amountMinor: transfer.amount,
+      currency: transfer.currency.toUpperCase(),
+      destinationAccountId,
+      reversedAmountMinor,
+      status: event.type === 'transfer.created'
+        ? 'created'
+        : event.type === 'transfer.reversed'
+          ? 'reversed'
+          : 'updated',
+      occurredAt: new Date(event.created * 1000),
+    };
+  }
+
+  /**
+   * A connected-account `payout.*` event reports Stripe paying the seller's
+   * bank. Its account is only on the event, and `arrival_date` is a timestamp:
+   * it is reduced to the provider's day so the evidence matches the payout
+   * calendar regardless of the webhook's time of day.
+   */
+  private toConnectedPayoutEventDetails(
+    event: Stripe.Event,
+  ): ConnectedPayoutEventDetails {
+    const payout = event.data.object as Stripe.Payout;
+    // `arrival_date` is a unix timestamp; the provider's UTC calendar day is
+    // what the payout calendar records.
+    const arrivalDate = new Date(payout.arrival_date * 1000)
+      .toISOString()
+      .slice(0, 10);
+
+    return {
+      payoutId: payout.id,
+      accountId: event.account ?? null,
+      status: event.type === 'payout.paid' ? 'paid' : 'failed',
+      amountMinor: payout.amount,
+      currency: payout.currency.toUpperCase(),
+      arrivalDate,
+      failureCode: payout.failure_code ?? null,
+      occurredAt: new Date(event.created * 1000),
+    };
   }
 
   private toRefundDetails(refund: Stripe.Refund): RefundDetails {
@@ -304,4 +393,31 @@ export class StripePaymentGateway extends PaymentGateway {
         : undefined,
     };
   }
+}
+
+/**
+ * A `capability.updated` or `person.updated` event names the connected account
+ * on the event, and again on the capability/person object as an id or an
+ * expanded object. Any of them identifies the account whose current state the
+ * handler must re-read.
+ */
+function toConnectAccountChangedEvent(
+  object: { account?: string | { id: string } | null },
+  eventAccount: string | undefined,
+): ConnectAccountChangedEvent {
+  if (eventAccount) {
+    return { accountId: eventAccount };
+  }
+
+  const account = object.account;
+
+  if (typeof account === 'string') {
+    return { accountId: account };
+  }
+
+  if (account && typeof account === 'object') {
+    return { accountId: account.id };
+  }
+
+  return { accountId: null };
 }

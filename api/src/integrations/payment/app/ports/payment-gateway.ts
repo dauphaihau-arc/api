@@ -45,6 +45,12 @@ export interface CheckoutSessionDetails {
 export interface PaymentWebhookEvent<TObject = unknown> {
   id: string;
   type: string;
+
+  /**
+   * The connected account a Stripe Connect event belongs to, when the event is
+   * a Connect event. Platform events leave it undefined.
+   */
+  account?: string;
   data: {
     object: TObject;
   };
@@ -100,6 +106,55 @@ export interface ChargeBalanceTransactionReference {
 export interface DisputeBalanceTransactionsReference {
   disputeId: string;
   balanceTransactionIds: string[];
+}
+
+/**
+ * A `capability.updated`/`person.updated` Connect event. It reports a change
+ * to a piece of the account Arc does not store — a capability's status or a
+ * person's verification — so the only useful content is which account changed.
+ * The handler re-reads that account instead of trusting the partial object.
+ */
+export interface ConnectAccountChangedEvent {
+  /** The connected account the capability or person belongs to, when named. */
+  accountId: string | null;
+}
+
+/**
+ * One `transfer.*` webhook for a platform transfer into a connected account.
+ *
+ * This is the provider's own report of the transfer that discharged a Payout.
+ * `reversedAmountMinor` sums the transfer reversals Stripe lists, so a partial
+ * reversal and a full one are both expressed in the same evidence row.
+ */
+export interface ProviderTransferEventDetails {
+  transferId: string;
+  amountMinor: number;
+  /** ISO 4217, uppercased. */
+  currency: string;
+  /** The connected account the transfer paid, when the provider names one. */
+  destinationAccountId: string | null;
+  reversedAmountMinor: number;
+  status: 'created' | 'updated' | 'reversed';
+  occurredAt: Date;
+}
+
+/**
+ * One connected-account `payout.paid`/`payout.failed` webhook: Stripe paying
+ * the connected account's bank, which Arc does not schedule and cannot see
+ * otherwise.
+ */
+export interface ConnectedPayoutEventDetails {
+  payoutId: string;
+  /** `event.account`, the connected account the payout belongs to. */
+  accountId: string | null;
+  status: 'paid' | 'failed';
+  amountMinor: number;
+  /** ISO 4217, uppercased. */
+  currency: string;
+  /** The provider's expected arrival date as `YYYY-MM-DD` (UTC). */
+  arrivalDate: string;
+  failureCode: string | null;
+  occurredAt: Date;
 }
 
 export interface CreateRefundOptions {

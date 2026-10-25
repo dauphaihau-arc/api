@@ -29,6 +29,25 @@ export interface ClaimPayoutInput {
    * from availability a refund may have changed in the meantime.
    */
   allocations: PayoutAllocation[];
+
+  /**
+   * The two currencies the claim names: `sourceCurrency` is the shop's
+   * Settlement Currency, `targetCurrency` the Payout Account's as the provider
+   * reports it.
+   *
+   * `transferCurrency` is the platform's provider balance currency and
+   * `transferAmountMinor` the shop amount converted into it at `fxRate`; those
+   * three are frozen so a retry sends exactly what was claimed. The
+   * destination amount stays null until the provider reports it, and
+   * `fxFeeMinor` is always `0` because the platform charges no conversion fee.
+   */
+  sourceCurrency: string;
+  targetCurrency: string;
+  transferCurrency: string;
+  transferAmountMinor: number;
+  fxRate: string;
+  targetAmountMinor: number | null;
+  fxFeeMinor: number;
 }
 
 /** A claimed Payout, as the run that claimed it reads it back. */
@@ -72,6 +91,21 @@ export interface PendingPayoutAttempt {
   source: PayoutSource;
   attemptCount: number;
   allocations: PayoutAllocation[];
+
+  /**
+   * The currencies, rate and transfer amount frozen at claim time, plus the
+   * provider's evidence once it settles. `transferCurrency`/`transferAmountMinor`
+   * are null on rows claimed before the platform-currency transfer existed;
+   * such a row transfers its shop-currency amount as before.
+   */
+  sourceCurrency: string | null;
+  targetCurrency: string | null;
+  transferCurrency: string | null;
+  transferAmountMinor: number | null;
+  fxRate: string | null;
+  targetAmountMinor: number | null;
+  fxFeeMinor: number | null;
+  providerFxRate: string | null;
 }
 
 /** The terminal failure to record on a still-`pending` Payout. */
@@ -88,6 +122,15 @@ export interface SettlePayoutInput {
   providerReference: string;
   paidAt: Date;
   orders: PayableOrderAmount[];
+
+  /**
+   * The rate the provider applied and the destination amount it derived, both
+   * as the provider reported them. `null` when the adapter returned no evidence
+   * (a same-currency transfer or the local adapter): the claim-time columns are
+   * left as they are rather than being guessed.
+   */
+  providerFxRate: string | null;
+  targetAmountMinor: number | null;
 }
 
 /**
@@ -126,9 +169,10 @@ export abstract class PayoutCommandRepository {
   ): Promise<boolean>;
 
   /**
-   * Records the provider's reference on the claimed Payout and the Orders it
-   * discharged, returning `true` only when this call moved the Payout from
-   * `pending` to `paid`.
+   * Records the provider's reference, the rate it applied and the destination
+   * amount it derived on the claimed Payout, and the Orders it discharged,
+   * returning `true` only when this call moved the Payout from `pending` to
+   * `paid`.
    *
    * Race-safe: an already-settled Payout is left as it is rather than written
    * twice, and the caller must not discharge anything when `false` comes back.

@@ -1,11 +1,28 @@
 import { EntityManager } from '@mikro-orm/postgresql';
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { createPublicId } from '~/platform/ids/public-id';
+import {
+  PAYOUT_CONFIG,
+  type PayoutConfig,
+} from '~/platform/config/payout.config';
+import {
+  PAYOUT_CONNECT_COUNTRIES_CONFIG,
+  type PayoutConnectCountriesConfig,
+} from '~/platform/config/payout-country.config';
+import { MoneyConversionService } from '~/integrations/currency/money-conversion.service';
+import {
+  PayoutGateway,
+  type PayoutProviderBalance,
+} from '~/integrations/payment/app/ports/payout-gateway';
 import { PayoutAttemptService } from '../../services/payout-attempt.service';
+import { resolvePayoutAccountBlockReason } from '../../services/payout-eligibility';
+import {
+  resolveProviderFundingBlock,
+  type ProviderFundingBlock,
+} from '../../services/payout-funding';
 import {
   PayoutAccountRepository,
   type PayoutAccountPaymentTarget,
-  type PayoutAccountRecord,
 } from '../../ports/payout-account.repository';
 import {
   PayoutCommandRepository,
@@ -20,14 +37,15 @@ import {
   NoPayableAmountError,
   PayoutAccountUnusableError,
   PayoutAmountExceedsAvailableError,
+  PayoutConversionRateUnavailableError,
   PayoutPendingError,
+  ProviderBalancePendingError,
 } from '../../errors/finance-app.error';
 import { PayoutAmountNotPositiveError } from '../../../domain/errors/finance-domain.error';
 import {
   allocatePayoutOrders,
   netPayableMinor,
   type PayoutAllocation,
-  type PayoutBlockReason,
   type PayoutSource,
 } from '../../../domain/rules/payout';
 
@@ -36,11 +54,15 @@ export type PayShopOutcome = 'paid' | 'retrying' | 'failed' | 'blocked' | 'skipp
 
 export interface PayShopInput {
   shopId: string;
+
   /** The shop's Settlement Currency, as the run or the withdrawal resolved it. */
   currency: string;
+
   /** The platform day the attempt belongs to, as `YYYY-MM-DD`. */
   runDay: string;
+
   source: PayoutSource;
+
   /** The platform month the attempt belongs to, as `YYYY-MM`. */
   periodKey: string;
 
@@ -66,6 +88,30 @@ export interface PayShopResult {
   payout: PayoutRecord | null;
 }
 
+/** The conversion the claim froze, so the attempt sends exactly what it claimed. */
+interface PayoutTransferQuote {
+  transferCurrency: string;
+  transferAmountMinor: number;
+  fxRate: string;
+}
+
+/** The provider balance snapshot shared by one attempt's funding checks. */
+interface ProviderBalanceCache {
+  balance?: Promise<PayoutProviderBalance | null>;
+}
+
+/** Either the freezeable transfer, or why the provider cannot fund it yet. */
+type ResolvedTransfer =
+  | PayoutTransferQuote
+  | {
+    blocked: {
+      transferCurrency: string;
+      transferAmountMinor: number;
+      state: 'pending' | 'unfunded' | 'insufficient';
+      reason: ProviderFundingBlock;
+    };
+  };
+
 /** What the locked read-and-claim decision produced for one shop. */
 type PayoutDecision =
   | { kind: 'skipped' }
@@ -77,6 +123,7 @@ type PayoutDecision =
     target: PayoutAccountPaymentTarget;
     amountMinor: number;
     allocations: PayoutAllocation[];
+    transfer: PayoutTransferQuote;
   };
 
 /**
@@ -93,6 +140,11 @@ type PayoutDecision =
  * The two sources differ only in what an unusable account means and in how a
  * claim rejection is reported: a scheduled run records a Blocked fact and skips,
  * while a seller's request is refused with an error before writing anything.
+ *
+ * The claim also converts the shop-currency amount into the platform's provider
+ * balance currency and checks the provider can fund it. Both are frozen on the
+ * row so a retry sends exactly what was claimed; a balance that cannot fund the
+ * transfer is refused (manual) or skipped (scheduled) rather than retried.
  */
 @Injectable()
 export class PayShopUseCase {
@@ -105,9 +157,19 @@ export class PayShopUseCase {
     private readonly payoutAccountRepository: PayoutAccountRepository,
     private readonly sellerPayableQueryRepository: SellerPayableQueryRepository,
     private readonly payoutAttemptService: PayoutAttemptService,
+    private readonly moneyConversionService: MoneyConversionService,
+    private readonly payoutGateway: PayoutGateway,
+    @Inject(PAYOUT_CONFIG)
+    private readonly payoutConfig: PayoutConfig,
+    @Inject(PAYOUT_CONNECT_COUNTRIES_CONFIG)
+    private readonly payoutConnectCountriesConfig: PayoutConnectCountriesConfig,
   ) {}
 
   async execute(input: PayShopInput): Promise<PayShopResult> {
+    // One provider balance read per attempt: the currency is the platform's, so
+    // the same snapshot answers every check this run makes.
+    const balanceCache: ProviderBalanceCache = {};
+
     const decision = await this.entityManager.transactional(
       async (entityManager): Promise<PayoutDecision> => {
         const context = { entityManager };
@@ -181,9 +243,20 @@ export class PayShopUseCase {
           context,
         );
 
-        const blockReason = this.resolveBlockReason(account, input.currency);
+        const blockReason = resolvePayoutAccountBlockReason(
+          account,
+          this.payoutConnectCountriesConfig.countries,
+        );
 
         if (blockReason) {
+          if (blockReason === 'payout_account_country_unsupported') {
+            // The account predates the allowlist narrowing; Stripe would refuse
+            // the transfer, so the run records a Blocked Payout instead.
+            this.logger.warn(
+              `Shop ${input.shopId} has a payout account in ${account?.country ?? 'an unknown country'}, outside the supported payout countries; skipping ${input.source} payout`,
+            );
+          }
+
           if (input.source === 'manual') {
             // A manual withdrawal is the seller's own request, so it is refused
             // rather than recorded as a Blocked Payout the seller never scheduled.
@@ -224,6 +297,36 @@ export class PayShopUseCase {
           return { kind: 'skipped' };
         }
 
+        // The provider moves money out of the platform's own balance, so the
+        // shop amount is converted into that balance's currency before anything
+        // is claimed, and the balance is checked in that currency.
+        const transfer = await this.resolveTransferQuote(
+          input.currency,
+          amountMinor,
+          balanceCache,
+        );
+
+        if ('blocked' in transfer) {
+          if (input.source === 'manual') {
+            throw new ProviderBalancePendingError(
+              transfer.blocked.transferCurrency,
+              transfer.blocked.state,
+            );
+          }
+
+          const { blocked } = transfer;
+
+          const fundingAmount = blocked.transferCurrency === input.currency
+            ? `${blocked.transferAmountMinor} ${blocked.transferCurrency}`
+            : `${blocked.transferAmountMinor} ${blocked.transferCurrency} (from ${amountMinor} ${input.currency})`;
+
+          this.logger.warn(
+            `Shop ${input.shopId} skipped its ${input.source} payout: the provider cannot fund ${fundingAmount} yet (${blocked.reason})`,
+          );
+
+          return { kind: 'skipped' };
+        }
+
         // The claim is what keeps a later run in the same month, or either
         // source while an earlier transfer is still pending, from calling the
         // provider again.
@@ -240,6 +343,17 @@ export class PayShopUseCase {
             requestedByUserId: input.requestedByUserId,
             quotaConsumed: input.quotaConsumed,
             allocations,
+            // The ledger discharges the shop-currency amount; the transfer is
+            // denominated in the platform balance currency at the frozen rate,
+            // and the destination amount stays empty until the provider reports
+            // what it actually applied.
+            sourceCurrency: input.currency,
+            targetCurrency: target.currency,
+            transferCurrency: transfer.transferCurrency,
+            transferAmountMinor: transfer.transferAmountMinor,
+            fxRate: transfer.fxRate,
+            targetAmountMinor: null,
+            fxFeeMinor: 0,
           },
           context,
         );
@@ -254,6 +368,7 @@ export class PayShopUseCase {
           target,
           amountMinor,
           allocations,
+          transfer,
         };
       },
     );
@@ -275,6 +390,7 @@ export class PayShopUseCase {
       target,
       amountMinor,
       allocations,
+      transfer,
     } = decision;
 
     // One provider attempt, bounded and shared with the retry job. A failure
@@ -288,6 +404,11 @@ export class PayShopUseCase {
         currency: payout.currency,
         amountMinor,
         source: input.source,
+        targetCurrency: target.currency,
+        transferCurrency: transfer.transferCurrency,
+        transferAmountMinor: transfer.transferAmountMinor,
+        fxRate: transfer.fxRate,
+        targetAmountMinor: null,
       },
       target,
       allocations,
@@ -301,6 +422,85 @@ export class PayShopUseCase {
       outcome,
       payout: await this.payoutQueryRepository.findById(payout.id),
     };
+  }
+
+  /**
+   * Converts the shop-currency amount into the platform balance currency and
+   * checks the provider holds enough of it, returning what the claim freezes or
+   * why the transfer cannot be funded yet.
+   *
+   * The rate is required: a Payout whose transfer amount nobody can state would
+   * otherwise be claimed and then fail at the provider. The balance read is
+   * cached for the whole attempt, so this costs one provider call at most.
+   */
+  private async resolveTransferQuote(
+    shopCurrency: string,
+    amountMinor: number,
+    balanceCache: ProviderBalanceCache,
+  ): Promise<ResolvedTransfer> {
+    const transferCurrency = this.payoutConfig.platformCurrency;
+
+    let transferAmountMinor: number;
+    let fxRate: string;
+
+    if (shopCurrency === transferCurrency) {
+      // Identity conversion: no rate is invented for it, and `'1'` states that
+      // explicitly so the stored row never has an empty rate.
+      transferAmountMinor = amountMinor;
+      fxRate = '1';
+    }
+    else {
+      const converted = await this.moneyConversionService.convert({
+        amountMinor,
+        fromCurrency: shopCurrency,
+        toCurrency: transferCurrency,
+      });
+
+      if (!converted) {
+        throw new PayoutConversionRateUnavailableError(
+          shopCurrency,
+          transferCurrency,
+        );
+      }
+
+      transferAmountMinor = converted.amountMinor;
+
+      // A same-currency conversion cannot reach this branch; the fallback only
+      // keeps a provider-supplied rate from being replaced by an empty string.
+      fxRate = converted.fx?.rate ?? '1';
+    }
+
+    const balance = await this.readProviderBalanceOnce(
+      balanceCache,
+      transferCurrency,
+    );
+    const block = resolveProviderFundingBlock(balance, transferAmountMinor);
+
+    if (block === null) {
+      return { transferCurrency, transferAmountMinor, fxRate };
+    }
+
+    return {
+      blocked: {
+        transferCurrency,
+        transferAmountMinor,
+        state: block === 'provider_balance_pending'
+          ? 'pending'
+          : block === 'provider_currency_unfunded'
+            ? 'unfunded'
+            : 'insufficient',
+        reason: block,
+      },
+    };
+  }
+
+  private readProviderBalanceOnce(
+    cache: ProviderBalanceCache,
+    currency: string,
+  ): Promise<PayoutProviderBalance | null> {
+    cache.balance ??= this.payoutGateway.retrieveBalance(currency);
+
+    return cache.balance;
   }
 
   /**
@@ -331,30 +531,4 @@ export class PayShopUseCase {
     throw new NoPayableAmountError(input.shopId);
   }
 
-  /**
-   * The reason a shop cannot be paid right now, or `null` when its account is a
-   * usable destination in the shop's Settlement Currency.
-   */
-  private resolveBlockReason(
-    account: PayoutAccountRecord | null,
-    currency: string,
-  ): PayoutBlockReason | null {
-    if (!account) {
-      return 'no_payout_account';
-    }
-
-    if (account.status === 'pending') {
-      return 'payout_account_unverified';
-    }
-
-    if (account.status === 'disabled') {
-      return 'payout_account_disabled';
-    }
-
-    if (account.currency !== currency) {
-      return 'payout_account_currency_mismatch';
-    }
-
-    return null;
-  }
 }

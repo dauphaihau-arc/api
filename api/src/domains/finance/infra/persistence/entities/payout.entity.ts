@@ -18,7 +18,10 @@ import { PayoutAccountEntity } from './payout-account.entity';
 
 /**
  * One transfer of a shop's Available Seller Payable into the Payout Account it
- * paid, in the shop's Settlement Currency, with no conversion at payout time.
+ * paid. The amount and currency are the shop's Settlement Currency, which is
+ * what the ledger discharges; the claim converts it into the platform's provider
+ * balance currency (`transfer_currency`/`transfer_amount_minor`) and freezes that
+ * conversion on the row.
  *
  * A row is claimed as `pending` before the provider is called, so neither a
  * second run nor a second manual withdrawal can pay the same balance again. The
@@ -62,6 +65,61 @@ export class PayoutEntity extends AbstractBaseEntity {
 
   @Property({ fieldName: 'amount_minor' })
   amountMinor!: number;
+
+  /**
+   * The currency the transfer is denominated in — the platform's own provider
+   * balance currency — and the claim-time amount in it. `currency` and
+   * `amountMinor` stay the shop-currency amounts the ledger discharges.
+   * `fxRate` below is the rate this conversion applied; null on rows claimed
+   * before the platform-currency transfer existed.
+   */
+  @Property({ fieldName: 'transfer_currency', length: 3, nullable: true })
+  transferCurrency?: string;
+
+  @Property({ fieldName: 'transfer_amount_minor', type: 'bigint', nullable: true })
+  transferAmountMinor?: number;
+
+  /**
+   * The shop's Settlement Currency and the Payout Account's currency, the
+   * claim-time conversion rate, and the provider's authoritative rate and
+   * destination amount, written on settle. Null on rows claimed before
+   * cross-currency payout accounts existed.
+   */
+  @Property({ fieldName: 'source_currency', length: 3, nullable: true })
+  sourceCurrency?: string;
+
+  @Property({ fieldName: 'target_currency', length: 3, nullable: true })
+  targetCurrency?: string;
+
+  /**
+   * The claim-time rate that converted the shop-currency amount into
+   * `transfer_currency`, as text; `'1'` for an identity conversion. The
+   * provider's rate into the destination currency lands in `provider_fx_rate`.
+   */
+  @Property({ fieldName: 'fx_rate', type: 'text', nullable: true })
+  fxRate?: string;
+
+  /**
+   * The destination amount in the target currency. Null until the provider
+   * reports one, then the authoritative amount it derived.
+   */
+  @Property({ fieldName: 'target_amount_minor', type: 'bigint', nullable: true })
+  targetAmountMinor?: number;
+
+  /**
+   * The conversion rate the provider applied, as text exactly as reported. This
+   * is the authoritative rate; the claim-time estimate is superseded by it.
+   */
+  @Property({ fieldName: 'provider_fx_rate', type: 'text', nullable: true })
+  providerFxRate?: string | null;
+
+  /**
+   * The disclosed conversion fee, in source-currency minor units. The platform
+   * charges none, so new rows write `0`; the column survives for historical
+   * rows.
+   */
+  @Property({ fieldName: 'fx_fee_minor', type: 'bigint', default: 0 })
+  fxFeeMinor = 0;
 
   @Property({ fieldName: 'state', length: 16 })
   state!: PayoutState;

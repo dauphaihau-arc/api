@@ -1,6 +1,5 @@
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { FieldEncryptionService } from '~/platform/crypto/field-encryption.service';
 import { Clock } from '~/platform/time/clock';
 import {
   PAYOUT_CONFIG,
@@ -8,6 +7,7 @@ import {
 } from '~/platform/config/payout.config';
 import {
   PayoutGateway,
+  PayoutTransferPermanentError,
   type PayoutTransferInput,
 } from '~/integrations/payment/app/ports/payout-gateway';
 import { JobDispatcher } from '~/integrations/queue/app/ports/job-dispatcher';
@@ -20,7 +20,9 @@ import { PayoutCommandRepository } from '../ports/payout-command.repository';
 import { SellerPayableCommandRepository } from '../ports/seller-payable-command.repository';
 import {
   buildPaidPayoutPostings,
+  buildPayoutFxPostings,
   paidPayoutMoneyEventKey,
+  payoutFxMoneyEventKey,
   payoutRetryDelayMs,
   type PayoutAllocation,
   type PayoutSource,
@@ -28,6 +30,7 @@ import {
 import { PayoutNotificationService } from './payout-notification.service';
 
 const PAID_PAYOUT_MONEY_EVENT_KIND = 'payout.paid';
+const PAID_PAYOUT_FX_MONEY_EVENT_KIND = 'payout.fx';
 
 /** What one provider attempt on a claimed Payout did. */
 export type PayoutAttemptOutcome = 'paid' | 'retrying' | 'failed' | 'skipped';
@@ -40,6 +43,18 @@ export interface PayoutAttemptInput {
     currency: string;
     amountMinor: number;
     source: PayoutSource;
+
+    /**
+     * The account currency, the frozen transfer currency/amount and the rate
+     * that produced them. The transfer fields are null on rows claimed before
+     * platform-currency transfers; such a row sends its shop-currency amount.
+     * The destination amount stays null until the provider reports it.
+     */
+    targetCurrency: string | null;
+    transferCurrency: string | null;
+    transferAmountMinor: number | null;
+    fxRate: string | null;
+    targetAmountMinor: number | null;
   };
 
   /** The destination captured when the Payout was claimed, not the shop's current one. */
@@ -53,13 +68,15 @@ export interface PayoutAttemptInput {
  * Sends one claimed Payout through the provider port and records what happened.
  *
  * Success settles the Payout, its Journal Entry, and the discharge of Seller
- * Payable in one transaction, then notifies the seller once. Failure never holds
- * the caller open: the same `pending` row keeps its claim, its failure count
- * grows, and the next bounded attempt is a delayed job (`payout.retry`) rather
- * than a sleep. When no attempt is left, the Payout becomes `failed` with the
- * provider's reason — no balance moves and no Journal Entry is written — and the
- * seller hears about it once. A manual failure gives its monthly quota back so
- * the seller can choose to try again; a scheduled one keeps the month consumed.
+ * Payable in one transaction, then notifies the seller once. A transient
+ * failure never holds the caller open: the same `pending` row keeps its claim,
+ * its failure count grows, and the next bounded attempt is a delayed job
+ * (`payout.retry`) rather than a sleep. A failure the provider will keep
+ * refusing (a 4xx) is terminal at once: no retry is scheduled. When no attempt
+ * is left, the Payout becomes `failed` with the provider's reason — no balance
+ * moves and no Journal Entry is written — and the seller hears about it once. A
+ * manual failure gives its monthly quota back so the seller can choose to try
+ * again; a scheduled one keeps the month consumed.
  */
 @Injectable()
 export class PayoutAttemptService {
@@ -72,7 +89,6 @@ export class PayoutAttemptService {
     private readonly sellerPayableRepository: SellerPayableCommandRepository,
     private readonly journalEntryRepository: JournalEntryRepository,
     private readonly payoutGateway: PayoutGateway,
-    private readonly fieldEncryptionService: FieldEncryptionService,
     private readonly payoutNotificationService: PayoutNotificationService,
     private readonly jobDispatcher: JobDispatcher,
     private readonly clock: Clock,
@@ -102,6 +118,10 @@ export class PayoutAttemptService {
           providerReference: transfer.reference,
           paidAt,
           orders: input.allocations,
+          // The provider's conversion evidence supersedes the claim-time
+          // estimate: it is what actually reached the destination account.
+          providerFxRate: transfer.providerFxRate ?? null,
+          targetAmountMinor: transfer.targetAmountMinor ?? null,
         },
         { entityManager },
       );
@@ -125,6 +145,34 @@ export class PayoutAttemptService {
         },
         { entityManager },
       );
+
+      // A converted Payout moves money out of the platform balance in the
+      // transfer currency, which the shop-currency entry above never touches.
+      // The platform-currency leg is its own entry so both currencies balance
+      // on their own; it names no shop.
+      const conversion = this.convertedTransfer(payout);
+
+      if (conversion) {
+        await this.journalEntryRepository.append(
+          {
+            moneyEventKey: payoutFxMoneyEventKey(payout.id),
+            moneyEventKind: PAID_PAYOUT_FX_MONEY_EVENT_KIND,
+            currency: conversion.currency,
+            occurredAt: paidAt,
+            // The Payout row keeps the claim-time rate but not the row it came
+            // from, so the entry records the rate with the entry's occurrence.
+            fx: payout.fxRate
+              ? {
+                rate: payout.fxRate,
+                source: 'payout_claim',
+                effectiveAt: paidAt,
+              }
+              : undefined,
+            postings: buildPayoutFxPostings(conversion),
+          },
+          { entityManager },
+        );
+      }
 
       await this.sellerPayableRepository.dischargeAvailable(
         payout.shopId,
@@ -152,6 +200,28 @@ export class PayoutAttemptService {
   }
 
   /**
+   * The transfer facts of a Payout whose money left the platform balance in a
+   * currency other than the shop's. `null` for a same-currency Payout and for
+   * rows claimed before the platform-currency transfer: neither moves money the
+   * shop-currency entry has not already accounted for.
+   */
+  private convertedTransfer(
+    payout: PayoutAttemptInput['payout'],
+  ): { currency: string; amountMinor: number } | null {
+    const { currency, transferCurrency, transferAmountMinor } = payout;
+
+    if (
+      !transferCurrency
+      || transferAmountMinor === null
+      || transferCurrency === currency
+    ) {
+      return null;
+    }
+
+    return { currency: transferCurrency, amountMinor: transferAmountMinor };
+  }
+
+  /**
    * Records a failed attempt and decides what happens next: schedule the next
    * bounded attempt, or make the failure terminal. A failure whose row is no
    * longer `pending` belongs to a resolve that already won, so it writes nothing.
@@ -174,6 +244,13 @@ export class PayoutAttemptService {
     this.logger.warn(
       `Payout ${payout.id} for shop ${payout.shopId} failed attempt ${failedAttempts}: ${reason}`,
     );
+
+    // A permanently refused transfer cannot become possible in minutes: the
+    // same request would be refused again. It fails once, with one
+    // notification, instead of spending the retry schedule.
+    if (error instanceof PayoutTransferPermanentError) {
+      return this.markTerminallyFailed(input, reason);
+    }
 
     const delayMs = payoutRetryDelayMs(
       failedAttempts + 1,
@@ -233,6 +310,10 @@ export class PayoutAttemptService {
 
   private buildTransferInput(input: PayoutAttemptInput): PayoutTransferInput {
     const { payout, target } = input;
+    // A Payout claimed before platform-currency transfers sent its
+    // shop-currency amount, which is what its row says.
+    const transferCurrency = payout.transferCurrency ?? payout.currency;
+    const transferAmountMinor = payout.transferAmountMinor ?? payout.amountMinor;
 
     return {
       // The Payout's own public id is the provider idempotency key, so a retry
@@ -241,12 +322,14 @@ export class PayoutAttemptService {
       provider: target.provider,
       amountMinor: payout.amountMinor,
       currency: payout.currency,
+      transferCurrency,
+      transferAmountMinor,
+      targetCurrency: payout.targetCurrency ?? payout.currency,
+      targetAmountMinor: payout.targetAmountMinor,
+      fxRate: payout.fxRate ?? '1',
       destination: {
-        holderName: target.holderName,
-        bankName: target.bankName,
+        providerAccountId: target.providerAccountId,
         country: target.country,
-        last4: target.last4,
-        reference: this.fieldEncryptionService.decrypt(target.providerRefEncrypted),
       },
     };
   }

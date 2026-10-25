@@ -15,8 +15,29 @@ describe('buildPayoutConfig', () => {
       manualWithdrawalUnlimited: false,
       autoPayoutForceDue: false,
       retryDelaysMs: [60_000, 300_000, 900_000],
+      platformCurrency: 'USD',
     });
   });
+
+  it('defaults the platform currency to USD', () => {
+    expect(buildPayoutConfig(configFrom({})).platformCurrency).toBe('USD');
+  });
+
+  it('reads and normalizes the platform currency', () => {
+    expect(
+      buildPayoutConfig(configFrom({ PAYOUT_PLATFORM_CURRENCY: ' eur ' }))
+        .platformCurrency,
+    ).toBe('EUR');
+  });
+
+  it.each(['', 'US', 'USDX', 'US1', 'ZZZ', 'dollars'])(
+    'rejects the invalid platform currency %p',
+    (value) => {
+      expect(() =>
+        buildPayoutConfig(configFrom({ PAYOUT_PLATFORM_CURRENCY: value })),
+      ).toThrow(/PAYOUT_PLATFORM_CURRENCY/);
+    },
+  );
 
   it('reads a valid auto payout day', () => {
     expect(

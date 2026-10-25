@@ -17,16 +17,15 @@ const shopNotFound = [{ code: 'NOT_FOUND', message: 'Shop was not found' }];
 const payoutAccountInvalid = [
   {
     code: 'PAYOUT_ACCOUNT_INVALID',
-    message:
-      'Payout Account is invalid: account reference must be 4 to 34 letters, digits or dashes',
+    message: 'Payout Account is invalid: country must be an ISO 3166-1 alpha-2 code',
   },
 ];
 
-const payoutAccountCurrencyMismatch = [
+const payoutAccountCountryUnsupported = [
   {
-    code: 'PAYOUT_ACCOUNT_CURRENCY_MISMATCH',
+    code: 'PAYOUT_ACCOUNT_COUNTRY_UNSUPPORTED',
     message:
-      'Payout Account currency VND does not match the shop\'s Settlement Currency USD',
+      'Stripe Connect does not support onboarding sellers in XX; contact support to arrange another payout route',
   },
 ];
 
@@ -47,7 +46,6 @@ export const shopFinanceControllerErrorResponses = {
     404: [...shopNotFound],
   },
   payoutAccountRead: {
-    400: [...payoutAccountCurrencyMismatch],
     403: [...shopForbidden],
     404: [...shopNotFound],
   },
@@ -65,10 +63,23 @@ export const shopFinanceControllerErrorResponses = {
     403: [...shopForbidden],
     404: [...shopNotFound],
   },
-  payoutAccountRecord: {
-    400: [...payoutAccountInvalid],
+  payoutAccountOnboarding: {
+    400: [...payoutAccountInvalid, ...payoutAccountCountryUnsupported],
     403: [...shopForbidden],
     404: [...shopNotFound],
+    502: [
+      {
+        code: 'CONNECT_ACCOUNT_CONFIGURATION_ERROR',
+        message:
+          'Stripe Connect cannot onboard sellers with the current configuration',
+      },
+    ],
+    503: [
+      {
+        code: 'PAYOUT_PROVIDER_NOT_CONFIGURED',
+        message: 'Stripe Connect is not configured',
+      },
+    ],
   },
   payoutSettingsRead: {
     403: [...shopForbidden],
@@ -136,6 +147,31 @@ export const shopFinanceControllerErrorResponses = {
       },
     ],
   },
+  payoutQuote: {
+    400: [
+      {
+        code: 'PAYOUT_ACCOUNT_UNUSABLE',
+        message:
+          'Shop 8f1c2e5a-3b7d-4c9e-9a01-2d5e7a9c4b18 has no usable Payout Account for a manual withdrawal: no_payout_account',
+      },
+      {
+        code: 'PAYOUT_AMOUNT_NOT_POSITIVE',
+        message: 'Payout amount 0 minor units is not positive',
+      },
+      {
+        code: 'VALIDATION_ERROR',
+        message: 'amount_minor must be an integer number',
+      },
+    ],
+    403: [...shopForbidden],
+    404: [...shopNotFound],
+    503: [
+      {
+        code: 'PAYOUT_CONVERSION_RATE_UNAVAILABLE',
+        message: 'No exchange rate converts a payout from USD to VND',
+      },
+    ],
+  },
   manualPayout: {
     400: [
       {
@@ -170,6 +206,12 @@ export const shopFinanceControllerErrorResponses = {
           'Shop 8f1c2e5a-3b7d-4c9e-9a01-2d5e7a9c4b18 has a Payout that is still pending; wait for it to settle before withdrawing again',
       },
     ],
+    503: [
+      {
+        code: 'PAYOUT_CONVERSION_RATE_UNAVAILABLE',
+        message: 'No exchange rate converts a payout from USD to VND',
+      },
+    ],
   },
 };
 
@@ -186,18 +228,7 @@ export const adminPayoutAccountControllerErrorResponses = {
     500: [internalServerErrorExample],
   },
   read: {
-    400: [...payoutAccountCurrencyMismatch],
     404: [...shopNotFound],
-  },
-  verification: {
-    400: [...payoutAccountInvalid],
-    404: [
-      ...shopNotFound,
-      {
-        code: 'PAYOUT_ACCOUNT_NOT_FOUND',
-        message: 'Shop 8f1c2e5a-3b7d-4c9e-9a01-2d5e7a9c4b18 has no Payout Account to verify',
-      },
-    ],
   },
 };
 

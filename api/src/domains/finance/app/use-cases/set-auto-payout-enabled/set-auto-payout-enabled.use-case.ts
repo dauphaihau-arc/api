@@ -1,5 +1,9 @@
 import { Clock } from '~/platform/time/clock';
-import { Injectable } from '@nestjs/common';
+import {
+  PAYOUT_CONNECT_COUNTRIES_CONFIG,
+  type PayoutConnectCountriesConfig,
+} from '~/platform/config/payout-country.config';
+import { Inject, Injectable } from '@nestjs/common';
 import { AuditLogService } from '~/integrations/audit/app/audit-log.service';
 import {
   PayoutSettingsRepository,
@@ -29,6 +33,8 @@ export class SetAutoPayoutEnabledUseCase {
     private readonly settlementCurrencyRepository: SettlementCurrencyRepository,
     private readonly auditLogService: AuditLogService,
     private readonly clock: Clock,
+    @Inject(PAYOUT_CONNECT_COUNTRIES_CONFIG)
+    private readonly payoutConnectCountriesConfig: PayoutConnectCountriesConfig,
   ) {}
 
   async execute(
@@ -39,7 +45,11 @@ export class SetAutoPayoutEnabledUseCase {
         this.payoutAccountRepository.findActiveByShopId(input.shopId),
         this.settlementCurrencyRepository.ensureCurrentCurrency(input.shopId),
       ]);
-      const eligibility = resolveAutoPayoutEligibility(account, settlementCurrency);
+      const eligibility = resolveAutoPayoutEligibility(
+        account,
+        settlementCurrency,
+        this.payoutConnectCountriesConfig.countries,
+      );
 
       if (!eligibility.eligible) {
         throw new AutoPayoutIneligibleError(

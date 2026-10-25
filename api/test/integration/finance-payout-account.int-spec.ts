@@ -20,7 +20,6 @@ import { RequestLoggingInterceptor } from '~/platform/logging/request-logging.in
 import { buildDatabaseConfig } from '~/platform/config/database.config';
 import { RequestContextService } from '~/platform/request-context/request-context.service';
 import { ObservabilityService } from '~/platform/observability/observability.service';
-import { FieldEncryptionService } from '~/platform/crypto/field-encryption.service';
 import { PermissionEntity } from '~/domains/auth/infra/persistence/entities/permission.entity';
 import { RolePermissionEntity } from '~/domains/auth/infra/persistence/entities/role-permission.entity';
 import { RoleEntity } from '~/domains/auth/infra/persistence/entities/role.entity';
@@ -71,12 +70,6 @@ class NoopJobDispatcher extends JobDispatcher {
 }
 
 class FakePaymentGateway extends PaymentGateway {
-  private nextEvent: PaymentWebhookEvent | null = null;
-
-  queueEvent(event: PaymentWebhookEvent): void {
-    this.nextEvent = event;
-  }
-
   async createCheckoutSession(_input: CreateCheckoutSessionInput): Promise<CheckoutSessionResult> {
     const id = `cs_test_${randomUUID().replace(/-/g, '')}`;
     return {
@@ -86,11 +79,8 @@ class FakePaymentGateway extends PaymentGateway {
     };
   }
 
-  constructWebhookEvent(_payload: Buffer, _signature?: string): PaymentWebhookEvent {
-    if (!this.nextEvent) throw new Error('No webhook event queued on FakePaymentGateway');
-    const event = this.nextEvent;
-    this.nextEvent = null;
-    return event;
+  constructWebhookEvent(): PaymentWebhookEvent {
+    throw new Error('No webhook event in this suite');
   }
 
   async retrieveCheckoutSession(sessionId: string): Promise<{
@@ -114,7 +104,6 @@ class FakePaymentGateway extends PaymentGateway {
   }
 }
 
- 
 describe('Shop Payout Account (integration)', () => {
   let app: INestApplication<App>;
   let originalEnv: NodeJS.ProcessEnv;
@@ -149,6 +138,10 @@ describe('Shop Payout Account (integration)', () => {
     process.env.STORAGE_DRIVER = 'local';
     process.env.STORAGE_LOCAL_ROOT = storageRoot;
     process.env.FIELD_ENCRYPTION_KEY = '0123456789abcdef'.repeat(4);
+    // The default adapter is manual_bank; this suite proves the local path
+    // keeps payouts working without Stripe. Pin it explicitly so a developer's
+    // .env cannot switch the suite onto the Connect gateway.
+    process.env.PAYOUT_PROVIDER = 'manual_bank';
 
     sql = new Client({
       host: testDb.rootConfig.host,
@@ -255,216 +248,145 @@ describe('Shop Payout Account (integration)', () => {
     };
   }
 
-  function accountBody(overrides: Record<string, unknown> = {}): Record<string, unknown> {
-    return {
-      holder_name: '  Jane Seller  ',
-      bank_name: '  Example Bank  ',
-      country: 'us',
-      account_reference: '0123456789',
-      ...overrides,
-    };
+  function onboardingUrl(shopPublicId: string): string {
+    return `${API_PREFIX}/shops/${shopPublicId}/finance/payout-account/onboarding`;
   }
 
   async function readActiveRows(shopId: string) {
     return sql.query<{
       id: string;
-      provider_ref_encrypted: string;
-      last4: string;
+      provider: string;
+      provider_account_id: string | null;
+      country: string;
       currency: string;
+      status: string;
+      payouts_enabled: boolean;
+      charges_enabled: boolean;
+      transfers_capability: string | null;
+      requirements: unknown;
+      default_currency: string | null;
       deactivated_at: Date | null;
-      holder_name: string;
-      bank_name: string;
     }>(
-      `select id, provider_ref_encrypted, last4, currency, deactivated_at, holder_name, bank_name
+      `select id, provider, provider_account_id, country, currency, status,
+              payouts_enabled, charges_enabled, transfers_capability,
+              requirements, default_currency, deactivated_at
        from "payout_accounts" where "shop_id" = $1 order by "created_at" asc`,
       [shopId],
     );
   }
 
-  it('creates, reads masked, replaces, authorizes and audits a Payout Account', async () => {
+  it('activates a local Payout Account on onboarding and reads only capability fields', async () => {
     const url = `${API_PREFIX}/shops/${seller.shopPublicId}/finance/payout-account`;
 
     await seller.agent.get(url).expect(200, { payout_account: null });
 
-    const firstWrite = await seller.agent
-      .put(url)
+    const onboarded = await seller.agent
+      .post(onboardingUrl(seller.shopPublicId))
       .set('Idempotency-Key', randomUUID())
-      .send(accountBody())
+      .send({ country: 'us' })
       .expect(200);
-    expect(firstWrite.body.payout_account).toMatchObject({
-      holder_name: 'Jane Seller',
-      bank_name: 'Example Bank',
-      last4: '6789',
+    expect(onboarded.body).toEqual({ url: null, status: 'active' });
+
+    const read = await seller.agent.get(url).expect(200);
+    expect(read.body.payout_account).toEqual({
+      id: expect.any(String),
+      provider: 'manual_bank',
+      provider_account_id: null,
       country: 'US',
       currency: 'USD',
-      status: 'pending',
-      verified_at: null,
+      status: 'active',
+      payouts_enabled: true,
+      charges_enabled: true,
+      transfers_capability: 'active',
+      requirements: null,
+      default_currency: 'USD',
+      bank_name: null,
+      last4: null,
     });
-    expect(JSON.stringify(firstWrite.body)).not.toContain('v1:');
-    expect(firstWrite.body.payout_account).not.toHaveProperty('account_reference');
-    expect(firstWrite.body.payout_account).not.toHaveProperty('provider_ref_encrypted');
+    expect(read.body.payout_account).not.toHaveProperty('holder_name');
+    expect(read.body.payout_account).not.toHaveProperty('verified_at');
+    expect(JSON.stringify(read.body)).not.toContain('provider_ref_encrypted');
 
-    const firstId = firstWrite.body.payout_account.id as string;
-    const firstRead = await seller.agent.get(url).expect(200);
-    expect(firstRead.body).toEqual(firstWrite.body);
-    expect(JSON.stringify(firstRead.body)).not.toContain('v1:');
+    const rows = await readActiveRows(seller.shopId);
+    expect(rows.rows).toHaveLength(1);
+    expect(rows.rows[0]).toMatchObject({
+      id: read.body.payout_account.id,
+      provider: 'manual_bank',
+      provider_account_id: null,
+      country: 'US',
+      currency: 'USD',
+      status: 'active',
+      payouts_enabled: true,
+      transfers_capability: 'active',
+      deactivated_at: null,
+    });
 
-    const firstRows = await readActiveRows(seller.shopId);
-    expect(firstRows.rows).toHaveLength(1);
-    expect(firstRows.rows[0].id).toBe(firstId);
-    expect(firstRows.rows[0].provider_ref_encrypted).not.toBe('0123456789');
-    expect(firstRows.rows[0].provider_ref_encrypted).toContain('v1:');
-    expect(app.get(FieldEncryptionService).decrypt(firstRows.rows[0].provider_ref_encrypted))
-      .toBe('0123456789');
-    expect(firstRows.rows[0].holder_name).toBe('Jane Seller');
-    expect(firstRows.rows[0].bank_name).toBe('Example Bank');
-
-    const secondWrite = await seller.agent
-      .put(url)
+    // Re-running onboarding reuses the same open row instead of creating another.
+    const replayed = await seller.agent
+      .post(onboardingUrl(seller.shopPublicId))
       .set('Idempotency-Key', randomUUID())
-      .send(accountBody({ account_reference: 'ABC-987654' }))
+      .send({ country: 'US' })
       .expect(200);
-    expect(secondWrite.body.payout_account.last4).toBe('7654');
-    const replacedRows = await readActiveRows(seller.shopId);
-    expect(replacedRows.rows).toHaveLength(2);
-    expect(replacedRows.rows.filter((row) => row.deactivated_at === null)).toHaveLength(1);
-    expect(replacedRows.rows.find((row) => row.id === firstId)?.deactivated_at).not.toBeNull();
-
-    const secondSellerRead = await unrelatedSeller.agent.get(url);
-    expect(secondSellerRead.status).toBe(403);
-    const secondSellerWrite = await unrelatedSeller.agent
-      .put(url)
-      .set('Idempotency-Key', randomUUID())
-      .send(accountBody());
-    expect(secondSellerWrite.status).toBe(403);
-
-    const adminUrl = `${API_PREFIX}/admin/shops/${seller.shopPublicId}/finance/payout-account`;
-    expect((await seller.agent.get(adminUrl)).status).toBe(403);
-    const adminRead = await admin.agent.get(adminUrl).expect(200);
-    expect(adminRead.body).toMatchObject({
-      shop_id: seller.shopPublicId,
-      payout_account: { last4: '7654', status: 'pending' },
-    });
-    expect(JSON.stringify(adminRead.body)).not.toContain('v1:');
-    expect((await admin.agent
-      .put(adminUrl)
-      .set('Idempotency-Key', randomUUID())
-      .send(accountBody())).status).toBe(404);
-
-    const settlement = await sql.query<{ currency: string }>(
-      `select "currency" from "settlement_currency_history"
-       where "shop_id" = $1 and "effective_to" is null order by "effective_from" desc limit 1`,
-      [seller.shopId],
-    );
-    expect(replacedRows.rows.find((row) => row.deactivated_at === null)?.currency)
-      .toBe(settlement.rows[0].currency);
+    expect(replayed.body.status).toBe('active');
+    expect((await readActiveRows(seller.shopId)).rows).toHaveLength(1);
 
     const audit = await sql.query<{ summary: Record<string, unknown> }>(
       `select "summary" from "audit_logs"
-       where "action" = 'finance.payout_account.recorded' and "entity_id" = $1
+       where "action" = 'finance.payout_account.onboarding_started' and "entity_id" = $1
        order by "created_at" asc`,
-      [secondWrite.body.payout_account.id],
+      [read.body.payout_account.id],
     );
     expect(audit.rows.length).toBeGreaterThan(0);
     expect(audit.rows[0].summary).toMatchObject({
       shopId: seller.shopId,
-      last4: '7654',
-      bankName: 'Example Bank',
+      provider: 'manual_bank',
+      providerAccountId: null,
+      country: 'US',
+      status: 'active',
     });
-    expect(JSON.stringify(audit.rows[0].summary)).not.toContain('ABC-987654');
   });
 
-  it('An operator verifies, re-verifies idempotently and disables a Payout Account', async () => {
-    const write = await seller.agent
-      .put(`${API_PREFIX}/shops/${seller.shopPublicId}/finance/payout-account`)
-      .set('Idempotency-Key', randomUUID())
-      .send(accountBody({ account_reference: 'VERIFY-1234' }))
-      .expect(200);
-    expect(write.body.payout_account.status).toBe('pending');
-    expect(write.body.payout_account.verified_at).toBeNull();
-    const accountId = write.body.payout_account.id as string;
+  it('authorizes shop management and keeps the admin lookup read-only', async () => {
+    const adminUrl = `${API_PREFIX}/admin/shops/${seller.shopPublicId}/finance/payout-account`;
 
-    const verificationUrl = `${API_PREFIX}/admin/shops/${seller.shopPublicId}/finance/payout-account/verification`;
+    expect((await seller.agent.get(adminUrl)).status).toBe(403);
 
-    const activated = await admin.agent
-      .put(verificationUrl)
-      .send({ status: 'active' })
-      .expect(200);
-    expect(activated.body).toMatchObject({
+    const adminRead = await admin.agent.get(adminUrl).expect(200);
+    expect(adminRead.body).toMatchObject({
       shop_id: seller.shopPublicId,
-      payout_account: { status: 'active', last4: '1234' },
+      payout_account: {
+        provider: 'manual_bank',
+        status: 'active',
+        payouts_enabled: true,
+      },
     });
-    const verifiedAt = activated.body.payout_account.verified_at as string;
-    expect(verifiedAt).not.toBeNull();
 
-    const repeated = await admin.agent
-      .put(verificationUrl)
-      .send({ status: 'active' })
-      .expect(200);
-    expect(repeated.body.payout_account.status).toBe('active');
-    expect(repeated.body.payout_account.verified_at).toBe(verifiedAt);
-
-    const disabled = await admin.agent
-      .put(verificationUrl)
-      .send({ status: 'disabled' })
-      .expect(200);
-    expect(disabled.body.payout_account.status).toBe('disabled');
-    expect(disabled.body.payout_account.verified_at).toBe(verifiedAt);
-
-    const rows = await sql.query<{ status: string; verified_at: Date }>(
-      `select "status", "verified_at" from "payout_accounts"
-       where "shop_id" = $1 and "deactivated_at" is null`,
-      [seller.shopId],
-    );
-    expect(rows.rows).toHaveLength(1);
-    expect(rows.rows[0].status).toBe('disabled');
-
-    const audit = await sql.query<{ summary: Record<string, unknown> }>(
-      `select "summary" from "audit_logs"
-       where "action" = 'finance.payout_account.verification_recorded' and "entity_id" = $1
-       order by "created_at" asc`,
-      [accountId],
-    );
-    expect(audit.rows.map((row) => row.summary)).toEqual([
-      expect.objectContaining({
-        shopId: seller.shopId, previousStatus: 'pending', status: 'active', last4: '1234', 
-      }),
-      expect.objectContaining({ previousStatus: 'active', status: 'active', last4: '1234' }),
-      expect.objectContaining({ previousStatus: 'active', status: 'disabled', last4: '1234' }),
-    ]);
-    expect(JSON.stringify(audit.rows)).not.toContain('VERIFY-1234');
-  });
-
-  it('Refuses verification from non-admins and unknown statuses', async () => {
-    const verificationUrl = `${API_PREFIX}/admin/shops/${seller.shopPublicId}/finance/payout-account/verification`;
-
-    expect((await seller.agent.put(verificationUrl).send({ status: 'active' })).status)
-      .toBe(403);
-    expect((await request(app.getHttpServer()).put(verificationUrl).send({ status: 'active' })).status)
-      .toBe(401);
-
-    const unknown = await admin.agent.put(verificationUrl).send({ status: 'pending' });
-    expect(unknown.status).toBe(400);
-    expect(unknown.body.code).toBe('PAYOUT_ACCOUNT_INVALID');
-
-    const rows = await sql.query<{ status: string }>(
-      `select "status" from "payout_accounts"
-       where "shop_id" = $1 and "deactivated_at" is null`,
-      [seller.shopId],
-    );
-    expect(rows.rows[0].status).toBe('disabled');
-  });
-
-  it.each([
-    ['malformed reference', { account_reference: '12 34' }],
-    ['blank holder', { holder_name: '   ' }],
-    ['bad country', { country: 'USA' }],
-  ])('refuses a %s with PAYOUT_ACCOUNT_INVALID', async (_name, invalidField) => {
-    const response = await seller.agent
-      .put(`${API_PREFIX}/shops/${seller.shopPublicId}/finance/payout-account`)
+    expect((await unrelatedSeller.agent
+      .post(onboardingUrl(seller.shopPublicId))
       .set('Idempotency-Key', randomUUID())
-      .send(accountBody(invalidField));
+      .send({ country: 'US' })).status).toBe(403);
+    expect((await unrelatedSeller.agent
+      .get(`${API_PREFIX}/shops/${seller.shopPublicId}/finance/payout-account`)).status)
+      .toBe(403);
+  });
+
+  it('refuses a country that is not an ISO alpha-2 code', async () => {
+    const response = await seller.agent
+      .post(onboardingUrl(seller.shopPublicId))
+      .set('Idempotency-Key', randomUUID())
+      .send({ country: 'USA' });
+
     expect(response.status).toBe(400);
     expect(response.body.code).toBe('PAYOUT_ACCOUNT_INVALID');
+  });
+
+  it('requires a country in the onboarding body', async () => {
+    const response = await seller.agent
+      .post(onboardingUrl(seller.shopPublicId))
+      .set('Idempotency-Key', randomUUID())
+      .send({});
+
+    expect(response.status).toBe(400);
+    expect(response.body.code).toBe('VALIDATION_FAILED');
   });
 });

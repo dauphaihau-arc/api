@@ -4,10 +4,12 @@ import { assertBalancedJournalEntry } from '../value-objects/journal-entry';
 import {
   allocatePayoutOrders,
   buildPaidPayoutPostings,
+  buildPayoutFxPostings,
   isAutoPayoutDue,
   MAX_PAYOUT_ATTEMPTS,
   netPayableMinor,
   paidPayoutMoneyEventKey,
+  payoutFxMoneyEventKey,
   payoutPeriodKey,
   payoutRetryDelayMs,
   payoutRunDay,
@@ -98,6 +100,65 @@ describe('buildPaidPayoutPostings', () => {
     expect(() => buildPaidPayoutPostings({ shopId: 'shop-1', currency: 'USD', amountMinor: 0 }))
       .toThrow(PayoutAmountNotPositiveError);
     expect(() => buildPaidPayoutPostings({ shopId: 'shop-1', currency: 'USD', amountMinor: -1 }))
+      .toThrow(PayoutAmountNotPositiveError);
+  });
+});
+
+describe('payoutFxMoneyEventKey', () => {
+  it('identifies the platform-currency entry of the payout that caused it', () => {
+    expect(payoutFxMoneyEventKey('9f2a1c5e-9b6d-4c3a-8f01-2d5e7a9c4b18'))
+      .toBe('payout.fx:9f2a1c5e-9b6d-4c3a-8f01-2d5e7a9c4b18');
+  });
+});
+
+describe('buildPayoutFxPostings', () => {
+  it('moves the transfer amount out of Platform Clearing into FX Position and balances to zero', () => {
+    const postings = buildPayoutFxPostings({ currency: 'USD', amountMinor: 7_300 });
+
+    expect(postings).toEqual([
+      {
+        account: { kind: LedgerAccountKind.PLATFORM_CLEARING, currency: 'USD' },
+        amountMinor: -7_300,
+      },
+      {
+        account: { kind: LedgerAccountKind.FX_POSITION, currency: 'USD' },
+        amountMinor: 7_300,
+      },
+    ]);
+
+    expect(() => assertBalancedJournalEntry({
+      moneyEventKey: payoutFxMoneyEventKey('payout-1'),
+      moneyEventKind: 'payout.fx',
+      currency: 'USD',
+      occurredAt: new Date('2026-10-19T09:00:00.000Z'),
+      postings,
+    })).not.toThrow();
+  });
+
+  it('is platform-level: neither posting names a shop', () => {
+    for (const posting of buildPayoutFxPostings({ currency: 'USD', amountMinor: 7_300 })) {
+      expect(posting.account).not.toHaveProperty('shopId');
+    }
+  });
+
+  it('refuses the imbalanced entry a one-sided platform leg would make', () => {
+    const postings = buildPayoutFxPostings({ currency: 'USD', amountMinor: 7_300 });
+
+    // The double-entry invariant catches a leg whose counterpart is missing or
+    // wrong: the platform-currency entry can never create or destroy money.
+    expect(() => assertBalancedJournalEntry({
+      moneyEventKey: payoutFxMoneyEventKey('payout-1'),
+      moneyEventKind: 'payout.fx',
+      currency: 'USD',
+      occurredAt: new Date('2026-10-19T09:00:00.000Z'),
+      postings: [postings[1]!],
+    })).toThrow(/unbalanced/i);
+  });
+
+  it('refuses to move a non-positive amount', () => {
+    expect(() => buildPayoutFxPostings({ currency: 'USD', amountMinor: 0 }))
+      .toThrow(PayoutAmountNotPositiveError);
+    expect(() => buildPayoutFxPostings({ currency: 'USD', amountMinor: -1 }))
       .toThrow(PayoutAmountNotPositiveError);
   });
 });

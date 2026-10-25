@@ -1,59 +1,94 @@
-import type { PayoutAccountStatus } from '../../domain/rules/payout-account';
+import type {
+  PayoutAccountRequirements,
+  PayoutAccountStatus,
+} from '../../domain/rules/payout-account';
 import type { FinanceRepositoryContext } from './finance-repository-context';
 
 /**
- * A shop's active Payout Account as the application reads it. The reference and
- * its ciphertext stay in persistence: `last4` is the only trace of the reference
- * that crosses this boundary.
+ * A shop's active Payout Account as the application reads it. Only the
+ * provider's account id, the capabilities it reports and display-only bank
+ * metadata cross this boundary: there is no bank number, routing number or
+ * holder name to keep anywhere.
  */
 export interface PayoutAccountRecord {
   id: string;
   shopId: string;
   provider: string;
-  holderName: string;
-  bankName: string;
+  providerAccountId: string | null;
   country: string;
   currency: string;
-  last4: string;
   status: PayoutAccountStatus;
-  verifiedAt: Date | null;
+  payoutsEnabled: boolean;
+  chargesEnabled: boolean;
+  transfersCapability: string | null;
+  requirements: PayoutAccountRequirements | null;
+  defaultCurrency: string | null;
+  bankName: string | null;
+  last4: string | null;
+
+  /**
+   * When the row was last written. The read path uses it to decide whether an
+   * awaiting account is stale enough to re-read from the provider, and to
+   * throttle that re-read to one attempt per interval.
+   */
+  updatedAt: Date;
 }
 
 /**
- * A Payout Account as the payout run needs it: the open, verified account plus
- * the reference the provider must receive. The reference is encrypted here and
- * decrypted only at the port that moves the money, so no read surface and no
- * audit entry ever carries it.
+ * A Payout Account as the payout run needs it: the open, usable account the
+ * provider must receive as the transfer destination. There is no reference to
+ * decrypt: the provider account id is the destination.
  */
 export interface PayoutAccountPaymentTarget {
   id: string;
   shopId: string;
   provider: string;
-  holderName: string;
-  bankName: string;
+  providerAccountId: string | null;
   country: string;
   currency: string;
-  last4: string;
-  providerRefEncrypted: string;
 }
 
-/** The row to activate, already validated, encrypted and normalized. */
-export interface ReplacePayoutAccountInput {
+/** The capabilities and requirements a sync may replace. */
+export interface PayoutAccountCapabilitiesInput {
+  status: PayoutAccountStatus;
+  payoutsEnabled: boolean;
+  chargesEnabled: boolean;
+  transfersCapability: string | null;
+  requirements: PayoutAccountRequirements | null;
+  country: string;
+  defaultCurrency: string | null;
+}
+
+/** A new open Payout Account row. */
+export interface CreatePayoutAccountInput {
   shopId: string;
   provider: string;
-  providerRefEncrypted: string;
-  holderName: string;
-  bankName: string;
+  providerAccountId: string | null;
   country: string;
   currency: string;
-  last4: string;
+  status: PayoutAccountStatus;
+  payoutsEnabled?: boolean;
+  chargesEnabled?: boolean;
+  transfersCapability?: string | null;
+  requirements?: PayoutAccountRequirements | null;
+  defaultCurrency?: string | null;
 }
 
-/** The open row's status to set, and the verification instant to persist. */
-export interface UpdatePayoutAccountStatusInput {
+/**
+ * A patch to the open row. Only the fields present are written, so an
+ * onboarding retry cannot erase capabilities a webhook already recorded.
+ */
+export interface UpdatePayoutAccountInput extends Partial<PayoutAccountCapabilitiesInput> {
   shopId: string;
-  status: PayoutAccountStatus;
-  verifiedAt: Date | null;
+  provider?: string;
+  providerAccountId?: string | null;
+  currency?: string;
+
+  /** The bank's display name from the provider, or null when it has none. */
+  bankName?: string | null;
+
+  /** The last four digits of the payout account number, or null. */
+  last4?: string | null;
 }
 
 export abstract class PayoutAccountRepository {
@@ -64,9 +99,8 @@ export abstract class PayoutAccountRepository {
   ): Promise<PayoutAccountRecord | null>;
 
   /**
-   * The shop's open Payout Account when an operator has verified it, or `null`
-   * when the shop has none or its account is still pending or disabled. Only a
-   * verified account is a destination a Payout may be sent to.
+   * The shop's open Payout Account when it is usable as a destination. An
+   * `onboarding`, `action_required`, `restricted` or `disabled` account is not.
    */
   abstract findPayableByShopId(
     shopId: string,
@@ -84,20 +118,18 @@ export abstract class PayoutAccountRepository {
   ): Promise<PayoutAccountPaymentTarget | null>;
 
   /**
-   * Sets the open Payout Account's status and `verified_at`. Returns `null` when
-   * the shop has no open row — a replacement may have closed it — so the caller
-   * never reports a status it did not persist.
+   * One Payout Account by the provider's account id. A webhook arrives for an
+   * account this deployment may not have stored, in which case the caller
+   * ignores it rather than inventing a row.
    */
-  abstract updateStatus(
-    input: UpdatePayoutAccountStatusInput,
+  abstract findByProviderAccountId(
+    providerAccountId: string,
     context?: FinanceRepositoryContext,
   ): Promise<PayoutAccountRecord | null>;
 
   /**
    * Closes the shop's open Payout Account without replacing it, stamping
-   * `deactivated_at` so the row becomes historical. Used by a Settlement
-   * Currency change: the old account can no longer receive this shop's money,
-   * and the next payout must wait for an account in the new currency.
+   * `deactivated_at` so the row becomes historical.
    */
   abstract closeActive(
     shopId: string,
@@ -106,13 +138,30 @@ export abstract class PayoutAccountRepository {
   ): Promise<void>;
 
   /**
-   * Inserts the new Payout Account and closes the shop's previous open row in
-   * one transaction, so exactly one row per shop stays active and a Payout that
-   * already happened keeps pointing at the row it paid. Concurrent replacements
-   * for one shop serialize rather than racing the partial unique index.
+   * Inserts a new Payout Account and closes the shop's previous open row in one
+   * transaction, so exactly one row per shop stays active and a Payout that
+   * already happened keeps pointing at the row it paid.
    */
-  abstract replaceActive(
-    input: ReplacePayoutAccountInput,
+  abstract createActive(
+    input: CreatePayoutAccountInput,
     context: FinanceRepositoryContext,
   ): Promise<PayoutAccountRecord>;
+
+  /**
+   * Updates the shop's open Payout Account. Returns `null` when the shop has no
+   * open row — a replacement may have closed it — so the caller never reports a
+   * state it did not persist.
+   */
+  abstract updateActive(
+    input: UpdatePayoutAccountInput,
+    context?: FinanceRepositoryContext,
+  ): Promise<PayoutAccountRecord | null>;
+
+  /**
+   * Stamps the open row's `updated_at` without changing any capability. The
+   * read-path self-heal records that it just asked the provider, so a polling
+   * client throttles on the same timestamp even when the provider reported no
+   * change to store.
+   */
+  abstract touchActive(shopId: string, at: Date): Promise<void>;
 }

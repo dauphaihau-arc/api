@@ -1,7 +1,7 @@
 import {
+  BadGatewayException,
   BadRequestException,
   ConflictException,
-  NotFoundException,
   ServiceUnavailableException,
 } from '@nestjs/common';
 import type { HttpException } from '@nestjs/common';
@@ -15,11 +15,12 @@ import {
   AutoPayoutIneligibleError,
   ManualPayoutAlreadyUsedError,
   NoPayableAmountError,
-  PayoutAccountCurrencyMismatchError,
-  PayoutAccountNotFoundError,
+  PayoutAccountCountryUnsupportedError,
   PayoutAccountUnusableError,
   PayoutAmountExceedsAvailableError,
+  PayoutConversionRateUnavailableError,
   PayoutPendingError,
+  ProviderBalancePendingError,
   SettlementCurrencyBalanceNotZeroError,
   SettlementCurrencyChangePayoutPendingError,
   SettlementCurrencyChangeTooSoonError,
@@ -28,6 +29,11 @@ import {
   SettlementCurrencyUnsupportedError,
 } from '../../../app/errors/finance-app.error';
 import type { FinanceAppError } from '../../../app/errors/finance-app.error';
+import {
+  PayoutAccountNotConnectedError,
+  PayoutProviderNotConfiguredError,
+} from '~/integrations/payment/app/ports/payout-gateway';
+import { ConnectAccountConfigurationError } from '~/integrations/payment/app/ports/connect-gateway';
 
 /**
  * Maps the Finance domain errors that own an HTTP contract, or `null` when the
@@ -71,26 +77,17 @@ export function mapFinanceDomainErrorToHttpException(
  * Maps the Finance application errors that own an HTTP contract, or `null` when
  * the error has none.
  *
- * `PayoutAccountCurrencyMismatchError` and `PayoutAccountNotFoundError` are the
- * two: an active Payout Account recorded in a currency the shop no longer
- * settles in is a caller-visible conflict with the shop's current Settlement
- * Currency, and verifying a shop that has no Payout Account is a missing
- * resource.
+ * An unsupported Connect country is a plain refusal; an account whose
+ * capabilities are not granted is a conflict the seller can act on; and a
+ * deployment without Stripe answers 503 rather than failing startup.
  */
 export function mapFinanceAppErrorToHttpException(
   error: FinanceAppError,
 ): HttpException | null {
-  if (error instanceof PayoutAccountCurrencyMismatchError) {
+  if (error instanceof PayoutAccountCountryUnsupportedError) {
     return new BadRequestException({
       message: error.message,
-      code: 'PAYOUT_ACCOUNT_CURRENCY_MISMATCH',
-    });
-  }
-
-  if (error instanceof PayoutAccountNotFoundError) {
-    return new NotFoundException({
-      message: error.message,
-      code: 'PAYOUT_ACCOUNT_NOT_FOUND',
+      code: 'PAYOUT_ACCOUNT_COUNTRY_UNSUPPORTED',
     });
   }
 
@@ -175,6 +172,56 @@ export function mapFinanceAppErrorToHttpException(
     return new ServiceUnavailableException({
       message: error.message,
       code: 'SETTLEMENT_CURRENCY_RATE_UNAVAILABLE',
+    });
+  }
+
+  if (error instanceof PayoutConversionRateUnavailableError) {
+    return new ServiceUnavailableException({
+      message: error.message,
+      code: 'PAYOUT_CONVERSION_RATE_UNAVAILABLE',
+    });
+  }
+
+  if (error instanceof ProviderBalancePendingError) {
+    // The request is well-formed and the seller may retry later; it just cannot
+    // be funded yet, so this is a conflict with the provider's current balance.
+    return new ConflictException({
+      message: error.message,
+      code: 'PROVIDER_BALANCE_PENDING',
+    });
+  }
+
+  return null;
+}
+
+/**
+ * Maps the named failures the payout adapters raise. A transfer with no
+ * connected account is a conflict with the shop's current destination; a
+ * deployment without Stripe keys answers 503 rather than failing startup; and
+ * a refusal of Arc's own Connect account configuration is an upstream bad
+ * gateway (502), because the seller cannot fix it.
+ */
+export function mapPayoutGatewayErrorToHttpException(
+  error: unknown,
+): HttpException | null {
+  if (error instanceof PayoutAccountNotConnectedError) {
+    return new ConflictException({
+      message: error.message,
+      code: 'PAYOUT_ACCOUNT_NOT_CONNECTED',
+    });
+  }
+
+  if (error instanceof ConnectAccountConfigurationError) {
+    return new BadGatewayException({
+      message: error.message,
+      code: 'CONNECT_ACCOUNT_CONFIGURATION_ERROR',
+    });
+  }
+
+  if (error instanceof PayoutProviderNotConfiguredError) {
+    return new ServiceUnavailableException({
+      message: error.message,
+      code: 'PAYOUT_PROVIDER_NOT_CONFIGURED',
     });
   }
 

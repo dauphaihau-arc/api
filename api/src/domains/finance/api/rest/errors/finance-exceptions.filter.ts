@@ -5,6 +5,7 @@ import { FinanceDomainError } from '../../../domain/errors/finance-domain.error'
 import {
   mapFinanceAppErrorToHttpException,
   mapFinanceDomainErrorToHttpException,
+  mapPayoutGatewayErrorToHttpException,
 } from './finance-http-error-mapper';
 
 /**
@@ -16,6 +17,12 @@ import {
 @Catch()
 export class FinanceExceptionsFilter extends DomainExceptionFilter {
   protected mapDomainError(exception: unknown): Error | null {
+    const payoutGatewayError = mapPayoutGatewayErrorToHttpException(exception);
+
+    if (payoutGatewayError) {
+      return payoutGatewayError;
+    }
+
     if (exception instanceof FinanceDomainError) {
       return mapFinanceDomainErrorToHttpException(exception);
     }

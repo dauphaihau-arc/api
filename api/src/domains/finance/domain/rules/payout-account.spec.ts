@@ -1,85 +1,106 @@
 import { PayoutAccountInvalidError } from '../errors/finance-domain.error';
 import {
-  assertValidPayoutAccount,
-  assertValidPayoutAccountVerificationStatus,
-  maskReference,
-  type PayoutAccountInput,
+  assertValidPayoutAccountCountry,
+  deriveConnectPayoutAccountStatus,
+  toPayoutAccountRequirements,
+  type ConnectPayoutAccountState,
 } from './payout-account';
 
-function payoutAccount(
-  overrides: Partial<PayoutAccountInput> = {},
-): PayoutAccountInput {
+function accountState(
+  overrides: Partial<ConnectPayoutAccountState> = {},
+): ConnectPayoutAccountState {
   return {
-    holderName: 'Jane Seller',
-    bankName: 'Example Bank',
-    country: 'US',
-    accountReference: '0123456789',
+    payoutsEnabled: true,
+    chargesEnabled: true,
+    transfersCapability: 'active',
+    requirementsDue: [],
+    disabledReason: null,
     ...overrides,
   };
 }
 
-describe('assertValidPayoutAccount', () => {
-  it('accepts a bank account', () => {
-    expect(() => assertValidPayoutAccount(payoutAccount())).not.toThrow();
+describe('assertValidPayoutAccountCountry', () => {
+  it('accepts an ISO 3166-1 alpha-2 country in either case', () => {
+    expect(() => assertValidPayoutAccountCountry('US')).not.toThrow();
+    expect(() => assertValidPayoutAccountCountry('vn')).not.toThrow();
   });
 
-  it('accepts a country typed in lower case', () => {
-    expect(() => assertValidPayoutAccount(payoutAccount({ country: 'vn' }))).not.toThrow();
-  });
-
-  it('refuses a blank or whitespace-only holder name', () => {
-    expect(() => assertValidPayoutAccount(payoutAccount({ holderName: '' })))
+  it('refuses anything that is not two letters', () => {
+    expect(() => assertValidPayoutAccountCountry('USA'))
       .toThrow(PayoutAccountInvalidError);
-    expect(() => assertValidPayoutAccount(payoutAccount({ holderName: '   ' })))
+    expect(() => assertValidPayoutAccountCountry('1A'))
       .toThrow(PayoutAccountInvalidError);
-  });
-
-  it('refuses a blank bank name', () => {
-    expect(() => assertValidPayoutAccount(payoutAccount({ bankName: '  ' })))
-      .toThrow(PayoutAccountInvalidError);
-  });
-
-  it('refuses a country that is not two letters', () => {
-    expect(() => assertValidPayoutAccount(payoutAccount({ country: 'USA' })))
-      .toThrow(PayoutAccountInvalidError);
-    expect(() => assertValidPayoutAccount(payoutAccount({ country: '1A' })))
-      .toThrow(PayoutAccountInvalidError);
-  });
-
-  it('refuses a reference shorter than four characters', () => {
-    expect(() => assertValidPayoutAccount(payoutAccount({ accountReference: '123' })))
-      .toThrow(PayoutAccountInvalidError);
-  });
-
-  it('refuses a reference longer than thirty-four characters', () => {
-    expect(() => assertValidPayoutAccount(payoutAccount({ accountReference: '1'.repeat(35) })))
-      .toThrow(PayoutAccountInvalidError);
-  });
-
-  it('refuses a reference with characters outside letters, digits and dash', () => {
-    expect(() => assertValidPayoutAccount(payoutAccount({ accountReference: '0123 4567' })))
-      .toThrow(PayoutAccountInvalidError);
-    expect(() => assertValidPayoutAccount(payoutAccount({ accountReference: '0123456_' })))
+    expect(() => assertValidPayoutAccountCountry(''))
       .toThrow(PayoutAccountInvalidError);
   });
 });
 
-describe('maskReference', () => {
-  it('keeps the last four characters of the reference', () => {
-    expect(maskReference('0123456789')).toEqual({ last4: '6789' });
+describe('deriveConnectPayoutAccountStatus', () => {
+  it('is active when transfers are active and payouts are enabled', () => {
+    expect(deriveConnectPayoutAccountStatus(accountState())).toBe('active');
+  });
+
+  it('is onboarding before any capability is granted', () => {
+    expect(deriveConnectPayoutAccountStatus(accountState({
+      payoutsEnabled: false,
+      chargesEnabled: false,
+      transfersCapability: null,
+    }))).toBe('onboarding');
+
+    expect(deriveConnectPayoutAccountStatus(accountState({
+      payoutsEnabled: false,
+      transfersCapability: 'pending',
+    }))).toBe('onboarding');
+  });
+
+  it('is action_required when requirements are due', () => {
+    expect(deriveConnectPayoutAccountStatus(accountState({
+      payoutsEnabled: false,
+      transfersCapability: 'pending',
+      requirementsDue: ['external_account'],
+    }))).toBe('action_required');
+  });
+
+  it('stays active while requirements are due if transfers and payouts are granted', () => {
+    expect(deriveConnectPayoutAccountStatus(accountState({
+      requirementsDue: ['business_profile.url'],
+    }))).toBe('active');
+  });
+
+  it('is restricted whenever Stripe reports a disabled reason', () => {
+    expect(deriveConnectPayoutAccountStatus(accountState({
+      payoutsEnabled: false,
+      transfersCapability: 'inactive',
+      requirementsDue: ['external_account'],
+      disabledReason: 'requirements.past_due',
+    }))).toBe('restricted');
+
+    // A disabled reason wins even if the capability still reads active.
+    expect(deriveConnectPayoutAccountStatus(accountState({
+      disabledReason: 'rejected.fraud',
+    }))).toBe('restricted');
+  });
+
+  it('is onboarding when payouts are disabled without a requirement or reason', () => {
+    expect(deriveConnectPayoutAccountStatus(accountState({
+      payoutsEnabled: false,
+    }))).toBe('onboarding');
   });
 });
 
-describe('assertValidPayoutAccountVerificationStatus', () => {
-  it('accepts active and disabled', () => {
-    expect(() => assertValidPayoutAccountVerificationStatus('active')).not.toThrow();
-    expect(() => assertValidPayoutAccountVerificationStatus('disabled')).not.toThrow();
+describe('toPayoutAccountRequirements', () => {
+  it('copies the due field names and the disabled reason', () => {
+    expect(toPayoutAccountRequirements(['external_account'], null)).toEqual({
+      currentlyDue: ['external_account'],
+      disabledReason: null,
+    });
   });
 
-  it('refuses any other status, including pending', () => {
-    expect(() => assertValidPayoutAccountVerificationStatus('pending'))
-      .toThrow(PayoutAccountInvalidError);
-    expect(() => assertValidPayoutAccountVerificationStatus('verified'))
-      .toThrow(PayoutAccountInvalidError);
+  it('does not keep a reference to the provider array', () => {
+    const due = ['external_account'];
+    const requirements = toPayoutAccountRequirements(due, null);
+    due.push('business_profile.url');
+
+    expect(requirements.currentlyDue).toEqual(['external_account']);
   });
 });

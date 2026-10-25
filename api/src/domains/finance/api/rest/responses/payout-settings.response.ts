@@ -18,7 +18,7 @@ export class ShopPayoutSettingsResponseDto {
 
   @ApiProperty({
     description:
-      'Whether the shop may opt in: it needs an open, verified Payout Account ' +
+      'Whether the shop may opt in: it needs an active Payout Account ' +
       'in its current Settlement Currency.',
     example: true,
   })

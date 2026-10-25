@@ -108,7 +108,7 @@ export class ShopSettlementCurrencyChangeResponseDto {
   @ApiProperty({
     description:
       'Always false: a change turns automatic payouts off until a Payout Account ' +
-      'in the new currency is recorded and verified.',
+      'in the new currency is onboarded and active.',
     example: false,
   })
   auto_payout_enabled!: boolean;

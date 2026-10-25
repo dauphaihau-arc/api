@@ -10,6 +10,7 @@ function buildConfig(overrides: Partial<PayoutConfig> = {}): PayoutConfig {
     manualWithdrawalUnlimited: false,
     autoPayoutForceDue: false,
     retryDelaysMs: [60_000, 300_000, 900_000],
+    platformCurrency: 'USD',
     ...overrides,
   };
 }

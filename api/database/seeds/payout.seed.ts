@@ -336,6 +336,15 @@ export async function seedPayouts(
                     orderId: order.orderId,
                     amountMinor: order.amountMinor,
                   })),
+                  // Seeded history pays into an account in the shop currency, so
+                  // its frozen quote is the identity.
+                  sourceCurrency: shop.currency,
+                  targetCurrency: account.currency,
+                  transferCurrency: shop.currency,
+                  transferAmountMinor: amountMinor,
+                  fxRate: '1',
+                  targetAmountMinor: amountMinor,
+                  fxFeeMinor: 0,
                 },
                 { entityManager },
               );
@@ -356,6 +365,8 @@ export async function seedPayouts(
                     orderId: order.orderId,
                     amountMinor: order.amountMinor,
                   })),
+                  providerFxRate: null,
+                  targetAmountMinor: null,
                 },
                 { entityManager },
               );

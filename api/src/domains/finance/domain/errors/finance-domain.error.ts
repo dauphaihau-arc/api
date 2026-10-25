@@ -16,9 +16,8 @@ export class InvalidCommissionRateError extends FinanceDomainError {
 }
 
 /**
- * Raised when a Payout Account cannot describe a destination a payout could be
- * sent to: an unknown type, a blank holder or bank name, a country that is not
- * an ISO 3166-1 alpha-2 code, or a malformed account reference.
+ * Raised when a Payout Account cannot describe a connected account: a country
+ * that is not an ISO 3166-1 alpha-2 code.
  */
 export class PayoutAccountInvalidError extends FinanceDomainError {
   constructor(reason: string) {

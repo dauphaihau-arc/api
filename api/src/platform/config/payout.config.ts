@@ -22,6 +22,15 @@ const DEFAULT_PAYOUT_RETRY_DELAYS_MS: readonly number[] = [
 ];
 const PAYOUT_RETRY_DELAYS_COUNT = DEFAULT_PAYOUT_RETRY_DELAYS_MS.length;
 
+/**
+ * The currency the platform's own provider balance settles in. The platform is
+ * paid into one balance, so a Payout converts its shop-currency amount into this
+ * currency before the provider moves it.
+ */
+const DEFAULT_PAYOUT_PLATFORM_CURRENCY = 'USD';
+
+const ISO_ALPHA_3_PATTERN = /^[A-Z]{3}$/;
+
 export interface PayoutConfig {
   /**
    * The platform day of month (UTC) on and after which the automatic Payout Run
@@ -48,6 +57,13 @@ export interface PayoutConfig {
    * is refused in production.
    */
   retryDelaysMs: readonly number[];
+
+  /**
+   * The ISO 4217 currency the platform's provider balance settles in, from
+   * `PAYOUT_PLATFORM_CURRENCY`. A Payout transfers in this currency; the shop's
+   * Settlement Currency is what the ledger discharges.
+   */
+  platformCurrency: string;
 }
 
 export const PAYOUT_CONFIG = Symbol('PAYOUT_CONFIG');
@@ -101,7 +117,43 @@ export function buildPayoutConfig(
     retryDelaysMs: rawRetryDelaysMs === undefined
       ? DEFAULT_PAYOUT_RETRY_DELAYS_MS
       : resolvePayoutRetryDelaysMs(rawRetryDelaysMs),
+    platformCurrency: resolvePlatformCurrency(
+      configService.get<string>(
+        'PAYOUT_PLATFORM_CURRENCY',
+        DEFAULT_PAYOUT_PLATFORM_CURRENCY,
+      ),
+    ),
   };
+}
+
+/**
+ * The platform currency is the currency the provider balance is held in, so a
+ * typo would convert every Payout into a currency nobody holds. It is validated
+ * as an ISO 4217 alpha-3 code here, before the first Payout, rather than left to
+ * the provider to refuse.
+ */
+function resolvePlatformCurrency(value: string): string {
+  const currency = value.trim().toUpperCase();
+
+  if (!ISO_ALPHA_3_PATTERN.test(currency) || !isKnownIsoCurrency(currency)) {
+    throw new Error(
+      `PAYOUT_PLATFORM_CURRENCY must be an ISO 4217 alpha-3 currency code, received "${value}"`,
+    );
+  }
+
+  return currency;
+}
+
+function isKnownIsoCurrency(currency: string): boolean {
+  try {
+    // `Intl` is the runtime's ISO 4217 table: an unknown code throws rather than
+    // silently formatting. Money rounding has its own fixed table.
+    new Intl.NumberFormat('en', { style: 'currency', currency });
+    return true;
+  }
+  catch {
+    return false;
+  }
 }
 
 function resolveAutoPayoutDayOfMonth(value: string): number {

@@ -41,13 +41,19 @@ function stubStripe(gateway: StripePaymentGateway, stripe: Partial<StubStripe>):
   };
 }
 
-function mapObject(type: string, object: unknown): unknown {
+function mapObject(
+  type: string,
+  object: unknown,
+  event?: { account?: string; created?: number },
+): unknown {
   const gateway = buildGateway();
   stubStripe(gateway, {
     webhooks: {
       constructEvent: () => ({
         id: 'evt_test',
         type,
+        ...(event?.account ? { account: event.account } : {}),
+        created: event?.created ?? 0,
         data: { object },
       }),
     },
@@ -160,6 +166,35 @@ describe('StripePaymentGateway webhook mapping', () => {
     });
   });
 
+  it('reduces a capability.updated event to the account to re-read', () => {
+    const mapped = mapObject('capability.updated', {
+      id: 'transfers',
+      account: 'acct_1',
+      status: 'active',
+    });
+
+    expect(mapped).toEqual({ accountId: 'acct_1' });
+  });
+
+  it('reduces a person.updated event to the account to re-read', () => {
+    const mapped = mapObject('person.updated', {
+      id: 'person_1',
+      account: 'acct_1',
+    });
+
+    expect(mapped).toEqual({ accountId: 'acct_1' });
+  });
+
+  it('falls back to the event account for an unexpanded change event', () => {
+    const mapped = mapObject(
+      'capability.updated',
+      { id: 'transfers' },
+      { account: 'acct_2' },
+    );
+
+    expect(mapped).toEqual({ accountId: 'acct_2' });
+  });
+
   it('keeps the checkout session mapping intact', () => {
     const mapped = mapObject('checkout.session.completed', {
       id: 'cs_123',
@@ -229,6 +264,124 @@ describe('StripePaymentGateway.retrieveBalanceTransaction', () => {
       currency: 'EUR',
       createdAt: new Date(1_700_000_000 * 1000),
       availableAt: undefined,
+    });
+  });
+
+  it('maps a transfer.created event to transfer evidence', () => {
+    const mapped = mapObject(
+      'transfer.created',
+      {
+        id: 'tr_123',
+        object: 'transfer',
+        amount: 12_500,
+        currency: 'usd',
+        destination: 'acct_123',
+        reversals: { data: [], has_more: false },
+      },
+      { created: 1_700_000_000 },
+    );
+
+    expect(mapped).toEqual({
+      transferId: 'tr_123',
+      amountMinor: 12_500,
+      currency: 'USD',
+      destinationAccountId: 'acct_123',
+      reversedAmountMinor: 0,
+      status: 'created',
+      occurredAt: new Date(1_700_000_000 * 1000),
+    });
+  });
+
+  it('maps a transfer.updated event without reversals to zero', () => {
+    const mapped = mapObject('transfer.updated', {
+      id: 'tr_123',
+      amount: 12_500,
+      currency: 'usd',
+      destination: { id: 'acct_expanded' },
+    });
+
+    expect(mapped).toMatchObject({
+      transferId: 'tr_123',
+      destinationAccountId: 'acct_expanded',
+      reversedAmountMinor: 0,
+      status: 'updated',
+    });
+  });
+
+  it('sums every transfer reversal and marks the transfer reversed', () => {
+    const mapped = mapObject(
+      'transfer.reversed',
+      {
+        id: 'tr_123',
+        amount: 12_500,
+        currency: 'usd',
+        destination: null,
+        reversals: {
+          data: [{ amount: 2_500 }, { amount: 1_100 }],
+          has_more: false,
+        },
+      },
+      { account: 'acct_connected', created: 1_700_000_600 },
+    );
+
+    expect(mapped).toEqual({
+      transferId: 'tr_123',
+      amountMinor: 12_500,
+      currency: 'USD',
+      destinationAccountId: 'acct_connected',
+      reversedAmountMinor: 3_600,
+      status: 'reversed',
+      occurredAt: new Date(1_700_000_600 * 1000),
+    });
+  });
+
+  it('maps payout.paid with the event account and arrival day', () => {
+    const mapped = mapObject(
+      'payout.paid',
+      {
+        id: 'po_123',
+        amount: 12_500,
+        currency: 'usd',
+        arrival_date: 1_792_800_000,
+        failure_code: null,
+      },
+      { account: 'acct_connected', created: 1_700_000_000 },
+    );
+
+    expect(mapped).toEqual({
+      payoutId: 'po_123',
+      accountId: 'acct_connected',
+      status: 'paid',
+      amountMinor: 12_500,
+      currency: 'USD',
+      arrivalDate: new Date(1_792_800_000 * 1000).toISOString().slice(0, 10),
+      failureCode: null,
+      occurredAt: new Date(1_700_000_000 * 1000),
+    });
+  });
+
+  it('maps payout.failed with its failure code', () => {
+    const mapped = mapObject(
+      'payout.failed',
+      {
+        id: 'po_123',
+        amount: 12_500,
+        currency: 'eur',
+        arrival_date: 1_792_800_000,
+        failure_code: 'account_closed',
+      },
+      { account: 'acct_connected', created: 1_700_000_000 },
+    );
+
+    expect(mapped).toEqual({
+      payoutId: 'po_123',
+      accountId: 'acct_connected',
+      status: 'failed',
+      amountMinor: 12_500,
+      currency: 'EUR',
+      arrivalDate: new Date(1_792_800_000 * 1000).toISOString().slice(0, 10),
+      failureCode: 'account_closed',
+      occurredAt: new Date(1_700_000_000 * 1000),
     });
   });
 

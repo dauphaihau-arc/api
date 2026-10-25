@@ -19,8 +19,31 @@ export interface PayoutRecord {
   /** Human-facing Payout number (`PAY-YYYYMMDD-NNNNNN`). */
   payoutNumber: string;
   amountMinor: number;
+  /** The shop's Settlement Currency, and the currency of every discharged amount. */
   currency: string;
   state: PayoutState;
+
+  /**
+   * The currency the transfer was denominated in — the platform's provider
+   * balance currency — and the amount in it, frozen at claim time. Null on rows
+   * claimed before the platform-currency transfer existed.
+   */
+  transferCurrency: string | null;
+  transferAmountMinor: number | null;
+
+  /**
+   * The two currencies the Payout names (shop Settlement Currency in, account
+   * currency out), the claim-time rate that converted the shop amount into
+   * `transferCurrency`, and the provider's evidence: the rate it applied into
+   * the destination currency and the destination amount it derived. The
+   * provider's values are authoritative.
+   */
+  sourceCurrency: string | null;
+  targetCurrency: string | null;
+  fxRate: string | null;
+  targetAmountMinor: number | null;
+  fxFeeMinor: number | null;
+  providerFxRate: string | null;
 
   /** Where the Payout came from: a scheduled run or a manual withdrawal. */
   source: PayoutSource;

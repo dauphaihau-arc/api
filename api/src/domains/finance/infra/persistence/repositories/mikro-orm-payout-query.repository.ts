@@ -9,6 +9,7 @@ import type {
   PayoutRecord,
 } from '../../../app/ports/payout.types';
 import type { PayoutSource, PayoutState } from '../../../domain/rules/payout';
+import { toNullableMinorUnits } from './payout-row.mapper';
 
 /** One `payouts` row, as Postgres returns it. */
 interface PayoutRow {
@@ -18,6 +19,14 @@ interface PayoutRow {
   amount_minor: number;
   currency: string;
   state: PayoutState;
+  source_currency: string | null;
+  target_currency: string | null;
+  transfer_currency: string | null;
+  transfer_amount_minor: string | null;
+  fx_rate: string | null;
+  target_amount_minor: string | null;
+  fx_fee_minor: string | null;
+  provider_fx_rate: string | null;
   source: PayoutSource;
   period_key: string | null;
   reason: string | null;
@@ -27,7 +36,10 @@ interface PayoutRow {
 }
 
 const PAYOUT_COLUMNS = `id, public_id, payout_number, amount_minor, currency, state, source,
-       period_key, reason, provider_reference, paid_at, created_at`;
+       period_key, reason, provider_reference, paid_at, created_at,
+       source_currency, target_currency, transfer_currency,
+       transfer_amount_minor, fx_rate, target_amount_minor,
+       fx_fee_minor, provider_fx_rate`;
 
 function toPayoutRecord(row: PayoutRow): PayoutRecord {
   return {
@@ -37,6 +49,14 @@ function toPayoutRecord(row: PayoutRow): PayoutRecord {
     amountMinor: row.amount_minor,
     currency: row.currency,
     state: row.state,
+    sourceCurrency: row.source_currency,
+    targetCurrency: row.target_currency,
+    transferCurrency: row.transfer_currency,
+    transferAmountMinor: toNullableMinorUnits(row.transfer_amount_minor),
+    fxRate: row.fx_rate,
+    targetAmountMinor: toNullableMinorUnits(row.target_amount_minor),
+    fxFeeMinor: toNullableMinorUnits(row.fx_fee_minor),
+    providerFxRate: row.provider_fx_rate,
     source: row.source,
     periodKey: row.period_key,
     reason: row.reason,

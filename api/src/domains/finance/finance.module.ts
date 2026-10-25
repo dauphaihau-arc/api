@@ -18,6 +18,14 @@ import {
   SETTLEMENT_CURRENCY_CONFIG,
   buildSettlementCurrencyConfig,
 } from '~/platform/config/settlement-currency.config';
+import {
+  PAYOUT_PROVIDER_CONFIG,
+  buildPayoutProviderConfig,
+} from '~/platform/config/payout-provider.config';
+import {
+  PAYOUT_CONNECT_COUNTRIES_CONFIG,
+  buildPayoutConnectCountriesConfig,
+} from '~/platform/config/payout-country.config';
 import { AuthModule } from '../auth/auth.module';
 import { ShopModule } from '../shop/shop.module';
 import { AdminCommissionScheduleController } from './api/rest/admin-commission-schedule.controller';
@@ -28,9 +36,11 @@ import { FinanceMoneyEventProcessorService } from './app/services/finance-money-
 import { RecordProviderFeeJob } from './jobs/record-provider-fee.job';
 import { PayoutAttemptService } from './app/services/payout-attempt.service';
 import { PayoutNotificationService } from './app/services/payout-notification.service';
+import { PayoutQuoteService } from './app/services/payout-quote.service';
 import { CommissionScheduleRepository } from './app/ports/commission-schedule.repository';
 import { JournalEntryRepository } from './app/ports/journal-entry.repository';
 import { ProviderFeeRepository } from './app/ports/provider-fee.repository';
+import { ProviderEvidenceRepository } from './app/ports/provider-evidence.repository';
 import { OrderPaidEventRepository } from './app/ports/order-paid-event.repository';
 import { PayoutAccountRepository } from './app/ports/payout-account.repository';
 import { PayoutCommandRepository } from './app/ports/payout-command.repository';
@@ -52,10 +62,13 @@ import { PayShopUseCase } from './app/use-cases/pay-shop/pay-shop.use-case';
 import { RecordCommissionScheduleUseCase } from './app/use-cases/record-commission-schedule/record-commission-schedule.use-case';
 import { RecordOrderPaidJournalEntryUseCase } from './app/use-cases/record-order-paid-journal-entry/record-order-paid-journal-entry.use-case';
 import { RecordProviderFeeUseCase } from './app/use-cases/record-provider-fee/record-provider-fee.use-case';
+import { RecordConnectedPayoutUseCase } from './app/use-cases/record-connected-payout/record-connected-payout.use-case';
+import { RecordTransferEventUseCase } from './app/use-cases/record-transfer-event/record-transfer-event.use-case';
 import { RecordOrderRefundJournalEntryUseCase } from './app/use-cases/record-order-refund-journal-entry/record-order-refund-journal-entry.use-case';
 import { RecordPayoutAvailabilityUseCase } from './app/use-cases/record-payout-availability/record-payout-availability.use-case';
-import { RecordShopPayoutAccountUseCase } from './app/use-cases/record-shop-payout-account/record-shop-payout-account.use-case';
-import { RecordShopPayoutAccountVerificationUseCase } from './app/use-cases/record-shop-payout-account-verification/record-shop-payout-account-verification.use-case';
+import { StartPayoutOnboardingUseCase } from './app/use-cases/start-payout-onboarding/start-payout-onboarding.use-case';
+import { SyncPayoutAccountUseCase } from './app/use-cases/sync-payout-account/sync-payout-account.use-case';
+import { QuoteShopPayoutUseCase } from './app/use-cases/quote-shop-payout/quote-shop-payout.use-case';
 import { RequestManualPayoutUseCase } from './app/use-cases/request-manual-payout/request-manual-payout.use-case';
 import { RetryPayoutUseCase } from './app/use-cases/retry-payout/retry-payout.use-case';
 import { RunPayoutsUseCase } from './app/use-cases/run-payouts/run-payouts.use-case';
@@ -69,7 +82,9 @@ import { PayoutLineEntity } from './infra/persistence/entities/payout-line.entit
 import { PayoutSettingsEntity } from './infra/persistence/entities/payout-settings.entity';
 import { PayoutEntity } from './infra/persistence/entities/payout.entity';
 import { PostingEntity } from './infra/persistence/entities/posting.entity';
+import { ConnectedPayoutEntity } from './infra/persistence/entities/connected-payout.entity';
 import { ProviderFeeEntity } from './infra/persistence/entities/provider-fee.entity';
+import { ProviderTransferEventEntity } from './infra/persistence/entities/provider-transfer-event.entity';
 import { SellerPayableBalanceEntity } from './infra/persistence/entities/seller-payable-balance.entity';
 import { SettlementCurrencyHistoryEntity } from './infra/persistence/entities/settlement-currency-history.entity';
 import { MikroOrmCommissionScheduleRepository } from './infra/persistence/repositories/mikro-orm-commission-schedule.repository';
@@ -80,6 +95,7 @@ import { MikroOrmPayoutAvailabilityRepository } from './infra/persistence/reposi
 import { MikroOrmPayoutCommandRepository } from './infra/persistence/repositories/mikro-orm-payout-command.repository';
 import { MikroOrmPayoutQueryRepository } from './infra/persistence/repositories/mikro-orm-payout-query.repository';
 import { MikroOrmPayoutSettingsRepository } from './infra/persistence/repositories/mikro-orm-payout-settings.repository';
+import { MikroOrmProviderEvidenceRepository } from './infra/persistence/repositories/mikro-orm-provider-evidence.repository';
 import { MikroOrmProviderFeeRepository } from './infra/persistence/repositories/mikro-orm-provider-fee.repository';
 import { MikroOrmSellerPayableQueryRepository } from './infra/persistence/repositories/mikro-orm-seller-payable-query.repository';
 import { MikroOrmSellerPayableCommandRepository } from './infra/persistence/repositories/mikro-orm-seller-payable-command.repository';
@@ -103,6 +119,8 @@ import { MikroOrmTransactionsQueryRepository } from './infra/persistence/reposit
       JournalEntryEntity,
       LedgerAccountEntity,
       ProviderFeeEntity,
+      ProviderTransferEventEntity,
+      ConnectedPayoutEntity,
       PostingEntity,
       SellerPayableBalanceEntity,
       SettlementCurrencyHistoryEntity,
@@ -139,6 +157,10 @@ import { MikroOrmTransactionsQueryRepository } from './infra/persistence/reposit
       useClass: MikroOrmProviderFeeRepository,
     },
     {
+      provide: ProviderEvidenceRepository,
+      useClass: MikroOrmProviderEvidenceRepository,
+    },
+    {
       provide: PayoutAvailabilityRepository,
       useClass: MikroOrmPayoutAvailabilityRepository,
     },
@@ -170,6 +192,18 @@ import { MikroOrmTransactionsQueryRepository } from './infra/persistence/reposit
         buildSettlementCurrencyConfig(configService),
     },
     {
+      provide: PAYOUT_PROVIDER_CONFIG,
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) =>
+        buildPayoutProviderConfig(configService),
+    },
+    {
+      provide: PAYOUT_CONNECT_COUNTRIES_CONFIG,
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) =>
+        buildPayoutConnectCountriesConfig(configService),
+    },
+    {
       provide: SellerPayableQueryRepository,
       useClass: MikroOrmSellerPayableQueryRepository,
     },
@@ -190,8 +224,8 @@ import { MikroOrmTransactionsQueryRepository } from './infra/persistence/reposit
     RecordPayoutAvailabilityUseCase,
     RecordCommissionScheduleUseCase,
     GetShopSellerPayableUseCase,
-    RecordShopPayoutAccountUseCase,
-    RecordShopPayoutAccountVerificationUseCase,
+    StartPayoutOnboardingUseCase,
+    SyncPayoutAccountUseCase,
     GetShopPayoutAccountUseCase,
     GetShopPayoutsUseCase,
     GetShopTransactionsUseCase,
@@ -201,16 +235,23 @@ import { MikroOrmTransactionsQueryRepository } from './infra/persistence/reposit
     SetAutoPayoutEnabledUseCase,
     PayShopUseCase,
     RequestManualPayoutUseCase,
+    QuoteShopPayoutUseCase,
     RunPayoutsUseCase,
     RetryPayoutUseCase,
     RecordProviderFeeUseCase,
+    RecordTransferEventUseCase,
+    RecordConnectedPayoutUseCase,
     PayoutAttemptService,
+    PayoutQuoteService,
     PayoutNotificationService,
     FinanceMoneyEventProcessorService,
     RecordProviderFeeJob,
   ],
   exports: [
+    RecordTransferEventUseCase,
+    RecordConnectedPayoutUseCase,
     FinanceMoneyEventProcessorService,
+    SyncPayoutAccountUseCase,
     RunPayoutsUseCase,
     RetryPayoutUseCase,
     PayoutQueryRepository,

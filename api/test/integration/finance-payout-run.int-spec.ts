@@ -39,6 +39,7 @@ import {
 } from '~/integrations/payment/app/ports/payment-gateway';
 import {
   PayoutGateway,
+  type PayoutProviderBalance,
   type PayoutTransferInput,
   type PayoutTransferResult,
 } from '~/integrations/payment/app/ports/payout-gateway';
@@ -59,7 +60,6 @@ jest.setTimeout(240_000);
 
 const API_PREFIX = '/v1';
 const VALID_TEST_PASSWORD = 'Password123!';
-const ACCOUNT_REFERENCE = '0123456789';
 const AUTO_PAYOUT_DAY = new Date().getUTCDate();
 
 type TestDatabase = TestDatabaseContext;
@@ -238,6 +238,21 @@ class FakePayoutGateway extends PayoutGateway {
   failNextCall = false;
   failuresRemaining = 0;
 
+  /** The platform balance the pre-flight check reads; unlimited by default. */
+  providerBalance: PayoutProviderBalance | null = {
+    currency: 'USD',
+    availableMinor: Number.MAX_SAFE_INTEGER,
+    pendingMinor: 0,
+  };
+
+  balanceReads = 0;
+
+  async retrieveBalance(currency: string): Promise<PayoutProviderBalance | null> {
+    this.balanceReads += 1;
+
+    return this.providerBalance ? { ...this.providerBalance, currency } : null;
+  }
+
   async send(input: PayoutTransferInput): Promise<PayoutTransferResult> {
     this.calls.push(input);
 
@@ -291,6 +306,9 @@ describe('Payout Run pays available balances (integration)', () => {
     process.env.RATE_LIMIT_DRIVER = 'memory';
     process.env.RATE_LIMIT_LIMIT = '10000';
     process.env.QUEUE_DRIVER = 'inline';
+    // Payout execution in this suite uses the local adapter; a developer .env
+    // must not switch it onto Stripe Connect.
+    process.env.PAYOUT_PROVIDER = 'manual_bank';
     process.env.MAIL_DRIVER = 'logger';
     process.env.STORAGE_DRIVER = 'local';
     process.env.STORAGE_LOCAL_ROOT = storageRoot;
@@ -678,33 +696,39 @@ describe('Payout Run pays available balances (integration)', () => {
     await app.get(FinanceMoneyEventProcessorService).processPendingEvents();
   }
 
-  /** Records the seller's Payout Account and, unless asked otherwise, verifies it. */
+  /** Starts the seller's Payout Account onboarding; the local adapter is active. */
   async function recordPayoutAccount(
     seller: TestSeller,
     options: { verify: boolean } = { verify: true },
   ): Promise<string> {
     const response = await seller.agent
-      .put(`${API_PREFIX}/shops/${seller.shopPublicId}/finance/payout-account`)
+      .post(`${API_PREFIX}/shops/${seller.shopPublicId}/finance/payout-account/onboarding`)
       .set('Idempotency-Key', randomUUID())
-      .send({
-        holder_name: 'Jane Seller',
-        bank_name: 'Example Bank',
-        country: 'US',
-        account_reference: ACCOUNT_REFERENCE,
-      })
+      .send({ country: 'US' })
       .expect(200);
 
-    const accountId = response.body.payout_account.id as string;
-
     if (options.verify) {
-      await admin.agent
-        .put(`${API_PREFIX}/admin/shops/${seller.shopPublicId}/finance/payout-account/verification`)
-        .set('Idempotency-Key', randomUUID())
-        .send({ status: 'active' })
-        .expect(200);
+      expect(response.body).toEqual({ url: null, status: 'active' });
+    }
+    else {
+      // The local adapter cannot produce an onboarding account through the API,
+      // so move the open row back to the state a Connect account would have
+      // before Stripe grants the capability.
+      await sql.query(
+        `update "payout_accounts"
+         set "status" = 'onboarding', "payouts_enabled" = false,
+             "charges_enabled" = false, "transfers_capability" = null
+         where "shop_id" = $1 and "deactivated_at" is null`,
+        [seller.shopId],
+      );
     }
 
-    return accountId;
+    const rows = await sql.query<{ id: string }>(
+      'select "id" from "payout_accounts" where "shop_id" = $1 and "deactivated_at" is null',
+      [seller.shopId],
+    );
+
+    return rows.rows[0]!.id;
   }
 
   async function runPayouts() {
@@ -953,7 +977,7 @@ describe('Payout Run pays available balances (integration)', () => {
       not_yet_available_minor: 0,
     });
 
-    // The provider received the shop's own account reference and settlement currency.
+    // The provider received the connected destination and settlement currency.
     expect(payoutGateway.calls).toHaveLength(1);
     expect(payoutGateway.calls[0]).toMatchObject({
       payoutPublicId: payouts[0]!.public_id,
@@ -961,11 +985,8 @@ describe('Payout Run pays available balances (integration)', () => {
       amountMinor: order.creditMinor,
       currency: 'USD',
       destination: {
-        holderName: 'Jane Seller',
-        bankName: 'Example Bank',
+        providerAccountId: null,
         country: 'US',
-        last4: '6789',
-        reference: ACCOUNT_REFERENCE,
       },
     });
 
@@ -1066,6 +1087,51 @@ describe('Payout Run pays available balances (integration)', () => {
     await runPayouts();
     expect(await readPayouts(seller.shopId)).toHaveLength(1);
     expect(payoutGateway.calls).toHaveLength(0);
+  });
+
+  it('blocks a pre-existing account in a country Stripe cannot pay without a transfer', async () => {
+    const { seller, inventoryId } = await createShopWithProduct('run-unsupported-country', {
+      amountMinor: 2_500,
+      stock: 4,
+    });
+    const buyer = await registerBuyer('run-unsupported-country-buyer');
+    const order = await placeAndPayCardOrder(buyer, inventoryId, 1);
+    await deliverOrder(seller, order);
+
+    // A row opened before the allowlist narrowed: active, but in a country
+    // Stripe's cross-border payout rule cannot reach.
+    await recordPayoutAccount(seller, { verify: true });
+    await sql.query(
+      `update "payout_accounts" set "country" = 'AU'
+       where "shop_id" = $1 and "deactivated_at" is null`,
+      [seller.shopId],
+    );
+    await forceAutoPayoutSettings(seller);
+
+    const summary = await runPayouts();
+    expect(summary.blockedShopCount).toBeGreaterThanOrEqual(1);
+
+    const payouts = await readPayouts(seller.shopId);
+    expect(payouts).toHaveLength(1);
+    expect(payouts[0]).toMatchObject({
+      payout_account_id: null,
+      amount_minor: order.creditMinor,
+      state: 'blocked',
+      reason: 'payout_account_country_unsupported',
+      provider_reference: null,
+      attempt_count: 0,
+    });
+    expect(payoutGateway.calls).toHaveLength(0);
+    expect(await readPayablePosition(seller.shopId)).toMatchObject({
+      available_minor: order.creditMinor,
+    });
+
+    // The seller cannot opt in to auto payouts for the same account.
+    const refused = await seller.agent
+      .put(`${API_PREFIX}/shops/${seller.shopPublicId}/finance/payout-settings`)
+      .send({ auto_payout_enabled: true });
+    expect(refused.status).toBe(409);
+    expect(refused.body.code).toBe('AUTO_PAYOUT_NOT_ELIGIBLE');
   });
 
   it('does not claim a new Payout while an earlier one is still pending', async () => {
@@ -1444,6 +1510,7 @@ describe('Payout Run pays available balances (integration)', () => {
         manualWithdrawalUnlimited: false,
         autoPayoutForceDue: false,
         retryDelaysMs: [60_000, 300_000, 900_000],
+        platformCurrency: 'USD',
       },
       app.get(PayoutQueryRepository),
       app.get(PayShopUseCase),
@@ -1525,6 +1592,13 @@ describe('Payout Run pays available balances (integration)', () => {
         orderId: order.orderInternalId,
         amountMinor: order.creditMinor,
       }],
+      sourceCurrency: 'USD',
+      targetCurrency: 'USD',
+      transferCurrency: 'USD',
+      transferAmountMinor: order.creditMinor,
+      fxRate: '1',
+      targetAmountMinor: order.creditMinor,
+      fxFeeMinor: 0,
     };
 
     // Two sources claim the same shop at the same time. The pending backstop

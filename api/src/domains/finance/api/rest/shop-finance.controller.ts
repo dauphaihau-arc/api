@@ -5,6 +5,7 @@ import {
   Header,
   HttpCode,
   HttpStatus,
+  Inject,
   Param,
   Post,
   Query,
@@ -29,6 +30,10 @@ import { JwtAuthGuard } from '~/domains/auth/api/guard/jwt-auth.guard';
 import { PermissionsGuard } from '~/domains/auth/api/guard/permissions.guard';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import { ShopAccessService } from '~/domains/shop/app/services/shop-access.service';
+import {
+  PAYOUT_CONNECT_COUNTRIES_CONFIG,
+  type PayoutConnectCountriesConfig,
+} from '~/platform/config/payout-country.config';
 import { ChangeSettlementCurrencyUseCase } from '../../app/use-cases/change-settlement-currency/change-settlement-currency.use-case';
 import { GetPayoutSettingsUseCase } from '../../app/use-cases/get-payout-settings/get-payout-settings.use-case';
 import { GetSettlementCurrencyUseCase } from '../../app/use-cases/get-settlement-currency/get-settlement-currency.use-case';
@@ -36,24 +41,32 @@ import { GetShopPayoutAccountUseCase } from '../../app/use-cases/get-shop-payout
 import { GetShopPayoutsUseCase } from '../../app/use-cases/get-shop-payouts/get-shop-payouts.use-case';
 import { GetShopSellerPayableUseCase } from '../../app/use-cases/get-shop-seller-payable/get-shop-seller-payable.use-case';
 import { GetShopTransactionsUseCase } from '../../app/use-cases/get-shop-transactions/get-shop-transactions.use-case';
-import { RecordShopPayoutAccountUseCase } from '../../app/use-cases/record-shop-payout-account/record-shop-payout-account.use-case';
+import { QuoteShopPayoutUseCase } from '../../app/use-cases/quote-shop-payout/quote-shop-payout.use-case';
 import { RequestManualPayoutUseCase } from '../../app/use-cases/request-manual-payout/request-manual-payout.use-case';
 import { SetAutoPayoutEnabledUseCase } from '../../app/use-cases/set-auto-payout-enabled/set-auto-payout-enabled.use-case';
+import { StartPayoutOnboardingUseCase } from '../../app/use-cases/start-payout-onboarding/start-payout-onboarding.use-case';
 import { ChangeSettlementCurrencyDto } from './dto/change-settlement-currency.dto';
 import { ListShopTransactionsQueryDto } from './dto/list-shop-transactions.query.dto';
-import { RecordPayoutAccountDto } from './dto/record-payout-account.dto';
 import { RequestManualPayoutDto } from './dto/request-manual-payout.dto';
+import { ShopPayoutQuoteQueryDto } from './dto/shop-payout-quote.query.dto';
+import { StartPayoutOnboardingDto } from './dto/start-payout-onboarding.dto';
 import { UpdatePayoutSettingsDto } from './dto/update-payout-settings.dto';
 import { shopFinanceControllerErrorResponses } from './errors/finance-error-responses';
 import { FinanceExceptionsFilter } from './errors/finance-exceptions.filter';
 import {
+  PayoutAccountCountriesResponseDto,
+  PayoutAccountOnboardingResponseDto,
   ShopPayoutAccountResponseDto,
+  toPayoutAccountCountriesResponse,
+  toPayoutAccountOnboardingResponse,
   toShopPayoutAccountResponse,
 } from './responses/payout-account.response';
 import {
   ShopPayoutHistoryResponseDto,
+  ShopPayoutQuoteResponseDto,
   ShopPayoutResponseWrapperDto,
   toShopPayoutHistoryResponse,
+  toShopPayoutQuoteResponse,
   toShopPayoutResponse,
 } from './responses/payout.response';
 import {
@@ -92,9 +105,12 @@ export class ShopFinanceController {
     private readonly getPayoutSettingsUseCase: GetPayoutSettingsUseCase,
     private readonly setAutoPayoutEnabledUseCase: SetAutoPayoutEnabledUseCase,
     private readonly requestManualPayoutUseCase: RequestManualPayoutUseCase,
-    private readonly recordShopPayoutAccountUseCase: RecordShopPayoutAccountUseCase,
+    private readonly quoteShopPayoutUseCase: QuoteShopPayoutUseCase,
+    private readonly startPayoutOnboardingUseCase: StartPayoutOnboardingUseCase,
     private readonly getSettlementCurrencyUseCase: GetSettlementCurrencyUseCase,
     private readonly changeSettlementCurrencyUseCase: ChangeSettlementCurrencyUseCase,
+    @Inject(PAYOUT_CONNECT_COUNTRIES_CONFIG)
+    private readonly payoutConnectCountriesConfig: PayoutConnectCountriesConfig,
   ) {}
 
   @Get('payable')
@@ -150,7 +166,7 @@ export class ShopFinanceController {
       'Moves the shop to another marketplace currency at a zero Seller Payable ' +
       'position with no pending Payout. Takes effect immediately, writes the ' +
       'dated history row with its Cutover Rate, and turns automatic payouts off ' +
-      'until a Payout Account in the new currency is recorded and verified.',
+      'until a Payout Account in the new currency is onboarded and active.',
   })
   @ApiParam({ name: 'shop_id', type: String })
   @ApiOkResponse({
@@ -204,6 +220,37 @@ export class ShopFinanceController {
     );
   }
 
+  @Get('payouts/quote')
+  @Header('Cache-Control', 'private, no-cache')
+  @ApiOperation({
+    summary: 'Quote a payout into the shop Payout Account',
+    description:
+      'The fee, rate, and amount that would land in the current Payout ' +
+      'Account for a given shop-currency amount. Nothing is persisted: the ' +
+      'withdrawal re-quotes and freezes the rate it actually uses, so a preview ' +
+      'and a claim can differ only if the rate moved between them.',
+  })
+  @ApiParam({ name: 'shop_id', type: String })
+  @ApiOkResponse({
+    description: 'The server-computed payout quote.',
+    type: ShopPayoutQuoteResponseDto,
+  })
+  @ApiErrorResponses(shopFinanceControllerErrorResponses.payoutQuote)
+  async payoutQuote(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('shop_id') shopPublicId: string,
+    @Query() query: ShopPayoutQuoteQueryDto,
+  ): Promise<ShopPayoutQuoteResponseDto> {
+    const shopId = (await this.shopAccessService.resolveManageableShopByPublicId(currentUser, shopPublicId)).id;
+
+    return toShopPayoutQuoteResponse(
+      await this.quoteShopPayoutUseCase.execute({
+        shopId,
+        amountMinor: query.amountMinor,
+      }),
+    );
+  }
+
   @Get('payouts')
   @Header('Cache-Control', 'private, no-cache')
   @ApiOperation({ summary: 'Get the shop Payout history' })
@@ -221,6 +268,35 @@ export class ShopFinanceController {
 
     return toShopPayoutHistoryResponse(
       await this.getShopPayoutsUseCase.execute({ shopId }),
+    );
+  }
+
+  @Get('payout-account/countries')
+  @Header('Cache-Control', 'private, no-cache')
+  @ApiOperation({
+    summary: 'List the countries where the shop can start payout onboarding',
+    description:
+      'Stripe’s cross-border payout region (the EEA, GB, CA, CH and US), ' +
+      'optionally narrowed by configuration, sorted. The seller picker offers ' +
+      'exactly these, so a country Stripe would refuse is never chosen.',
+  })
+  @ApiParam({ name: 'shop_id', type: String })
+  @ApiOkResponse({
+    description: 'The ISO 3166-1 alpha-2 codes the provider can onboard.',
+    type: PayoutAccountCountriesResponseDto,
+  })
+  @ApiErrorResponses(shopFinanceControllerErrorResponses.payoutAccountRead)
+  async payoutAccountCountries(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('shop_id') shopPublicId: string,
+  ): Promise<PayoutAccountCountriesResponseDto> {
+    await this.shopAccessService.resolveManageableShopByPublicId(
+      currentUser,
+      shopPublicId,
+    );
+
+    return toPayoutAccountCountriesResponse(
+      this.payoutConnectCountriesConfig.countries,
     );
   }
 
@@ -331,30 +407,38 @@ export class ShopFinanceController {
     };
   }
 
-  @Put('payout-account')
-  @Header('Cache-Control', 'private, no-cache')
-  @ApiOperation({ summary: 'Record or replace the shop Payout Account' })
+  @Post('payout-account/onboarding')
+  @HttpCode(HttpStatus.OK)
+  @Header('Cache-Control', 'private, no-store')
+  @UseInterceptors(IdempotencyKeyInterceptor)
+  @Idempotent({ scope: 'finance:payout-account-onboarding' })
+  @ApiOperation({
+    summary: 'Start or resume the shop payout onboarding',
+    description:
+      'For stripe_connect, creates or reuses the Express connected account and ' +
+      'returns a Stripe-hosted onboarding URL. For manual_bank, activates the ' +
+      'local destination and returns a null URL, which keeps local payouts ' +
+      'working without Stripe.',
+  })
   @ApiParam({ name: 'shop_id', type: String })
   @ApiOkResponse({
-    description: 'The recorded Payout Account, masked.',
-    type: ShopPayoutAccountResponseDto,
+    description: 'The onboarding URL and the Payout Account status.',
+    type: PayoutAccountOnboardingResponseDto,
   })
-  @ApiErrorResponses(shopFinanceControllerErrorResponses.payoutAccountRecord)
-  async recordPayoutAccount(
+  @ApiErrorResponses(shopFinanceControllerErrorResponses.payoutAccountOnboarding)
+  async startPayoutOnboarding(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('shop_id') shopPublicId: string,
-    @Body() body: RecordPayoutAccountDto,
-  ): Promise<ShopPayoutAccountResponseDto> {
+    @Body() body: StartPayoutOnboardingDto,
+  ): Promise<PayoutAccountOnboardingResponseDto> {
     const shopId = (await this.shopAccessService.resolveManageableShopByPublicId(currentUser, shopPublicId)).id;
 
-    return toShopPayoutAccountResponse(
-      await this.recordShopPayoutAccountUseCase.execute({
+    return toPayoutAccountOnboardingResponse(
+      await this.startPayoutOnboardingUseCase.execute({
         shopId,
         shopPublicId,
-        holderName: body.holderName,
-        bankName: body.bankName,
+        email: currentUser.email,
         country: body.country,
-        accountReference: body.accountReference,
       }),
     );
   }

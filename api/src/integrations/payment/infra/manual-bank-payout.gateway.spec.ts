@@ -8,13 +8,14 @@ function transferInput(payoutPublicId = PAYOUT_ID) {
     provider: 'manual_bank',
     amountMinor: 12_500,
     currency: 'USD',
+    transferCurrency: 'USD',
+    transferAmountMinor: 12_500,
+    targetCurrency: 'USD',
+    targetAmountMinor: 12_500,
+    fxRate: '1',
     destination: {
-      type: 'bank_account',
-      holderName: 'Ada Seller',
-      bankName: 'Stub Bank',
+      providerAccountId: null,
       country: 'US',
-      last4: '4242',
-      reference: 'acct_stub_reference',
     },
   };
 }
@@ -31,10 +32,24 @@ async function failureOf(gateway: ManualBankPayoutGateway): Promise<string> {
 }
 
 describe('ManualBankPayoutGateway', () => {
+  it('reports an effectively unlimited balance, since it moves no provider money', async () => {
+    await expect(
+      new ManualBankPayoutGateway({}).retrieveBalance('USD'),
+    ).resolves.toEqual({
+      currency: 'USD',
+      availableMinor: Number.MAX_SAFE_INTEGER,
+      pendingMinor: 0,
+    });
+  });
+
   it('succeeds by default and references the Payout public id', async () => {
     await expect(
       new ManualBankPayoutGateway({}).send(transferInput()),
-    ).resolves.toEqual({ reference: PAYOUT_ID });
+    ).resolves.toEqual({
+      reference: PAYOUT_ID,
+      providerFxRate: null,
+      targetAmountMinor: null,
+    });
   });
 
   it('fails the first of N attempts for one Payout, then succeeds', async () => {
@@ -45,6 +60,8 @@ describe('ManualBankPayoutGateway', () => {
     await expect(gateway.send(transferInput())).rejects.toThrow();
     await expect(gateway.send(transferInput())).resolves.toEqual({
       reference: PAYOUT_ID,
+      providerFxRate: null,
+      targetAmountMinor: null,
     });
   });
 
@@ -56,6 +73,8 @@ describe('ManualBankPayoutGateway', () => {
     await expect(gateway.send(transferInput('payout_a'))).rejects.toThrow();
     await expect(gateway.send(transferInput('payout_a'))).resolves.toEqual({
       reference: 'payout_a',
+      providerFxRate: null,
+      targetAmountMinor: null,
     });
     // A different Payout has its own budget, so its first call still fails.
     await expect(gateway.send(transferInput('payout_b'))).rejects.toThrow();
@@ -74,6 +93,8 @@ describe('ManualBankPayoutGateway', () => {
     // bound is the adapter's, the attempt limit stays the domain's.
     await expect(gateway.send(transferInput())).resolves.toEqual({
       reference: PAYOUT_ID,
+      providerFxRate: null,
+      targetAmountMinor: null,
     });
   });
 
@@ -120,7 +141,11 @@ describe('ManualBankPayoutGateway', () => {
     await expect(
       new ManualBankPayoutGateway({ PAYOUT_STUB_FAIL_ATTEMPTS: '0' })
         .send(transferInput()),
-    ).resolves.toEqual({ reference: PAYOUT_ID });
+    ).resolves.toEqual({
+      reference: PAYOUT_ID,
+      providerFxRate: null,
+      targetAmountMinor: null,
+    });
   });
 
   it.each(['abc', '-1', '1.5'])(
@@ -136,7 +161,11 @@ describe('ManualBankPayoutGateway', () => {
     await expect(
       new ManualBankPayoutGateway({ PAYOUT_STUB_FAIL_ATTEMPTS: '' })
         .send(transferInput()),
-    ).resolves.toEqual({ reference: PAYOUT_ID });
+    ).resolves.toEqual({
+      reference: PAYOUT_ID,
+      providerFxRate: null,
+      targetAmountMinor: null,
+    });
   });
 
   it('rejects an unknown fail mode', () => {
@@ -161,6 +190,10 @@ describe('ManualBankPayoutGateway', () => {
   it('stays inert in production when no stub switch is set', async () => {
     await expect(
       new ManualBankPayoutGateway({ NODE_ENV: 'production' }).send(transferInput()),
-    ).resolves.toEqual({ reference: PAYOUT_ID });
+    ).resolves.toEqual({
+      reference: PAYOUT_ID,
+      providerFxRate: null,
+      targetAmountMinor: null,
+    });
   });
 });

@@ -1,93 +1,97 @@
 import { PayoutAccountInvalidError } from '../errors/finance-domain.error';
 
 /**
- * The payout adapter that moves the money. There is one for now: an operator
- * pays out against the recorded bank details, and a provider integration would
- * add its own tokenised provider beside it.
+ * The payout adapter a Payout Account points at. `manual_bank` is the local
+ * development adapter that settles out of band; `stripe_connect` is a Stripe
+ * Express connected account that receives transfers.
  */
 export const MANUAL_BANK_PROVIDER = 'manual_bank';
-
-/** A Payout Account row's lifecycle; only an operator verifies or disables one. */
-export type PayoutAccountStatus = 'pending' | 'active' | 'disabled';
+export const STRIPE_CONNECT_PROVIDER = 'stripe_connect';
 
 /**
- * What the seller supplies when recording a Payout Account. The currency is
- * resolved server-side from the shop's Settlement Currency, never accepted from
- * the caller.
+ * A Payout Account row's lifecycle.
+ *
+ * `onboarding` means Stripe has not granted a capability yet; `action_required`
+ * means the seller must supply something before payouts can start; `active`
+ * means transfers are granted and payouts are enabled; `restricted` means Stripe
+ * has disabled a capability; `disabled` closes a destination without replacing
+ * it.
  */
-export interface PayoutAccountInput {
-  holderName: string;
-  bankName: string;
-  country: string;
-  accountReference: string;
+export type PayoutAccountStatus =
+  | 'onboarding'
+  | 'action_required'
+  | 'active'
+  | 'restricted'
+  | 'disabled';
+
+/**
+ * The subset of Stripe's requirements that Arc stores. It is a summary, never
+ * the identity documents or tax details themselves.
+ */
+export interface PayoutAccountRequirements {
+  currentlyDue: string[];
+  disabledReason: string | null;
 }
 
-/** A Payout Account input once validation has accepted it. */
-export type ValidatedPayoutAccountInput = PayoutAccountInput;
+/** What a provider reports about a connected account's capabilities. */
+export interface ConnectPayoutAccountState {
+  payoutsEnabled: boolean;
+  chargesEnabled: boolean;
+  transfersCapability: string | null;
+  requirementsDue: readonly string[];
+  disabledReason: string | null;
+}
 
-const MIN_REFERENCE_LENGTH = 4;
-const MAX_REFERENCE_LENGTH = 34;
-const REFERENCE_PATTERN = /^[A-Za-z0-9-]+$/;
 const COUNTRY_PATTERN = /^[A-Z]{2}$/;
 
 /**
- * Refuses a Payout Account that cannot be paid into: a blank
- * holder or bank name, a country that is not an ISO 3166-1 alpha-2 code, or a
- * reference shorter than 4 characters, longer than 34, or carrying characters
- * outside letters, digits and dash.
+ * Refuses a country that is not an ISO 3166-1 alpha-2 code. Whether Stripe
+ * supports Connect in that country is the provider's answer, reported when the
+ * account is created.
  */
-export function assertValidPayoutAccount(
-  input: PayoutAccountInput,
-): asserts input is ValidatedPayoutAccountInput {
-  if (input.holderName.trim().length === 0) {
-    throw new PayoutAccountInvalidError('holder name must not be blank');
-  }
-
-  if (input.bankName.trim().length === 0) {
-    throw new PayoutAccountInvalidError('bank name must not be blank');
-  }
-
-  if (!COUNTRY_PATTERN.test(input.country.toUpperCase())) {
+export function assertValidPayoutAccountCountry(country: string): void {
+  if (!COUNTRY_PATTERN.test(country.toUpperCase())) {
     throw new PayoutAccountInvalidError(
       'country must be an ISO 3166-1 alpha-2 code',
     );
   }
-
-  if (
-    input.accountReference.length < MIN_REFERENCE_LENGTH
-    || input.accountReference.length > MAX_REFERENCE_LENGTH
-    || !REFERENCE_PATTERN.test(input.accountReference)
-  ) {
-    throw new PayoutAccountInvalidError(
-      `account reference must be ${MIN_REFERENCE_LENGTH} to ${MAX_REFERENCE_LENGTH} letters, digits or dashes`,
-    );
-  }
 }
 
 /**
- * The display-safe tail of a reference. Last4 is the only part of the reference
- * that ever leaves persistence, so the response can identify the account
- * without disclosing how to move money into it.
+ * Derives the stored status from what Stripe reports.
+ *
+ * A disabled capability wins over everything else, because the account cannot
+ * be used even if its requirements are still listed as due. An account whose
+ * transfers capability is active and whose payouts are enabled is `active`.
+ * Outstanding requirements mean the seller has something to do, and anything
+ * else — no capability granted yet, or a capability still pending — is still
+ * onboarding.
  */
-export function maskReference(reference: string): { last4: string } {
-  return { last4: reference.slice(-4) };
+export function deriveConnectPayoutAccountStatus(
+  state: ConnectPayoutAccountState,
+): PayoutAccountStatus {
+  if (state.disabledReason) {
+    return 'restricted';
+  }
+
+  if (state.transfersCapability === 'active' && state.payoutsEnabled) {
+    return 'active';
+  }
+
+  if (state.requirementsDue.length > 0) {
+    return 'action_required';
+  }
+
+  return 'onboarding';
 }
 
-/** The statuses an operator may move an open Payout Account into. */
-export type PayoutAccountVerificationStatus = 'active' | 'disabled';
-
-const VERIFICATION_STATUSES: readonly PayoutAccountVerificationStatus[] = [
-  'active',
-  'disabled',
-];
-
-/** Refuses a verification status that is neither `active` nor `disabled`. */
-export function assertValidPayoutAccountVerificationStatus(
-  status: string,
-): asserts status is PayoutAccountVerificationStatus {
-  if (!VERIFICATION_STATUSES.includes(status as PayoutAccountVerificationStatus)) {
-    throw new PayoutAccountInvalidError(
-      `status must be one of ${VERIFICATION_STATUSES.join(', ')}`,
-    );
-  }
+/** The requirements summary Arc stores, from what the provider reported. */
+export function toPayoutAccountRequirements(
+  requirementsDue: readonly string[],
+  disabledReason: string | null,
+): PayoutAccountRequirements {
+  return {
+    currentlyDue: [...requirementsDue],
+    disabledReason,
+  };
 }

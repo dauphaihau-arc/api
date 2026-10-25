@@ -265,11 +265,12 @@ describe('Shop Settlement Currency change (integration)', () => {
     await sql.query(
       `insert into "payout_accounts" (
          "id", "created_at", "updated_at", "shop_id", "provider",
-         "provider_ref_encrypted", "holder_name", "bank_name", "country",
-         "currency", "last4", "status", "verified_at", "deactivated_at"
+         "provider_account_id", "country", "currency", "status",
+         "payouts_enabled", "charges_enabled", "transfers_capability",
+         "requirements", "default_currency", "deactivated_at"
        )
-       values ($1, now(), now(), $2, 'manual_bank', 'v1:test-ciphertext',
-               'Jane Seller', 'Example Bank', 'US', $3, '6789', 'active', now(), null)`,
+       values ($1, now(), now(), $2, 'manual_bank', null, 'US', $3, 'active',
+               true, true, 'active', null, $3, null)`,
       [id, shopId, currency],
     );
 

@@ -58,6 +58,13 @@ export class RetryPayoutUseCase {
         currency: pending.currency,
         amountMinor: pending.amountMinor,
         source: pending.source,
+        // The conversion was frozen at claim, so a retry sends the same transfer
+        // amount in the same currency even if the market has moved since.
+        targetCurrency: pending.targetCurrency,
+        transferCurrency: pending.transferCurrency,
+        transferAmountMinor: pending.transferAmountMinor,
+        fxRate: pending.fxRate,
+        targetAmountMinor: pending.targetAmountMinor,
       },
       target,
       allocations: pending.allocations,

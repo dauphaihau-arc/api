@@ -15,6 +15,7 @@ import type {
   PayoutSource,
 } from '../../../domain/rules/payout';
 import type { FinanceRepositoryContext } from '../../../app/ports/finance-repository-context';
+import { toNullableMinorUnits } from './payout-row.mapper';
 
 /** The claimed row's columns, as Postgres returns them. */
 interface ClaimedPayoutRow {
@@ -34,6 +35,14 @@ interface PendingPayoutRow {
   source: PayoutSource;
   attempt_count: number;
   claimed_allocations: PayoutAllocation[] | null;
+  source_currency: string | null;
+  target_currency: string | null;
+  transfer_currency: string | null;
+  transfer_amount_minor: string | null;
+  fx_rate: string | null;
+  target_amount_minor: string | null;
+  fx_fee_minor: string | null;
+  provider_fx_rate: string | null;
 }
 
 /** The `reason` column's width. */
@@ -67,9 +76,12 @@ export class MikroOrmPayoutCommandRepository implements PayoutCommandRepository 
          id, created_at, updated_at, public_id, shop_id, payout_account_id,
          currency, amount_minor, state, provider_reference, attempt_count,
          run_day, paid_at, source, period_key, quota_consumed,
-         requested_by_user_id, claimed_allocations
+         requested_by_user_id, claimed_allocations, source_currency,
+         target_currency, transfer_currency, transfer_amount_minor, fx_rate,
+         target_amount_minor, fx_fee_minor
        )
-       select ?, ?, ?, ?, ?, ?, ?, ?, 'pending', null, 0, ?, null, ?, ?, ?, ?, ?
+       select ?, ?, ?, ?, ?, ?, ?, ?, 'pending', null, 0, ?, null, ?, ?, ?, ?, ?,
+              ?, ?, ?, ?, ?, ?, ?
        where not exists (
          select 1 from payouts where shop_id = ? and state = 'pending'
        )
@@ -90,6 +102,13 @@ export class MikroOrmPayoutCommandRepository implements PayoutCommandRepository 
         input.quotaConsumed,
         input.requestedByUserId ?? null,
         JSON.stringify(input.allocations),
+        input.sourceCurrency,
+        input.targetCurrency,
+        input.transferCurrency,
+        input.transferAmountMinor,
+        input.fxRate,
+        input.targetAmountMinor,
+        input.fxFeeMinor,
         input.shopId,
       ],
     );
@@ -182,10 +201,18 @@ export class MikroOrmPayoutCommandRepository implements PayoutCommandRepository 
     const settled = await entityManager.execute<Array<{ id: string }>>(
       `update payouts
        set state = 'paid', provider_reference = ?, paid_at = ?, updated_at = ?,
+           provider_fx_rate = ?, target_amount_minor = coalesce(?, target_amount_minor),
            attempt_count = attempt_count + 1
        where id = ? and state = 'pending'
        returning id`,
-      [input.providerReference, input.paidAt, now, input.payoutId],
+      [
+        input.providerReference,
+        input.paidAt,
+        now,
+        input.providerFxRate,
+        input.targetAmountMinor,
+        input.payoutId,
+      ],
     );
 
     if (settled.length === 0) {
@@ -215,7 +242,9 @@ export class MikroOrmPayoutCommandRepository implements PayoutCommandRepository 
   ): Promise<PendingPayoutAttempt | null> {
     const rows = await this.getEntityManager(context).execute<PendingPayoutRow[]>(
       `select id, public_id, shop_id, payout_account_id, currency, amount_minor,
-              source, attempt_count, claimed_allocations
+              source, attempt_count, claimed_allocations, source_currency,
+              target_currency, transfer_currency, transfer_amount_minor, fx_rate,
+              target_amount_minor, fx_fee_minor, provider_fx_rate
        from payouts
        where id = ? and state = 'pending'`,
       [payoutId],
@@ -237,6 +266,14 @@ export class MikroOrmPayoutCommandRepository implements PayoutCommandRepository 
       source: row.source,
       attemptCount: row.attempt_count,
       allocations: row.claimed_allocations ?? [],
+      sourceCurrency: row.source_currency,
+      targetCurrency: row.target_currency,
+      transferCurrency: row.transfer_currency,
+      transferAmountMinor: toNullableMinorUnits(row.transfer_amount_minor),
+      fxRate: row.fx_rate,
+      targetAmountMinor: toNullableMinorUnits(row.target_amount_minor),
+      fxFeeMinor: toNullableMinorUnits(row.fx_fee_minor),
+      providerFxRate: row.provider_fx_rate,
     };
   }
 

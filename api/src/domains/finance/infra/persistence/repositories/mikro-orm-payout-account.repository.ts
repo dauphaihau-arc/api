@@ -4,30 +4,45 @@ import { randomUUID } from 'node:crypto';
 import type { FinanceRepositoryContext } from '../../../app/ports/finance-repository-context';
 import {
   PayoutAccountRepository,
+  type CreatePayoutAccountInput,
   type PayoutAccountPaymentTarget,
   type PayoutAccountRecord,
-  type ReplacePayoutAccountInput,
-  type UpdatePayoutAccountStatusInput,
+  type UpdatePayoutAccountInput,
 } from '../../../app/ports/payout-account.repository';
-import type { PayoutAccountStatus } from '../../../domain/rules/payout-account';
+import type {
+  PayoutAccountRequirements,
+  PayoutAccountStatus,
+} from '../../../domain/rules/payout-account';
 
 interface PayoutAccountRow {
   id: string;
   shop_id: string;
   provider: string;
-  holder_name: string;
-  bank_name: string;
+  provider_account_id: string | null;
   country: string;
   currency: string;
-  last4: string;
   status: PayoutAccountStatus;
-  verified_at: Date | null;
+  payouts_enabled: boolean;
+  charges_enabled: boolean;
+  transfers_capability: string | null;
+  requirements: PayoutAccountRequirements | null;
+  default_currency: string | null;
+  bank_name: string | null;
+  last4: string | null;
+  /** `timestamptz`; raw execution may hand it back as a string or a Date. */
+  updated_at: Date | string;
 }
 
+const RECORD_COLUMNS = `id, shop_id, provider, provider_account_id, country,
+  currency, status, payouts_enabled, charges_enabled, transfers_capability,
+  requirements, default_currency, bank_name, last4, updated_at`;
+
 /**
- * Persists Payout Accounts. Reads select only the display-safe columns: the
- * reference ciphertext never has a reason to enter the process for a read.
- * `replaceActive` serializes replacements per shop with a transaction-scoped
+ * Persists Payout Accounts. The row is a pointer to a provider's connected
+ * account plus the capabilities it reports, so no read has to decrypt, mask or
+ * otherwise touch bank data.
+ *
+ * `createActive` serializes replacements per shop with a transaction-scoped
  * advisory lock before closing the open row and inserting its successor, so two
  * concurrent writes cannot both leave an active row.
  */
@@ -41,8 +56,7 @@ export class MikroOrmPayoutAccountRepository implements PayoutAccountRepository 
   ): Promise<PayoutAccountRecord | null> {
     const rows = await (context?.entityManager ?? this.entityManager.fork())
       .execute<PayoutAccountRow[]>(
-        `select id, shop_id, provider, holder_name, bank_name, country,
-              currency, last4, status, verified_at
+        `select ${RECORD_COLUMNS}
        from payout_accounts
        where shop_id = ? and deactivated_at is null
        limit 1`,
@@ -61,38 +75,22 @@ export class MikroOrmPayoutAccountRepository implements PayoutAccountRepository 
       id: string;
       shop_id: string;
       provider: string;
-      holder_name: string;
-      bank_name: string;
+      provider_account_id: string | null;
       country: string;
       currency: string;
-      last4: string;
-      provider_ref_encrypted: string;
     }>>(
-        `select id, shop_id, provider, holder_name, bank_name, country,
-              currency, last4, provider_ref_encrypted
+        `select id, shop_id, provider, provider_account_id, country, currency
        from payout_accounts
        where shop_id = ? and deactivated_at is null and status = 'active'
+         and (
+           provider <> 'stripe_connect'
+           or (payouts_enabled and transfers_capability = 'active')
+         )
        limit 1`,
         [shopId],
       );
 
-    const row = rows[0];
-
-    if (!row) {
-      return null;
-    }
-
-    return {
-      id: row.id,
-      shopId: row.shop_id,
-      provider: row.provider,
-      holderName: row.holder_name,
-      bankName: row.bank_name,
-      country: row.country,
-      currency: row.currency,
-      last4: row.last4,
-      providerRefEncrypted: row.provider_ref_encrypted,
-    };
+    return rows[0] ? this.toPaymentTarget(rows[0]) : null;
   }
 
   async findPaymentTargetById(
@@ -104,51 +102,30 @@ export class MikroOrmPayoutAccountRepository implements PayoutAccountRepository 
       id: string;
       shop_id: string;
       provider: string;
-      holder_name: string;
-      bank_name: string;
+      provider_account_id: string | null;
       country: string;
       currency: string;
-      last4: string;
-      provider_ref_encrypted: string;
     }>>(
-        `select id, shop_id, provider, holder_name, bank_name, country,
-              currency, last4, provider_ref_encrypted
+        `select id, shop_id, provider, provider_account_id, country, currency
        from payout_accounts
        where id = ?`,
         [payoutAccountId],
       );
 
-    const row = rows[0];
-
-    if (!row) {
-      return null;
-    }
-
-    return {
-      id: row.id,
-      shopId: row.shop_id,
-      provider: row.provider,
-      holderName: row.holder_name,
-      bankName: row.bank_name,
-      country: row.country,
-      currency: row.currency,
-      last4: row.last4,
-      providerRefEncrypted: row.provider_ref_encrypted,
-    };
+    return rows[0] ? this.toPaymentTarget(rows[0]) : null;
   }
 
-  async updateStatus(
-    input: UpdatePayoutAccountStatusInput,
+  async findByProviderAccountId(
+    providerAccountId: string,
     context?: FinanceRepositoryContext,
   ): Promise<PayoutAccountRecord | null> {
     const rows = await (context?.entityManager ?? this.entityManager.fork())
       .execute<PayoutAccountRow[]>(
-        `update payout_accounts
-       set status = ?, verified_at = ?, updated_at = ?
-       where shop_id = ? and deactivated_at is null
-       returning id, shop_id, provider, holder_name, bank_name, country,
-                 currency, last4, status, verified_at`,
-        [input.status, input.verifiedAt, new Date(), input.shopId],
+        `select ${RECORD_COLUMNS}
+       from payout_accounts
+       where provider_account_id = ?
+       limit 1`,
+        [providerAccountId],
       );
 
     return rows[0] ? this.toRecord(rows[0]) : null;
@@ -167,8 +144,8 @@ export class MikroOrmPayoutAccountRepository implements PayoutAccountRepository 
     );
   }
 
-  async replaceActive(
-    input: ReplacePayoutAccountInput,
+  async createActive(
+    input: CreatePayoutAccountInput,
     context: FinanceRepositoryContext,
   ): Promise<PayoutAccountRecord> {
     const entityManager = context.entityManager ?? this.entityManager.fork();
@@ -190,30 +167,95 @@ export class MikroOrmPayoutAccountRepository implements PayoutAccountRepository 
 
     const rows = await entityManager.execute<PayoutAccountRow[]>(
       `insert into payout_accounts (
-         id, created_at, updated_at, shop_id, provider,
-         provider_ref_encrypted, holder_name, bank_name, country, currency,
-         last4, status, verified_at, deactivated_at
+         id, created_at, updated_at, shop_id, provider, provider_account_id,
+         country, currency, status, payouts_enabled, charges_enabled,
+         transfers_capability, requirements, default_currency, deactivated_at
        )
-       values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, null, null)
-       returning id, shop_id, provider, holder_name, bank_name, country,
-                 currency, last4, status, verified_at`,
+       values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, null)
+       returning ${RECORD_COLUMNS}`,
       [
         randomUUID(),
         now,
         now,
         input.shopId,
         input.provider,
-        input.providerRefEncrypted,
-        input.holderName,
-        input.bankName,
+        input.providerAccountId,
         input.country,
         input.currency,
-        input.last4,
-        'pending',
+        input.status,
+        input.payoutsEnabled ?? false,
+        input.chargesEnabled ?? false,
+        input.transfersCapability ?? null,
+        input.requirements ?? null,
+        input.defaultCurrency ?? null,
       ],
     );
 
-    return this.toRecord(rows[0]);
+    return this.toRecord(rows[0]!);
+  }
+
+  async updateActive(
+    input: UpdatePayoutAccountInput,
+    context?: FinanceRepositoryContext,
+  ): Promise<PayoutAccountRecord | null> {
+    const assignments: string[] = [];
+    const values: unknown[] = [];
+
+    const assign = (column: string, value: unknown) => {
+      assignments.push(`${column} = ?`);
+      values.push(value);
+    };
+
+    if (input.provider !== undefined) assign('provider', input.provider);
+    if (input.providerAccountId !== undefined) {
+      assign('provider_account_id', input.providerAccountId);
+    }
+    if (input.country !== undefined) assign('country', input.country);
+    if (input.currency !== undefined) assign('currency', input.currency);
+    if (input.status !== undefined) assign('status', input.status);
+    if (input.payoutsEnabled !== undefined) {
+      assign('payouts_enabled', input.payoutsEnabled);
+    }
+    if (input.chargesEnabled !== undefined) {
+      assign('charges_enabled', input.chargesEnabled);
+    }
+    if (input.transfersCapability !== undefined) {
+      assign('transfers_capability', input.transfersCapability);
+    }
+    if (input.requirements !== undefined) {
+      assign('requirements', input.requirements);
+    }
+    if (input.defaultCurrency !== undefined) {
+      assign('default_currency', input.defaultCurrency);
+    }
+    if (input.bankName !== undefined) assign('bank_name', input.bankName);
+    if (input.last4 !== undefined) assign('last4', input.last4);
+
+    if (assignments.length === 0) {
+      return this.findActiveByShopId(input.shopId, context);
+    }
+
+    assign('updated_at', new Date());
+
+    const rows = await (context?.entityManager ?? this.entityManager.fork())
+      .execute<PayoutAccountRow[]>(
+        `update payout_accounts
+       set ${assignments.join(', ')}
+       where shop_id = ? and deactivated_at is null
+       returning ${RECORD_COLUMNS}`,
+        [...values, input.shopId],
+      );
+
+    return rows[0] ? this.toRecord(rows[0]) : null;
+  }
+
+  async touchActive(shopId: string, at: Date): Promise<void> {
+    await this.entityManager.fork().execute(
+      `update payout_accounts
+       set updated_at = ?
+       where shop_id = ? and deactivated_at is null`,
+      [at, shopId],
+    );
   }
 
   private toRecord(row: PayoutAccountRow): PayoutAccountRecord {
@@ -221,13 +263,36 @@ export class MikroOrmPayoutAccountRepository implements PayoutAccountRepository 
       id: row.id,
       shopId: row.shop_id,
       provider: row.provider,
-      holderName: row.holder_name,
-      bankName: row.bank_name,
+      providerAccountId: row.provider_account_id,
       country: row.country,
       currency: row.currency,
-      last4: row.last4,
       status: row.status,
-      verifiedAt: row.verified_at ? new Date(row.verified_at) : null,
+      payoutsEnabled: row.payouts_enabled,
+      chargesEnabled: row.charges_enabled,
+      transfersCapability: row.transfers_capability,
+      requirements: row.requirements,
+      defaultCurrency: row.default_currency,
+      bankName: row.bank_name,
+      last4: row.last4,
+      updatedAt: new Date(row.updated_at),
+    };
+  }
+
+  private toPaymentTarget(row: {
+    id: string;
+    shop_id: string;
+    provider: string;
+    provider_account_id: string | null;
+    country: string;
+    currency: string;
+  }): PayoutAccountPaymentTarget {
+    return {
+      id: row.id,
+      shopId: row.shop_id,
+      provider: row.provider,
+      providerAccountId: row.provider_account_id,
+      country: row.country,
+      currency: row.currency,
     };
   }
 }

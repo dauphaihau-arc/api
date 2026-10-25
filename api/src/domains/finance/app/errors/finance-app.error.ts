@@ -42,37 +42,13 @@ export class OrderMoneyConversionUnavailableError extends FinanceAppError {
 }
 
 /**
- * Raised when a shop's active Payout Account was recorded in a currency that no
- * longer matches the shop's Settlement Currency. Reachable only through a
- * Settlement Currency change, and refused rather than shown as if it could be
- * paid into.
- */
-export class PayoutAccountCurrencyMismatchError extends FinanceAppError {
-  constructor(accountCurrency: string, settlementCurrency: string) {
-    super(
-      `Payout Account currency ${accountCurrency} does not match the shop's Settlement Currency ${settlementCurrency}`,
-    );
-  }
-}
-
-/**
  * Raised when a shop opts in to automatic payouts without a destination the
- * scheduled run could pay: no open account, an unverified or disabled one, or
- * one in another Settlement Currency.
+ * scheduled run could pay: no open account, or one whose capabilities the
+ * provider has not granted.
  */
 export class AutoPayoutIneligibleError extends FinanceAppError {
   constructor(shopId: string, reason: string) {
     super(`Shop ${shopId} is not eligible for automatic payouts: ${reason}`);
-  }
-}
-
-/**
- * Raised when an operator verifies a shop's Payout Account but the shop has
- * none open to verify.
- */
-export class PayoutAccountNotFoundError extends FinanceAppError {
-  constructor(shopId: string) {
-    super(`Shop ${shopId} has no Payout Account to verify`);
   }
 }
 
@@ -259,4 +235,70 @@ export class SettlementCurrencyRateUnavailableError extends FinanceAppError {
       `No exchange rate converts the Settlement Currency from ${fromCurrency} to ${toCurrency}`,
     );
   }
+}
+
+/**
+ * Raised when Stripe Connect cannot onboard a seller in the country they chose.
+ * The country is refused before an account is created, so the seller is told
+ * plainly instead of being left at a dead end.
+ */
+export class PayoutAccountCountryUnsupportedError extends FinanceAppError {
+  constructor(country: string) {
+    super(
+      `Stripe Connect does not support onboarding sellers in ${country}; contact support to arrange another payout route`,
+    );
+  }
+}
+
+/**
+ * Re-exported from the payout port the adapter throws it from: a deployment
+ * without Stripe keys still starts, and only an onboarding or transfer attempt
+ * answers 503.
+ */
+export { PayoutProviderNotConfiguredError } from '~/integrations/payment/app/ports/payout-gateway';
+
+/**
+ * Raised when a payout's conversion cannot be quoted because no exchange rate
+ * reaches the target currency. Refused before the claim is written, so no
+ * Payout exists for money whose target amount nobody could state.
+ */
+export class PayoutConversionRateUnavailableError extends FinanceAppError {
+  constructor(fromCurrency: string, toCurrency: string) {
+    super(
+      `No exchange rate converts a payout from ${fromCurrency} to ${toCurrency}`,
+    );
+  }
+}
+
+/**
+ * Raised when a Payout cannot be funded at the provider yet: the platform's
+ * balance in the transfer currency is still settling, or holds nothing in that
+ * currency at all. Refused before the claim is written, so no Payout exists for
+ * money that could not leave. Retrying in minutes cannot help, so a scheduled
+ * run skips instead of scheduling a retry.
+ */
+export class ProviderBalancePendingError extends FinanceAppError {
+  constructor(
+    readonly transferCurrency: string,
+    readonly fundingState: 'pending' | 'unfunded' | 'insufficient',
+  ) {
+    super(
+      resolveMessage(transferCurrency, fundingState),
+    );
+  }
+}
+
+function resolveMessage(
+  transferCurrency: string,
+  fundingState: 'pending' | 'unfunded' | 'insufficient',
+): string {
+  if (fundingState === 'pending') {
+    return 'Your payout provider is still settling funds; try again later.';
+  }
+
+  if (fundingState === 'unfunded') {
+    return `Payouts in ${transferCurrency} cannot be funded yet: the platform holds no ${transferCurrency} balance.`;
+  }
+
+  return `Payouts in ${transferCurrency} cannot be funded yet: the platform balance cannot cover this payout.`;
 }

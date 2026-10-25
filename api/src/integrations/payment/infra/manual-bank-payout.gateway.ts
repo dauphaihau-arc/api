@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import {
   PayoutGateway,
+  type PayoutProviderBalance,
   type PayoutTransferInput,
   type PayoutTransferResult,
 } from '../app/ports/payout-gateway';
@@ -63,6 +64,16 @@ export class ManualBankPayoutGateway extends PayoutGateway {
     this.failMode = parseStubFailMode(rawFailMode);
   }
 
+  async retrieveBalance(currency: string): Promise<PayoutProviderBalance> {
+    // The local adapter moves no money through a provider, so there is no
+    // balance that could hold a Payout back: it reports enough for any transfer.
+    return {
+      currency,
+      availableMinor: Number.MAX_SAFE_INTEGER,
+      pendingMinor: 0,
+    };
+  }
+
   async send(input: PayoutTransferInput): Promise<PayoutTransferResult> {
     const previousSends = this.sendCountByPayoutId.get(input.payoutPublicId) ?? 0;
 
@@ -72,7 +83,13 @@ export class ManualBankPayoutGateway extends PayoutGateway {
       throw new Error(this.buildFailureMessage(input.payoutPublicId));
     }
 
-    return { reference: input.payoutPublicId };
+    // The local adapter moves no money through a provider, so it reports no
+    // conversion evidence at all.
+    return {
+      reference: input.payoutPublicId,
+      providerFxRate: null,
+      targetAmountMinor: null,
+    };
   }
 
   private buildFailureMessage(payoutPublicId: string): string {

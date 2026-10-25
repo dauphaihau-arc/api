@@ -18,7 +18,7 @@ export type PayoutBlockReason =
   | 'no_payout_account'
   | 'payout_account_unverified'
   | 'payout_account_disabled'
-  | 'payout_account_currency_mismatch';
+  | 'payout_account_country_unsupported';
 
 /**
  * The amount a run may send a shop: only the available part, netted against a
@@ -152,6 +152,15 @@ export function paidPayoutMoneyEventKey(payoutId: string): string {
 }
 
 /**
+ * The unique identity of the platform-currency Journal Entry a converted
+ * Payout writes, so a retried settle cannot book the platform-currency leg
+ * twice.
+ */
+export function payoutFxMoneyEventKey(payoutId: string): string {
+  return `payout.fx:${payoutId}`;
+}
+
+/**
  * The platform day a Payout Run belongs to, as `YYYY-MM-DD` in UTC. One run
  * decides every shop's day from this single instant, so "once a day" means the
  * same thing for every shop and never depends on a shop's local time.
@@ -193,6 +202,41 @@ export function buildPaidPayoutPostings(facts: PaidPayoutMoneyFacts): Posting[] 
     },
     {
       account: { kind: LedgerAccountKind.PLATFORM_CLEARING, currency },
+      amountMinor: facts.amountMinor,
+    },
+  ];
+}
+
+/** The platform-currency amount a converted Payout moved out of the platform balance. */
+export interface PayoutFxMoneyFacts {
+  /** The transfer currency — the platform's provider balance currency. */
+  currency: string;
+  amountMinor: number;
+}
+
+/**
+ * Builds the Postings for a converted Payout's platform-currency leg: the
+ * transfer amount leaves Platform Clearing in the transfer currency and lands
+ * in the platform's FX Position, so the entry balances to zero there.
+ *
+ * This entry is platform-level and names no shop: the shop-currency entry has
+ * already discharged the Seller Payable. It exists because the transfer moves
+ * money in a currency the shop-currency entry never touches.
+ */
+export function buildPayoutFxPostings(facts: PayoutFxMoneyFacts): Posting[] {
+  if (facts.amountMinor <= 0) {
+    throw new PayoutAmountNotPositiveError(facts.amountMinor);
+  }
+
+  const currency = facts.currency;
+
+  return [
+    {
+      account: { kind: LedgerAccountKind.PLATFORM_CLEARING, currency },
+      amountMinor: -facts.amountMinor,
+    },
+    {
+      account: { kind: LedgerAccountKind.FX_POSITION, currency },
       amountMinor: facts.amountMinor,
     },
   ];
