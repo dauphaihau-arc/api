@@ -155,7 +155,6 @@ describe('Stripe Connect event feed (integration)', () => {
     process.env.MAIL_DRIVER = 'logger';
     process.env.STORAGE_DRIVER = 'local';
     process.env.STORAGE_LOCAL_ROOT = storageRoot;
-    process.env.FIELD_ENCRYPTION_KEY = '0123456789abcdef'.repeat(4);
 
     sql = new Client({
       host: testDb.rootConfig.host,

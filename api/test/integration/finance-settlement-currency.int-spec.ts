@@ -109,7 +109,6 @@ describe('Shop Settlement Currency change (integration)', () => {
     process.env.MAIL_DRIVER = 'logger';
     process.env.STORAGE_DRIVER = 'local';
     process.env.STORAGE_LOCAL_ROOT = storageRoot;
-    process.env.FIELD_ENCRYPTION_KEY = '0123456789abcdef'.repeat(4);
     process.env.SETTLEMENT_CURRENCY_CHANGE_INTERVAL_DAYS = String(CHANGE_INTERVAL_DAYS);
 
     sql = new Client({

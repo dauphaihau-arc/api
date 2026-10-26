@@ -137,7 +137,6 @@ describe('Shop Payout Account (integration)', () => {
     process.env.MAIL_DRIVER = 'logger';
     process.env.STORAGE_DRIVER = 'local';
     process.env.STORAGE_LOCAL_ROOT = storageRoot;
-    process.env.FIELD_ENCRYPTION_KEY = '0123456789abcdef'.repeat(4);
     // The default adapter is manual_bank; this suite proves the local path
     // keeps payouts working without Stripe. Pin it explicitly so a developer's
     // .env cannot switch the suite onto the Connect gateway.

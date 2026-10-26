@@ -203,7 +203,6 @@ describe('Stripe Connect payout transfers (integration)', () => {
     process.env.MAIL_DRIVER = 'logger';
     process.env.STORAGE_DRIVER = 'local';
     process.env.STORAGE_LOCAL_ROOT = storageRoot;
-    process.env.FIELD_ENCRYPTION_KEY = '0123456789abcdef'.repeat(4);
     process.env.PAYOUT_MANUAL_WITHDRAWAL_UNLIMITED = 'true';
     process.env.PAYOUT_PROVIDER = 'stripe_connect';
 

@@ -312,7 +312,6 @@ describe('Payout Run pays available balances (integration)', () => {
     process.env.MAIL_DRIVER = 'logger';
     process.env.STORAGE_DRIVER = 'local';
     process.env.STORAGE_LOCAL_ROOT = storageRoot;
-    process.env.FIELD_ENCRYPTION_KEY = '0123456789abcdef'.repeat(4);
     // Match today's platform UTC day so the exact-day scheduler is due during
     // ordinary payout-run tests. The before-day cases use a fake clock.
     process.env.PAYOUT_AUTO_DAY_OF_MONTH = String(AUTO_PAYOUT_DAY);

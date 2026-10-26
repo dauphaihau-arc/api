@@ -8,7 +8,6 @@ import { CurrencyModule } from '~/integrations/currency/currency.module';
 import { PaymentModule } from '~/integrations/payment/payment.module';
 import { QueueModule } from '~/integrations/queue/queue.module';
 import { NotificationModule } from '~/domains/notification/notification.module';
-import { CryptoModule } from '~/platform/crypto/crypto.module';
 import { IdempotencyModule } from '~/platform/idempotency/idempotency.module';
 import {
   PAYOUT_CONFIG,
@@ -108,7 +107,6 @@ import { MikroOrmTransactionsQueryRepository } from './infra/persistence/reposit
     AuditModule,
     CacheModule,
     CurrencyModule,
-    CryptoModule,
     IdempotencyModule,
     PaymentModule,
     NotificationModule,

@@ -207,7 +207,6 @@ describe('Stripe Connect payout account onboarding (integration)', () => {
     process.env.MAIL_DRIVER = 'logger';
     process.env.STORAGE_DRIVER = 'local';
     process.env.STORAGE_LOCAL_ROOT = storageRoot;
-    process.env.FIELD_ENCRYPTION_KEY = '0123456789abcdef'.repeat(4);
     process.env.PAYOUT_PROVIDER = 'stripe_connect';
     process.env.PAYOUT_CONNECT_COUNTRIES = 'US, GB';
     process.env.STRIPE_CONNECT_RETURN_URL = 'https://seller.test/finances?onboarding=return';
