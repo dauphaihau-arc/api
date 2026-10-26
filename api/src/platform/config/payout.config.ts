@@ -31,6 +31,9 @@ const DEFAULT_PAYOUT_PLATFORM_CURRENCY = 'USD';
 
 const ISO_ALPHA_3_PATTERN = /^[A-Z]{3}$/;
 
+/** The runtime's ISO 4217 currency table, built once. */
+const ISO_CURRENCIES = new Set(Intl.supportedValuesOf('currency'));
+
 export interface PayoutConfig {
   /**
    * The platform day of month (UTC) on and after which the automatic Payout Run
@@ -145,15 +148,10 @@ function resolvePlatformCurrency(value: string): string {
 }
 
 function isKnownIsoCurrency(currency: string): boolean {
-  try {
-    // `Intl` is the runtime's ISO 4217 table: an unknown code throws rather than
-    // silently formatting. Money rounding has its own fixed table.
-    new Intl.NumberFormat('en', { style: 'currency', currency });
-    return true;
-  }
-  catch {
-    return false;
-  }
+  // `Intl.NumberFormat` accepts any well-formed three-letter code, so it cannot
+  // tell `ZZZ` from `USD`; `supportedValuesOf` is the runtime's actual ISO 4217
+  // table. Money rounding has its own fixed table.
+  return ISO_CURRENCIES.has(currency);
 }
 
 function resolveAutoPayoutDayOfMonth(value: string): number {
