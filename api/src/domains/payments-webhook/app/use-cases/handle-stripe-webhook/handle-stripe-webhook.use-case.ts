@@ -20,9 +20,15 @@ import { appJobName } from '~/platform/jobs/app-job.names';
 import { SyncPayoutAccountUseCase } from '~/domains/finance/app/use-cases/sync-payout-account/sync-payout-account.use-case';
 import { RecordTransferEventUseCase } from '~/domains/finance/app/use-cases/record-transfer-event/record-transfer-event.use-case';
 import { RecordConnectedPayoutUseCase } from '~/domains/finance/app/use-cases/record-connected-payout/record-connected-payout.use-case';
-import { OrderRefundService } from '../../services/order-refund.service';
-import { OrderPaymentService } from '../../services/order-payment.service';
+import { OrderRefundService } from '~/domains/order/app/services/order-refund.service';
+import { OrderPaymentService } from '~/domains/order/app/services/order-payment.service';
 
+/**
+ * Stripe exposes a single webhook endpoint, so this use case owns the routing of
+ * provider events: order events are delegated to the order services and finance
+ * events to the finance use cases. It lives in its own domain because it
+ * orchestrates both.
+ */
 @Injectable()
 export class HandleStripeWebhookUseCase {
   private readonly logger = new Logger(HandleStripeWebhookUseCase.name);

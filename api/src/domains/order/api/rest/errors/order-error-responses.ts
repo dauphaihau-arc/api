@@ -163,16 +163,3 @@ export const shopDashboardControllerErrorResponses = {
     404: [...shopNotFound],
   },
 };
-
-/**
- * Public error response set for the Stripe webhook controller. Throttling is
- * skipped, so no 429; the only client-fixable failure is a missing signature.
- */
-export const orderWebhookControllerErrorResponses = {
-  controller: {
-    500: [internalServerErrorExample],
-  },
-  handle: {
-    400: [{ code: 'BAD_REQUEST', message: 'Stripe webhook signature is missing' }],
-  },
-};

@@ -13,15 +13,15 @@ import {
 import { SkipThrottle } from '@nestjs/throttler';
 import type { Request } from 'express';
 import { ApiErrorResponses } from '~/platform/http/api-error-responses.decorator';
-import { orderWebhookControllerErrorResponses } from './errors/order-error-responses';
+import { stripeWebhookControllerErrorResponses } from './errors/stripe-webhook-error-responses';
 import { PaymentGateway } from '~/integrations/payment/app/ports/payment-gateway';
 import { HandleStripeWebhookUseCase } from '../../app/use-cases/handle-stripe-webhook/handle-stripe-webhook.use-case';
-import { StripeWebhookAckResponseDto } from './responses/order.response';
+import { StripeWebhookAckResponseDto } from './responses/stripe-webhook.response';
 
 @Controller('webhooks/stripe')
 @ApiTags('Stripe Webhooks')
-@ApiErrorResponses(orderWebhookControllerErrorResponses.controller)
-export class OrderWebhookController {
+@ApiErrorResponses(stripeWebhookControllerErrorResponses.controller)
+export class StripeWebhookController {
   constructor(
     private readonly paymentGateway: PaymentGateway,
     private readonly handleStripeWebhookUseCase: HandleStripeWebhookUseCase,
@@ -39,7 +39,7 @@ export class OrderWebhookController {
     description: 'Webhook accepted; the response body is always an empty object.',
     type: StripeWebhookAckResponseDto,
   })
-  @ApiErrorResponses(orderWebhookControllerErrorResponses.handle)
+  @ApiErrorResponses(stripeWebhookControllerErrorResponses.handle)
   async handle(
     @Req() request: Request & { rawBody?: Buffer },
     @Headers('stripe-signature') signature?: string,

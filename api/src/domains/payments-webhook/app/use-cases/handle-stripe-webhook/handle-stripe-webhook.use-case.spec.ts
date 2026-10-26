@@ -7,8 +7,8 @@ import {
 import type { SyncPayoutAccountUseCase } from '~/domains/finance/app/use-cases/sync-payout-account/sync-payout-account.use-case';
 import type { RecordTransferEventUseCase } from '~/domains/finance/app/use-cases/record-transfer-event/record-transfer-event.use-case';
 import type { RecordConnectedPayoutUseCase } from '~/domains/finance/app/use-cases/record-connected-payout/record-connected-payout.use-case';
-import type { OrderPaymentService } from '../../services/order-payment.service';
-import type { OrderRefundService } from '../../services/order-refund.service';
+import type { OrderPaymentService } from '~/domains/order/app/services/order-payment.service';
+import type { OrderRefundService } from '~/domains/order/app/services/order-refund.service';
 import { HandleStripeWebhookUseCase } from './handle-stripe-webhook.use-case';
 
 describe('HandleStripeWebhookUseCase', () => {

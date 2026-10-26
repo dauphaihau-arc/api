@@ -185,8 +185,8 @@ If retries are exhausted:
 
 Webhook handling should remain separate:
 
-- [handle-stripe-webhook.use-case.ts](../../src/domains/order/app/use-cases/handle-stripe-webhook/handle-stripe-webhook.use-case.ts)
-- [order-webhook.controller.ts](../../src/domains/order/api/rest/order-webhook.controller.ts)
+- [handle-stripe-webhook.use-case.ts](../../src/domains/payments-webhook/app/use-cases/handle-stripe-webhook/handle-stripe-webhook.use-case.ts)
+- [stripe-webhook.controller.ts](../../src/domains/payments-webhook/api/rest/stripe-webhook.controller.ts)
 
 With the new status model:
 

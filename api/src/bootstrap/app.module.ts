@@ -17,6 +17,7 @@ import { CategoryModule } from '~/domains/category/category.module';
 import { CheckoutModule } from '~/domains/checkout/checkout.module';
 import { FulfillmentModule } from '~/domains/fulfillment/fulfillment.module';
 import { FinanceModule } from '~/domains/finance/finance.module';
+import { PaymentsWebhookModule } from '~/domains/payments-webhook/payments-webhook.module';
 import { OrderModule } from '~/domains/order/order.module';
 import { ProductModule } from '~/domains/product/product.module';
 import { PromotionModule } from '~/domains/promotion/promotion.module';
@@ -83,6 +84,7 @@ import { WsModule } from '~/platform/ws/ws.module';
     FulfillmentModule,
     OrderModule,
     FinanceModule,
+    PaymentsWebhookModule,
     ChatModule,
   ],
   providers: [

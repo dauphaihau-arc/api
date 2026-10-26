@@ -12,7 +12,6 @@ import { FinanceModule } from '../finance/finance.module';
 import { AdminOrderController } from './api/rest/admin-order.controller';
 import { MeOrderController } from './api/rest/me-order.controller';
 import { OrderPublicIdLookup } from './app/services/order-public-id-lookup.service';
-import { OrderWebhookController } from './api/rest/order-webhook.controller';
 import { ShopDashboardController } from './api/rest/shop-dashboard.controller';
 import { ShopOrderExportController } from './api/rest/shop-order-export.controller';
 import { ShopOrderController } from './api/rest/shop-order.controller';
@@ -25,7 +24,6 @@ import { GetAdminOrderByIdUseCase } from './app/use-cases/get-admin-order-by-id/
 import { GetMyOrderByIdUseCase } from './app/use-cases/get-my-order-by-id/get-my-order-by-id.use-case';
 import { GetShopDashboardUseCase } from './app/use-cases/get-shop-dashboard/get-shop-dashboard.use-case';
 import { GetShopOrderByIdUseCase } from './app/use-cases/get-shop-order-by-id/get-shop-order-by-id.use-case';
-import { HandleStripeWebhookUseCase } from './app/use-cases/handle-stripe-webhook/handle-stripe-webhook.use-case';
 import { ListAdminOrdersUseCase } from './app/use-cases/list-admin-orders/list-admin-orders.use-case';
 import { ExportShopOrdersUseCase } from './app/use-cases/export-shop-orders/export-shop-orders.use-case';
 import { StartShopOrderExportUseCase } from './app/use-cases/start-shop-order-export/start-shop-order-export.use-case';
@@ -122,7 +120,6 @@ import { UpdateShopOrderRefundUseCase } from './app/use-cases/update-shop-order-
   controllers: [
     AdminOrderController,
     MeOrderController,
-    OrderWebhookController,
     ShopDashboardController,
     ShopOrderExportController,
     ShopOrderController,
@@ -194,7 +191,6 @@ import { UpdateShopOrderRefundUseCase } from './app/use-cases/update-shop-order-
     ListAdminOrdersUseCase,
     RequestOrderCancelUseCase,
     RequestOrderSupportUseCase,
-    HandleStripeWebhookUseCase,
     ListOrdersUseCase,
     ListShopOrdersUseCase,
     ExportShopOrdersUseCase,
