@@ -8,7 +8,11 @@ import { AuthGuard } from '@nestjs/passport';
 import type { Request } from 'express';
 import { AUTH_CONFIG } from '~/platform/config/auth.config';
 import type { AuthConfig } from '~/platform/config/auth.config';
-import { extractCookieValue } from '../rest/cookies/auth-cookie.utils';
+import {
+  extractCookieValue,
+  resolveAuthCookiePortal,
+  resolvePortalCookieNames,
+} from '../rest/cookies/auth-cookie.utils';
 
 export type AuthTokenErrorCode =
   | 'ACCESS_TOKEN_EXPIRED'
@@ -59,11 +63,17 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     info: unknown,
     request: Request,
   ): AuthTokenErrorCode {
-    const hasAccessToken = Boolean(
-      extractCookieValue(request, this.authConfig.accessCookieName),
+    const { accessCookieName, refreshCookieName } = resolvePortalCookieNames(
+      this.authConfig,
+      resolveAuthCookiePortal(request),
     );
+
+    const hasAccessToken = Boolean(
+      extractCookieValue(request, accessCookieName),
+    );
+
     const hasRefreshToken = Boolean(
-      extractCookieValue(request, this.authConfig.refreshCookieName),
+      extractCookieValue(request, refreshCookieName),
     );
 
     if (info instanceof Error && info.name === 'TokenExpiredError') {

@@ -33,7 +33,7 @@ import {
 } from '../../app/errors/auth-app.error';
 import type { AuthenticatedUser, UserProfile } from '../../app/auth.types';
 import { UserStatus } from '../../domain/enums/user-status.enum';
-import { AuthCookieService } from '../rest/cookies/auth-cookie.utils';
+import { AuthCookieService } from '../rest/cookies/auth-cookie.service';
 import { AuthController } from '../rest/auth.controller';
 
 const authConfig: AuthConfig = {
@@ -74,6 +74,8 @@ describe('JwtAuthGuard token error contract through AuthController', () => {
   const loadAuthenticatedUser = { execute: jest.fn() };
   const getCurrentUser = { execute: jest.fn() };
   const refreshSession = { execute: jest.fn() };
+  const login = { execute: jest.fn() };
+  const logout = { execute: jest.fn() };
   const unusedUseCase = { execute: jest.fn() };
   const jwtService = new JwtService({ secret: authConfig.jwtAccessSecret });
 
@@ -106,9 +108,9 @@ describe('JwtAuthGuard token error contract through AuthController', () => {
         { provide: LoadAuthenticatedUserUseCase, useValue: loadAuthenticatedUser },
         { provide: GetCurrentUserUseCase, useValue: getCurrentUser },
         { provide: RegisterUseCase, useValue: unusedUseCase },
-        { provide: LoginUseCase, useValue: unusedUseCase },
+        { provide: LoginUseCase, useValue: login },
         { provide: RefreshSessionUseCase, useValue: refreshSession },
-        { provide: LogoutUseCase, useValue: unusedUseCase },
+        { provide: LogoutUseCase, useValue: logout },
         { provide: RequestPasswordResetUseCase, useValue: unusedUseCase },
         { provide: VerifyResetPasswordTokenUseCase, useValue: unusedUseCase },
         { provide: ResetPasswordUseCase, useValue: unusedUseCase },
@@ -140,6 +142,9 @@ describe('JwtAuthGuard token error contract through AuthController', () => {
 
   beforeEach(() => {
     refreshSession.execute.mockReset();
+    login.execute.mockReset();
+    logout.execute.mockReset();
+    logout.execute.mockResolvedValue(undefined);
     loadAuthenticatedUser.execute.mockResolvedValue(ok(authenticatedUser));
     getCurrentUser.execute.mockResolvedValue(userProfile);
   });
@@ -252,5 +257,162 @@ describe('JwtAuthGuard token error contract through AuthController', () => {
 
     expect(response.status).toBe(200);
     expect(response.body.email).toBe('member@example.com');
+  });
+
+  it('sets only the admin cookie pair when logging in to the admin portal', async () => {
+    login.execute.mockResolvedValueOnce(
+      ok({
+        accessToken: 'admin-access',
+        refreshToken: 'admin-refresh',
+        user: userProfile,
+      }),
+    );
+
+    const response = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({
+        email: 'admin@example.com',
+        password: 'Str0ng!Pass',
+        app: 'admin',
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.headers['set-cookie']).toEqual([
+      expect.stringContaining('adminAccessToken=admin-access;'),
+      expect.stringContaining('adminRefreshToken=admin-refresh;'),
+    ]);
+  });
+
+  it('keeps the legacy cookie pair for seller login', async () => {
+    login.execute.mockResolvedValueOnce(
+      ok({
+        accessToken: 'seller-access',
+        refreshToken: 'seller-refresh',
+        user: userProfile,
+      }),
+    );
+
+    const response = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({
+        email: 'seller@example.com',
+        password: 'Str0ng!Pass',
+        app: 'seller',
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.headers['set-cookie']).toEqual([
+      expect.stringContaining('accessToken=seller-access;'),
+      expect.stringContaining('refreshToken=seller-refresh;'),
+    ]);
+  });
+
+  it('rotates only the admin cookie pair on admin refresh', async () => {
+    refreshSession.execute.mockResolvedValueOnce(
+      ok({ accessToken: 'admin-access-2', refreshToken: 'admin-refresh-2' }),
+    );
+
+    const response = await request(app.getHttpServer())
+      .post('/auth/refresh')
+      .set('Cookie', 'adminRefreshToken=valid')
+      .set('x-auth-portal', 'admin');
+
+    expect(response.status).toBe(204);
+    expect(refreshSession.execute).toHaveBeenCalledWith('valid');
+    expect(response.headers['set-cookie']).toEqual([
+      expect.stringContaining('adminAccessToken=admin-access-2;'),
+      expect.stringContaining('adminRefreshToken=admin-refresh-2;'),
+    ]);
+  });
+
+  it('clears only the admin cookie pair when admin refresh is rejected', async () => {
+    refreshSession.execute.mockResolvedValueOnce(err(new InvalidRefreshTokenError()));
+
+    const response = await request(app.getHttpServer())
+      .post('/auth/refresh')
+      .set('Cookie', 'adminRefreshToken=valid')
+      .set('x-auth-portal', 'admin');
+
+    expect(response.status).toBe(401);
+    expect(response.headers['set-cookie']).toEqual([
+      expect.stringContaining(
+        'adminAccessToken=; Path=/; Expires=Thu, 01 Jan 1970',
+      ),
+      expect.stringContaining(
+        'adminRefreshToken=; Path=/; Expires=Thu, 01 Jan 1970',
+      ),
+    ]);
+  });
+
+  it('never falls back from the legacy pair to the admin pair on refresh', async () => {
+    refreshSession.execute.mockResolvedValueOnce(err(new InvalidRefreshTokenError()));
+
+    const response = await request(app.getHttpServer())
+      .post('/auth/refresh')
+      .set('Cookie', 'adminRefreshToken=valid');
+
+    expect(refreshSession.execute).toHaveBeenCalledWith('');
+    expect(response.headers['set-cookie']).toEqual([
+      expect.stringContaining('accessToken=; Path=/; Expires=Thu, 01 Jan 1970'),
+      expect.stringContaining('refreshToken=; Path=/; Expires=Thu, 01 Jan 1970'),
+    ]);
+  });
+
+  it('clears only the admin cookie pair on admin logout', async () => {
+    const response = await request(app.getHttpServer())
+      .post('/auth/logout')
+      .set(
+        'Cookie',
+        `adminAccessToken=${validAccessToken}; adminRefreshToken=refresh-1`,
+      )
+      .set('x-auth-portal', 'admin');
+
+    expect(response.status).toBe(204);
+    expect(logout.execute).toHaveBeenCalledWith(authenticatedUser);
+    expect(response.headers['set-cookie']).toEqual([
+      expect.stringContaining(
+        'adminAccessToken=; Path=/; Expires=Thu, 01 Jan 1970',
+      ),
+      expect.stringContaining(
+        'adminRefreshToken=; Path=/; Expires=Thu, 01 Jan 1970',
+      ),
+    ]);
+  });
+
+  it('extracts the admin access cookie when the admin portal header is present', async () => {
+    const response = await request(app.getHttpServer())
+      .get('/auth/me')
+      .set('Cookie', `adminAccessToken=${validAccessToken}`)
+      .set('x-auth-portal', 'admin');
+
+    expect(response.status).toBe(200);
+    expect(response.body.email).toBe('member@example.com');
+  });
+
+  it('ignores the admin access cookie without the admin portal header', async () => {
+    const response = await request(app.getHttpServer())
+      .get('/auth/me')
+      .set('Cookie', `adminAccessToken=${validAccessToken}`);
+
+    expect(response.status).toBe(401);
+    expect(response.body).toMatchObject({ code: 'AUTH_REQUIRED' });
+  });
+
+  it('classifies admin cookie errors using the admin pair names', async () => {
+    const missing = await request(app.getHttpServer())
+      .get('/auth/me')
+      .set('Cookie', 'adminRefreshToken=refresh-1')
+      .set('x-auth-portal', 'admin');
+
+    expect(missing.status).toBe(401);
+    expect(missing.body).toMatchObject({ code: 'ACCESS_TOKEN_MISSING' });
+
+    const legacyIgnored = await request(app.getHttpServer())
+      .get('/auth/me')
+      .set('Cookie', `accessToken=${expiredAccessToken}; refreshToken=refresh-1`)
+      .set('x-auth-portal', 'admin');
+
+    expect(legacyIgnored.status).toBe(401);
+    expect(legacyIgnored.body).toMatchObject({ code: 'AUTH_REQUIRED' });
   });
 });

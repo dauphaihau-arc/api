@@ -26,7 +26,7 @@ import {
   mapAuthAppErrorToHttpException,
 } from './errors/auth-error-mapper';
 import { AuthHttpExceptionFilter } from './errors/auth-http-exception.filter';
-import { AuthCookieService } from './cookies/auth-cookie.utils';
+import { AuthCookieService } from './cookies/auth-cookie.service';
 import { AuthUserResponseDto } from './dto/me-response.dto';
 import { SellerRegisterDto } from './dto/seller-register.dto';
 import type { ShopAppError } from '~/domains/shop/app/errors/shop-app.error';
@@ -76,7 +76,7 @@ export class SellerAuthController {
       mapSellerRegisterErrorToHttpException,
     );
 
-    this.authCookieService.setAuthCookies(response, authResponse);
+    this.authCookieService.setAuthCookies(response, authResponse, 'legacy');
 
     return AuthUserResponseDto.fromUserProfile(authResponse.user);
   }

@@ -47,7 +47,11 @@ import { PermissionsGuard } from '../guard/permissions.guard';
 import { mapAuthAppErrorToHttpException } from './errors/auth-error-mapper';
 import { authControllerErrorResponses } from './errors/auth-error-responses';
 import { AuthHttpExceptionFilter } from './errors/auth-http-exception.filter';
-import { AuthCookieService } from './cookies/auth-cookie.utils';
+import { AuthCookieService } from './cookies/auth-cookie.service';
+import {
+  resolveAuthCookiePortal,
+  resolveAuthCookiePortalForApp,
+} from './cookies/auth-cookie.utils';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { LoginDto } from './dto/login.dto';
 import { AuthUserResponseDto, CurrentUserResponseDto } from './dto/me-response.dto';
@@ -128,7 +132,7 @@ export class AuthController {
       mapAuthAppErrorToHttpException,
     );
 
-    this.authCookieService.setAuthCookies(response, authResponse);
+    this.authCookieService.setAuthCookies(response, authResponse, 'legacy');
 
     return AuthUserResponseDto.fromUserProfile(authResponse.user);
   }
@@ -156,7 +160,11 @@ export class AuthController {
       mapAuthAppErrorToHttpException,
     );
 
-    this.authCookieService.setAuthCookies(response, authResponse);
+    this.authCookieService.setAuthCookies(
+      response,
+      authResponse,
+      resolveAuthCookiePortalForApp(body.app),
+    );
 
     return AuthUserResponseDto.fromUserProfile(authResponse.user);
   }
@@ -179,17 +187,18 @@ export class AuthController {
     @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
   ): Promise<void> {
+    const portal = resolveAuthCookiePortal(request);
     const result = await this.refreshSessionUseCase.execute(
-      this.authCookieService.extractRefreshToken(request),
+      this.authCookieService.extractRefreshToken(request, portal),
     );
 
     if (!result.isOk) {
-      this.authCookieService.clearAuthCookies(response);
+      this.authCookieService.clearAuthCookies(response, portal);
     }
 
     const authResponse = resolveOrThrow(result, mapAuthAppErrorToHttpException);
 
-    this.authCookieService.setAuthCookies(response, authResponse);
+    this.authCookieService.setAuthCookies(response, authResponse, portal);
   }
 
   @Post('forgot-password')
@@ -288,7 +297,11 @@ export class AuthController {
       mapAuthAppErrorToHttpException,
     );
 
-    this.authCookieService.setAuthCookies(response, authResponse);
+    this.authCookieService.setAuthCookies(
+      response,
+      authResponse,
+      resolveAuthCookiePortalForApp(body.app),
+    );
 
     return AuthUserResponseDto.fromUserProfile(authResponse.user);
   }
@@ -308,10 +321,14 @@ export class AuthController {
   @ApiErrorResponses(authControllerErrorResponses.logout)
   async logout(
     @CurrentUser() currentUser: AuthenticatedUser,
+    @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
   ): Promise<void> {
     await this.logoutUseCase.execute(currentUser);
-    this.authCookieService.clearAuthCookies(response);
+    this.authCookieService.clearAuthCookies(
+      response,
+      resolveAuthCookiePortal(request),
+    );
   }
 
   @Get('me')

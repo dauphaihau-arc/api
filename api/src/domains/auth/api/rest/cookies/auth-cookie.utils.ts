@@ -1,9 +1,43 @@
-import type { Request, Response } from 'express';
-import { Inject, Injectable } from '@nestjs/common';
-import type { CookieOptions } from 'express';
-import { AUTH_CONFIG } from '~/platform/config/auth.config';
+import type { Request } from 'express';
 import type { AuthConfig } from '~/platform/config/auth.config';
-import type { AuthResponse } from '../../../app/auth.types';
+import type { AuthPortal } from '../../../app/portal-access';
+
+export const AUTH_PORTAL_HEADER = 'x-auth-portal';
+export const ADMIN_PORTAL_HEADER_VALUE = 'admin';
+export const ADMIN_ACCESS_COOKIE_NAME = 'adminAccessToken';
+export const ADMIN_REFRESH_COOKIE_NAME = 'adminRefreshToken';
+
+export type AuthCookiePortal = 'admin' | 'legacy';
+
+export function resolveAuthCookiePortal(request: Request): AuthCookiePortal {
+  const header = request.headers[AUTH_PORTAL_HEADER];
+  const value = Array.isArray(header) ? header[0] : header;
+
+  return value === ADMIN_PORTAL_HEADER_VALUE ? 'admin' : 'legacy';
+}
+
+export function resolveAuthCookiePortalForApp(
+  app: AuthPortal | undefined,
+): AuthCookiePortal {
+  return app === ADMIN_PORTAL_HEADER_VALUE ? 'admin' : 'legacy';
+}
+
+export function resolvePortalCookieNames(
+  authConfig: Pick<AuthConfig, 'accessCookieName' | 'refreshCookieName'>,
+  portal: AuthCookiePortal,
+): { accessCookieName: string; refreshCookieName: string } {
+  if (portal === 'admin') {
+    return {
+      accessCookieName: ADMIN_ACCESS_COOKIE_NAME,
+      refreshCookieName: ADMIN_REFRESH_COOKIE_NAME,
+    };
+  }
+
+  return {
+    accessCookieName: authConfig.accessCookieName,
+    refreshCookieName: authConfig.refreshCookieName,
+  };
+}
 
 function parseCookieHeader(cookieHeader?: string): Record<string, string> {
   if (!cookieHeader) {
@@ -35,54 +69,4 @@ export function extractCookieValue(
   cookieName: string,
 ): string | null {
   return parseCookieHeader(request.headers.cookie)[cookieName] ?? null;
-}
-
-@Injectable()
-export class AuthCookieService {
-  constructor(@Inject(AUTH_CONFIG) private readonly authConfig: AuthConfig) {}
-
-  setAuthCookies(response: Response, authResponse: AuthResponse): void {
-    response.cookie(
-      this.authConfig.accessCookieName,
-      authResponse.accessToken,
-      this.buildCookieOptions(this.authConfig.jwtAccessTtlSeconds),
-    );
-    response.cookie(
-      this.authConfig.refreshCookieName,
-      authResponse.refreshToken,
-      this.buildCookieOptions(this.authConfig.jwtRefreshTtlSeconds),
-    );
-  }
-
-  clearAuthCookies(response: Response): void {
-    const clearCookieOptions = this.buildBaseCookieOptions();
-
-    response.clearCookie(this.authConfig.accessCookieName, clearCookieOptions);
-    response.clearCookie(this.authConfig.refreshCookieName, clearCookieOptions);
-  }
-
-  extractRefreshToken(request: Request): string {
-    return extractCookieValue(request, this.authConfig.refreshCookieName) ?? '';
-  }
-
-  extractAccessToken(request: Request): string | null {
-    return extractCookieValue(request, this.authConfig.accessCookieName);
-  }
-
-  private buildCookieOptions(maxAgeSeconds: number): CookieOptions {
-    return {
-      ...this.buildBaseCookieOptions(),
-      maxAge: maxAgeSeconds * 1000,
-    };
-  }
-
-  private buildBaseCookieOptions(): CookieOptions {
-    return {
-      httpOnly: true,
-      secure: this.authConfig.cookieSecure,
-      sameSite: this.authConfig.cookieSameSite,
-      domain: this.authConfig.cookieDomain,
-      path: this.authConfig.cookiePath,
-    };
-  }
 }

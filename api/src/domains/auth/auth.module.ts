@@ -14,6 +14,7 @@ import { PasswordResetTokenRepository } from './app/ports/password-reset-token.r
 import { TokenHasher } from './app/ports/token-hasher';
 import { UserPreferenceRepository } from './app/ports/user-preference.repository';
 import { GetCurrentUserUseCase } from './app/use-cases/get-current-user/get-current-user.use-case';
+import { ListRolesUseCase } from './app/use-cases/list-roles/list-roles.use-case';
 import { LoadAuthenticatedUserUseCase } from './app/use-cases/load-authenticated-user/load-authenticated-user.use-case';
 import { LoginUseCase } from './app/use-cases/login/login.use-case';
 import { LogoutUseCase } from './app/use-cases/logout/logout.use-case';
@@ -27,12 +28,13 @@ import { VerifyResetPasswordTokenUseCase } from './app/use-cases/verify-reset-pa
 import { UpdateCurrentUserPreferencesUseCase } from './app/use-cases/update-current-user-preferences/update-current-user-preferences.use-case';
 import { AuthController } from './api/rest/auth.controller';
 import { MeController } from './api/rest/me.controller';
+import { RolesController } from './api/rest/roles.controller';
 import { SellerAuthController } from './api/rest/seller-auth.controller';
 import { JwtAuthGuard } from './api/guard/jwt-auth.guard';
 import { PermissionsGuard } from './api/guard/permissions.guard';
 import { AuthHttpExceptionFilter } from './api/rest/errors/auth-http-exception.filter';
 import { JwtStrategy } from './infra/jwt.strategy';
-import { AuthCookieService } from './api/rest/cookies/auth-cookie.utils';
+import { AuthCookieService } from './api/rest/cookies/auth-cookie.service';
 import { OptionalJwtAuthGuard } from './api/guard/optional-jwt-auth.guard';
 import { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
 import { UserCredentialEntity } from './infra/persistence/entities/user-credential.entity';
@@ -93,7 +95,7 @@ const authEntities = [
     }),
     MikroOrmModule.forFeature(authEntities),
   ],
-  controllers: [AuthController, SellerAuthController, MeController],
+  controllers: [AuthController, SellerAuthController, MeController, RolesController],
   providers: [
     {
       provide: AUTH_CONFIG,
@@ -138,6 +140,7 @@ const authEntities = [
     VerifyResetPasswordTokenUseCase,
     ResetPasswordUseCase,
     GetCurrentUserUseCase,
+    ListRolesUseCase,
     UpdateCurrentUserPreferencesUseCase,
     LoadAuthenticatedUserUseCase,
     IssueSessionUseCase,

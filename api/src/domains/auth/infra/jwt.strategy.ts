@@ -7,7 +7,11 @@ import { RequestContextService } from '~/platform/request-context/request-contex
 import { AUTH_CONFIG } from '~/platform/config/auth.config';
 import type { AuthConfig } from '~/platform/config/auth.config';
 import { mapAuthAppErrorToHttpException } from '../api/rest/errors/auth-error-mapper';
-import { extractCookieValue } from '../api/rest/cookies/auth-cookie.utils';
+import {
+  extractCookieValue,
+  resolveAuthCookiePortal,
+  resolvePortalCookieNames,
+} from '../api/rest/cookies/auth-cookie.utils';
 import { LoadAuthenticatedUserUseCase } from '../app/use-cases/load-authenticated-user/load-authenticated-user.use-case';
 import { AccessTokenPayload, AuthenticatedUser } from '../app/auth.types';
 
@@ -20,10 +24,20 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
-        (request: Request | undefined) =>
-          request
-            ? extractCookieValue(request, authConfig.accessCookieName)
-            : null,
+        (request: Request | undefined) => {
+          if (!request) {
+            return null;
+          }
+
+          const portal = resolveAuthCookiePortal(request);
+
+          const { accessCookieName } = resolvePortalCookieNames(
+            authConfig,
+            portal,
+          );
+
+          return extractCookieValue(request, accessCookieName);
+        },
       ]),
       ignoreExpiration: false,
       secretOrKey: authConfig.jwtAccessSecret,
