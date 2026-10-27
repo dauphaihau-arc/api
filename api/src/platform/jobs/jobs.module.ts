@@ -30,6 +30,7 @@ import { MailModule } from '~/integrations/mail/mail.module';
 import { QueueModule } from '~/integrations/queue/queue.module';
 import { StorageModule } from '~/integrations/storage/storage.module';
 import { AppJobRunner } from './app-job-runner';
+import { InternalOutboxJobsController } from './internal-outbox-jobs.controller';
 import { JobRunner } from './job-runner';
 
 @Module({
@@ -45,6 +46,7 @@ import { JobRunner } from './job-runner';
     StorageModule,
     QueueModule,
   ],
+  controllers: [InternalOutboxJobsController],
   providers: [
     AppJobRunner,
     {
