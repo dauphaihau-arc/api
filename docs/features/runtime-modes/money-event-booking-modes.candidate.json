@@ -1,0 +1,228 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Money Event Booking Modes",
+    "quality_profile": "showcase",
+    "locale": "en",
+    "repository": {
+      "url": "https://github.com/dauphaihau-arc/api",
+      "provider": "github",
+      "link_mode": "web",
+      "revision": "325e3935c63a8f73513f2660eb21df4040c33ccf"
+    },
+    "output": "apps/api/docs/features/runtime-modes/money-event-booking-modes.html"
+  },
+  "lanes": [
+    { "id": "producer", "label": "Producer request" },
+    { "id": "inline", "label": "Inline booking" },
+    { "id": "outbox", "label": "Outbox booking" },
+    { "id": "failure", "label": "Failure and retry", "variant": "exception" }
+  ],
+  "phases": [
+    { "id": "write", "label": "Same transaction", "fromCol": 0, "toCol": 2 },
+    { "id": "book", "label": "Book", "fromCol": 3, "toCol": 4, "variant": "emphasis" },
+    { "id": "settle", "label": "Outcome", "fromCol": 5, "toCol": 5 }
+  ],
+  "mainPath": ["event", "write-row", "mode", "inline-book", "mark-processed", "commit"],
+  "semanticChecks": {
+    "allowedRoots": ["event"],
+    "allowedTerminals": ["commit", "outbox-book", "caller-retry", "terminal"]
+  },
+  "nodes": [
+    {
+      "id": "event",
+      "lane": "producer",
+      "col": 0,
+      "type": "backend",
+      "label": "Money Event Producer",
+      "sublabel": "checkout, delivery, refund",
+      "tag": "request",
+      "sources": [
+        { "path": "api/src/domains/order/app/services/order-payment.service.ts", "line": 159, "end_line": 176 },
+        { "path": "api/src/domains/fulfillment/app/services/fulfillment.service.ts", "line": 560, "end_line": 576 },
+        { "path": "api/src/domains/order/app/services/order-refund.service.ts", "line": 451, "end_line": 468 }
+      ]
+    },
+    {
+      "id": "write-row",
+      "lane": "producer",
+      "col": 1,
+      "type": "database",
+      "label": "Write Outbox Row",
+      "sublabel": "outbox_events",
+      "sources": [
+        { "path": "api/src/domains/order/app/services/order-paid-outbox.service.ts", "line": 17, "end_line": 30 },
+        { "path": "api/src/domains/fulfillment/app/services/order-delivered-outbox.service.ts", "line": 21, "end_line": 28 },
+        { "path": "api/src/domains/order/app/services/order-refund-outbox.service.ts", "line": 22, "end_line": 29 }
+      ]
+    },
+    {
+      "id": "mode",
+      "lane": "producer",
+      "col": 2,
+      "type": "security",
+      "icon": "decision",
+      "label": "Booking Mode",
+      "sublabel": "FINANCE_MONEY_EVENT_BOOKING",
+      "tag": "inline | outbox",
+      "sources": [
+        { "path": "api/src/platform/config/finance.config.ts", "line": 9, "end_line": 40 }
+      ]
+    },
+    {
+      "id": "inline-book",
+      "lane": "inline",
+      "col": 3,
+      "type": "backend",
+      "label": "Book in Producer Tx",
+      "sublabel": "journal + payable",
+      "sources": [
+        { "path": "api/src/domains/order/app/services/order-payment.service.ts", "line": 169, "end_line": 175 },
+        { "path": "api/src/domains/fulfillment/app/services/fulfillment.service.ts", "line": 572, "end_line": 578 },
+        { "path": "api/src/domains/order/app/services/order-refund.service.ts", "line": 465, "end_line": 472 }
+      ]
+    },
+    {
+      "id": "mark-processed",
+      "lane": "inline",
+      "col": 4,
+      "type": "backend",
+      "label": "Mark Row processed",
+      "sublabel": "same transaction",
+      "sources": [
+        { "path": "api/src/domains/order/app/services/order-payment.service.ts", "line": 175, "end_line": 177 },
+        { "path": "api/src/domains/fulfillment/app/services/fulfillment.service.ts", "line": 578, "end_line": 580 }
+      ]
+    },
+    {
+      "id": "commit",
+      "lane": "inline",
+      "col": 5,
+      "type": "backend",
+      "icon": "success",
+      "label": "Producer Commits",
+      "sublabel": "one atomic write",
+      "sources": [
+        { "path": "api/src/domains/order/app/services/order-payment.service.ts", "line": 73, "end_line": 73 }
+      ]
+    },
+    {
+      "id": "pending",
+      "lane": "outbox",
+      "col": 3,
+      "type": "database",
+      "icon": "waiting",
+      "label": "Row Stays pending",
+      "sublabel": "producer returns",
+      "sources": [
+        { "path": "api/src/domains/order/app/services/order-paid-outbox.service.ts", "line": 21, "end_line": 38 }
+      ]
+    },
+    {
+      "id": "claim",
+      "lane": "outbox",
+      "col": 4,
+      "type": "backend",
+      "icon": "active",
+      "label": "Claim + Lease",
+      "sublabel": "worker or drain cron",
+      "tag": "5s tick / 5 min",
+      "sources": [
+        { "path": "api/src/domains/finance/app/services/finance-outbox-worker.service.ts", "line": 24, "end_line": 33 },
+        { "path": "api/src/platform/jobs/internal-outbox-jobs.controller.ts", "line": 28, "end_line": 40 }
+      ]
+    },
+    {
+      "id": "outbox-book",
+      "lane": "outbox",
+      "col": 5,
+      "type": "backend",
+      "icon": "success",
+      "label": "Book + Mark processed",
+      "sublabel": "append entry, credit payable",
+      "sources": [
+        { "path": "api/src/domains/finance/app/services/finance-money-event-processor.service.ts", "line": 99, "end_line": 116 }
+      ]
+    },
+    {
+      "id": "rollback",
+      "lane": "failure",
+      "col": 3,
+      "type": "security",
+      "icon": "failure",
+      "label": "Rollback Producer",
+      "sublabel": "no journal, no payable",
+      "sources": [
+        { "path": "api/src/domains/order/app/services/order-payment.service.ts", "line": 169, "end_line": 177 }
+      ]
+    },
+    {
+      "id": "caller-retry",
+      "lane": "failure",
+      "col": 4,
+      "type": "external",
+      "label": "Caller Retries",
+      "sublabel": "provider webhook or request",
+      "sources": [
+        { "path": "api/src/domains/payments-webhook/app/use-cases/handle-stripe-webhook/handle-stripe-webhook.use-case.ts", "line": 77, "end_line": 84 }
+      ]
+    },
+    {
+      "id": "terminal",
+      "lane": "failure",
+      "col": 5,
+      "type": "security",
+      "icon": "stop",
+      "label": "Terminal failed",
+      "sublabel": "manual reset",
+      "tag": "5 attempts",
+      "sources": [
+        { "path": "api/src/platform/outbox/durable-outbox.processor.ts", "line": 14, "end_line": 21 },
+        { "path": "api/src/platform/outbox/durable-outbox.processor.ts", "line": 206, "end_line": 216 }
+      ]
+    }
+  ],
+  "edges": [
+    { "id": "event-write", "from": "event", "to": "write-row", "label": "same transaction", "variant": "emphasis" },
+    { "id": "write-mode", "from": "write-row", "to": "mode", "label": "read config" },
+    { "id": "mode-inline", "from": "mode", "to": "inline-book", "label": "inline", "variant": "emphasis" },
+    { "id": "mode-outbox", "from": "mode", "to": "pending", "label": "outbox (default)", "variant": "dashed" },
+    { "id": "inline-mark", "from": "inline-book", "to": "mark-processed", "label": "same tx" },
+    { "id": "mark-commit", "from": "mark-processed", "to": "commit" },
+    { "id": "inline-fail", "from": "inline-book", "to": "rollback", "label": "booking error", "variant": "security", "role": "error" },
+    { "id": "rollback-retry", "from": "rollback", "to": "caller-retry", "label": "response fails", "variant": "dashed", "role": "branch" },
+    { "id": "pending-claim", "from": "pending", "to": "claim", "label": "due", "variant": "dashed", "role": "async" },
+    { "id": "claim-book", "from": "claim", "to": "outbox-book", "label": "append + credit" },
+    { "id": "claim-terminal", "from": "claim", "to": "terminal", "label": "5th failure", "variant": "security", "role": "error" }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Inline path",
+      "items": [
+        "Booking joins the producer's own transaction",
+        "A failure rolls the producer back; the provider or caller retries",
+        "The outbox row is kept and marked processed as evidence"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Outbox path",
+      "items": [
+        "The producer never blocks on finance work",
+        "Five attempts with 15s to 1h backoff, then terminal failed",
+        "The pollers start only with QUEUE_DRIVER=redis"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Workerless consumers",
+      "items": [
+        "Drain cron calls /v1/internal/jobs/drain: finance, checkout, inventory, refunds, payout",
+        "Inventory publish, checkout retry, refund reconciliation and payout run have no inline path",
+        "A stopped cron leaves pending rows, visible in outbox_events"
+      ]
+    }
+  ]
+}
