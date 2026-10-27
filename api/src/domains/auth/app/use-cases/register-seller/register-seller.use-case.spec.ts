@@ -42,6 +42,9 @@ describe('RegisterSellerUseCase', () => {
       updatePassword: jest.fn(),
       assignRole: jest.fn().mockResolvedValue(undefined),
       ensureRole: jest.fn().mockResolvedValue(undefined),
+      findAllRoles: jest.fn(),
+      countUsersWithRole: jest.fn(),
+      replaceRoles: jest.fn(),
     };
     const userPreferenceRepository: jest.Mocked<UserPreferenceRepository> = {
       create: jest.fn().mockResolvedValue(undefined),
@@ -64,6 +67,7 @@ describe('RegisterSellerUseCase', () => {
       findByShopName: jest.fn().mockResolvedValue(null),
       findBySlug: jest.fn().mockResolvedValue(null),
       findOwnedById: jest.fn(),
+      findAllForAdmin: jest.fn(),
     };
     const passwordHasher: jest.Mocked<PasswordHasher> = {
       hash: jest

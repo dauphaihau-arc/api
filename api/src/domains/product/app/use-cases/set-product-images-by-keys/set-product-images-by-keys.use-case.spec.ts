@@ -74,6 +74,7 @@ describe('SetProductImagesByKeysUseCase', () => {
         slug: 'owner-shop',
         status: 'active',
       }),
+      findAllForAdmin: jest.fn(),
     };
 
     const jobDispatcher: jest.Mocked<JobDispatcher> = {

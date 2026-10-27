@@ -33,6 +33,7 @@ describe('CreateShopUseCase', () => {
       findByShopName: jest.fn().mockResolvedValue(null),
       findBySlug: jest.fn().mockResolvedValue(null),
       findOwnedById: jest.fn(),
+      findAllForAdmin: jest.fn(),
     };
   }
 
@@ -53,6 +54,9 @@ describe('CreateShopUseCase', () => {
       updatePassword: jest.fn(),
       assignRole: jest.fn().mockResolvedValue(undefined),
       ensureRole: jest.fn(),
+      findAllRoles: jest.fn(),
+      countUsersWithRole: jest.fn(),
+      replaceRoles: jest.fn(),
     };
   }
 

@@ -162,6 +162,7 @@ describe('BulkMutateShopProductsUseCase', () => {
         slug: 'owner-shop',
         status: 'active',
       }),
+      findAllForAdmin: jest.fn(),
     };
 
     return {

@@ -27,6 +27,9 @@ describe('RequestPasswordResetUseCase', () => {
       updatePassword: jest.fn(),
       assignRole: jest.fn(),
       ensureRole: jest.fn(),
+      findAllRoles: jest.fn(),
+      countUsersWithRole: jest.fn(),
+      replaceRoles: jest.fn(),
     };
     const passwordResetTokenRepository: jest.Mocked<PasswordResetTokenRepository> = {
       create: jest.fn().mockResolvedValue({
@@ -109,6 +112,9 @@ describe('RequestPasswordResetUseCase', () => {
       updatePassword: jest.fn(),
       assignRole: jest.fn(),
       ensureRole: jest.fn(),
+      findAllRoles: jest.fn(),
+      countUsersWithRole: jest.fn(),
+      replaceRoles: jest.fn(),
     };
     const passwordResetTokenRepository: jest.Mocked<PasswordResetTokenRepository> = {
       create: jest.fn().mockResolvedValue({
@@ -170,6 +176,9 @@ describe('RequestPasswordResetUseCase', () => {
       updatePassword: jest.fn(),
       assignRole: jest.fn(),
       ensureRole: jest.fn(),
+      findAllRoles: jest.fn(),
+      countUsersWithRole: jest.fn(),
+      replaceRoles: jest.fn(),
     };
     const passwordResetTokenRepository: jest.Mocked<PasswordResetTokenRepository> = {
       create: jest.fn(),
@@ -218,6 +227,9 @@ describe('RequestPasswordResetUseCase', () => {
       updatePassword: jest.fn(),
       assignRole: jest.fn(),
       ensureRole: jest.fn(),
+      findAllRoles: jest.fn(),
+      countUsersWithRole: jest.fn(),
+      replaceRoles: jest.fn(),
     };
     const passwordResetTokenRepository: jest.Mocked<PasswordResetTokenRepository> = {
       create: jest.fn(),

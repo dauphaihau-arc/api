@@ -181,6 +181,98 @@ export class MikroOrmAuthUserRepository implements AuthUserRepository {
     await em.persistAndFlush(userRole);
   }
 
+  async replaceRoles(
+    userId: string,
+    roleKeys: RoleKey[],
+    entityManager?: EntityManager,
+  ): Promise<void> {
+    const em = entityManager ?? this.entityManager.fork();
+
+    const desiredKeys = Array.from(
+      new Set(roleKeys.map((roleKey) => roleKey.toString())),
+    );
+
+    await em.transactional(async (transactionalEntityManager) => {
+      const user = await transactionalEntityManager
+        .getRepository(UserEntity)
+        .findOneOrFail({ id: userId });
+
+      const roleRepository = transactionalEntityManager.getRepository(
+        RoleEntity,
+      );
+
+      const userRoleRepository = transactionalEntityManager.getRepository(
+        UserRoleEntity,
+      );
+
+      const roles = desiredKeys.length === 0
+        ? []
+        : await roleRepository.find({ key: { $in: desiredKeys } });
+
+      if (roles.length !== desiredKeys.length) {
+        const foundKeys = new Set(roles.map((role) => role.key));
+        const missingKeys = desiredKeys.filter((key) => !foundKeys.has(key));
+        throw new Error(`Unknown role keys: ${missingKeys.join(', ')}`);
+      }
+
+      const existingUserRoles = await userRoleRepository.find(
+        { user },
+        { populate: ['role'] },
+      );
+
+      const existingKeys = new Set(
+        existingUserRoles.map((userRole) => userRole.role.key),
+      );
+
+      if (roles.length === 0) {
+        await userRoleRepository.nativeDelete({ user });
+      }
+      else {
+        await userRoleRepository.nativeDelete({
+          user,
+          role: { $nin: roles.map((role) => role.id) },
+        });
+      }
+
+      for (const role of roles) {
+        if (existingKeys.has(role.key)) {
+          continue;
+        }
+
+        transactionalEntityManager.persist(
+          userRoleRepository.create({
+            user,
+            role,
+            assignedAt: new Date(),
+          }),
+        );
+      }
+
+      await transactionalEntityManager.flush();
+    });
+  }
+
+  async findAllRoles(): Promise<RoleDefinition[]> {
+    const entityManager = this.entityManager.fork();
+    const roles = await entityManager.getRepository(RoleEntity).findAll({
+      orderBy: { key: 'asc' },
+    });
+
+    return roles.map((role) => ({
+      key: RoleKey.create(role.key),
+      name: role.name,
+      description: role.description,
+    }));
+  }
+
+  async countUsersWithRole(roleKey: RoleKey): Promise<number> {
+    const entityManager = this.entityManager.fork();
+
+    return entityManager.getRepository(UserRoleEntity).count({
+      role: { key: roleKey.toString() },
+    });
+  }
+
   async ensureRole(
     roleDefinition: RoleDefinition,
     entityManager?: EntityManager,

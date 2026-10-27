@@ -1,5 +1,10 @@
 import type { EntityManager } from '@mikro-orm/postgresql';
-import type { CreateShopInput, ShopSummary } from '../shop.types';
+import type {
+  AdminShopListRow,
+  CreateShopInput,
+  ListAdminShopsQuery,
+  ShopSummary,
+} from '../shop.types';
 
 export abstract class ShopRepository {
   abstract create(
@@ -16,4 +21,7 @@ export abstract class ShopRepository {
     id: string,
     ownerUserId: string
   ): Promise<ShopSummary | null>;
+  abstract findAllForAdmin(
+    query: ListAdminShopsQuery
+  ): Promise<{ items: AdminShopListRow[]; totalResults: number }>;
 }

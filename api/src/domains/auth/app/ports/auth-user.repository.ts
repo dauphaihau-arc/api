@@ -53,8 +53,15 @@ export abstract class AuthUserRepository {
     roleKey: RoleKey,
     entityManager?: EntityManager
   ): Promise<void>;
+  abstract replaceRoles(
+    userId: string,
+    roleKeys: RoleKey[],
+    entityManager?: EntityManager
+  ): Promise<void>;
   abstract ensureRole(
     role: RoleDefinition,
     entityManager?: EntityManager
   ): Promise<void>;
+  abstract findAllRoles(): Promise<RoleDefinition[]>;
+  abstract countUsersWithRole(roleKey: RoleKey): Promise<number>;
 }

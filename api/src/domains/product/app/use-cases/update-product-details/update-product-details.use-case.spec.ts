@@ -73,6 +73,7 @@ describe('UpdateProductDetailsUseCase', () => {
         slug: 'owner-shop',
         status: 'active',
       }),
+      findAllForAdmin: jest.fn(),
     };
 
     const categoryRepository: jest.Mocked<CategoryRepository> = {

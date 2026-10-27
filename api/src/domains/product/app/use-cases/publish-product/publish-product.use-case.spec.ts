@@ -114,6 +114,7 @@ describe('PublishProductUseCase', () => {
         slug: 'owner-shop',
         status: 'active',
       }),
+      findAllForAdmin: jest.fn(),
     };
 
     return {

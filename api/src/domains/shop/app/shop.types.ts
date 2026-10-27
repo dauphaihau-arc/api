@@ -93,3 +93,37 @@ export interface CreateShopInput {
   slug: string;
   currency: MarketplaceCurrency;
 }
+
+/**
+ * Operator-facing directory query. Kept apart from `ShopSummary` so seller
+ * reads never grow the owner's email.
+ */
+export interface ListAdminShopsQuery {
+  page: number;
+  limit: number;
+  search?: string;
+}
+
+export interface AdminShopListRow {
+  /** Shop public id (shop_…). */
+  id: string;
+  shopName: string;
+  slug: string;
+  status: string;
+  currency: MarketplaceCurrency;
+  /** Products in the shop, all statuses included. */
+  productCount: number;
+  ownerEmail: string;
+  /** Owner's display name; null when the account has none. */
+  ownerName: string | null;
+  /** Shop creation instant. */
+  createdAt: Date;
+}
+
+export interface AdminShopListResult {
+  results: AdminShopListRow[];
+  page: number;
+  limit: number;
+  totalPages: number;
+  totalResults: number;
+}

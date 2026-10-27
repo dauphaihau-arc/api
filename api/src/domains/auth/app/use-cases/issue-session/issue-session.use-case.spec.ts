@@ -38,6 +38,9 @@ describe('IssueSessionUseCase', () => {
       updatePassword: jest.fn(),
       assignRole: jest.fn(),
       ensureRole: jest.fn(),
+      findAllRoles: jest.fn(),
+      countUsersWithRole: jest.fn(),
+      replaceRoles: jest.fn(),
     };
     const authSessionRepository: jest.Mocked<AuthSessionRepository> = {
       findById: jest.fn(),
