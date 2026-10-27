@@ -1,0 +1,14 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "arc-outbox-drain-cron",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-05-29",
+  "workers_dev": true,
+  "preview_urls": false,
+  "triggers": {
+    "crons": ["*/5 * * * *"]
+  },
+  "vars": {
+    "DRAIN_TIMEOUT_MS": "90000"
+  }
+}

@@ -1,0 +1,3 @@
+DRAIN_URL=https://your-service.onrender.com/v1/internal/jobs/drain
+OUTBOX_DRAIN_TRIGGER_SECRET=replace-with-the-same-secret-as-render
+DRAIN_TIMEOUT_MS=90000
