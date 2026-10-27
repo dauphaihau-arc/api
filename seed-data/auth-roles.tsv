@@ -2,3 +2,5 @@ key	name	description
 customer	Customer	Buys products
 seller	Seller	Lists and sells products
 admin	Admin	Manages platform operations
+super_admin	Super Admin	Full platform administration, including users, roles and audit logs
+finance	Finance	Reviews order and shop financials

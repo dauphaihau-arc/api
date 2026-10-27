@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { isPlatformAdmin } from '~/domains/auth/app/access/platform-admin';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import { JobDispatcher } from '~/integrations/queue/app/ports/job-dispatcher';
 import { ShopRepository } from '~/domains/shop/app/ports/shop.repository';
@@ -48,7 +49,7 @@ export class BulkMutateShopProductsUseCase {
     actor: AuthenticatedUser,
     input: BulkMutateShopProductsInput,
   ): Promise<BulkMutateShopProductsResult> {
-    const canManageAnyShop = actor.roles.includes('admin');
+    const canManageAnyShop = isPlatformAdmin(actor.roles);
 
     if (!canManageAnyShop) {
       const ownedShop = await this.shopRepository.findOwnedById(

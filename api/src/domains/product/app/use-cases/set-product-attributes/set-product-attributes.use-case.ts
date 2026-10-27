@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { err, ok, type Result } from '~/platform/application/result';
+import { isPlatformAdmin } from '~/domains/auth/app/access/platform-admin';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import type { CategoryAttributeSummary } from '~/domains/category/app/category.types';
 import { CategoryRepository } from '~/domains/category/app/ports/category.repository';
@@ -46,7 +47,7 @@ export class SetProductAttributesUseCase {
       return err(new ProductNotFoundError(productId));
     }
 
-    const canManageAnyShop = actor.roles.includes('admin');
+    const canManageAnyShop = isPlatformAdmin(actor.roles);
 
     if (!canManageAnyShop) {
       const ownedShop = await this.shopRepository.findOwnedById(

@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { err, ok, type Result } from '~/platform/application/result';
 import { appJobDeduplicationKey } from '~/platform/jobs/app-job-deduplication';
 import { appJobName } from '~/platform/jobs/app-job.names';
+import { isPlatformAdmin } from '~/domains/auth/app/access/platform-admin';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import { ShopRepository } from '~/domains/shop/app/ports/shop.repository';
 import { JobDispatcher } from '~/integrations/queue/app/ports/job-dispatcher';
@@ -51,7 +52,7 @@ export class ConfigureProductVariantConfigurationUseCase {
 
     if (!targetProduct || (input.shopId && targetProduct.shopId !== input.shopId)) return err(new ProductNotFoundError(productId));
 
-    const canManageAnyShop = actor.roles.includes('admin');
+    const canManageAnyShop = isPlatformAdmin(actor.roles);
     if (!canManageAnyShop) {
       const ownedShop = await this.shopRepository.findOwnedById(targetProduct.shopId, actor.userId);
       if (!ownedShop) return err(new ActorCannotCreateProductDraftError());

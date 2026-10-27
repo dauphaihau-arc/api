@@ -1,5 +1,9 @@
 email	display_name	password	role_key	email_verified
 admin@example.com	System Admin	Password123!	admin	true
+superadmin@example.com	System Super Admin	Password123!	super_admin	true
+superadmin.ops@example.com	Operations Super Admin	Password123!	super_admin	true
+admin.ops@example.com	Operations Admin	Password123!	admin	true
+admin.support@example.com	Support Admin	Password123!	admin	true
 member@example.com	Default Member	Password123!	customer	true
 buyer.aiden@example.com	Aiden Brooks	Password123!	customer	true
 buyer.luna@example.com	Luna Hayes	Password123!	customer	true

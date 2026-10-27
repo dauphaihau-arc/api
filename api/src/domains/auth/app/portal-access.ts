@@ -1,7 +1,9 @@
+import { hasFinanceRole, isPlatformAdmin } from './access/platform-admin';
+
 export type AuthPortal = 'storefront' | 'seller' | 'admin';
 
 export function canAccessAuthPortal(roles: string[], portal: AuthPortal): boolean {
-  if (roles.includes('admin')) {
+  if (isPlatformAdmin(roles) || hasFinanceRole(roles)) {
     return portal === 'admin';
   }
 

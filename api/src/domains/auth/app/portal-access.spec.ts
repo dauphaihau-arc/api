@@ -19,6 +19,36 @@ describe('canAccessAuthPortal', () => {
     expect(canAccessAuthPortal(['admin'], 'admin')).toBe(true);
   });
 
+  it('allows super admins into admin portal only', () => {
+    expect(canAccessAuthPortal(['super_admin'], 'storefront')).toBe(false);
+    expect(canAccessAuthPortal(['super_admin'], 'seller')).toBe(false);
+    expect(canAccessAuthPortal(['super_admin'], 'admin')).toBe(true);
+  });
+
+  it('keeps super admins admin-only even with store roles', () => {
+    expect(
+      canAccessAuthPortal(['super_admin', 'customer', 'seller'], 'storefront'),
+    ).toBe(false);
+    expect(
+      canAccessAuthPortal(['super_admin', 'customer', 'seller'], 'seller'),
+    ).toBe(false);
+    expect(
+      canAccessAuthPortal(['super_admin', 'customer', 'seller'], 'admin'),
+    ).toBe(true);
+  });
+
+  it('allows finance accounts into admin portal only', () => {
+    expect(canAccessAuthPortal(['finance'], 'storefront')).toBe(false);
+    expect(canAccessAuthPortal(['finance'], 'seller')).toBe(false);
+    expect(canAccessAuthPortal(['finance'], 'admin')).toBe(true);
+  });
+
+  it('keeps finance accounts admin-only even with store roles', () => {
+    expect(canAccessAuthPortal(['finance', 'customer', 'seller'], 'storefront')).toBe(false);
+    expect(canAccessAuthPortal(['finance', 'customer', 'seller'], 'seller')).toBe(false);
+    expect(canAccessAuthPortal(['finance', 'customer', 'seller'], 'admin')).toBe(true);
+  });
+
   it('keeps admin accounts admin-only even with additional roles', () => {
     expect(canAccessAuthPortal(['admin', 'customer', 'seller'], 'storefront')).toBe(false);
     expect(canAccessAuthPortal(['admin', 'customer', 'seller'], 'seller')).toBe(false);

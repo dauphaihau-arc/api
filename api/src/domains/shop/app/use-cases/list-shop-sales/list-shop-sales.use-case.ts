@@ -1,5 +1,6 @@
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
+import { isPlatformAdmin } from '~/domains/auth/app/access/platform-admin';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import { PromotionApplicationKind } from '~/domains/promotion/domain/enums/promotion-application-kind.enum';
 import { PromotionEntity } from '~/domains/promotion/infra/persistence/entities/promotion.entity';
@@ -34,7 +35,7 @@ export class ListShopSalesUseCase {
       throw new ShopNotFoundError();
     }
 
-    if (shop.ownerUser.id !== actor.userId && !actor.roles.includes('admin')) {
+    if (shop.ownerUser.id !== actor.userId && !isPlatformAdmin(actor.roles)) {
       throw new ShopAccessDeniedError();
     }
 

@@ -1,4 +1,5 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { isPlatformAdmin } from '~/domains/auth/app/access/platform-admin';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import { ShopRepository } from '../ports/shop.repository';
 import type { ShopSummary } from '../shop.types';
@@ -27,7 +28,8 @@ export class ShopAccessService {
   ): Promise<ShopSummary> {
     const shop = await this.shopRepository.findByPublicId(publicId);
     if (!shop) throw new NotFoundException('Shop was not found');
-    if (actor.roles.includes('admin') || shop.ownerUserId === actor.userId) return shop;
+    if (isPlatformAdmin(actor.roles) || shop.ownerUserId === actor.userId) return shop;
+
     throw new ForbiddenException('You do not own this shop');
   }
 
@@ -42,7 +44,7 @@ export class ShopAccessService {
     actor: AuthenticatedUser,
     shopId: string,
   ): Promise<ShopSummary> {
-    if (actor.roles.includes('admin')) {
+    if (isPlatformAdmin(actor.roles)) {
       const shop = await this.shopRepository.findById(shopId);
 
       if (!shop) {

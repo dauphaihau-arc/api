@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { err, ok, type Result } from '~/platform/application/result';
 import { appJobDeduplicationKey } from '~/platform/jobs/app-job-deduplication';
 import { appJobName } from '~/platform/jobs/app-job.names';
+import { isPlatformAdmin } from '~/domains/auth/app/access/platform-admin';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import { ShopRepository } from '~/domains/shop/app/ports/shop.repository';
 import { ShippingProfileRepository } from '~/domains/shipping/app/ports/shipping-profile.repository';
@@ -51,7 +52,7 @@ export class AssignProductShippingProfileUseCase {
       return err(new ProductNotFoundError(productId));
     }
 
-    if (!actor.roles.includes('admin')) {
+    if (!isPlatformAdmin(actor.roles)) {
       const ownedShop = await this.shopRepository.findOwnedById(
         existingProduct.shopId,
         actor.userId,
