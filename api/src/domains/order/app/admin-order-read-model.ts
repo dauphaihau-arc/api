@@ -86,7 +86,6 @@ export function toAdminOrderDetail(
         ? { phone: String(order.shippingAddress.phone) }
         : {}),
     },
-    supportNote: order.supportNote,
     paymentDetails: order.paymentDetails,
   };
 }

@@ -5,6 +5,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { appJobDeduplicationKey } from '~/platform/jobs/app-job-deduplication';
 import { JobDispatcher } from '~/integrations/queue/app/ports/job-dispatcher';
+import { AuditLogService } from '~/integrations/audit/app/audit-log.service';
 import type { UpdateAdminOrderRefundDto } from '../../../api/rest/dto/update-admin-order-refund.dto';
 import { AdminOrderRefundAction } from '../../../api/rest/dto/update-admin-order-refund.dto';
 import { OrderEventActorType } from '../../../domain/enums/order-event-actor-type.enum';
@@ -44,6 +45,7 @@ export class UpdateAdminOrderRefundUseCase {
     private readonly orderRefundRepository: OrderRefundRepository,
     private readonly orderRefundOutboxService: OrderRefundOutboxService,
     private readonly orderFulfillmentViewPort: OrderFulfillmentViewPort,
+    private readonly auditLogService: AuditLogService,
   ) {}
 
   async execute(
@@ -275,6 +277,7 @@ export class UpdateAdminOrderRefundUseCase {
 
       return {
         shouldDispatchRetry: input.action === AdminOrderRefundAction.RETRY,
+        refundStatus: this.getRefundStatus(order.paymentDetails),
         customerUserId: order.user?.id,
         notificationAction:
           input.action === AdminOrderRefundAction.MARK_SUCCEEDED
@@ -290,6 +293,17 @@ export class UpdateAdminOrderRefundUseCase {
           })).get(order.id),
         ),
       };
+    });
+
+    await this.auditLogService.record({
+      action: 'order.refund.updated',
+      entityType: 'order',
+      entityId: result.detail.id,
+      entityPublicId: result.detail.publicId,
+      summary: {
+        action: input.action,
+        refundStatus: result.refundStatus,
+      },
     });
 
     if (result.customerUserId) {

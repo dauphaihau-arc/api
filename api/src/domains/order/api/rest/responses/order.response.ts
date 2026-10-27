@@ -1142,9 +1142,6 @@ export class AdminOrderListEntryResponseDto {
   total_minor!: number;
 
   @ApiProperty({ required: false })
-  support_note?: string;
-
-  @ApiProperty({ required: false })
   cancel_reason?: string;
 
   @ApiProperty({ type: String, format: 'date-time', required: false })
@@ -1223,9 +1220,6 @@ export class AdminOrderDetailOrderResponseDto extends OrderAmountSummaryResponse
 
   @ApiProperty({ required: false })
   note?: string;
-
-  @ApiProperty({ required: false })
-  support_note?: string;
 
   @ApiProperty({ type: String, format: 'date-time', required: false })
   canceled_at?: Date;
@@ -1895,7 +1889,6 @@ export function toAdminOrderDetailResponse(order: AdminOrderDetail) {
       ...toMinorTotals(order),
       ...toOrderShippingResponse(order.shippingQuote, order.shopPublicId, order.products),
       note: order.note,
-      support_note: order.supportNote,
       canceled_at: order.canceledAt,
       cancel_reason: order.cancelReason,
       refunded_at: order.refundedAt,
@@ -1926,7 +1919,6 @@ export function toAdminOrderListResponse(result: AdminOrderListResult) {
       },
       currency: order.currency,
       total_minor: order.totalMinor ?? toMinorUnits(order.total, order.currency),
-      support_note: order.supportNote,
       cancel_reason: order.cancelReason,
       refunded_at: order.refundedAt,
       created_at: order.createdAt,

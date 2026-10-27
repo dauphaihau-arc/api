@@ -151,9 +151,6 @@ export class OrderEntity extends AbstractBaseEntity {
   @Property({ fieldName: 'refunded_at', nullable: true })
   refundedAt?: Date;
 
-  @Property({ fieldName: 'support_note', type: 'text', nullable: true })
-  supportNote?: string;
-
   @Property({ fieldName: 'customer_support_note', type: 'text', nullable: true })
   customerSupportNote?: string;
 

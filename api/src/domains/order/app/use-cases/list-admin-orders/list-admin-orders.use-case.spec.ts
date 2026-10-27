@@ -20,7 +20,6 @@ describe('ListAdminOrdersUseCase', () => {
         status: OrderStatus.PAID,
         fulfillmentStatus: FulfillmentAggregateStatus.UNFULFILLED,
         total: 42,
-        supportNote: 'Investigating',
         cancelReason: undefined,
         refundedAt: undefined,
         createdAt: new Date('2026-05-23T00:00:00.000Z'),
@@ -51,6 +50,56 @@ describe('ListAdminOrdersUseCase', () => {
         status: OrderStatus.PAID,
         fulfillmentStatus: FulfillmentAggregateStatus.UNFULFILLED,
       }),
+    );
+  });
+
+  it('filters several statuses with an $in predicate', async () => {
+    const findAndCount = jest.fn().mockResolvedValue([[], 0]);
+    const fakeEntityManager = {
+      getRepository: jest.fn(() => ({ findAndCount })),
+    } as unknown as EntityManager;
+
+    const useCase = new ListAdminOrdersUseCase({
+      fork: jest.fn(() => fakeEntityManager),
+    } as unknown as EntityManager);
+
+    await useCase.execute({
+      page: 2,
+      limit: 10,
+      status: [OrderStatus.PAID, OrderStatus.COMPLETED],
+    });
+
+    expect(findAndCount).toHaveBeenCalledWith(
+      { status: { $in: [OrderStatus.PAID, OrderStatus.COMPLETED] } },
+      {
+        populate: ['shop'],
+        orderBy: { createdAt: 'desc' },
+        offset: 10,
+        limit: 10,
+      },
+    );
+  });
+
+  it('omits the status predicate when no statuses are selected', async () => {
+    const findAndCount = jest.fn().mockResolvedValue([[], 0]);
+    const fakeEntityManager = {
+      getRepository: jest.fn(() => ({ findAndCount })),
+    } as unknown as EntityManager;
+
+    const useCase = new ListAdminOrdersUseCase({
+      fork: jest.fn(() => fakeEntityManager),
+    } as unknown as EntityManager);
+
+    await useCase.execute({ page: 1, limit: 20, status: [] });
+
+    expect(findAndCount).toHaveBeenCalledWith(
+      {},
+      {
+        populate: ['shop'],
+        orderBy: { createdAt: 'desc' },
+        offset: 0,
+        limit: 20,
+      },
     );
   });
 });

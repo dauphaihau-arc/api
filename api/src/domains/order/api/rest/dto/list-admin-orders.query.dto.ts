@@ -1,5 +1,6 @@
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
+  IsArray,
   IsEnum,
   IsOptional,
   IsString,
@@ -25,10 +26,26 @@ export class ListAdminOrdersQueryDto {
   limit: number = ADMIN_ORDER_LIST_DEFAULT_LIMIT;
 
   @IsOptional()
-  @IsEnum(OrderStatus)
-  status?: OrderStatus;
+  @Transform(({ value }) => toOptionalStringArray(value))
+  @IsArray()
+  @IsEnum(OrderStatus, { each: true })
+  status?: OrderStatus[];
 
   @IsOptional()
   @IsString()
   search?: string;
+}
+
+function toOptionalStringArray(value: unknown): string[] | undefined {
+  if (value === undefined || value === null || value === '') {
+    return undefined;
+  }
+
+  const rawValues = Array.isArray(value) ? value : [value];
+  const normalized = rawValues
+    .flatMap((entry) => String(entry).split(','))
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+
+  return normalized.length > 0 ? normalized : undefined;
 }

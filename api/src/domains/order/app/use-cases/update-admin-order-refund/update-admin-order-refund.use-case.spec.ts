@@ -19,6 +19,7 @@ describe('UpdateAdminOrderRefundUseCase', () => {
   } = {}) {
     const order = {
       id: 'order-1',
+      publicId: 'ord_test1',
       orderNumber: 'ORD-20260604-000001',
       shop: {
         id: 'shop-1',
@@ -60,7 +61,6 @@ describe('UpdateAdminOrderRefundUseCase', () => {
       canceledAt: new Date('2026-05-24T00:00:00.000Z'),
       cancelReason: 'Buyer requested',
       refundedAt: undefined,
-      supportNote: undefined,
       paymentDetails: {
         payment_intent_id: 'pi_test_1',
         refund_status: refundStatus,
@@ -139,12 +139,16 @@ describe('UpdateAdminOrderRefundUseCase', () => {
         statuses.includes('succeeded') ? succeededTotalMinor : 0,
       ),
     );
+    const auditLogService = {
+      record: jest.fn().mockResolvedValue(undefined),
+    };
 
     return {
       order,
       fakeEntityManager,
       jobDispatcher,
       outboxService,
+      auditLogService,
       useCase: new UpdateAdminOrderRefundUseCase(
         entityManager,
         jobDispatcher,
@@ -159,12 +163,15 @@ describe('UpdateAdminOrderRefundUseCase', () => {
         } as never,
         outboxService as never,
         { load: jest.fn(async () => new Map()) } as never,
+        auditLogService as never,
       ),
     };
   }
 
   it('retries a failed refund and re-enqueues the refund job', async () => {
-    const { useCase, order, jobDispatcher } = buildUseCase();
+    const {
+      useCase, order, jobDispatcher, auditLogService,
+    } = buildUseCase();
 
     const result = await useCase.execute('order-1', {
       action: AdminOrderRefundAction.RETRY,
@@ -178,6 +185,17 @@ describe('UpdateAdminOrderRefundUseCase', () => {
       { deduplicationKey: 'order-process-refund--order-1' },
     );
     expect(result.paymentDetails?.refund_status).toBe('pending');
+    expect(auditLogService.record).toHaveBeenCalledTimes(1);
+    expect(auditLogService.record).toHaveBeenCalledWith({
+      action: 'order.refund.updated',
+      entityType: 'order',
+      entityId: 'order-1',
+      entityPublicId: 'ord_test1',
+      summary: {
+        action: AdminOrderRefundAction.RETRY,
+        refundStatus: 'pending',
+      },
+    });
   });
 
   it('marks a canceled order refund as succeeded', async () => {
@@ -236,12 +254,14 @@ describe('UpdateAdminOrderRefundUseCase', () => {
   });
 
   it('rejects retry when the refund is not failed', async () => {
-    const { useCase } = buildUseCase({ refundStatus: 'pending' });
+    const { useCase, auditLogService } = buildUseCase({ refundStatus: 'pending' });
 
     await expect(
       useCase.execute('order-1', {
         action: AdminOrderRefundAction.RETRY,
       }),
     ).rejects.toThrow(AdminRefundActionNotAllowedError);
+
+    expect(auditLogService.record).not.toHaveBeenCalled();
   });
 });

@@ -8,6 +8,7 @@ import {
 } from '~/domains/product/app/events/product-inventory-sse.event';
 import { dispatchCatalogProductProjections } from '~/domains/product/app/catalog-product-projection-dispatch';
 import { FulfillmentService } from '~/domains/fulfillment/app/services/fulfillment.service';
+import { AuditLogService } from '~/integrations/audit/app/audit-log.service';
 import type { UpdateAdminOrderStatusDto } from '../../../api/rest/dto/update-admin-order-status.dto';
 import { OrderEventActorType } from '../../../domain/enums/order-event-actor-type.enum';
 import { OrderEventType } from '../../../domain/enums/order-event-type.enum';
@@ -48,6 +49,7 @@ export class UpdateAdminOrderStatusUseCase {
     private readonly orderCancellationService: OrderCancellationService,
     private readonly fulfillmentService: FulfillmentService,
     private readonly orderFulfillmentViewPort: OrderFulfillmentViewPort,
+    private readonly auditLogService: AuditLogService,
   ) {}
 
   async execute(
@@ -141,6 +143,7 @@ export class UpdateAdminOrderStatusUseCase {
         { order: order.id },
         { populate: ['product', 'product.shop', 'inventory'] },
       );
+
       const fulfillmentView = (await this.orderFulfillmentViewPort.load(
         transactionalEntityManager,
         [order.id],
@@ -154,6 +157,18 @@ export class UpdateAdminOrderStatusUseCase {
         status: order.status,
         inventoryEvents,
       };
+    });
+
+    await this.auditLogService.record({
+      action: 'order.status.overridden',
+      entityType: 'order',
+      entityId: result.detail.id,
+      entityPublicId: result.detail.publicId,
+      summary: {
+        previousStatus: result.previousStatus,
+        status: result.status,
+        hasCancelReason: Boolean(result.detail.cancelReason?.trim()),
+      },
     });
 
     for (const inventoryEvent of result.inventoryEvents) {

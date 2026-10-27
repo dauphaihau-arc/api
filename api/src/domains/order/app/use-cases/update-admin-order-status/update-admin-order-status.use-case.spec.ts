@@ -15,6 +15,7 @@ describe('UpdateAdminOrderStatusUseCase', () => {
   } = {}) {
     const order = {
       id: 'order-1',
+      publicId: 'ord_test1',
       orderNumber: 'ORD-20260604-000001',
       shop: {
         id: 'shop-1',
@@ -52,7 +53,6 @@ describe('UpdateAdminOrderStatusUseCase', () => {
       canceledAt: undefined,
       cancelReason: undefined,
       refundedAt: undefined,
-      supportNote: undefined,
       paymentDetails: {
         checkout_session_id: 'cs_test_1',
       },
@@ -119,6 +119,9 @@ describe('UpdateAdminOrderStatusUseCase', () => {
         hasDispatched: input.hasDispatched ?? false,
       }),
     };
+    const auditLogService = {
+      record: jest.fn().mockResolvedValue(undefined),
+    };
 
     return {
       order,
@@ -126,6 +129,7 @@ describe('UpdateAdminOrderStatusUseCase', () => {
       jobDispatcher,
       orderCancellationService,
       fulfillmentService,
+      auditLogService,
       useCase: new UpdateAdminOrderStatusUseCase(
         entityManager,
         eventEmitter as unknown as EventEmitter2,
@@ -134,13 +138,14 @@ describe('UpdateAdminOrderStatusUseCase', () => {
         orderCancellationService as never,
         fulfillmentService as never,
         { load: jest.fn(async () => new Map()) } as never,
+        auditLogService as never,
       ),
     };
   }
 
   it('marks a paid order as refunded', async () => {
     const {
-      useCase, order, fakeEntityManager, jobDispatcher,
+      useCase, order, fakeEntityManager, jobDispatcher, auditLogService,
     } = buildUseCase();
 
     const result = await useCase.execute('order-1', {
@@ -159,16 +164,30 @@ describe('UpdateAdminOrderStatusUseCase', () => {
       }),
     );
     expect(result.status).toBe(OrderStatus.REFUNDED);
+    expect(auditLogService.record).toHaveBeenCalledTimes(1);
+    expect(auditLogService.record).toHaveBeenCalledWith({
+      action: 'order.status.overridden',
+      entityType: 'order',
+      entityId: 'order-1',
+      entityPublicId: 'ord_test1',
+      summary: {
+        previousStatus: OrderStatus.PAID,
+        status: OrderStatus.REFUNDED,
+        hasCancelReason: false,
+      },
+    });
   });
 
   it('rejects refunding an unpaid order', async () => {
-    const { useCase } = buildUseCase({ status: OrderStatus.AWAITING_PAYMENT });
+    const { useCase, auditLogService } = buildUseCase({ status: OrderStatus.AWAITING_PAYMENT });
 
     await expect(
       useCase.execute('order-1', {
         status: OrderStatus.REFUNDED,
       }),
     ).rejects.toThrow(AdminRefundNotAllowedError);
+
+    expect(auditLogService.record).not.toHaveBeenCalled();
   });
 
   it('cancels undispatched quantities through the shared cancellation path', async () => {

@@ -69,7 +69,6 @@ describe('UpdateShopOrderRefundUseCase', () => {
       canceledAt: status === OrderStatus.CANCELED ? new Date('2026-05-29T00:00:00.000Z') : undefined,
       cancelReason: status === OrderStatus.CANCELED ? 'Canceled by seller' : undefined,
       refundedAt: undefined,
-      supportNote: undefined,
       paymentDetails: {
         payment_intent_id: 'pi_test_1',
         refund_requested_at: undefined,

@@ -8,6 +8,7 @@ import {
   buildRabbitMqConfig,
 } from '~/platform/config/rabbitmq.config';
 import { AuthModule } from '../auth/auth.module';
+import { AuditModule } from '~/integrations/audit/audit.module';
 import { FinanceModule } from '../finance/finance.module';
 import { AdminOrderController } from './api/rest/admin-order.controller';
 import { MeOrderController } from './api/rest/me-order.controller';
@@ -21,6 +22,7 @@ import { OrderRefundService } from './app/services/order-refund.service';
 import { OrderPaymentService } from './app/services/order-payment.service';
 import { OrderTotalPolicyService } from './app/services/order-total-policy.service';
 import { GetAdminOrderByIdUseCase } from './app/use-cases/get-admin-order-by-id/get-admin-order-by-id.use-case';
+import { GetAdminOrderFinancialBreakdownUseCase } from './app/use-cases/get-admin-order-financial-breakdown/get-admin-order-financial-breakdown.use-case';
 import { GetMyOrderByIdUseCase } from './app/use-cases/get-my-order-by-id/get-my-order-by-id.use-case';
 import { GetShopDashboardUseCase } from './app/use-cases/get-shop-dashboard/get-shop-dashboard.use-case';
 import { GetShopOrderByIdUseCase } from './app/use-cases/get-shop-order-by-id/get-shop-order-by-id.use-case';
@@ -35,7 +37,6 @@ import { RequestOrderCancelUseCase } from './app/use-cases/request-order-cancel/
 import { RequestOrderSupportUseCase } from './app/use-cases/request-order-support/request-order-support.use-case';
 import { UpdateAdminOrderStatusUseCase } from './app/use-cases/update-admin-order-status/update-admin-order-status.use-case';
 import { UpdateAdminOrderRefundUseCase } from './app/use-cases/update-admin-order-refund/update-admin-order-refund.use-case';
-import { UpdateAdminOrderSupportNoteUseCase } from './app/use-cases/update-admin-order-support-note/update-admin-order-support-note.use-case';
 import { OrderCheckoutOutboxService } from './app/services/order-checkout-outbox.service';
 import { OrderPaidOutboxService } from './app/services/order-paid-outbox.service';
 import { OrderEventsService } from './app/services/order-events.service';
@@ -108,6 +109,7 @@ import { UpdateShopOrderRefundUseCase } from './app/use-cases/update-shop-order-
     forwardRef(() => FulfillmentModule),
     PromotionModule,
     FinanceModule,
+    AuditModule,
     MikroOrmModule.forFeature([
       OutboxEventEntity,
       OrderEventEntity,
@@ -187,6 +189,7 @@ import { UpdateShopOrderRefundUseCase } from './app/use-cases/update-shop-order-
     OrderEventsService,
     OrderPaymentService,
     GetAdminOrderByIdUseCase,
+    GetAdminOrderFinancialBreakdownUseCase,
     GetMyOrderByIdUseCase,
     ListAdminOrdersUseCase,
     RequestOrderCancelUseCase,
@@ -201,7 +204,6 @@ import { UpdateShopOrderRefundUseCase } from './app/use-cases/update-shop-order-
     GetShopOrderByIdUseCase,
     UpdateAdminOrderStatusUseCase,
     UpdateAdminOrderRefundUseCase,
-    UpdateAdminOrderSupportNoteUseCase,
     UpdateShopOrderStatusUseCase,
     UpdateShopOrderRefundUseCase,
     OrderPublicIdLookup,

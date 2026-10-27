@@ -21,13 +21,12 @@ import { JwtAuthGuard } from '~/domains/auth/api/guard/jwt-auth.guard';
 import { PermissionsGuard } from '~/domains/auth/api/guard/permissions.guard';
 import { ListAdminOrdersUseCase } from '../../app/use-cases/list-admin-orders/list-admin-orders.use-case';
 import { GetAdminOrderByIdUseCase } from '../../app/use-cases/get-admin-order-by-id/get-admin-order-by-id.use-case';
+import { GetAdminOrderFinancialBreakdownUseCase } from '../../app/use-cases/get-admin-order-financial-breakdown/get-admin-order-financial-breakdown.use-case';
 import { UpdateAdminOrderStatusUseCase } from '../../app/use-cases/update-admin-order-status/update-admin-order-status.use-case';
 import { UpdateAdminOrderRefundUseCase } from '../../app/use-cases/update-admin-order-refund/update-admin-order-refund.use-case';
-import { UpdateAdminOrderSupportNoteUseCase } from '../../app/use-cases/update-admin-order-support-note/update-admin-order-support-note.use-case';
 import { ListAdminOrdersQueryDto } from './dto/list-admin-orders.query.dto';
 import { UpdateAdminOrderRefundDto } from './dto/update-admin-order-refund.dto';
 import { UpdateAdminOrderStatusDto } from './dto/update-admin-order-status.dto';
-import { UpdateAdminOrderSupportNoteDto } from './dto/update-admin-order-support-note.dto';
 import { OrderPublicIdLookup } from '../../app/services/order-public-id-lookup.service';
 import { OrderExceptionsFilter } from './errors/order-exceptions.filter';
 import {
@@ -36,6 +35,10 @@ import {
   toAdminOrderDetailResponse,
   toAdminOrderListResponse,
 } from './responses/order.response';
+import {
+  AdminOrderFinancialBreakdownResponseDto,
+  toAdminOrderFinancialBreakdownResponse,
+} from './responses/admin-order-financial-breakdown.response';
 
 @Controller('admin/orders')
 @UseFilters(OrderExceptionsFilter)
@@ -48,9 +51,9 @@ export class AdminOrderController {
   constructor(
     private readonly listAdminOrdersUseCase: ListAdminOrdersUseCase,
     private readonly getAdminOrderByIdUseCase: GetAdminOrderByIdUseCase,
+    private readonly getAdminOrderFinancialBreakdownUseCase: GetAdminOrderFinancialBreakdownUseCase,
     private readonly updateAdminOrderStatusUseCase: UpdateAdminOrderStatusUseCase,
     private readonly updateAdminOrderRefundUseCase: UpdateAdminOrderRefundUseCase,
-    private readonly updateAdminOrderSupportNoteUseCase: UpdateAdminOrderSupportNoteUseCase,
     private readonly orderPublicIdLookup: OrderPublicIdLookup,
   ) {}
 
@@ -64,6 +67,21 @@ export class AdminOrderController {
   async list(@Query() query: ListAdminOrdersQueryDto) {
     return toAdminOrderListResponse(
       await this.listAdminOrdersUseCase.execute(query),
+    );
+  }
+
+  @Get(':order_id/financial-breakdown')
+  @Header('Cache-Control', 'private, no-cache')
+  @ApiOperation({ summary: 'Get admin order financial breakdown' })
+  @ApiParam({ name: 'order_id', type: String })
+  @ApiOkResponse({
+    description: 'Per-order financial breakdown.',
+    type: AdminOrderFinancialBreakdownResponseDto,
+  })
+  async financialBreakdown(@Param('order_id') publicId: string) {
+    const orderId = await this.orderPublicIdLookup.resolveOrderPublicId(publicId);
+    return toAdminOrderFinancialBreakdownResponse(
+      await this.getAdminOrderFinancialBreakdownUseCase.execute(orderId),
     );
   }
 
@@ -115,24 +133,6 @@ export class AdminOrderController {
     const orderId = await this.orderPublicIdLookup.resolveOrderPublicId(publicId);
     return toAdminOrderDetailResponse(
       await this.updateAdminOrderRefundUseCase.execute(orderId, body),
-    );
-  }
-
-  @Patch(':order_id/support-note')
-  @Header('Cache-Control', 'private, no-store')
-  @ApiOperation({ summary: 'Update admin order support note' })
-  @ApiParam({ name: 'order_id', type: String })
-  @ApiOkResponse({
-    description: 'Updated admin order detail.',
-    type: AdminOrderDetailResponseDto,
-  })
-  async updateSupportNote(
-    @Param('order_id') publicId: string,
-    @Body() body: UpdateAdminOrderSupportNoteDto,
-  ) {
-    const orderId = await this.orderPublicIdLookup.resolveOrderPublicId(publicId);
-    return toAdminOrderDetailResponse(
-      await this.updateAdminOrderSupportNoteUseCase.execute(orderId, body),
     );
   }
 }

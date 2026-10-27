@@ -231,7 +231,6 @@ export interface MyOrderDetail extends OrderListShop {
 }
 
 export interface AdminOrderDetail extends MyOrderDetail {
-  supportNote?: string;
   refundedAt?: Date;
   paymentDetails?: Record<string, unknown>;
 }
@@ -251,7 +250,6 @@ export interface AdminOrderSummary {
   fulfillmentStatus: string;
   total: number;
   totalMinor?: number;
-  supportNote?: string;
   cancelReason?: string;
   refundedAt?: Date;
   createdAt: Date;

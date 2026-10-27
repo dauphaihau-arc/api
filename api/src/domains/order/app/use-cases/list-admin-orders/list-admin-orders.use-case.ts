@@ -17,8 +17,8 @@ export class ListAdminOrdersUseCase {
     const entityManager = this.entityManager.fork();
     const where: FilterQuery<OrderEntity> = {};
 
-    if (query.status) {
-      where.status = query.status;
+    if (query.status && query.status.length > 0) {
+      where.status = { $in: query.status };
     }
 
     if (query.search?.trim()) {
@@ -61,7 +61,6 @@ export class ListAdminOrdersUseCase {
         fulfillmentStatus: order.fulfillmentStatus,
         total: getOrderTotalMajor(order),
         totalMinor: getOrderTotalMinor(order),
-        supportNote: order.supportNote,
         cancelReason: order.cancelReason,
         refundedAt: order.refundedAt,
         createdAt: order.createdAt,
