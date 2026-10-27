@@ -264,6 +264,9 @@ export const adminCommissionScheduleControllerErrorResponses = {
     429: [rateLimitErrorExample],
     500: [internalServerErrorExample],
   },
+  read: {
+    404: [...shopNotFound],
+  },
   record: {
     400: [
       {

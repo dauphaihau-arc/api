@@ -51,6 +51,7 @@ import { SellerPayableQueryRepository } from './app/ports/seller-payable-query.r
 import { SettlementCurrencyRepository } from './app/ports/settlement-currency.repository';
 import { TransactionsQueryRepository } from './app/ports/transactions-query.repository';
 import { ChangeSettlementCurrencyUseCase } from './app/use-cases/change-settlement-currency/change-settlement-currency.use-case';
+import { GetCommissionScheduleUseCase } from './app/use-cases/get-commission-schedule/get-commission-schedule.use-case';
 import { GetPayoutSettingsUseCase } from './app/use-cases/get-payout-settings/get-payout-settings.use-case';
 import { GetSettlementCurrencyUseCase } from './app/use-cases/get-settlement-currency/get-settlement-currency.use-case';
 import { GetShopPayoutAccountUseCase } from './app/use-cases/get-shop-payout-account/get-shop-payout-account.use-case';
@@ -221,6 +222,7 @@ import { MikroOrmTransactionsQueryRepository } from './infra/persistence/reposit
     RecordOrderRefundJournalEntryUseCase,
     RecordPayoutAvailabilityUseCase,
     RecordCommissionScheduleUseCase,
+    GetCommissionScheduleUseCase,
     GetShopSellerPayableUseCase,
     StartPayoutOnboardingUseCase,
     SyncPayoutAccountUseCase,

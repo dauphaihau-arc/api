@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Get,
   Param,
   Put,
   UseFilters,
@@ -19,6 +20,7 @@ import { ApiErrorResponses } from '~/platform/http/api-error-responses.decorator
 import { JwtAuthGuard } from '~/domains/auth/api/guard/jwt-auth.guard';
 import { PermissionsGuard } from '~/domains/auth/api/guard/permissions.guard';
 import { ShopAccessService } from '~/domains/shop/app/services/shop-access.service';
+import { GetCommissionScheduleUseCase } from '../../app/use-cases/get-commission-schedule/get-commission-schedule.use-case';
 import { RecordCommissionScheduleUseCase } from '../../app/use-cases/record-commission-schedule/record-commission-schedule.use-case';
 import { RecordCommissionScheduleDto } from './dto/record-commission-schedule.dto';
 import { adminCommissionScheduleControllerErrorResponses } from './errors/finance-error-responses';
@@ -27,6 +29,10 @@ import {
   CommissionScheduleResponseDto,
   toCommissionScheduleResponse,
 } from './responses/commission-schedule.response';
+import {
+  AdminShopCommissionScheduleResponseDto,
+  toAdminShopCommissionScheduleResponse,
+} from './responses/current-commission-schedule.response';
 
 @Controller('admin/shops/:shop_id/commission-schedule')
 @UseFilters(FinanceExceptionsFilter)
@@ -40,7 +46,24 @@ export class AdminCommissionScheduleController {
   constructor(
     private readonly shopAccessService: ShopAccessService,
     private readonly recordCommissionScheduleUseCase: RecordCommissionScheduleUseCase,
+    private readonly getCommissionScheduleUseCase: GetCommissionScheduleUseCase,
   ) {}
+
+  @Get()
+  @ApiOperation({ summary: 'Get the Commission Schedule in force for a shop' })
+  @ApiParam({ name: 'shop_id', type: String })
+  @ApiOkResponse({ type: AdminShopCommissionScheduleResponseDto })
+  @ApiErrorResponses(adminCommissionScheduleControllerErrorResponses.read)
+  async read(
+    @Param('shop_id') shopPublicId: string,
+  ): Promise<AdminShopCommissionScheduleResponseDto> {
+    const shopId = await this.shopAccessService.resolveShopPublicId(shopPublicId);
+
+    return toAdminShopCommissionScheduleResponse(
+      await this.getCommissionScheduleUseCase.execute({ shopId }),
+      shopPublicId,
+    );
+  }
 
   @Put()
   @ApiOperation({ summary: 'Record or replace a shop commission schedule' })
