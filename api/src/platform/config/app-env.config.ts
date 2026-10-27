@@ -115,12 +115,16 @@ const appEnvBaseSchema = z.object({
   STRIPE_SECRET_KEY: z.string().trim().min(1).optional(),
   STRIPE_WEBHOOK_SECRET_KEY: z.string().trim().min(1).optional(),
   CHECKOUT_SESSION_TTL: z.string().trim().min(1).default('60m'),
+  FINANCE_MONEY_EVENT_BOOKING: z
+    .enum(['outbox', 'inline'])
+    .default('outbox'),
   FX_RATE_SYNC_PROVIDER: z
     .enum(['disabled', 'open-exchange-rates'])
     .default('disabled'),
   FX_RATE_SYNC_INTERVAL: z.string().trim().min(1).default('1h'),
   FX_RATE_SYNC_RUN_ON_STARTUP: z.enum(['true', 'false']).default('false'),
   FX_SYNC_TRIGGER_SECRET: z.string().trim().min(1).optional(),
+  OUTBOX_DRAIN_TRIGGER_SECRET: z.string().trim().min(1).optional(),
   OPEN_EXCHANGE_RATES_APP_ID: z.string().trim().min(1).optional(),
   OPEN_EXCHANGE_RATES_BASE_URL: z
     .url()

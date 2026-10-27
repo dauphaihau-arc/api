@@ -25,6 +25,10 @@ import {
   PAYOUT_CONNECT_COUNTRIES_CONFIG,
   buildPayoutConnectCountriesConfig,
 } from '~/platform/config/payout-country.config';
+import {
+  FINANCE_CONFIG,
+  buildFinanceConfig,
+} from '~/platform/config/finance.config';
 import { AuthModule } from '../auth/auth.module';
 import { ShopModule } from '../shop/shop.module';
 import { AdminCommissionScheduleController } from './api/rest/admin-commission-schedule.controller';
@@ -203,6 +207,12 @@ import { MikroOrmTransactionsQueryRepository } from './infra/persistence/reposit
         buildPayoutConnectCountriesConfig(configService),
     },
     {
+      provide: FINANCE_CONFIG,
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) =>
+        buildFinanceConfig(configService),
+    },
+    {
       provide: SellerPayableQueryRepository,
       useClass: MikroOrmSellerPayableQueryRepository,
     },
@@ -254,6 +264,10 @@ import { MikroOrmTransactionsQueryRepository } from './infra/persistence/reposit
     SyncPayoutAccountUseCase,
     RunPayoutsUseCase,
     RetryPayoutUseCase,
+    RecordOrderPaidJournalEntryUseCase,
+    RecordPayoutAvailabilityUseCase,
+    RecordOrderRefundJournalEntryUseCase,
+    FINANCE_CONFIG,
     PayoutQueryRepository,
     JournalEntryRepository,
     RecordProviderFeeJob,
