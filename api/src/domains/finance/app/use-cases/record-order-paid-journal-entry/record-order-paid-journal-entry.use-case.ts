@@ -47,10 +47,23 @@ export class RecordOrderPaidJournalEntryUseCase {
   ) {}
 
   async execute(event: OrderPaidMoneyEvent): Promise<{ recorded: boolean }> {
+    return this.entityManager.transactional((entityManager) =>
+      this.recordWithin(entityManager, event));
+  }
+
+  /**
+   * Records the entry on a transaction the caller already opened, so the
+   * booking commits or rolls back with the caller's own work. Opens no
+   * transaction of its own: every read and write joins `entityManager`.
+   */
+  async recordWithin(
+    entityManager: EntityManager,
+    event: OrderPaidMoneyEvent,
+  ): Promise<{ recorded: boolean }> {
     const occurredAt = new Date(event.occurredAt);
 
     const settlementCurrency = await this.settlementCurrencyRepository
-      .ensureCurrentCurrency(event.shopId);
+      .ensureCurrentCurrency(event.shopId, { entityManager });
 
     if (!settlementCurrency) {
       throw new ShopSettlementCurrencyUnresolvedError(event.shopId);
@@ -58,7 +71,10 @@ export class RecordOrderPaidJournalEntryUseCase {
 
     const settled = await this.settleOrderMoney(event, occurredAt, settlementCurrency);
 
-    const schedules = await this.commissionScheduleRepository.listByShopId(event.shopId);
+    const schedules = await this.commissionScheduleRepository.listByShopId(
+      event.shopId,
+      { entityManager },
+    );
     const schedule = resolveEffectiveSchedule(schedules, occurredAt);
 
     const commissionMinor = schedule
@@ -92,26 +108,24 @@ export class RecordOrderPaidJournalEntryUseCase {
       .filter((posting) => posting.account.kind === LedgerAccountKind.SELLER_PAYABLE)
       .reduce((total, posting) => total + posting.amountMinor, 0);
 
-    return this.entityManager.transactional(async (entityManager) => {
-      const recorded = await this.journalEntryRepository.append(entry, {
-        entityManager,
-      });
-
-      if (!recorded) {
-        return { recorded: false };
-      }
-
-      await this.sellerPayableRepository.creditNotYetAvailable(
-        event.shopId,
-        settlementCurrency,
-        payableMinor,
-        { entityManager },
-      );
-
-      await entityManager.flush();
-
-      return { recorded: true };
+    const recorded = await this.journalEntryRepository.append(entry, {
+      entityManager,
     });
+
+    if (!recorded) {
+      return { recorded: false };
+    }
+
+    await this.sellerPayableRepository.creditNotYetAvailable(
+      event.shopId,
+      settlementCurrency,
+      payableMinor,
+      { entityManager },
+    );
+
+    await entityManager.flush();
+
+    return { recorded: true };
   }
 
   /**

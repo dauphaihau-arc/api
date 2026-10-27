@@ -1,11 +1,17 @@
 import { LockMode } from '@mikro-orm/core';
 import { EntityManager } from '@mikro-orm/postgresql';
 import { fromMinorUnits } from '~/platform/money/money';
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import {
+  FINANCE_CONFIG,
+  type FinanceConfig,
+} from '~/platform/config/finance.config';
+import { OutboxEventStatus } from '~/platform/outbox/outbox-event.entity';
 import { appJobDeduplicationKey } from '~/platform/jobs/app-job-deduplication';
 import { JobDispatcher } from '~/integrations/queue/app/ports/job-dispatcher';
 import { AuditLogService } from '~/integrations/audit/app/audit-log.service';
+import { RecordOrderRefundJournalEntryUseCase } from '~/domains/finance/app/use-cases/record-order-refund-journal-entry/record-order-refund-journal-entry.use-case';
 import type { UpdateAdminOrderRefundDto } from '../../../api/rest/dto/update-admin-order-refund.dto';
 import { AdminOrderRefundAction } from '../../../api/rest/dto/update-admin-order-refund.dto';
 import { OrderEventActorType } from '../../../domain/enums/order-event-actor-type.enum';
@@ -16,6 +22,10 @@ import { OrderEntity } from '../../../infra/persistence/entities/order.entity';
 import { OrderItemEntity } from '../../../infra/persistence/entities/order-item.entity';
 import { OrderEventsService } from '../../services/order-events.service';
 import { OrderRefundOutboxService } from '../../services/order-refund-outbox.service';
+import {
+  buildOrderRefundEvent,
+  type OrderRefundEventInput,
+} from '../../events/order-refund.event';
 import { OrderRefundRepository } from '../../ports/order-refund.repository';
 import { OrderRefundStatus } from '../../../domain/enums/order-refund-status.enum';
 import { OrderFulfillmentViewPort } from '../../../../fulfillment/app/ports/order-fulfillment-view.port';
@@ -46,6 +56,8 @@ export class UpdateAdminOrderRefundUseCase {
     private readonly orderRefundOutboxService: OrderRefundOutboxService,
     private readonly orderFulfillmentViewPort: OrderFulfillmentViewPort,
     private readonly auditLogService: AuditLogService,
+    private readonly recordOrderRefundJournalEntryUseCase: RecordOrderRefundJournalEntryUseCase,
+    @Inject(FINANCE_CONFIG) private readonly financeConfig: FinanceConfig,
   ) {}
 
   async execute(
@@ -166,18 +178,34 @@ export class UpdateAdminOrderRefundUseCase {
           );
 
           if (marked) {
-            await this.orderRefundOutboxService.createOrderRefundedEvent(
-              transactionalEntityManager,
-              {
-                refundId: refund.id,
-                orderId: order.id,
-                orderPublicId: order.publicId,
-                shopId: order.shop.id,
-                currency: order.currency,
-                refundedAmountMinor: amountMinor,
-                occurredAt: now,
-              },
-            );
+            const refundEvent: OrderRefundEventInput = {
+              refundId: refund.id,
+              orderId: order.id,
+              orderPublicId: order.publicId,
+              shopId: order.shop.id,
+              currency: order.currency,
+              refundedAmountMinor: amountMinor,
+              occurredAt: now,
+            };
+
+            const orderRefundedOutboxEvent =
+              await this.orderRefundOutboxService.createOrderRefundedEvent(
+                transactionalEntityManager,
+                refundEvent,
+              );
+
+            // `inline` books the refund journal entry inside the producer's
+            // transaction, so a booking failure rolls the admin refund back and
+            // the request can be retried. The outbox row is kept and marked
+            // processed as evidence, and the worker skips it.
+            if (this.financeConfig.moneyEventBooking === 'inline') {
+              await this.recordOrderRefundJournalEntryUseCase.recordWithin(
+                transactionalEntityManager,
+                buildOrderRefundEvent(refundEvent),
+              );
+              orderRefundedOutboxEvent.status = OutboxEventStatus.PROCESSED;
+              orderRefundedOutboxEvent.processedAt = now;
+            }
           }
         }
       }

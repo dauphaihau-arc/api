@@ -1,6 +1,11 @@
 import { EntityManager } from '@mikro-orm/postgresql';
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { JobDispatcher } from '../../../../integrations/queue/app/ports/job-dispatcher';
+import {
+  FINANCE_CONFIG,
+  type FinanceConfig,
+} from '../../../../platform/config/finance.config';
+import { OutboxEventStatus } from '../../../../platform/outbox/outbox-event.entity';
 import { OrderEventActorType } from '../../domain/enums/order-event-actor-type.enum';
 import { OrderEventType } from '../../domain/enums/order-event-type.enum';
 import { OrderStatus } from '../../domain/enums/order-status.enum';
@@ -10,6 +15,11 @@ import { CheckoutStockReservationPort } from '../../../checkout/app/ports/checko
 import { FulfillmentService } from '../../../fulfillment/app/services/fulfillment.service';
 import { ShipmentUpdateActorType } from '../../../fulfillment/domain/enums/shipment-update-actor-type.enum';
 import { ShipmentUpdateSource } from '../../../fulfillment/domain/enums/shipment-update-source.enum';
+import { RecordOrderPaidJournalEntryUseCase } from '../../../finance/app/use-cases/record-order-paid-journal-entry/record-order-paid-journal-entry.use-case';
+import {
+  buildOrderPaidEvent,
+  type OrderPaidEventInput,
+} from '../events/order-paid.event';
 import { OrderEventsService } from './order-events.service';
 import { getRequiredOrderNumber } from '../order-number';
 import type { CreateOrderResult } from '../order.types';
@@ -30,6 +40,8 @@ export class OrderPaymentService {
     private readonly orderCheckoutSessionRepository: OrderCheckoutSessionRepository,
     private readonly orderCartCleanupRepository: OrderCartCleanupRepository,
     private readonly fulfillmentService: FulfillmentService,
+    private readonly recordOrderPaidJournalEntryUseCase: RecordOrderPaidJournalEntryUseCase,
+    @Inject(FINANCE_CONFIG) private readonly financeConfig: FinanceConfig,
   ) {}
 
   async getOrdersByCheckoutSession(sessionId: string): Promise<CreateOrderResult> {
@@ -132,7 +144,7 @@ export class OrderPaymentService {
           },
         });
 
-        await this.orderPaidOutboxService.createOrderPaidEvent(entityManager, {
+        const paidInput: OrderPaidEventInput = {
           orderId: order.id,
           orderPublicId: order.publicId,
           shopId: order.shop.id,
@@ -142,7 +154,26 @@ export class OrderPaymentService {
           shippingMinor: order.shippingMinor,
           totalMinor: order.totalMinor,
           occurredAt: paidAt,
-        });
+        };
+
+        const orderPaidOutboxEvent = await this.orderPaidOutboxService.createOrderPaidEvent(
+          entityManager,
+          paidInput,
+        );
+
+        // `inline` books the journal entry inside the producer's transaction, so
+        // a booking failure rolls the order back and the provider retries the
+        // webhook. The outbox row is kept and marked processed as evidence for
+        // the delivered-readiness check (`RecordPayoutAvailabilityUseCase` reads
+        // it when the journal entry is missing), and the worker skips it.
+        if (this.financeConfig.moneyEventBooking === 'inline') {
+          await this.recordOrderPaidJournalEntryUseCase.recordWithin(
+            entityManager,
+            buildOrderPaidEvent(paidInput),
+          );
+          orderPaidOutboxEvent.status = OutboxEventStatus.PROCESSED;
+          orderPaidOutboxEvent.processedAt = paidAt;
+        }
 
         const fulfillmentItems = orderItems
           .filter((item) => item.order.id === order.id)

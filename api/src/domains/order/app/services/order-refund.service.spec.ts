@@ -3,6 +3,7 @@ import type { ModuleRef } from '@nestjs/core';
 import type { PaymentGateway } from '../../../../integrations/payment/app/ports/payment-gateway';
 import type { NotifyUserUseCase } from '../../../../domains/notification/app/use-cases/notify-user/notify-user.use-case';
 import type { JobDispatcher } from '../../../../integrations/queue/app/ports/job-dispatcher';
+import { OutboxEventStatus } from '../../../../platform/outbox/outbox-event.entity';
 import { PaymentType } from '../../domain/enums/payment-type.enum';
 import { OrderStatus } from '../../domain/enums/order-status.enum';
 import type { OrderRefundQueryRepository } from '../ports/order-refund-query.repository';
@@ -42,6 +43,8 @@ function buildService<TOrder extends object>(input: {
   jobDispatcher: JobDispatcher;
   notifyUserUseCase: NotifyUserUseCase;
   orderRefundQueryRepository?: OrderRefundQueryRepository;
+  recordOrderRefundJournalEntryUseCase?: { recordWithin: jest.Mock };
+  moneyEventBooking?: 'outbox' | 'inline';
 }): OrderRefundService {
   const transactionalEntityManager = {
     getRepository: jest.fn(() => ({
@@ -79,6 +82,10 @@ function buildService<TOrder extends object>(input: {
     } as unknown as OrderRefundQueryRepository,
     input.refundRepository,
     input.outboxService,
+    (input.recordOrderRefundJournalEntryUseCase ?? {
+      recordWithin: jest.fn().mockResolvedValue({ recorded: true }),
+    }) as never,
+    { moneyEventBooking: input.moneyEventBooking ?? 'outbox' } as never,
   );
 }
 
@@ -638,5 +645,83 @@ describe('OrderRefundService', () => {
     await service.processRefund('order-1');
 
     expect(createPending).not.toHaveBeenCalled();
+  });
+
+  it('leaves refund booking to the worker when money events are booked from the outbox', async () => {
+    const order = buildOrder();
+    const outboxEvent = { status: OutboxEventStatus.PENDING, processedAt: undefined };
+    const outboxService = {
+      createOrderRefundedEvent: jest.fn().mockResolvedValue(outboxEvent),
+    } as unknown as OrderRefundOutboxService;
+    const recordWithin = jest.fn().mockResolvedValue({ recorded: true });
+    const service = buildService({
+      order,
+      paymentGateway: { createRefund: jest.fn(), retrieveRefund: jest.fn() } as unknown as PaymentGateway,
+      refundRepository: buildRefundRepository(),
+      outboxService,
+      jobDispatcher: { dispatch: jest.fn().mockResolvedValue(undefined) } as unknown as JobDispatcher,
+      notifyUserUseCase: { execute: jest.fn().mockResolvedValue(undefined) } as unknown as NotifyUserUseCase,
+      recordOrderRefundJournalEntryUseCase: { recordWithin },
+      moneyEventBooking: 'outbox',
+    });
+
+    await expect(service.applyProviderRefund({
+      providerRefundId: 're_123',
+      paymentIntentId: 'pi_123',
+      status: 'succeeded',
+      amountMinor: 3000,
+    })).resolves.toBe(true);
+
+    expect(recordWithin).not.toHaveBeenCalled();
+    expect(outboxEvent.status).toBe(OutboxEventStatus.PENDING);
+    expect(outboxEvent.processedAt).toBeUndefined();
+  });
+
+  it('books the refund journal entry inline and marks the outbox row processed', async () => {
+    const order = buildOrder();
+    const outboxEvent = { status: OutboxEventStatus.PENDING, processedAt: undefined };
+    const outboxService = {
+      createOrderRefundedEvent: jest.fn().mockResolvedValue(outboxEvent),
+    } as unknown as OrderRefundOutboxService;
+    const refundRepository = buildRefundRepository();
+    const recordWithin = jest.fn().mockResolvedValue({ recorded: true });
+    const service = buildService({
+      order,
+      paymentGateway: { createRefund: jest.fn(), retrieveRefund: jest.fn() } as unknown as PaymentGateway,
+      refundRepository,
+      outboxService,
+      jobDispatcher: { dispatch: jest.fn().mockResolvedValue(undefined) } as unknown as JobDispatcher,
+      notifyUserUseCase: { execute: jest.fn().mockResolvedValue(undefined) } as unknown as NotifyUserUseCase,
+      recordOrderRefundJournalEntryUseCase: { recordWithin },
+      moneyEventBooking: 'inline',
+    });
+
+    await expect(service.applyProviderRefund({
+      providerRefundId: 're_123',
+      paymentIntentId: 'pi_123',
+      status: 'succeeded',
+      amountMinor: 3000,
+    })).resolves.toBe(true);
+
+    const completedAt = jest.mocked(refundRepository.markSucceeded)
+      .mock.calls[0]?.[1].completedAt;
+    const outboxEntityManager = jest.mocked(outboxService.createOrderRefundedEvent)
+      .mock.calls[0]?.[0];
+
+    expect(recordWithin).toHaveBeenCalledTimes(1);
+    expect(recordWithin).toHaveBeenCalledWith(
+      outboxEntityManager,
+      expect.objectContaining({
+        refundId: 'refund-1',
+        orderId: 'order-1',
+        orderPublicId: 'ord_1',
+        shopId: 'shop-1',
+        currency: 'USD',
+        refundedAmountMinor: 3000,
+        occurredAt: completedAt.toISOString(),
+      }),
+    );
+    expect(outboxEvent.status).toBe(OutboxEventStatus.PROCESSED);
+    expect(outboxEvent.processedAt).toBe(completedAt);
   });
 });

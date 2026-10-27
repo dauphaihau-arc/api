@@ -60,6 +60,8 @@ describe('OrderCancellationService', () => {
       } as unknown as OrderRefundQueryRepository,
       {} as never,
       {} as never,
+      {} as never,
+      {} as never,
     );
     const fulfillmentService = {
       getDispatchState: jest.fn().mockResolvedValue({ hasGroups: true, hasDispatched: false }),

@@ -50,11 +50,27 @@ export class RecordOrderRefundJournalEntryUseCase {
   ) {}
 
   async execute(event: OrderRefundMoneyEvent): Promise<{ recorded: boolean }> {
+    return this.entityManager.transactional((entityManager) =>
+      this.recordWithin(entityManager, event));
+  }
+
+  /**
+   * Records the entry on a transaction the caller already opened, so the
+   * booking commits or rolls back with the caller's own work. Opens no
+   * transaction of its own: every read and write joins `entityManager`.
+   */
+  async recordWithin(
+    entityManager: EntityManager,
+    event: OrderRefundMoneyEvent,
+  ): Promise<{ recorded: boolean }> {
     if (!Number.isSafeInteger(event.refundedAmountMinor) || event.refundedAmountMinor <= 0) {
       return { recorded: false };
     }
 
-    const basis = await this.journalEntryRepository.findOrderMoneyBasis(event.orderId);
+    const basis = await this.journalEntryRepository.findOrderMoneyBasis(
+      event.orderId,
+      { entityManager },
+    );
 
     if (!basis) {
       const paidEventStatus = await this.orderPaidEventRepository
@@ -78,7 +94,7 @@ export class RecordOrderRefundJournalEntryUseCase {
     }
 
     const settlementCurrency = await this.settlementCurrencyRepository
-      .ensureCurrentCurrency(basis.shopId);
+      .ensureCurrentCurrency(basis.shopId, { entityManager });
 
     if (!settlementCurrency) {
       throw new ShopSettlementCurrencyUnresolvedError(basis.shopId);
@@ -90,6 +106,7 @@ export class RecordOrderRefundJournalEntryUseCase {
         basis.shopId,
         basis.currency,
         basis.occurredAt,
+        { entityManager },
       );
 
     if (!cutoverSteps) {
@@ -101,7 +118,7 @@ export class RecordOrderRefundJournalEntryUseCase {
     }
 
     const previousRefundChargeAmounts = await this.journalEntryRepository
-      .findOrderRefundChargeAmounts(event.orderId);
+      .findOrderRefundChargeAmounts(event.orderId, { entityManager });
     const paidAmountMinor = basis.chargeAmountMinor ?? basis.collectedMinor;
     const previouslyRefundedChargeMinor = previousRefundChargeAmounts
       .reduce((total, amountMinor) => total + amountMinor, 0);
@@ -189,27 +206,25 @@ export class RecordOrderRefundJournalEntryUseCase {
       .filter((posting) => posting.account.kind === LedgerAccountKind.SELLER_PAYABLE)
       .reduce((total, posting) => total - posting.amountMinor, 0);
 
-    return this.entityManager.transactional(async (entityManager) => {
-      const recorded = await this.journalEntryRepository.append(entry, {
-        entityManager,
-      });
-
-      if (!recorded) {
-        return { recorded: false };
-      }
-
-      await this.sellerPayableRepository.debitForRefund(
-        event.orderId,
-        basis.shopId,
-        settlementCurrency,
-        sellerPayableReductionMinor,
-        { entityManager },
-      );
-
-      await entityManager.flush();
-
-      return { recorded: true };
+    const recorded = await this.journalEntryRepository.append(entry, {
+      entityManager,
     });
+
+    if (!recorded) {
+      return { recorded: false };
+    }
+
+    await this.sellerPayableRepository.debitForRefund(
+      event.orderId,
+      basis.shopId,
+      settlementCurrency,
+      sellerPayableReductionMinor,
+      { entityManager },
+    );
+
+    await entityManager.flush();
+
+    return { recorded: true };
   }
 
   /**

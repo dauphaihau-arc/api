@@ -1,6 +1,7 @@
 import type { EntityManager } from '@mikro-orm/postgresql';
 import type { EventEmitter2 } from '@nestjs/event-emitter';
 import type { JobDispatcher } from '~/integrations/queue/app/ports/job-dispatcher';
+import { OutboxEventStatus } from '~/platform/outbox/outbox-event.entity';
 import { AdminOrderRefundAction } from '../../../api/rest/dto/update-admin-order-refund.dto';
 import { PaymentType } from '../../../domain/enums/payment-type.enum';
 import { OrderStatus } from '../../../domain/enums/order-status.enum';
@@ -12,10 +13,12 @@ describe('UpdateAdminOrderRefundUseCase', () => {
     status = OrderStatus.CANCELED,
     paymentType = PaymentType.CARD,
     refundStatus = 'failed',
+    moneyEventBooking = 'outbox',
   }: {
     status?: OrderStatus;
     paymentType?: PaymentType;
     refundStatus?: 'pending' | 'succeeded' | 'failed' | 'not_required';
+    moneyEventBooking?: 'outbox' | 'inline';
   } = {}) {
     const order = {
       id: 'order-1',
@@ -39,6 +42,7 @@ describe('UpdateAdminOrderRefundUseCase', () => {
       },
       paymentType,
       status,
+      currency: 'USD',
       promoCodes: [],
       shippingStatus: 'pre_transit',
       shippingOriginCountries: ['US'],
@@ -131,9 +135,14 @@ describe('UpdateAdminOrderRefundUseCase', () => {
       succeededTotalMinor += input.refundedAmountMinor;
       return true;
     });
-    const outboxService = {
-      createOrderRefundedEvent: jest.fn().mockResolvedValue(undefined),
+    const outboxEvent = {
+      status: OutboxEventStatus.PENDING,
+      processedAt: undefined as Date | undefined,
     };
+    const outboxService = {
+      createOrderRefundedEvent: jest.fn().mockResolvedValue(outboxEvent),
+    };
+    const recordWithin = jest.fn().mockResolvedValue({ recorded: true });
     const sumAmountMinorByStatus = jest.fn(
       (_orderId: string, statuses: readonly string[]) => Promise.resolve(
         statuses.includes('succeeded') ? succeededTotalMinor : 0,
@@ -148,6 +157,8 @@ describe('UpdateAdminOrderRefundUseCase', () => {
       fakeEntityManager,
       jobDispatcher,
       outboxService,
+      outboxEvent,
+      recordWithin,
       auditLogService,
       useCase: new UpdateAdminOrderRefundUseCase(
         entityManager,
@@ -164,6 +175,8 @@ describe('UpdateAdminOrderRefundUseCase', () => {
         outboxService as never,
         { load: jest.fn(async () => new Map()) } as never,
         auditLogService as never,
+        { recordWithin } as never,
+        { moneyEventBooking } as never,
       ),
     };
   }
@@ -223,6 +236,49 @@ describe('UpdateAdminOrderRefundUseCase', () => {
       eventType: 'refunded',
     });
     expect(result.status).toBe(OrderStatus.REFUNDED);
+  });
+
+  it('leaves refund booking to the worker when money events are booked from the outbox', async () => {
+    const {
+      useCase, recordWithin, outboxEvent,
+    } = buildUseCase();
+
+    await useCase.execute('order-1', {
+      action: AdminOrderRefundAction.MARK_SUCCEEDED,
+    });
+
+    expect(recordWithin).not.toHaveBeenCalled();
+    expect(outboxEvent.status).toBe(OutboxEventStatus.PENDING);
+    expect(outboxEvent.processedAt).toBeUndefined();
+  });
+
+  it('books the refund journal entry inline and marks the outbox row processed', async () => {
+    const {
+      useCase, recordWithin, outboxService, outboxEvent,
+    } = buildUseCase({ moneyEventBooking: 'inline' });
+
+    await useCase.execute('order-1', {
+      action: AdminOrderRefundAction.MARK_SUCCEEDED,
+    });
+
+    const outboxEntityManager = jest.mocked(outboxService.createOrderRefundedEvent)
+      .mock.calls[0]?.[0];
+
+    expect(recordWithin).toHaveBeenCalledTimes(1);
+    expect(recordWithin).toHaveBeenCalledWith(
+      outboxEntityManager,
+      expect.objectContaining({
+        refundId: 'refund-1',
+        orderId: 'order-1',
+        orderPublicId: 'ord_test1',
+        shopId: 'shop-1',
+        currency: 'USD',
+        refundedAmountMinor: 3000,
+        occurredAt: expect.any(String),
+      }),
+    );
+    expect(outboxEvent.status).toBe(OutboxEventStatus.PROCESSED);
+    expect(outboxEvent.processedAt).toBeInstanceOf(Date);
   });
 
   it('marks a refund as not required', async () => {

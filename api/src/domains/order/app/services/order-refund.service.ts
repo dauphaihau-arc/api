@@ -1,12 +1,18 @@
 import { LockMode } from '@mikro-orm/core';
 import { EntityManager } from '@mikro-orm/postgresql';
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
 import ms from 'ms';
 import { fromMinorUnits } from '../../../../platform/money/money';
+import {
+  FINANCE_CONFIG,
+  type FinanceConfig,
+} from '../../../../platform/config/finance.config';
+import { OutboxEventStatus } from '../../../../platform/outbox/outbox-event.entity';
 import { PaymentGateway } from '../../../../integrations/payment/app/ports/payment-gateway';
 import { NotifyUserUseCase } from '../../../../domains/notification/app/use-cases/notify-user/notify-user.use-case';
 import { JobDispatcher } from '../../../../integrations/queue/app/ports/job-dispatcher';
+import { RecordOrderRefundJournalEntryUseCase } from '../../../finance/app/use-cases/record-order-refund-journal-entry/record-order-refund-journal-entry.use-case';
 import { OrderEventActorType } from '../../domain/enums/order-event-actor-type.enum';
 import { OrderEventType } from '../../domain/enums/order-event-type.enum';
 import { OrderRefundStatus } from '../../domain/enums/order-refund-status.enum';
@@ -16,6 +22,10 @@ import { OrderEntity } from '../../infra/persistence/entities/order.entity';
 import type { OrderRefundEntity } from '../../infra/persistence/entities/order-refund.entity';
 import { OrderEventsService } from './order-events.service';
 import { OrderRefundOutboxService } from './order-refund-outbox.service';
+import {
+  buildOrderRefundEvent,
+  type OrderRefundEventInput,
+} from '../events/order-refund.event';
 import {
   buildSellerOrderRefundNotification,
   getSellerOrderNotificationRecipientId,
@@ -68,6 +78,8 @@ export class OrderRefundService {
     private readonly orderRefundQueryRepository: OrderRefundQueryRepository,
     private readonly orderRefundRepository: OrderRefundRepository,
     private readonly orderRefundOutboxService: OrderRefundOutboxService,
+    private readonly recordOrderRefundJournalEntryUseCase: RecordOrderRefundJournalEntryUseCase,
+    @Inject(FINANCE_CONFIG) private readonly financeConfig: FinanceConfig,
   ) {}
 
   prepareRefundOnCancellation(
@@ -436,18 +448,34 @@ export class OrderRefundService {
           },
         });
 
-        await this.orderRefundOutboxService.createOrderRefundedEvent(
-          transactionalEntityManager,
-          {
-            refundId,
-            orderId: order.id,
-            orderPublicId: order.publicId,
-            shopId: order.shop.id,
-            currency: order.currency,
-            refundedAmountMinor: input.refundedAmountMinor,
-            occurredAt: completedAt,
-          },
-        );
+        const refundEvent: OrderRefundEventInput = {
+          refundId,
+          orderId: order.id,
+          orderPublicId: order.publicId,
+          shopId: order.shop.id,
+          currency: order.currency,
+          refundedAmountMinor: input.refundedAmountMinor,
+          occurredAt: completedAt,
+        };
+
+        const orderRefundedOutboxEvent =
+          await this.orderRefundOutboxService.createOrderRefundedEvent(
+            transactionalEntityManager,
+            refundEvent,
+          );
+
+        // `inline` books the refund journal entry inside the producer's
+        // transaction, so a booking failure rolls the refund state back and the
+        // provider webhook (or the reconciliation sweep) retries it. The outbox
+        // row is kept and marked processed as evidence, and the worker skips it.
+        if (this.financeConfig.moneyEventBooking === 'inline') {
+          await this.recordOrderRefundJournalEntryUseCase.recordWithin(
+            transactionalEntityManager,
+            buildOrderRefundEvent(refundEvent),
+          );
+          orderRefundedOutboxEvent.status = OutboxEventStatus.PROCESSED;
+          orderRefundedOutboxEvent.processedAt = completedAt;
+        }
 
         await transactionalEntityManager.flush();
 

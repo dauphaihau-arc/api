@@ -1,7 +1,13 @@
 import type { EntityManager } from '@mikro-orm/postgresql';
 import type { JobDispatcher } from '~/integrations/queue/app/ports/job-dispatcher';
+import type { FinanceConfig, MoneyEventBooking } from '~/platform/config/finance.config';
+import {
+  OutboxEventStatus,
+  type OutboxEventEntity,
+} from '~/platform/outbox/outbox-event.entity';
 import type { CheckoutStockReservationPort } from '../../../checkout/app/ports/checkout-stock-reservation.port';
 import type { FulfillmentService } from '../../../fulfillment/app/services/fulfillment.service';
+import type { RecordOrderPaidJournalEntryUseCase } from '../../../finance/app/use-cases/record-order-paid-journal-entry/record-order-paid-journal-entry.use-case';
 import { OrderStatus } from '../../domain/enums/order-status.enum';
 import type { OrderCartCleanupRepository } from '../ports/order-cart-cleanup.repository';
 import type { OrderCheckoutSessionRepository } from '../ports/order-checkout-session.repository';
@@ -20,6 +26,7 @@ describe('OrderPaymentService', () => {
       orderPaidOutboxService,
       orderCartCleanupRepository,
       fulfillmentService,
+      recordOrderPaidJournalEntryUseCase,
     } = buildService();
 
     await service.markCheckoutSessionCompleted('cs_123', {
@@ -59,6 +66,7 @@ describe('OrderPaymentService', () => {
         occurredAt: new Date('2026-09-09T07:00:00.000Z'),
       },
     );
+    expect(recordOrderPaidJournalEntryUseCase.recordWithin).not.toHaveBeenCalled();
     expect(fulfillmentService.assignSellerGroupToOrder).toHaveBeenCalledWith(
       expect.anything(),
       {
@@ -85,6 +93,45 @@ describe('OrderPaymentService', () => {
       },
       { entityManager: expect.anything() },
     );
+  });
+
+  it('books the paid Order inside the producer transaction when inline booking is enabled', async () => {
+    const {
+      service,
+      fakeEntityManager,
+      orderPaidOutboxService,
+      recordOrderPaidJournalEntryUseCase,
+    } = buildService({ moneyEventBooking: 'inline' });
+    const outboxEvent = {
+      status: OutboxEventStatus.PENDING,
+      processedAt: undefined,
+    } as unknown as OutboxEventEntity;
+    orderPaidOutboxService.createOrderPaidEvent.mockResolvedValue(outboxEvent);
+
+    await service.markCheckoutSessionCompleted('cs_123', {
+      paymentIntentId: 'pi_123',
+      paymentStatus: 'paid',
+      completedAt: new Date('2026-09-09T07:00:00.000Z'),
+    });
+
+    expect(orderPaidOutboxService.createOrderPaidEvent).toHaveBeenCalledTimes(1);
+    expect(recordOrderPaidJournalEntryUseCase.recordWithin).toHaveBeenCalledTimes(1);
+    expect(recordOrderPaidJournalEntryUseCase.recordWithin).toHaveBeenCalledWith(
+      fakeEntityManager,
+      {
+        orderId: 'order-1',
+        orderPublicId: 'ord_1',
+        shopId: 'shop-1',
+        currency: 'USD',
+        subtotalMinor: 1800,
+        discountMinor: 0,
+        shippingMinor: 1150,
+        totalMinor: 2950,
+        occurredAt: '2026-09-09T07:00:00.000Z',
+      },
+    );
+    expect(outboxEvent.status).toBe(OutboxEventStatus.PROCESSED);
+    expect(outboxEvent.processedAt).toEqual(new Date('2026-09-09T07:00:00.000Z'));
   });
 
   it('does not reprice the accepted shipping charge or estimate when payment is replayed', async () => {
@@ -130,7 +177,9 @@ describe('OrderPaymentService', () => {
   });
 });
 
-function buildService() {
+function buildService(
+  options: { moneyEventBooking?: MoneyEventBooking } = {},
+) {
   const order = {
     id: 'order-1',
     publicId: 'ord_1',
@@ -242,6 +291,12 @@ function buildService() {
   const fulfillmentService = {
     assignSellerGroupToOrder: jest.fn().mockResolvedValue(undefined),
   } as unknown as jest.Mocked<FulfillmentService>;
+  const recordOrderPaidJournalEntryUseCase = {
+    recordWithin: jest.fn().mockResolvedValue({ recorded: true }),
+  } as unknown as jest.Mocked<RecordOrderPaidJournalEntryUseCase>;
+  const financeConfig: FinanceConfig = {
+    moneyEventBooking: options.moneyEventBooking ?? 'outbox',
+  };
 
   const service = new OrderPaymentService(
     entityManager,
@@ -253,6 +308,8 @@ function buildService() {
     orderCheckoutSessionRepository,
     orderCartCleanupRepository,
     fulfillmentService,
+    recordOrderPaidJournalEntryUseCase,
+    financeConfig,
   );
 
   return {
@@ -264,5 +321,6 @@ function buildService() {
     orderPaidOutboxService,
     orderCartCleanupRepository,
     fulfillmentService,
+    recordOrderPaidJournalEntryUseCase,
   };
 }

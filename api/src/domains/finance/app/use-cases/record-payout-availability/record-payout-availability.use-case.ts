@@ -39,60 +39,71 @@ export class RecordPayoutAvailabilityUseCase {
   ) {}
 
   async execute(event: OrderDeliveredEvent): Promise<{ recorded: boolean }> {
-    return this.entityManager.transactional(async (entityManager) => {
-      await this.lockOrder(entityManager, event.orderId);
+    return this.entityManager.transactional((entityManager) =>
+      this.recordWithin(entityManager, event));
+  }
 
-      const sellerPayable = await this.journalEntryRepository
-        .findOrderSellerPayable(event.orderId, { entityManager });
+  /**
+   * Records the availability on a transaction the caller already opened, so the
+   * booking commits or rolls back with the caller's own work. Opens no
+   * transaction of its own: every read and write joins `entityManager`.
+   */
+  async recordWithin(
+    entityManager: EntityManager,
+    event: OrderDeliveredEvent,
+  ): Promise<{ recorded: boolean }> {
+    await this.lockOrder(entityManager, event.orderId);
 
-      if (!sellerPayable) {
-        const paidEventStatus = await this.orderPaidEventRepository
-          .findStatusByOrderId(event.orderId);
+    const sellerPayable = await this.journalEntryRepository
+      .findOrderSellerPayable(event.orderId, { entityManager });
 
-        if (paidEventStatus === 'pending' || paidEventStatus === 'processing') {
-          throw new PaidOrderPostingNotRecordedError(event.orderId);
-        }
+    if (!sellerPayable) {
+      const paidEventStatus = await this.orderPaidEventRepository
+        .findStatusByOrderId(event.orderId);
 
-        return { recorded: false };
+      if (paidEventStatus === 'pending' || paidEventStatus === 'processing') {
+        throw new PaidOrderPostingNotRecordedError(event.orderId);
       }
 
-      if (sellerPayable.amountMinor <= 0) {
-        return { recorded: false };
-      }
+      return { recorded: false };
+    }
 
-      const availability: PayoutAvailability = {
-        orderId: event.orderId,
-        shopId: sellerPayable.shopId,
-        currency: sellerPayable.currency,
-        amountMinor: sellerPayable.amountMinor,
-        deliveredAt: new Date(event.deliveredAt),
-        evidence: event.evidence.map((shipment) => ({
-          shipmentId: shipment.shipmentId,
-          shipmentPublicId: shipment.shipmentPublicId,
-          deliveredAt: new Date(shipment.deliveredAt),
-        })),
-      };
+    if (sellerPayable.amountMinor <= 0) {
+      return { recorded: false };
+    }
 
-      const recorded = await this.payoutAvailabilityRepository.record(
-        availability,
-        { entityManager },
-      );
+    const availability: PayoutAvailability = {
+      orderId: event.orderId,
+      shopId: sellerPayable.shopId,
+      currency: sellerPayable.currency,
+      amountMinor: sellerPayable.amountMinor,
+      deliveredAt: new Date(event.deliveredAt),
+      evidence: event.evidence.map((shipment) => ({
+        shipmentId: shipment.shipmentId,
+        shipmentPublicId: shipment.shipmentPublicId,
+        deliveredAt: new Date(shipment.deliveredAt),
+      })),
+    };
 
-      if (!recorded) {
-        return { recorded: false };
-      }
+    const recorded = await this.payoutAvailabilityRepository.record(
+      availability,
+      { entityManager },
+    );
 
-      await this.sellerPayableRepository.releaseToAvailable(
-        availability.shopId,
-        availability.currency,
-        availability.amountMinor,
-        { entityManager },
-      );
+    if (!recorded) {
+      return { recorded: false };
+    }
 
-      await entityManager.flush();
+    await this.sellerPayableRepository.releaseToAvailable(
+      availability.shopId,
+      availability.currency,
+      availability.amountMinor,
+      { entityManager },
+    );
 
-      return { recorded: true };
-    });
+    await entityManager.flush();
+
+    return { recorded: true };
   }
 
   /**

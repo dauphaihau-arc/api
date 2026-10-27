@@ -1,5 +1,11 @@
 import { EntityManager, LockMode } from '@mikro-orm/postgresql';
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
+import {
+  FINANCE_CONFIG,
+  type FinanceConfig,
+} from '~/platform/config/finance.config';
+import { OutboxEventStatus } from '~/platform/outbox/outbox-event.entity';
+import { RecordPayoutAvailabilityUseCase } from '~/domains/finance/app/use-cases/record-payout-availability/record-payout-availability.use-case';
 import { FulfillmentMethod } from '../../domain/enums/fulfillment-method.enum';
 import { FulfillmentOperator } from '../../domain/enums/fulfillment-operator.enum';
 import { FulfillmentProvenance } from '../../domain/enums/fulfillment-provenance.enum';
@@ -44,6 +50,10 @@ import type {
   FulfillmentRequestedItem,
 } from '../fulfillment.types';
 import { OrderDeliveredOutboxService } from './order-delivered-outbox.service';
+import {
+  buildOrderDeliveredEvent,
+  type OrderDeliveredEventInput,
+} from '../events/order-delivered.event';
 
 export type AssignOrderFulfillmentInput = {
   orderId: string;
@@ -91,6 +101,8 @@ export type RecordJourneyInput = {
 export class FulfillmentService {
   constructor(
     private readonly orderDeliveredOutboxService: OrderDeliveredOutboxService,
+    private readonly recordPayoutAvailabilityUseCase: RecordPayoutAvailabilityUseCase,
+    @Inject(FINANCE_CONFIG) private readonly financeConfig: FinanceConfig,
   ) {}
 
   /**
@@ -546,12 +558,28 @@ export class FulfillmentService {
         deliveredAt: shipment.deliveredAt ?? deliveredAt,
       }));
 
-    await this.orderDeliveredOutboxService.createOrderDeliveredEvent(entityManager, {
+    const input: OrderDeliveredEventInput = {
       orderId,
       deliveredAt,
       occurredAt,
       evidence,
-    });
+    };
+
+    const orderDeliveredOutboxEvent =
+      await this.orderDeliveredOutboxService.createOrderDeliveredEvent(entityManager, input);
+
+    // `inline` books the payout availability inside the producer's transaction,
+    // so a booking failure rolls the delivery back and the seller's request can
+    // be retried. The outbox row is kept and marked processed as evidence, and
+    // the worker skips it.
+    if (this.financeConfig.moneyEventBooking === 'inline') {
+      await this.recordPayoutAvailabilityUseCase.recordWithin(
+        entityManager,
+        buildOrderDeliveredEvent(input),
+      );
+      orderDeliveredOutboxEvent.status = OutboxEventStatus.PROCESSED;
+      orderDeliveredOutboxEvent.processedAt = occurredAt;
+    }
   }
 
   private async loadGroupForWrite(

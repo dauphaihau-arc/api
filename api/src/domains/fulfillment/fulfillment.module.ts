@@ -4,6 +4,7 @@ import { CacheModule } from '~/integrations/cache/cache.module';
 import { IdempotencyModule } from '~/platform/idempotency/idempotency.module';
 import { OutboxEventEntity } from '~/platform/outbox/outbox-event.entity';
 import { OrderModule } from '../order/order.module';
+import { FinanceModule } from '../finance/finance.module';
 import { ShopModule } from '../shop/shop.module';
 import { FulfillmentCommandRunner } from './app/services/fulfillment-command.runner';
 import { FulfillmentTargetResolver } from './app/services/fulfillment-target-resolver.service';
@@ -34,6 +35,7 @@ import { MikroOrmShipmentQueryRepository } from './infra/persistence/repositorie
     forwardRef(() => OrderModule),
     CacheModule,
     IdempotencyModule,
+    FinanceModule,
     MikroOrmModule.forFeature([
       FulfillmentGroupEntity,
       FulfillmentGroupItemEntity,
