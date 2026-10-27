@@ -18,12 +18,14 @@ import { CreateShopUseCase } from './app/use-cases/create-shop/create-shop.use-c
 import { GetMyShopUseCase } from './app/use-cases/get-my-shop/get-my-shop.use-case';
 import { ListShopPromoCodesUseCase } from './app/use-cases/list-shop-promo-codes/list-shop-promo-codes.use-case';
 import { ListShopSalesUseCase } from './app/use-cases/list-shop-sales/list-shop-sales.use-case';
+import { ListAdminShopsUseCase } from './app/use-cases/list-admin-shops/list-admin-shops.use-case';
 import { UpdateShopSettingsUseCase } from './app/use-cases/update-shop-settings/update-shop-settings.use-case';
 import { StopShopSaleUseCase } from './app/use-cases/stop-shop-sale/stop-shop-sale.use-case';
 import { StopShopPromoCodeUseCase } from './app/use-cases/stop-shop-promo-code/stop-shop-promo-code.use-case';
 import { ShopPromoCodesController } from './api/rest/shop-promo-codes.controller';
 import { ShopSalesController } from './api/rest/shop-sales.controller';
 import { ShopController } from './api/rest/shop.controller';
+import { AdminShopController } from './api/rest/admin-shop.controller';
 import { MikroOrmShopRepository } from './infra/mikro-orm-shop.repository';
 import { ShopEntity } from './infra/persistence/entities/shop.entity';
 
@@ -45,6 +47,7 @@ import { ShopEntity } from './infra/persistence/entities/shop.entity';
     ShopController,
     ShopSalesController,
     ShopPromoCodesController,
+    AdminShopController,
   ],
   providers: [
     {
@@ -63,6 +66,7 @@ import { ShopEntity } from './infra/persistence/entities/shop.entity';
     StopShopPromoCodeUseCase,
     BulkStopShopPromoCodesUseCase,
     UpdateShopSettingsUseCase,
+    ListAdminShopsUseCase,
   ],
   exports: [
     ShopRepository,
