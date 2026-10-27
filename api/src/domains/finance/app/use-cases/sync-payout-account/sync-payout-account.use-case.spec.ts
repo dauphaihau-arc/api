@@ -1,5 +1,6 @@
 import type { AuditLogService } from '~/integrations/audit/app/audit-log.service';
 import type { ConnectAccountDetails } from '~/integrations/payment/app/ports/connect-gateway';
+import type { ShopRepository } from '~/domains/shop/app/ports/shop.repository';
 import type {
   PayoutAccountRecord,
   PayoutAccountRepository,
@@ -55,11 +56,19 @@ function setup(stored: PayoutAccountRecord | null) {
     })),
   } as unknown as PayoutAccountRepository;
   const auditLogService = { record: jest.fn() } as unknown as AuditLogService;
+  const shopRepository = {
+    findById: jest.fn().mockResolvedValue({ publicId: 'shop_pub_1' }),
+  } as unknown as ShopRepository;
 
   return {
-    useCase: new SyncPayoutAccountUseCase(payoutAccountRepository, auditLogService),
+    useCase: new SyncPayoutAccountUseCase(
+      payoutAccountRepository,
+      auditLogService,
+      shopRepository,
+    ),
     payoutAccountRepository,
     auditLogService,
+    shopRepository,
   };
 }
 
@@ -101,6 +110,7 @@ describe('SyncPayoutAccountUseCase', () => {
     expect(auditLogService.record).toHaveBeenCalledWith(expect.objectContaining({
       action: 'finance.payout_account.synced',
       entityId: 'account-1',
+      entityPublicId: 'shop_pub_1',
       summary: expect.objectContaining({
         previousStatus: 'onboarding',
         status: 'active',

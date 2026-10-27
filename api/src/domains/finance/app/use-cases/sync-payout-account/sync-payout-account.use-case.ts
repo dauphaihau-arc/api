@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { AuditLogService } from '~/integrations/audit/app/audit-log.service';
 import type { ConnectAccountDetails } from '~/integrations/payment/app/ports/connect-gateway';
+import { ShopRepository } from '~/domains/shop/app/ports/shop.repository';
 import {
   PayoutAccountRepository,
   type PayoutAccountRecord,
@@ -29,6 +30,7 @@ export class SyncPayoutAccountUseCase {
   constructor(
     private readonly payoutAccountRepository: PayoutAccountRepository,
     private readonly auditLogService: AuditLogService,
+    private readonly shopRepository: ShopRepository,
   ) {}
 
   async execute(
@@ -115,10 +117,13 @@ export class SyncPayoutAccountUseCase {
       return null;
     }
 
+    const shop = await this.shopRepository.findById(updated.shopId);
+
     await this.auditLogService.record({
       action: 'finance.payout_account.synced',
       entityType: 'payout_account',
       entityId: updated.id,
+      entityPublicId: shop?.publicId,
       summary: {
         shopId: updated.shopId,
         providerAccountId: updated.providerAccountId,

@@ -12,6 +12,7 @@ import { buildPinoLoggerParams } from '~/platform/logging/pino-logger.config';
 import { validateAppEnv } from '~/platform/config/app-env.config';
 import { buildDatabaseConfig } from '~/platform/config/database.config';
 import { AuthModule } from '~/domains/auth/auth.module';
+import { AuditModule } from '~/domains/audit/audit.module';
 import { CartModule } from '~/domains/cart/cart.module';
 import { CategoryModule } from '~/domains/category/category.module';
 import { CheckoutModule } from '~/domains/checkout/checkout.module';
@@ -73,6 +74,7 @@ import { WsModule } from '~/platform/ws/ws.module';
 
     // ----- domains
     AuthModule,
+    AuditModule,
     UserModule,
     ShopModule,
     ShippingModule,
