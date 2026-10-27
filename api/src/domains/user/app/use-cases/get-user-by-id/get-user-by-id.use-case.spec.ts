@@ -12,6 +12,7 @@ describe('GetUserByIdUseCase', () => {
     email: 'member@example.com',
     displayName: 'Member User',
     status: UserStatus.ACTIVE,
+    roles: ['customer'],
   };
   function buildDeps() {
     const userRepository: jest.Mocked<UserRepository> = {
@@ -67,6 +68,7 @@ describe('GetUserByIdUseCase', () => {
       user,
     );
     expect(result).toEqual(user);
+    expect(result?.roles).toEqual(['customer']);
   });
 
   it('does not cache misses', async () => {

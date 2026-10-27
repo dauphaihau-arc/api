@@ -10,6 +10,7 @@ import {
   resolveStorageEnvironmentSegment,
 } from '~/integrations/storage/app/storage-key-builder';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
+import { isPlatformAdmin } from '~/domains/auth/app/access/platform-admin';
 import type { UserAccount } from '~/domains/auth/domain/models/user-account';
 import {
   AuthUserRepository,
@@ -56,7 +57,7 @@ export class UpdateUserUseCase {
       | UserVersionConflictError
     >
   > {
-    if (!actor.roles.includes('admin')) {
+    if (!isPlatformAdmin(actor.roles)) {
       return err(new ActorNotAllowedToUpdateUsersError());
     }
 
@@ -137,6 +138,7 @@ export class UpdateUserUseCase {
     displayName?: string;
     avatar?: string;
     status: UserStatus;
+    roles: { toString(): string }[];
   }): UserSummary {
     const avatar = user.avatar
       ? (this.storageService.getPublicUrl(user.avatar) ?? user.avatar)
@@ -151,6 +153,7 @@ export class UpdateUserUseCase {
         : {}),
       ...(avatar ? { avatar } : {}),
       status: user.status,
+      roles: user.roles.map((role) => role.toString()),
     };
   }
 }

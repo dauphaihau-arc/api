@@ -1,12 +1,18 @@
 import type { HttpException } from '@nestjs/common';
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
 import {
+  ActorNotAllowedToAssignRolesError,
   ActorNotAllowedToCreateUsersError,
   ActorNotAllowedToUpdateUsersError,
+  LastAdminRoleRequiredError,
+  LastSuperAdminRoleRequiredError,
+  SelfRoleChangeNotAllowedError,
+  UnknownRoleKeysError,
   UserAppError,
   UserEmailAlreadyRegisteredError,
   UserNotFoundError,
@@ -30,6 +36,41 @@ export function mapUserAppErrorToHttpException(
   if (error instanceof ActorNotAllowedToUpdateUsersError) {
     return new ForbiddenException({
       code: 'ACTOR_NOT_ALLOWED_TO_UPDATE_USERS',
+      message: error.message,
+    });
+  }
+
+  if (error instanceof ActorNotAllowedToAssignRolesError) {
+    return new ForbiddenException({
+      code: 'ACTOR_NOT_ALLOWED_TO_ASSIGN_ROLES',
+      message: error.message,
+    });
+  }
+
+  if (error instanceof UnknownRoleKeysError) {
+    return new BadRequestException({
+      code: 'UNKNOWN_ROLE',
+      message: error.message,
+    });
+  }
+
+  if (error instanceof SelfRoleChangeNotAllowedError) {
+    return new ConflictException({
+      code: 'SELF_ROLE_CHANGE_NOT_ALLOWED',
+      message: error.message,
+    });
+  }
+
+  if (error instanceof LastAdminRoleRequiredError) {
+    return new ConflictException({
+      code: 'LAST_ADMIN_ROLE_REQUIRED',
+      message: error.message,
+    });
+  }
+
+  if (error instanceof LastSuperAdminRoleRequiredError) {
+    return new ConflictException({
+      code: 'LAST_SUPER_ADMIN_ROLE_REQUIRED',
       message: error.message,
     });
   }

@@ -29,6 +29,7 @@ import { RequirePermissions } from '~/platform/decorators/require-permissions.de
 import { ParseSortPipe } from '~/platform/pipes/parse-sort.pipe';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import { CreateUserUseCase } from '~/domains/user/app/use-cases/create-user/create-user.use-case';
+import { AssignUserRolesUseCase } from '~/domains/user/app/use-cases/assign-user-roles/assign-user-roles.use-case';
 import { GetUserByIdUseCase } from '~/domains/user/app/use-cases/get-user-by-id/get-user-by-id.use-case';
 import { ListUsersUseCase } from '~/domains/user/app/use-cases/list-users/list-users.use-case';
 import { PermissionsGuard } from '~/domains/auth/api/guard/permissions.guard';
@@ -42,6 +43,7 @@ import {
   USER_LIST_SORT_FIELDS,
 } from './queries/user.constants';
 import { CreateUserDto } from './dto/create-user.dto';
+import { AssignUserRolesDto } from './dto/assign-user-roles.dto';
 import { ListUsersQueryDto } from './dto/list-users.query.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { mapUserAppErrorToHttpException } from './errors/user-http-error-mapper';
@@ -66,6 +68,7 @@ export class UserController {
     private readonly listUsersUseCase: ListUsersUseCase,
     private readonly getUserByIdUseCase: GetUserByIdUseCase,
     private readonly updateUserUseCase: UpdateUserUseCase,
+    private readonly assignUserRolesUseCase: AssignUserRolesUseCase,
   ) {}
 
   @Get()
@@ -88,6 +91,7 @@ export class UserController {
       page: query.page,
       limit: query.limit,
       sort,
+      search: query.search,
     })).then(toUserListResponse);
   }
 
@@ -155,6 +159,27 @@ export class UserController {
       displayName: body.displayName,
       status: body.status,
       avatarFile,
+    }).then((result) => resolveOrThrow(result, mapUserAppErrorToHttpException))
+      .then(toUserResponse);
+  }
+
+  @Patch(':id/roles')
+  @RequirePermissions('roles.manage')
+  @Header('Cache-Control', 'private, no-store')
+  @ApiOperation({ summary: 'Replace the roles assigned to a user' })
+  @ApiParam({ name: 'id', type: String })
+  @ApiOkResponse({
+    description: 'Updated user.',
+    type: UserResponseDto,
+  })
+  @ApiNotFoundResponse({ description: 'User was not found.' })
+  assignRoles(
+    @Param('id') id: string,
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Body() body: AssignUserRolesDto,
+  ): Promise<UserResponse> {
+    return this.assignUserRolesUseCase.execute(currentUser, id, {
+      roles: body.roles,
     }).then((result) => resolveOrThrow(result, mapUserAppErrorToHttpException))
       .then(toUserResponse);
   }

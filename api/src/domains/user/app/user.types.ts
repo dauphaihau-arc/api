@@ -9,6 +9,7 @@ export interface UserSummary {
   displayName?: string;
   avatar?: string;
   status: UserStatus;
+  roles: string[];
 }
 
 export type UserListSortField =
@@ -22,6 +23,7 @@ export interface ListUsersQuery {
   page: number;
   limit: number;
   sort: UserListSort;
+  search?: string;
 }
 
 export interface ListUsersRepositoryResult {

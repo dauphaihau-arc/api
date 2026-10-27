@@ -16,6 +16,7 @@ import { MikroOrmAuthUserRepository } from '../auth/infra/persistence/mikro-orm-
 import { BcryptPasswordHasher } from '../auth/infra/security/bcrypt-password-hasher';
 import { UserRepository } from './app/ports/user.repository';
 import { CreateUserUseCase } from './app/use-cases/create-user/create-user.use-case';
+import { AssignUserRolesUseCase } from './app/use-cases/assign-user-roles/assign-user-roles.use-case';
 import { GetUserByIdUseCase } from './app/use-cases/get-user-by-id/get-user-by-id.use-case';
 import { ListUsersUseCase } from './app/use-cases/list-users/list-users.use-case';
 import { UpdateUserUseCase } from './app/use-cases/update-user/update-user.use-case';
@@ -86,6 +87,7 @@ import { UserAddressEntity } from './infra/persistence/entities/user-address.ent
     MikroOrmUserAddressCommandRepository,
     MikroOrmUserAddressQueryRepository,
     CreateUserUseCase,
+    AssignUserRolesUseCase,
     GetUserByIdUseCase,
     ListUsersUseCase,
     UpdateUserUseCase,

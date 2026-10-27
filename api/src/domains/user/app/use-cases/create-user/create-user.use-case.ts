@@ -3,6 +3,7 @@ import { err, ok, Result } from '~/platform/application/result';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { UserCreatedEvent } from '~/domains/user/events/user-created.event';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
+import { isPlatformAdmin } from '~/domains/auth/app/access/platform-admin';
 import { AuthUserRepository } from '~/domains/auth/app/ports/auth-user.repository';
 import { PasswordHasher } from '~/domains/auth/app/ports/password-hasher';
 import { UserStatus } from '~/domains/auth/domain/enums/user-status.enum';
@@ -44,7 +45,7 @@ export class CreateUserUseCase {
       ActorNotAllowedToCreateUsersError | UserEmailAlreadyRegisteredError
     >
   > {
-    if (!actor.roles.includes('admin')) {
+    if (!isPlatformAdmin(actor.roles)) {
       return err(new ActorNotAllowedToCreateUsersError());
     }
 
@@ -69,17 +70,24 @@ export class CreateUserUseCase {
 
     await this.authUserRepository.assignRole(user.id, defaultRole.key);
 
+    const createdUser = (await this.authUserRepository.findById(user.id)) ?? user;
+
     this.eventEmitter.emit(
       'user.created',
-      new UserCreatedEvent(user.id, user.email.toString(), user.displayName),
+      new UserCreatedEvent(
+        createdUser.id,
+        createdUser.email.toString(),
+        createdUser.displayName,
+      ),
     );
 
     return ok({
-      id: user.id,
-      version: user.version,
-      email: user.email.toString(),
-      displayName: user.displayName,
-      status: user.status,
+      id: createdUser.id,
+      version: createdUser.version,
+      email: createdUser.email.toString(),
+      displayName: createdUser.displayName,
+      status: createdUser.status,
+      roles: createdUser.roles.map((role) => role.toString()),
     });
   }
 }

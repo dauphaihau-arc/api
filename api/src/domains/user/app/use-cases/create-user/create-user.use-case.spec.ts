@@ -49,6 +49,9 @@ describe('CreateUserUseCase', () => {
       updatePassword: jest.fn(),
       assignRole: jest.fn().mockResolvedValue(undefined),
       ensureRole: jest.fn().mockResolvedValue(undefined),
+      findAllRoles: jest.fn(),
+      countUsersWithRole: jest.fn(),
+      replaceRoles: jest.fn(),
     };
     const passwordHasher: jest.Mocked<PasswordHasher> = {
       hash: jest
@@ -105,8 +108,35 @@ describe('CreateUserUseCase', () => {
         email: 'member@example.com',
         displayName: 'Member User',
         status: UserStatus.ACTIVE,
+        roles: ['customer'],
       },
     });
+  });
+
+  it('creates a customer user when requested by a super admin', async () => {
+    const { authUserRepository, passwordHasher, eventEmitter } = buildDeps();
+    const useCase = new CreateUserUseCase(
+      authUserRepository,
+      passwordHasher,
+      eventEmitter as unknown as EventEmitter2,
+    );
+
+    const result = await useCase.execute(
+      { ...adminActor, roles: ['super_admin'] },
+      {
+        email: 'member@example.com',
+        password: 'password123',
+        displayName: 'Member User',
+      },
+    );
+
+    expect(result.isOk).toBe(true);
+    expect(authUserRepository.assignRole).toHaveBeenCalledWith(
+      'user-1',
+      expect.objectContaining({
+        toString: expect.any(Function),
+      }),
+    );
   });
 
   it('rejects non-admin callers', async () => {

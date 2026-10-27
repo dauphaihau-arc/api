@@ -1,3 +1,3 @@
 export function buildUserByIdCacheKey(id: string): string {
-  return `users:${id}`;
+  return `users:v2:${id}`;
 }

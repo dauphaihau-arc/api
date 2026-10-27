@@ -12,6 +12,7 @@ describe('user.response', () => {
       displayName: 'Arc User',
       avatar: 'https://cdn.example.com/avatar.png',
       status: 'active' as never,
+      roles: ['admin'],
     })).toEqual({
       id: 'user-1',
       version: 3,
@@ -19,6 +20,7 @@ describe('user.response', () => {
       display_name: 'Arc User',
       avatar: 'https://cdn.example.com/avatar.png',
       status: 'active',
+      roles: ['admin'],
     });
   });
 
@@ -32,6 +34,7 @@ describe('user.response', () => {
           displayName: 'Arc User',
           avatar: undefined,
           status: 'active' as never,
+          roles: ['customer'],
         },
       ],
       meta: {
@@ -51,6 +54,7 @@ describe('user.response', () => {
           display_name: 'Arc User',
           avatar: undefined,
           status: 'active',
+          roles: ['customer'],
         },
       ],
       meta: {

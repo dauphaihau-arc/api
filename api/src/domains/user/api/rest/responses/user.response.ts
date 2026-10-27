@@ -21,6 +21,9 @@ export class UserResponseDto {
 
   @ApiProperty()
   status!: string;
+
+  @ApiProperty({ type: [String] })
+  roles!: string[];
 }
 
 export class UserListMetaResponseDto {
@@ -60,6 +63,7 @@ export type UserResponse = {
   display_name?: string;
   avatar?: string;
   status: string;
+  roles: string[];
 };
 
 export type UserListResponse = {
@@ -82,6 +86,7 @@ export function toUserResponse(user: UserSummary): UserResponse {
     display_name: user.displayName,
     avatar: user.avatar,
     status: user.status,
+    roles: user.roles,
   };
 }
 

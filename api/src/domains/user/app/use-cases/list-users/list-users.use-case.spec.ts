@@ -12,6 +12,7 @@ describe('ListUsersUseCase', () => {
       email: 'member@example.com',
       displayName: 'Member User',
       status: UserStatus.ACTIVE,
+      roles: ['customer'],
     },
   ];
 
@@ -45,5 +46,24 @@ describe('ListUsersUseCase', () => {
       items: users,
       meta: buildPaginationMeta(query.page, query.limit, 25),
     });
+  });
+
+  it('forwards the search term to the repository', async () => {
+    const { userRepository } = buildDeps();
+    const useCase = new ListUsersUseCase(userRepository);
+    const searchQuery: ListUsersQuery = { ...query, search: 'seed.buyer.0237' };
+
+    await useCase.execute(searchQuery);
+
+    expect(userRepository.findAll).toHaveBeenCalledWith(searchQuery);
+  });
+
+  it('returns the projected roles for every item', async () => {
+    const { userRepository } = buildDeps();
+    const useCase = new ListUsersUseCase(userRepository);
+
+    const result = await useCase.execute(query);
+
+    expect(result.items.map((item) => item.roles)).toEqual([['customer']]);
   });
 });

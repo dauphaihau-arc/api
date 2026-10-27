@@ -67,6 +67,9 @@ describe('UpdateUserUseCase', () => {
       updatePassword: jest.fn(),
       assignRole: jest.fn(),
       ensureRole: jest.fn(),
+      findAllRoles: jest.fn(),
+      countUsersWithRole: jest.fn(),
+      replaceRoles: jest.fn(),
     };
     const storageService: jest.Mocked<StorageService> = {
       putObject: jest.fn().mockResolvedValue({
@@ -147,8 +150,30 @@ describe('UpdateUserUseCase', () => {
         avatar:
           'https://cdn.example.com/test/public/users/user-1/images/original/new.png',
         status: UserStatus.DISABLED,
+        roles: ['customer'],
       },
     });
+  });
+
+  it('updates a user for a super admin', async () => {
+    const { authUserRepository, storageService, eventEmitter } = buildDeps();
+    const useCase = new UpdateUserUseCase(
+      authUserRepository,
+      storageService,
+      eventEmitter as unknown as EventEmitter2,
+    );
+
+    const result = await useCase.execute(
+      { ...adminActor, roles: ['super_admin'] },
+      'user-1',
+      { version: 3, displayName: 'Updated Member' },
+    );
+
+    expect(result.isOk).toBe(true);
+    expect(authUserRepository.update).toHaveBeenCalledWith(
+      'user-1',
+      expect.objectContaining({ version: 3, displayName: 'Updated Member' }),
+    );
   });
 
   it('rejects non-admin callers', async () => {
