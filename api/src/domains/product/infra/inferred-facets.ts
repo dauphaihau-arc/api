@@ -61,6 +61,18 @@ export function isInferredFacetSupported(facetKey: string): facetKey is Inferred
   return facetKey in INFERRED_FACET_TERMS;
 }
 
+export function getSupportedInferredFacetKeys(): InferredFacetKey[] {
+  return Object.keys(INFERRED_FACET_TERMS) as InferredFacetKey[];
+}
+
+/**
+ * The display label for an inferred facet key, matching the option labels
+ * `inferFacetSignalsFromText` emits (for example `color` -> `Color`).
+ */
+export function getInferredFacetLabel(facetKey: InferredFacetKey): string {
+  return toDisplayValue(facetKey);
+}
+
 export function getInferredFacetTerms(
   facetKey: string,
   optionKey: string,

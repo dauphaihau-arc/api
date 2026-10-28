@@ -1,5 +1,6 @@
 import { PUBLIC_PRODUCT_FACET_PRIORITY } from '../../app/product-facet.constants';
 import { toCanonicalFacetOption } from '../../app/shoe-size-groups';
+import { getInferredFacetLabel, getSupportedInferredFacetKeys } from '../inferred-facets';
 import type {
   ListPublicProductsInput,
   PublicProductFacet,
@@ -60,30 +61,36 @@ export function buildFacetFilterVariants(
 }
 
 /**
- * The aggregation body shared by every adapter: unwind the projected attribute
- * rows, keep only complete rows, group by `(attributeKey, attributeName,
- * optionValue)`, and order deterministically. `firstStage` is the adapter's own
- * match (`$match` for the projected Mongo collection, `$search` for Atlas).
+ * The aggregation body shared by every adapter: union the projected attribute
+ * rows with the inferred content signals, unwind that flat list, keep only
+ * complete rows, group by `(attributeKey, attributeName, optionValue)`, and
+ * order deterministically. `firstStage` is the adapter's own match (`$match`
+ * for the projected Mongo collection, `$search` for Atlas).
+ *
+ * Inferred signals are folded in because the same keys widen attribute filters:
+ * a shopper can filter on `attr_color=black` through an inferred color, so the
+ * facet panel must offer that option instead of hiding a working filter.
  */
 export function buildFacetAggregationPipeline(
   firstStage: Record<string, unknown>,
 ): Record<string, unknown>[] {
   return [
     firstStage,
-    { $unwind: '$attributes' },
+    buildFacetValueProjectStage(),
+    { $unwind: '$facetValues' },
     {
       $match: {
-        'attributes.categoryAttributeName': { $exists: true, $ne: null },
-        'attributes.categoryAttributeKey': { $exists: true, $ne: null },
-        'attributes.selectedOptionValue': { $exists: true, $ne: null },
+        'facetValues.attributeKey': { $exists: true, $ne: null },
+        'facetValues.attributeName': { $exists: true, $ne: null },
+        'facetValues.optionValue': { $exists: true, $ne: null },
       },
     },
     {
       $group: {
         _id: {
-          attributeKey: '$attributes.categoryAttributeKey',
-          attributeName: '$attributes.categoryAttributeName',
-          optionValue: '$attributes.selectedOptionValue',
+          attributeKey: '$facetValues.attributeKey',
+          attributeName: '$facetValues.attributeName',
+          optionValue: '$facetValues.optionValue',
         },
       },
     },
@@ -94,6 +101,54 @@ export function buildFacetAggregationPipeline(
       },
     },
   ];
+}
+
+/**
+ * Flattens both facet sources into one `facetValues` array so the rest of the
+ * pipeline stays source-agnostic. Explicit attributes carry their configured
+ * name; inferred signals derive their label from the stable key, mirroring the
+ * option labels the mapper stores.
+ */
+function buildFacetValueProjectStage(): Record<string, unknown> {
+  return {
+    $project: {
+      _id: 0,
+      facetValues: {
+        $concatArrays: [
+          {
+            $map: {
+              input: { $ifNull: ['$attributes', []] },
+              as: 'attribute',
+              in: {
+                attributeKey: '$$attribute.categoryAttributeKey',
+                attributeName: '$$attribute.categoryAttributeName',
+                optionValue: '$$attribute.selectedOptionValue',
+              },
+            },
+          },
+          {
+            $map: {
+              input: { $ifNull: ['$inferredFacets', []] },
+              as: 'inferred',
+              in: {
+                attributeKey: '$$inferred.facetKey',
+                attributeName: {
+                  $switch: {
+                    branches: getSupportedInferredFacetKeys().map((facetKey) => ({
+                      case: { $eq: ['$$inferred.facetKey', facetKey] },
+                      then: getInferredFacetLabel(facetKey),
+                    })),
+                    default: '$$inferred.facetKey',
+                  },
+                },
+                optionValue: '$$inferred.value',
+              },
+            },
+          },
+        ],
+      },
+    },
+  };
 }
 
 /**
