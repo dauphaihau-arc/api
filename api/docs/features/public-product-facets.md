@@ -160,6 +160,16 @@ category metadata.
 "Run the current public product query and return the distinct category attribute
 options present in that matching product set."
 
+That set is the union of two sources per product document:
+
+- the projected structured attribute rows (`attributes`)
+- supported inferred content signals (`inferredFacets`), mapped to their stable
+  facet key and display label
+
+Inferred signals are folded in because the same keys widen attribute filters
+(`attr_color`, `attr_material`): an option a shopper can filter on must be
+offerable in the facet panel, not only matchable by a hand-built query.
+
 The function must apply the same public product constraints as listing, such as:
 
 - active products only
@@ -242,6 +252,13 @@ eligible product matches stays visible but disabled instead of disappearing, and
 a selected option stays checked and clearable even when the active filters make
 it incompatible. No `products/facets` backend behavior changed.
 
+A group with **no** options is different: `useProductFacets` drops it before the
+panel renders, and the sidebar hides the whole Attributes section when nothing
+survives. The endpoint keeps returning configured featured facets even when the
+result set is sparse, so the client — not the API — decides that an empty group
+is a dead control. A facet with an active selection always carries its selected
+options and therefore always survives.
+
 ### Key-based filter matching
 
 Public attribute filters are normalized into this internal shape:
@@ -288,6 +305,12 @@ This behavior is implemented through inferred facet projection in:
 The goal is product-discovery tolerance for broad buyer-facing filters, while
 still preserving exact structured attributes when they exist.
 
+Inferred signals are also facet sources: `listPublicFacets` folds
+`inferredFacets` into the same aggregation as structured attributes, using the
+stable facet key plus its derived display label (`color` → `Color`,
+`material` → `Material`). An inferred option therefore shows up as a real,
+selectable choice wherever the relaxed filter would have matched it.
+
 ## Repository Implementations
 
 ### Atlas Search
@@ -299,9 +322,10 @@ Implementation:
 Behavior:
 
 - uses `$search` with the same filter construction as public listing
-- unwinds `attributes`
-- filters out rows without attribute name or selected option value
-- groups by `(attributeName, optionValue)`
+- projects `attributes` and `inferredFacets` into one flat `facetValues` list
+- unwinds `facetValues`
+- filters out rows without attribute key, attribute name, or option value
+- groups by `(attributeKey, attributeName, optionValue)`
 - folds grouped rows into `PublicProductFacet[]`
 
 Attribute filters are applied inside the Atlas search stage through
@@ -316,36 +340,37 @@ the projected search document.
 
 Implementation:
 
-- [mongo-storefront-product-query.repository.ts](../../src/domains/product/infra/catalog/mongo/repositories/mongo-catalog-search-document.repository.ts:103)
+- [mongo-basic-storefront-product-query.repository.ts](../../src/domains/product/infra/search/mongo-basic/repositories/mongo-basic-storefront-product-query.repository.ts:163)
 
 Behavior:
 
 - builds a Mongo filter from the public input
-- fetches matching projected catalog documents
+- runs the shared facet aggregation against the projected search document
 - applies attribute filtering with `$elemMatch`
-- derives facets by scanning matching documents
-- deduplicates option values with sets
+- deduplicates options by the aggregation's `(attributeKey, attributeName,
+  optionValue)` grouping rather than in application code
+
+Both adapters share the aggregation body in
+[public-product-facets.ts](../../src/domains/product/infra/search/public-product-facets.ts), so the facet
+sources — structured attributes and supported inferred signals — and their
+grouping stay identical.
 
 For supported inferred facets, Mongo filtering also allows a match through
 `inferredFacets`.
-
-Facet result construction lives in:
-
-- [atlas-search-storefront-product-query.repository.ts](../../src/domains/product/infra/search/atlas/repositories/atlas-search-storefront-product-query.repository.ts:248)
 
 ### Atlas / Mongo Catalog
 
 Implementation:
 
-- [atlas-search-storefront-product-query.repository.ts](../../src/domains/product/infra/search/atlas/repositories/atlas-search-storefront-product-query.repository.ts:626)
+- [atlas-search-storefront-product-query.repository.ts](../../src/domains/product/infra/search/atlas/repositories/atlas-search-storefront-product-query.repository.ts:372)
 
 Behavior:
 
 - resolves matching products through the projected catalog search document
-- applies public visibility and image filters through the Atlas search stage
+- applies public visibility and image filters through the search stage
 - applies category, maker, digital, price, and attribute filters against the
   catalog search document
-- groups matching attribute values from `attributes`
+- groups matching facet values from `attributes` unioned with `inferredFacets`
 - folds the grouped rows into `PublicProductFacet[]`
 
 For supported inferred facets, Atlas filtering can match selected option keys
