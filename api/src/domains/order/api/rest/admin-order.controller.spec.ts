@@ -34,6 +34,23 @@ describe('AdminOrderController financial breakdown endpoint', () => {
       orderId: 'ord_test1',
       currency: 'USD',
       platformCommissionMinor: 4750,
+      sellerPayableMinor: 2_500,
+      availability: {
+        recorded: true,
+        availableAt: new Date('2026-11-02T10:00:00.000Z'),
+      },
+      payout: {
+        id: 'pay_1',
+        state: 'paid',
+        amountMinor: 2_500,
+        paidAt: new Date('2026-11-03T09:00:00.000Z'),
+      },
+      payoutMethod: {
+        accountStatus: 'active',
+        autoPayoutEnabled: true,
+        autoPayoutDayOfMonth: 15,
+        nextPayoutDate: '2026-11-15',
+      },
     });
     const getAdminOrderFinancialBreakdownUseCase = { execute };
     const controller = new AdminOrderController(
@@ -49,6 +66,23 @@ describe('AdminOrderController financial breakdown endpoint', () => {
       order_id: 'ord_test1',
       currency: 'USD',
       platform_commission_minor: 4750,
+      seller_payable_minor: 2_500,
+      availability: {
+        recorded: true,
+        available_at: '2026-11-02T10:00:00.000Z',
+      },
+      payout: {
+        id: 'pay_1',
+        state: 'paid',
+        amount_minor: 2_500,
+        paid_at: '2026-11-03T09:00:00.000Z',
+      },
+      payout_method: {
+        account_status: 'active',
+        auto_payout_enabled: true,
+        auto_payout_day_of_month: 15,
+        next_payout_date: '2026-11-15',
+      },
     });
     expect(resolveOrderPublicId).toHaveBeenCalledWith('ord_test1');
     expect(execute).toHaveBeenCalledWith('order-1');
@@ -62,11 +96,29 @@ describe('toAdminOrderFinancialBreakdownResponse', () => {
         orderId: 'ord_test1',
         currency: 'USD',
         platformCommissionMinor: null,
+        sellerPayableMinor: null,
+        availability: { recorded: false, availableAt: null },
+        payout: null,
+        payoutMethod: {
+          accountStatus: 'missing',
+          autoPayoutEnabled: false,
+          autoPayoutDayOfMonth: 15,
+          nextPayoutDate: null,
+        },
       }),
     ).toEqual({
       order_id: 'ord_test1',
       currency: 'USD',
       platform_commission_minor: null,
+      seller_payable_minor: null,
+      availability: { recorded: false, available_at: null },
+      payout: null,
+      payout_method: {
+        account_status: 'missing',
+        auto_payout_enabled: false,
+        auto_payout_day_of_month: 15,
+        next_payout_date: null,
+      },
     });
   });
 });
