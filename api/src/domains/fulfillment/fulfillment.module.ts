@@ -35,7 +35,9 @@ import { MikroOrmShipmentQueryRepository } from './infra/persistence/repositorie
     forwardRef(() => OrderModule),
     CacheModule,
     IdempotencyModule,
-    FinanceModule,
+    // Imported via forwardRef: Finance resolves an Order public id through
+    // Ordering, and Ordering reaches Fulfillment, so this edge closes a cycle.
+    forwardRef(() => FinanceModule),
     MikroOrmModule.forFeature([
       FulfillmentGroupEntity,
       FulfillmentGroupItemEntity,

@@ -30,6 +30,9 @@ import {
   buildFinanceConfig,
 } from '~/platform/config/finance.config';
 import { AuthModule } from '../auth/auth.module';
+// Imported via forwardRef: Ordering composes Finance reads while Finance
+// resolves an Order public id through Ordering's lookup.
+import { OrderModule } from '../order/order.module';
 import { ShopModule } from '../shop/shop.module';
 import { AdminCommissionScheduleController } from './api/rest/admin-commission-schedule.controller';
 import { AdminPayoutAccountController } from './api/rest/admin-payout-account.controller';
@@ -38,6 +41,7 @@ import { ShopFinanceController } from './api/rest/shop-finance.controller';
 import { FinanceMoneyEventProcessorService } from './app/services/finance-money-event-processor.service';
 import { RecordProviderFeeJob } from './jobs/record-provider-fee.job';
 import { PayoutAttemptService } from './app/services/payout-attempt.service';
+import { OrderPayoutMethodService } from './app/services/order-payout-method.service';
 import { PayoutNotificationService } from './app/services/payout-notification.service';
 import { PayoutQuoteService } from './app/services/payout-quote.service';
 import { CommissionScheduleRepository } from './app/ports/commission-schedule.repository';
@@ -45,6 +49,7 @@ import { JournalEntryRepository } from './app/ports/journal-entry.repository';
 import { ProviderFeeRepository } from './app/ports/provider-fee.repository';
 import { ProviderEvidenceRepository } from './app/ports/provider-evidence.repository';
 import { OrderPaidEventRepository } from './app/ports/order-paid-event.repository';
+import { OrderPayoutQueryRepository } from './app/ports/order-payout-query.repository';
 import { PayoutAccountRepository } from './app/ports/payout-account.repository';
 import { PayoutCommandRepository } from './app/ports/payout-command.repository';
 import { PayoutQueryRepository } from './app/ports/payout-query.repository';
@@ -60,6 +65,7 @@ import { GetPayoutSettingsUseCase } from './app/use-cases/get-payout-settings/ge
 import { GetSettlementCurrencyUseCase } from './app/use-cases/get-settlement-currency/get-settlement-currency.use-case';
 import { GetShopPayoutAccountUseCase } from './app/use-cases/get-shop-payout-account/get-shop-payout-account.use-case';
 import { GetShopPayoutsUseCase } from './app/use-cases/get-shop-payouts/get-shop-payouts.use-case';
+import { GetShopOrderPayoutUseCase } from './app/use-cases/get-shop-order-payout/get-shop-order-payout.use-case';
 import { GetShopSellerPayableUseCase } from './app/use-cases/get-shop-seller-payable/get-shop-seller-payable.use-case';
 import { GetShopTransactionsUseCase } from './app/use-cases/get-shop-transactions/get-shop-transactions.use-case';
 import { PayShopUseCase } from './app/use-cases/pay-shop/pay-shop.use-case';
@@ -94,6 +100,7 @@ import { SettlementCurrencyHistoryEntity } from './infra/persistence/entities/se
 import { MikroOrmCommissionScheduleRepository } from './infra/persistence/repositories/mikro-orm-commission-schedule.repository';
 import { MikroOrmJournalEntryRepository } from './infra/persistence/repositories/mikro-orm-journal-entry.repository';
 import { MikroOrmOrderPaidEventRepository } from './infra/persistence/repositories/mikro-orm-order-paid-event.repository';
+import { MikroOrmOrderPayoutQueryRepository } from './infra/persistence/repositories/mikro-orm-order-payout-query.repository';
 import { MikroOrmPayoutAccountRepository } from './infra/persistence/repositories/mikro-orm-payout-account.repository';
 import { MikroOrmPayoutAvailabilityRepository } from './infra/persistence/repositories/mikro-orm-payout-availability.repository';
 import { MikroOrmPayoutCommandRepository } from './infra/persistence/repositories/mikro-orm-payout-command.repository';
@@ -117,6 +124,7 @@ import { MikroOrmTransactionsQueryRepository } from './infra/persistence/reposit
     NotificationModule,
     QueueModule,
     forwardRef(() => AuthModule),
+    forwardRef(() => OrderModule),
     ShopModule,
     MikroOrmModule.forFeature([
       JournalEntryEntity,
@@ -162,6 +170,10 @@ import { MikroOrmTransactionsQueryRepository } from './infra/persistence/reposit
     {
       provide: ProviderEvidenceRepository,
       useClass: MikroOrmProviderEvidenceRepository,
+    },
+    {
+      provide: OrderPayoutQueryRepository,
+      useClass: MikroOrmOrderPayoutQueryRepository,
     },
     {
       provide: PayoutAvailabilityRepository,
@@ -238,6 +250,7 @@ import { MikroOrmTransactionsQueryRepository } from './infra/persistence/reposit
     SyncPayoutAccountUseCase,
     GetShopPayoutAccountUseCase,
     GetShopPayoutsUseCase,
+    GetShopOrderPayoutUseCase,
     GetShopTransactionsUseCase,
     GetPayoutSettingsUseCase,
     GetSettlementCurrencyUseCase,
@@ -253,6 +266,7 @@ import { MikroOrmTransactionsQueryRepository } from './infra/persistence/reposit
     RecordConnectedPayoutUseCase,
     PayoutAttemptService,
     PayoutQuoteService,
+    OrderPayoutMethodService,
     PayoutNotificationService,
     FinanceMoneyEventProcessorService,
     RecordProviderFeeJob,
@@ -269,6 +283,8 @@ import { MikroOrmTransactionsQueryRepository } from './infra/persistence/reposit
     RecordOrderRefundJournalEntryUseCase,
     FINANCE_CONFIG,
     PayoutQueryRepository,
+    OrderPayoutQueryRepository,
+    OrderPayoutMethodService,
     JournalEntryRepository,
     RecordProviderFeeJob,
   ],

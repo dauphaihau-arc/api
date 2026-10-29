@@ -6,6 +6,7 @@ import {
   HttpCode,
   HttpStatus,
   Inject,
+  NotFoundException,
   Param,
   Post,
   Query,
@@ -29,6 +30,8 @@ import { IdempotencyKeyInterceptor } from '~/platform/idempotency/idempotency-ke
 import { JwtAuthGuard } from '~/domains/auth/api/guard/jwt-auth.guard';
 import { PermissionsGuard } from '~/domains/auth/api/guard/permissions.guard';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
+import { OrderPublicIdLookup } from '~/domains/order/app/services/order-public-id-lookup.service';
+import { OrderNotFoundError } from '~/domains/order/app/errors/order-app.error';
 import { ShopAccessService } from '~/domains/shop/app/services/shop-access.service';
 import {
   PAYOUT_CONNECT_COUNTRIES_CONFIG,
@@ -39,6 +42,7 @@ import { GetPayoutSettingsUseCase } from '../../app/use-cases/get-payout-setting
 import { GetSettlementCurrencyUseCase } from '../../app/use-cases/get-settlement-currency/get-settlement-currency.use-case';
 import { GetShopPayoutAccountUseCase } from '../../app/use-cases/get-shop-payout-account/get-shop-payout-account.use-case';
 import { GetShopPayoutsUseCase } from '../../app/use-cases/get-shop-payouts/get-shop-payouts.use-case';
+import { GetShopOrderPayoutUseCase } from '../../app/use-cases/get-shop-order-payout/get-shop-order-payout.use-case';
 import { GetShopSellerPayableUseCase } from '../../app/use-cases/get-shop-seller-payable/get-shop-seller-payable.use-case';
 import { GetShopTransactionsUseCase } from '../../app/use-cases/get-shop-transactions/get-shop-transactions.use-case';
 import { QuoteShopPayoutUseCase } from '../../app/use-cases/quote-shop-payout/quote-shop-payout.use-case';
@@ -69,6 +73,10 @@ import {
   toShopPayoutQuoteResponse,
   toShopPayoutResponse,
 } from './responses/payout.response';
+import {
+  ShopOrderPayoutResponseDto,
+  toShopOrderPayoutResponse,
+} from './responses/order-payout.response';
 import {
   ShopPayoutSettingsResponseDto,
   toShopPayoutSettingsResponse,
@@ -102,6 +110,8 @@ export class ShopFinanceController {
     private readonly getShopTransactionsUseCase: GetShopTransactionsUseCase,
     private readonly getShopPayoutAccountUseCase: GetShopPayoutAccountUseCase,
     private readonly getShopPayoutsUseCase: GetShopPayoutsUseCase,
+    private readonly getShopOrderPayoutUseCase: GetShopOrderPayoutUseCase,
+    private readonly orderPublicIdLookup: OrderPublicIdLookup,
     private readonly getPayoutSettingsUseCase: GetPayoutSettingsUseCase,
     private readonly setAutoPayoutEnabledUseCase: SetAutoPayoutEnabledUseCase,
     private readonly requestManualPayoutUseCase: RequestManualPayoutUseCase,
@@ -268,6 +278,47 @@ export class ShopFinanceController {
 
     return toShopPayoutHistoryResponse(
       await this.getShopPayoutsUseCase.execute({ shopId }),
+    );
+  }
+
+  @Get('orders/:order_id/payout')
+  @Header('Cache-Control', 'private, no-cache')
+  @ApiOperation({
+    summary: 'Get one Order payout facts',
+    description:
+      'The Seller Payable the Order still holds, whether its payout ' +
+      'availability is recorded and when it became available, and the newest ' +
+      'Payout that claimed or paid it. Finance owns these facts; the Order ' +
+      'status is never read as availability.',
+  })
+  @ApiParam({ name: 'shop_id', type: String })
+  @ApiParam({ name: 'order_id', type: String })
+  @ApiOkResponse({
+    description: 'The Order payout facts.',
+    type: ShopOrderPayoutResponseDto,
+  })
+  @ApiErrorResponses(shopFinanceControllerErrorResponses.orderPayout)
+  async orderPayout(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('shop_id') shopPublicId: string,
+    @Param('order_id') orderPublicId: string,
+  ): Promise<ShopOrderPayoutResponseDto> {
+    const shopId = (await this.shopAccessService.resolveManageableShopByPublicId(currentUser, shopPublicId)).id;
+
+    const orderId = await this.orderPublicIdLookup
+      .resolveOrderPublicId(orderPublicId)
+      .catch((error: unknown) => {
+        // A public id that does not exist must answer exactly like one that
+        // exists on another shop, or a seller can probe order existence.
+        if (error instanceof NotFoundException) {
+          throw new OrderNotFoundError();
+        }
+
+        throw error;
+      });
+
+    return toShopOrderPayoutResponse(
+      await this.getShopOrderPayoutUseCase.execute({ shopId, orderId }),
     );
   }
 

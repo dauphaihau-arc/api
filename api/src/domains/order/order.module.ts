@@ -108,7 +108,7 @@ import { UpdateShopOrderRefundUseCase } from './app/use-cases/update-shop-order-
     ShippingModule,
     forwardRef(() => FulfillmentModule),
     PromotionModule,
-    FinanceModule,
+    forwardRef(() => FinanceModule),
     AuditModule,
     MikroOrmModule.forFeature([
       OutboxEventEntity,

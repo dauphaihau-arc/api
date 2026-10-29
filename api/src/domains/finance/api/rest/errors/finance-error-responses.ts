@@ -172,6 +172,13 @@ export const shopFinanceControllerErrorResponses = {
       },
     ],
   },
+  orderPayout: {
+    403: [...shopForbidden],
+    404: [
+      ...shopNotFound,
+      { code: 'ORDER_NOT_FOUND', message: 'Order was not found' },
+    ],
+  },
   manualPayout: {
     400: [
       {

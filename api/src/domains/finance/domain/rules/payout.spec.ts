@@ -8,6 +8,7 @@ import {
   isAutoPayoutDue,
   MAX_PAYOUT_ATTEMPTS,
   netPayableMinor,
+  nextPayoutRunDate,
   paidPayoutMoneyEventKey,
   payoutFxMoneyEventKey,
   payoutPeriodKey,
@@ -53,6 +54,50 @@ describe('payoutRunDay', () => {
     // 2026-10-20T00:30Z is still 2026-10-19 in Los Angeles and already
     // 2026-10-20 in Ho Chi Minh City; the run follows neither.
     expect(payoutRunDay(new Date('2026-10-20T00:30:00.000Z'))).toBe('2026-10-20');
+  });
+});
+
+describe('nextPayoutRunDate', () => {
+  it('is today when the configured day is today', () => {
+    expect(nextPayoutRunDate(new Date('2026-10-15T00:00:00.000Z'), 15))
+      .toBe('2026-10-15');
+    expect(nextPayoutRunDate(new Date('2026-10-15T23:59:59.999Z'), 15))
+      .toBe('2026-10-15');
+  });
+
+  it('is this month when the configured day is still ahead', () => {
+    expect(nextPayoutRunDate(new Date('2026-10-01T00:00:00.000Z'), 15))
+      .toBe('2026-10-15');
+    expect(nextPayoutRunDate(new Date('2026-10-14T23:59:59.999Z'), 15))
+      .toBe('2026-10-15');
+  });
+
+  it('rolls to next month once the configured day has passed', () => {
+    expect(nextPayoutRunDate(new Date('2026-10-16T00:00:00.000Z'), 15))
+      .toBe('2026-11-15');
+    expect(nextPayoutRunDate(new Date('2026-10-29T12:00:00.000Z'), 15))
+      .toBe('2026-11-15');
+  });
+
+  it('rolls into the next year from December', () => {
+    expect(nextPayoutRunDate(new Date('2026-12-20T00:00:00.000Z'), 15))
+      .toBe('2027-01-15');
+  });
+
+  it('clamps a day past the month length to its last day', () => {
+    expect(nextPayoutRunDate(new Date('2026-02-01T00:00:00.000Z'), 31))
+      .toBe('2026-02-28');
+    expect(nextPayoutRunDate(new Date('2026-02-28T10:00:00.000Z'), 31))
+      .toBe('2026-02-28');
+    expect(nextPayoutRunDate(new Date('2026-03-01T00:00:00.000Z'), 31))
+      .toBe('2026-03-31');
+    expect(nextPayoutRunDate(new Date('2026-04-15T00:00:00.000Z'), 31))
+      .toBe('2026-04-30');
+  });
+
+  it('keeps a leap day when the target month has it', () => {
+    expect(nextPayoutRunDate(new Date('2028-02-01T00:00:00.000Z'), 31))
+      .toBe('2028-02-29');
   });
 });
 

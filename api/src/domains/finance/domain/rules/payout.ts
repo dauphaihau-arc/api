@@ -144,6 +144,50 @@ export function isAutoPayoutDue(
 }
 
 /**
+ * The UTC calendar date of the next automatic Payout Run at or after
+ * `instant`, as `YYYY-MM-DD`. A configured day past the month's length is
+ * clamped to its last day, so a schedule can never point at a date that does
+ * not exist (e.g. day 31 runs on 28 February 2026).
+ */
+export function nextPayoutRunDate(
+  instant: Date,
+  autoPayoutDayOfMonth: number,
+): string {
+  const year = instant.getUTCFullYear();
+  const month = instant.getUTCMonth();
+  const today = Date.UTC(year, month, instant.getUTCDate());
+
+  const thisMonth = Date.UTC(
+    year,
+    month,
+    runDayOfMonth(year, month, autoPayoutDayOfMonth),
+  );
+
+  const nextRun = thisMonth >= today
+    ? thisMonth
+    : Date.UTC(year, month + 1, runDayOfMonth(year, month + 1, autoPayoutDayOfMonth));
+
+  return new Date(nextRun).toISOString().slice(0, 10);
+}
+
+/** The run day clamped to the last day of the given UTC month. */
+function runDayOfMonth(
+  year: number,
+  month: number,
+  autoPayoutDayOfMonth: number,
+): number {
+  const firstOfNextMonth = new Date(Date.UTC(year, month + 1, 1));
+
+  const lastDay = new Date(Date.UTC(
+    firstOfNextMonth.getUTCFullYear(),
+    firstOfNextMonth.getUTCMonth(),
+    0,
+  )).getUTCDate();
+
+  return Math.min(autoPayoutDayOfMonth, lastDay);
+}
+
+/**
  * The unique idempotency identity of a Payout's Journal Entry, so a retried
  * settle cannot discharge the same Seller Payable twice.
  */
