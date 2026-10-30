@@ -196,6 +196,15 @@ export class OrderPaymentResponseDto {
 
   @ApiProperty({ required: false })
   refund_failed_reason?: string;
+
+  @ApiProperty({ required: false })
+  card_brand?: string;
+
+  @ApiProperty({ required: false })
+  card_last4?: string;
+
+  @ApiProperty({ required: false })
+  card_funding?: string;
 }
 
 export class OrderPromoCodeResponseDto {
@@ -1328,12 +1337,24 @@ function toPaymentResponse(order: {
   const refundFailedReason = typeof order.paymentDetails?.['refund_failed_reason'] === 'string'
     ? order.paymentDetails['refund_failed_reason']
     : undefined;
+  const cardBrand = typeof order.paymentDetails?.['card_brand'] === 'string'
+    ? order.paymentDetails['card_brand']
+    : undefined;
+  const cardLast4 = typeof order.paymentDetails?.['card_last4'] === 'string'
+    ? order.paymentDetails['card_last4']
+    : undefined;
+  const cardFunding = typeof order.paymentDetails?.['card_funding'] === 'string'
+    ? order.paymentDetails['card_funding']
+    : undefined;
 
   return {
     type: order.paymentType,
     ...(refundStatus ? { refund_status: refundStatus } : {}),
     ...(order.refundedAt ? { refunded_at: order.refundedAt } : {}),
     ...(refundFailedReason ? { refund_failed_reason: refundFailedReason } : {}),
+    ...(cardBrand ? { card_brand: cardBrand } : {}),
+    ...(cardLast4 ? { card_last4: cardLast4 } : {}),
+    ...(cardFunding ? { card_funding: cardFunding } : {}),
   };
 }
 

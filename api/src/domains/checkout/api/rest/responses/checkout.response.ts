@@ -472,6 +472,15 @@ export class CheckoutOrderPaymentResponseDto {
 
   @ApiProperty({ type: String, required: false })
   refund_failed_reason?: string;
+
+  @ApiProperty({ type: String, required: false })
+  card_brand?: string;
+
+  @ApiProperty({ type: String, required: false })
+  card_last4?: string;
+
+  @ApiProperty({ type: String, required: false })
+  card_funding?: string;
 }
 
 export class CheckoutOrderProductShopResponseDto {
@@ -993,6 +1002,15 @@ export function toCheckoutOrderListResponse(result: OrderListResult) {
         ...(orderShop.refundedAt ? { refunded_at: orderShop.refundedAt } : {}),
         ...(typeof orderShop.paymentDetails?.['refund_failed_reason'] === 'string'
           ? { refund_failed_reason: orderShop.paymentDetails['refund_failed_reason'] }
+          : {}),
+        ...(typeof orderShop.paymentDetails?.['card_brand'] === 'string'
+          ? { card_brand: orderShop.paymentDetails['card_brand'] }
+          : {}),
+        ...(typeof orderShop.paymentDetails?.['card_last4'] === 'string'
+          ? { card_last4: orderShop.paymentDetails['card_last4'] }
+          : {}),
+        ...(typeof orderShop.paymentDetails?.['card_funding'] === 'string'
+          ? { card_funding: orderShop.paymentDetails['card_funding'] }
           : {}),
       },
       status: orderShop.status,
