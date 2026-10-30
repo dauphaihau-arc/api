@@ -40,6 +40,13 @@ export interface CheckoutSessionDetails {
   paymentStatus?: string | null;
   paymentIntentId?: string;
   expiresAt?: Date;
+  /**
+   * Card summary of the payment method behind the session. Only a session read
+   * with `payment_intent.latest_charge` expanded carries it, so it is optional.
+   */
+  cardBrand?: string;
+  cardLast4?: string;
+  cardFunding?: string;
 }
 
 export interface PaymentWebhookEvent<TObject = unknown> {

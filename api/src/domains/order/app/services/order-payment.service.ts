@@ -68,6 +68,9 @@ export class OrderPaymentService {
       paymentIntentId?: string | null;
       paymentStatus?: string | null;
       completedAt?: Date;
+      cardBrand?: string;
+      cardLast4?: string;
+      cardFunding?: string;
     },
   ): Promise<void> {
     await this.entityManager.transactional(async (entityManager) => {
@@ -127,6 +130,11 @@ export class OrderPaymentService {
           payment_intent_id: input.paymentIntentId ?? undefined,
           payment_status: input.paymentStatus ?? 'paid',
           paid_at: paidAt.toISOString(),
+          // A replayed webhook may arrive without the card summary; keeping the
+          // stored value beats overwriting it with nothing.
+          ...(input.cardBrand !== undefined ? { card_brand: input.cardBrand } : {}),
+          ...(input.cardLast4 !== undefined ? { card_last4: input.cardLast4 } : {}),
+          ...(input.cardFunding !== undefined ? { card_funding: input.cardFunding } : {}),
         };
 
         await this.orderEventsService.record(entityManager, {

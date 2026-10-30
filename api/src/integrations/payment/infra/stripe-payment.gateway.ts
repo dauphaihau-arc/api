@@ -129,7 +129,12 @@ export class StripePaymentGateway extends PaymentGateway {
   }
 
   async retrieveCheckoutSession(sessionId: string): Promise<CheckoutSessionDetails> {
-    const session = await this.requireStripe().checkout.sessions.retrieve(sessionId);
+    // The payment method summary lives on the charge, not the session, so the
+    // read expands the chain down to it; without the expansion the mapping
+    // simply finds no card.
+    const session = await this.requireStripe().checkout.sessions.retrieve(sessionId, {
+      expand: ['payment_intent.latest_charge'],
+    });
 
     return this.toCheckoutSessionDetails(session);
   }
@@ -383,14 +388,52 @@ export class StripePaymentGateway extends PaymentGateway {
   private toCheckoutSessionDetails(
     session: Stripe.Checkout.Session,
   ): CheckoutSessionDetails {
+    const paymentIntent = session.payment_intent;
+    const card = this.toCheckoutCard(paymentIntent);
+
     return {
       id: session.id,
       status: session.status,
       paymentStatus: session.payment_status,
-      paymentIntentId: session.payment_intent?.toString(),
+      paymentIntentId:
+        typeof paymentIntent === 'string'
+          ? paymentIntent
+          : paymentIntent?.id ?? undefined,
       expiresAt: session.expires_at
         ? new Date(session.expires_at * 1000)
         : undefined,
+      ...card,
+    };
+  }
+
+  /**
+   * The card summary is only reachable when both `payment_intent` and its
+   * `latest_charge` came back expanded; the webhook object leaves them as ids,
+   * and a non-card payment method has no card at all.
+   */
+  private toCheckoutCard(
+    paymentIntent: string | Stripe.PaymentIntent | null,
+  ): Pick<CheckoutSessionDetails, 'cardBrand' | 'cardLast4' | 'cardFunding'> {
+    if (!paymentIntent || typeof paymentIntent === 'string') {
+      return {};
+    }
+
+    const latestCharge = paymentIntent.latest_charge;
+
+    if (!latestCharge || typeof latestCharge === 'string') {
+      return {};
+    }
+
+    const card = latestCharge.payment_method_details?.card;
+
+    if (!card) {
+      return {};
+    }
+
+    return {
+      ...(card.brand ? { cardBrand: card.brand } : {}),
+      ...(card.last4 ? { cardLast4: card.last4 } : {}),
+      ...(card.funding ? { cardFunding: card.funding } : {}),
     };
   }
 }

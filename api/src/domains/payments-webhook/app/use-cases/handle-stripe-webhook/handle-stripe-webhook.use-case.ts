@@ -1,14 +1,15 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { JobDispatcher } from '~/integrations/queue/app/ports/job-dispatcher';
-import type {
-  ChargeBalanceTransactionReference,
-  CheckoutSessionDetails,
-  ConnectAccountChangedEvent,
-  ConnectedPayoutEventDetails,
-  DisputeBalanceTransactionsReference,
-  PaymentWebhookEvent,
-  ProviderTransferEventDetails,
-  RefundDetails,
+import {
+  PaymentGateway,
+  type ChargeBalanceTransactionReference,
+  type CheckoutSessionDetails,
+  type ConnectAccountChangedEvent,
+  type ConnectedPayoutEventDetails,
+  type DisputeBalanceTransactionsReference,
+  type PaymentWebhookEvent,
+  type ProviderTransferEventDetails,
+  type RefundDetails,
 } from '~/integrations/payment/app/ports/payment-gateway';
 import {
   CONNECT_GATEWAY,
@@ -40,6 +41,7 @@ export class HandleStripeWebhookUseCase {
     private readonly recordTransferEventUseCase: RecordTransferEventUseCase,
     private readonly recordConnectedPayoutUseCase: RecordConnectedPayoutUseCase,
     private readonly jobDispatcher: JobDispatcher,
+    private readonly paymentGateway: PaymentGateway,
     @Inject(CONNECT_GATEWAY)
     private readonly connectGateway: ConnectGateway,
   ) {}
@@ -75,11 +77,16 @@ export class HandleStripeWebhookUseCase {
         return;
       }
       case 'checkout.session.completed': {
-        const session = event.data.object as CheckoutSessionDetails;
+        const session = await this.retrieveCompletedCheckoutSession(
+          event.data.object as CheckoutSessionDetails,
+        );
         await this.orderPaymentService.markCheckoutSessionCompleted(session.id, {
           paymentIntentId: session.paymentIntentId,
           paymentStatus: session.paymentStatus,
           completedAt: new Date(),
+          cardBrand: session.cardBrand,
+          cardLast4: session.cardLast4,
+          cardFunding: session.cardFunding,
         });
         return;
       }
@@ -172,6 +179,29 @@ export class HandleStripeWebhookUseCase {
       }
       default:
         return;
+    }
+  }
+
+  /**
+   * The webhook object names the payment intent and little else. Re-reading the
+   * session expanded is what makes the card summary available to the receipt,
+   * and a failed read must not block the payment from completing, so the event
+   * object remains the fallback.
+   */
+  private async retrieveCompletedCheckoutSession(
+    session: CheckoutSessionDetails,
+  ): Promise<CheckoutSessionDetails> {
+    try {
+      return await this.paymentGateway.retrieveCheckoutSession(session.id);
+    }
+    catch (error) {
+      this.logger.warn(
+        `Falling back to the webhook object for checkout session ${session.id}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+
+      return session;
     }
   }
 

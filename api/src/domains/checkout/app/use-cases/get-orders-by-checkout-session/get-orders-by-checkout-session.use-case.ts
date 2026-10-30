@@ -28,10 +28,16 @@ export class GetOrdersByCheckoutSessionUseCase {
     const session = await this.paymentGateway.retrieveCheckoutSession(sessionId);
 
     if (session.paymentStatus === 'paid') {
+      // This polling path can complete the Order before the Stripe webhook
+      // arrives, so it must carry the same card summary the webhook persists;
+      // otherwise the later webhook no-ops on an already-paid Order.
       await this.orderPaymentService.markCheckoutSessionCompleted(sessionId, {
         paymentIntentId: session.paymentIntentId,
         paymentStatus: session.paymentStatus,
         completedAt: new Date(),
+        cardBrand: session.cardBrand,
+        cardLast4: session.cardLast4,
+        cardFunding: session.cardFunding,
       });
       result = await this.orderPaymentService.getOrdersByCheckoutSession(sessionId);
     }

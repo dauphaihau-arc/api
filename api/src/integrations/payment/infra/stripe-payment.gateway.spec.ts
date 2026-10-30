@@ -9,6 +9,11 @@ interface StubStripe {
   balanceTransactions: {
     retrieve: (reference: string) => Promise<unknown>;
   };
+  checkout: {
+    sessions: {
+      retrieve: (sessionId: string, params?: unknown) => Promise<unknown>;
+    };
+  };
 }
 
 function buildGateway() {
@@ -35,6 +40,13 @@ function stubStripe(gateway: StripePaymentGateway, stripe: Partial<StubStripe>):
     balanceTransactions: {
       retrieve: async () => {
         throw new Error('retrieve was not expected');
+      },
+    },
+    checkout: {
+      sessions: {
+        retrieve: async () => {
+          throw new Error('retrieve was not expected');
+        },
       },
     },
     ...stripe,
@@ -398,5 +410,66 @@ describe('StripePaymentGateway.retrieveBalanceTransaction', () => {
     await expect(gateway.retrieveBalanceTransaction('txn_missing')).rejects.toThrow(
       'balance transaction not found',
     );
+  });
+});
+
+describe('StripePaymentGateway.retrieveCheckoutSession', () => {
+  it('maps the card on an expanded latest charge', async () => {
+    const gateway = buildGateway();
+    const retrieve = jest.fn().mockResolvedValue({
+      id: 'cs_123',
+      status: 'complete',
+      payment_status: 'paid',
+      payment_intent: {
+        id: 'pi_123',
+        latest_charge: {
+          id: 'ch_123',
+          payment_method_details: {
+            card: { brand: 'visa', last4: '4821', funding: 'credit' },
+          },
+        },
+      },
+      expires_at: null,
+    } as unknown as Stripe.Checkout.Session);
+    stubStripe(gateway, { checkout: { sessions: { retrieve } } });
+
+    await expect(gateway.retrieveCheckoutSession('cs_123')).resolves.toEqual({
+      id: 'cs_123',
+      status: 'complete',
+      paymentStatus: 'paid',
+      paymentIntentId: 'pi_123',
+      expiresAt: undefined,
+      cardBrand: 'visa',
+      cardLast4: '4821',
+      cardFunding: 'credit',
+    });
+    expect(retrieve).toHaveBeenCalledWith('cs_123', {
+      expand: ['payment_intent.latest_charge'],
+    });
+  });
+
+  it('omits the card when the session came back unexpanded', async () => {
+    const gateway = buildGateway();
+    stubStripe(gateway, {
+      checkout: {
+        sessions: {
+          retrieve: async () => ({
+            id: 'cs_123',
+            status: 'open',
+            payment_status: 'unpaid',
+            payment_intent: 'pi_123',
+            expires_at: null,
+          }),
+        },
+      },
+    });
+
+    await expect(gateway.retrieveCheckoutSession('cs_123')).resolves.toEqual({
+      id: 'cs_123',
+      status: 'open',
+      paymentStatus: 'unpaid',
+      paymentIntentId: 'pi_123',
+      expiresAt: undefined,
+    });
   });
 });

@@ -95,6 +95,28 @@ describe('OrderPaymentService', () => {
     );
   });
 
+  it('stores the card summary alongside the payment details', async () => {
+    const { service, order } = buildService();
+
+    await service.markCheckoutSessionCompleted('cs_123', {
+      paymentIntentId: 'pi_123',
+      paymentStatus: 'paid',
+      completedAt: new Date('2026-09-09T07:00:00.000Z'),
+      cardBrand: 'visa',
+      cardLast4: '4821',
+      cardFunding: 'credit',
+    });
+
+    expect(order.paymentDetails).toEqual(expect.objectContaining({
+      checkout_session_id: 'cs_123',
+      payment_intent_id: 'pi_123',
+      payment_status: 'paid',
+      card_brand: 'visa',
+      card_last4: '4821',
+      card_funding: 'credit',
+    }));
+  });
+
   it('books the paid Order inside the producer transaction when inline booking is enabled', async () => {
     const {
       service,

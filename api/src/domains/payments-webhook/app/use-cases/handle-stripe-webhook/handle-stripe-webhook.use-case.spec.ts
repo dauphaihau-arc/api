@@ -1,5 +1,8 @@
 import type { JobDispatcher } from '~/integrations/queue/app/ports/job-dispatcher';
-import type { PaymentWebhookEvent } from '~/integrations/payment/app/ports/payment-gateway';
+import type {
+  PaymentGateway,
+  PaymentWebhookEvent,
+} from '~/integrations/payment/app/ports/payment-gateway';
 import {
   ConnectAccountNotFoundError,
   type ConnectGateway,
@@ -32,6 +35,14 @@ describe('HandleStripeWebhookUseCase', () => {
     const jobDispatcher = {
       dispatch: jest.fn().mockResolvedValue(undefined),
     };
+    const paymentGateway = {
+      retrieveCheckoutSession: jest.fn().mockResolvedValue({
+        id: 'cs_1',
+        status: 'complete',
+        paymentStatus: 'paid',
+        paymentIntentId: 'pi_1',
+      }),
+    };
     const connectGateway = {
       retrieveAccount: jest.fn().mockRejectedValue(
         new Error('retrieveAccount was not expected'),
@@ -48,6 +59,7 @@ describe('HandleStripeWebhookUseCase', () => {
         recordTransferEventUseCase as unknown as RecordTransferEventUseCase,
         recordConnectedPayoutUseCase as unknown as RecordConnectedPayoutUseCase,
         jobDispatcher as unknown as JobDispatcher,
+        paymentGateway as unknown as PaymentGateway,
         connectGateway as unknown as ConnectGateway,
       ),
       orderPaymentService,
@@ -56,6 +68,7 @@ describe('HandleStripeWebhookUseCase', () => {
       recordTransferEventUseCase,
       recordConnectedPayoutUseCase,
       jobDispatcher,
+      paymentGateway,
       connectGateway,
     };
   }
@@ -237,6 +250,67 @@ describe('HandleStripeWebhookUseCase', () => {
       expect.objectContaining({ paymentIntentId: 'pi_1', paymentStatus: 'paid' }),
     );
     expect(jobDispatcher.dispatch).not.toHaveBeenCalled();
+  });
+
+  it('enriches a completed session with the card read from the provider', async () => {
+    const { useCase, orderPaymentService, paymentGateway } = buildUseCase();
+    paymentGateway.retrieveCheckoutSession.mockResolvedValue({
+      id: 'cs_1',
+      status: 'complete',
+      paymentStatus: 'paid',
+      paymentIntentId: 'pi_1',
+      cardBrand: 'visa',
+      cardLast4: '4821',
+      cardFunding: 'credit',
+    });
+    const event: PaymentWebhookEvent = {
+      id: 'evt_7a',
+      type: 'checkout.session.completed',
+      data: { object: { id: 'cs_1', paymentStatus: 'paid' } },
+    };
+
+    await useCase.execute(event);
+
+    expect(paymentGateway.retrieveCheckoutSession).toHaveBeenCalledWith('cs_1');
+    expect(orderPaymentService.markCheckoutSessionCompleted).toHaveBeenCalledWith(
+      'cs_1',
+      expect.objectContaining({
+        paymentIntentId: 'pi_1',
+        paymentStatus: 'paid',
+        cardBrand: 'visa',
+        cardLast4: '4821',
+        cardFunding: 'credit',
+      }),
+    );
+  });
+
+  it('completes a checkout session from the webhook object when the read fails', async () => {
+    const { useCase, orderPaymentService, paymentGateway } = buildUseCase();
+    paymentGateway.retrieveCheckoutSession.mockRejectedValue(
+      new Error('provider unavailable'),
+    );
+    const event: PaymentWebhookEvent = {
+      id: 'evt_7b',
+      type: 'checkout.session.completed',
+      data: {
+        object: {
+          id: 'cs_1',
+          status: 'complete',
+          paymentStatus: 'paid',
+          paymentIntentId: 'pi_1',
+        },
+      },
+    };
+
+    await useCase.execute(event);
+
+    expect(orderPaymentService.markCheckoutSessionCompleted).toHaveBeenCalledWith(
+      'cs_1',
+      expect.objectContaining({ paymentIntentId: 'pi_1', paymentStatus: 'paid' }),
+    );
+    expect(
+      orderPaymentService.markCheckoutSessionCompleted.mock.calls[0][1],
+    ).toMatchObject({ cardLast4: undefined, cardBrand: undefined });
   });
 
   it('syncs a connected account from account.updated', async () => {
