@@ -818,7 +818,7 @@ describe('Payout Availability from delivery (integration)', () => {
 
     const prepared = await prepareShipment(seller, order.orderPublicId, {
       items: [{ order_item_id: await readOrderItemId(order.orderInternalId), quantity: 1 }],
-      carrier: 'USPS',
+      carrier: 'other',
       tracking_number: 'FULL-1',
     }).expect(201);
     const shipmentId = (prepared.body.fulfillment as Fulfillment).groups[0]!.shipments[0]!.id;
@@ -873,14 +873,14 @@ describe('Payout Availability from delivery (integration)', () => {
 
     const first = await prepareShipment(seller, order.orderPublicId, {
       items: [{ order_item_id: orderItemId, quantity: 1 }],
-      carrier: 'USPS',
+      carrier: 'other',
       tracking_number: 'PART-1',
     }).expect(201);
     const firstShipmentId = (first.body.fulfillment as Fulfillment).groups[0]!.shipments[0]!.id;
 
     const second = await prepareShipment(seller, order.orderPublicId, {
       items: [{ order_item_id: orderItemId, quantity: 2 }],
-      carrier: 'DHL',
+      carrier: 'other',
       tracking_number: 'PART-2',
     }).expect(201);
     const secondShipmentId = (second.body.fulfillment as Fulfillment).groups[0]!.shipments[1]!.id;
@@ -925,7 +925,7 @@ describe('Payout Availability from delivery (integration)', () => {
 
     const prepared = await prepareShipment(seller, order.orderPublicId, {
       items: [{ order_item_id: await readOrderItemId(order.orderInternalId), quantity: 1 }],
-      carrier: 'USPS',
+      carrier: 'other',
       tracking_number: 'REPLAY-1',
     }).expect(201);
     const shipmentId = (prepared.body.fulfillment as Fulfillment).groups[0]!.shipments[0]!.id;
@@ -984,7 +984,7 @@ describe('Payout Availability from delivery (integration)', () => {
 
     await prepareShipment(seller, order.orderPublicId, {
       items: [{ order_item_id: await readOrderItemId(order.orderInternalId), quantity: 1 }],
-      carrier: 'USPS',
+      carrier: 'other',
       tracking_number: 'CANCEL-1',
     }).expect(201);
 
@@ -1020,7 +1020,7 @@ describe('Payout Availability from delivery (integration)', () => {
 
     const prepared = await prepareShipment(seller, order.orderPublicId, {
       items: [{ order_item_id: await readOrderItemId(order.orderInternalId), quantity: 1 }],
-      carrier: 'USPS',
+      carrier: 'other',
       tracking_number: 'CONCURRENT-1',
     }).expect(201);
     const shipmentId = (prepared.body.fulfillment as Fulfillment).groups[0]!.shipments[0]!.id;
@@ -1083,7 +1083,7 @@ describe('Payout Availability from delivery (integration)', () => {
 
     const prepared = await prepareShipment(seller, order.orderPublicId, {
       items: [{ order_item_id: await readOrderItemId(order.orderInternalId), quantity: 1 }],
-      carrier: 'USPS',
+      carrier: 'other',
       tracking_number: 'ENDPOINT-1',
     }).expect(201);
     const shipmentId = (prepared.body.fulfillment as Fulfillment).groups[0]!.shipments[0]!.id;
@@ -1134,7 +1134,7 @@ describe('Payout Availability from delivery (integration)', () => {
 
     const prepared = await prepareShipment(seller, orderPublicId, {
       items: [{ order_item_id: await readOrderItemId(order.id), quantity: 1 }],
-      carrier: 'USPS',
+      carrier: 'other',
       tracking_number: 'CASH-1',
     }).expect(201);
     const shipmentId = (prepared.body.fulfillment as Fulfillment).groups[0]!.shipments[0]!.id;
@@ -1185,7 +1185,7 @@ describe('Payout Availability from delivery (integration)', () => {
 
     const prepared = await prepareShipment(seller, orderPublicId, {
       items: [{ order_item_id: await readOrderItemId(orderInternalId), quantity: 1 }],
-      carrier: 'USPS',
+      carrier: 'other',
       tracking_number: 'RACE-1',
     }).expect(201);
     const shipmentId = (prepared.body.fulfillment as Fulfillment).groups[0]!.shipments[0]!.id;
@@ -1266,7 +1266,7 @@ describe('Payout Availability from delivery (integration)', () => {
 
     const prepared = await prepareShipment(seller, orderPublicId, {
       items: [{ order_item_id: await readOrderItemId(orderRow.id), quantity: 1 }],
-      carrier: 'USPS',
+      carrier: 'other',
       tracking_number: 'AVAIL-FX-1',
     }).expect(201);
     const shipmentId = (prepared.body.fulfillment as Fulfillment).groups[0]!.shipments[0]!.id;

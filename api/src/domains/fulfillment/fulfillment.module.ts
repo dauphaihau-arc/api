@@ -3,6 +3,7 @@ import { forwardRef, Module } from '@nestjs/common';
 import { CacheModule } from '~/integrations/cache/cache.module';
 import { IdempotencyModule } from '~/platform/idempotency/idempotency.module';
 import { OutboxEventEntity } from '~/platform/outbox/outbox-event.entity';
+import { AuthModule } from '../auth/auth.module';
 import { OrderModule } from '../order/order.module';
 import { FinanceModule } from '../finance/finance.module';
 import { ShopModule } from '../shop/shop.module';
@@ -19,6 +20,7 @@ import { OrderFulfillmentContextPort } from './app/ports/order-fulfillment-conte
 import { OrderFulfillmentViewPort } from './app/ports/order-fulfillment-view.port';
 import { ShipmentPublicIdLookup } from './app/services/shipment-public-id-lookup.service';
 import { ShopOrderFulfillmentController } from './api/rest/shop-order-fulfillment.controller';
+import { CarriersController } from './api/rest/carriers.controller';
 import { ShipmentQueryRepository } from './app/ports/shipment-query.repository';
 import { FulfillmentGroupEntity } from './infra/persistence/entities/fulfillment-group.entity';
 import { FulfillmentGroupItemEntity } from './infra/persistence/entities/fulfillment-group-item.entity';
@@ -32,6 +34,7 @@ import { MikroOrmShipmentQueryRepository } from './infra/persistence/repositorie
 @Module({
   imports: [
     ShopModule,
+    AuthModule,
     forwardRef(() => OrderModule),
     CacheModule,
     IdempotencyModule,
@@ -47,7 +50,7 @@ import { MikroOrmShipmentQueryRepository } from './infra/persistence/repositorie
       OutboxEventEntity,
     ]),
   ],
-  controllers: [ShopOrderFulfillmentController],
+  controllers: [ShopOrderFulfillmentController, CarriersController],
   providers: [
     FulfillmentService,
     FulfillmentCommandRunner,

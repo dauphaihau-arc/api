@@ -14,6 +14,10 @@ import {
   isDispatchStatus,
   isJourneyTransitionAllowed,
 } from '../../domain/shipment-journey';
+import {
+  findCarrier,
+  isValidCarrierTrackingNumber,
+} from '../../domain/carrier-catalogue';
 import { loadOrderFulfillmentViews } from '../fulfillment-view.loader';
 import type { LoadOrderFulfillmentOptions } from '../fulfillment-view.loader';
 import { FulfillmentGroupEntity } from '../../infra/persistence/entities/fulfillment-group.entity';
@@ -29,12 +33,14 @@ import {
   ShipmentNotFoundError,
 } from '../errors/fulfillment-app.error';
 import {
+  InvalidCarrierTrackingNumberError,
   InvalidFulfillmentQuantityError,
   InvalidShipmentJourneyTransitionError,
   ShipmentAlreadyVoidedError,
   ShipmentItemNotInGroupError,
   ShipmentNotPreparedError,
   ShipmentQuantityExceededError,
+  UnsupportedCarrierError,
   UnsupportedFulfillmentMethodError,
 } from '../../domain/errors/fulfillment-domain.error';
 const GROUP_POPULATE = [
@@ -219,6 +225,10 @@ export class FulfillmentService {
     const usedQuantities = this.sumActiveShipmentQuantities(group);
     this.assertQuantityAvailable(requestedItems, groupItems, usedQuantities);
 
+    const carrier = normalizeOptionalText(input.carrier);
+    const trackingNumber = normalizeOptionalText(input.trackingNumber);
+    this.assertCarrierTrackingNumber(carrier, trackingNumber);
+
     // A new Shipment records the Order's origin countries; the address snapshot
     // is immutable historical evidence on older Shipments and is never rewritten.
     const shipment = entityManager.create(ShipmentEntity, {
@@ -226,8 +236,8 @@ export class FulfillmentService {
       orderId: group.orderId,
       shopId: group.shopId,
       status: ShipmentStatus.PREPARED,
-      carrier: normalizeOptionalText(input.carrier),
-      trackingNumber: normalizeOptionalText(input.trackingNumber),
+      carrier,
+      trackingNumber,
       note: normalizeOptionalText(input.note),
       originCountries: [...input.originCountries],
       preparedAt: new Date(),
@@ -300,13 +310,18 @@ export class FulfillmentService {
       }
     }
 
-    if (input.carrier !== undefined) {
-      shipment.carrier = normalizeOptionalText(input.carrier);
-    }
+    const carrier = input.carrier === undefined
+      ? shipment.carrier ?? undefined
+      : normalizeOptionalText(input.carrier);
 
-    if (input.trackingNumber !== undefined) {
-      shipment.trackingNumber = normalizeOptionalText(input.trackingNumber);
-    }
+    const trackingNumber = input.trackingNumber === undefined
+      ? shipment.trackingNumber ?? undefined
+      : normalizeOptionalText(input.trackingNumber);
+
+    this.assertCarrierTrackingNumber(carrier, trackingNumber);
+
+    shipment.carrier = carrier;
+    shipment.trackingNumber = trackingNumber;
 
     if (input.note !== undefined) {
       shipment.note = normalizeOptionalText(input.note);
@@ -394,6 +409,8 @@ export class FulfillmentService {
     const note = input.note === undefined
       ? shipment.note
       : normalizeOptionalText(input.note);
+
+    this.assertCarrierTrackingNumber(carrier, trackingNumber);
 
     // Replaying an unchanged command is a no-op: it must not add another Shipment
     // Update or refresh delivered/dispatched timestamps.
@@ -719,6 +736,39 @@ export class FulfillmentService {
       if (item.quantity > available) {
         throw new ShipmentQuantityExceededError();
       }
+    }
+  }
+
+  /**
+   * A missing carrier or tracking number skips the pattern check; a recorded
+   * carrier must be one the catalogue knows, and its tracking number must match
+   * the format the provider publishes. `other` accepts any non-empty number.
+   */
+  private assertCarrierTrackingNumber(
+    carrier?: string | null,
+    trackingNumber?: string | null,
+  ): void {
+    if (!carrier) {
+      // A number with no carrier cannot be validated, so it is not recordable;
+      // a carrier without a number is an unfinished preparation and is allowed.
+      if (trackingNumber) {
+        throw new InvalidCarrierTrackingNumberError();
+      }
+
+      return;
+    }
+
+    const carrierDefinition = findCarrier(carrier);
+
+    if (!carrierDefinition) {
+      throw new UnsupportedCarrierError();
+    }
+
+    if (
+      trackingNumber != null
+      && !isValidCarrierTrackingNumber(carrierDefinition, trackingNumber)
+    ) {
+      throw new InvalidCarrierTrackingNumberError();
     }
   }
 

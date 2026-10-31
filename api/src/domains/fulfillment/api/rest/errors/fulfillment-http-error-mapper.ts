@@ -17,12 +17,14 @@ import {
 } from '../../../app/errors/fulfillment-app.error';
 import {
   FulfillmentDomainError,
+  InvalidCarrierTrackingNumberError,
   InvalidFulfillmentQuantityError,
   InvalidShipmentJourneyTransitionError,
   ShipmentAlreadyVoidedError,
   ShipmentItemNotInGroupError,
   ShipmentNotPreparedError,
   ShipmentQuantityExceededError,
+  UnsupportedCarrierError,
   UnsupportedFulfillmentMethodError,
 } from '../../../domain/errors/fulfillment-domain.error';
 
@@ -43,7 +45,9 @@ type FulfillmentHttpErrorCode =
   | 'INVALID_SHIPMENT_JOURNEY_TRANSITION'
   | 'SHIPMENT_ITEM_NOT_IN_GROUP'
   | 'SHIPMENT_QUANTITY_EXCEEDED'
-  | 'INVALID_FULFILLMENT_QUANTITY';
+  | 'INVALID_FULFILLMENT_QUANTITY'
+  | 'UNSUPPORTED_CARRIER'
+  | 'INVALID_CARRIER_TRACKING_NUMBER';
 
 export function isFulfillmentError(error: unknown): error is FulfillmentError {
   return error instanceof FulfillmentAppError || error instanceof FulfillmentDomainError;
@@ -124,6 +128,12 @@ function getFulfillmentErrorCode(error: FulfillmentError): FulfillmentHttpErrorC
   }
   if (error instanceof InvalidFulfillmentQuantityError) {
     return 'INVALID_FULFILLMENT_QUANTITY';
+  }
+  if (error instanceof UnsupportedCarrierError) {
+    return 'UNSUPPORTED_CARRIER';
+  }
+  if (error instanceof InvalidCarrierTrackingNumberError) {
+    return 'INVALID_CARRIER_TRACKING_NUMBER';
   }
 
   return 'ORDER_NOT_ELIGIBLE_FOR_FULFILLMENT';

@@ -65,6 +65,8 @@ type Shipment = {
   group_id: string;
   status: string;
   carrier?: string;
+  carrier_name?: string;
+  carrier_observable?: boolean;
   tracking_number?: string;
   shipment_note?: string;
   prepared_at: string;
@@ -937,14 +939,16 @@ describe('Fulfillment flow (integration)', () => {
     const prepareResponse = await seller.agent
       .post(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${order.orderPublicId}/fulfillment/shipments`)
       .set('Idempotency-Key', randomUUID())
-      .send({ carrier: 'USPS', tracking_number: 'TRACK-1', shipment_note: 'Front desk' })
+      .send({ carrier: 'usps', tracking_number: '9400111899223100001234', shipment_note: 'Front desk' })
       .expect(201);
 
     const preparedShipment = (prepareResponse.body.fulfillment as Fulfillment)
       .groups[0]!.shipments[0]!;
     expect(preparedShipment.status).toBe('prepared');
-    expect(preparedShipment.carrier).toBe('USPS');
-    expect(preparedShipment.tracking_number).toBe('TRACK-1');
+    expect(preparedShipment.carrier).toBe('usps');
+    expect(preparedShipment.tracking_number).toBe('9400111899223100001234');
+    expect(preparedShipment.carrier_name).toBe('USPS');
+    expect(preparedShipment.carrier_observable).toBe(true);
     expect(preparedShipment.dispatched_at ?? null).toBeNull();
     expect(preparedShipment.items).toEqual([
       { order_item_id: order.orderItemId, quantity: 2 },
@@ -1009,7 +1013,7 @@ describe('Fulfillment flow (integration)', () => {
     expect(buyerFulfillment.groups[0]!.shipments[0]).toMatchObject({
       id: preparedShipment.id,
       status: 'delivered',
-      tracking_number: 'TRACK-1',
+      tracking_number: '9400111899223100001234',
     });
 
     // Authorized guest tracking sees the same collection.
@@ -1019,7 +1023,7 @@ describe('Fulfillment flow (integration)', () => {
       .expect(200);
     const guestOrder = guestLookup.body.order_shops[0];
     expect(guestOrder.fulfillment.status).toBe('delivered');
-    expect(guestOrder.fulfillment.groups[0].shipments[0].tracking_number).toBe('TRACK-1');
+    expect(guestOrder.fulfillment.groups[0].shipments[0].tracking_number).toBe('9400111899223100001234');
 
     // A non-matching zip leaks nothing.
     const wrongZip = await request(app.getHttpServer())
@@ -1037,7 +1041,7 @@ describe('Fulfillment flow (integration)', () => {
     await otherSeller.agent
       .post(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${order.orderPublicId}/fulfillment/shipments`)
       .set('Idempotency-Key', randomUUID())
-      .send({ carrier: 'DHL' })
+      .send({ carrier: 'dhl' })
       .expect(403);
 
     const shipmentsAfterCrossShop = await sql.query(
@@ -1155,7 +1159,7 @@ describe('Fulfillment flow (integration)', () => {
     const blocked = await seller.agent
       .post(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${legacyOrder.orderPublicId}/fulfillment/shipments`)
       .set('Idempotency-Key', randomUUID())
-      .send({ carrier: 'USPS' })
+      .send({ carrier: 'usps' })
       .expect(409);
     expect(blocked.body.code).toBe('FULFILLMENT_RECONCILIATION_REQUIRED');
 
@@ -1205,7 +1209,7 @@ describe('Fulfillment flow (integration)', () => {
     const afterReconcile = await seller.agent
       .post(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${legacyOrder.orderPublicId}/fulfillment/shipments`)
       .set('Idempotency-Key', randomUUID())
-      .send({ carrier: 'USPS' })
+      .send({ carrier: 'usps' })
       .expect(201);
     expect(afterReconcile.body.fulfillment.groups[0].shipments[0].items).toHaveLength(1);
     expect(afterReconcile.body.fulfillment.groups[0].shipments[0].items[0].quantity).toBe(3);
@@ -1252,7 +1256,7 @@ describe('Fulfillment flow (integration)', () => {
     const amended = await seller.agent
       .patch(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${order.orderPublicId}/fulfillment/shipments/${shipmentId}`)
       .set('Idempotency-Key', randomUUID())
-      .send({ tracking_number: 'TRACK-EDIT' })
+      .send({ carrier: 'other', tracking_number: 'TRACK-EDIT' })
       .expect(200);
     expect(amended.body.fulfillment.groups[0].shipments[0].tracking_number).toBe('TRACK-EDIT');
 
@@ -1294,8 +1298,8 @@ describe('Fulfillment flow (integration)', () => {
 
     const first = await prepareShipmentRequest(seller, order.orderPublicId, {
       items: [{ order_item_id: order.orderItemId, quantity: 1 }],
-      carrier: 'USPS',
-      tracking_number: 'PARCEL-1',
+      carrier: 'usps',
+      tracking_number: '9400111899223100001234',
     }).expect(201);
     const firstShipment = (first.body.fulfillment as Fulfillment).groups[0]!.shipments[0]!;
     expect(firstShipment.items).toEqual([
@@ -1311,8 +1315,8 @@ describe('Fulfillment flow (integration)', () => {
 
     const second = await prepareShipmentRequest(seller, order.orderPublicId, {
       items: [{ order_item_id: order.orderItemId, quantity: 2 }],
-      carrier: 'DHL',
-      tracking_number: 'PARCEL-2',
+      carrier: 'dhl',
+      tracking_number: '1234567890',
     }).expect(201);
     const secondShipment = (second.body.fulfillment as Fulfillment).groups[0]!.shipments[1]!;
     expect((second.body.fulfillment as Fulfillment).groups[0]!.shipments).toHaveLength(2);
@@ -1514,7 +1518,7 @@ describe('Fulfillment flow (integration)', () => {
     const idempotencyKey = randomUUID();
     const body = {
       items: [{ order_item_id: order.orderItemId, quantity: 1 }],
-      carrier: 'USPS',
+      carrier: 'usps',
     };
 
     const first = await seller.agent
@@ -1656,8 +1660,8 @@ describe('Fulfillment flow (integration)', () => {
     await assignGroup({ order, shopId: seller.shopId });
 
     await prepareShipmentRequest(seller, order.orderPublicId, {
-      carrier: 'USPS',
-      tracking_number: 'LABEL-ONLY',
+      carrier: 'usps',
+      tracking_number: '9400111899223100001234',
     }).expect(201);
 
     await cancelOrderRequest(seller, order.orderPublicId, 'Label only').expect(200);
@@ -1720,5 +1724,195 @@ describe('Fulfillment flow (integration)', () => {
       dispatched: 1,
       outstanding: 1,
     });
+  });
+
+  it('lists the carrier catalogue for authenticated sellers and rejects anonymous access', async () => {
+    const seller = await createSeller('seller-carriers');
+
+    await request(app.getHttpServer())
+      .get(`${API_PREFIX}/carriers`)
+      .expect(401);
+
+    const response = await seller.agent
+      .get(`${API_PREFIX}/carriers`)
+      .expect(200);
+
+    expect(response.body).toEqual({
+      carriers: [
+        {
+          code: 'usps',
+          name: 'USPS',
+          tracking_pattern: '^9\\d{21}$',
+          tracking_hint: '22 digits starting with 9',
+          observable: true,
+          label_supported: true,
+        },
+        {
+          code: 'dhl',
+          name: 'DHL',
+          tracking_pattern: '^\\d{10}$',
+          tracking_hint: '10 digits',
+          observable: true,
+          label_supported: true,
+        },
+        {
+          code: 'vnpost',
+          name: 'VNPOST',
+          tracking_pattern: '^[A-Z]{2}\\d{9}VN$',
+          tracking_hint: 'two letters, nine digits, then VN',
+          observable: true,
+          label_supported: true,
+        },
+        {
+          code: 'other',
+          name: 'Other',
+          tracking_pattern: null,
+          tracking_hint: null,
+          observable: false,
+          label_supported: false,
+        },
+      ],
+    });
+  });
+
+  it('validates carrier tracking numbers and reports the resolved carrier', async () => {
+    const seller = await createSeller('seller-carrier-codes');
+    const buyer = await createBuyer();
+    const { productId, inventoryId } = await createProduct({
+      seller,
+      title: 'Carrier Crate',
+      sku: `CAR-${Date.now()}`,
+      priceMinor: 1999,
+      stock: 10,
+    });
+
+    async function prepareFor(carrier: string, trackingNumber: string) {
+      const order = await seedOrder({
+        seller,
+        buyer,
+        productId,
+        inventoryId,
+        quantity: 1,
+        status: 'paid',
+      });
+      await assignGroup({ order, shopId: seller.shopId });
+
+      return prepareShipmentRequest(seller, order.orderPublicId, {
+        carrier,
+        tracking_number: trackingNumber,
+      });
+    }
+
+    const unknownCarrier = await prepareFor('fedex', '1234567890');
+    expect(unknownCarrier.status).toBe(400);
+    expect(unknownCarrier.body.code).toBe('UNSUPPORTED_CARRIER');
+
+    const mismatchedNumber = await prepareFor('usps', 'TRACK-1');
+    expect(mismatchedNumber.status).toBe(400);
+    expect(mismatchedNumber.body.code).toBe('INVALID_CARRIER_TRACKING_NUMBER');
+
+    const matchingNumber = await prepareFor('usps', '  9400111899223100001234  ');
+    expect(matchingNumber.status).toBe(201);
+    expect(matchingNumber.body.fulfillment.groups[0].shipments[0]).toMatchObject({
+      carrier: 'usps',
+      carrier_name: 'USPS',
+      carrier_observable: true,
+      tracking_number: '9400111899223100001234',
+    });
+
+    const otherCarrier = await prepareFor('other', 'ARBITRARY-123');
+    expect(otherCarrier.status).toBe(201);
+    expect(otherCarrier.body.fulfillment.groups[0].shipments[0]).toMatchObject({
+      carrier: 'other',
+      carrier_name: 'Other',
+      carrier_observable: false,
+      tracking_number: 'ARBITRARY-123',
+    });
+
+    // Amend validates the resulting carrier+tracking pair, not only the fields sent.
+    const amendOrder = await seedOrder({
+      seller,
+      buyer,
+      productId,
+      inventoryId,
+      quantity: 1,
+      status: 'paid',
+    });
+    await assignGroup({ order: amendOrder, shopId: seller.shopId });
+    const prepared = await prepareShipmentRequest(seller, amendOrder.orderPublicId, {
+      carrier: 'usps',
+      tracking_number: '9400111899223100001234',
+    }).expect(201);
+    const shipmentId = (prepared.body.fulfillment as Fulfillment)
+      .groups[0]!.shipments[0]!.id;
+
+    const invalidAmend = await seller.agent
+      .patch(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${amendOrder.orderPublicId}/fulfillment/shipments/${shipmentId}`)
+      .set('Idempotency-Key', randomUUID())
+      .send({ tracking_number: 'NOT-A-USPS-NUMBER' });
+    expect(invalidAmend.status).toBe(400);
+    expect(invalidAmend.body.code).toBe('INVALID_CARRIER_TRACKING_NUMBER');
+
+    const validAmend = await seller.agent
+      .patch(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${amendOrder.orderPublicId}/fulfillment/shipments/${shipmentId}`)
+      .set('Idempotency-Key', randomUUID())
+      .send({ carrier: 'vnpost', tracking_number: 'EA123456789VN' })
+      .expect(200);
+    expect(validAmend.body.fulfillment.groups[0].shipments[0]).toMatchObject({
+      carrier: 'vnpost',
+      carrier_name: 'VNPOST',
+      carrier_observable: true,
+      tracking_number: 'EA123456789VN',
+    });
+  });
+
+  it('rejects a number with no carrier and invented carriers on the journey path', async () => {
+    const seller = await createSeller('seller-carrier-loopholes');
+    const buyer = await createBuyer();
+    const { productId, inventoryId } = await createProduct({
+      seller,
+      title: 'Carrier Loophole Crate',
+      sku: `CRL-${Date.now()}`,
+      priceMinor: 1999,
+      stock: 10,
+    });
+
+    const order = await seedOrder({
+      seller,
+      buyer,
+      productId,
+      inventoryId,
+      quantity: 1,
+      status: 'paid',
+    });
+    await assignGroup({ order, shopId: seller.shopId });
+
+    // A number cannot be validated without its carrier, so it is not recordable.
+    const withoutCarrier = await prepareShipmentRequest(seller, order.orderPublicId, {
+      tracking_number: 'ARBITRARY-1',
+    });
+    expect(withoutCarrier.status).toBe(400);
+    expect(withoutCarrier.body.code).toBe('INVALID_CARRIER_TRACKING_NUMBER');
+
+    const prepared = await prepareShipmentRequest(seller, order.orderPublicId, {
+      carrier: 'usps',
+      tracking_number: '9400111899223100001234',
+    }).expect(201);
+    const shipmentId = (prepared.body.fulfillment as Fulfillment)
+      .groups[0]!.shipments[0]!.id;
+
+    const inventedCarrier = await seller.agent
+      .post(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${order.orderPublicId}/fulfillment/shipments/${shipmentId}/journey`)
+      .set('Idempotency-Key', randomUUID())
+      .send({ status: 'dispatched', carrier: 'fedex' });
+    expect(inventedCarrier.status).toBe(400);
+    expect(inventedCarrier.body.code).toBe('UNSUPPORTED_CARRIER');
+
+    const mismatchedJourney = await seller.agent
+      .post(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${order.orderPublicId}/fulfillment/shipments/${shipmentId}/journey`)
+      .set('Idempotency-Key', randomUUID())
+      .send({ status: 'dispatched', tracking_number: 'TRACK-1' });
+    expect(mismatchedJourney.status).toBe(400);
+    expect(mismatchedJourney.body.code).toBe('INVALID_CARRIER_TRACKING_NUMBER');
   });
 });

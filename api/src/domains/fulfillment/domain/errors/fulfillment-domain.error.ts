@@ -47,3 +47,15 @@ export class ShipmentQuantityExceededError extends FulfillmentDomainError {
     super('Shipment quantity exceeds the group quantity still available to ship');
   }
 }
+
+export class UnsupportedCarrierError extends FulfillmentDomainError {
+  constructor() {
+    super('Unsupported carrier code');
+  }
+}
+
+export class InvalidCarrierTrackingNumberError extends FulfillmentDomainError {
+  constructor() {
+    super('Tracking number does not match the carrier format');
+  }
+}

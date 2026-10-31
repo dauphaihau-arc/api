@@ -38,6 +38,8 @@ export interface FulfillmentShipmentView {
   groupId: string;
   status: ShipmentStatus;
   carrier?: string;
+  carrierName?: string;
+  carrierObservable?: boolean;
   trackingNumber?: string;
   note?: string;
   originCountries: string[];

@@ -12,6 +12,7 @@ import type {
 } from './fulfillment.types';
 import { FulfillmentGroupEntity } from '../infra/persistence/entities/fulfillment-group.entity';
 import { ShipmentStatus } from '../domain/enums/shipment-status.enum';
+import { findCarrier } from '../domain/carrier-catalogue';
 
 const GROUP_POPULATE = [
   'items',
@@ -98,41 +99,47 @@ function toGroupView(
       const difference = left.preparedAt.getTime() - right.preparedAt.getTime();
       return difference !== 0 ? difference : left.id.localeCompare(right.id);
     })
-    .map((shipment): FulfillmentShipmentView => ({
-      id: shipment.id,
-      publicId: shipment.publicId,
-      groupId: group.id,
-      status: shipment.status,
-      carrier: shipment.carrier,
-      trackingNumber: shipment.trackingNumber,
-      note: shipment.note,
-      originCountries: shipment.originCountries,
-      preparedAt: shipment.preparedAt,
-      dispatchedAt: shipment.dispatchedAt,
-      deliveredAt: shipment.deliveredAt,
-      voidedAt: shipment.voidedAt,
-      createdAt: shipment.createdAt,
-      updatedAt: shipment.updatedAt,
-      items: shipment.items.getItems().map((item) => ({
-        orderItemId: item.orderItemId,
-        quantity: item.quantity,
-      })),
-      updates: shipment.updates.getItems()
-        .slice()
-        .sort((left, right) => {
-          const difference = left.occurredAt.getTime() - right.occurredAt.getTime();
-          return difference !== 0 ? difference : left.id.localeCompare(right.id);
-        })
-        .map((update): FulfillmentShipmentUpdateView => ({
-          id: update.id,
-          status: update.status,
-          actorType: update.actorType,
-          actorId: update.actorId,
-          source: update.source,
-          occurredAt: update.occurredAt,
-          note: update.note,
+    .map((shipment): FulfillmentShipmentView => {
+      const carrier = findCarrier(shipment.carrier);
+
+      return {
+        id: shipment.id,
+        publicId: shipment.publicId,
+        groupId: group.id,
+        status: shipment.status,
+        carrier: shipment.carrier,
+        carrierName: carrier?.name,
+        carrierObservable: carrier?.observable,
+        trackingNumber: shipment.trackingNumber,
+        note: shipment.note,
+        originCountries: shipment.originCountries,
+        preparedAt: shipment.preparedAt,
+        dispatchedAt: shipment.dispatchedAt,
+        deliveredAt: shipment.deliveredAt,
+        voidedAt: shipment.voidedAt,
+        createdAt: shipment.createdAt,
+        updatedAt: shipment.updatedAt,
+        items: shipment.items.getItems().map((item) => ({
+          orderItemId: item.orderItemId,
+          quantity: item.quantity,
         })),
-    }));
+        updates: shipment.updates.getItems()
+          .slice()
+          .sort((left, right) => {
+            const difference = left.occurredAt.getTime() - right.occurredAt.getTime();
+            return difference !== 0 ? difference : left.id.localeCompare(right.id);
+          })
+          .map((update): FulfillmentShipmentUpdateView => ({
+            id: update.id,
+            status: update.status,
+            actorType: update.actorType,
+            actorId: update.actorId,
+            source: update.source,
+            occurredAt: update.occurredAt,
+            note: update.note,
+          })),
+      };
+    });
 
   const orderedQuantity = sumOrderedQuantity(items);
   return {

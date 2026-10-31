@@ -678,7 +678,7 @@ describe('Payout Run pays available balances (integration)', () => {
       .set('Idempotency-Key', randomUUID())
       .send({
         items: [{ order_item_id: item.id, quantity: 1 }],
-        carrier: 'USPS',
+        carrier: 'other',
         tracking_number: `TRACK-${randomUUID().slice(0, 8)}`,
       })
       .expect(201);

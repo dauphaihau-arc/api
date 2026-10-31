@@ -617,6 +617,12 @@ export class FulfillmentShipmentResponseDto {
   carrier?: string;
 
   @ApiProperty({ type: String, required: false })
+  carrier_name?: string;
+
+  @ApiProperty({ type: Boolean, required: false })
+  carrier_observable?: boolean;
+
+  @ApiProperty({ type: String, required: false })
   tracking_number?: string;
 
   @ApiProperty({ type: String, required: false })
@@ -842,6 +848,8 @@ function toCheckoutFulfillmentResponse(fulfillment: OrderFulfillmentSummary) {
         group_id: shipment.groupId,
         status: shipment.status,
         carrier: shipment.carrier,
+        carrier_name: shipment.carrierName,
+        carrier_observable: shipment.carrierObservable,
         tracking_number: shipment.trackingNumber,
         shipment_note: shipment.note,
         origin_countries: shipment.originCountries,

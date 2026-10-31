@@ -58,6 +58,11 @@ export const shopOrderFulfillmentControllerErrorResponses = {
       { code: 'FULFILLMENT_GROUP_SELECTION_REQUIRED', message: 'This order has multiple fulfillment groups; select one' },
       { code: 'UNSUPPORTED_FULFILLMENT_METHOD', message: 'Only seller fulfillment is currently supported' },
       invalidQuantityExample,
+      { code: 'UNSUPPORTED_CARRIER', message: 'Unsupported carrier code' },
+      {
+        code: 'INVALID_CARRIER_TRACKING_NUMBER',
+        message: 'Tracking number does not match the carrier format',
+      },
       { code: 'SHIPMENT_ITEM_NOT_IN_GROUP', message: 'Shipment items must belong to the order item quantities in this fulfillment group' },
     ],
     404: [
@@ -80,6 +85,11 @@ export const shopOrderFulfillmentControllerErrorResponses = {
       notEligibleExample,
       { code: 'FULFILLMENT_GROUP_SELECTION_REQUIRED', message: 'This order has multiple fulfillment groups; select one' },
       invalidQuantityExample,
+      { code: 'UNSUPPORTED_CARRIER', message: 'Unsupported carrier code' },
+      {
+        code: 'INVALID_CARRIER_TRACKING_NUMBER',
+        message: 'Tracking number does not match the carrier format',
+      },
       { code: 'SHIPMENT_ITEM_NOT_IN_GROUP', message: 'Shipment items must belong to the order item quantities in this fulfillment group' },
     ],
     404: [

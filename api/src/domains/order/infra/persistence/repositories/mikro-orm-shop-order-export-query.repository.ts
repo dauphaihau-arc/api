@@ -147,7 +147,7 @@ function serializeShipmentsSummary(view?: FulfillmentOrderView): string {
       const parts = [
         shipment.id,
         shipment.status,
-        shipment.carrier ?? '',
+        shipment.carrierName ?? shipment.carrier ?? '',
         shipment.trackingNumber ?? '',
         shipment.items
           .map((item) => `${item.orderItemId}:${item.quantity}`)
