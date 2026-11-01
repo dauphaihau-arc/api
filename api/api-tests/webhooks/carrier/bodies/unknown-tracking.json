@@ -1,0 +1,8 @@
+{
+  "event_id": "evt-unknown-tracking-0001",
+  "carrier": "usps",
+  "tracking_number": "9400111899999999999999",
+  "event_code": "PICKED_UP",
+  "location": "Test Hub",
+  "occurred_at": "2026-10-31T09:00:00.000Z"
+}

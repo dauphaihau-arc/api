@@ -1,0 +1,65 @@
+set shell := ["bash", "-eu", "-o", "pipefail", "-c"]
+
+# `just carrier <recipe>` from api-tests, or `just <recipe>` from this directory.
+vars_file := "../../hurl.variables"
+pickup_vars := "/tmp/arc-carrier-pickup.variables"
+
+static_cases := "missing-signature.hurl invalid-signature.hurl unknown-tracking.manual.hurl unsupported-code.manual.hurl"
+
+prepare := "../../fulfillment/prepare-shipment.manual.hurl"
+pickup := prepare + " pickup.manual.hurl"
+transit := pickup + " transit.manual.hurl"
+delivery := transit + " delivery.manual.hurl"
+
+default:
+  @just --list
+
+# Static signature/validation cases; needs CARRIER_WEBHOOK_SECRET.
+# Runs the static cases.
+static:
+  hurl --test --variables-file {{vars_file}} {{static_cases}}
+
+# Writes the run's tracking numbers, event ids, signed bodies and variables.
+# Regenerates the per-run fixtures.
+generate:
+  node generate-pickup.mjs
+
+# Prints the bare HMAC-SHA256 hex digest of a body file.
+sign file:
+  @openssl dgst -sha256 -hmac "${CARRIER_WEBHOOK_SECRET:-carrier-webhook-test-secret}" "{{file}}" | awk '{print $NF}'
+
+# Runs the prepare half only.
+prepare: generate
+  hurl --test --variables-file {{pickup_vars}} {{prepare}}
+
+# Runs prepare, then pickup.
+pickup: generate
+  hurl --test --jobs 1 --variables-file {{pickup_vars}} {{pickup}}
+
+# Runs prepare, then pickup and transit.
+transit: generate
+  hurl --test --jobs 1 --variables-file {{pickup_vars}} {{transit}}
+
+# Runs prepare → pickup → transit, then failure and return.
+failure-return: generate
+  hurl --test --jobs 1 --variables-file {{pickup_vars}} {{transit}} failure-return.manual.hurl
+
+# Runs prepare, then pickup, transit and delivery.
+delivery: generate
+  hurl --test --jobs 1 --variables-file {{pickup_vars}} --variable outbox_drain_secret="$(grep '^OUTBOX_DRAIN_TRIGGER_SECRET=' ../../../.env | cut -d= -f2- || true)" {{delivery}}
+
+# Runs prepare → pickup → transit → delivery, then the late event.
+out-of-order: generate
+  hurl --test --jobs 1 --variables-file {{pickup_vars}} --variable outbox_drain_secret="$(grep '^OUTBOX_DRAIN_TRIGGER_SECRET=' ../../../.env | cut -d= -f2- || true)" {{delivery}} out-of-order.manual.hurl
+
+# Runs prepare, then pickup twice.
+duplicate: generate
+  hurl --test --jobs 1 --variables-file {{pickup_vars}} {{pickup}} duplicate.manual.hurl
+
+# Runs prepare, pickup, then the cross-carrier case.
+cross-carrier: generate
+  hurl --test --jobs 1 --variables-file {{pickup_vars}} {{pickup}} cross-carrier.manual.hurl
+
+# Runs the voided-Shipment case.
+voided: generate
+  hurl --test --variables-file {{pickup_vars}} voided.manual.hurl

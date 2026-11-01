@@ -1,0 +1,7 @@
+{
+  "event_id": "evt-unsupported-code-0001",
+  "carrier": "usps",
+  "tracking_number": "9400111899999999999999",
+  "event_code": "WEATHER_DELAY",
+  "occurred_at": "2026-10-31T09:05:00.000Z"
+}
