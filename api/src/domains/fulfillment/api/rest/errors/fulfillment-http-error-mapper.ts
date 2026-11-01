@@ -17,6 +17,7 @@ import {
 } from '../../../app/errors/fulfillment-app.error';
 import {
   FulfillmentDomainError,
+  InvalidCarrierEventCodeError,
   InvalidCarrierTrackingNumberError,
   InvalidFulfillmentQuantityError,
   InvalidShipmentJourneyTransitionError,
@@ -47,7 +48,8 @@ type FulfillmentHttpErrorCode =
   | 'SHIPMENT_QUANTITY_EXCEEDED'
   | 'INVALID_FULFILLMENT_QUANTITY'
   | 'UNSUPPORTED_CARRIER'
-  | 'INVALID_CARRIER_TRACKING_NUMBER';
+  | 'INVALID_CARRIER_TRACKING_NUMBER'
+  | 'INVALID_CARRIER_EVENT';
 
 export function isFulfillmentError(error: unknown): error is FulfillmentError {
   return error instanceof FulfillmentAppError || error instanceof FulfillmentDomainError;
@@ -134,6 +136,9 @@ function getFulfillmentErrorCode(error: FulfillmentError): FulfillmentHttpErrorC
   }
   if (error instanceof InvalidCarrierTrackingNumberError) {
     return 'INVALID_CARRIER_TRACKING_NUMBER';
+  }
+  if (error instanceof InvalidCarrierEventCodeError) {
+    return 'INVALID_CARRIER_EVENT';
   }
 
   return 'ORDER_NOT_ELIGIBLE_FOR_FULFILLMENT';

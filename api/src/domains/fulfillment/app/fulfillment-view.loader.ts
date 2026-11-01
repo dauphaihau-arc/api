@@ -137,6 +137,8 @@ function toGroupView(
             source: update.source,
             occurredAt: update.occurredAt,
             note: update.note,
+            eventCode: update.eventCode,
+            location: update.location,
           })),
       };
     });

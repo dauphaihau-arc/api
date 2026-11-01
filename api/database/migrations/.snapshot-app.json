@@ -17095,11 +17095,71 @@
           "comment": null,
           "enumItems": [],
           "mappedType": "json"
+        },
+        "carrier_event_id": {
+          "name": "carrier_event_id",
+          "type": "varchar(255)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": 255,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "string"
+        },
+        "event_code": {
+          "name": "event_code",
+          "type": "varchar(64)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": 64,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "string"
+        },
+        "location": {
+          "name": "location",
+          "type": "varchar(255)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": 255,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "string"
         }
       },
       "name": "shipment_updates",
       "schema": "public",
       "indexes": [
+        {
+          "columnNames": [
+            "actor_id",
+            "carrier_event_id"
+          ],
+          "composite": true,
+          "constraint": false,
+          "keyName": "shipment_updates_carrier_event_unique",
+          "unique": true,
+          "primary": false,
+          "expression": "CREATE UNIQUE INDEX shipment_updates_carrier_event_unique ON public.shipment_updates USING btree (actor_id, carrier_event_id) WHERE (carrier_event_id IS NOT NULL)"
+        },
         {
           "columnNames": [
             "id"

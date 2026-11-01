@@ -14,6 +14,7 @@ import { OrderDeliveredOutboxService } from './app/services/order-delivered-outb
 import { AmendFulfillmentShipmentUseCase } from './app/use-cases/amend-fulfillment-shipment/amend-fulfillment-shipment.use-case';
 import { PrepareFulfillmentShipmentUseCase } from './app/use-cases/prepare-fulfillment-shipment/prepare-fulfillment-shipment.use-case';
 import { ReconcileOrderFulfillmentUseCase } from './app/use-cases/reconcile-order-fulfillment/reconcile-order-fulfillment.use-case';
+import { RecordCarrierEventUseCase } from './app/use-cases/record-carrier-event/record-carrier-event.use-case';
 import { UpdateShipmentJourneyUseCase } from './app/use-cases/update-shipment-journey/update-shipment-journey.use-case';
 import { VoidFulfillmentShipmentUseCase } from './app/use-cases/void-fulfillment-shipment/void-fulfillment-shipment.use-case';
 import { OrderFulfillmentContextPort } from './app/ports/order-fulfillment-context.port';
@@ -21,6 +22,7 @@ import { OrderFulfillmentViewPort } from './app/ports/order-fulfillment-view.por
 import { ShipmentPublicIdLookup } from './app/services/shipment-public-id-lookup.service';
 import { ShopOrderFulfillmentController } from './api/rest/shop-order-fulfillment.controller';
 import { CarriersController } from './api/rest/carriers.controller';
+import { CarrierWebhookController } from './api/rest/carrier-webhook.controller';
 import { ShipmentQueryRepository } from './app/ports/shipment-query.repository';
 import { FulfillmentGroupEntity } from './infra/persistence/entities/fulfillment-group.entity';
 import { FulfillmentGroupItemEntity } from './infra/persistence/entities/fulfillment-group-item.entity';
@@ -50,7 +52,11 @@ import { MikroOrmShipmentQueryRepository } from './infra/persistence/repositorie
       OutboxEventEntity,
     ]),
   ],
-  controllers: [ShopOrderFulfillmentController, CarriersController],
+  controllers: [
+    ShopOrderFulfillmentController,
+    CarriersController,
+    CarrierWebhookController,
+  ],
   providers: [
     FulfillmentService,
     FulfillmentCommandRunner,
@@ -60,6 +66,7 @@ import { MikroOrmShipmentQueryRepository } from './infra/persistence/repositorie
     VoidFulfillmentShipmentUseCase,
     UpdateShipmentJourneyUseCase,
     ReconcileOrderFulfillmentUseCase,
+    RecordCarrierEventUseCase,
     ShipmentPublicIdLookup,
     FulfillmentTargetResolver,
     {

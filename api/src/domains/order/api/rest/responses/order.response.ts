@@ -284,6 +284,12 @@ export class OrderShipmentUpdateResponseDto {
 
   @ApiProperty({ required: false })
   note?: string;
+
+  @ApiProperty({ required: false })
+  event_code?: string;
+
+  @ApiProperty({ required: false })
+  location?: string;
 }
 
 export class OrderShipmentResponseDto {
@@ -1601,6 +1607,8 @@ export function toFulfillmentSummaryResponse(
           source: update.source,
           occurred_at: update.occurredAt,
           note: update.note,
+          event_code: update.eventCode,
+          location: update.location,
         })),
       })),
     })),

@@ -59,3 +59,9 @@ export class InvalidCarrierTrackingNumberError extends FulfillmentDomainError {
     super('Tracking number does not match the carrier format');
   }
 }
+
+export class InvalidCarrierEventCodeError extends FulfillmentDomainError {
+  constructor() {
+    super('Carrier event code is not supported');
+  }
+}

@@ -10,6 +10,8 @@ import { FulfillmentMethod } from '../../domain/enums/fulfillment-method.enum';
 import { FulfillmentOperator } from '../../domain/enums/fulfillment-operator.enum';
 import { FulfillmentProvenance } from '../../domain/enums/fulfillment-provenance.enum';
 import { ShipmentStatus } from '../../domain/enums/shipment-status.enum';
+import { ShipmentUpdateActorType } from '../../domain/enums/shipment-update-actor-type.enum';
+import { ShipmentUpdateSource } from '../../domain/enums/shipment-update-source.enum';
 import {
   isDispatchStatus,
   isJourneyTransitionAllowed,
@@ -18,6 +20,10 @@ import {
   findCarrier,
   isValidCarrierTrackingNumber,
 } from '../../domain/carrier-catalogue';
+import {
+  CarrierEventCode,
+  resolveCarrierEventStatus,
+} from '../../domain/carrier-event';
 import { loadOrderFulfillmentViews } from '../fulfillment-view.loader';
 import type { LoadOrderFulfillmentOptions } from '../fulfillment-view.loader';
 import { FulfillmentGroupEntity } from '../../infra/persistence/entities/fulfillment-group.entity';
@@ -101,6 +107,28 @@ export type RecordJourneyInput = {
   note?: string;
   actor: FulfillmentActor;
   occurredAt?: Date;
+};
+
+export type RecordCarrierEventInput = {
+  carrier: string;
+  trackingNumber: string;
+  eventCode: CarrierEventCode;
+  eventId: string;
+  location?: string;
+  occurredAt: Date;
+  /** The exact wire body, kept as evidence beside the normalized columns. */
+  rawBody: string;
+};
+
+export type CarrierEventOutcome = 'accepted' | 'duplicate' | 'unknown';
+
+export type CarrierEventRecordResult = {
+  outcome: CarrierEventOutcome;
+
+  /** Present only for an accepted event, so the caller can project it. */
+  orderId?: string;
+
+  shopId?: string;
 };
 
 @Injectable()
@@ -469,6 +497,115 @@ export class FulfillmentService {
     return shipment;
   }
 
+  /**
+   * Ingests one signed carrier event. The event is resolved to exactly one live
+   * Shipment by `(carrier, tracking number)`; a repeated event id or an unknown
+   * pair is acknowledged without a write. Every accepted event records its own
+   * Shipment Update, even when the event does not move the status, and a stale
+   * event never regresses later evidence.
+   */
+  async recordCarrierEvent(
+    entityManager: EntityManager,
+    input: RecordCarrierEventInput,
+  ): Promise<CarrierEventRecordResult> {
+    const carrier = input.carrier.trim().toLowerCase();
+    const trackingNumber = input.trackingNumber.trim();
+    const eventId = input.eventId.trim();
+
+    // Concurrent deliveries of the same carrier event serialize here, so the
+    // replay check or its unique index can never turn an acknowledgement into a
+    // write. Event ids are unique per carrier, not globally.
+    await entityManager.execute(
+      'select pg_advisory_xact_lock(hashtextextended(?::text, 0))',
+      [`carrier-event:${carrier}:${eventId}`],
+    );
+
+    const duplicate = await entityManager
+      .getRepository(ShipmentUpdateEntity)
+      .findOne({ actorId: carrier, carrierEventId: eventId });
+
+    if (duplicate) {
+      return { outcome: 'duplicate' };
+    }
+
+    // Resolved without a lock: the group lock below is what serializes this
+    // write against dispatch and cancellation, and the shipment itself is
+    // re-read under a write lock afterwards.
+    const resolved = await entityManager.getRepository(ShipmentEntity).findOne({
+      carrier,
+      trackingNumber,
+    });
+
+    if (!resolved) {
+      return { outcome: 'unknown' };
+    }
+
+    await entityManager.getRepository(FulfillmentGroupEntity).find(
+      { id: resolved.group.id },
+      { lockMode: LockMode.PESSIMISTIC_WRITE },
+    );
+
+    const shipment = await entityManager.getRepository(ShipmentEntity).findOne(
+      { id: resolved.id, carrier, trackingNumber },
+      { lockMode: LockMode.PESSIMISTIC_WRITE, refresh: true },
+    );
+
+    if (!shipment || shipment.status === ShipmentStatus.VOIDED) {
+      return { outcome: 'unknown' };
+    }
+
+    const resultingStatus = resolveCarrierEventStatus(
+      shipment.status,
+      input.eventCode,
+    );
+    const becameDelivered = resultingStatus === ShipmentStatus.DELIVERED
+      && shipment.status !== ShipmentStatus.DELIVERED;
+
+    shipment.status = resultingStatus;
+
+    // Handover is implied by any dispatch-or-later carrier evidence: a carrier
+    // cannot scan a parcel it was never given.
+    if (isDispatchStatus(resultingStatus) && !shipment.dispatchedAt) {
+      shipment.dispatchedAt = input.occurredAt;
+    }
+
+    if (becameDelivered) {
+      shipment.deliveredAt = input.occurredAt;
+    }
+
+    entityManager.persist(entityManager.create(ShipmentUpdateEntity, {
+      shipment,
+      status: resultingStatus,
+      actorType: ShipmentUpdateActorType.CARRIER,
+      actorId: carrier,
+      source: ShipmentUpdateSource.CARRIER,
+      occurredAt: input.occurredAt,
+      eventCode: input.eventCode,
+      location: normalizeOptionalText(input.location),
+      carrierEventId: eventId,
+      payload: parseCarrierEventBody(input.rawBody),
+    }));
+
+    await entityManager.flush();
+
+    if (becameDelivered) {
+      // The existing delivery path owns Order completion and Payout
+      // Availability; carrier delivery is not a second mechanism.
+      await this.publishOrderDeliveredEvent(
+        entityManager,
+        shipment.orderId,
+        shipment.deliveredAt ?? input.occurredAt,
+        new Date(),
+      );
+    }
+
+    return {
+      outcome: 'accepted',
+      orderId: shipment.orderId,
+      shopId: shipment.shopId,
+    };
+  }
+
   async loadOrderFulfillment(
     entityManager: EntityManager,
     orderIds: string[],
@@ -805,4 +942,24 @@ function normalizeOptionalText(value?: string): string | undefined {
   }
 
   return value.trim() || undefined;
+}
+
+/**
+ * The wire body is already JSON by the time the event reaches the service. It is
+ * kept as parsed evidence so the carrier's own fields survive normalization;
+ * a non-object body is retained verbatim rather than discarded.
+ */
+function parseCarrierEventBody(rawBody: string): Record<string, unknown> {
+  try {
+    const parsed: unknown = JSON.parse(rawBody);
+
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      return parsed as Record<string, unknown>;
+    }
+  }
+  catch {
+    // Fall through to the verbatim evidence below.
+  }
+
+  return { raw_body: rawBody };
 }

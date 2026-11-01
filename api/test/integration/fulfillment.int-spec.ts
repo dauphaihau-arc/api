@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHmac, randomUUID } from 'node:crypto';
 import { mkdtemp, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -45,6 +45,8 @@ jest.setTimeout(60_000);
 const API_PREFIX = '/v1';
 const VALID_TEST_PASSWORD = 'Password123!';
 
+const CARRIER_WEBHOOK_SECRET = 'test-carrier-secret';
+
 type TestDatabase = {
   dbName: string;
   rootConfig: {
@@ -75,7 +77,13 @@ type Shipment = {
   voided_at?: string;
   items: ShipmentItem[];
   updates: Array<{
-    status: string; actor_type: string; source: string; occurred_at: string 
+    status: string;
+    actor_type: string;
+    actor_id?: string;
+    source: string;
+    occurred_at: string;
+    event_code?: string;
+    location?: string;
   }>;
 };
 type Group = {
@@ -202,6 +210,7 @@ describe('Fulfillment flow (integration)', () => {
     process.env.MAIL_DRIVER = 'logger';
     process.env.STORAGE_DRIVER = 'local';
     process.env.STORAGE_LOCAL_ROOT = storageRoot;
+    process.env.CARRIER_WEBHOOK_SECRET = CARRIER_WEBHOOK_SECRET;
 
     sql = new Client({
       host: testDb.rootConfig.host,
@@ -768,6 +777,94 @@ describe('Fulfillment flow (integration)', () => {
       .post(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${orderPublicId}/fulfillment/shipments/${shipmentId}/journey`)
       .set('Idempotency-Key', randomUUID())
       .send({ status });
+  }
+
+  function carrierSignature(body: unknown, secret = CARRIER_WEBHOOK_SECRET): string {
+    return `sha256=${createHmac('sha256', secret).update(JSON.stringify(body)).digest('hex')}`;
+  }
+
+  // Tracking numbers are unique per carrier among live Shipments, so each
+  // scenario uses its own number instead of colliding with earlier scenarios.
+  function uspsTrackingNumber(): string {
+    return `94001118992231${String(Math.floor(Math.random() * 100_000_000)).padStart(8, '0')}`;
+  }
+
+  function carrierEventBody(input: {
+    eventId?: string;
+    carrier?: string;
+    trackingNumber?: string;
+    eventCode: string;
+    location?: string;
+    occurredAt?: string;
+  }): Record<string, unknown> {
+    return {
+      event_id: input.eventId ?? randomUUID(),
+      carrier: input.carrier ?? 'usps',
+      tracking_number: input.trackingNumber ?? '9400111899223100001234',
+      event_code: input.eventCode,
+      ...(input.location === undefined ? {} : { location: input.location }),
+      occurred_at: input.occurredAt ?? new Date().toISOString(),
+    };
+  }
+
+  function carrierEventRequest(
+    body: Record<string, unknown>,
+    options: { signature?: string | null } = {},
+  ) {
+    const serverRequest = request(app.getHttpServer())
+      .post(`${API_PREFIX}/webhooks/carrier`);
+    const signature = options.signature === null
+      ? undefined
+      : options.signature ?? carrierSignature(body);
+
+    if (signature) {
+      serverRequest.set('x-carrier-signature', signature);
+    }
+
+    return serverRequest.send(body);
+  }
+
+  async function readShipmentUpdates(shipmentPublicId: string) {
+    const result = await sql.query<{
+      status: string;
+      actor_type: string;
+      actor_id: string | null;
+      source: string;
+      event_code: string | null;
+      location: string | null;
+      carrier_event_id: string | null;
+      payload: Record<string, unknown> | null;
+    }>(
+      `select "status", "actor_type", "actor_id", "source", "event_code", "location",
+              "carrier_event_id", "payload"
+         from "shipment_updates"
+        where "shipment_id" = (select "id" from "shipments" where "public_id" = $1)
+        order by "created_at", "id"`,
+      [shipmentPublicId],
+    );
+
+    return result.rows;
+  }
+
+  async function waitForOrderStatus(orderId: string, expected: string): Promise<void> {
+    for (let attempt = 0; attempt < 100; attempt += 1) {
+      const result = await sql.query<{ status: string }>(
+        'select "status" from "orders" where "id" = $1',
+        [orderId],
+      );
+
+      if (result.rows[0]?.status === expected) {
+        return;
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+
+    const result = await sql.query<{ status: string }>(
+      'select "status" from "orders" where "id" = $1',
+      [orderId],
+    );
+    throw new Error(`Expected order ${orderId} status ${expected}, received ${result.rows[0]?.status}`);
   }
 
   function cancelOrderRequest(seller: TestSeller, orderPublicId: string, reason: string) {
@@ -1915,4 +2012,460 @@ describe('Fulfillment flow (integration)', () => {
     expect(mismatchedJourney.status).toBe(400);
     expect(mismatchedJourney.body.code).toBe('INVALID_CARRIER_TRACKING_NUMBER');
   });
+
+  it('rejects unsigned carrier events and ignores duplicates and unknown tracking', async () => {
+    const seller = await createSeller('seller-carrier-ingress');
+    const buyer = await createBuyer();
+    const { productId, inventoryId } = await createProduct({
+      seller,
+      title: 'Carrier Ingress Parcel',
+      sku: `ING-${Date.now()}`,
+      priceMinor: 1999,
+      stock: 5,
+    });
+
+    const order = await seedOrder({
+      seller,
+      buyer,
+      productId,
+      inventoryId,
+      quantity: 1,
+      status: 'paid',
+    });
+    await assignGroup({ order, shopId: seller.shopId });
+
+    const trackingNumber = uspsTrackingNumber();
+    const prepared = await prepareShipmentRequest(seller, order.orderPublicId, {
+      carrier: 'usps',
+      tracking_number: trackingNumber,
+    }).expect(201);
+    const shipmentId = (prepared.body.fulfillment as Fulfillment)
+      .groups[0]!.shipments[0]!.id;
+
+    const pickupEvent = carrierEventBody({
+      trackingNumber,
+      eventCode: 'PICKED_UP',
+      occurredAt: '2026-10-31T09:00:00.000Z',
+    });
+
+    const missingSignature = await carrierEventRequest(pickupEvent, { signature: null })
+      .expect(401);
+    expect(missingSignature.body.code).toBe('INVALID_CARRIER_SIGNATURE');
+
+    const wrongSecret = await carrierEventRequest(pickupEvent, {
+      signature: carrierSignature(pickupEvent, 'not-the-carrier-secret'),
+    }).expect(401);
+    expect(wrongSecret.body.code).toBe('INVALID_CARRIER_SIGNATURE');
+
+    const malformedSignature = await carrierEventRequest(pickupEvent, {
+      signature: 'sha256=not-hex',
+    }).expect(401);
+    expect(malformedSignature.body.code).toBe('INVALID_CARRIER_SIGNATURE');
+
+    // A rejected call writes no evidence beyond the preparation update.
+    expect(await readShipmentUpdates(shipmentId)).toHaveLength(1);
+
+    // Unknown routing is acknowledged and ignored, without leaking existence.
+    const unknownEvent = carrierEventBody({
+      trackingNumber: uspsTrackingNumber(),
+      eventCode: 'IN_TRANSIT',
+      occurredAt: '2026-10-31T09:01:00.000Z',
+    });
+    const unknownResponse = await carrierEventRequest(unknownEvent).expect(200);
+    expect(unknownResponse.body).toEqual({});
+    expect(await readShipmentUpdates(shipmentId)).toHaveLength(1);
+
+    // A bare hex signature is accepted as well as the `sha256=` form.
+    const bareSignature = carrierSignature(pickupEvent).replace('sha256=', '');
+    const pickupResponse = await carrierEventRequest(pickupEvent, {
+      signature: bareSignature,
+    }).expect(200);
+    expect(pickupResponse.body).toEqual({});
+
+    const afterPickup = await readShipmentUpdates(shipmentId);
+    expect(afterPickup).toHaveLength(2);
+    expect(afterPickup[1]).toMatchObject({
+      status: 'dispatched',
+      actor_type: 'carrier',
+      actor_id: 'usps',
+      source: 'carrier',
+      event_code: 'PICKED_UP',
+      carrier_event_id: pickupEvent.event_id,
+      payload: {
+        event_id: pickupEvent.event_id,
+        carrier: 'usps',
+        tracking_number: trackingNumber,
+        event_code: 'PICKED_UP',
+        occurred_at: '2026-10-31T09:00:00.000Z',
+      },
+    });
+
+    // Replaying the same event id is acknowledged without another update.
+    const duplicateResponse = await carrierEventRequest(pickupEvent).expect(200);
+    expect(duplicateResponse.body).toEqual({});
+    expect(await readShipmentUpdates(shipmentId)).toHaveLength(2);
+
+    const view = await getShopOrder(seller.agent, seller.shopId, order.orderPublicId);
+    const shipment = view.order.fulfillment.groups[0]!.shipments[0]!;
+    expect(shipment.status).toBe('dispatched');
+    expect(shipment.updates.find((update) => update.event_code === 'PICKED_UP')).toMatchObject({
+      status: 'dispatched',
+      actor_type: 'carrier',
+      actor_id: 'usps',
+      source: 'carrier',
+      event_code: 'PICKED_UP',
+    });
+  });
+
+  it('scopes carrier event ids to their carrier', async () => {
+    const seller = await createSeller('seller-carrier-event-scope');
+    const buyer = await createBuyer();
+
+    async function preparedWith(
+      carrier: 'usps' | 'dhl',
+      title: string,
+    ): Promise<{ shipmentId: string; trackingNumber: string }> {
+      const { productId, inventoryId } = await createProduct({
+        seller,
+        title,
+        sku: `${carrier.toUpperCase()}-${Date.now()}-${Math.floor(Math.random() * 10_000)}`,
+        priceMinor: 1999,
+        stock: 5,
+      });
+      const order = await seedOrder({
+        seller,
+        buyer,
+        productId,
+        inventoryId,
+        quantity: 1,
+        status: 'paid',
+      });
+      await assignGroup({ order, shopId: seller.shopId });
+
+      const trackingNumber = carrier === 'usps'
+        ? uspsTrackingNumber()
+        : String(Math.floor(Math.random() * 10_000_000_000)).padStart(10, '0');
+      const prepared = await prepareShipmentRequest(seller, order.orderPublicId, {
+        carrier,
+        tracking_number: trackingNumber,
+      }).expect(201);
+
+      return {
+        shipmentId: (prepared.body.fulfillment as Fulfillment).groups[0]!.shipments[0]!.id,
+        trackingNumber,
+      };
+    }
+
+    const usps = await preparedWith('usps', 'Scoped Event USPS');
+    const dhl = await preparedWith('dhl', 'Scoped Event DHL');
+    const sharedEventId = randomUUID();
+    const occurredAt = '2026-10-31T10:00:00.000Z';
+
+    const uspsEvent = carrierEventBody({
+      eventId: sharedEventId,
+      carrier: 'usps',
+      trackingNumber: usps.trackingNumber,
+      eventCode: 'PICKED_UP',
+      occurredAt,
+    });
+    await carrierEventRequest(uspsEvent).expect(200);
+
+    // The same event id from a different carrier is a different event, so it is
+    // written rather than swallowed as a replay.
+    await carrierEventRequest(carrierEventBody({
+      eventId: sharedEventId,
+      carrier: 'dhl',
+      trackingNumber: dhl.trackingNumber,
+      eventCode: 'PICKED_UP',
+      occurredAt,
+    })).expect(200);
+
+    const uspsUpdates = await readShipmentUpdates(usps.shipmentId);
+    const dhlUpdates = await readShipmentUpdates(dhl.shipmentId);
+    expect(uspsUpdates).toHaveLength(2);
+    expect(dhlUpdates).toHaveLength(2);
+    expect(uspsUpdates[1]).toMatchObject({
+      status: 'dispatched',
+      actor_id: 'usps',
+      carrier_event_id: sharedEventId,
+    });
+    expect(dhlUpdates[1]).toMatchObject({
+      status: 'dispatched',
+      actor_id: 'dhl',
+      carrier_event_id: sharedEventId,
+    });
+
+    // A repeated id from the same carrier stays a no-op for that carrier and
+    // leaves the other carrier's evidence untouched.
+    await carrierEventRequest(uspsEvent).expect(200);
+    expect(await readShipmentUpdates(usps.shipmentId)).toHaveLength(2);
+    expect(await readShipmentUpdates(dhl.shipmentId)).toHaveLength(2);
+  });
+
+  it('maps every carrier event without regressing later evidence', async () => {
+    const seller = await createSeller('seller-carrier-mapping');
+    const buyer = await createBuyer();
+    const { productId, inventoryId } = await createProduct({
+      seller,
+      title: 'Carrier Mapping Parcel',
+      sku: `MAP-${Date.now()}`,
+      priceMinor: 1999,
+      stock: 5,
+    });
+
+    const order = await seedOrder({
+      seller,
+      buyer,
+      productId,
+      inventoryId,
+      quantity: 1,
+      status: 'paid',
+    });
+    await assignGroup({ order, shopId: seller.shopId });
+
+    const trackingNumber = uspsTrackingNumber();
+    const prepared = await prepareShipmentRequest(seller, order.orderPublicId, {
+      carrier: 'usps',
+      tracking_number: trackingNumber,
+    }).expect(201);
+    const shipmentId = (prepared.body.fulfillment as Fulfillment)
+      .groups[0]!.shipments[0]!.id;
+
+    // LABEL_CREATED confirms preparation and writes evidence even when the
+    // status is unchanged.
+    await carrierEventRequest(carrierEventBody({
+      trackingNumber,
+      eventCode: 'LABEL_CREATED',
+      occurredAt: '2026-10-31T08:00:00.000Z',
+      location: 'Austin, TX',
+    })).expect(200);
+
+    let shipment = (await getShopOrder(seller.agent, seller.shopId, order.orderPublicId))
+      .order.fulfillment.groups[0]!.shipments[0]!;
+    expect(shipment.status).toBe('prepared');
+    expect(shipment.updates).toHaveLength(2);
+    expect(shipment.updates.find((update) => update.event_code === 'LABEL_CREATED')).toMatchObject({
+      status: 'prepared',
+      event_code: 'LABEL_CREATED',
+      location: 'Austin, TX',
+    });
+
+    // The wire code is case-insensitive.
+    await carrierEventRequest(carrierEventBody({
+      trackingNumber,
+      eventCode: 'picked_up',
+      occurredAt: '2026-10-31T08:10:00.000Z',
+      location: 'Austin, TX',
+    })).expect(200);
+
+    shipment = (await getShopOrder(seller.agent, seller.shopId, order.orderPublicId))
+      .order.fulfillment.groups[0]!.shipments[0]!;
+    expect(shipment.status).toBe('dispatched');
+    expect(shipment.dispatched_at).toBe('2026-10-31T08:10:00.000Z');
+
+    // A label-created event arriving after pickup is stored but cannot regress it.
+    await carrierEventRequest(carrierEventBody({
+      trackingNumber,
+      eventCode: 'LABEL_CREATED',
+      occurredAt: '2026-10-31T08:05:00.000Z',
+    })).expect(200);
+
+    shipment = (await getShopOrder(seller.agent, seller.shopId, order.orderPublicId))
+      .order.fulfillment.groups[0]!.shipments[0]!;
+    expect(shipment.status).toBe('dispatched');
+    expect(
+      shipment.updates.filter((update) => update.event_code === 'LABEL_CREATED'),
+    ).toHaveLength(2);
+
+    await carrierEventRequest(carrierEventBody({
+      trackingNumber,
+      eventCode: 'IN_TRANSIT',
+      occurredAt: '2026-10-31T09:00:00.000Z',
+    })).expect(200);
+
+    // OUT_FOR_DELIVERY maps onto the same journey step.
+    await carrierEventRequest(carrierEventBody({
+      trackingNumber,
+      eventCode: 'OUT_FOR_DELIVERY',
+      occurredAt: '2026-10-31T10:00:00.000Z',
+      location: 'Portland, OR',
+    })).expect(200);
+
+    // Exceptions are stored as evidence without pretending the parcel moved.
+    await carrierEventRequest(carrierEventBody({
+      trackingNumber,
+      eventCode: 'DELIVERY_FAILED',
+      occurredAt: '2026-10-31T11:00:00.000Z',
+      location: 'Portland, OR',
+    })).expect(200);
+    await carrierEventRequest(carrierEventBody({
+      trackingNumber,
+      eventCode: 'RETURNED',
+      occurredAt: '2026-10-31T12:00:00.000Z',
+      location: 'Austin, TX',
+    })).expect(200);
+
+    shipment = (await getShopOrder(seller.agent, seller.shopId, order.orderPublicId))
+      .order.fulfillment.groups[0]!.shipments[0]!;
+    expect(shipment.status).toBe('in_transit');
+    expect(
+      shipment.updates
+        .filter((update) => update.actor_type === 'carrier')
+        .map((update) => update.event_code)
+        .sort(),
+    ).toEqual([
+      'DELIVERY_FAILED',
+      'IN_TRANSIT',
+      'LABEL_CREATED',
+      'LABEL_CREATED',
+      'OUT_FOR_DELIVERY',
+      'PICKED_UP',
+      'RETURNED',
+    ]);
+
+    const updates = await readShipmentUpdates(shipmentId);
+    expect(updates.slice(-2).map((update) => ({
+      status: update.status,
+      eventCode: update.event_code,
+      location: update.location,
+    }))).toEqual([
+      { status: 'in_transit', eventCode: 'DELIVERY_FAILED', location: 'Portland, OR' },
+      { status: 'in_transit', eventCode: 'RETURNED', location: 'Austin, TX' },
+    ]);
+
+    const invalidCode = await carrierEventRequest(carrierEventBody({
+      trackingNumber,
+      eventCode: 'EXCEPTION',
+      occurredAt: '2026-10-31T13:00:00.000Z',
+    })).expect(400);
+    expect(invalidCode.body.code).toBe('INVALID_CARRIER_EVENT');
+    expect(await readShipmentUpdates(shipmentId)).toHaveLength(updates.length);
+  });
+
+  it('completes a fully delivered paid order from carrier delivery evidence', async () => {
+    const seller = await createSeller('seller-carrier-delivery');
+    const buyer = await createBuyer();
+    const { productId, inventoryId } = await createProduct({
+      seller,
+      title: 'Carrier Delivery Parcel',
+      sku: `DLV-${Date.now()}`,
+      priceMinor: 1999,
+      stock: 5,
+    });
+
+    const trackingNumber = uspsTrackingNumber();
+    const order = await seedOrder({
+      seller,
+      buyer,
+      productId,
+      inventoryId,
+      quantity: 2,
+      status: 'paid',
+      trackingNumber,
+    });
+    await assignGroup({ order, shopId: seller.shopId });
+
+    await prepareShipmentRequest(seller, order.orderPublicId, {
+      carrier: 'usps',
+      tracking_number: trackingNumber,
+    }).expect(201);
+
+    await carrierEventRequest(carrierEventBody({
+      trackingNumber,
+      eventCode: 'PICKED_UP',
+      occurredAt: '2026-10-31T08:00:00.000Z',
+    })).expect(200);
+
+    const deliveredEvent = carrierEventBody({
+      trackingNumber,
+      eventCode: 'DELIVERED',
+      occurredAt: '2026-10-31T12:00:00.000Z',
+      location: 'Portland, OR',
+    });
+
+    const deliveredResponse = await carrierEventRequest(deliveredEvent).expect(200);
+    expect(deliveredResponse.body).toEqual({});
+
+    const sellerView = await getShopOrder(seller.agent, seller.shopId, order.orderPublicId);
+    const deliveredShipment = sellerView.order.fulfillment.groups[0]!.shipments[0]!;
+    expect(deliveredShipment.status).toBe('delivered');
+    expect(deliveredShipment.delivered_at).toBe('2026-10-31T12:00:00.000Z');
+    expect(deliveredShipment.updates.find((update) => update.event_code === 'DELIVERED')).toMatchObject({
+      status: 'delivered',
+      actor_type: 'carrier',
+      actor_id: 'usps',
+      source: 'carrier',
+      event_code: 'DELIVERED',
+      location: 'Portland, OR',
+    });
+
+    // The existing delivery path is the one that runs: one durable delivered
+    // outbox event, which drives Payout Availability without a second mechanism.
+    const outbox = await sql.query<{ payload: Record<string, unknown> }>(
+      `select "payload"
+         from "outbox_events"
+        where "event_name" = 'order.delivered' and "aggregate_id" = $1`,
+      [order.orderId],
+    );
+    expect(outbox.rows).toHaveLength(1);
+    expect(outbox.rows[0]!.payload).toMatchObject({
+      orderId: order.orderId,
+      deliveredAt: '2026-10-31T12:00:00.000Z',
+    });
+
+    // The Order's existing projection completes the fully delivered paid Order.
+    await waitForOrderStatus(order.orderId, 'completed');
+
+    // Buyer and guest views render the carrier's evidence.
+    const buyerView = await buyer.agent
+      .get(`${API_PREFIX}/me/orders/${order.orderPublicId}`)
+      .expect(200);
+    const buyerShipment = (buyerView.body.order_shop.fulfillment as Fulfillment)
+      .groups[0]!.shipments[0]!;
+    expect(buyerShipment.updates.find((update) => update.event_code === 'DELIVERED')).toMatchObject({
+      event_code: 'DELIVERED',
+      location: 'Portland, OR',
+      actor_type: 'carrier',
+    });
+
+    const guestLookup = await request(app.getHttpServer())
+      .get(`${API_PREFIX}/checkout/guest-orders`)
+      .query({ email: buyer.email, order_id: order.orderPublicId, zip: '97201' })
+      .expect(200);
+    const guestShipment = guestLookup.body.order_shops[0].fulfillment.groups[0].shipments[0];
+    expect(guestShipment.updates.find((update: { event_code?: string }) => update.event_code === 'DELIVERED')).toMatchObject({
+      event_code: 'DELIVERED',
+      location: 'Portland, OR',
+    });
+
+    // A repeated delivery event is acknowledged and publishes nothing new.
+    await carrierEventRequest(deliveredEvent).expect(200);
+    const outboxAfterReplay = await sql.query<{ count: number }>(
+      `select count(*)::int as count
+         from "outbox_events"
+        where "event_name" = 'order.delivered' and "aggregate_id" = $1`,
+      [order.orderId],
+    );
+    expect(outboxAfterReplay.rows[0]!.count).toBe(1);
+
+    // A late transit event is stored but cannot rewrite the delivery.
+    await carrierEventRequest(carrierEventBody({
+      trackingNumber,
+      eventCode: 'IN_TRANSIT',
+      occurredAt: '2026-10-31T11:00:00.000Z',
+      location: 'Portland, OR',
+    })).expect(200);
+
+    const lateShipment = (await getShopOrder(seller.agent, seller.shopId, order.orderPublicId))
+      .order.fulfillment.groups[0]!.shipments[0]!;
+    expect(lateShipment.status).toBe('delivered');
+    expect(lateShipment.delivered_at).toBe('2026-10-31T12:00:00.000Z');
+    expect(lateShipment.updates.find((update) => update.event_code === 'IN_TRANSIT')).toMatchObject({
+      status: 'delivered',
+      event_code: 'IN_TRANSIT',
+      location: 'Portland, OR',
+    });
+    expect(lateShipment.updates.filter((update) => update.event_code === 'IN_TRANSIT')).toHaveLength(1);
+  });
+
 });

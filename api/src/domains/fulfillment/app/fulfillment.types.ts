@@ -30,6 +30,8 @@ export interface FulfillmentShipmentUpdateView {
   source: ShipmentUpdateSource;
   occurredAt: Date;
   note?: string;
+  eventCode?: string;
+  location?: string;
 }
 
 export interface FulfillmentShipmentView {
