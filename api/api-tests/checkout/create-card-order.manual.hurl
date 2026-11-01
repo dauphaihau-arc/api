@@ -17,6 +17,8 @@
 # (`sk_test_...`) with network access, and a seeded seller (`seller_login_email`)
 # whose shop has an active, in-stock product.
 
+
+# 1. Sign in as the seller who owns the shop.
 POST {{base_url}}/v1/auth/login
 Content-Type: application/json
 ```json
@@ -30,7 +32,9 @@ HTTP 200
 [Asserts]
 cookie "accessToken" exists
 
-# The seller's own shop: its slug addresses the storefront, its id the finance reads.
+
+# 2. Resolve the seller's own shop: its slug addresses the storefront, its id the
+# finance reads.
 GET {{base_url}}/v1/shops/me
 HTTP 200
 [Captures]
@@ -39,8 +43,10 @@ shop_slug: jsonpath "$.slug"
 [Asserts]
 jsonpath "$.id" startsWith "shop_"
 
-# Any active product of that shop. The category-bearing product list refuses a
-# request that does not declare which category identity generation it speaks.
+
+# 3. Pick any active product of that shop.
+# The category-bearing product list refuses a request that does not declare
+# which category identity generation it speaks.
 GET {{base_url}}/v1/shops/{{shop_public_id}}/products?state=active&limit=1
 x-category-identity-generation: 2
 HTTP 200
@@ -49,7 +55,9 @@ product_slug: jsonpath "$.items[0].slug"
 [Asserts]
 jsonpath "$.items" count > 0
 
-# The public detail is what carries the inventory id a cart item needs.
+
+# 4. Read the product's public detail, which carries the inventory id a cart item
+# needs.
 GET {{base_url}}/v1/products/by-slug/{{shop_slug}}/{{product_slug}}
 HTTP 200
 [Captures]
@@ -58,7 +66,8 @@ inventory_id: jsonpath "$.inventory[0].id"
 jsonpath "$.inventory" count > 0
 jsonpath "$.inventory[0].stock" > 0
 
-# Buyer: registering twice is not an error, so accept any status and then log in.
+
+# 5. Buyer: registering twice is not an error, so accept any status.
 POST {{base_url}}/v1/auth/register
 Idempotency-Key: paid-card-order-buyer-register
 Content-Type: application/json
@@ -71,6 +80,8 @@ Content-Type: application/json
 ```
 HTTP *
 
+
+# 6. Sign the buyer in.
 POST {{base_url}}/v1/auth/login
 Content-Type: application/json
 ```json
@@ -84,6 +95,8 @@ HTTP 200
 [Asserts]
 cookie "accessToken" exists
 
+
+# 7. Create the buyer's shipping address.
 POST {{base_url}}/v1/me/addresses
 Idempotency-Key: paid-card-order-buyer-address
 Content-Type: application/json
@@ -103,6 +116,8 @@ HTTP 201
 [Captures]
 address_id: jsonpath "$.address.id"
 
+
+# 8. Add the product to the buyer's cart.
 POST {{base_url}}/v1/cart/items
 Idempotency-Key: paid-card-order-cart-item
 Content-Type: application/json
@@ -114,6 +129,8 @@ Content-Type: application/json
 ```
 HTTP 201
 
+
+# 9. Quote the checkout.
 POST {{base_url}}/v1/me/checkout/quote
 Idempotency-Key: paid-card-order-quote
 Content-Type: application/json
@@ -128,6 +145,8 @@ quote_id: jsonpath "$.quote_id"
 [Asserts]
 jsonpath "$.shops" count > 0
 
+
+# 10. Confirm the checkout as a card payment.
 POST {{base_url}}/v1/me/checkout
 Idempotency-Key: paid-card-order-confirm
 Content-Type: application/json
@@ -141,8 +160,10 @@ HTTP 201
 [Captures]
 order_public_id: jsonpath "$.order_shops[0].id"
 
+
+# 11. Wait for the Stripe Checkout Session URL.
 # The card checkout is asynchronous: the API enqueues a checkout outbox row and
-# the worker turns it into the Stripe Checkout Session. Wait for the URL.
+# the worker turns it into the Stripe Checkout Session.
 GET {{base_url}}/v1/me/checkout/session/readiness?order_ids={{order_public_id}}
 [Options]
 retry: 30

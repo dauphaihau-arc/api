@@ -4,7 +4,8 @@
 # seller and for an unauthenticated caller. The shop is resolved from the
 # seeded seller's `GET /v1/shops/me`, the way the seller app finds it.
 
-# An unauthenticated caller cannot record a Commission Schedule.
+
+# 1. An unauthenticated caller cannot record a Commission Schedule.
 PUT {{base_url}}/v1/admin/shops/shop_unknown/commission-schedule
 Content-Type: application/json
 ```json
@@ -17,7 +18,8 @@ HTTP 401
 [Asserts]
 jsonpath "$.code" == "AUTH_REQUIRED"
 
-# A signed-in seller is refused (403, not a 500).
+
+# 2. Sign in as the seeded seller.
 POST {{base_url}}/v1/auth/login
 Content-Type: application/json
 ```json
@@ -32,11 +34,15 @@ HTTP 200
 cookie "accessToken" exists
 jsonpath "$.user.roles" contains "seller"
 
+
+# 3. Resolve the seller's shop.
 GET {{base_url}}/v1/shops/me
 HTTP 200
 [Captures]
 shop_public_id: jsonpath "$.id"
 
+
+# 4. A signed-in seller is refused (403, not a 500).
 PUT {{base_url}}/v1/admin/shops/{{shop_public_id}}/commission-schedule
 Content-Type: application/json
 ```json
@@ -49,7 +55,8 @@ HTTP 403
 [Asserts]
 jsonpath "$.code" exists
 
-# A signed-in admin records it and the response echoes the request.
+
+# 5. Sign in as a platform admin.
 POST {{base_url}}/v1/auth/login
 Content-Type: application/json
 ```json
@@ -64,6 +71,8 @@ HTTP 200
 cookie "accessToken" exists
 jsonpath "$.user.roles" contains "admin"
 
+
+# 6. A signed-in admin records it and the response echoes the request.
 PUT {{base_url}}/v1/admin/shops/{{shop_public_id}}/commission-schedule
 Content-Type: application/json
 ```json
