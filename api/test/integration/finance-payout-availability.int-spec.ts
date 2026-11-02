@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHmac, randomUUID } from 'node:crypto';
 import { mkdtemp, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -238,6 +238,7 @@ describe('Payout Availability from delivery (integration)', () => {
     process.env.MAIL_DRIVER = 'logger';
     process.env.STORAGE_DRIVER = 'local';
     process.env.STORAGE_LOCAL_ROOT = storageRoot;
+    process.env.CARRIER_WEBHOOK_SECRET = 'test-carrier-secret';
 
     sql = new Client({
       host: testDb.rootConfig.host,
@@ -668,17 +669,49 @@ describe('Payout Availability from delivery (integration)', () => {
       .send(body);
   }
 
-  function journey(
+  function handover(
     owner: TestSeller,
     orderPublicId: string,
     shipmentId: string,
-    status: string,
-    idempotencyKey: string = randomUUID(),
   ) {
     return owner.agent
-      .post(`${API_PREFIX}/shops/${owner.shopPublicId}/orders/${orderPublicId}/fulfillment/shipments/${shipmentId}/journey`)
-      .set('Idempotency-Key', idempotencyKey)
-      .send({ status });
+      .post(`${API_PREFIX}/shops/${owner.shopPublicId}/orders/${orderPublicId}/fulfillment/shipments/${shipmentId}/handover`)
+      .set('Idempotency-Key', randomUUID())
+      .send({});
+  }
+
+  /**
+   * Delivery completed Orders, so it is only credible as carrier evidence: the
+   * signed webhook a real carrier would call. `eventId` is returned so a replay
+   * can reuse the same event.
+   */
+  async function deliverByCarrier(
+    carrier: string,
+    trackingNumber: string,
+    eventId: string = randomUUID(),
+  ): Promise<string> {
+    const body = {
+      event_id: eventId,
+      carrier,
+      tracking_number: trackingNumber,
+      event_code: 'DELIVERED',
+      occurred_at: new Date().toISOString(),
+    };
+
+    await request(app.getHttpServer())
+      .post(`${API_PREFIX}/webhooks/carrier`)
+      .set(
+        'x-carrier-signature',
+        `sha256=${createHmac('sha256', 'test-carrier-secret').update(JSON.stringify(body)).digest('hex')}`,
+      )
+      .send(body)
+      .expect(200);
+
+    return eventId;
+  }
+
+  function uspsTrackingNumber(): string {
+    return `94001118992231${String(Math.floor(Math.random() * 100_000_000)).padStart(8, '0')}`;
   }
 
   function cancelOrder(owner: TestSeller, orderPublicId: string, reason: string) {
@@ -816,15 +849,16 @@ describe('Payout Availability from delivery (integration)', () => {
     const before = await readPayablePosition(shopInternalId);
     expect(before).toMatchObject({ available_minor: 0, not_yet_available_minor: order.creditMinor });
 
+    const trackingNumber = uspsTrackingNumber();
     const prepared = await prepareShipment(seller, order.orderPublicId, {
       items: [{ order_item_id: await readOrderItemId(order.orderInternalId), quantity: 1 }],
-      carrier: 'other',
-      tracking_number: 'FULL-1',
+      carrier: 'usps',
+      tracking_number: trackingNumber,
     }).expect(201);
     const shipmentId = (prepared.body.fulfillment as Fulfillment).groups[0]!.shipments[0]!.id;
 
-    await journey(seller, order.orderPublicId, shipmentId, 'dispatched').expect(201);
-    await journey(seller, order.orderPublicId, shipmentId, 'delivered').expect(201);
+    await handover(seller, order.orderPublicId, shipmentId).expect(201);
+    await deliverByCarrier('usps', trackingNumber);
 
     const processed = await pumpFinance();
     expect(processed).toBeGreaterThan(0);
@@ -871,22 +905,24 @@ describe('Payout Availability from delivery (integration)', () => {
 
     const orderItemId = await readOrderItemId(order.orderInternalId);
 
+    const firstTrackingNumber = uspsTrackingNumber();
     const first = await prepareShipment(seller, order.orderPublicId, {
       items: [{ order_item_id: orderItemId, quantity: 1 }],
-      carrier: 'other',
-      tracking_number: 'PART-1',
+      carrier: 'usps',
+      tracking_number: firstTrackingNumber,
     }).expect(201);
     const firstShipmentId = (first.body.fulfillment as Fulfillment).groups[0]!.shipments[0]!.id;
 
+    const secondTrackingNumber = uspsTrackingNumber();
     const second = await prepareShipment(seller, order.orderPublicId, {
       items: [{ order_item_id: orderItemId, quantity: 2 }],
-      carrier: 'other',
-      tracking_number: 'PART-2',
+      carrier: 'usps',
+      tracking_number: secondTrackingNumber,
     }).expect(201);
     const secondShipmentId = (second.body.fulfillment as Fulfillment).groups[0]!.shipments[1]!.id;
 
-    await journey(seller, order.orderPublicId, firstShipmentId, 'dispatched').expect(201);
-    await journey(seller, order.orderPublicId, firstShipmentId, 'delivered').expect(201);
+    await handover(seller, order.orderPublicId, firstShipmentId).expect(201);
+    await deliverByCarrier('usps', firstTrackingNumber);
     await pumpFinance();
 
     // One unit delivered of three: nothing becomes available, and no
@@ -901,8 +937,8 @@ describe('Payout Availability from delivery (integration)', () => {
       not_yet_available_minor: order.creditMinor,
     });
 
-    await journey(seller, order.orderPublicId, secondShipmentId, 'dispatched').expect(201);
-    await journey(seller, order.orderPublicId, secondShipmentId, 'delivered').expect(201);
+    await handover(seller, order.orderPublicId, secondShipmentId).expect(201);
+    await deliverByCarrier('usps', secondTrackingNumber);
     await pumpFinance();
 
     // The whole Order credit moves at once, only once the last unit lands.
@@ -923,17 +959,17 @@ describe('Payout Availability from delivery (integration)', () => {
     const buyer = await registerBuyer('pay-replay-buyer');
     const order = await placeAndPayCardOrder(buyer, inventoryId, 1);
 
+    const trackingNumber = uspsTrackingNumber();
     const prepared = await prepareShipment(seller, order.orderPublicId, {
       items: [{ order_item_id: await readOrderItemId(order.orderInternalId), quantity: 1 }],
-      carrier: 'other',
-      tracking_number: 'REPLAY-1',
+      carrier: 'usps',
+      tracking_number: trackingNumber,
     }).expect(201);
     const shipmentId = (prepared.body.fulfillment as Fulfillment).groups[0]!.shipments[0]!.id;
 
-    const dispatchKey = randomUUID();
-    const deliverKey = randomUUID();
-    await journey(seller, order.orderPublicId, shipmentId, 'dispatched', dispatchKey).expect(201);
-    await journey(seller, order.orderPublicId, shipmentId, 'delivered', deliverKey).expect(201);
+    const deliveredEventId = randomUUID();
+    await handover(seller, order.orderPublicId, shipmentId).expect(201);
+    await deliverByCarrier('usps', trackingNumber, deliveredEventId);
     await pumpFinance();
 
     const before = await readPayablePosition(shopInternalId);
@@ -944,8 +980,8 @@ describe('Payout Availability from delivery (integration)', () => {
     expect(await countPayoutAvailabilityRows(order.orderInternalId)).toBe(1);
     expect(await readDeliveredOutboxRows(order.orderInternalId)).toHaveLength(1);
 
-    // Re-issuing the identical delivery command writes no second outbox row.
-    await journey(seller, order.orderPublicId, shipmentId, 'delivered', deliverKey).expect(201);
+    // Replaying the identical carrier event writes no second outbox row.
+    await deliverByCarrier('usps', trackingNumber, deliveredEventId);
     expect(await readDeliveredOutboxRows(order.orderInternalId)).toHaveLength(1);
 
     // Re-running the finance pump, even after forcing the event due again,
@@ -1018,15 +1054,16 @@ describe('Payout Availability from delivery (integration)', () => {
     const buyer = await registerBuyer('pay-concurrent-buyer');
     const order = await placeAndPayCardOrder(buyer, inventoryId, 1);
 
+    const trackingNumber = uspsTrackingNumber();
     const prepared = await prepareShipment(seller, order.orderPublicId, {
       items: [{ order_item_id: await readOrderItemId(order.orderInternalId), quantity: 1 }],
-      carrier: 'other',
-      tracking_number: 'CONCURRENT-1',
+      carrier: 'usps',
+      tracking_number: trackingNumber,
     }).expect(201);
     const shipmentId = (prepared.body.fulfillment as Fulfillment).groups[0]!.shipments[0]!.id;
 
-    await journey(seller, order.orderPublicId, shipmentId, 'dispatched').expect(201);
-    await journey(seller, order.orderPublicId, shipmentId, 'delivered').expect(201);
+    await handover(seller, order.orderPublicId, shipmentId).expect(201);
+    await deliverByCarrier('usps', trackingNumber);
 
     // The delivery event is durable but not yet processed; drive two real
     // use-case executions concurrently against the database, bypassing the
@@ -1081,15 +1118,16 @@ describe('Payout Availability from delivery (integration)', () => {
 
     const unrelatedSeller = await registerSeller('pay-endpoint-other');
 
+    const trackingNumber = uspsTrackingNumber();
     const prepared = await prepareShipment(seller, order.orderPublicId, {
       items: [{ order_item_id: await readOrderItemId(order.orderInternalId), quantity: 1 }],
-      carrier: 'other',
-      tracking_number: 'ENDPOINT-1',
+      carrier: 'usps',
+      tracking_number: trackingNumber,
     }).expect(201);
     const shipmentId = (prepared.body.fulfillment as Fulfillment).groups[0]!.shipments[0]!.id;
 
-    await journey(seller, order.orderPublicId, shipmentId, 'dispatched').expect(201);
-    await journey(seller, order.orderPublicId, shipmentId, 'delivered').expect(201);
+    await handover(seller, order.orderPublicId, shipmentId).expect(201);
+    await deliverByCarrier('usps', trackingNumber);
     await pumpFinance();
 
     // The paying seller reads both figures as separate integers.
@@ -1132,15 +1170,16 @@ describe('Payout Availability from delivery (integration)', () => {
     // A cash Order never gets an `order.paid` outbox row.
     expect(await readPaidOutboxRows(order.id)).toHaveLength(0);
 
+    const trackingNumber = uspsTrackingNumber();
     const prepared = await prepareShipment(seller, orderPublicId, {
       items: [{ order_item_id: await readOrderItemId(order.id), quantity: 1 }],
-      carrier: 'other',
-      tracking_number: 'CASH-1',
+      carrier: 'usps',
+      tracking_number: trackingNumber,
     }).expect(201);
     const shipmentId = (prepared.body.fulfillment as Fulfillment).groups[0]!.shipments[0]!.id;
 
-    await journey(seller, orderPublicId, shipmentId, 'dispatched').expect(201);
-    await journey(seller, orderPublicId, shipmentId, 'delivered').expect(201);
+    await handover(seller, orderPublicId, shipmentId).expect(201);
+    await deliverByCarrier('usps', trackingNumber);
 
     const processed = await pumpFinance();
     expect(processed).toBeGreaterThan(0);
@@ -1183,15 +1222,16 @@ describe('Payout Availability from delivery (integration)', () => {
     expect(paidRow!.status).toBe('pending');
     expect(await sumSellerPayablePostingsForEntry(moneyEventKey)).toBe(0);
 
+    const trackingNumber = uspsTrackingNumber();
     const prepared = await prepareShipment(seller, orderPublicId, {
       items: [{ order_item_id: await readOrderItemId(orderInternalId), quantity: 1 }],
-      carrier: 'other',
-      tracking_number: 'RACE-1',
+      carrier: 'usps',
+      tracking_number: trackingNumber,
     }).expect(201);
     const shipmentId = (prepared.body.fulfillment as Fulfillment).groups[0]!.shipments[0]!.id;
 
-    await journey(seller, orderPublicId, shipmentId, 'dispatched').expect(201);
-    await journey(seller, orderPublicId, shipmentId, 'delivered').expect(201);
+    await handover(seller, orderPublicId, shipmentId).expect(201);
+    await deliverByCarrier('usps', trackingNumber);
 
     const [deliveredRow] = await readDeliveredOutboxRows(orderInternalId);
     expect(deliveredRow).toBeDefined();
@@ -1264,15 +1304,16 @@ describe('Payout Availability from delivery (integration)', () => {
     const payableAmount = await sumSellerPayablePostingsForEntry(moneyEventKey);
     expect(payableAmount).toBe(1599);
 
+    const trackingNumber = uspsTrackingNumber();
     const prepared = await prepareShipment(seller, orderPublicId, {
       items: [{ order_item_id: await readOrderItemId(orderRow.id), quantity: 1 }],
-      carrier: 'other',
-      tracking_number: 'AVAIL-FX-1',
+      carrier: 'usps',
+      tracking_number: trackingNumber,
     }).expect(201);
     const shipmentId = (prepared.body.fulfillment as Fulfillment).groups[0]!.shipments[0]!.id;
 
-    await journey(seller, orderPublicId, shipmentId, 'dispatched').expect(201);
-    await journey(seller, orderPublicId, shipmentId, 'delivered').expect(201);
+    await handover(seller, orderPublicId, shipmentId).expect(201);
+    await deliverByCarrier('usps', trackingNumber);
     await pumpFinance();
 
     // The availability record and the moved balance are in the shop's currency.

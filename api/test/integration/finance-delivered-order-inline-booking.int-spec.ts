@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHmac, randomUUID } from 'node:crypto';
 import { mkdtemp, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -215,6 +215,7 @@ describe('Inline booking of a delivered Order (integration)', () => {
     process.env.MAIL_DRIVER = 'logger';
     process.env.STORAGE_DRIVER = 'local';
     process.env.STORAGE_LOCAL_ROOT = storageRoot;
+    process.env.CARRIER_WEBHOOK_SECRET = 'test-carrier-secret';
     // The whole point of this suite: book the delivered Order's payout
     // availability inside the delivery transaction, with no finance worker.
     process.env.FINANCE_MONEY_EVENT_BOOKING = 'inline';
@@ -574,24 +575,52 @@ describe('Inline booking of a delivered Order (integration)', () => {
       .expect(expectedStatus);
   }
 
-  function prepareShipment(orderPublicId: string) {
+  function prepareShipment(orderPublicId: string, trackingNumber: string) {
     return seller.agent
       .post(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${orderPublicId}/fulfillment/shipments`)
+      .set('Idempotency-Key', randomUUID())
+      .send({ carrier: 'usps', tracking_number: trackingNumber });
+  }
+
+  function handover(orderPublicId: string, shipmentId: string) {
+    return seller.agent
+      .post(
+        `${API_PREFIX}/shops/${seller.shopPublicId}/orders/${orderPublicId}/fulfillment/shipments/${shipmentId}/handover`,
+      )
       .set('Idempotency-Key', randomUUID())
       .send({});
   }
 
-  function journey(
-    orderPublicId: string,
-    shipmentId: string,
-    status: 'dispatched' | 'delivered',
-  ) {
-    return seller.agent
-      .post(
-        `${API_PREFIX}/shops/${seller.shopPublicId}/orders/${orderPublicId}/fulfillment/shipments/${shipmentId}/journey`,
+  /**
+   * Delivery is carrier evidence, so it arrives as the signed webhook a real
+   * carrier would call. `eventId` is returned so a replay can reuse the event.
+   */
+  async function deliverByCarrier(
+    trackingNumber: string,
+    eventId: string = randomUUID(),
+  ): Promise<string> {
+    const body = {
+      event_id: eventId,
+      carrier: 'usps',
+      tracking_number: trackingNumber,
+      event_code: 'DELIVERED',
+      occurred_at: new Date().toISOString(),
+    };
+
+    await request(app.getHttpServer())
+      .post(`${API_PREFIX}/webhooks/carrier`)
+      .set(
+        'x-carrier-signature',
+        `sha256=${createHmac('sha256', 'test-carrier-secret').update(JSON.stringify(body)).digest('hex')}`,
       )
-      .set('Idempotency-Key', randomUUID())
-      .send({ status });
+      .send(body)
+      .expect(200);
+
+    return eventId;
+  }
+
+  function uspsTrackingNumber(): string {
+    return `94001118992231${String(Math.floor(Math.random() * 100_000_000)).padStart(8, '0')}`;
   }
 
   async function readPayablePosition(
@@ -653,13 +682,14 @@ describe('Inline booking of a delivered Order (integration)', () => {
     const netMinor = paidPosition!.pending_balance_minor;
     expect(netMinor).toBeGreaterThan(0);
 
-    const prepared = await prepareShipment(orderPublicId).expect(201);
+    const trackingNumber = uspsTrackingNumber();
+    const prepared = await prepareShipment(orderPublicId, trackingNumber).expect(201);
     const shipmentId = prepared.body.fulfillment.groups[0].shipments[0].id as string;
     const ship = prepared.body.fulfillment.groups[0].shipments[0];
     expect(ship.items).toHaveLength(1);
 
-    await journey(orderPublicId, shipmentId, 'dispatched').expect(201);
-    await journey(orderPublicId, shipmentId, 'delivered').expect(201);
+    await handover(orderPublicId, shipmentId).expect(201);
+    const deliveredEventId = await deliverByCarrier(trackingNumber);
 
     // Delivery never advances the Order's commercial status: it stays paid,
     // and the released money is what proves the delivery was booked.
@@ -685,8 +715,8 @@ describe('Inline booking of a delivered Order (integration)', () => {
     expect(outboxRows[0].status).toBe('processed');
     expect(outboxRows[0].processed_at).not.toBeNull();
 
-    // Replaying the same delivery is a no-op: same availability, same balances.
-    await journey(orderPublicId, shipmentId, 'delivered').expect(201);
+    // Replaying the same carrier event is a no-op: same availability, balances.
+    await deliverByCarrier(trackingNumber, deliveredEventId);
 
     expect(await readAvailabilityRows(orderRow.id)).toHaveLength(1);
     expect(await readPayablePosition(shopInternalId)).toEqual(position);
@@ -724,11 +754,28 @@ describe('Inline booking of a delivered Order (integration)', () => {
       [orderRow.id],
     );
 
-    const prepared = await prepareShipment(orderPublicId).expect(201);
+    const trackingNumber = uspsTrackingNumber();
+    const prepared = await prepareShipment(orderPublicId, trackingNumber).expect(201);
     const shipmentId = prepared.body.fulfillment.groups[0].shipments[0].id as string;
-    await journey(orderPublicId, shipmentId, 'dispatched').expect(201);
+    await handover(orderPublicId, shipmentId).expect(201);
 
-    await journey(orderPublicId, shipmentId, 'delivered').expect(500);
+    // The delivery booking fails inside the webhook transaction, so the carrier
+    // sees an error and the parcel stays dispatched for a retry.
+    const deliveredBody = {
+      event_id: randomUUID(),
+      carrier: 'usps',
+      tracking_number: trackingNumber,
+      event_code: 'DELIVERED',
+      occurred_at: new Date().toISOString(),
+    };
+    await request(app.getHttpServer())
+      .post(`${API_PREFIX}/webhooks/carrier`)
+      .set(
+        'x-carrier-signature',
+        `sha256=${createHmac('sha256', 'test-carrier-secret').update(JSON.stringify(deliveredBody)).digest('hex')}`,
+      )
+      .send(deliveredBody)
+      .expect(500);
 
     const shipmentRow = await sql.query(
       'select "status", "delivered_at" from "shipments" where "public_id" = $1',

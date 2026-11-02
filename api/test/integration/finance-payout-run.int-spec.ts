@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHmac, randomUUID } from 'node:crypto';
 import { mkdtemp, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -312,6 +312,7 @@ describe('Payout Run pays available balances (integration)', () => {
     process.env.MAIL_DRIVER = 'logger';
     process.env.STORAGE_DRIVER = 'local';
     process.env.STORAGE_LOCAL_ROOT = storageRoot;
+    process.env.CARRIER_WEBHOOK_SECRET = 'test-carrier-secret';
     // Match today's platform UTC day so the exact-day scheduler is due during
     // ordinary payout-run tests. The before-day cases use a fake clock.
     process.env.PAYOUT_AUTO_DAY_OF_MONTH = String(AUTO_PAYOUT_DAY);
@@ -666,33 +667,56 @@ describe('Payout Run pays available balances (integration)', () => {
     };
   }
 
-  /** Ships and delivers the Order's only item, then lets Finance record availability. */
+  /**
+   * Hands the Order's only item to a carrier, then delivers it the way the
+   * carrier would: a signed webhook. Delivery is carrier evidence, never a
+   * seller-written status.
+   */
   async function deliverOrder(seller: TestSeller, order: PaidOrder): Promise<void> {
     const item = (await sql.query(
       'select "id" from "order_items" where "order_id" = $1 limit 1',
       [order.orderInternalId],
     )).rows[0] as { id: string };
 
+    const trackingNumber = uspsTrackingNumber();
     const prepared = await seller.agent
       .post(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${order.orderPublicId}/fulfillment/shipments`)
       .set('Idempotency-Key', randomUUID())
       .send({
         items: [{ order_item_id: item.id, quantity: 1 }],
-        carrier: 'other',
-        tracking_number: `TRACK-${randomUUID().slice(0, 8)}`,
+        carrier: 'usps',
+        tracking_number: trackingNumber,
       })
       .expect(201);
     const shipmentId = (prepared.body.fulfillment as Fulfillment).groups[0]!.shipments[0]!.id;
 
-    for (const status of ['dispatched', 'delivered']) {
-      await seller.agent
-        .post(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${order.orderPublicId}/fulfillment/shipments/${shipmentId}/journey`)
-        .set('Idempotency-Key', randomUUID())
-        .send({ status })
-        .expect(201);
-    }
+    await seller.agent
+      .post(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${order.orderPublicId}/fulfillment/shipments/${shipmentId}/handover`)
+      .set('Idempotency-Key', randomUUID())
+      .send({})
+      .expect(201);
+
+    const deliveredBody = {
+      event_id: randomUUID(),
+      carrier: 'usps',
+      tracking_number: trackingNumber,
+      event_code: 'DELIVERED',
+      occurred_at: new Date().toISOString(),
+    };
+    await request(app.getHttpServer())
+      .post(`${API_PREFIX}/webhooks/carrier`)
+      .set(
+        'x-carrier-signature',
+        `sha256=${createHmac('sha256', 'test-carrier-secret').update(JSON.stringify(deliveredBody)).digest('hex')}`,
+      )
+      .send(deliveredBody)
+      .expect(200);
 
     await app.get(FinanceMoneyEventProcessorService).processPendingEvents();
+  }
+
+  function uspsTrackingNumber(): string {
+    return `94001118992231${String(Math.floor(Math.random() * 100_000_000)).padStart(8, '0')}`;
   }
 
   /** Starts the seller's Payout Account onboarding; the local adapter is active. */

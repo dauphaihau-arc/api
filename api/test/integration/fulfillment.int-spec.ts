@@ -1,5 +1,6 @@
 import { createHmac, randomUUID } from 'node:crypto';
 import { mkdtemp, rm } from 'node:fs/promises';
+import { setTimeout as delay } from 'node:timers/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { EntityManager } from '@mikro-orm/postgresql';
@@ -767,16 +768,60 @@ describe('Fulfillment flow (integration)', () => {
       .send(body);
   }
 
-  function journeyRequest(
+  /**
+   * The seller's only status authority: declaring that a prepared Shipment was
+   * handed to its carrier. Every later status is carrier evidence.
+   */
+  function handoverRequest(
     seller: TestSeller,
     orderPublicId: string,
     shipmentId: string,
-    status: string,
   ) {
     return seller.agent
-      .post(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${orderPublicId}/fulfillment/shipments/${shipmentId}/journey`)
+      .post(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${orderPublicId}/fulfillment/shipments/${shipmentId}/handover`)
       .set('Idempotency-Key', randomUUID())
-      .send({ status });
+      .send({});
+  }
+
+  async function readShipment(
+    seller: TestSeller,
+    orderPublicId: string,
+    shipmentId: string,
+  ): Promise<Shipment> {
+    const detail = await getShopOrder(seller.agent, seller.shopPublicId, orderPublicId);
+    const shipment = detail.order.fulfillment.groups
+      .flatMap((group) => group.shipments)
+      .find((candidate) => candidate.id === shipmentId);
+
+    if (!shipment) {
+      throw new Error(`Shipment ${shipmentId} not found on order ${orderPublicId}`);
+    }
+
+    return shipment;
+  }
+
+  /** Reports progress for a Shipment the way its carrier would. */
+  async function reportCarrierEvent(
+    seller: TestSeller,
+    orderPublicId: string,
+    shipmentId: string,
+    eventCode: string,
+  ): Promise<void> {
+    const shipment = await readShipment(seller, orderPublicId, shipmentId);
+
+    await carrierEventRequest(carrierEventBody({
+      carrier: shipment.carrier,
+      trackingNumber: shipment.tracking_number,
+      eventCode,
+    })).expect(200);
+  }
+
+  async function deliverByCarrier(
+    seller: TestSeller,
+    orderPublicId: string,
+    shipmentId: string,
+  ): Promise<void> {
+    await reportCarrierEvent(seller, orderPublicId, shipmentId, 'DELIVERED');
   }
 
   function carrierSignature(body: unknown, secret = CARRIER_WEBHOOK_SECRET): string {
@@ -857,7 +902,7 @@ describe('Fulfillment flow (integration)', () => {
         return;
       }
 
-      await new Promise((resolve) => setTimeout(resolve, 25));
+      await delay(25);
     }
 
     const result = await sql.query<{ status: string }>(
@@ -999,7 +1044,7 @@ describe('Fulfillment flow (integration)', () => {
     expect(groupCount.rows[0].count).toBe(1);
   });
 
-  it('prepares, dispatches, transits and delivers a confirmed order through public APIs', async () => {
+  it('prepares, hands over, transits and delivers a confirmed order through public APIs', async () => {
     const seller = await createSeller('seller-fulfillment');
     const buyer = await createBuyer();
     const { inventoryId } = await createProduct({
@@ -1033,17 +1078,18 @@ describe('Fulfillment flow (integration)', () => {
       outstanding: 2,
     });
 
+    const trackingNumber = uspsTrackingNumber();
     const prepareResponse = await seller.agent
       .post(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${order.orderPublicId}/fulfillment/shipments`)
       .set('Idempotency-Key', randomUUID())
-      .send({ carrier: 'usps', tracking_number: '9400111899223100001234', shipment_note: 'Front desk' })
+      .send({ carrier: 'usps', tracking_number: trackingNumber, shipment_note: 'Front desk' })
       .expect(201);
 
     const preparedShipment = (prepareResponse.body.fulfillment as Fulfillment)
       .groups[0]!.shipments[0]!;
     expect(preparedShipment.status).toBe('prepared');
     expect(preparedShipment.carrier).toBe('usps');
-    expect(preparedShipment.tracking_number).toBe('9400111899223100001234');
+    expect(preparedShipment.tracking_number).toBe(trackingNumber);
     expect(preparedShipment.carrier_name).toBe('USPS');
     expect(preparedShipment.carrier_observable).toBe(true);
     expect(preparedShipment.dispatched_at ?? null).toBeNull();
@@ -1055,47 +1101,75 @@ describe('Fulfillment flow (integration)', () => {
     expect((await getShopOrder(seller.agent, seller.shopPublicId, order.orderPublicId)).order.status)
       .toBe('pending');
 
-    const dispatchResponse = await seller.agent
-      .post(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${order.orderPublicId}/fulfillment/shipments/${preparedShipment.id}/journey`)
-      .set('Idempotency-Key', randomUUID())
-      .send({ status: 'dispatched' })
-      .expect(201);
+    const dispatchResponse = await handoverRequest(
+      seller,
+      order.orderPublicId,
+      preparedShipment.id,
+    ).expect(201);
     expect(dispatchResponse.body.fulfillment.status).toBe('shipped');
 
     const dispatchedShipment = dispatchResponse.body.fulfillment.groups[0].shipments[0];
     expect(dispatchedShipment.status).toBe('dispatched');
     expect(dispatchedShipment.dispatched_at).toEqual(expect.any(String));
 
-    // Replay of the same status does not duplicate updates or reset timestamps.
-    const replayResponse = await seller.agent
-      .post(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${order.orderPublicId}/fulfillment/shipments/${preparedShipment.id}/journey`)
-      .set('Idempotency-Key', randomUUID())
-      .send({ status: 'dispatched' })
-      .expect(201);
+    // The declaration is recorded as exactly one seller-sourced dispatch update.
+    const sellerUpdates = (dispatchedShipment.updates as Shipment['updates'])
+      .filter((update) => update.status === 'dispatched');
+    expect(sellerUpdates).toHaveLength(1);
+    expect(sellerUpdates[0]).toMatchObject({
+      actor_type: 'seller',
+      actor_id: expect.any(String),
+      source: 'seller',
+    });
+
+    // Repeating the declaration does not duplicate updates or reset timestamps.
+    const replayResponse = await handoverRequest(
+      seller,
+      order.orderPublicId,
+      preparedShipment.id,
+    ).expect(201);
     expect(replayResponse.body.fulfillment.groups[0].shipments[0].updates).toHaveLength(
       Number(dispatchedShipment.updates.length),
     );
     expect(replayResponse.body.fulfillment.groups[0].shipments[0].dispatched_at)
       .toBe(dispatchedShipment.dispatched_at);
 
-    await seller.agent
-      .post(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${order.orderPublicId}/fulfillment/shipments/${preparedShipment.id}/journey`)
-      .set('Idempotency-Key', randomUUID())
-      .send({ status: 'in_transit' })
-      .expect(201);
+    // Transit and delivery are the carrier's to report, not the seller's.
+    await reportCarrierEvent(
+      seller,
+      order.orderPublicId,
+      preparedShipment.id,
+      'IN_TRANSIT',
+    );
 
-    const deliveredResponse = await seller.agent
-      .post(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${order.orderPublicId}/fulfillment/shipments/${preparedShipment.id}/journey`)
-      .set('Idempotency-Key', randomUUID())
-      .send({ status: 'delivered' })
-      .expect(201);
-    expect(deliveredResponse.body.fulfillment.status).toBe('delivered');
-    expect(deliveredResponse.body.fulfillment.progress).toMatchObject({
+    await deliverByCarrier(seller, order.orderPublicId, preparedShipment.id);
+
+    const deliveredResponse = await getShopOrder(
+      seller.agent,
+      seller.shopPublicId,
+      order.orderPublicId,
+    );
+    expect(deliveredResponse.order.fulfillment.status).toBe('delivered');
+    expect(deliveredResponse.order.fulfillment.progress).toMatchObject({
       ordered: 2,
       dispatched: 2,
       delivered: 2,
       outstanding: 0,
     });
+
+    const deliveredUpdates = deliveredResponse.order.fulfillment
+      .groups[0]!.shipments[0]!.updates;
+    expect(deliveredUpdates.map((update) => update.status)).toEqual([
+      'prepared',
+      'dispatched',
+      'in_transit',
+      'delivered',
+    ]);
+    expect(deliveredUpdates.slice(1).map((update) => update.source)).toEqual([
+      'seller',
+      'carrier',
+      'carrier',
+    ]);
 
     // Delivery does not mark a cash Order paid or commercially complete.
     const deliveredOrder = await getShopOrder(seller.agent, seller.shopPublicId, order.orderPublicId);
@@ -1110,7 +1184,7 @@ describe('Fulfillment flow (integration)', () => {
     expect(buyerFulfillment.groups[0]!.shipments[0]).toMatchObject({
       id: preparedShipment.id,
       status: 'delivered',
-      tracking_number: '9400111899223100001234',
+      tracking_number: trackingNumber,
     });
 
     // Authorized guest tracking sees the same collection.
@@ -1120,7 +1194,7 @@ describe('Fulfillment flow (integration)', () => {
       .expect(200);
     const guestOrder = guestLookup.body.order_shops[0];
     expect(guestOrder.fulfillment.status).toBe('delivered');
-    expect(guestOrder.fulfillment.groups[0].shipments[0].tracking_number).toBe('9400111899223100001234');
+    expect(guestOrder.fulfillment.groups[0].shipments[0].tracking_number).toBe(trackingNumber);
 
     // A non-matching zip leaks nothing.
     const wrongZip = await request(app.getHttpServer())
@@ -1146,6 +1220,157 @@ describe('Fulfillment flow (integration)', () => {
       [order.orderId],
     );
     expect(shipmentsAfterCrossShop.rows[0].count).toBe(1);
+  });
+
+  it('hands over an unverified carrier shipment without fabricating progress', async () => {
+    const seller = await createSeller('seller-handover-other');
+    const buyer = await createBuyer();
+    const { productId, inventoryId } = await createProduct({
+      seller,
+      title: 'Local Courier Crate',
+      sku: `LCL-${Date.now()}`,
+      priceMinor: 1499,
+      stock: 4,
+    });
+
+    const order = await seedOrder({
+      seller,
+      buyer,
+      productId,
+      inventoryId,
+      quantity: 1,
+      status: 'paid',
+    });
+    await assignGroup({ order, shopId: seller.shopId });
+
+    const prepared = await prepareShipmentRequest(seller, order.orderPublicId, {
+      carrier: 'other',
+      tracking_number: 'LOCAL-COURIER-1',
+    }).expect(201);
+    const shipment = (prepared.body.fulfillment as Fulfillment).groups[0]!.shipments[0]!;
+    expect(shipment.carrier_observable).toBe(false);
+
+    const handedOver = await handoverRequest(seller, order.orderPublicId, shipment.id)
+      .expect(201);
+    const declared = (handedOver.body.fulfillment as Fulfillment).groups[0]!.shipments[0]!;
+    expect(declared.status).toBe('dispatched');
+    expect(declared.carrier_observable).toBe(false);
+    expect(declared.dispatched_at).toEqual(expect.any(String));
+    expect((handedOver.body.fulfillment as Fulfillment).progress).toMatchObject({
+      ordered: 1,
+      dispatched: 1,
+      delivered: 0,
+      outstanding: 0,
+    });
+
+    // The declaration is the only evidence: nothing claims transit or delivery.
+    const updates = await readShipmentUpdates(shipment.id);
+    expect(updates.map(update => update.status)).toEqual(['prepared', 'dispatched']);
+    expect(updates[1]).toMatchObject({ actor_type: 'seller', source: 'seller' });
+    expect(updates.every(update => update.carrier_event_id === null)).toBe(true);
+  });
+
+  it('amends carrier and tracking for three days after handover until the carrier scans', async () => {
+    const seller = await createSeller('seller-handover-edit');
+    const buyer = await createBuyer();
+    const { productId, inventoryId } = await createProduct({
+      seller,
+      title: 'Editable Parcel',
+      sku: `EDT-${Date.now()}`,
+      priceMinor: 1999,
+      stock: 5,
+    });
+
+    const order = await seedOrder({
+      seller,
+      buyer,
+      productId,
+      inventoryId,
+      quantity: 1,
+      status: 'paid',
+    });
+    await assignGroup({ order, shopId: seller.shopId });
+
+    const originalTrackingNumber = uspsTrackingNumber();
+    const prepared = await prepareShipmentRequest(seller, order.orderPublicId, {
+      carrier: 'usps',
+      tracking_number: originalTrackingNumber,
+    }).expect(201);
+    const shipmentId = (prepared.body.fulfillment as Fulfillment).groups[0]!.shipments[0]!.id;
+
+    const handedOver = await handoverRequest(seller, order.orderPublicId, shipmentId)
+      .expect(201);
+    const dispatchedAt = (handedOver.body.fulfillment as Fulfillment)
+      .groups[0]!.shipments[0]!.dispatched_at;
+    expect(dispatchedAt).toEqual(expect.any(String));
+
+    // Inside the window a mistyped number is recoverable without losing dispatch.
+    const correctedTrackingNumber = uspsTrackingNumber();
+    const corrected = await seller.agent
+      .patch(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${order.orderPublicId}/fulfillment/shipments/${shipmentId}`)
+      .set('Idempotency-Key', randomUUID())
+      .send({ tracking_number: correctedTrackingNumber })
+      .expect(200);
+    expect(corrected.body.fulfillment.groups[0].shipments[0]).toMatchObject({
+      status: 'dispatched',
+      tracking_number: correctedTrackingNumber,
+      dispatched_at: dispatchedAt,
+    });
+
+    // Quantities are locked after handover: only carrier and tracking may change.
+    const orderItemId = (prepared.body.fulfillment as Fulfillment)
+      .groups[0]!.items[0]!.order_item_id;
+    const itemsAfterHandover = await seller.agent
+      .patch(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${order.orderPublicId}/fulfillment/shipments/${shipmentId}`)
+      .set('Idempotency-Key', randomUUID())
+      .send({ items: [{ order_item_id: orderItemId, quantity: 1 }] });
+    expect(itemsAfterHandover.status).toBe(409);
+    expect(itemsAfterHandover.body.code).toBe('SHIPMENT_NOT_PREPARED');
+    expect((await readShipment(seller, order.orderPublicId, shipmentId)).items)
+      .toEqual([{ order_item_id: orderItemId, quantity: 1 }]);
+
+    // The carrier scan closes the window early: the label is now in the world.
+    await carrierEventRequest(carrierEventBody({
+      trackingNumber: correctedTrackingNumber,
+      eventCode: 'IN_TRANSIT',
+    })).expect(200);
+
+    const afterScan = await seller.agent
+      .patch(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${order.orderPublicId}/fulfillment/shipments/${shipmentId}`)
+      .set('Idempotency-Key', randomUUID())
+      .send({ tracking_number: uspsTrackingNumber() });
+    expect(afterScan.status).toBe(409);
+    expect(afterScan.body.code).toBe('SHIPMENT_NOT_PREPARED');
+    expect((await readShipment(seller, order.orderPublicId, shipmentId)).tracking_number)
+      .toBe(correctedTrackingNumber);
+
+    // The window also expires on its own, three days after the declaration.
+    const otherOrder = await seedOrder({
+      seller,
+      buyer,
+      productId,
+      inventoryId,
+      quantity: 1,
+      status: 'paid',
+    });
+    await assignGroup({ order: otherOrder, shopId: seller.shopId });
+    const stale = await prepareShipmentRequest(seller, otherOrder.orderPublicId, {
+      carrier: 'dhl',
+      tracking_number: String(Math.floor(Math.random() * 10_000_000_000)).padStart(10, '0'),
+    }).expect(201);
+    const staleShipmentId = (stale.body.fulfillment as Fulfillment).groups[0]!.shipments[0]!.id;
+    await handoverRequest(seller, otherOrder.orderPublicId, staleShipmentId).expect(201);
+    await sql.query(
+      'update "shipments" set "dispatched_at" = now() - interval \'4 days\' where "public_id" = $1',
+      [staleShipmentId],
+    );
+
+    const expired = await seller.agent
+      .patch(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${otherOrder.orderPublicId}/fulfillment/shipments/${staleShipmentId}`)
+      .set('Idempotency-Key', randomUUID())
+      .send({ carrier: 'usps', tracking_number: uspsTrackingNumber() });
+    expect(expired.status).toBe(409);
+    expect(expired.body.code).toBe('SHIPMENT_NOT_PREPARED');
   });
 
   it('rejects shipment commands for unconfirmed payment states and cross-order items', async () => {
@@ -1315,7 +1540,7 @@ describe('Fulfillment flow (integration)', () => {
     expect(await readInventoryStock(inventoryId)).toBe(4);
   });
 
-  it('rejects delivering straight out of preparation and releases voided preparation', async () => {
+  it('refuses handover without a carrier and releases voided preparation', async () => {
     const seller = await createSeller('seller-journey');
     const buyer = await createBuyer();
     const { productId, inventoryId } = await createProduct({
@@ -1343,12 +1568,12 @@ describe('Fulfillment flow (integration)', () => {
       .expect(201);
     const shipmentId = prepareResponse.body.fulfillment.groups[0].shipments[0].id as string;
 
-    const invalidTransition = await seller.agent
-      .post(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${order.orderPublicId}/fulfillment/shipments/${shipmentId}/journey`)
-      .set('Idempotency-Key', randomUUID())
-      .send({ status: 'delivered' })
+    // A declaration needs something to declare: carrier and tracking first.
+    const missingCarrier = await handoverRequest(seller, order.orderPublicId, shipmentId)
       .expect(409);
-    expect(invalidTransition.body.code).toBe('INVALID_SHIPMENT_JOURNEY_TRANSITION');
+    expect(missingCarrier.body.code).toBe('SHIPMENT_HANDOVER_REQUIREMENTS');
+    expect((await readShipment(seller, order.orderPublicId, shipmentId)).status)
+      .toBe('prepared');
 
     const amended = await seller.agent
       .patch(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${order.orderPublicId}/fulfillment/shipments/${shipmentId}`)
@@ -1363,6 +1588,11 @@ describe('Fulfillment flow (integration)', () => {
       .expect(200);
     expect(voided.body.fulfillment.groups[0].shipments[0].status).toBe('voided');
     expect(voided.body.fulfillment.progress.prepared).toBe(0);
+
+    // A voided preparation cannot be handed over either.
+    const voidedHandover = await handoverRequest(seller, order.orderPublicId, shipmentId)
+      .expect(409);
+    expect(voidedHandover.body.code).toBe('SHIPMENT_ALREADY_VOIDED');
 
     const reprepared = await seller.agent
       .post(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${order.orderPublicId}/fulfillment/shipments`)
@@ -1393,10 +1623,11 @@ describe('Fulfillment flow (integration)', () => {
     });
     await assignGroup({ order, shopId: seller.shopId });
 
+    const firstTrackingNumber = uspsTrackingNumber();
     const first = await prepareShipmentRequest(seller, order.orderPublicId, {
       items: [{ order_item_id: order.orderItemId, quantity: 1 }],
       carrier: 'usps',
-      tracking_number: '9400111899223100001234',
+      tracking_number: firstTrackingNumber,
     }).expect(201);
     const firstShipment = (first.body.fulfillment as Fulfillment).groups[0]!.shipments[0]!;
     expect(firstShipment.items).toEqual([
@@ -1413,7 +1644,7 @@ describe('Fulfillment flow (integration)', () => {
     const second = await prepareShipmentRequest(seller, order.orderPublicId, {
       items: [{ order_item_id: order.orderItemId, quantity: 2 }],
       carrier: 'dhl',
-      tracking_number: '1234567890',
+      tracking_number: String(Math.floor(Math.random() * 10_000_000_000)).padStart(10, '0'),
     }).expect(201);
     const secondShipment = (second.body.fulfillment as Fulfillment).groups[0]!.shipments[1]!;
     expect((second.body.fulfillment as Fulfillment).groups[0]!.shipments).toHaveLength(2);
@@ -1423,8 +1654,8 @@ describe('Fulfillment flow (integration)', () => {
       outstanding: 3,
     });
 
-    await journeyRequest(seller, order.orderPublicId, firstShipment.id, 'dispatched').expect(201);
-    await journeyRequest(seller, order.orderPublicId, firstShipment.id, 'delivered').expect(201);
+    await handoverRequest(seller, order.orderPublicId, firstShipment.id).expect(201);
+    await deliverByCarrier(seller, order.orderPublicId, firstShipment.id);
 
     const afterFirstParcel = await getShopOrder(seller.agent, seller.shopPublicId, order.orderPublicId);
     expect(afterFirstParcel.order.status).toBe('paid');
@@ -1443,9 +1674,10 @@ describe('Fulfillment flow (integration)', () => {
     expect(buyerAfterFirst.body.order_shop.fulfillment.status).toBe('partially_delivered');
     expect(buyerAfterFirst.body.order_shop.fulfillment.groups[0].shipments).toHaveLength(2);
 
-    await journeyRequest(seller, order.orderPublicId, secondShipment.id, 'dispatched').expect(201);
-    await journeyRequest(seller, order.orderPublicId, secondShipment.id, 'delivered').expect(201);
+    await handoverRequest(seller, order.orderPublicId, secondShipment.id).expect(201);
+    await deliverByCarrier(seller, order.orderPublicId, secondShipment.id);
 
+    await waitForOrderStatus(order.orderId, 'completed');
     const afterSecondParcel = await getShopOrder(seller.agent, seller.shopPublicId, order.orderPublicId);
     expect(afterSecondParcel.order.status).toBe('completed');
     expect(afterSecondParcel.order.fulfillment.status).toBe('delivered');
@@ -1503,6 +1735,8 @@ describe('Fulfillment flow (integration)', () => {
         { order_item_id: order.items[0]!.orderItemId, quantity: 1 },
         { order_item_id: order.items[1]!.orderItemId, quantity: 1 },
       ],
+      carrier: 'usps',
+      tracking_number: uspsTrackingNumber(),
     }).expect(201);
     const shipmentId = (prepared.body.fulfillment as Fulfillment).groups[0]!.shipments[0]!.id;
     expect((prepared.body.fulfillment as Fulfillment).progress).toMatchObject({
@@ -1510,8 +1744,8 @@ describe('Fulfillment flow (integration)', () => {
       prepared: 2,
     });
 
-    await journeyRequest(seller, order.orderPublicId, shipmentId, 'dispatched').expect(201);
-    await journeyRequest(seller, order.orderPublicId, shipmentId, 'delivered').expect(201);
+    await handoverRequest(seller, order.orderPublicId, shipmentId).expect(201);
+    await deliverByCarrier(seller, order.orderPublicId, shipmentId);
 
     const partial = await getShopOrder(seller.agent, seller.shopPublicId, order.orderPublicId);
     expect(partial.order.status).toBe('paid');
@@ -1523,6 +1757,8 @@ describe('Fulfillment flow (integration)', () => {
 
     const remainder = await prepareShipmentRequest(seller, order.orderPublicId, {
       items: [{ order_item_id: order.items[0]!.orderItemId, quantity: 1 }],
+      carrier: 'dhl',
+      tracking_number: String(Math.floor(Math.random() * 10_000_000_000)).padStart(10, '0'),
     }).expect(201);
     expect((remainder.body.fulfillment as Fulfillment).groups[0]!.items).toEqual([
       { order_item_id: order.items[0]!.orderItemId, quantity: 2 },
@@ -1531,9 +1767,10 @@ describe('Fulfillment flow (integration)', () => {
 
     const remainderShipmentId = (remainder.body.fulfillment as Fulfillment)
       .groups[0]!.shipments[1]!.id;
-    await journeyRequest(seller, order.orderPublicId, remainderShipmentId, 'dispatched').expect(201);
-    await journeyRequest(seller, order.orderPublicId, remainderShipmentId, 'delivered').expect(201);
+    await handoverRequest(seller, order.orderPublicId, remainderShipmentId).expect(201);
+    await deliverByCarrier(seller, order.orderPublicId, remainderShipmentId);
 
+    await waitForOrderStatus(order.orderId, 'completed');
     const completed = await getShopOrder(seller.agent, seller.shopPublicId, order.orderPublicId);
     expect(completed.order.status).toBe('completed');
     expect(completed.order.fulfillment.status).toBe('delivered');
@@ -1700,11 +1937,14 @@ describe('Fulfillment flow (integration)', () => {
     });
     await assignGroup({ order, shopId: seller.shopId });
 
-    const prepared = await prepareShipmentRequest(seller, order.orderPublicId, {}).expect(201);
+    const prepared = await prepareShipmentRequest(seller, order.orderPublicId, {
+      carrier: 'usps',
+      tracking_number: uspsTrackingNumber(),
+    }).expect(201);
     const shipmentId = (prepared.body.fulfillment as Fulfillment).groups[0]!.shipments[0]!.id;
 
     const [dispatchResult, cancelResult] = await Promise.all([
-      journeyRequest(seller, order.orderPublicId, shipmentId, 'dispatched'),
+      handoverRequest(seller, order.orderPublicId, shipmentId),
       cancelOrderRequest(seller, order.orderPublicId, 'Race with handover'),
     ]);
 
@@ -1800,9 +2040,12 @@ describe('Fulfillment flow (integration)', () => {
 
     const prepared = await prepareShipmentRequest(seller, order.orderPublicId, {
       items: [{ order_item_id: order.orderItemId, quantity: 1 }],
+      carrier: 'usps',
+      tracking_number: uspsTrackingNumber(),
     }).expect(201);
     const shipmentId = (prepared.body.fulfillment as Fulfillment).groups[0]!.shipments[0]!.id;
-    await journeyRequest(seller, order.orderPublicId, shipmentId, 'dispatched').expect(201);
+    // Dispatch created by a Handover Declaration still blocks cancellation.
+    await handoverRequest(seller, order.orderPublicId, shipmentId).expect(201);
 
     const cancel = await cancelOrderRequest(seller, order.orderPublicId, 'Too late');
     expect(cancel.status).toBe(400);
@@ -1963,7 +2206,7 @@ describe('Fulfillment flow (integration)', () => {
     });
   });
 
-  it('rejects a number with no carrier and invented carriers on the journey path', async () => {
+  it('rejects a number with no carrier and invented carriers on every seller path', async () => {
     const seller = await createSeller('seller-carrier-loopholes');
     const buyer = await createBuyer();
     const { productId, inventoryId } = await createProduct({
@@ -1993,24 +2236,31 @@ describe('Fulfillment flow (integration)', () => {
 
     const prepared = await prepareShipmentRequest(seller, order.orderPublicId, {
       carrier: 'usps',
-      tracking_number: '9400111899223100001234',
+      tracking_number: uspsTrackingNumber(),
     }).expect(201);
     const shipmentId = (prepared.body.fulfillment as Fulfillment)
       .groups[0]!.shipments[0]!.id;
 
     const inventedCarrier = await seller.agent
-      .post(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${order.orderPublicId}/fulfillment/shipments/${shipmentId}/journey`)
+      .patch(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${order.orderPublicId}/fulfillment/shipments/${shipmentId}`)
       .set('Idempotency-Key', randomUUID())
-      .send({ status: 'dispatched', carrier: 'fedex' });
+      .send({ carrier: 'fedex' });
     expect(inventedCarrier.status).toBe(400);
     expect(inventedCarrier.body.code).toBe('UNSUPPORTED_CARRIER');
 
-    const mismatchedJourney = await seller.agent
+    const mismatchedTracking = await seller.agent
+      .patch(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${order.orderPublicId}/fulfillment/shipments/${shipmentId}`)
+      .set('Idempotency-Key', randomUUID())
+      .send({ tracking_number: 'TRACK-1' });
+    expect(mismatchedTracking.status).toBe(400);
+    expect(mismatchedTracking.body.code).toBe('INVALID_CARRIER_TRACKING_NUMBER');
+
+    // No seller path can write transit or delivery: the journey command is gone.
+    const removedJourney = await seller.agent
       .post(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${order.orderPublicId}/fulfillment/shipments/${shipmentId}/journey`)
       .set('Idempotency-Key', randomUUID())
-      .send({ status: 'dispatched', tracking_number: 'TRACK-1' });
-    expect(mismatchedJourney.status).toBe(400);
-    expect(mismatchedJourney.body.code).toBe('INVALID_CARRIER_TRACKING_NUMBER');
+      .send({ status: 'delivered' });
+    expect(removedJourney.status).toBe(404);
   });
 
   it('rejects unsigned carrier events and ignores duplicates and unknown tracking', async () => {
