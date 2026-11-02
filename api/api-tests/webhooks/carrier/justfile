@@ -98,3 +98,9 @@ amend-window-all: generate
 # Runs pickup/delivery notifications for buyer and seller.
 notifications: generate
   hurl --test --variables-file {{pickup_vars}} notifications.manual.hurl
+
+# Runs the full Mock Carrier loop: requires the Mock Carrier on 4100 and the API
+# started with MOCK_CARRIER_URL. The seller declares handover; the carrier drives
+# pickup, transit, out-for-delivery and delivery through the signed webhook.
+mock-parcel: generate
+  hurl --test --variables-file {{pickup_vars}} --variable mock_carrier_url="${MOCK_CARRIER_URL:-http://127.0.0.1:4100}" mock-parcel.manual.hurl
