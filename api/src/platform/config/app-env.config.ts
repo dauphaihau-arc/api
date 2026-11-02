@@ -92,6 +92,7 @@ const appEnvBaseSchema = z.object({
   GUEST_ORDER_TRACKING_SECRET: z.string().trim().min(1).optional(),
   GUEST_ORDER_TRACKING_TTL: z.string().trim().min(1).default('30d'),
   CARRIER_WEBHOOK_SECRET: z.string().trim().min(1).optional(),
+  MOCK_CARRIER_URL: z.url().optional(),
   AUTH_COOKIE_ACCESS_NAME: z.string().trim().min(1).default('accessToken'),
   AUTH_COOKIE_REFRESH_NAME: z.string().trim().min(1).default('refreshToken'),
   AUTH_COOKIE_DOMAIN: z.string().trim().optional(),

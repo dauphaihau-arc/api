@@ -1,5 +1,6 @@
 import { MikroOrmModule } from '@mikro-orm/nestjs';
 import { forwardRef, Module } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { CacheModule } from '~/integrations/cache/cache.module';
 import { IdempotencyModule } from '~/platform/idempotency/idempotency.module';
 import { OutboxEventEntity } from '~/platform/outbox/outbox-event.entity';
@@ -17,6 +18,7 @@ import { PrepareFulfillmentShipmentUseCase } from './app/use-cases/prepare-fulfi
 import { ReconcileOrderFulfillmentUseCase } from './app/use-cases/reconcile-order-fulfillment/reconcile-order-fulfillment.use-case';
 import { RecordCarrierEventUseCase } from './app/use-cases/record-carrier-event/record-carrier-event.use-case';
 import { VoidFulfillmentShipmentUseCase } from './app/use-cases/void-fulfillment-shipment/void-fulfillment-shipment.use-case';
+import { CarrierParcelGateway } from '~/integrations/carrier/app/ports/carrier-parcel.gateway';
 import { OrderFulfillmentContextPort } from './app/ports/order-fulfillment-context.port';
 import { OrderFulfillmentViewPort } from './app/ports/order-fulfillment-view.port';
 import { ShipmentPublicIdLookup } from './app/services/shipment-public-id-lookup.service';
@@ -32,6 +34,7 @@ import { ShipmentUpdateEntity } from './infra/persistence/entities/shipment-upda
 import { MikroOrmOrderFulfillmentContextAdapter } from './infra/persistence/repositories/mikro-orm-order-fulfillment-context.adapter';
 import { MikroOrmOrderFulfillmentViewAdapter } from './infra/persistence/repositories/mikro-orm-order-fulfillment-view.adapter';
 import { MikroOrmShipmentQueryRepository } from './infra/persistence/repositories/mikro-orm-shipment-query.repository';
+import { MockCarrierParcelGateway } from '~/integrations/carrier/infra/mock-carrier-parcel.gateway';
 
 @Module({
   imports: [
@@ -69,6 +72,14 @@ import { MikroOrmShipmentQueryRepository } from './infra/persistence/repositorie
     RecordCarrierEventUseCase,
     ShipmentPublicIdLookup,
     FulfillmentTargetResolver,
+    {
+      provide: CarrierParcelGateway,
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) =>
+        new MockCarrierParcelGateway({
+          baseUrl: configService.get<string>('MOCK_CARRIER_URL'),
+        }),
+    },
     {
       provide: OrderFulfillmentContextPort,
       useClass: MikroOrmOrderFulfillmentContextAdapter,

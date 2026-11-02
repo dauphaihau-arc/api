@@ -59,6 +59,11 @@ export function findCarrier(code?: string | null): CarrierDefinition | undefined
   return CARRIER_CATALOGUE.find((carrier) => carrier.code === trimmed);
 }
 
+/** True only for catalogue carriers whose scans Arc can observe. */
+export function isObservableCarrier(code?: string | null): boolean {
+  return findCarrier(code)?.observable === true;
+}
+
 /**
  * A carrier without a tracking pattern (`other`) accepts any non-empty tracking
  * number; a catalogue carrier must match the pattern the provider publishes.

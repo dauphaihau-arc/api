@@ -1,6 +1,7 @@
 import {
   CARRIER_CATALOGUE,
   findCarrier,
+  isObservableCarrier,
   isValidCarrierTrackingNumber,
 } from './carrier-catalogue';
 
@@ -82,5 +83,15 @@ describe('carrier catalogue', () => {
     expect(isValidCarrierTrackingNumber(other, 'ARBITRARY-123')).toBe(true);
     expect(isValidCarrierTrackingNumber(other, '9')).toBe(true);
     expect(isValidCarrierTrackingNumber(other, '   ')).toBe(false);
+  });
+
+  it('treats only catalogue carriers as observable', () => {
+    expect(isObservableCarrier('usps')).toBe(true);
+    expect(isObservableCarrier('  dhl  ')).toBe(true);
+    expect(isObservableCarrier('vnpost')).toBe(true);
+    expect(isObservableCarrier('other')).toBe(false);
+    expect(isObservableCarrier('fedex')).toBe(false);
+    expect(isObservableCarrier('')).toBe(false);
+    expect(isObservableCarrier(undefined)).toBe(false);
   });
 });
