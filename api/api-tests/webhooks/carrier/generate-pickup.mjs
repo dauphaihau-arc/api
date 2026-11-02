@@ -22,6 +22,10 @@ const uspsTrackingNumber = `9${digits(21)}`;
 const dhlTrackingNumber = digits(10);
 const voidedTrackingNumber = `9${digits(21)}`;
 
+const amendTrackingNumber = `9${digits(21)}`;
+// `other` has no tracking pattern, so a run-scoped token is a valid number.
+const handoverOtherTrackingNumber = `LOCAL-${randomUUID()}`;
+
 const startedAt = Date.now();
 const tick = 1_000;
 
@@ -30,6 +34,8 @@ const pickupEventId = `evt-pickup-${randomUUID()}`;
 // Events are ordered after each other so the timeline reads as a journey. The
 // status rank is what actually moves the Shipment; these times only order it.
 const events = [
+  // Label creation is preparation evidence: no journey step and no notification.
+  { file: 'label-created.body', variable: 'sig_label_created', code: 'LABEL_CREATED', carrier: 'usps', tracking: uspsTrackingNumber, location: 'Portland, OR', offset: -tick },
   { file: 'pickup.body', variable: 'sig_pickup', code: 'PICKED_UP', carrier: 'usps', tracking: uspsTrackingNumber, location: 'Portland, OR', offset: 0, eventId: pickupEventId },
   { file: 'transit.body', variable: 'sig_transit', code: 'IN_TRANSIT', carrier: 'usps', tracking: uspsTrackingNumber, location: 'Salem, OR', offset: tick },
   { file: 'ofd.body', variable: 'sig_ofd', code: 'OUT_FOR_DELIVERY', carrier: 'usps', tracking: uspsTrackingNumber, location: 'Beaverton, OR', offset: 2 * tick },
@@ -47,11 +53,22 @@ const events = [
 ];
 
 const generatedVariables = [
+  `carrier_run_id=${randomUUID()}`,
   `carrier_pickup_tracking=${uspsTrackingNumber}`,
   `carrier_cross_dhl_tracking=${dhlTrackingNumber}`,
   `carrier_voided_tracking=${voidedTrackingNumber}`,
+  `carrier_amend_tracking=${amendTrackingNumber}`,
+  `carrier_handover_other_tracking=${handoverOtherTrackingNumber}`,
   `carrier_cash_buyer_email=carrier-cash-${randomUUID()}@example.com`,
   `carrier_voided_buyer_email=carrier-voided-${randomUUID()}@example.com`,
+  `carrier_handover_buyer_1_email=carrier-handover-1-${randomUUID()}@example.com`,
+  `carrier_handover_buyer_2_email=carrier-handover-2-${randomUUID()}@example.com`,
+  `carrier_handover_buyer_3_email=carrier-handover-3-${randomUUID()}@example.com`,
+  `carrier_handover_buyer_4_email=carrier-handover-4-${randomUUID()}@example.com`,
+  `carrier_amend_buyer_1_email=carrier-amend-1-${randomUUID()}@example.com`,
+  `carrier_amend_buyer_2_email=carrier-amend-2-${randomUUID()}@example.com`,
+  `carrier_amend_buyer_3_email=carrier-amend-3-${randomUUID()}@example.com`,
+  `carrier_notifications_buyer_email=carrier-notify-${randomUUID()}@example.com`,
 ];
 
 for (const event of events) {

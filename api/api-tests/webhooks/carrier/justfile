@@ -63,3 +63,38 @@ cross-carrier: generate
 # Runs the voided-Shipment case.
 voided: generate
   hurl --test --variables-file {{pickup_vars}} voided.manual.hurl
+
+# Runs the successful handover case against a self-built cash Order.
+handover: generate
+  hurl --test --variables-file {{pickup_vars}} handover.manual.hurl
+
+# Runs the handover requirement rejections against self-built cash Orders.
+handover-requirements: generate
+  hurl --test --variables-file {{pickup_vars}} handover-requirements.manual.hurl
+
+# Runs the unverified-carrier handover against a self-built cash Order.
+handover-unverified: generate
+  hurl --test --variables-file {{pickup_vars}} handover-unverified.manual.hurl
+
+# Runs all three handover cases with one fixture generation.
+handover-all: generate
+  hurl --test --variables-file {{pickup_vars}} handover.manual.hurl
+  hurl --test --variables-file {{pickup_vars}} handover-requirements.manual.hurl
+  hurl --test --variables-file {{pickup_vars}} handover-unverified.manual.hurl
+
+# Runs the post-handover amend window against a self-built cash Order.
+amend-window: generate
+  hurl --test --variables-file {{pickup_vars}} amend-window.manual.hurl
+
+# Runs the post-handover quantity lock against a self-built cash Order.
+amend-locks: generate
+  hurl --test --variables-file {{pickup_vars}} amend-locks.manual.hurl
+
+# Runs both post-handover amend cases with one fixture generation.
+amend-window-all: generate
+  hurl --test --variables-file {{pickup_vars}} amend-window.manual.hurl
+  hurl --test --variables-file {{pickup_vars}} amend-locks.manual.hurl
+
+# Runs pickup/delivery notifications for buyer and seller.
+notifications: generate
+  hurl --test --variables-file {{pickup_vars}} notifications.manual.hurl
