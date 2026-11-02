@@ -20,7 +20,7 @@ export class InvalidFulfillmentQuantityError extends FulfillmentDomainError {
 
 export class ShipmentNotPreparedError extends FulfillmentDomainError {
   constructor() {
-    super('Shipment preparation can only be changed before dispatch');
+    super('Shipment can only be changed while prepared, or shortly after handover before the carrier scans');
   }
 }
 
@@ -30,9 +30,9 @@ export class ShipmentAlreadyVoidedError extends FulfillmentDomainError {
   }
 }
 
-export class InvalidShipmentJourneyTransitionError extends FulfillmentDomainError {
+export class ShipmentHandoverRequirementsError extends FulfillmentDomainError {
   constructor() {
-    super('Invalid shipment journey transition');
+    super('A shipment needs a carrier and a tracking number before handover');
   }
 }
 

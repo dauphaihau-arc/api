@@ -100,7 +100,7 @@ export const shopOrderFulfillmentControllerErrorResponses = {
     ],
     409: [
       { code: 'SHIPMENT_ALREADY_VOIDED', message: 'Shipment preparation is already voided' },
-      { code: 'SHIPMENT_NOT_PREPARED', message: 'Shipment preparation can only be changed before dispatch' },
+      { code: 'SHIPMENT_NOT_PREPARED', message: 'Shipment can only be changed while prepared, or shortly after handover before the carrier scans' },
       {
         code: 'FULFILLMENT_RECONCILIATION_REQUIRED',
         message: 'This order has no fulfillment assignment yet; reconcile its remaining quantities before shipping',
@@ -114,19 +114,19 @@ export const shopOrderFulfillmentControllerErrorResponses = {
     404: [shopNotFoundExample, orderNotFoundExample, shipmentNotFoundExample],
     409: [
       { code: 'SHIPMENT_ALREADY_VOIDED', message: 'Shipment preparation is already voided' },
-      { code: 'SHIPMENT_NOT_PREPARED', message: 'Shipment preparation can only be changed before dispatch' },
+      { code: 'SHIPMENT_NOT_PREPARED', message: 'Shipment can only be changed while prepared, or shortly after handover before the carrier scans' },
       idempotencyConflictExample,
     ],
   },
-  journey: {
-    400: [
-      validationErrorExample([{ field: 'status', messages: ['status must be a valid shipment status'] }]),
-      notEligibleExample,
-    ],
+  handover: {
+    400: [notEligibleExample],
     404: [shopNotFoundExample, orderNotFoundExample, shipmentNotFoundExample],
     409: [
       { code: 'SHIPMENT_ALREADY_VOIDED', message: 'Shipment preparation is already voided' },
-      { code: 'INVALID_SHIPMENT_JOURNEY_TRANSITION', message: 'Invalid shipment journey transition' },
+      {
+        code: 'SHIPMENT_HANDOVER_REQUIREMENTS',
+        message: 'A shipment needs a carrier and a tracking number before handover',
+      },
       idempotencyConflictExample,
     ],
   },

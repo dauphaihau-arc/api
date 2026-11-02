@@ -20,8 +20,8 @@ import {
   InvalidCarrierEventCodeError,
   InvalidCarrierTrackingNumberError,
   InvalidFulfillmentQuantityError,
-  InvalidShipmentJourneyTransitionError,
   ShipmentAlreadyVoidedError,
+  ShipmentHandoverRequirementsError,
   ShipmentItemNotInGroupError,
   ShipmentNotPreparedError,
   ShipmentQuantityExceededError,
@@ -43,7 +43,7 @@ type FulfillmentHttpErrorCode =
   | 'SHIPMENT_NOT_FOUND'
   | 'SHIPMENT_NOT_PREPARED'
   | 'SHIPMENT_ALREADY_VOIDED'
-  | 'INVALID_SHIPMENT_JOURNEY_TRANSITION'
+  | 'SHIPMENT_HANDOVER_REQUIREMENTS'
   | 'SHIPMENT_ITEM_NOT_IN_GROUP'
   | 'SHIPMENT_QUANTITY_EXCEEDED'
   | 'INVALID_FULFILLMENT_QUANTITY'
@@ -76,7 +76,7 @@ export function mapFulfillmentErrorToHttpException(
     || error instanceof FulfillmentGroupAlreadyAssignedError
     || error instanceof ShipmentNotPreparedError
     || error instanceof ShipmentAlreadyVoidedError
-    || error instanceof InvalidShipmentJourneyTransitionError
+    || error instanceof ShipmentHandoverRequirementsError
     || error instanceof ShipmentQuantityExceededError
   ) {
     return new ConflictException(payload);
@@ -119,8 +119,8 @@ function getFulfillmentErrorCode(error: FulfillmentError): FulfillmentHttpErrorC
   if (error instanceof ShipmentAlreadyVoidedError) {
     return 'SHIPMENT_ALREADY_VOIDED';
   }
-  if (error instanceof InvalidShipmentJourneyTransitionError) {
-    return 'INVALID_SHIPMENT_JOURNEY_TRANSITION';
+  if (error instanceof ShipmentHandoverRequirementsError) {
+    return 'SHIPMENT_HANDOVER_REQUIREMENTS';
   }
   if (error instanceof ShipmentItemNotInGroupError) {
     return 'SHIPMENT_ITEM_NOT_IN_GROUP';

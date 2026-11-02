@@ -28,14 +28,13 @@ import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 
 import { FulfillmentTargetResolver } from '../../app/services/fulfillment-target-resolver.service';
 import { AmendFulfillmentShipmentUseCase } from '../../app/use-cases/amend-fulfillment-shipment/amend-fulfillment-shipment.use-case';
+import { DeclareFulfillmentHandoverUseCase } from '../../app/use-cases/declare-fulfillment-handover/declare-fulfillment-handover.use-case';
 import { PrepareFulfillmentShipmentUseCase } from '../../app/use-cases/prepare-fulfillment-shipment/prepare-fulfillment-shipment.use-case';
 import { ReconcileOrderFulfillmentUseCase } from '../../app/use-cases/reconcile-order-fulfillment/reconcile-order-fulfillment.use-case';
-import { UpdateShipmentJourneyUseCase } from '../../app/use-cases/update-shipment-journey/update-shipment-journey.use-case';
 import { VoidFulfillmentShipmentUseCase } from '../../app/use-cases/void-fulfillment-shipment/void-fulfillment-shipment.use-case';
 import { AmendFulfillmentShipmentDto } from './dto/amend-fulfillment-shipment.dto';
 import { PrepareFulfillmentShipmentDto } from './dto/prepare-fulfillment-shipment.dto';
 import { ReconcileOrderFulfillmentDto } from './dto/reconcile-order-fulfillment.dto';
-import { UpdateShipmentJourneyDto } from './dto/update-shipment-journey.dto';
 import { FulfillmentExceptionsFilter } from './errors/fulfillment-exceptions.filter';
 import { shopOrderFulfillmentControllerErrorResponses } from './errors/fulfillment-error-responses';
 import {
@@ -57,7 +56,7 @@ export class ShopOrderFulfillmentController {
     private readonly prepareFulfillmentShipmentUseCase: PrepareFulfillmentShipmentUseCase,
     private readonly amendFulfillmentShipmentUseCase: AmendFulfillmentShipmentUseCase,
     private readonly voidFulfillmentShipmentUseCase: VoidFulfillmentShipmentUseCase,
-    private readonly updateShipmentJourneyUseCase: UpdateShipmentJourneyUseCase,
+    private readonly declareFulfillmentHandoverUseCase: DeclareFulfillmentHandoverUseCase,
     private readonly reconcileOrderFulfillmentUseCase: ReconcileOrderFulfillmentUseCase,
   ) {}
 
@@ -174,25 +173,24 @@ export class ShopOrderFulfillmentController {
     ));
   }
 
-  @Post(':order_id/fulfillment/shipments/:shipment_id/journey')
+  @Post(':order_id/fulfillment/shipments/:shipment_id/handover')
   @Header('Cache-Control', 'private, no-store')
   @UseInterceptors(IdempotencyKeyInterceptor)
-  @Idempotent({ scope: 'fulfillment:update-shipment-journey' })
+  @Idempotent({ scope: 'fulfillment:declare-handover' })
   @ApiOperation({
-    summary: 'Update shipment journey',
-    description: 'Records a status transition and shipping details for the shipment.',
+    summary: 'Declare shipment handover',
+    description: 'Records that the prepared shipment was handed to its carrier.',
   })
-  @ApiErrorResponses(shopOrderFulfillmentControllerErrorResponses.journey)
+  @ApiErrorResponses(shopOrderFulfillmentControllerErrorResponses.handover)
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'order_id', type: String })
   @ApiParam({ name: 'shipment_id', type: String })
   @ApiOkResponse({ description: 'Updated order fulfillment.', type: ShopOrderFulfillmentResponseDto })
-  async recordShipmentJourney(
+  async declareShipmentHandover(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('shop_id') shopPublicId: string,
     @Param('order_id') orderPublicId: string,
     @Param('shipment_id') shipmentPublicId: string,
-    @Body() body: UpdateShipmentJourneyDto,
   ) {
     const { shopId, orderId, shipmentId } = await this.fulfillmentTargetResolver.resolve(
       currentUser,
@@ -201,17 +199,11 @@ export class ShopOrderFulfillmentController {
       shipmentPublicId,
     );
 
-    return this.respond(await this.updateShipmentJourneyUseCase.execute(
+    return this.respond(await this.declareFulfillmentHandoverUseCase.execute(
       shopId,
       orderId,
       shipmentId,
       currentUser.userId,
-      {
-        status: body.status,
-        carrier: body.carrier,
-        trackingNumber: body.trackingNumber,
-        note: body.shipmentNote,
-      },
     ));
   }
 

@@ -12,10 +12,10 @@ import { FulfillmentTargetResolver } from './app/services/fulfillment-target-res
 import { FulfillmentService } from './app/services/fulfillment.service';
 import { OrderDeliveredOutboxService } from './app/services/order-delivered-outbox.service';
 import { AmendFulfillmentShipmentUseCase } from './app/use-cases/amend-fulfillment-shipment/amend-fulfillment-shipment.use-case';
+import { DeclareFulfillmentHandoverUseCase } from './app/use-cases/declare-fulfillment-handover/declare-fulfillment-handover.use-case';
 import { PrepareFulfillmentShipmentUseCase } from './app/use-cases/prepare-fulfillment-shipment/prepare-fulfillment-shipment.use-case';
 import { ReconcileOrderFulfillmentUseCase } from './app/use-cases/reconcile-order-fulfillment/reconcile-order-fulfillment.use-case';
 import { RecordCarrierEventUseCase } from './app/use-cases/record-carrier-event/record-carrier-event.use-case';
-import { UpdateShipmentJourneyUseCase } from './app/use-cases/update-shipment-journey/update-shipment-journey.use-case';
 import { VoidFulfillmentShipmentUseCase } from './app/use-cases/void-fulfillment-shipment/void-fulfillment-shipment.use-case';
 import { OrderFulfillmentContextPort } from './app/ports/order-fulfillment-context.port';
 import { OrderFulfillmentViewPort } from './app/ports/order-fulfillment-view.port';
@@ -64,7 +64,7 @@ import { MikroOrmShipmentQueryRepository } from './infra/persistence/repositorie
     PrepareFulfillmentShipmentUseCase,
     AmendFulfillmentShipmentUseCase,
     VoidFulfillmentShipmentUseCase,
-    UpdateShipmentJourneyUseCase,
+    DeclareFulfillmentHandoverUseCase,
     ReconcileOrderFulfillmentUseCase,
     RecordCarrierEventUseCase,
     ShipmentPublicIdLookup,

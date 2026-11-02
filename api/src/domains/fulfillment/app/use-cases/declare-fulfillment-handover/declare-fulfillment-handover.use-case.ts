@@ -1,19 +1,15 @@
 import { Injectable } from '@nestjs/common';
-import { ShipmentStatus } from '../../../domain/enums/shipment-status.enum';
 import { ShipmentUpdateActorType } from '../../../domain/enums/shipment-update-actor-type.enum';
 import { ShipmentUpdateSource } from '../../../domain/enums/shipment-update-source.enum';
 import { FulfillmentCommandRunner } from '../../services/fulfillment-command.runner';
 import { FulfillmentService } from '../../services/fulfillment.service';
 
-export type UpdateShipmentJourneyCommand = {
-  status: ShipmentStatus;
-  carrier?: string;
-  trackingNumber?: string;
-  note?: string;
-};
-
+/**
+ * The seller's only status authority: declaring that a prepared Shipment was
+ * handed to its carrier. It records one seller-sourced dispatch update.
+ */
 @Injectable()
-export class UpdateShipmentJourneyUseCase {
+export class DeclareFulfillmentHandoverUseCase {
   constructor(
     private readonly commandRunner: FulfillmentCommandRunner,
     private readonly fulfillmentService: FulfillmentService,
@@ -24,17 +20,12 @@ export class UpdateShipmentJourneyUseCase {
     orderId: string,
     shipmentId: string,
     actorId: string,
-    input: UpdateShipmentJourneyCommand,
   ) {
     return this.commandRunner.execute(shopId, orderId, async (context, entityManager) => {
-      await this.fulfillmentService.recordJourney(entityManager, {
+      await this.fulfillmentService.declareHandover(entityManager, {
         orderId: context.id,
         shopId: context.shopId,
         shipmentId,
-        status: input.status,
-        carrier: input.carrier,
-        trackingNumber: input.trackingNumber,
-        note: input.note,
         actor: {
           actorType: ShipmentUpdateActorType.SELLER,
           actorId,

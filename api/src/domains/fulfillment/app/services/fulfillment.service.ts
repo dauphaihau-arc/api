@@ -1,5 +1,6 @@
 import { EntityManager, LockMode } from '@mikro-orm/postgresql';
 import { Inject, Injectable } from '@nestjs/common';
+import ms from 'ms';
 import {
   FINANCE_CONFIG,
   type FinanceConfig,
@@ -12,10 +13,7 @@ import { FulfillmentProvenance } from '../../domain/enums/fulfillment-provenance
 import { ShipmentStatus } from '../../domain/enums/shipment-status.enum';
 import { ShipmentUpdateActorType } from '../../domain/enums/shipment-update-actor-type.enum';
 import { ShipmentUpdateSource } from '../../domain/enums/shipment-update-source.enum';
-import {
-  isDispatchStatus,
-  isJourneyTransitionAllowed,
-} from '../../domain/shipment-journey';
+import { isDispatchStatus } from '../../domain/shipment-journey';
 import {
   findCarrier,
   isValidCarrierTrackingNumber,
@@ -41,8 +39,8 @@ import {
 import {
   InvalidCarrierTrackingNumberError,
   InvalidFulfillmentQuantityError,
-  InvalidShipmentJourneyTransitionError,
   ShipmentAlreadyVoidedError,
+  ShipmentHandoverRequirementsError,
   ShipmentItemNotInGroupError,
   ShipmentNotPreparedError,
   ShipmentQuantityExceededError,
@@ -66,6 +64,9 @@ import {
   buildOrderDeliveredEvent,
   type OrderDeliveredEventInput,
 } from '../events/order-delivered.event';
+
+/** Carrier and tracking stay correctable this long after the handover. */
+const HANDOVER_AMEND_WINDOW_MS = ms('3d');
 
 export type AssignOrderFulfillmentInput = {
   orderId: string;
@@ -97,16 +98,11 @@ export type AmendShipmentInput = {
   actor: FulfillmentActor;
 };
 
-export type RecordJourneyInput = {
+export type DeclareHandoverInput = {
   orderId: string;
   shopId: string;
   shipmentId: string;
-  status: ShipmentStatus;
-  carrier?: string;
-  trackingNumber?: string;
-  note?: string;
   actor: FulfillmentActor;
-  occurredAt?: Date;
 };
 
 export type RecordCarrierEventInput = {
@@ -310,12 +306,22 @@ export class FulfillmentService {
       throw new ShipmentAlreadyVoidedError();
     }
 
-    if (shipment.status !== ShipmentStatus.PREPARED) {
+    if (
+      shipment.status !== ShipmentStatus.PREPARED
+      && !(await this.isAmendableAfterHandover(entityManager, shipment))
+    ) {
       throw new ShipmentNotPreparedError();
     }
 
     const group = await this.loadGroupForWrite(entityManager, input.orderId, shipment.group.id);
     const groupItems = group.items.getItems();
+
+    // After handover only carrier and tracking may change: the goods are already
+    // with the carrier, so re-splitting quantities would rewrite buyer progress
+    // for a parcel that has left the seller.
+    if (input.items !== undefined && shipment.status !== ShipmentStatus.PREPARED) {
+      throw new ShipmentNotPreparedError();
+    }
 
     if (input.items !== undefined) {
       this.assertRequestedItems(input.items);
@@ -357,7 +363,7 @@ export class FulfillmentService {
 
     entityManager.persist(entityManager.create(ShipmentUpdateEntity, {
       shipment,
-      status: ShipmentStatus.PREPARED,
+      status: shipment.status,
       actorType: input.actor.actorType,
       actorId: input.actor.actorId,
       source: input.actor.source,
@@ -406,12 +412,14 @@ export class FulfillmentService {
   }
 
   /**
-   * Records the Shipment journey. An unchanged status is a no-op: replay must not
-   * duplicate updates or reset delivered timestamps.
+   * Records the seller's Handover Declaration: the one status authority the
+   * seller keeps. It requires a carrier and a tracking number, happens at most
+   * once, and only ever sets dispatch, so replaying it is a no-op. Everything
+   * after handover comes from Carrier Evidence.
    */
-  async recordJourney(
+  async declareHandover(
     entityManager: EntityManager,
-    input: RecordJourneyInput,
+    input: DeclareHandoverInput,
   ): Promise<ShipmentEntity> {
     const shipment = await this.loadShipmentForWrite(
       entityManager,
@@ -423,76 +431,41 @@ export class FulfillmentService {
       throw new ShipmentAlreadyVoidedError();
     }
 
-    if (!isJourneyTransitionAllowed(shipment.status, input.status)) {
-      throw new InvalidShipmentJourneyTransitionError();
+    // A replay of the declaration, or a shipment a carrier already moved, has
+    // nothing left to declare.
+    if (shipment.status !== ShipmentStatus.PREPARED) {
+      if (isDispatchStatus(shipment.status)) {
+        return shipment;
+      }
+
+      throw new ShipmentNotPreparedError();
     }
 
-    const statusChanged = shipment.status !== input.status;
-    const carrier = input.carrier === undefined
-      ? shipment.carrier
-      : normalizeOptionalText(input.carrier);
-    const trackingNumber = input.trackingNumber === undefined
-      ? shipment.trackingNumber
-      : normalizeOptionalText(input.trackingNumber);
-    const note = input.note === undefined
-      ? shipment.note
-      : normalizeOptionalText(input.note);
+    const carrier = shipment.carrier;
+    const trackingNumber = shipment.trackingNumber;
+
+    if (!carrier || !trackingNumber) {
+      throw new ShipmentHandoverRequirementsError();
+    }
 
     this.assertCarrierTrackingNumber(carrier, trackingNumber);
 
-    // Replaying an unchanged command is a no-op: it must not add another Shipment
-    // Update or refresh delivered/dispatched timestamps.
-    if (
-      !statusChanged
-      && carrier === shipment.carrier
-      && trackingNumber === shipment.trackingNumber
-      && note === shipment.note
-    ) {
-      return shipment;
-    }
+    const dispatchedAt = new Date();
 
-    const occurredAt = input.occurredAt ?? new Date();
-
-    // Captured before the delivered timestamp is assigned: only the transition
-    // that first establishes delivery may publish the order's delivery event.
-    const becameDelivered = statusChanged
-      && input.status === ShipmentStatus.DELIVERED
-      && !shipment.deliveredAt;
-
-    shipment.status = input.status;
-    shipment.carrier = carrier;
-    shipment.trackingNumber = trackingNumber;
-    shipment.note = note;
-
-    if (statusChanged && input.status === ShipmentStatus.DISPATCHED && !shipment.dispatchedAt) {
-      shipment.dispatchedAt = occurredAt;
-    }
-
-    if (statusChanged && input.status === ShipmentStatus.DELIVERED && !shipment.deliveredAt) {
-      shipment.deliveredAt = occurredAt;
-    }
+    shipment.status = ShipmentStatus.DISPATCHED;
+    shipment.dispatchedAt = dispatchedAt;
 
     entityManager.persist(entityManager.create(ShipmentUpdateEntity, {
       shipment,
-      status: input.status,
+      status: ShipmentStatus.DISPATCHED,
       actorType: input.actor.actorType,
       actorId: input.actor.actorId,
       source: input.actor.source,
-      occurredAt,
+      occurredAt: dispatchedAt,
       note: shipment.note,
-      ...(statusChanged ? {} : { payload: { corrected: true } }),
     }));
 
     await entityManager.flush();
-
-    if (becameDelivered) {
-      await this.publishOrderDeliveredEvent(
-        entityManager,
-        input.orderId,
-        shipment.deliveredAt ?? occurredAt,
-        new Date(),
-      );
-    }
 
     return shipment;
   }
@@ -794,6 +767,30 @@ export class FulfillmentService {
     );
 
     return shipment;
+  }
+
+  /**
+   * After handover, a seller may still correct carrier and tracking for a short
+   * window. The window closes at a fixed age, and a carrier scan closes it early:
+   * once the carrier has the parcel, the label and the timeline must agree.
+   */
+  private async isAmendableAfterHandover(
+    entityManager: EntityManager,
+    shipment: ShipmentEntity,
+  ): Promise<boolean> {
+    if (shipment.status !== ShipmentStatus.DISPATCHED || !shipment.dispatchedAt) {
+      return false;
+    }
+
+    if (Date.now() - shipment.dispatchedAt.getTime() > HANDOVER_AMEND_WINDOW_MS) {
+      return false;
+    }
+
+    const earliestCarrierScan = await entityManager
+      .getRepository(ShipmentUpdateEntity)
+      .findOne({ shipment: shipment.id, source: ShipmentUpdateSource.CARRIER });
+
+    return earliestCarrierScan === null;
   }
 
   private assertSellerGroup(group: FulfillmentGroupEntity): void {
