@@ -1,0 +1,14 @@
+{
+  "name": "@arc/mock-carrier",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Dependency-free mock carrier service for local Arc development",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node --test test"
+  }
+}

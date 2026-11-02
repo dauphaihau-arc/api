@@ -3,6 +3,7 @@ compose_project := "arc-api"
 legacy_compose_project := "infra"
 api_dir := "api"
 inventory_service_dir := "inventory-service"
+mock_carrier_service_dir := "mock-carrier-service"
 
 # --------- Private helpers
 
@@ -44,6 +45,13 @@ _inventory-service-with-env command environment='':
   set -a && \
   . "$env_file" && \
   set +a && \
+  {{ command }}
+
+[private]
+_mock-carrier-with-env command environment='':
+  env_file="{{ if environment == "" { ".env" } else { ".env." + environment } }}"; \
+  cd {{ mock_carrier_service_dir }} && \
+  if [ -f "$env_file" ]; then set -a; . "$env_file"; set +a; fi && \
   {{ command }}
 
 [private]
@@ -109,6 +117,12 @@ api-env-infisical project_id *env_name:
   
 inventory-service-up environment='':
   just _inventory-service-with-env "go run ./cmd/inventory-service" "{{ environment }}"
+
+# --------- Mock Carrier service
+
+# Runs the dev Mock Carrier so prepared Shipments can move.
+mock-carrier-up environment='':
+  just _mock-carrier-with-env "node server.mjs" "{{ environment }}"
 
 
 # --------- Migrations
