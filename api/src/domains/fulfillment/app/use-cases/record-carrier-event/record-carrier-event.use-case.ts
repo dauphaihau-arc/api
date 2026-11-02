@@ -7,6 +7,10 @@ import {
   ORDER_FULFILLMENT_UPDATED_EVENT,
   type OrderFulfillmentUpdatedEventPayload,
 } from '../../events/order-fulfillment-updated.event';
+import {
+  SHIPMENT_CARRIER_EVENT_ACCEPTED_EVENT,
+  type ShipmentCarrierEventAcceptedPayload,
+} from '../../events/shipment-carrier-event-accepted.event';
 import { OrderFulfillmentContextPort } from '../../ports/order-fulfillment-context.port';
 import { FulfillmentService } from '../../services/fulfillment.service';
 
@@ -63,6 +67,15 @@ export class RecordCarrierEventUseCase {
       return;
     }
 
+    this.eventEmitter.emit(SHIPMENT_CARRIER_EVENT_ACCEPTED_EVENT, {
+      orderId: result.orderId,
+      shopId: result.shopId,
+      eventCode,
+      carrier: input.carrier,
+      trackingNumber: input.trackingNumber,
+      occurredAt: input.occurredAt,
+    } satisfies ShipmentCarrierEventAcceptedPayload);
+
     const context = await this.orderFulfillmentContextPort.findForFulfillment(
       result.shopId,
       result.orderId,
@@ -76,6 +89,9 @@ export class RecordCarrierEventUseCase {
       orderId: context.id,
       shopId: context.shopId,
       customerUserId: context.customerUserId,
+      // Shipment-update notifications own carrier scans; the generic fulfillment
+      // notification would otherwise fire for every scan and duplicate delivery.
+      notifyBuyer: false,
     } satisfies OrderFulfillmentUpdatedEventPayload);
   }
 }

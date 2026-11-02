@@ -87,6 +87,7 @@ import { ShippingModule } from '../shipping/shipping.module';
 import { ProductModule } from '../product/product.module';
 import { PromotionModule } from '../promotion/promotion.module';
 import { ApplyOrderFulfillmentListener } from './listeners/apply-order-fulfillment.listener';
+import { NotifyShipmentUpdateListener } from './listeners/notify-shipment-update.listener';
 import { ForwardOrderUpdatedToSseListener } from './listeners/forward-order-updated-to-sse.listener';
 import { ForwardOrderExportToSseListener } from './listeners/forward-order-export-to-sse.listener';
 import { UpdateShopOrderStatusUseCase } from './app/use-cases/update-shop-order-status/update-shop-order-status.use-case';
@@ -208,6 +209,7 @@ import { UpdateShopOrderRefundUseCase } from './app/use-cases/update-shop-order-
     UpdateShopOrderRefundUseCase,
     OrderPublicIdLookup,
     ApplyOrderFulfillmentListener,
+    NotifyShipmentUpdateListener,
     ForwardOrderUpdatedToSseListener,
     ForwardOrderExportToSseListener,
     ProcessOrderRefundJob,
