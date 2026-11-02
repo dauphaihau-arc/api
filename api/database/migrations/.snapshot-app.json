@@ -17023,7 +17023,7 @@
           "autoincrement": false,
           "primary": false,
           "nullable": true,
-          "unique": false,
+          "unique": true,
           "length": 255,
           "precision": null,
           "scale": null,
