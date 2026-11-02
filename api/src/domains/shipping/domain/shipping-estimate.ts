@@ -1,10 +1,11 @@
+import ms from 'ms';
 import {
   collectDurationRangeIssueKind,
   type ShippingDurationBound,
   type ShippingDurationRange,
 } from './shipping-duration-range';
 
-const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
+const MILLISECONDS_PER_DAY = ms('1d');
 
 export interface ShippingEstimate {
   processingTimeMinDays: number;
