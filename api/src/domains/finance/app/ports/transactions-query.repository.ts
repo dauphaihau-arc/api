@@ -4,19 +4,21 @@ import type { PayoutSource, PayoutState } from '../../domain/rules/payout';
  * The kinds of row the seller transaction timeline shows. Manual Adjustments
  * are deliberately absent: they are not a seller-visible money event yet.
  */
-export const TRANSACTION_TYPES = ['order_income', 'refund', 'payout'] as const;
+export const TRANSACTION_TYPES = ['order_income', 'refund', 'label_charge', 'payout'] as const;
 
 export type TransactionType = (typeof TRANSACTION_TYPES)[number];
 
 /**
  * Every status a transaction row can carry, across types:
- * `released`/`pending` for Order income, `deducted` for a Refund, and the
- * Payout state for a Payout (`pending`, `paid`, `blocked`, `failed`).
+ * `released`/`pending` for Order income, `deducted` for a Refund and a Label
+ * Charge, and the Payout state for a Payout (`pending`, `paid`, `blocked`,
+ * `failed`).
  */
 export const TRANSACTION_STATUSES = [
   'released',
   'pending',
   'deducted',
+  'refunded',
   'paid',
   'blocked',
   'failed',
@@ -26,6 +28,7 @@ export type TransactionStatus =
   | 'released'
   | 'pending'
   | 'deducted'
+  | 'refunded'
   | PayoutState;
 
 /** One row of the seller transaction timeline, already in signed minor units. */
@@ -36,27 +39,28 @@ export interface TransactionRecord {
   reference: string;
   /** Human Order number; null on Payout rows. */
   orderNumber: string | null;
-  /** Human Payout number; null on Order income and Refund rows. */
+  /** Human Payout number; null on Order income, Refund, and Label Charge rows. */
   payoutNumber: string | null;
   type: TransactionType;
   status: TransactionStatus;
   /**
    * Gross Order amount: positive for Order income (what the buyer paid) and
-   * negative for a Refund; null on Payout rows.
+   * negative for a Refund; null on Label Charge and Payout rows.
    */
   orderAmountMinor: number | null;
   /**
    * Platform Commission: negative for Order income (fee charged) and positive
-   * for a Refund (pro-rata reversal); null on Payout rows.
+   * for a Refund (pro-rata reversal); null on Label Charge and Payout rows.
    */
   feesMinor: number | null;
   /**
-   * The Seller Payable posting: positive for Order income, negative for a
-   * Refund, and the signed payout amount on Payout rows.
+   * The Seller Payable posting: positive for Order income and a Label refund,
+   * negative for a Refund and a Label Charge, and the signed payout amount on
+   * Payout rows.
    */
   netAmountMinor: number;
   currency: string;
-  /** Where a Payout came from; null on income and refund rows. */
+  /** Where a Payout came from; null on income, refund, and label rows. */
   source: PayoutSource | null;
 }
 

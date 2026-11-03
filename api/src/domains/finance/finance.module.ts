@@ -70,6 +70,7 @@ import { GetShopSellerPayableUseCase } from './app/use-cases/get-shop-seller-pay
 import { GetShopTransactionsUseCase } from './app/use-cases/get-shop-transactions/get-shop-transactions.use-case';
 import { PayShopUseCase } from './app/use-cases/pay-shop/pay-shop.use-case';
 import { RecordCommissionScheduleUseCase } from './app/use-cases/record-commission-schedule/record-commission-schedule.use-case';
+import { RecordLabelMoneyEventUseCase } from './app/use-cases/record-label-money-event/record-label-money-event.use-case';
 import { RecordOrderPaidJournalEntryUseCase } from './app/use-cases/record-order-paid-journal-entry/record-order-paid-journal-entry.use-case';
 import { RecordProviderFeeUseCase } from './app/use-cases/record-provider-fee/record-provider-fee.use-case';
 import { RecordConnectedPayoutUseCase } from './app/use-cases/record-connected-payout/record-connected-payout.use-case';
@@ -242,6 +243,7 @@ import { MikroOrmTransactionsQueryRepository } from './infra/persistence/reposit
     },
     RecordOrderPaidJournalEntryUseCase,
     RecordOrderRefundJournalEntryUseCase,
+    RecordLabelMoneyEventUseCase,
     RecordPayoutAvailabilityUseCase,
     RecordCommissionScheduleUseCase,
     GetCommissionScheduleUseCase,
@@ -281,6 +283,8 @@ import { MikroOrmTransactionsQueryRepository } from './infra/persistence/reposit
     RecordOrderPaidJournalEntryUseCase,
     RecordPayoutAvailabilityUseCase,
     RecordOrderRefundJournalEntryUseCase,
+    RecordLabelMoneyEventUseCase,
+    GetSettlementCurrencyUseCase,
     FINANCE_CONFIG,
     PayoutQueryRepository,
     OrderPayoutQueryRepository,

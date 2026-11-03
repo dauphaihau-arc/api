@@ -57,4 +57,27 @@ export abstract class SellerPayableCommandRepository {
     context: FinanceRepositoryContext,
   ): Promise<void>;
 
+  /**
+   * Removes `amountMinor` from the shop's available Seller Payable because a
+   * Label Charge was booked. The position may go negative: postage is a real
+   * cost even when the shop has not yet earned enough to cover it.
+   */
+  abstract debitAvailable(
+    shopId: string,
+    currency: string,
+    amountMinor: number,
+    context: FinanceRepositoryContext,
+  ): Promise<void>;
+
+  /**
+   * Adds `amountMinor` back to the shop's available Seller Payable because a
+   * Label refund was booked. The credit lands in the same bucket the charge
+   * debited, so the pair nets to zero.
+   */
+  abstract creditAvailable(
+    shopId: string,
+    currency: string,
+    amountMinor: number,
+    context: FinanceRepositoryContext,
+  ): Promise<void>;
 }
