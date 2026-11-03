@@ -15,7 +15,7 @@ Background pollers only exist in the worker process: `api/src/bootstrap/worker.t
 | Switch | Values | Default | Controls |
 | --- | --- | --- | --- |
 | `QUEUE_DRIVER` | `redis`, `inline` | `redis` (`inline` when `NODE_ENV=test`) | Whether the worker process starts pollers at all |
-| `FINANCE_MONEY_EVENT_BOOKING` | `outbox`, `inline` | `outbox` | Where `order.paid`, `order.delivered`, and `order.refunded` are booked |
+| `FINANCE_MONEY_EVENT_BOOKING` | `outbox`, `inline` | `outbox` | Where `order.paid`, `order.delivered`, `order.refunded`, `label.charged`, and `label.refunded` are booked |
 
 `QUEUE_DRIVER=inline` makes the API a workerless deployment: no poller runs, so pending outbox rows and scheduled reconciliation advance only when an external schedule calls `POST /v1/internal/jobs/drain`.
 
@@ -26,6 +26,8 @@ Background pollers only exist in the worker process: `api/src/bootstrap/worker.t
 | `order.paid` | Producer writes a `pending` outbox row; `FinanceOutboxWorkerService` ticks every 5s and `FinanceMoneyEventProcessorService` records the journal entry | `OrderPaymentService` books inline with `RecordOrderPaidJournalEntryUseCase.recordWithin` inside the checkout transaction and marks the row `processed`; needs `FINANCE_MONEY_EVENT_BOOKING=inline` |
 | `order.delivered` | Delivered poller releases Seller Payable `pending` → `available` | `FulfillmentService.publishOrderDeliveredEvent` calls `RecordPayoutAvailabilityUseCase.recordWithin` in the delivery transaction and marks the row `processed` |
 | `order.refunded` | Refund poller books the reversal | Both refund producers book inline: the provider refund outcome (`OrderRefundService.markRefundSucceeded`) and the admin refund confirmation (`UpdateAdminOrderRefundUseCase.execute`) |
+| `label.charged` | Label poller books the Label Charge against Seller Payable | `PurchaseFulfillmentLabelUseCase` books with `RecordLabelMoneyEventUseCase.recordWithin` in the purchase transaction and marks the row `processed` |
+| `label.refunded` | Label poller books the Label Refund | `RefundShipmentLabelUseCase` books with `RecordLabelMoneyEventUseCase.recordWithin` in the refund transaction and marks the row `processed` |
 | inventory `order.created` | Inventory outbox poller publishes to the inventory service over RabbitMQ | No inline path; the `inventory` drain task is the only publisher, because a broker publish cannot join the database transaction |
 | Checkout session creation | First attempt is already inline (`OrderCheckoutService.tryProcessCheckoutSessionRequest`); the worker retries failures | Same first inline attempt; the `checkout` drain task retries failures |
 | Refund reconciliation (`OrderRefundService.reconcilePendingRefunds`) | Worker tick every 5m | Drain `refunds` task |
@@ -44,6 +46,8 @@ Periodic pipelines (reconciliation, payout) have no producer path: they only adv
 | `order.paid` inline branch | `api/src/domains/order/app/services/order-payment.service.ts:169` |
 | `order.delivered` inline branch | `api/src/domains/fulfillment/app/services/fulfillment.service.ts:539` (`publishOrderDeliveredEvent`), branch at `:575` |
 | `order.refunded` inline branch | `api/src/domains/order/app/services/order-refund.service.ts:471`; `api/src/domains/order/app/use-cases/update-admin-order-refund/update-admin-order-refund.use-case.ts:201` |
+| `label.charged` inline branch | `api/src/domains/fulfillment/app/use-cases/purchase-fulfillment-label/purchase-fulfillment-label.use-case.ts` |
+| `label.refunded` inline branch | `api/src/domains/fulfillment/app/use-cases/refund-shipment-label/refund-shipment-label.use-case.ts` |
 | Drain endpoint | `api/src/platform/jobs/internal-outbox-jobs.controller.ts` (`DRAIN_TASKS`: `finance`, `checkout`, `inventory`, `refunds`, `payout`; default limit 10, max 50, 20s budget) |
 | Inline job execution | `api/src/integrations/queue/infra/inline-job-dispatcher.ts` |
 | Outbox retry policy | `api/src/platform/outbox/durable-outbox.processor.ts` (`MAX_ATTEMPTS = 5`, `RETRY_DELAYS_MS`) |
@@ -74,7 +78,14 @@ The mode matrix is covered by integration specs under `api/test/integration/`:
 - `finance-paid-order-inline-booking.int-spec.ts`
 - `finance-delivered-order-inline-booking.int-spec.ts`
 - `finance-refund-order-inline-booking.int-spec.ts`
+- `fulfillment.int-spec.ts` (Label Charge and Label Refund outbox rows stay `pending` until the processor books them)
 - `internal-outbox-drain.int-spec.ts`
+
+The Label inline branches are covered by the use-case specs
+(`purchase-fulfillment-label.use-case.spec.ts`, `refund-shipment-label.use-case.spec.ts`),
+which assert `RecordLabelMoneyEventUseCase.recordWithin` runs on the producer's
+transaction EntityManager and the outbox row is marked `processed` only in
+`inline` mode.
 
 ```sh
 pnpm test:int -- finance-paid-order-inline-booking
