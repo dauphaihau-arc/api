@@ -20,7 +20,7 @@ export class InvalidFulfillmentQuantityError extends FulfillmentDomainError {
 
 export class ShipmentNotPreparedError extends FulfillmentDomainError {
   constructor() {
-    super('Shipment preparation can only be changed before dispatch');
+    super('Shipment can only be changed while prepared, or shortly after handover before the carrier scans');
   }
 }
 
@@ -30,9 +30,9 @@ export class ShipmentAlreadyVoidedError extends FulfillmentDomainError {
   }
 }
 
-export class InvalidShipmentJourneyTransitionError extends FulfillmentDomainError {
+export class ShipmentHandoverRequirementsError extends FulfillmentDomainError {
   constructor() {
-    super('Invalid shipment journey transition');
+    super('A shipment needs a carrier and a tracking number before handover');
   }
 }
 
@@ -45,5 +45,23 @@ export class ShipmentItemNotInGroupError extends FulfillmentDomainError {
 export class ShipmentQuantityExceededError extends FulfillmentDomainError {
   constructor() {
     super('Shipment quantity exceeds the group quantity still available to ship');
+  }
+}
+
+export class UnsupportedCarrierError extends FulfillmentDomainError {
+  constructor() {
+    super('Unsupported carrier code');
+  }
+}
+
+export class InvalidCarrierTrackingNumberError extends FulfillmentDomainError {
+  constructor() {
+    super('Tracking number does not match the carrier format');
+  }
+}
+
+export class InvalidCarrierEventCodeError extends FulfillmentDomainError {
+  constructor() {
+    super('Carrier event code is not supported');
   }
 }

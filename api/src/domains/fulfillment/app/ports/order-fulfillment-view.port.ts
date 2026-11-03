@@ -8,6 +8,11 @@ export type LoadOrderFulfillmentViewsOptions = {
    * canceled and the remaining obligation reaches zero.
    */
   canceledOrderIds?: Iterable<string>;
+  /**
+   * Buyer-facing reads hide voided Shipments; seller and admin reads keep them
+   * as fulfillment history.
+   */
+  hideVoidedShipments?: boolean;
 };
 
 /**

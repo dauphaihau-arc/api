@@ -4,12 +4,15 @@
 # fixed id, the way the seller app finds it. Requires a seeded seller that owns
 # a shop; `seller_login_email` defaults to the seeded Olive Atelier owner.
 
-# An unauthenticated caller cannot read a shop's payable.
+
+# 1. An unauthenticated caller cannot read a shop's payable.
 GET {{base_url}}/v1/shops/shop_unknown/finance/payable
 HTTP 401
 [Asserts]
 jsonpath "$.code" == "AUTH_REQUIRED"
 
+
+# 2. Sign in as the seller who owns the shop.
 POST {{base_url}}/v1/auth/login
 Content-Type: application/json
 ```json
@@ -25,7 +28,8 @@ header "Cache-Control" == "no-store"
 cookie "accessToken" exists
 jsonpath "$.user.roles" contains "seller"
 
-# Resolve the seller's own shop.
+
+# 3. Resolve the seller's own shop.
 GET {{base_url}}/v1/shops/me
 HTTP 200
 [Captures]
@@ -34,8 +38,10 @@ shop_public_id: jsonpath "$.id"
 header "Cache-Control" == "private, no-cache"
 jsonpath "$.id" startsWith "shop_"
 
-# Seller Payable is integer minor units per currency; the list is empty until an
-# Order is paid.
+
+# 4. Read the shop's Seller Payable.
+# Payable is integer minor units per currency; the list is empty until an Order
+# is paid.
 GET {{base_url}}/v1/shops/{{shop_public_id}}/finance/payable
 HTTP 200
 [Asserts]

@@ -3,8 +3,11 @@ import {
   BadRequestException,
   ConflictException,
   NotFoundException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import {
+  CarrierLabelUnavailableError,
+  CarrierRatesUnavailableError,
   FulfillmentAppError,
   FulfillmentGroupAlreadyAssignedError,
   FulfillmentGroupNotFoundError,
@@ -13,20 +16,32 @@ import {
   FulfillmentReconciliationIncompleteError,
   FulfillmentReconciliationRequiredError,
   OrderNotEligibleForFulfillmentError,
+  RateQuoteExpiredError,
+  ShipmentLabelNotFoundError,
+  ShipmentLabelRequiresRefundError,
+  ShipmentLabelUsedError,
   ShipmentNotFoundError,
 } from '../../../app/errors/fulfillment-app.error';
 import {
   FulfillmentDomainError,
+  InvalidCarrierEventCodeError,
+  InvalidCarrierTrackingNumberError,
   InvalidFulfillmentQuantityError,
-  InvalidShipmentJourneyTransitionError,
   ShipmentAlreadyVoidedError,
+  ShipmentHandoverRequirementsError,
   ShipmentItemNotInGroupError,
   ShipmentNotPreparedError,
   ShipmentQuantityExceededError,
+  UnsupportedCarrierError,
   UnsupportedFulfillmentMethodError,
 } from '../../../domain/errors/fulfillment-domain.error';
 
-export type FulfillmentError = FulfillmentAppError | FulfillmentDomainError;
+export type FulfillmentError =
+  | FulfillmentAppError
+  | FulfillmentDomainError
+  | CarrierRatesUnavailableError
+  | CarrierLabelUnavailableError
+  | RateQuoteExpiredError;
 
 type FulfillmentHttpErrorCode =
   | 'ORDER_NOT_ELIGIBLE_FOR_FULFILLMENT'
@@ -40,13 +55,26 @@ type FulfillmentHttpErrorCode =
   | 'SHIPMENT_NOT_FOUND'
   | 'SHIPMENT_NOT_PREPARED'
   | 'SHIPMENT_ALREADY_VOIDED'
-  | 'INVALID_SHIPMENT_JOURNEY_TRANSITION'
+  | 'SHIPMENT_HANDOVER_REQUIREMENTS'
   | 'SHIPMENT_ITEM_NOT_IN_GROUP'
   | 'SHIPMENT_QUANTITY_EXCEEDED'
-  | 'INVALID_FULFILLMENT_QUANTITY';
+  | 'INVALID_FULFILLMENT_QUANTITY'
+  | 'UNSUPPORTED_CARRIER'
+  | 'INVALID_CARRIER_TRACKING_NUMBER'
+  | 'INVALID_CARRIER_EVENT'
+  | 'CARRIER_RATES_UNAVAILABLE'
+  | 'CARRIER_LABEL_UNAVAILABLE'
+  | 'RATE_QUOTE_EXPIRED'
+  | 'SHIPMENT_LABEL_NOT_FOUND'
+  | 'SHIPMENT_LABEL_ALREADY_USED'
+  | 'SHIPMENT_LABEL_REFUND_REQUIRED';
 
 export function isFulfillmentError(error: unknown): error is FulfillmentError {
-  return error instanceof FulfillmentAppError || error instanceof FulfillmentDomainError;
+  return error instanceof FulfillmentAppError
+    || error instanceof FulfillmentDomainError
+    || error instanceof CarrierRatesUnavailableError
+    || error instanceof CarrierLabelUnavailableError
+    || error instanceof RateQuoteExpiredError;
 }
 
 export function mapFulfillmentErrorToHttpException(
@@ -57,10 +85,23 @@ export function mapFulfillmentErrorToHttpException(
     code: getFulfillmentErrorCode(error),
   };
 
+  if (error instanceof CarrierRatesUnavailableError) {
+    return new ServiceUnavailableException(payload);
+  }
+
+  if (error instanceof CarrierLabelUnavailableError) {
+    return new ServiceUnavailableException(payload);
+  }
+
+  if (error instanceof RateQuoteExpiredError) {
+    return new ConflictException(payload);
+  }
+
   if (
     error instanceof FulfillmentGroupNotFoundError
     || error instanceof FulfillmentOrderNotFoundError
     || error instanceof ShipmentNotFoundError
+    || error instanceof ShipmentLabelNotFoundError
   ) {
     return new NotFoundException(payload);
   }
@@ -70,7 +111,9 @@ export function mapFulfillmentErrorToHttpException(
     || error instanceof FulfillmentGroupAlreadyAssignedError
     || error instanceof ShipmentNotPreparedError
     || error instanceof ShipmentAlreadyVoidedError
-    || error instanceof InvalidShipmentJourneyTransitionError
+    || error instanceof ShipmentLabelUsedError
+    || error instanceof ShipmentLabelRequiresRefundError
+    || error instanceof ShipmentHandoverRequirementsError
     || error instanceof ShipmentQuantityExceededError
   ) {
     return new ConflictException(payload);
@@ -113,8 +156,8 @@ function getFulfillmentErrorCode(error: FulfillmentError): FulfillmentHttpErrorC
   if (error instanceof ShipmentAlreadyVoidedError) {
     return 'SHIPMENT_ALREADY_VOIDED';
   }
-  if (error instanceof InvalidShipmentJourneyTransitionError) {
-    return 'INVALID_SHIPMENT_JOURNEY_TRANSITION';
+  if (error instanceof ShipmentHandoverRequirementsError) {
+    return 'SHIPMENT_HANDOVER_REQUIREMENTS';
   }
   if (error instanceof ShipmentItemNotInGroupError) {
     return 'SHIPMENT_ITEM_NOT_IN_GROUP';
@@ -124,6 +167,33 @@ function getFulfillmentErrorCode(error: FulfillmentError): FulfillmentHttpErrorC
   }
   if (error instanceof InvalidFulfillmentQuantityError) {
     return 'INVALID_FULFILLMENT_QUANTITY';
+  }
+  if (error instanceof UnsupportedCarrierError) {
+    return 'UNSUPPORTED_CARRIER';
+  }
+  if (error instanceof InvalidCarrierTrackingNumberError) {
+    return 'INVALID_CARRIER_TRACKING_NUMBER';
+  }
+  if (error instanceof InvalidCarrierEventCodeError) {
+    return 'INVALID_CARRIER_EVENT';
+  }
+  if (error instanceof CarrierRatesUnavailableError) {
+    return 'CARRIER_RATES_UNAVAILABLE';
+  }
+  if (error instanceof CarrierLabelUnavailableError) {
+    return 'CARRIER_LABEL_UNAVAILABLE';
+  }
+  if (error instanceof RateQuoteExpiredError) {
+    return 'RATE_QUOTE_EXPIRED';
+  }
+  if (error instanceof ShipmentLabelNotFoundError) {
+    return 'SHIPMENT_LABEL_NOT_FOUND';
+  }
+  if (error instanceof ShipmentLabelUsedError) {
+    return 'SHIPMENT_LABEL_ALREADY_USED';
+  }
+  if (error instanceof ShipmentLabelRequiresRefundError) {
+    return 'SHIPMENT_LABEL_REFUND_REQUIRED';
   }
 
   return 'ORDER_NOT_ELIGIBLE_FOR_FULFILLMENT';

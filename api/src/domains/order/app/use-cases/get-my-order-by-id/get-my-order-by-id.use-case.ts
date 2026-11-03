@@ -52,6 +52,7 @@ export class GetMyOrderByIdUseCase {
     );
     const fulfillmentView = (await this.orderFulfillmentViewPort.load(entityManager, [order.id], {
       canceledOrderIds: canceledFulfillmentOrderIds([order]),
+      hideVoidedShipments: true,
     })).get(order.id);
     const reviewMap = await loadProductReviewMap(
       entityManager,

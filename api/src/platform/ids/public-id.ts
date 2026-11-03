@@ -12,6 +12,7 @@ export type PublicIdPrefix =
   | 'prod'
   | 'ord'
   | 'shp'
+  | 'lbl'
   | 'cnv'
   | 'exp'
   | 'imp'

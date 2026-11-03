@@ -63,7 +63,7 @@ export class ListShopTransactionsQueryDto {
   @ApiPropertyOptional({
     description:
       'Only return rows with this status: released/pending for Order income, ' +
-      'deducted for refunds, or the Payout state.',
+      'deducted for refunds and Label Charges, or the Payout state.',
     enum: TRANSACTION_STATUSES,
     example: 'released',
   })

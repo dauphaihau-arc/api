@@ -1,0 +1,129 @@
+set shell := ["bash", "-eu", "-o", "pipefail", "-c"]
+
+# `just carrier <recipe>` from api-tests, or `just <recipe>` from this directory.
+vars_file := "../../hurl.variables"
+pickup_vars := "/tmp/arc-carrier-pickup.variables"
+
+static_cases := "missing-signature.hurl invalid-signature.hurl unknown-tracking.manual.hurl unsupported-code.manual.hurl"
+
+prepare := "../../fulfillment/prepare-shipment.manual.hurl"
+pickup := prepare + " pickup.manual.hurl"
+transit := pickup + " transit.manual.hurl"
+delivery := transit + " delivery.manual.hurl"
+
+default:
+  @just --list
+
+# Static signature/validation cases; needs CARRIER_WEBHOOK_SECRET.
+# Runs the static cases.
+static:
+  hurl --test --variables-file {{vars_file}} {{static_cases}}
+
+# Writes the run's tracking numbers, event ids, signed bodies and variables.
+# Regenerates the per-run fixtures.
+generate:
+  node generate-pickup.mjs
+
+# Prints the bare HMAC-SHA256 hex digest of a body file.
+sign file:
+  @openssl dgst -sha256 -hmac "${CARRIER_WEBHOOK_SECRET:-carrier-webhook-test-secret}" "{{file}}" | awk '{print $NF}'
+
+# Runs the prepare half only.
+prepare: generate
+  hurl --test --variables-file {{pickup_vars}} {{prepare}}
+
+# Runs prepare, then pickup.
+pickup: generate
+  hurl --test --jobs 1 --variables-file {{pickup_vars}} {{pickup}}
+
+# Runs prepare, then pickup and transit.
+transit: generate
+  hurl --test --jobs 1 --variables-file {{pickup_vars}} {{transit}}
+
+# Runs prepare → pickup → transit, then failure and return.
+failure-return: generate
+  hurl --test --jobs 1 --variables-file {{pickup_vars}} {{transit}} failure-return.manual.hurl
+
+# Runs prepare, then pickup, transit and delivery.
+delivery: generate
+  hurl --test --jobs 1 --variables-file {{pickup_vars}} --variable outbox_drain_secret="$(grep '^OUTBOX_DRAIN_TRIGGER_SECRET=' ../../../.env | cut -d= -f2- || true)" {{delivery}}
+
+# Runs prepare → pickup → transit → delivery, then the late event.
+out-of-order: generate
+  hurl --test --jobs 1 --variables-file {{pickup_vars}} --variable outbox_drain_secret="$(grep '^OUTBOX_DRAIN_TRIGGER_SECRET=' ../../../.env | cut -d= -f2- || true)" {{delivery}} out-of-order.manual.hurl
+
+# Runs prepare, then pickup twice.
+duplicate: generate
+  hurl --test --jobs 1 --variables-file {{pickup_vars}} {{pickup}} duplicate.manual.hurl
+
+# Runs prepare, pickup, then the cross-carrier case.
+cross-carrier: generate
+  hurl --test --jobs 1 --variables-file {{pickup_vars}} {{pickup}} cross-carrier.manual.hurl
+
+# Runs the voided-Shipment case.
+voided: generate
+  hurl --test --variables-file {{pickup_vars}} voided.manual.hurl
+
+# Runs the successful handover case against a self-built cash Order.
+handover: generate
+  hurl --test --variables-file {{pickup_vars}} handover.manual.hurl
+
+# Runs the handover requirement rejections against self-built cash Orders.
+handover-requirements: generate
+  hurl --test --variables-file {{pickup_vars}} handover-requirements.manual.hurl
+
+# Runs the unverified-carrier handover against a self-built cash Order.
+handover-unverified: generate
+  hurl --test --variables-file {{pickup_vars}} handover-unverified.manual.hurl
+
+# Runs all three handover cases with one fixture generation.
+handover-all: generate
+  hurl --test --variables-file {{pickup_vars}} handover.manual.hurl
+  hurl --test --variables-file {{pickup_vars}} handover-requirements.manual.hurl
+  hurl --test --variables-file {{pickup_vars}} handover-unverified.manual.hurl
+
+# Runs the post-handover amend window against a self-built cash Order.
+amend-window: generate
+  hurl --test --variables-file {{pickup_vars}} amend-window.manual.hurl
+
+# Runs the post-handover quantity lock against a self-built cash Order.
+amend-locks: generate
+  hurl --test --variables-file {{pickup_vars}} amend-locks.manual.hurl
+
+# Runs both post-handover amend cases with one fixture generation.
+amend-window-all: generate
+  hurl --test --variables-file {{pickup_vars}} amend-window.manual.hurl
+  hurl --test --variables-file {{pickup_vars}} amend-locks.manual.hurl
+
+# Runs pickup/delivery notifications for buyer and seller.
+notifications: generate
+  hurl --test --variables-file {{pickup_vars}} notifications.manual.hurl
+
+# Runs the full Mock Carrier loop: requires the Mock Carrier on 4100 and the API
+# started with MOCK_CARRIER_URL. The seller declares handover; the carrier drives
+# pickup, transit, out-for-delivery and delivery through the signed webhook.
+mock-parcel: generate
+  hurl --test --variables-file {{pickup_vars}} --variable mock_carrier_url="${MOCK_CARRIER_URL:-http://127.0.0.1:4100}" mock-parcel.manual.hurl
+
+# Buys a label, checks its charge, refunds it, and verifies the reversal.
+label-refund: generate
+  hurl --test --variables-file {{pickup_vars}} --variable mock_carrier_url="${MOCK_CARRIER_URL:-http://127.0.0.1:4100}" label-refund.manual.hurl
+
+# Covers first-scan used marking, refund rejection, and the labeled-void guard.
+label-used: generate
+  hurl --test --variables-file {{pickup_vars}} --variable mock_carrier_url="${MOCK_CARRIER_URL:-http://127.0.0.1:4100}" label-used.manual.hurl
+
+# Refunds one of two labels in the same fulfillment group.
+label-two-parcels: generate
+  hurl --test --variables-file {{pickup_vars}} --variable mock_carrier_url="${MOCK_CARRIER_URL:-http://127.0.0.1:4100}" label-two-parcels.manual.hurl
+
+# Purchases a label, cancels the Order, then refunds the label.
+label-cancel-refund: generate
+  hurl --test --variables-file {{pickup_vars}} --variable mock_carrier_url="${MOCK_CARRIER_URL:-http://127.0.0.1:4100}" label-cancel-refund.manual.hurl
+
+# Runs every label money/refund case with one fixture generation.
+label-all: generate
+  hurl --test --variables-file {{pickup_vars}} --variable mock_carrier_url="${MOCK_CARRIER_URL:-http://127.0.0.1:4100}" label-refund.manual.hurl
+  hurl --test --variables-file {{pickup_vars}} --variable mock_carrier_url="${MOCK_CARRIER_URL:-http://127.0.0.1:4100}" label-used.manual.hurl
+  hurl --test --variables-file {{pickup_vars}} --variable mock_carrier_url="${MOCK_CARRIER_URL:-http://127.0.0.1:4100}" label-two-parcels.manual.hurl
+  hurl --test --variables-file {{pickup_vars}} --variable mock_carrier_url="${MOCK_CARRIER_URL:-http://127.0.0.1:4100}" label-cancel-refund.manual.hurl

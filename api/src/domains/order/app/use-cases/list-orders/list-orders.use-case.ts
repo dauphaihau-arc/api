@@ -59,7 +59,10 @@ export class ListOrdersUseCase {
     const fulfillmentViews = await this.orderFulfillmentViewPort.load(
       entityManager,
       orders.map((order) => order.id),
-      { canceledOrderIds: canceledFulfillmentOrderIds(orders) },
+      {
+        canceledOrderIds: canceledFulfillmentOrderIds(orders),
+        hideVoidedShipments: true,
+      },
     );
     const reviewMap = await loadProductReviewMap(
       entityManager,

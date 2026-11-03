@@ -24,7 +24,7 @@ Both endpoints use header `x-cron-secret` and are excluded from Swagger and thro
 | `FX_SYNC_TRIGGER_SECRET` | `fx-sync` | Request fails with `503` when unset |
 | `OUTBOX_DRAIN_TRIGGER_SECRET` | `drain` | Request fails with `503` when unset; `401` on mismatch |
 | `QUEUE_DRIVER` | both | `inline` when no worker runs; `redis` when the worker process is deployed |
-| `FINANCE_MONEY_EVENT_BOOKING` | `drain` | `inline` books paid/delivered/refunded events in their producer transaction; `outbox` (default) leaves them to the drain/worker |
+| `FINANCE_MONEY_EVENT_BOOKING` | `drain` | `inline` books paid/delivered/refunded and label charge/refund events in their producer transaction; `outbox` (default) leaves them to the drain/worker |
 | `FX_RATE_SYNC_PROVIDER`, `FX_RATE_SYNC_BASE_CURRENCIES` | `fx-sync` | Unchanged by the cron setup |
 
 Production reads application environment variables through `infisical run` in the Render start command.
@@ -170,7 +170,7 @@ The drain endpoint stays useful for manual repair and for resuming a backlog, bu
 With `QUEUE_DRIVER=inline` and no worker:
 
 - keep the 5-minute drain cron running;
-- set `FINANCE_MONEY_EVENT_BOOKING=inline` so paid, delivered, and refunded money events are booked inside their producer transactions instead of waiting for a consumer;
+- set `FINANCE_MONEY_EVENT_BOOKING=inline` so paid, delivered, refunded, and Label charge/refund money events are booked inside their producer transactions instead of waiting for a consumer;
 - expect the drain mostly to process inventory publication retries, checkout retries, refund reconciliation, and the payout run.
 
 ## Local development

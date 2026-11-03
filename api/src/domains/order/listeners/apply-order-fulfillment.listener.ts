@@ -12,12 +12,64 @@ import {
 import { OrderEventActorType } from '../domain/enums/order-event-actor-type.enum';
 import { OrderEventType } from '../domain/enums/order-event-type.enum';
 import { OrderStatus } from '../domain/enums/order-status.enum';
+import { FulfillmentAggregateStatus } from '../../fulfillment/domain/enums/fulfillment-aggregate-status.enum';
 import { OrderEntity } from '../infra/persistence/entities/order.entity';
 import { dispatchBestSellerRankingRefresh } from '../app/best-seller-ranking-refresh';
 import { ORDER_UPDATED_SSE_EVENT } from '../app/events/order-sse.event';
 import { buildOrderFulfillmentSummary, canceledFulfillmentOrderIds } from '../app/order-fulfillment';
 import { getRequiredOrderNumber } from '../app/order-number';
 import { OrderEventsService } from '../app/services/order-events.service';
+
+type FulfillmentUpdateCopy = {
+  title: string;
+  body: (orderNumber: string) => string;
+};
+
+const FULFILLMENT_UPDATE_COPY: Readonly<
+  Record<FulfillmentAggregateStatus, FulfillmentUpdateCopy>
+> = {
+  [FulfillmentAggregateStatus.UNFULFILLED]: {
+    title: 'Order updated',
+    body: orderNumber => `Order ${orderNumber} was updated.`,
+  },
+  [FulfillmentAggregateStatus.PREPARED]: {
+    title: 'Order is being prepared',
+    body: orderNumber => `Order ${orderNumber} is being prepared for shipping.`,
+  },
+  [FulfillmentAggregateStatus.PARTIALLY_SHIPPED]: {
+    title: 'Part of your order has shipped',
+    body: orderNumber => `Part of order ${orderNumber} has shipped.`,
+  },
+  [FulfillmentAggregateStatus.SHIPPED]: {
+    title: 'Order on the way',
+    body: orderNumber => `Order ${orderNumber} has shipped.`,
+  },
+  [FulfillmentAggregateStatus.PARTIALLY_DELIVERED]: {
+    title: 'Part of your order was delivered',
+    body: orderNumber => `Part of order ${orderNumber} was delivered.`,
+  },
+  [FulfillmentAggregateStatus.DELIVERED]: {
+    title: 'Order delivered',
+    body: orderNumber => `Order ${orderNumber} was delivered.`,
+  },
+  [FulfillmentAggregateStatus.CANCELED]: {
+    title: 'Order canceled',
+    body: orderNumber => `Order ${orderNumber} was canceled.`,
+  },
+  [FulfillmentAggregateStatus.DISPATCHED]: {
+    title: 'Order on the way',
+    body: orderNumber => `Order ${orderNumber} has shipped.`,
+  },
+  [FulfillmentAggregateStatus.IN_TRANSIT]: {
+    title: 'Order on the way',
+    body: orderNumber => `Order ${orderNumber} is on the way.`,
+  },
+};
+
+const FALLBACK_FULFILLMENT_UPDATE_COPY: FulfillmentUpdateCopy = {
+  title: 'Order updated',
+  body: orderNumber => `Order ${orderNumber} was updated.`,
+};
 
 /**
  * Projects the fulfillment collection onto the Order: keeps the list/filter
@@ -119,11 +171,18 @@ export class ApplyOrderFulfillmentListener {
       fulfillmentStatus: outcome.fulfillmentStatus,
     });
 
+    if (payload.notifyBuyer === false) {
+      return;
+    }
+
+    const copy = FULFILLMENT_UPDATE_COPY[outcome.fulfillmentStatus] ??
+      FALLBACK_FULFILLMENT_UPDATE_COPY;
+
     await this.notifyUserUseCase.execute({
       userId: outcome.customerUserId,
       type: 'order.fulfillment.updated',
-      title: 'Order fulfillment updated',
-      body: `Fulfillment for order ${outcome.orderNumber} is now ${outcome.fulfillmentStatus.replace(/_/g, ' ')}.`,
+      title: copy.title,
+      body: copy.body(outcome.orderNumber),
       data: {
         orderId: outcome.orderPublicId,
         shopId: outcome.shopId,

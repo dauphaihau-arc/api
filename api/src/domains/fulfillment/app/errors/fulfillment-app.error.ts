@@ -61,3 +61,56 @@ export class ShipmentNotFoundError extends FulfillmentAppError {
     super('Shipment not found for this order');
   }
 }
+
+export class ShipmentLabelNotFoundError extends FulfillmentAppError {
+  constructor() {
+    super('This shipment has no purchased label');
+  }
+}
+
+/**
+ * The carrier has already scanned the parcel, so its label is in use and can
+ * no longer be refunded.
+ */
+export class ShipmentLabelUsedError extends FulfillmentAppError {
+  constructor() {
+    super('This shipment label has already been used');
+  }
+}
+
+/**
+ * The carrier no longer honours the quote (unknown, expired, or already used).
+ * Buying again with the same quote cannot succeed, so the seller must re-quote.
+ */
+export class RateQuoteExpiredError extends FulfillmentAppError {
+  constructor() {
+    super('This rate quote has expired or was already used; request new rates');
+  }
+}
+
+/**
+ * A deployment without a usable carrier integration still starts; only a label
+ * purchase answers 503 because it has no local fallback.
+ */
+export class CarrierLabelUnavailableError extends FulfillmentAppError {
+  constructor() {
+    super('Carrier labels are temporarily unavailable');
+  }
+}
+
+/**
+ * A deployment without a Mock Carrier URL still starts; only a rate quote
+ * answers 503 because it has no local fallback.
+ */
+export class CarrierRatesUnavailableError extends FulfillmentAppError {
+  constructor() {
+    super('Shipping rates are temporarily unavailable');
+  }
+}
+
+/** A labeled Shipment can only be undone through its Label refund. */
+export class ShipmentLabelRequiresRefundError extends FulfillmentAppError {
+  constructor() {
+    super('Refund the label to void this shipment');
+  }
+}

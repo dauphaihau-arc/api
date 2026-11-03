@@ -49,6 +49,20 @@ export type FulfillmentCommand = (
   entityManager: EntityManager,
 ) => Promise<void>;
 
+export type FulfillmentCommandOptions = {
+  /**
+   * Runs after the Order is found and eligible, before the transaction opens.
+   * It exists for irreversible external steps (buying a carrier label) that
+   * must fail before any local row is written.
+   */
+  beforeTransaction?: (context: OrderFulfillmentContext) => Promise<void>;
+  /**
+   * Refunds are owed even when the Order has since been canceled or refunded;
+   * only the label's own state gates them.
+   */
+  allowIneligibleOrder?: boolean;
+};
+
 /**
  * Shared shell for shop-scoped fulfillment commands: loads the order context,
  * enforces the common eligibility policy, runs the command in one transaction,
@@ -67,6 +81,7 @@ export class FulfillmentCommandRunner {
     shopId: string,
     orderId: string,
     command: FulfillmentCommand,
+    options: FulfillmentCommandOptions = {},
   ): Promise<FulfillmentCommandResult> {
     const context = await this.orderFulfillmentContextPort.findForFulfillment(
       shopId,
@@ -77,9 +92,13 @@ export class FulfillmentCommandRunner {
       throw new FulfillmentOrderNotFoundError();
     }
 
-    if (BLOCKED_ORDER_STATUSES.has(context.status as OrderStatus)) {
+    if (!options.allowIneligibleOrder && BLOCKED_ORDER_STATUSES.has(context.status as OrderStatus)) {
       throw new OrderNotEligibleForFulfillmentError();
     }
+
+    // External irreversible work happens before the transaction so a failure
+    // here leaves no local Shipment or label behind.
+    await options.beforeTransaction?.(context);
 
     const entityManager = this.entityManager.fork();
 
@@ -97,7 +116,7 @@ export class FulfillmentCommandRunner {
         throw new FulfillmentOrderNotFoundError();
       }
 
-      if (BLOCKED_ORDER_STATUSES.has(lockedContext.status as OrderStatus)) {
+      if (!options.allowIneligibleOrder && BLOCKED_ORDER_STATUSES.has(lockedContext.status as OrderStatus)) {
         throw new OrderNotEligibleForFulfillmentError();
       }
 

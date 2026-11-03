@@ -6,6 +6,7 @@ import {
   Index,
   ManyToOne,
   OneToMany,
+  OneToOne,
   Property,
   Unique,
 } from '@mikro-orm/core';
@@ -14,6 +15,7 @@ import { createPublicId } from '~/platform/ids/public-id';
 import { ShipmentStatus } from '../../../domain/enums/shipment-status.enum';
 import { FulfillmentGroupEntity } from './fulfillment-group.entity';
 import { ShipmentItemEntity } from './shipment-item.entity';
+import { ShipmentLabelEntity } from './shipment-label.entity';
 import { ShipmentUpdateEntity } from './shipment-update.entity';
 
 @Entity({ tableName: 'shipments' })
@@ -72,4 +74,10 @@ export class ShipmentEntity extends AbstractBaseEntity {
 
   @OneToMany(() => ShipmentUpdateEntity, (update) => update.shipment)
   updates = new Collection<ShipmentUpdateEntity>(this);
+
+  @OneToOne(() => ShipmentLabelEntity, (label) => label.shipment, {
+    owner: false,
+    orphanRemoval: false,
+  })
+  label?: ShipmentLabelEntity;
 }

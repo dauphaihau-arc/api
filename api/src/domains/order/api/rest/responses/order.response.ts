@@ -284,6 +284,29 @@ export class OrderShipmentUpdateResponseDto {
 
   @ApiProperty({ required: false })
   note?: string;
+
+  @ApiProperty({ required: false })
+  event_code?: string;
+
+  @ApiProperty({ required: false })
+  location?: string;
+}
+
+export class OrderShipmentLabelResponseDto {
+  @ApiProperty({ description: 'Label public id (lbl_…).' })
+  public_id!: string;
+
+  @ApiProperty()
+  service!: string;
+
+  @ApiProperty()
+  status!: string;
+
+  @ApiProperty()
+  price_minor!: number;
+
+  @ApiProperty()
+  currency!: string;
 }
 
 export class OrderShipmentResponseDto {
@@ -298,6 +321,12 @@ export class OrderShipmentResponseDto {
 
   @ApiProperty({ required: false })
   carrier?: string;
+
+  @ApiProperty({ required: false })
+  carrier_name?: string;
+
+  @ApiProperty({ required: false })
+  carrier_observable?: boolean;
 
   @ApiProperty({ required: false })
   tracking_number?: string;
@@ -333,6 +362,10 @@ export class OrderShipmentResponseDto {
   @ApiProperty({ type: [OrderShipmentUpdateResponseDto] })
   @Type(() => OrderShipmentUpdateResponseDto)
   updates!: OrderShipmentUpdateResponseDto[];
+
+  @ApiProperty({ type: OrderShipmentLabelResponseDto, required: false })
+  @Type(() => OrderShipmentLabelResponseDto)
+  label?: OrderShipmentLabelResponseDto;
 }
 
 export class OrderFulfillmentGroupResponseDto {
@@ -1505,7 +1538,7 @@ export function toOrderListResponse(result: OrderListResult) {
         id: code,
         code,
       })),
-      fulfillment: toFulfillmentSummaryResponse(orderShop.fulfillment),
+      fulfillment: toFulfillmentSummaryResponse(orderShop.fulfillment, { includeLabel: false }),
       ...toMinorTotals(orderShop),
       ...toOrderShippingResponse(orderShop.shippingQuote, orderShop.shopPublicId, orderShop.products),
       note: orderShop.note,
@@ -1552,6 +1585,7 @@ function toShopOrderProductResponse(orderShop: ShopOrderSummary) {
 
 export function toFulfillmentSummaryResponse(
   fulfillment: OrderFulfillmentSummary,
+  options: { includeLabel?: boolean } = {},
 ) {
   return {
     status: fulfillment.status,
@@ -1572,6 +1606,8 @@ export function toFulfillmentSummaryResponse(
         group_id: shipment.groupId,
         status: shipment.status,
         carrier: shipment.carrier,
+        carrier_name: shipment.carrierName,
+        carrier_observable: shipment.carrierObservable,
         tracking_number: shipment.trackingNumber,
         shipment_note: shipment.note,
         origin_countries: shipment.originCountries,
@@ -1593,7 +1629,20 @@ export function toFulfillmentSummaryResponse(
           source: update.source,
           occurred_at: update.occurredAt,
           note: update.note,
+          event_code: update.eventCode,
+          location: update.location,
         })),
+        ...(options.includeLabel !== false && shipment.label
+          ? {
+            label: {
+              public_id: shipment.label.publicId,
+              service: shipment.label.service,
+              status: shipment.label.status,
+              price_minor: shipment.label.priceMinor,
+              currency: shipment.label.currency,
+            },
+          }
+          : {}),
       })),
     })),
     legacy_shipping: {
@@ -1824,7 +1873,7 @@ export function toMyOrderDetailResponse(order: MyOrderDetail) {
         id: code,
         code,
       })),
-      fulfillment: toFulfillmentSummaryResponse(order.fulfillment),
+      fulfillment: toFulfillmentSummaryResponse(order.fulfillment, { includeLabel: false }),
       shipping_address: {
         full_name: order.shippingAddress.fullName,
         address1: order.shippingAddress.address1,

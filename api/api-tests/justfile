@@ -4,6 +4,9 @@ vars_file := "hurl.variables"
 stdout_file := "/tmp/hurl.out"
 stderr_file := "/tmp/hurl-verbose.out"
 
+# Each webhook family owns its fixtures and commands: `just carrier <recipe>`.
+mod carrier "webhooks/carrier"
+
 default:
   @just --list
 

@@ -134,7 +134,10 @@ export class RequestOrderCancelUseCase {
       const fulfillmentView = (await this.orderFulfillmentViewPort.load(
         transactionalEntityManager,
         [order.id],
-        { canceledOrderIds: canceledFulfillmentOrderIds([order]) },
+        {
+          canceledOrderIds: canceledFulfillmentOrderIds([order]),
+          hideVoidedShipments: true,
+        },
       )).get(order.id);
 
       return {

@@ -1064,7 +1064,7 @@ describe('Order accepted shipping facts (integration)', () => {
       .set('Idempotency-Key', randomUUID())
       .send({
         items: [{ order_item_id: orderItemId, quantity: 1 }],
-        carrier: 'Test Carrier',
+        carrier: 'other',
         tracking_number: 'TRACK-1',
       })
       .expect(201);
@@ -1074,7 +1074,7 @@ describe('Order accepted shipping facts (integration)', () => {
       .set('Idempotency-Key', randomUUID())
       .send({
         items: [{ order_item_id: orderItemId, quantity: 2 }],
-        carrier: 'Test Carrier',
+        carrier: 'other',
         tracking_number: 'TRACK-2',
       })
       .expect(201);

@@ -5,6 +5,7 @@ import { FulfillmentMethod } from '../../../domain/enums/fulfillment-method.enum
 import { FulfillmentOperator } from '../../../domain/enums/fulfillment-operator.enum';
 import { FulfillmentProvenance } from '../../../domain/enums/fulfillment-provenance.enum';
 import { ShipmentStatus } from '../../../domain/enums/shipment-status.enum';
+import { ShipmentLabelStatus } from '../../../domain/enums/shipment-label-status.enum';
 import { ShipmentUpdateActorType } from '../../../domain/enums/shipment-update-actor-type.enum';
 import { ShipmentUpdateSource } from '../../../domain/enums/shipment-update-source.enum';
 import type { FulfillmentProgressSnapshot } from '../../../domain/fulfillment-progress';
@@ -63,6 +64,29 @@ export class FulfillmentShipmentUpdateResponseDto {
 
   @ApiProperty({ type: String, required: false })
   note?: string;
+
+  @ApiProperty({ type: String, required: false })
+  event_code?: string;
+
+  @ApiProperty({ type: String, required: false })
+  location?: string;
+}
+
+export class FulfillmentShipmentLabelResponseDto {
+  @ApiProperty()
+  public_id!: string;
+
+  @ApiProperty()
+  service!: string;
+
+  @ApiProperty({ enum: ShipmentLabelStatus })
+  status!: ShipmentLabelStatus;
+
+  @ApiProperty()
+  price_minor!: number;
+
+  @ApiProperty()
+  currency!: string;
 }
 
 export class FulfillmentShipmentResponseDto {
@@ -77,6 +101,12 @@ export class FulfillmentShipmentResponseDto {
 
   @ApiProperty({ type: String, required: false })
   carrier?: string;
+
+  @ApiProperty({ type: String, required: false })
+  carrier_name?: string;
+
+  @ApiProperty({ type: Boolean, required: false })
+  carrier_observable?: boolean;
 
   @ApiProperty({ type: String, required: false })
   tracking_number?: string;
@@ -112,6 +142,10 @@ export class FulfillmentShipmentResponseDto {
   @ApiProperty({ type: [FulfillmentShipmentUpdateResponseDto] })
   @Type(() => FulfillmentShipmentUpdateResponseDto)
   updates!: FulfillmentShipmentUpdateResponseDto[];
+
+  @ApiProperty({ type: FulfillmentShipmentLabelResponseDto, required: false })
+  @Type(() => FulfillmentShipmentLabelResponseDto)
+  label?: FulfillmentShipmentLabelResponseDto;
 }
 
 export class FulfillmentGroupResponseDto {
@@ -215,6 +249,8 @@ function serializeShipment(shipment: FulfillmentShipmentView) {
     group_id: shipment.groupId,
     status: shipment.status,
     carrier: shipment.carrier,
+    carrier_name: shipment.carrierName,
+    carrier_observable: shipment.carrierObservable,
     tracking_number: shipment.trackingNumber,
     shipment_note: shipment.note,
     origin_countries: shipment.originCountries,
@@ -236,7 +272,20 @@ function serializeShipment(shipment: FulfillmentShipmentView) {
       source: update.source,
       occurred_at: update.occurredAt,
       note: update.note,
+      event_code: update.eventCode,
+      location: update.location,
     })),
+    ...(shipment.label
+      ? {
+        label: {
+          public_id: shipment.label.publicId,
+          service: shipment.label.service,
+          status: shipment.label.status,
+          price_minor: shipment.label.priceMinor,
+          currency: shipment.label.currency,
+        },
+      }
+      : {}),
   };
 }
 

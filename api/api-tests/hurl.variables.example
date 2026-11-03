@@ -18,3 +18,12 @@ checkout_session_id=
 # Platform admin (seeded in seed-data/auth-users.tsv), for admin finance routes.
 admin_login_email=admin@example.com
 admin_login_password=Password123!
+
+# Carrier webhook tests. The API must be started with this value:
+#   CARRIER_WEBHOOK_SECRET=carrier-webhook-test-secret
+# The signatures are precomputed over the exact body files in
+# `carriers/bodies/`; regenerate them with `just sign <body file>` after
+# editing a body.
+carrier_webhook_test_secret=carrier-webhook-test-secret
+carrier_signature_unknown_tracking=550534ab6defcd69e676398e5893bcdcb5f7c04a847cd7d167e036c90788e097
+carrier_signature_unsupported_code=d9483ef4255e06895aae6cfb0b0973a19d130f810fbb4b87bb31402e54e15fda

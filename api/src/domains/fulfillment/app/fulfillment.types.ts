@@ -2,6 +2,7 @@ import type { FulfillmentMethod } from '../domain/enums/fulfillment-method.enum'
 import type { FulfillmentOperator } from '../domain/enums/fulfillment-operator.enum';
 import type { FulfillmentProvenance } from '../domain/enums/fulfillment-provenance.enum';
 import type { ShipmentStatus } from '../domain/enums/shipment-status.enum';
+import type { ShipmentLabelStatus } from '../domain/enums/shipment-label-status.enum';
 import type { ShipmentUpdateActorType } from '../domain/enums/shipment-update-actor-type.enum';
 import type { ShipmentUpdateSource } from '../domain/enums/shipment-update-source.enum';
 import type { FulfillmentProgressSnapshot } from '../domain/fulfillment-progress';
@@ -30,6 +31,16 @@ export interface FulfillmentShipmentUpdateView {
   source: ShipmentUpdateSource;
   occurredAt: Date;
   note?: string;
+  eventCode?: string;
+  location?: string;
+}
+
+export interface FulfillmentShipmentLabelView {
+  publicId: string;
+  service: string;
+  status: ShipmentLabelStatus;
+  priceMinor: number;
+  currency: string;
 }
 
 export interface FulfillmentShipmentView {
@@ -38,6 +49,8 @@ export interface FulfillmentShipmentView {
   groupId: string;
   status: ShipmentStatus;
   carrier?: string;
+  carrierName?: string;
+  carrierObservable?: boolean;
   trackingNumber?: string;
   note?: string;
   originCountries: string[];
@@ -49,6 +62,7 @@ export interface FulfillmentShipmentView {
   updatedAt: Date;
   items: FulfillmentGroupItemView[];
   updates: FulfillmentShipmentUpdateView[];
+  label?: FulfillmentShipmentLabelView;
 }
 
 export interface FulfillmentGroupView {

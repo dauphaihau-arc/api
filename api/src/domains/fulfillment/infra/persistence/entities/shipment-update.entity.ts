@@ -35,6 +35,18 @@ export class ShipmentUpdateEntity extends AbstractBaseEntity {
   @Property({ fieldName: 'occurred_at' })
   occurredAt = new Date();
 
+  // Carrier Evidence. A carrier event identifies itself, so a replay can be
+  // acknowledged without writing a second update. Event ids are unique per
+  // carrier, not globally; `actor_id` holds the carrier for carrier updates.
+  @Property({ fieldName: 'carrier_event_id', length: 255, nullable: true })
+  carrierEventId?: string;
+
+  @Property({ fieldName: 'event_code', length: 64, nullable: true })
+  eventCode?: string;
+
+  @Property({ length: 255, nullable: true })
+  location?: string;
+
   @Property({ type: 'text', nullable: true })
   note?: string;
 

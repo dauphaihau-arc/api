@@ -1,5 +1,6 @@
 import { EntityManager, LockMode } from '@mikro-orm/postgresql';
 import { Inject, Injectable } from '@nestjs/common';
+import ms from 'ms';
 import {
   FINANCE_CONFIG,
   type FinanceConfig,
@@ -9,32 +10,46 @@ import { RecordPayoutAvailabilityUseCase } from '~/domains/finance/app/use-cases
 import { FulfillmentMethod } from '../../domain/enums/fulfillment-method.enum';
 import { FulfillmentOperator } from '../../domain/enums/fulfillment-operator.enum';
 import { FulfillmentProvenance } from '../../domain/enums/fulfillment-provenance.enum';
+import { ShipmentLabelStatus } from '../../domain/enums/shipment-label-status.enum';
 import { ShipmentStatus } from '../../domain/enums/shipment-status.enum';
+import { ShipmentUpdateActorType } from '../../domain/enums/shipment-update-actor-type.enum';
+import { ShipmentUpdateSource } from '../../domain/enums/shipment-update-source.enum';
+import { isDispatchStatus } from '../../domain/shipment-journey';
 import {
-  isDispatchStatus,
-  isJourneyTransitionAllowed,
-} from '../../domain/shipment-journey';
+  findCarrier,
+  isValidCarrierTrackingNumber,
+} from '../../domain/carrier-catalogue';
+import {
+  CarrierEventCode,
+  resolveCarrierEventStatus,
+} from '../../domain/carrier-event';
 import { loadOrderFulfillmentViews } from '../fulfillment-view.loader';
 import type { LoadOrderFulfillmentOptions } from '../fulfillment-view.loader';
 import { FulfillmentGroupEntity } from '../../infra/persistence/entities/fulfillment-group.entity';
 import { FulfillmentGroupItemEntity } from '../../infra/persistence/entities/fulfillment-group-item.entity';
 import { ShipmentEntity } from '../../infra/persistence/entities/shipment.entity';
 import { ShipmentItemEntity } from '../../infra/persistence/entities/shipment-item.entity';
+import { ShipmentLabelEntity } from '../../infra/persistence/entities/shipment-label.entity';
 import { ShipmentUpdateEntity } from '../../infra/persistence/entities/shipment-update.entity';
 import {
   FulfillmentGroupAlreadyAssignedError,
   FulfillmentGroupNotFoundError,
   FulfillmentGroupSelectionRequiredError,
   FulfillmentReconciliationRequiredError,
+  ShipmentLabelNotFoundError,
+  ShipmentLabelRequiresRefundError,
+  ShipmentLabelUsedError,
   ShipmentNotFoundError,
 } from '../errors/fulfillment-app.error';
 import {
+  InvalidCarrierTrackingNumberError,
   InvalidFulfillmentQuantityError,
-  InvalidShipmentJourneyTransitionError,
   ShipmentAlreadyVoidedError,
+  ShipmentHandoverRequirementsError,
   ShipmentItemNotInGroupError,
   ShipmentNotPreparedError,
   ShipmentQuantityExceededError,
+  UnsupportedCarrierError,
   UnsupportedFulfillmentMethodError,
 } from '../../domain/errors/fulfillment-domain.error';
 const GROUP_POPULATE = [
@@ -54,6 +69,9 @@ import {
   buildOrderDeliveredEvent,
   type OrderDeliveredEventInput,
 } from '../events/order-delivered.event';
+
+/** Carrier and tracking stay correctable this long after the handover. */
+const HANDOVER_AMEND_WINDOW_MS = ms('3d');
 
 export type AssignOrderFulfillmentInput = {
   orderId: string;
@@ -85,16 +103,33 @@ export type AmendShipmentInput = {
   actor: FulfillmentActor;
 };
 
-export type RecordJourneyInput = {
+export type DeclareHandoverInput = {
   orderId: string;
   shopId: string;
   shipmentId: string;
-  status: ShipmentStatus;
-  carrier?: string;
-  trackingNumber?: string;
-  note?: string;
   actor: FulfillmentActor;
-  occurredAt?: Date;
+};
+
+export type RecordCarrierEventInput = {
+  carrier: string;
+  trackingNumber: string;
+  eventCode: CarrierEventCode;
+  eventId: string;
+  location?: string;
+  occurredAt: Date;
+  /** The exact wire body, kept as evidence beside the normalized columns. */
+  rawBody: string;
+};
+
+export type CarrierEventOutcome = 'accepted' | 'duplicate' | 'unknown';
+
+export type CarrierEventRecordResult = {
+  outcome: CarrierEventOutcome;
+
+  /** Present only for an accepted event, so the caller can project it. */
+  orderId?: string;
+
+  shopId?: string;
 };
 
 @Injectable()
@@ -204,11 +239,23 @@ export class FulfillmentService {
     return group;
   }
 
-  async prepareShipment(
+  /**
+   * Read-only preflight for commands that must buy or reserve something
+   * external before they open their transaction. The write path re-runs the
+   * same checks under its locks, so this only prevents paying for a parcel the
+   * command would immediately reject.
+   */
+  async assertPreparable(
     entityManager: EntityManager,
-    input: PrepareShipmentInput,
-  ): Promise<ShipmentEntity> {
-    const group = await this.loadGroupForWrite(entityManager, input.orderId, input.groupId);
+    input: { orderId: string; groupId?: string; items?: FulfillmentRequestedItem[] },
+    options: { lock?: boolean } = {},
+  ): Promise<{ group: FulfillmentGroupEntity; requestedItems: FulfillmentRequestedItem[] }> {
+    const group = await this.loadGroupForWrite(
+      entityManager,
+      input.orderId,
+      input.groupId,
+      options.lock !== false,
+    );
     this.assertSellerGroup(group);
     this.assertRequestedItems(input.items ?? []);
 
@@ -219,6 +266,23 @@ export class FulfillmentService {
     const usedQuantities = this.sumActiveShipmentQuantities(group);
     this.assertQuantityAvailable(requestedItems, groupItems, usedQuantities);
 
+    return { group, requestedItems };
+  }
+
+  async prepareShipment(
+    entityManager: EntityManager,
+    input: PrepareShipmentInput,
+  ): Promise<ShipmentEntity> {
+    const { group, requestedItems } = await this.assertPreparable(entityManager, {
+      orderId: input.orderId,
+      groupId: input.groupId,
+      items: input.items,
+    });
+
+    const carrier = normalizeOptionalText(input.carrier);
+    const trackingNumber = normalizeOptionalText(input.trackingNumber);
+    this.assertCarrierTrackingNumber(carrier, trackingNumber);
+
     // A new Shipment records the Order's origin countries; the address snapshot
     // is immutable historical evidence on older Shipments and is never rewritten.
     const shipment = entityManager.create(ShipmentEntity, {
@@ -226,8 +290,8 @@ export class FulfillmentService {
       orderId: group.orderId,
       shopId: group.shopId,
       status: ShipmentStatus.PREPARED,
-      carrier: normalizeOptionalText(input.carrier),
-      trackingNumber: normalizeOptionalText(input.trackingNumber),
+      carrier,
+      trackingNumber,
       note: normalizeOptionalText(input.note),
       originCountries: [...input.originCountries],
       preparedAt: new Date(),
@@ -258,6 +322,47 @@ export class FulfillmentService {
     return shipment;
   }
 
+  /**
+   * Persists the carrier artifact bought for a Shipment preparation. The row is
+   * written in the same transaction as the Shipment, so a label is never
+   * recorded without its parcel and vice versa.
+   */
+  async recordShipmentLabel(
+    entityManager: EntityManager,
+    input: {
+      shipment: ShipmentEntity;
+      publicId: string;
+      quoteId: string;
+      carrierLabelId: string;
+      carrier: string;
+      service: string;
+      trackingNumber: string;
+      priceMinor: number;
+      currency: string;
+      pdfStorageKey: string;
+    },
+  ): Promise<ShipmentLabelEntity> {
+    const label = entityManager.create(ShipmentLabelEntity, {
+      publicId: input.publicId,
+      shipment: input.shipment,
+      orderId: input.shipment.orderId,
+      shopId: input.shipment.shopId,
+      carrier: input.carrier,
+      service: input.service,
+      quoteId: input.quoteId,
+      carrierLabelId: input.carrierLabelId,
+      trackingNumber: input.trackingNumber,
+      priceMinor: input.priceMinor,
+      currency: input.currency,
+      pdfStorageKey: input.pdfStorageKey,
+    });
+
+    entityManager.persist(label);
+    await entityManager.flush();
+
+    return label;
+  }
+
   async amendShipment(
     entityManager: EntityManager,
     input: AmendShipmentInput,
@@ -272,12 +377,22 @@ export class FulfillmentService {
       throw new ShipmentAlreadyVoidedError();
     }
 
-    if (shipment.status !== ShipmentStatus.PREPARED) {
+    if (
+      shipment.status !== ShipmentStatus.PREPARED
+      && !(await this.isAmendableAfterHandover(entityManager, shipment))
+    ) {
       throw new ShipmentNotPreparedError();
     }
 
     const group = await this.loadGroupForWrite(entityManager, input.orderId, shipment.group.id);
     const groupItems = group.items.getItems();
+
+    // After handover only carrier and tracking may change: the goods are already
+    // with the carrier, so re-splitting quantities would rewrite buyer progress
+    // for a parcel that has left the seller.
+    if (input.items !== undefined && shipment.status !== ShipmentStatus.PREPARED) {
+      throw new ShipmentNotPreparedError();
+    }
 
     if (input.items !== undefined) {
       this.assertRequestedItems(input.items);
@@ -300,13 +415,18 @@ export class FulfillmentService {
       }
     }
 
-    if (input.carrier !== undefined) {
-      shipment.carrier = normalizeOptionalText(input.carrier);
-    }
+    const carrier = input.carrier === undefined
+      ? shipment.carrier ?? undefined
+      : normalizeOptionalText(input.carrier);
 
-    if (input.trackingNumber !== undefined) {
-      shipment.trackingNumber = normalizeOptionalText(input.trackingNumber);
-    }
+    const trackingNumber = input.trackingNumber === undefined
+      ? shipment.trackingNumber ?? undefined
+      : normalizeOptionalText(input.trackingNumber);
+
+    this.assertCarrierTrackingNumber(carrier, trackingNumber);
+
+    shipment.carrier = carrier;
+    shipment.trackingNumber = trackingNumber;
 
     if (input.note !== undefined) {
       shipment.note = normalizeOptionalText(input.note);
@@ -314,7 +434,7 @@ export class FulfillmentService {
 
     entityManager.persist(entityManager.create(ShipmentUpdateEntity, {
       shipment,
-      status: ShipmentStatus.PREPARED,
+      status: shipment.status,
       actorType: input.actor.actorType,
       actorId: input.actor.actorId,
       source: input.actor.source,
@@ -347,6 +467,14 @@ export class FulfillmentService {
       throw new ShipmentNotPreparedError();
     }
 
+    const label = await entityManager
+      .getRepository(ShipmentLabelEntity)
+      .findOne({ shipment: shipment.id });
+
+    if (label) {
+      throw new ShipmentLabelRequiresRefundError();
+    }
+
     shipment.status = ShipmentStatus.VOIDED;
     shipment.voidedAt = new Date();
 
@@ -363,12 +491,90 @@ export class FulfillmentService {
   }
 
   /**
-   * Records the Shipment journey. An unchanged status is a no-op: replay must not
-   * duplicate updates or reset delivered timestamps.
+   * Voids a Shipment together with its unused Label. A prepared or dispatched
+   * Shipment is still refundable until the carrier scans the parcel; refunding
+   * keeps every update and the voided rows as history, while the quantities
+   * stop counting toward progress. Repeating the refund of an already voided
+   * label changes nothing and reports `refunded: false`.
    */
-  async recordJourney(
+  async refundLabel(
     entityManager: EntityManager,
-    input: RecordJourneyInput,
+    input: {
+      orderId: string;
+      shopId: string;
+      shipmentId: string;
+      actor: FulfillmentActor;
+    },
+  ): Promise<{ refunded: boolean; label?: ShipmentLabelEntity }> {
+    const shipment = await this.loadShipmentForWrite(
+      entityManager,
+      input.orderId,
+      input.shipmentId,
+    );
+
+    if (shipment.shopId !== input.shopId) {
+      throw new ShipmentNotFoundError();
+    }
+
+    const label = await entityManager
+      .getRepository(ShipmentLabelEntity)
+      .findOne(
+        { shipment: shipment.id, orderId: input.orderId, shopId: input.shopId },
+        { lockMode: LockMode.PESSIMISTIC_WRITE },
+      );
+
+    if (!label) {
+      throw new ShipmentLabelNotFoundError();
+    }
+
+    if (label.status === ShipmentLabelStatus.VOIDED) {
+      return { refunded: false, label };
+    }
+
+    if (label.status === ShipmentLabelStatus.USED) {
+      throw new ShipmentLabelUsedError();
+    }
+
+    if (
+      shipment.status !== ShipmentStatus.VOIDED
+      && shipment.status !== ShipmentStatus.PREPARED
+      && shipment.status !== ShipmentStatus.DISPATCHED
+    ) {
+      throw new ShipmentLabelUsedError();
+    }
+
+    label.status = ShipmentLabelStatus.VOIDED;
+
+    if (shipment.status !== ShipmentStatus.VOIDED) {
+      const voidedAt = new Date();
+
+      shipment.status = ShipmentStatus.VOIDED;
+      shipment.voidedAt = voidedAt;
+
+      entityManager.persist(entityManager.create(ShipmentUpdateEntity, {
+        shipment,
+        status: ShipmentStatus.VOIDED,
+        actorType: input.actor.actorType,
+        actorId: input.actor.actorId,
+        source: input.actor.source,
+        occurredAt: voidedAt,
+      }));
+    }
+
+    await entityManager.flush();
+
+    return { refunded: true, label };
+  }
+
+  /**
+   * Records the seller's Handover Declaration: the one status authority the
+   * seller keeps. It requires a carrier and a tracking number, happens at most
+   * once, and only ever sets dispatch, so replaying it is a no-op. Everything
+   * after handover comes from Carrier Evidence.
+   */
+  async declareHandover(
+    entityManager: EntityManager,
+    input: DeclareHandoverInput,
   ): Promise<ShipmentEntity> {
     const shipment = await this.loadShipmentForWrite(
       entityManager,
@@ -380,76 +586,166 @@ export class FulfillmentService {
       throw new ShipmentAlreadyVoidedError();
     }
 
-    if (!isJourneyTransitionAllowed(shipment.status, input.status)) {
-      throw new InvalidShipmentJourneyTransitionError();
+    // A replay of the declaration, or a shipment a carrier already moved, has
+    // nothing left to declare.
+    if (shipment.status !== ShipmentStatus.PREPARED) {
+      if (isDispatchStatus(shipment.status)) {
+        return shipment;
+      }
+
+      throw new ShipmentNotPreparedError();
     }
 
-    const statusChanged = shipment.status !== input.status;
-    const carrier = input.carrier === undefined
-      ? shipment.carrier
-      : normalizeOptionalText(input.carrier);
-    const trackingNumber = input.trackingNumber === undefined
-      ? shipment.trackingNumber
-      : normalizeOptionalText(input.trackingNumber);
-    const note = input.note === undefined
-      ? shipment.note
-      : normalizeOptionalText(input.note);
+    const carrier = shipment.carrier;
+    const trackingNumber = shipment.trackingNumber;
 
-    // Replaying an unchanged command is a no-op: it must not add another Shipment
-    // Update or refresh delivered/dispatched timestamps.
-    if (
-      !statusChanged
-      && carrier === shipment.carrier
-      && trackingNumber === shipment.trackingNumber
-      && note === shipment.note
-    ) {
-      return shipment;
+    if (!carrier || !trackingNumber) {
+      throw new ShipmentHandoverRequirementsError();
     }
 
-    const occurredAt = input.occurredAt ?? new Date();
+    this.assertCarrierTrackingNumber(carrier, trackingNumber);
 
-    // Captured before the delivered timestamp is assigned: only the transition
-    // that first establishes delivery may publish the order's delivery event.
-    const becameDelivered = statusChanged
-      && input.status === ShipmentStatus.DELIVERED
-      && !shipment.deliveredAt;
+    const dispatchedAt = new Date();
 
-    shipment.status = input.status;
-    shipment.carrier = carrier;
-    shipment.trackingNumber = trackingNumber;
-    shipment.note = note;
+    shipment.status = ShipmentStatus.DISPATCHED;
+    shipment.dispatchedAt = dispatchedAt;
 
-    if (statusChanged && input.status === ShipmentStatus.DISPATCHED && !shipment.dispatchedAt) {
-      shipment.dispatchedAt = occurredAt;
+    entityManager.persist(entityManager.create(ShipmentUpdateEntity, {
+      shipment,
+      status: ShipmentStatus.DISPATCHED,
+      actorType: input.actor.actorType,
+      actorId: input.actor.actorId,
+      source: input.actor.source,
+      occurredAt: dispatchedAt,
+      note: shipment.note,
+    }));
+
+    await entityManager.flush();
+
+    return shipment;
+  }
+
+  /**
+   * Ingests one signed carrier event. The event is resolved to exactly one live
+   * Shipment by `(carrier, tracking number)`; a repeated event id or an unknown
+   * pair is acknowledged without a write. Every accepted event records its own
+   * Shipment Update, even when the event does not move the status, and a stale
+   * event never regresses later evidence.
+   */
+  async recordCarrierEvent(
+    entityManager: EntityManager,
+    input: RecordCarrierEventInput,
+  ): Promise<CarrierEventRecordResult> {
+    const carrier = input.carrier.trim().toLowerCase();
+    const trackingNumber = input.trackingNumber.trim();
+    const eventId = input.eventId.trim();
+
+    // Concurrent deliveries of the same carrier event serialize here, so the
+    // replay check or its unique index can never turn an acknowledgement into a
+    // write. Event ids are unique per carrier, not globally.
+    await entityManager.execute(
+      'select pg_advisory_xact_lock(hashtextextended(?::text, 0))',
+      [`carrier-event:${carrier}:${eventId}`],
+    );
+
+    const duplicate = await entityManager
+      .getRepository(ShipmentUpdateEntity)
+      .findOne({ actorId: carrier, carrierEventId: eventId });
+
+    if (duplicate) {
+      return { outcome: 'duplicate' };
     }
 
-    if (statusChanged && input.status === ShipmentStatus.DELIVERED && !shipment.deliveredAt) {
-      shipment.deliveredAt = occurredAt;
+    // Resolved without a lock: the group lock below is what serializes this
+    // write against dispatch and cancellation, and the shipment itself is
+    // re-read under a write lock afterwards.
+    const resolved = await entityManager.getRepository(ShipmentEntity).findOne({
+      carrier,
+      trackingNumber,
+    });
+
+    if (!resolved) {
+      return { outcome: 'unknown' };
+    }
+
+    await entityManager.getRepository(FulfillmentGroupEntity).find(
+      { id: resolved.group.id },
+      { lockMode: LockMode.PESSIMISTIC_WRITE },
+    );
+
+    const shipment = await entityManager.getRepository(ShipmentEntity).findOne(
+      { id: resolved.id, carrier, trackingNumber },
+      { lockMode: LockMode.PESSIMISTIC_WRITE, refresh: true },
+    );
+
+    if (!shipment || shipment.status === ShipmentStatus.VOIDED) {
+      return { outcome: 'unknown' };
+    }
+
+    const resultingStatus = resolveCarrierEventStatus(
+      shipment.status,
+      input.eventCode,
+    );
+    const becameDelivered = resultingStatus === ShipmentStatus.DELIVERED
+      && shipment.status !== ShipmentStatus.DELIVERED;
+
+    shipment.status = resultingStatus;
+
+    // The carrier's first real scan puts the label into use. LABEL_CREATED only
+    // confirms preparation, so a parcel that was never picked up stays
+    // refundable.
+    if (input.eventCode !== CarrierEventCode.LABEL_CREATED) {
+      const label = await entityManager
+        .getRepository(ShipmentLabelEntity)
+        .findOne({ shipment: shipment.id });
+
+      if (label?.status === ShipmentLabelStatus.PURCHASED) {
+        label.status = ShipmentLabelStatus.USED;
+        entityManager.persist(label);
+      }
+    }
+
+    // Handover is implied by any dispatch-or-later carrier evidence: a carrier
+    // cannot scan a parcel it was never given.
+    if (isDispatchStatus(resultingStatus) && !shipment.dispatchedAt) {
+      shipment.dispatchedAt = input.occurredAt;
+    }
+
+    if (becameDelivered) {
+      shipment.deliveredAt = input.occurredAt;
     }
 
     entityManager.persist(entityManager.create(ShipmentUpdateEntity, {
       shipment,
-      status: input.status,
-      actorType: input.actor.actorType,
-      actorId: input.actor.actorId,
-      source: input.actor.source,
-      occurredAt,
-      note: shipment.note,
-      ...(statusChanged ? {} : { payload: { corrected: true } }),
+      status: resultingStatus,
+      actorType: ShipmentUpdateActorType.CARRIER,
+      actorId: carrier,
+      source: ShipmentUpdateSource.CARRIER,
+      occurredAt: input.occurredAt,
+      eventCode: input.eventCode,
+      location: normalizeOptionalText(input.location),
+      carrierEventId: eventId,
+      payload: parseCarrierEventBody(input.rawBody),
     }));
 
     await entityManager.flush();
 
     if (becameDelivered) {
+      // The existing delivery path owns Order completion and Payout
+      // Availability; carrier delivery is not a second mechanism.
       await this.publishOrderDeliveredEvent(
         entityManager,
-        input.orderId,
-        shipment.deliveredAt ?? occurredAt,
+        shipment.orderId,
+        shipment.deliveredAt ?? input.occurredAt,
         new Date(),
       );
     }
 
-    return shipment;
+    return {
+      outcome: 'accepted',
+      orderId: shipment.orderId,
+      shopId: shipment.shopId,
+    };
   }
 
   async loadOrderFulfillment(
@@ -586,10 +882,11 @@ export class FulfillmentService {
     entityManager: EntityManager,
     orderId: string,
     groupId?: string,
+    lock = true,
   ): Promise<FulfillmentGroupEntity> {
     const locked = await entityManager.getRepository(FulfillmentGroupEntity).find(
       groupId ? { id: groupId, orderId } : { orderId },
-      { lockMode: LockMode.PESSIMISTIC_WRITE },
+      lock ? { lockMode: LockMode.PESSIMISTIC_WRITE } : {},
     );
 
     if (locked.length === 0) {
@@ -640,6 +937,30 @@ export class FulfillmentService {
     );
 
     return shipment;
+  }
+
+  /**
+   * After handover, a seller may still correct carrier and tracking for a short
+   * window. The window closes at a fixed age, and a carrier scan closes it early:
+   * once the carrier has the parcel, the label and the timeline must agree.
+   */
+  private async isAmendableAfterHandover(
+    entityManager: EntityManager,
+    shipment: ShipmentEntity,
+  ): Promise<boolean> {
+    if (shipment.status !== ShipmentStatus.DISPATCHED || !shipment.dispatchedAt) {
+      return false;
+    }
+
+    if (Date.now() - shipment.dispatchedAt.getTime() > HANDOVER_AMEND_WINDOW_MS) {
+      return false;
+    }
+
+    const earliestCarrierScan = await entityManager
+      .getRepository(ShipmentUpdateEntity)
+      .findOne({ shipment: shipment.id, source: ShipmentUpdateSource.CARRIER });
+
+    return earliestCarrierScan === null;
   }
 
   private assertSellerGroup(group: FulfillmentGroupEntity): void {
@@ -722,6 +1043,39 @@ export class FulfillmentService {
     }
   }
 
+  /**
+   * A missing carrier or tracking number skips the pattern check; a recorded
+   * carrier must be one the catalogue knows, and its tracking number must match
+   * the format the provider publishes. `other` accepts any non-empty number.
+   */
+  private assertCarrierTrackingNumber(
+    carrier?: string | null,
+    trackingNumber?: string | null,
+  ): void {
+    if (!carrier) {
+      // A number with no carrier cannot be validated, so it is not recordable;
+      // a carrier without a number is an unfinished preparation and is allowed.
+      if (trackingNumber) {
+        throw new InvalidCarrierTrackingNumberError();
+      }
+
+      return;
+    }
+
+    const carrierDefinition = findCarrier(carrier);
+
+    if (!carrierDefinition) {
+      throw new UnsupportedCarrierError();
+    }
+
+    if (
+      trackingNumber != null
+      && !isValidCarrierTrackingNumber(carrierDefinition, trackingNumber)
+    ) {
+      throw new InvalidCarrierTrackingNumberError();
+    }
+  }
+
   private sumActiveShipmentQuantities(
     group: FulfillmentGroupEntity,
     excludedShipmentId?: string,
@@ -755,4 +1109,24 @@ function normalizeOptionalText(value?: string): string | undefined {
   }
 
   return value.trim() || undefined;
+}
+
+/**
+ * The wire body is already JSON by the time the event reaches the service. It is
+ * kept as parsed evidence so the carrier's own fields survive normalization;
+ * a non-object body is retained verbatim rather than discarded.
+ */
+function parseCarrierEventBody(rawBody: string): Record<string, unknown> {
+  try {
+    const parsed: unknown = JSON.parse(rawBody);
+
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      return parsed as Record<string, unknown>;
+    }
+  }
+  catch {
+    // Fall through to the verbatim evidence below.
+  }
+
+  return { raw_body: rawBody };
 }

@@ -5,9 +5,6 @@
 # Before running: pay the Checkout Session URL the first half printed, and paste
 # its `cs_...` id into `checkout_session_id` in `hurl.variables`.
 #
-# Reading the session is what marks the Order paid when the provider reports it
-# as paid, so no webhook and no Stripe signature is involved.
-#
 # Needs the API and a worker process (`pnpm start:worker`) to credit the payable.
 # The payable assertion is a floor, not an equality: positions accumulate per shop
 # and currency, and Hurl cannot add. That a paid Order credits exactly once, by
@@ -16,6 +13,8 @@
 #
 # Paste only the `cs_...` part of the URL, without the `#...` fragment.
 
+
+# 1. Sign in as the seller who owns the shop.
 POST {{base_url}}/v1/auth/login
 Content-Type: application/json
 ```json
@@ -29,11 +28,15 @@ HTTP 200
 [Asserts]
 cookie "accessToken" exists
 
+
+# 2. Resolve the seller's shop.
 GET {{base_url}}/v1/shops/me
 HTTP 200
 [Captures]
 shop_public_id: jsonpath "$.id"
 
+
+# 3. Read the Checkout Session, which marks the Order paid.
 # Reading the session asks the provider what actually happened, and marks the
 # Order paid itself when the session is paid - no webhook, and therefore no
 # Stripe signature, is involved.
@@ -44,7 +47,9 @@ order_public_id: jsonpath "$.order_shops[0].id"
 [Asserts]
 jsonpath "$.order_shops" count > 0
 
-# As the owner: the Order's frozen money facts, and proof the payment landed.
+
+# 4. Read the Order back as the owner: its frozen money facts, and proof the
+# payment landed.
 # `total_minor` is `subtotal_minor - discount_minor + shipping_minor`, which is
 # the amount this Order credits Seller Payable.
 GET {{base_url}}/v1/shops/{{shop_public_id}}/orders/{{order_public_id}}
@@ -55,7 +60,9 @@ expected_minor: jsonpath "$.order.total_minor"
 [Asserts]
 jsonpath "$.order.status" == "paid"
 
-# The credit appears once the worker ticks; a failed assertion is what retries.
+
+# 5. Read the payable the paid Order credits, retrying until the worker ticks.
+# A failed assertion is what retries.
 GET {{base_url}}/v1/shops/{{shop_public_id}}/finance/payable
 [Options]
 retry: 30

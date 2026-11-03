@@ -58,6 +58,11 @@ export const shopOrderFulfillmentControllerErrorResponses = {
       { code: 'FULFILLMENT_GROUP_SELECTION_REQUIRED', message: 'This order has multiple fulfillment groups; select one' },
       { code: 'UNSUPPORTED_FULFILLMENT_METHOD', message: 'Only seller fulfillment is currently supported' },
       invalidQuantityExample,
+      { code: 'UNSUPPORTED_CARRIER', message: 'Unsupported carrier code' },
+      {
+        code: 'INVALID_CARRIER_TRACKING_NUMBER',
+        message: 'Tracking number does not match the carrier format',
+      },
       { code: 'SHIPMENT_ITEM_NOT_IN_GROUP', message: 'Shipment items must belong to the order item quantities in this fulfillment group' },
     ],
     404: [
@@ -80,6 +85,11 @@ export const shopOrderFulfillmentControllerErrorResponses = {
       notEligibleExample,
       { code: 'FULFILLMENT_GROUP_SELECTION_REQUIRED', message: 'This order has multiple fulfillment groups; select one' },
       invalidQuantityExample,
+      { code: 'UNSUPPORTED_CARRIER', message: 'Unsupported carrier code' },
+      {
+        code: 'INVALID_CARRIER_TRACKING_NUMBER',
+        message: 'Tracking number does not match the carrier format',
+      },
       { code: 'SHIPMENT_ITEM_NOT_IN_GROUP', message: 'Shipment items must belong to the order item quantities in this fulfillment group' },
     ],
     404: [
@@ -90,7 +100,7 @@ export const shopOrderFulfillmentControllerErrorResponses = {
     ],
     409: [
       { code: 'SHIPMENT_ALREADY_VOIDED', message: 'Shipment preparation is already voided' },
-      { code: 'SHIPMENT_NOT_PREPARED', message: 'Shipment preparation can only be changed before dispatch' },
+      { code: 'SHIPMENT_NOT_PREPARED', message: 'Shipment can only be changed while prepared, or shortly after handover before the carrier scans' },
       {
         code: 'FULFILLMENT_RECONCILIATION_REQUIRED',
         message: 'This order has no fulfillment assignment yet; reconcile its remaining quantities before shipping',
@@ -104,19 +114,19 @@ export const shopOrderFulfillmentControllerErrorResponses = {
     404: [shopNotFoundExample, orderNotFoundExample, shipmentNotFoundExample],
     409: [
       { code: 'SHIPMENT_ALREADY_VOIDED', message: 'Shipment preparation is already voided' },
-      { code: 'SHIPMENT_NOT_PREPARED', message: 'Shipment preparation can only be changed before dispatch' },
+      { code: 'SHIPMENT_NOT_PREPARED', message: 'Shipment can only be changed while prepared, or shortly after handover before the carrier scans' },
       idempotencyConflictExample,
     ],
   },
-  journey: {
-    400: [
-      validationErrorExample([{ field: 'status', messages: ['status must be a valid shipment status'] }]),
-      notEligibleExample,
-    ],
+  handover: {
+    400: [notEligibleExample],
     404: [shopNotFoundExample, orderNotFoundExample, shipmentNotFoundExample],
     409: [
       { code: 'SHIPMENT_ALREADY_VOIDED', message: 'Shipment preparation is already voided' },
-      { code: 'INVALID_SHIPMENT_JOURNEY_TRANSITION', message: 'Invalid shipment journey transition' },
+      {
+        code: 'SHIPMENT_HANDOVER_REQUIREMENTS',
+        message: 'A shipment needs a carrier and a tracking number before handover',
+      },
       idempotencyConflictExample,
     ],
   },
@@ -134,6 +144,83 @@ export const shopOrderFulfillmentControllerErrorResponses = {
     409: [
       { code: 'FULFILLMENT_GROUP_ALREADY_ASSIGNED', message: 'Order already has an assigned fulfillment group' },
       idempotencyConflictExample,
+    ],
+  },
+  quoteRates: {
+    400: [
+      validationErrorExample([
+        { field: 'weight_grams', messages: ['weight_grams must be a positive integer'] },
+      ]),
+    ],
+    404: [shopNotFoundExample, orderNotFoundExample],
+    503: [
+      {
+        code: 'CARRIER_RATES_UNAVAILABLE',
+        message: 'Shipping rates are temporarily unavailable',
+      },
+    ],
+  },
+  purchaseLabel: {
+    400: [
+      validationErrorExample([{ field: 'quote_id', messages: ['quote_id must match /^rq_/'] }]),
+      notEligibleExample,
+      { code: 'FULFILLMENT_GROUP_SELECTION_REQUIRED', message: 'This order has multiple fulfillment groups; select one' },
+      invalidQuantityExample,
+      { code: 'UNSUPPORTED_FULFILLMENT_METHOD', message: 'Only seller fulfillment is currently supported' },
+      { code: 'SHIPMENT_ITEM_NOT_IN_GROUP', message: 'Shipment items must belong to the order item quantities in this fulfillment group' },
+    ],
+    404: [
+      shopNotFoundExample,
+      orderNotFoundExample,
+      { code: 'FULFILLMENT_GROUP_NOT_FOUND', message: 'Fulfillment group not found for this order' },
+    ],
+    409: [
+      {
+        code: 'RATE_QUOTE_EXPIRED',
+        message: 'This rate quote has expired or was already used; request new rates',
+      },
+      {
+        code: 'FULFILLMENT_RECONCILIATION_REQUIRED',
+        message: 'This order has no fulfillment assignment yet; reconcile its remaining quantities before shipping',
+      },
+      { code: 'SHIPMENT_QUANTITY_EXCEEDED', message: 'Shipment quantity exceeds the group quantity still available to ship' },
+      idempotencyConflictExample,
+    ],
+    503: [
+      {
+        code: 'CARRIER_LABEL_UNAVAILABLE',
+        message: 'Carrier labels are temporarily unavailable',
+      },
+    ],
+  },
+  downloadLabel: {
+    404: [
+      shopNotFoundExample,
+      orderNotFoundExample,
+      shipmentNotFoundExample,
+      { code: 'SHIPMENT_LABEL_NOT_FOUND', message: 'This shipment has no purchased label' },
+    ],
+  },
+  refundLabel: {
+    400: [notEligibleExample],
+    404: [
+      shopNotFoundExample,
+      orderNotFoundExample,
+      shipmentNotFoundExample,
+      { code: 'SHIPMENT_LABEL_NOT_FOUND', message: 'This shipment has no purchased label' },
+    ],
+    409: [
+      {
+        code: 'SHIPMENT_LABEL_ALREADY_USED',
+        message: 'This shipment label has already been used',
+      },
+      idempotencyConflictExample,
+    ],
+    503: [
+      {
+        code: 'CARRIER_LABEL_UNAVAILABLE',
+        message: 'Carrier labels are temporarily unavailable',
+      },
     ],
   },
 } as const;

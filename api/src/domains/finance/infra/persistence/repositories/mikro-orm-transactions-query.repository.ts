@@ -1,6 +1,10 @@
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
 import type { PayoutSource } from '../../../domain/rules/payout';
+import {
+  LABEL_CHARGED_MONEY_EVENT_NAME,
+  LABEL_REFUNDED_MONEY_EVENT_NAME,
+} from '../../../app/ports/label-money-event';
 import { ORDER_PAID_MONEY_EVENT_NAME } from '../../../app/ports/order-paid-money-event';
 import { ORDER_REFUND_MONEY_EVENT_NAME } from '../../../app/ports/order-refund-money-event';
 import {
@@ -37,6 +41,9 @@ interface TransactionRow {
  *   Order still reads as pending.
  * - A Refund is the (negative) Seller Payable Posting on its `order.refunded`
  *   Journal Entry, and is always `deducted`.
+ * - A Label Charge is the signed Seller Payable Posting on its `label.charged`
+ *   or `label.refunded` Journal Entry, and is always `deducted`; its gross
+ *   Order amount and fee are left null because postage is not Order money.
  * - A Payout is the Payout fact itself, negative in signed terms, carrying its
  *   own state and source.
  *
@@ -61,6 +68,11 @@ implements TransactionsQueryRepository {
       ORDER_PAID_MONEY_EVENT_NAME,
       query.shopId,
       ORDER_REFUND_MONEY_EVENT_NAME,
+      LABEL_CHARGED_MONEY_EVENT_NAME,
+      LABEL_CHARGED_MONEY_EVENT_NAME,
+      query.shopId,
+      LABEL_CHARGED_MONEY_EVENT_NAME,
+      LABEL_REFUNDED_MONEY_EVENT_NAME,
       query.shopId,
     ];
     const conditions: string[] = [];
@@ -154,6 +166,31 @@ implements TransactionsQueryRepository {
          join orders o on o.id = split_part(je.money_event_key, ':', 2)::uuid
          where je.shop_id = ?
            and je.money_event_kind = ?
+
+         union all
+
+         select je.id as id,
+                je.occurred_at as occurred_at,
+                o.public_id as reference,
+                o.order_number as order_number,
+                null::text as payout_number,
+                (case when je.money_event_kind = ? then 'label_charge' else 'label_refund' end)::text as type,
+                (case when je.money_event_kind = ? then 'deducted' else 'refunded' end)::text as status,
+                null::int as order_amount_minor,
+                null::int as fees_minor,
+                p.amount_minor as net_amount_minor,
+                je.currency as currency,
+                null::text as source
+         from journal_entries je
+         join postings p on p.journal_entry_id = je.id
+         join ledger_accounts la
+           on la.id = p.ledger_account_id
+          and la.kind = 'seller_payable'
+         join shipment_labels sl
+           on sl.public_id = split_part(je.money_event_key, ':', 2)
+         join orders o on o.id = sl.order_id
+         where je.shop_id = ?
+           and je.money_event_kind in (?, ?)
 
          union all
 

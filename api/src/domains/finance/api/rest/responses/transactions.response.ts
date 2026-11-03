@@ -1,11 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
 import type { TransactionRecord } from '../../../app/ports/transactions-query.repository';
 
-export type ShopTransactionTypeDto = 'order_income' | 'refund' | 'payout';
+export type ShopTransactionTypeDto = 'order_income' | 'refund' | 'label_charge' | 'label_refund' | 'payout';
 export type ShopTransactionStatusDto =
   | 'released'
   | 'pending'
   | 'deducted'
+  | 'refunded'
   | 'paid'
   | 'blocked'
   | 'failed';
@@ -19,14 +20,14 @@ export class ShopTransactionResponseDto {
 
   @ApiProperty({
     description:
-      'Order public id for Order income and Refund rows; Payout number for Payout rows.',
+      'Order public id for Order income, Refund, and Label Charge rows; Payout number for Payout rows.',
     example: 'ord_2f5a91c4b7de',
   })
   reference!: string;
 
   @ApiProperty({
     description:
-      'Human Order number for Order income and Refund rows; null on Payout rows.',
+      'Human Order number for Order income, Refund, and Label Charge rows; null on Payout rows.',
     example: 'ORD-1042',
     nullable: true,
   })
@@ -34,7 +35,7 @@ export class ShopTransactionResponseDto {
 
   @ApiProperty({
     description:
-      'Human Payout number for Payout rows; null on Order income and Refund rows.',
+      'Human Payout number for Payout rows; null on Order income, Refund, and Label Charge rows.',
     example: 'PAY-20261019-000042',
     nullable: true,
   })
@@ -42,14 +43,15 @@ export class ShopTransactionResponseDto {
 
   @ApiProperty({
     description: 'What moved the money.',
-    enum: ['order_income', 'refund', 'payout'],
+    enum: ['order_income', 'refund', 'label_charge', 'label_refund', 'payout'],
   })
   type!: ShopTransactionTypeDto;
 
   @ApiProperty({
     description:
       'Order income: released when the whole Order Payout Availability is ' +
-      'recorded, otherwise pending. Refund: deducted. Payout: its own state.',
+      'recorded, otherwise pending. Refund and Label Charge: deducted. ' +
+      'Payout: its own state.',
     example: 'released',
   })
   status!: ShopTransactionStatusDto;
@@ -58,7 +60,7 @@ export class ShopTransactionResponseDto {
     description:
       'Gross Order amount in integer minor units of the Settlement Currency: ' +
       'what the buyer paid for Order income (positive), the refunded amount for ' +
-      'a Refund (negative); null on Payout rows.',
+      'a Refund (negative); null on Label Charge and Payout rows.',
     example: 12_500,
     nullable: true,
   })
@@ -68,7 +70,7 @@ export class ShopTransactionResponseDto {
     description:
       'Platform Commission in integer minor units of the Settlement Currency: ' +
       'negative on Order income (fee charged), positive on a Refund (pro-rata ' +
-      'reversal); null on Payout rows.',
+      'reversal); null on Label Charge and Payout rows.',
     example: -2_500,
     nullable: true,
   })
@@ -77,8 +79,8 @@ export class ShopTransactionResponseDto {
   @ApiProperty({
     description:
       'The Seller Payable posting in integer minor units of the Settlement ' +
-      'Currency: positive for Order income, negative for a Refund, and the ' +
-      'negative payout amount on Payout rows.',
+      'Currency: positive for Order income and a Label refund, negative for a ' +
+      'Refund and a Label Charge, and the negative payout amount on Payout rows.',
     example: 10_000,
   })
   net_amount_minor!: number;
@@ -92,7 +94,7 @@ export class ShopTransactionResponseDto {
   @ApiProperty({
     description:
       'Whether a scheduled run or a manual withdrawal created the Payout; ' +
-      'null on Order income and Refund rows.',
+      'null on Order income, Refund, and Label Charge rows.',
     example: 'manual',
     enum: ['scheduled', 'manual'],
     nullable: true,

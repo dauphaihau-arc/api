@@ -12,16 +12,24 @@ import type {
 } from './fulfillment.types';
 import { FulfillmentGroupEntity } from '../infra/persistence/entities/fulfillment-group.entity';
 import { ShipmentStatus } from '../domain/enums/shipment-status.enum';
+import { findCarrier } from '../domain/carrier-catalogue';
 
 const GROUP_POPULATE = [
   'items',
   'shipments',
   'shipments.items',
   'shipments.updates',
+  'shipments.label',
 ] as const;
 
 export type LoadOrderFulfillmentOptions = {
   canceledOrderIds?: Iterable<string>;
+  /**
+   * Buyer-facing reads omit voided Shipments entirely: a refunded parcel is
+   * seller history, not something the buyer still has in flight. Seller and
+   * admin reads keep it so the void is auditable.
+   */
+  hideVoidedShipments?: boolean;
 };
 
 export async function loadOrderFulfillmentViews(
@@ -33,6 +41,7 @@ export async function loadOrderFulfillmentViews(
   if (orderIds.length === 0) return result;
 
   const canceledOrderIds = new Set(options.canceledOrderIds ?? []);
+  const hideVoidedShipments = options.hideVoidedShipments ?? false;
   const groups = await entityManager.getRepository(FulfillmentGroupEntity).find(
     { orderId: { $in: orderIds } },
     { populate: [...GROUP_POPULATE], orderBy: { createdAt: 'asc' } },
@@ -48,7 +57,7 @@ export async function loadOrderFulfillmentViews(
   for (const orderId of orderIds) {
     const orderGroups = groupsByOrderId.get(orderId) ?? [];
     const isCanceled = canceledOrderIds.has(orderId);
-    const groupViews = orderGroups.map((group) => toGroupView(group, isCanceled));
+    const groupViews = orderGroups.map((group) => toGroupView(group, isCanceled, hideVoidedShipments));
     const shipmentStates: ShipmentQuantityState[] = orderGroups.flatMap((group) =>
       group.shipments.getItems().map((shipment) => ({
         status: shipment.status,
@@ -86,6 +95,7 @@ function sumOrderedQuantity(items: FulfillmentGroupItemView[]): number {
 function toGroupView(
   group: FulfillmentGroupEntity,
   isCanceled: boolean,
+  hideVoidedShipments: boolean,
 ): FulfillmentGroupView {
   const items: FulfillmentGroupItemView[] = group.items.getItems().map((item) => ({
     orderItemId: item.orderItemId,
@@ -93,46 +103,66 @@ function toGroupView(
   }));
 
   const shipments: FulfillmentShipmentView[] = group.shipments.getItems()
+    .filter((shipment) => !hideVoidedShipments || shipment.status !== ShipmentStatus.VOIDED)
     .slice()
     .sort((left, right) => {
       const difference = left.preparedAt.getTime() - right.preparedAt.getTime();
       return difference !== 0 ? difference : left.id.localeCompare(right.id);
     })
-    .map((shipment): FulfillmentShipmentView => ({
-      id: shipment.id,
-      publicId: shipment.publicId,
-      groupId: group.id,
-      status: shipment.status,
-      carrier: shipment.carrier,
-      trackingNumber: shipment.trackingNumber,
-      note: shipment.note,
-      originCountries: shipment.originCountries,
-      preparedAt: shipment.preparedAt,
-      dispatchedAt: shipment.dispatchedAt,
-      deliveredAt: shipment.deliveredAt,
-      voidedAt: shipment.voidedAt,
-      createdAt: shipment.createdAt,
-      updatedAt: shipment.updatedAt,
-      items: shipment.items.getItems().map((item) => ({
-        orderItemId: item.orderItemId,
-        quantity: item.quantity,
-      })),
-      updates: shipment.updates.getItems()
-        .slice()
-        .sort((left, right) => {
-          const difference = left.occurredAt.getTime() - right.occurredAt.getTime();
-          return difference !== 0 ? difference : left.id.localeCompare(right.id);
-        })
-        .map((update): FulfillmentShipmentUpdateView => ({
-          id: update.id,
-          status: update.status,
-          actorType: update.actorType,
-          actorId: update.actorId,
-          source: update.source,
-          occurredAt: update.occurredAt,
-          note: update.note,
+    .map((shipment): FulfillmentShipmentView => {
+      const carrier = findCarrier(shipment.carrier);
+
+      return {
+        id: shipment.id,
+        publicId: shipment.publicId,
+        groupId: group.id,
+        status: shipment.status,
+        carrier: shipment.carrier,
+        carrierName: carrier?.name,
+        carrierObservable: carrier?.observable,
+        trackingNumber: shipment.trackingNumber,
+        note: shipment.note,
+        originCountries: shipment.originCountries,
+        preparedAt: shipment.preparedAt,
+        dispatchedAt: shipment.dispatchedAt,
+        deliveredAt: shipment.deliveredAt,
+        voidedAt: shipment.voidedAt,
+        createdAt: shipment.createdAt,
+        updatedAt: shipment.updatedAt,
+        items: shipment.items.getItems().map((item) => ({
+          orderItemId: item.orderItemId,
+          quantity: item.quantity,
         })),
-    }));
+        updates: shipment.updates.getItems()
+          .slice()
+          .sort((left, right) => {
+            const difference = left.occurredAt.getTime() - right.occurredAt.getTime();
+            return difference !== 0 ? difference : left.id.localeCompare(right.id);
+          })
+          .map((update): FulfillmentShipmentUpdateView => ({
+            id: update.id,
+            status: update.status,
+            actorType: update.actorType,
+            actorId: update.actorId,
+            source: update.source,
+            occurredAt: update.occurredAt,
+            note: update.note,
+            eventCode: update.eventCode,
+            location: update.location,
+          })),
+        ...(shipment.label
+          ? {
+            label: {
+              publicId: shipment.label.publicId,
+              service: shipment.label.service,
+              status: shipment.label.status,
+              priceMinor: shipment.label.priceMinor,
+              currency: shipment.label.currency,
+            },
+          }
+          : {}),
+      };
+    });
 
   const orderedQuantity = sumOrderedQuantity(items);
   return {

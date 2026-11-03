@@ -10,6 +10,11 @@ import {
   type OrderDeliveredEvent,
 } from '../ports/order-delivered-event';
 import {
+  LABEL_CHARGED_MONEY_EVENT_NAME,
+  LABEL_REFUNDED_MONEY_EVENT_NAME,
+  type LabelMoneyEvent,
+} from '../ports/label-money-event';
+import {
   ORDER_PAID_MONEY_EVENT_NAME,
   type OrderPaidMoneyEvent,
 } from '../ports/order-paid-money-event';
@@ -17,6 +22,7 @@ import {
   ORDER_REFUND_MONEY_EVENT_NAME,
   type OrderRefundMoneyEvent,
 } from '../ports/order-refund-money-event';
+import { RecordLabelMoneyEventUseCase } from '../use-cases/record-label-money-event/record-label-money-event.use-case';
 import { RecordOrderPaidJournalEntryUseCase } from '../use-cases/record-order-paid-journal-entry/record-order-paid-journal-entry.use-case';
 import { RecordOrderRefundJournalEntryUseCase } from '../use-cases/record-order-refund-journal-entry/record-order-refund-journal-entry.use-case';
 import { RecordPayoutAvailabilityUseCase } from '../use-cases/record-payout-availability/record-payout-availability.use-case';
@@ -34,12 +40,15 @@ export class FinanceMoneyEventProcessorService {
   private readonly paidOutboxProcessor: DurableOutboxProcessor;
   private readonly refundOutboxProcessor: DurableOutboxProcessor;
   private readonly deliveredOutboxProcessor: DurableOutboxProcessor;
+  private readonly labelChargedOutboxProcessor: DurableOutboxProcessor;
+  private readonly labelRefundedOutboxProcessor: DurableOutboxProcessor;
 
   constructor(
     private readonly entityManager: EntityManager,
     private readonly recordOrderPaidJournalEntryUseCase: RecordOrderPaidJournalEntryUseCase,
     private readonly recordOrderRefundJournalEntryUseCase: RecordOrderRefundJournalEntryUseCase,
     private readonly recordPayoutAvailabilityUseCase: RecordPayoutAvailabilityUseCase,
+    private readonly recordLabelMoneyEventUseCase: RecordLabelMoneyEventUseCase,
   ) {
     this.paidOutboxProcessor = new DurableOutboxProcessor(
       entityManager,
@@ -73,6 +82,28 @@ export class FinanceMoneyEventProcessorService {
         unknownErrorMessage: 'Unknown order.delivered outbox error',
       },
     );
+
+    this.labelChargedOutboxProcessor = new DurableOutboxProcessor(
+      entityManager,
+      this.logger,
+      {
+        eventName: LABEL_CHARGED_MONEY_EVENT_NAME,
+        dueStatuses: [OutboxEventStatus.PENDING, OutboxEventStatus.PROCESSING],
+        failureLogPrefix: 'Failed processing label.charged outbox event',
+        unknownErrorMessage: 'Unknown label.charged outbox error',
+      },
+    );
+
+    this.labelRefundedOutboxProcessor = new DurableOutboxProcessor(
+      entityManager,
+      this.logger,
+      {
+        eventName: LABEL_REFUNDED_MONEY_EVENT_NAME,
+        dueStatuses: [OutboxEventStatus.PENDING, OutboxEventStatus.PROCESSING],
+        failureLogPrefix: 'Failed processing label.refunded outbox event',
+        unknownErrorMessage: 'Unknown label.refunded outbox error',
+      },
+    );
   }
 
   async processPendingEvents(limit = DURABLE_OUTBOX_BATCH_SIZE): Promise<number> {
@@ -88,8 +119,20 @@ export class FinanceMoneyEventProcessorService {
       (eventId) => this.processDeliveredEventById(eventId),
       limit,
     );
+    const labelChargedCount = await this.labelChargedOutboxProcessor.processDueEvents(
+      (eventId) => this.processLabelChargedEventById(eventId),
+      limit,
+    );
+    const labelRefundedCount = await this.labelRefundedOutboxProcessor.processDueEvents(
+      (eventId) => this.processLabelRefundedEventById(eventId),
+      limit,
+    );
 
-    return paidCount + refundCount + deliveredCount;
+    return paidCount +
+      refundCount +
+      deliveredCount +
+      labelChargedCount +
+      labelRefundedCount;
   }
 
   /**
@@ -105,7 +148,15 @@ export class FinanceMoneyEventProcessorService {
       return true;
     }
 
-    return this.processDeliveredEventById(eventId);
+    if (await this.processDeliveredEventById(eventId)) {
+      return true;
+    }
+
+    if (await this.processLabelChargedEventById(eventId)) {
+      return true;
+    }
+
+    return this.processLabelRefundedEventById(eventId);
   }
 
   private async processPaidEventById(eventId: string): Promise<boolean> {
@@ -147,6 +198,50 @@ export class FinanceMoneyEventProcessorService {
     }
     catch (error) {
       await this.refundOutboxProcessor.markFailed(
+        claimed.eventId,
+        claimed.attemptCount,
+        error,
+      );
+
+      return false;
+    }
+  }
+
+  private async processLabelChargedEventById(eventId: string): Promise<boolean> {
+    return this.processLabelEventById(
+      eventId,
+      this.labelChargedOutboxProcessor,
+      'charged',
+    );
+  }
+
+  private async processLabelRefundedEventById(eventId: string): Promise<boolean> {
+    return this.processLabelEventById(
+      eventId,
+      this.labelRefundedOutboxProcessor,
+      'refunded',
+    );
+  }
+
+  private async processLabelEventById(
+    eventId: string,
+    processor: DurableOutboxProcessor,
+    kind: 'charged' | 'refunded',
+  ): Promise<boolean> {
+    const claimed = await processor.claim<LabelMoneyEvent>(eventId);
+
+    if (!claimed) {
+      return false;
+    }
+
+    try {
+      await this.recordLabelMoneyEventUseCase.execute(claimed.payload, kind);
+      await processor.markProcessed(claimed.eventId);
+
+      return true;
+    }
+    catch (error) {
+      await processor.markFailed(
         claimed.eventId,
         claimed.attemptCount,
         error,

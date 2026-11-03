@@ -31,6 +31,24 @@ export class MikroOrmSellerPayableCommandRepository implements SellerPayableComm
     await this.applyDelta(shopId, currency, amountMinor, -amountMinor, context);
   }
 
+  async debitAvailable(
+    shopId: string,
+    currency: string,
+    amountMinor: number,
+    context: FinanceRepositoryContext,
+  ): Promise<void> {
+    await this.applyDelta(shopId, currency, -amountMinor, 0, context);
+  }
+
+  async creditAvailable(
+    shopId: string,
+    currency: string,
+    amountMinor: number,
+    context: FinanceRepositoryContext,
+  ): Promise<void> {
+    await this.applyDelta(shopId, currency, amountMinor, 0, context);
+  }
+
   /**
    * Removes the paid amount from the shop's available Seller Payable. The row
    * already exists: only recorded availability ever reaches this path.

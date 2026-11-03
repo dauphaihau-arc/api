@@ -1,0 +1,4 @@
+# Generated per run by `webhooks/carrier/generate-pickup.mjs`.
+webhooks/carrier/bodies/*.body
+
+hurl.variables
