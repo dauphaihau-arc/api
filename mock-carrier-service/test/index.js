@@ -10,3 +10,5 @@ import './handover.test.mjs';
 import './advance.test.mjs';
 import './timers.test.mjs';
 import './errors.test.mjs';
+import './rates.test.mjs';
+import './labels.test.mjs';

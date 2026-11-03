@@ -202,9 +202,30 @@ export function createParcelService({ now, scheduler, deliver }) {
     return parcel ? cloneParcel(parcel) : null;
   }
 
+  /** True once the parcel has emitted any scan (the first carrier event). */
+  function hasEvents(trackingNumber) {
+    const parcel = parcels.get(trackingNumber);
+    return Boolean(parcel && parcel.events.length > 0);
+  }
+
+  /**
+   * Removes a parcel and cancels its timers, so later handover/advance/read
+   * answer 404. Used by label refunds for parcels that never emitted a scan.
+   */
+  function retire(trackingNumber) {
+    if (!parcels.has(trackingNumber)) return false;
+    cancelTimers(trackingNumber);
+    parcels.delete(trackingNumber);
+    return true;
+  }
+
+  function count() {
+    return parcels.size;
+  }
+
   function close() {
     for (const trackingNumber of [...timers.keys()]) cancelTimers(trackingNumber);
   }
 
-  return { register, handover, advance, get, close };
+  return { register, handover, advance, get, hasEvents, retire, count, close };
 }

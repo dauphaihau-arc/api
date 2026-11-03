@@ -4,7 +4,9 @@
  *
  * Dependency-free ESM (node: builtins only). Registers parcels, simulates a
  * handover journey and pushes every scan to the API webhook, HMAC-signed over
- * the exact JSON bytes.
+ * the exact JSON bytes. Also quotes rates (`POST /rates`) across the mock
+ * carriers, keeps the quotes in memory, and sells them once via `POST /labels`
+ * (registered parcel + base64 PDF label, no handover yet).
  *
  * Start:  just mock-carrier-up (from apps/api), or node mock-carrier-service/server.mjs
  * Env:    PORT (default 4100), HOST, CARRIER_WEBHOOK_SECRET, API_WEBHOOK_URL
@@ -19,7 +21,9 @@ import {
   DEFAULT_WEBHOOK_URL,
 } from './src/constants.mjs';
 import { HttpError, sendError } from './src/http.mjs';
+import { createLabelService } from './src/labels.mjs';
 import { createParcelService } from './src/parcels.mjs';
+import { createRateService } from './src/rates.mjs';
 import { createRouter } from './src/router.mjs';
 import { createTimerScheduler } from './src/scheduler.mjs';
 import { createWebhookDelivery } from './src/webhook.mjs';
@@ -27,6 +31,9 @@ import { createWebhookDelivery } from './src/webhook.mjs';
 export * from './src/constants.mjs';
 export { HttpError } from './src/http.mjs';
 export { createTimerScheduler } from './src/scheduler.mjs';
+export { createLabelService } from './src/labels.mjs';
+export { buildLabelPdf } from './src/pdf.mjs';
+export { createRateService } from './src/rates.mjs';
 export { generateTrackingNumber, isSupportedCarrier } from './src/tracking.mjs';
 
 /**
@@ -56,7 +63,9 @@ export function createCarrierService(options = {}) {
     logError,
   });
   const parcels = createParcelService({ now, scheduler, deliver });
-  const route = createRouter({ parcels });
+  const rates = createRateService({ now });
+  const labels = createLabelService({ rates, parcels });
+  const route = createRouter({ parcels, rates, labels });
 
   const handle = (req, res) => {
     route(req, res).catch((error) => {
@@ -72,6 +81,10 @@ export function createCarrierService(options = {}) {
   return {
     handle,
     close: parcels.close,
+    rates,
+    labels,
+    parcelCount: parcels.count,
+    labelCount: labels.count,
     config: { webhookUrl, webhookSecret },
   };
 }
