@@ -185,6 +185,26 @@ arrive through the signed webhook, and the buyer reads a delivered Shipment.
 Set `CARRIER_WEBHOOK_SECRET=carrier-webhook-test-secret` in the API so it matches
 the Mock Carrier's default signing secret.
 
+Label money and refunds (ticket 08) need the Mock Carrier running and
+`MOCK_CARRIER_URL` in the API, like the parcel loop above:
+
+```bash
+just carrier label-refund         # charge, payable drop, refund, reversal, reprepare
+just carrier label-used           # first scan marks used; refund and labeled void refused
+just carrier label-two-parcels    # refund one of two labels in a group
+just carrier label-cancel-refund  # refund after Order cancellation
+just carrier label-all            # all four with one fixture generation
+```
+
+The cases read the seller payable and transaction timeline and wait for the
+finance outbox via Hurl retries.
+
+Three ticket-08 checks are not Hurl-scriptable because they require stopping or
+restarting the carrier process or injecting a database failure:
+carrier-unavailable refund (503), lost carrier label after a mock restart (404),
+and post-purchase transaction compensation. They are covered by the API
+integration suite and the Mock Carrier's own tests instead.
+
 If you want raw Hurl output instead of formatted output:
 
 ```bash

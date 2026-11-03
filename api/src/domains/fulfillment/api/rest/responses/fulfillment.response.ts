@@ -5,6 +5,7 @@ import { FulfillmentMethod } from '../../../domain/enums/fulfillment-method.enum
 import { FulfillmentOperator } from '../../../domain/enums/fulfillment-operator.enum';
 import { FulfillmentProvenance } from '../../../domain/enums/fulfillment-provenance.enum';
 import { ShipmentStatus } from '../../../domain/enums/shipment-status.enum';
+import { ShipmentLabelStatus } from '../../../domain/enums/shipment-label-status.enum';
 import { ShipmentUpdateActorType } from '../../../domain/enums/shipment-update-actor-type.enum';
 import { ShipmentUpdateSource } from '../../../domain/enums/shipment-update-source.enum';
 import type { FulfillmentProgressSnapshot } from '../../../domain/fulfillment-progress';
@@ -71,6 +72,23 @@ export class FulfillmentShipmentUpdateResponseDto {
   location?: string;
 }
 
+export class FulfillmentShipmentLabelResponseDto {
+  @ApiProperty()
+  public_id!: string;
+
+  @ApiProperty()
+  service!: string;
+
+  @ApiProperty({ enum: ShipmentLabelStatus })
+  status!: ShipmentLabelStatus;
+
+  @ApiProperty()
+  price_minor!: number;
+
+  @ApiProperty()
+  currency!: string;
+}
+
 export class FulfillmentShipmentResponseDto {
   @ApiProperty()
   id!: string;
@@ -124,6 +142,10 @@ export class FulfillmentShipmentResponseDto {
   @ApiProperty({ type: [FulfillmentShipmentUpdateResponseDto] })
   @Type(() => FulfillmentShipmentUpdateResponseDto)
   updates!: FulfillmentShipmentUpdateResponseDto[];
+
+  @ApiProperty({ type: FulfillmentShipmentLabelResponseDto, required: false })
+  @Type(() => FulfillmentShipmentLabelResponseDto)
+  label?: FulfillmentShipmentLabelResponseDto;
 }
 
 export class FulfillmentGroupResponseDto {
@@ -253,6 +275,17 @@ function serializeShipment(shipment: FulfillmentShipmentView) {
       event_code: update.eventCode,
       location: update.location,
     })),
+    ...(shipment.label
+      ? {
+        label: {
+          public_id: shipment.label.publicId,
+          service: shipment.label.service,
+          status: shipment.label.status,
+          price_minor: shipment.label.priceMinor,
+          currency: shipment.label.currency,
+        },
+      }
+      : {}),
   };
 }
 

@@ -72,6 +72,7 @@ export class RequestOrderSupportUseCase {
     );
     const fulfillmentView = (await this.orderFulfillmentViewPort.load(entityManager, [order.id], {
       canceledOrderIds: canceledFulfillmentOrderIds([order]),
+      hideVoidedShipments: true,
     })).get(order.id);
 
     return {

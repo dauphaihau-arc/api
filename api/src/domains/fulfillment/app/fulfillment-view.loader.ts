@@ -19,10 +19,17 @@ const GROUP_POPULATE = [
   'shipments',
   'shipments.items',
   'shipments.updates',
+  'shipments.label',
 ] as const;
 
 export type LoadOrderFulfillmentOptions = {
   canceledOrderIds?: Iterable<string>;
+  /**
+   * Buyer-facing reads omit voided Shipments entirely: a refunded parcel is
+   * seller history, not something the buyer still has in flight. Seller and
+   * admin reads keep it so the void is auditable.
+   */
+  hideVoidedShipments?: boolean;
 };
 
 export async function loadOrderFulfillmentViews(
@@ -34,6 +41,7 @@ export async function loadOrderFulfillmentViews(
   if (orderIds.length === 0) return result;
 
   const canceledOrderIds = new Set(options.canceledOrderIds ?? []);
+  const hideVoidedShipments = options.hideVoidedShipments ?? false;
   const groups = await entityManager.getRepository(FulfillmentGroupEntity).find(
     { orderId: { $in: orderIds } },
     { populate: [...GROUP_POPULATE], orderBy: { createdAt: 'asc' } },
@@ -49,7 +57,7 @@ export async function loadOrderFulfillmentViews(
   for (const orderId of orderIds) {
     const orderGroups = groupsByOrderId.get(orderId) ?? [];
     const isCanceled = canceledOrderIds.has(orderId);
-    const groupViews = orderGroups.map((group) => toGroupView(group, isCanceled));
+    const groupViews = orderGroups.map((group) => toGroupView(group, isCanceled, hideVoidedShipments));
     const shipmentStates: ShipmentQuantityState[] = orderGroups.flatMap((group) =>
       group.shipments.getItems().map((shipment) => ({
         status: shipment.status,
@@ -87,6 +95,7 @@ function sumOrderedQuantity(items: FulfillmentGroupItemView[]): number {
 function toGroupView(
   group: FulfillmentGroupEntity,
   isCanceled: boolean,
+  hideVoidedShipments: boolean,
 ): FulfillmentGroupView {
   const items: FulfillmentGroupItemView[] = group.items.getItems().map((item) => ({
     orderItemId: item.orderItemId,
@@ -94,6 +103,7 @@ function toGroupView(
   }));
 
   const shipments: FulfillmentShipmentView[] = group.shipments.getItems()
+    .filter((shipment) => !hideVoidedShipments || shipment.status !== ShipmentStatus.VOIDED)
     .slice()
     .sort((left, right) => {
       const difference = left.preparedAt.getTime() - right.preparedAt.getTime();
@@ -140,6 +150,17 @@ function toGroupView(
             eventCode: update.eventCode,
             location: update.location,
           })),
+        ...(shipment.label
+          ? {
+            label: {
+              publicId: shipment.label.publicId,
+              service: shipment.label.service,
+              status: shipment.label.status,
+              priceMinor: shipment.label.priceMinor,
+              currency: shipment.label.currency,
+            },
+          }
+          : {}),
       };
     });
 

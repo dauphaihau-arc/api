@@ -104,3 +104,26 @@ notifications: generate
 # pickup, transit, out-for-delivery and delivery through the signed webhook.
 mock-parcel: generate
   hurl --test --variables-file {{pickup_vars}} --variable mock_carrier_url="${MOCK_CARRIER_URL:-http://127.0.0.1:4100}" mock-parcel.manual.hurl
+
+# Buys a label, checks its charge, refunds it, and verifies the reversal.
+label-refund: generate
+  hurl --test --variables-file {{pickup_vars}} --variable mock_carrier_url="${MOCK_CARRIER_URL:-http://127.0.0.1:4100}" label-refund.manual.hurl
+
+# Covers first-scan used marking, refund rejection, and the labeled-void guard.
+label-used: generate
+  hurl --test --variables-file {{pickup_vars}} --variable mock_carrier_url="${MOCK_CARRIER_URL:-http://127.0.0.1:4100}" label-used.manual.hurl
+
+# Refunds one of two labels in the same fulfillment group.
+label-two-parcels: generate
+  hurl --test --variables-file {{pickup_vars}} --variable mock_carrier_url="${MOCK_CARRIER_URL:-http://127.0.0.1:4100}" label-two-parcels.manual.hurl
+
+# Purchases a label, cancels the Order, then refunds the label.
+label-cancel-refund: generate
+  hurl --test --variables-file {{pickup_vars}} --variable mock_carrier_url="${MOCK_CARRIER_URL:-http://127.0.0.1:4100}" label-cancel-refund.manual.hurl
+
+# Runs every label money/refund case with one fixture generation.
+label-all: generate
+  hurl --test --variables-file {{pickup_vars}} --variable mock_carrier_url="${MOCK_CARRIER_URL:-http://127.0.0.1:4100}" label-refund.manual.hurl
+  hurl --test --variables-file {{pickup_vars}} --variable mock_carrier_url="${MOCK_CARRIER_URL:-http://127.0.0.1:4100}" label-used.manual.hurl
+  hurl --test --variables-file {{pickup_vars}} --variable mock_carrier_url="${MOCK_CARRIER_URL:-http://127.0.0.1:4100}" label-two-parcels.manual.hurl
+  hurl --test --variables-file {{pickup_vars}} --variable mock_carrier_url="${MOCK_CARRIER_URL:-http://127.0.0.1:4100}" label-cancel-refund.manual.hurl

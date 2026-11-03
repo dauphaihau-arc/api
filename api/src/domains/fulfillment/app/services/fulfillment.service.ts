@@ -10,6 +10,7 @@ import { RecordPayoutAvailabilityUseCase } from '~/domains/finance/app/use-cases
 import { FulfillmentMethod } from '../../domain/enums/fulfillment-method.enum';
 import { FulfillmentOperator } from '../../domain/enums/fulfillment-operator.enum';
 import { FulfillmentProvenance } from '../../domain/enums/fulfillment-provenance.enum';
+import { ShipmentLabelStatus } from '../../domain/enums/shipment-label-status.enum';
 import { ShipmentStatus } from '../../domain/enums/shipment-status.enum';
 import { ShipmentUpdateActorType } from '../../domain/enums/shipment-update-actor-type.enum';
 import { ShipmentUpdateSource } from '../../domain/enums/shipment-update-source.enum';
@@ -28,12 +29,16 @@ import { FulfillmentGroupEntity } from '../../infra/persistence/entities/fulfill
 import { FulfillmentGroupItemEntity } from '../../infra/persistence/entities/fulfillment-group-item.entity';
 import { ShipmentEntity } from '../../infra/persistence/entities/shipment.entity';
 import { ShipmentItemEntity } from '../../infra/persistence/entities/shipment-item.entity';
+import { ShipmentLabelEntity } from '../../infra/persistence/entities/shipment-label.entity';
 import { ShipmentUpdateEntity } from '../../infra/persistence/entities/shipment-update.entity';
 import {
   FulfillmentGroupAlreadyAssignedError,
   FulfillmentGroupNotFoundError,
   FulfillmentGroupSelectionRequiredError,
   FulfillmentReconciliationRequiredError,
+  ShipmentLabelNotFoundError,
+  ShipmentLabelRequiresRefundError,
+  ShipmentLabelUsedError,
   ShipmentNotFoundError,
 } from '../errors/fulfillment-app.error';
 import {
@@ -234,11 +239,23 @@ export class FulfillmentService {
     return group;
   }
 
-  async prepareShipment(
+  /**
+   * Read-only preflight for commands that must buy or reserve something
+   * external before they open their transaction. The write path re-runs the
+   * same checks under its locks, so this only prevents paying for a parcel the
+   * command would immediately reject.
+   */
+  async assertPreparable(
     entityManager: EntityManager,
-    input: PrepareShipmentInput,
-  ): Promise<ShipmentEntity> {
-    const group = await this.loadGroupForWrite(entityManager, input.orderId, input.groupId);
+    input: { orderId: string; groupId?: string; items?: FulfillmentRequestedItem[] },
+    options: { lock?: boolean } = {},
+  ): Promise<{ group: FulfillmentGroupEntity; requestedItems: FulfillmentRequestedItem[] }> {
+    const group = await this.loadGroupForWrite(
+      entityManager,
+      input.orderId,
+      input.groupId,
+      options.lock !== false,
+    );
     this.assertSellerGroup(group);
     this.assertRequestedItems(input.items ?? []);
 
@@ -248,6 +265,19 @@ export class FulfillmentService {
 
     const usedQuantities = this.sumActiveShipmentQuantities(group);
     this.assertQuantityAvailable(requestedItems, groupItems, usedQuantities);
+
+    return { group, requestedItems };
+  }
+
+  async prepareShipment(
+    entityManager: EntityManager,
+    input: PrepareShipmentInput,
+  ): Promise<ShipmentEntity> {
+    const { group, requestedItems } = await this.assertPreparable(entityManager, {
+      orderId: input.orderId,
+      groupId: input.groupId,
+      items: input.items,
+    });
 
     const carrier = normalizeOptionalText(input.carrier);
     const trackingNumber = normalizeOptionalText(input.trackingNumber);
@@ -290,6 +320,47 @@ export class FulfillmentService {
     await entityManager.flush();
 
     return shipment;
+  }
+
+  /**
+   * Persists the carrier artifact bought for a Shipment preparation. The row is
+   * written in the same transaction as the Shipment, so a label is never
+   * recorded without its parcel and vice versa.
+   */
+  async recordShipmentLabel(
+    entityManager: EntityManager,
+    input: {
+      shipment: ShipmentEntity;
+      publicId: string;
+      quoteId: string;
+      carrierLabelId: string;
+      carrier: string;
+      service: string;
+      trackingNumber: string;
+      priceMinor: number;
+      currency: string;
+      pdfStorageKey: string;
+    },
+  ): Promise<ShipmentLabelEntity> {
+    const label = entityManager.create(ShipmentLabelEntity, {
+      publicId: input.publicId,
+      shipment: input.shipment,
+      orderId: input.shipment.orderId,
+      shopId: input.shipment.shopId,
+      carrier: input.carrier,
+      service: input.service,
+      quoteId: input.quoteId,
+      carrierLabelId: input.carrierLabelId,
+      trackingNumber: input.trackingNumber,
+      priceMinor: input.priceMinor,
+      currency: input.currency,
+      pdfStorageKey: input.pdfStorageKey,
+    });
+
+    entityManager.persist(label);
+    await entityManager.flush();
+
+    return label;
   }
 
   async amendShipment(
@@ -396,6 +467,14 @@ export class FulfillmentService {
       throw new ShipmentNotPreparedError();
     }
 
+    const label = await entityManager
+      .getRepository(ShipmentLabelEntity)
+      .findOne({ shipment: shipment.id });
+
+    if (label) {
+      throw new ShipmentLabelRequiresRefundError();
+    }
+
     shipment.status = ShipmentStatus.VOIDED;
     shipment.voidedAt = new Date();
 
@@ -409,6 +488,82 @@ export class FulfillmentService {
     }));
 
     await entityManager.flush();
+  }
+
+  /**
+   * Voids a Shipment together with its unused Label. A prepared or dispatched
+   * Shipment is still refundable until the carrier scans the parcel; refunding
+   * keeps every update and the voided rows as history, while the quantities
+   * stop counting toward progress. Repeating the refund of an already voided
+   * label changes nothing and reports `refunded: false`.
+   */
+  async refundLabel(
+    entityManager: EntityManager,
+    input: {
+      orderId: string;
+      shopId: string;
+      shipmentId: string;
+      actor: FulfillmentActor;
+    },
+  ): Promise<{ refunded: boolean; label?: ShipmentLabelEntity }> {
+    const shipment = await this.loadShipmentForWrite(
+      entityManager,
+      input.orderId,
+      input.shipmentId,
+    );
+
+    if (shipment.shopId !== input.shopId) {
+      throw new ShipmentNotFoundError();
+    }
+
+    const label = await entityManager
+      .getRepository(ShipmentLabelEntity)
+      .findOne(
+        { shipment: shipment.id, orderId: input.orderId, shopId: input.shopId },
+        { lockMode: LockMode.PESSIMISTIC_WRITE },
+      );
+
+    if (!label) {
+      throw new ShipmentLabelNotFoundError();
+    }
+
+    if (label.status === ShipmentLabelStatus.VOIDED) {
+      return { refunded: false, label };
+    }
+
+    if (label.status === ShipmentLabelStatus.USED) {
+      throw new ShipmentLabelUsedError();
+    }
+
+    if (
+      shipment.status !== ShipmentStatus.VOIDED
+      && shipment.status !== ShipmentStatus.PREPARED
+      && shipment.status !== ShipmentStatus.DISPATCHED
+    ) {
+      throw new ShipmentLabelUsedError();
+    }
+
+    label.status = ShipmentLabelStatus.VOIDED;
+
+    if (shipment.status !== ShipmentStatus.VOIDED) {
+      const voidedAt = new Date();
+
+      shipment.status = ShipmentStatus.VOIDED;
+      shipment.voidedAt = voidedAt;
+
+      entityManager.persist(entityManager.create(ShipmentUpdateEntity, {
+        shipment,
+        status: ShipmentStatus.VOIDED,
+        actorType: input.actor.actorType,
+        actorId: input.actor.actorId,
+        source: input.actor.source,
+        occurredAt: voidedAt,
+      }));
+    }
+
+    await entityManager.flush();
+
+    return { refunded: true, label };
   }
 
   /**
@@ -535,6 +690,20 @@ export class FulfillmentService {
       && shipment.status !== ShipmentStatus.DELIVERED;
 
     shipment.status = resultingStatus;
+
+    // The carrier's first real scan puts the label into use. LABEL_CREATED only
+    // confirms preparation, so a parcel that was never picked up stays
+    // refundable.
+    if (input.eventCode !== CarrierEventCode.LABEL_CREATED) {
+      const label = await entityManager
+        .getRepository(ShipmentLabelEntity)
+        .findOne({ shipment: shipment.id });
+
+      if (label?.status === ShipmentLabelStatus.PURCHASED) {
+        label.status = ShipmentLabelStatus.USED;
+        entityManager.persist(label);
+      }
+    }
 
     // Handover is implied by any dispatch-or-later carrier evidence: a carrier
     // cannot scan a parcel it was never given.
@@ -713,10 +882,11 @@ export class FulfillmentService {
     entityManager: EntityManager,
     orderId: string,
     groupId?: string,
+    lock = true,
   ): Promise<FulfillmentGroupEntity> {
     const locked = await entityManager.getRepository(FulfillmentGroupEntity).find(
       groupId ? { id: groupId, orderId } : { orderId },
-      { lockMode: LockMode.PESSIMISTIC_WRITE },
+      lock ? { lockMode: LockMode.PESSIMISTIC_WRITE } : {},
     );
 
     if (locked.length === 0) {

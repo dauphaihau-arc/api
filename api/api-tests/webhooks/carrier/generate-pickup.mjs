@@ -69,6 +69,10 @@ const generatedVariables = [
   `carrier_amend_buyer_2_email=carrier-amend-2-${randomUUID()}@example.com`,
   `carrier_amend_buyer_3_email=carrier-amend-3-${randomUUID()}@example.com`,
   `carrier_notifications_buyer_email=carrier-notify-${randomUUID()}@example.com`,
+  `carrier_label_buyer_1_email=carrier-label-1-${randomUUID()}@example.com`,
+  `carrier_label_buyer_2_email=carrier-label-2-${randomUUID()}@example.com`,
+  `carrier_label_buyer_3_email=carrier-label-3-${randomUUID()}@example.com`,
+  `carrier_label_buyer_4_email=carrier-label-4-${randomUUID()}@example.com`,
 ];
 
 for (const event of events) {

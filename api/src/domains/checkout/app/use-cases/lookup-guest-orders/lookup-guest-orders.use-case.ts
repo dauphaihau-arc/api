@@ -111,7 +111,10 @@ export class LookupGuestOrdersUseCase {
     const fulfillmentViews = await this.orderFulfillmentViewPort.load(
       entityManager,
       orders.map((order) => order.id),
-      { canceledOrderIds: canceledFulfillmentOrderIds(orders) },
+      {
+        canceledOrderIds: canceledFulfillmentOrderIds(orders),
+        hideVoidedShipments: true,
+      },
     );
 
     return {

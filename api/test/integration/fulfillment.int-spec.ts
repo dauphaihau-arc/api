@@ -1,5 +1,5 @@
 import { createHmac, randomUUID } from 'node:crypto';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { setTimeout as delay } from 'node:timers/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -22,12 +22,22 @@ import { RequestLoggingInterceptor } from '~/platform/logging/request-logging.in
 import { buildDatabaseConfig } from '~/platform/config/database.config';
 import { ProductWhoMade } from '~/domains/product/domain/enums/product-who-made.enum';
 import { FulfillmentService } from '~/domains/fulfillment/app/services/fulfillment.service';
+import { FinanceMoneyEventProcessorService } from '~/domains/finance/app/services/finance-money-event-processor.service';
 import { ShipmentUpdateActorType } from '~/domains/fulfillment/domain/enums/shipment-update-actor-type.enum';
 import { ShipmentUpdateSource } from '~/domains/fulfillment/domain/enums/shipment-update-source.enum';
 import { PermissionEntity } from '~/domains/auth/infra/persistence/entities/permission.entity';
 import { RolePermissionEntity } from '~/domains/auth/infra/persistence/entities/role-permission.entity';
 import { RoleEntity } from '~/domains/auth/infra/persistence/entities/role.entity';
 import { StorageService } from '~/integrations/storage/app/ports/storage.service';
+import {
+  CarrierParcelGateway,
+  CarrierLabelAlreadyUsedError,
+  CarrierLabelNotFoundError,
+  CarrierLabelPurchaseUnavailableError,
+  CarrierLabelQuoteRejectedError,
+  CarrierLabelRefundUnavailableError,
+  CarrierRateQuoteUnavailableError,
+} from '~/integrations/carrier/app/ports/carrier-parcel.gateway';
 import { LocalFileStorageService } from '~/integrations/storage/infra/local-file-storage.service';
 import { JobDispatcher } from '~/integrations/queue/app/ports/job-dispatcher';
 import { ObservabilityService } from '~/platform/observability/observability.service';
@@ -83,9 +93,17 @@ type Shipment = {
     actor_id?: string;
     source: string;
     occurred_at: string;
+    note?: string;
     event_code?: string;
     location?: string;
   }>;
+  label?: {
+    public_id: string;
+    service: string;
+    status: string;
+    price_minor: number;
+    currency: string;
+  };
 };
 type Group = {
   id: string;
@@ -119,7 +137,9 @@ type SeededOrder = {
 };
 
 function randomForwardedIp() {
-  return `203.0.113.${Math.floor(Math.random() * 200) + 1}`;
+  // Auth routes keep a per-IP limit; a two-octet pool keeps every test's
+  // register/login off a colliding address as the suite grows.
+  return `203.${Math.floor(Math.random() * 254) + 1}.${Math.floor(Math.random() * 254) + 1}.${Math.floor(Math.random() * 254) + 1}`;
 }
 
 // Mirrors the cutover migration's backfill so seeded pre-cutover Orders carry the
@@ -181,6 +201,17 @@ describe('Fulfillment flow (integration)', () => {
   let storageRoot: string;
   let sql: Client;
   let fulfillmentService: FulfillmentService;
+  let financeMoneyEventProcessor: FinanceMoneyEventProcessorService;
+
+  // Rate quoting is the only gateway call that is not best-effort; the fake
+  // keeps parcel registration a no-op and lets a test seed fixed quotes.
+  const carrierParcelGateway = {
+    registerParcel: jest.fn(async () => undefined),
+    signalHandover: jest.fn(async () => undefined),
+    quoteRates: jest.fn(),
+    purchaseLabel: jest.fn(),
+    refundLabel: jest.fn(async () => undefined),
+  };
 
   beforeAll(async () => {
     originalEnv = { ...process.env };
@@ -252,6 +283,8 @@ describe('Fulfillment flow (integration)', () => {
       )
       .overrideProvider(JobDispatcher)
       .useValue({ dispatch: jest.fn().mockResolvedValue(undefined) })
+      .overrideProvider(CarrierParcelGateway)
+      .useValue(carrierParcelGateway)
       .compile();
 
     app = moduleFixture.createNestApplication();
@@ -282,6 +315,7 @@ describe('Fulfillment flow (integration)', () => {
     await app.init();
 
     fulfillmentService = app.get(FulfillmentService);
+    financeMoneyEventProcessor = app.get(FinanceMoneyEventProcessorService);
   });
 
   afterAll(async () => {
@@ -768,6 +802,84 @@ describe('Fulfillment flow (integration)', () => {
       .send(body);
   }
 
+  function purchaseLabelRequest(
+    seller: TestSeller,
+    orderPublicId: string,
+    body: Record<string, unknown>,
+    idempotencyKey = randomUUID(),
+  ) {
+    return seller.agent
+      .post(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${orderPublicId}/fulfillment/shipments/label`)
+      .set('Idempotency-Key', idempotencyKey)
+      .send(body);
+  }
+
+  async function buyLabel(
+    seller: TestSeller,
+    order: SeededOrder,
+    quantity = 1,
+  ): Promise<{ quoteId: string; label: ReturnType<typeof purchasedLabelFixture>; shipment: Shipment }> {
+    const quoteId = `rq_${randomUUID()}`;
+    const label = purchasedLabelFixture(quoteId);
+    carrierParcelGateway.purchaseLabel.mockReset();
+    carrierParcelGateway.purchaseLabel.mockResolvedValueOnce(label);
+
+    const response = await purchaseLabelRequest(seller, order.orderPublicId, {
+      quote_id: quoteId,
+      items: [{ order_item_id: order.orderItemId, quantity }],
+    }).expect(201);
+
+    return {
+      quoteId,
+      label,
+      shipment: (response.body.fulfillment as Fulfillment).groups[0]!.shipments[0]!,
+    };
+  }
+
+  function refundLabelRequest(
+    seller: TestSeller,
+    orderPublicId: string,
+    shipmentId: string,
+    idempotencyKey = randomUUID(),
+  ) {
+    return seller.agent
+      .delete(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${orderPublicId}/fulfillment/shipments/${shipmentId}/label`)
+      .set('Idempotency-Key', idempotencyKey)
+      .send();
+  }
+
+  async function readSellerPayable(seller: TestSeller) {
+    const response = await seller.agent
+      .get(`${API_PREFIX}/shops/${seller.shopPublicId}/finance/payable`)
+      .expect(200);
+
+    return response.body as {
+      currency: string;
+      available_minor: number;
+      not_yet_available_minor: number;
+    };
+  }
+
+  async function listLabelChargeRows(seller: TestSeller) {
+    const response = await seller.agent
+      .get(`${API_PREFIX}/shops/${seller.shopPublicId}/finance/transactions`)
+      .expect(200);
+
+    return (response.body.transactions as Array<{
+      date: string;
+      reference: string;
+      order_number: string | null;
+      payout_number: string | null;
+      type: string;
+      status: string;
+      order_amount_minor: number | null;
+      fees_minor: number | null;
+      net_amount_minor: number;
+      currency: string;
+      source: string | null;
+    }>).filter(row => row.type === 'label_charge' || row.type === 'label_refund');
+  }
+
   /**
    * The seller's only status authority: declaring that a prepared Shipment was
    * handed to its carrier. Every later status is carrier evidence.
@@ -834,6 +946,19 @@ describe('Fulfillment flow (integration)', () => {
     return `94001118992231${String(Math.floor(Math.random() * 100_000_000)).padStart(8, '0')}`;
   }
 
+  function purchasedLabelFixture(quoteId: string, trackingNumber = uspsTrackingNumber()) {
+    return {
+      labelId: `lbl_${randomUUID()}`,
+      quoteId,
+      carrier: 'usps',
+      service: 'standard',
+      trackingNumber,
+      priceMinor: 980,
+      currency: 'USD',
+      pdf: Buffer.from('%PDF-1.4\n1 0 obj\n<<>>\nendobj\ntrailer\n<<>>\n%%EOF\n'),
+    };
+  }
+
   function carrierEventBody(input: {
     eventId?: string;
     carrier?: string;
@@ -875,12 +1000,13 @@ describe('Fulfillment flow (integration)', () => {
       actor_type: string;
       actor_id: string | null;
       source: string;
+      note: string | null;
       event_code: string | null;
       location: string | null;
       carrier_event_id: string | null;
       payload: Record<string, unknown> | null;
     }>(
-      `select "status", "actor_type", "actor_id", "source", "event_code", "location",
+      `select "status", "actor_type", "actor_id", "source", "note", "event_code", "location",
               "carrier_event_id", "payload"
          from "shipment_updates"
         where "shipment_id" = (select "id" from "shipments" where "public_id" = $1)
@@ -2114,6 +2240,977 @@ describe('Fulfillment flow (integration)', () => {
       ],
     });
   });
+
+  it('quotes shipment rates in the shop currency without writing fulfillment or ledger rows', async () => {
+    const seller = await createSeller('seller-rate-quotes');
+    const buyer = await createBuyer();
+    const { productId, inventoryId } = await createProduct({
+      seller,
+      title: 'Rate Quote Parcel',
+      sku: `RATE-${Date.now()}`,
+      priceMinor: 1999,
+      stock: 2,
+    });
+    const order = await seedOrder({
+      seller,
+      buyer,
+      productId,
+      inventoryId,
+      quantity: 1,
+      status: 'paid',
+    });
+
+    const expiresAt = new Date(Date.now() + (15 * 60 * 1000)).toISOString();
+    const fixedRates = (['usps', 'dhl', 'vnpost'] as const).flatMap((carrier, carrierIndex) =>
+      (['standard', 'express'] as const).map((service, serviceIndex) => ({
+        quoteId: `rq_${randomUUID()}`,
+        carrier,
+        service,
+        priceMinor: 500 + (carrierIndex * 100) + (serviceIndex * 50),
+        currency: 'USD',
+        estimatedDays: service === 'standard' ? { min: 3, max: 5 } : { min: 1, max: 2 },
+        expiresAt,
+      })),
+    );
+    carrierParcelGateway.quoteRates.mockResolvedValueOnce([
+      ...fixedRates,
+      { ...fixedRates[0]!, carrier: 'other' },
+    ]);
+    carrierParcelGateway.registerParcel.mockClear();
+
+    const countRows = async (table: string): Promise<number> => {
+      const result = await sql.query<{ count: string }>(`select count(*) from "${table}"`);
+      return Number(result.rows[0].count);
+    };
+    const before = {
+      shipments: await countRows('shipments'),
+      updates: await countRows('shipment_updates'),
+      journalEntries: await countRows('journal_entries'),
+      postings: await countRows('postings'),
+    };
+
+    const response = await seller.agent
+      .post(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${order.orderPublicId}/fulfillment/shipment-rates`)
+      .send({
+        weight_grams: 500,
+        length_cm: 10,
+        width_cm: 10,
+        height_cm: 10,
+      })
+      .expect(200);
+
+    expect(response.body.rates).toHaveLength(6);
+    expect(response.body.rates).toEqual(fixedRates.map((rate) => ({
+      quote_id: rate.quoteId,
+      carrier: rate.carrier,
+      service: rate.service,
+      price_minor: rate.priceMinor,
+      currency: rate.currency,
+      estimated_days: rate.estimatedDays,
+      expires_at: rate.expiresAt,
+    })));
+    expect(carrierParcelGateway.quoteRates).toHaveBeenCalledWith({
+      weightGrams: 500,
+      lengthCm: 10,
+      widthCm: 10,
+      heightCm: 10,
+      currency: 'USD',
+    });
+
+    // Quoting is read-only: the parcel integration, shipment aggregate, and
+    // ledger are untouched.
+    expect(carrierParcelGateway.registerParcel).not.toHaveBeenCalled();
+    expect(await countRows('shipments')).toBe(before.shipments);
+    expect(await countRows('shipment_updates')).toBe(before.updates);
+    expect(await countRows('journal_entries')).toBe(before.journalEntries);
+    expect(await countRows('postings')).toBe(before.postings);
+  });
+
+  it('rejects a malformed package and reports an unavailable carrier as 503', async () => {
+    const seller = await createSeller('seller-rate-quotes-errors');
+    const buyer = await createBuyer();
+    const { productId, inventoryId } = await createProduct({
+      seller,
+      title: 'Rate Quote Errors',
+      sku: `RATE-ERR-${Date.now()}`,
+      priceMinor: 1999,
+      stock: 2,
+    });
+    const order = await seedOrder({
+      seller,
+      buyer,
+      productId,
+      inventoryId,
+      quantity: 1,
+      status: 'paid',
+    });
+    const ratesPath = `${API_PREFIX}/shops/${seller.shopPublicId}/orders/${order.orderPublicId}/fulfillment/shipment-rates`;
+
+    await seller.agent
+      .post(ratesPath)
+      .send({
+        weight_grams: 0,
+        length_cm: 10,
+        width_cm: 10,
+        height_cm: 10,
+      })
+      .expect(400);
+
+    await seller.agent
+      .post(ratesPath)
+      .send({ weight_grams: 500, length_cm: 10 })
+      .expect(400);
+
+    await seller.agent
+      .post(ratesPath)
+      .send({
+        weight_grams: 500.5,
+        length_cm: 10,
+        width_cm: 10,
+        height_cm: 10,
+      })
+      .expect(400);
+
+    carrierParcelGateway.quoteRates.mockRejectedValueOnce(
+      new CarrierRateQuoteUnavailableError(),
+    );
+
+    const response = await seller.agent
+      .post(ratesPath)
+      .send({
+        weight_grams: 500,
+        length_cm: 10,
+        width_cm: 10,
+        height_cm: 10,
+      })
+      .expect(503);
+
+    expect(response.body).toMatchObject({
+      status_code: 503,
+      code: 'CARRIER_RATES_UNAVAILABLE',
+      message: 'Shipping rates are temporarily unavailable',
+    });
+  });
+
+  it('purchases a label, prepares the shipment, and stores the PDF', async () => {
+    const seller = await createSeller('seller-label-purchase');
+    const buyer = await createBuyer();
+    const { productId, inventoryId } = await createProduct({
+      seller,
+      title: 'Label Purchase Parcel',
+      sku: `LABEL-${Date.now()}`,
+      priceMinor: 1999,
+      stock: 2,
+    });
+    const order = await seedOrder({
+      seller,
+      buyer,
+      productId,
+      inventoryId,
+      quantity: 1,
+      status: 'paid',
+    });
+    await assignGroup({ order, shopId: seller.shopId });
+
+    const quoteId = `rq_${randomUUID()}`;
+    carrierParcelGateway.quoteRates.mockResolvedValueOnce([
+      {
+        quoteId,
+        carrier: 'usps',
+        service: 'standard',
+        priceMinor: 980,
+        currency: 'USD',
+        estimatedDays: { min: 3, max: 5 },
+        expiresAt: new Date(Date.now() + (15 * 60 * 1000)).toISOString(),
+      },
+    ]);
+
+    await seller.agent
+      .post(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${order.orderPublicId}/fulfillment/shipment-rates`)
+      .send({
+        weight_grams: 500,
+        length_cm: 10,
+        width_cm: 10,
+        height_cm: 10,
+      })
+      .expect(200);
+
+    const label = purchasedLabelFixture(quoteId);
+    carrierParcelGateway.purchaseLabel.mockReset();
+    carrierParcelGateway.purchaseLabel.mockResolvedValueOnce(label);
+
+    const response = await purchaseLabelRequest(seller, order.orderPublicId, {
+      quote_id: quoteId,
+      items: [{ order_item_id: order.orderItemId, quantity: 1 }],
+    }).expect(201);
+
+    expect(carrierParcelGateway.purchaseLabel).toHaveBeenLastCalledWith({ quoteId, currency: 'USD' });
+
+    const shipment = (response.body.fulfillment as Fulfillment).groups[0]!.shipments[0]!;
+    expect(shipment.status).toBe('prepared');
+    expect(shipment.carrier).toBe('usps');
+    expect(shipment.carrier_name).toBe('USPS');
+    expect(shipment.tracking_number).toBe(label.trackingNumber);
+    expect(shipment.dispatched_at).toBeNull();
+    expect(shipment.items).toEqual([{ order_item_id: order.orderItemId, quantity: 1 }]);
+    expect(shipment.label).toMatchObject({
+      service: 'standard',
+      status: 'purchased',
+      price_minor: 980,
+      currency: 'USD',
+    });
+    expect(shipment.label!.public_id).toMatch(/^lbl_[0-9a-f]{12}$/);
+
+    // A labeled Shipment must be undone through its label refund.
+    const voidAttempt = await seller.agent
+      .delete(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${order.orderPublicId}/fulfillment/shipments/${shipment.id}`)
+      .set('Idempotency-Key', randomUUID())
+      .expect(409);
+    expect(voidAttempt.body).toMatchObject({ code: 'SHIPMENT_LABEL_REFUND_REQUIRED' });
+
+    const stored = await sql.query<{
+      id: string;
+      shipment_id: string;
+      public_id: string;
+      quote_id: string;
+      carrier: string;
+      service: string;
+      tracking_number: string;
+      price_minor: number;
+      currency: string;
+      pdf_storage_key: string;
+      status: string;
+    }>(
+      `select "id", "shipment_id", "public_id", "quote_id", "carrier", "service",
+              "tracking_number", "price_minor", "currency", "pdf_storage_key", "status"
+         from "shipment_labels"
+        where "order_id" = $1`,
+      [order.orderId],
+    );
+    expect(stored.rows).toHaveLength(1);
+    expect(stored.rows[0]).toMatchObject({
+      public_id: shipment.label!.public_id,
+      quote_id: quoteId,
+      carrier: 'usps',
+      service: 'standard',
+      tracking_number: label.trackingNumber,
+      price_minor: 980,
+      currency: 'USD',
+      status: 'purchased',
+    });
+
+    const internalShopId = await resolveShopId(sql, seller.shopId);
+    expect(stored.rows[0]!.pdf_storage_key)
+      .toBe(`labels/${internalShopId}/${shipment.label!.public_id}.pdf`);
+    expect(await readFile(path.join(storageRoot, stored.rows[0]!.pdf_storage_key)))
+      .toEqual(label.pdf);
+
+    // The purchase prepares a parcel; it never dispatches it.
+    const persistedShipment = await sql.query<{
+      status: string;
+      dispatched_at: Date | null;
+      carrier: string;
+      tracking_number: string;
+    }>(
+      `select "status", "dispatched_at", "carrier", "tracking_number"
+         from "shipments"
+        where "id" = $1`,
+      [stored.rows[0]!.shipment_id],
+    );
+    expect(persistedShipment.rows[0]).toEqual({
+      status: 'prepared',
+      dispatched_at: null,
+      carrier: 'usps',
+      tracking_number: label.trackingNumber,
+    });
+
+    const updates = await readShipmentUpdates(shipment.id);
+    expect(updates).toHaveLength(1);
+    expect(updates[0]).toMatchObject({
+      status: 'prepared',
+      actor_type: 'seller',
+      source: 'seller',
+      note: 'Label purchased',
+    });
+  });
+
+  it('rejects impossible quantities before buying the carrier label', async () => {
+    const seller = await createSeller('seller-label-preflight');
+    const buyer = await createBuyer();
+    const { productId, inventoryId } = await createProduct({
+      seller,
+      title: 'Label Preflight Parcel',
+      sku: `LABEL-PREFLIGHT-${Date.now()}`,
+      priceMinor: 1999,
+      stock: 2,
+    });
+    const order = await seedOrder({
+      seller,
+      buyer,
+      productId,
+      inventoryId,
+      quantity: 1,
+      status: 'paid',
+    });
+    await assignGroup({ order, shopId: seller.shopId });
+
+    const quoteId = `rq_${randomUUID()}`;
+    carrierParcelGateway.purchaseLabel.mockReset();
+    carrierParcelGateway.purchaseLabel.mockReset();
+    carrierParcelGateway.purchaseLabel.mockResolvedValueOnce(
+      purchasedLabelFixture(quoteId),
+    );
+
+    const response = await purchaseLabelRequest(seller, order.orderPublicId, {
+      quote_id: quoteId,
+      items: [{ order_item_id: order.orderItemId, quantity: 2 }],
+    });
+
+    expect(response.status).toBeGreaterThanOrEqual(400);
+    expect(carrierParcelGateway.purchaseLabel).not.toHaveBeenCalled();
+    const labels = await sql.query('select 1 from "shipment_labels" where "order_id" = $1', [order.orderId]);
+    expect(labels.rows).toHaveLength(0);
+
+    const shipments = await sql.query('select 1 from "shipments" where "order_id" = $1', [order.orderId]);
+    expect(shipments.rows).toHaveLength(0);
+  });
+
+  it('replays an idempotent label purchase without buying a second label', async () => {
+    const seller = await createSeller('seller-label-idempotent');
+    const buyer = await createBuyer();
+    const { productId, inventoryId } = await createProduct({
+      seller,
+      title: 'Label Idempotency Parcel',
+      sku: `LABEL-IDEMPOTENT-${Date.now()}`,
+      priceMinor: 1999,
+      stock: 2,
+    });
+    const order = await seedOrder({
+      seller,
+      buyer,
+      productId,
+      inventoryId,
+      quantity: 1,
+      status: 'paid',
+    });
+    await assignGroup({ order, shopId: seller.shopId });
+
+    const quoteId = `rq_${randomUUID()}`;
+    carrierParcelGateway.purchaseLabel.mockReset();
+    carrierParcelGateway.purchaseLabel.mockReset();
+    carrierParcelGateway.purchaseLabel.mockResolvedValueOnce(
+      purchasedLabelFixture(quoteId),
+    );
+    const idempotencyKey = randomUUID();
+    const body = {
+      quote_id: quoteId,
+      items: [{ order_item_id: order.orderItemId, quantity: 1 }],
+    };
+
+    const first = await purchaseLabelRequest(
+      seller,
+      order.orderPublicId,
+      body,
+      idempotencyKey,
+    ).expect(201);
+    const replay = await purchaseLabelRequest(
+      seller,
+      order.orderPublicId,
+      body,
+      idempotencyKey,
+    ).expect(201);
+
+    expect(replay.body).toEqual(first.body);
+    expect(carrierParcelGateway.purchaseLabel).toHaveBeenCalledTimes(1);
+
+    const labels = await sql.query<{ count: number }>(
+      'select count(*)::int as count from "shipment_labels" where "order_id" = $1',
+      [order.orderId],
+    );
+    expect(labels.rows[0]!.count).toBe(1);
+    const shipments = await sql.query<{ count: number }>(
+      'select count(*)::int as count from "shipments" where "order_id" = $1',
+      [order.orderId],
+    );
+    expect(shipments.rows[0]!.count).toBe(1);
+  });
+
+  it('maps a refused quote to 409 and a carrier outage to 503 without writing rows', async () => {
+    const seller = await createSeller('seller-label-errors');
+    const buyer = await createBuyer();
+    const { productId, inventoryId } = await createProduct({
+      seller,
+      title: 'Label Error Parcel',
+      sku: `LABEL-ERROR-${Date.now()}`,
+      priceMinor: 1999,
+      stock: 2,
+    });
+    const order = await seedOrder({
+      seller,
+      buyer,
+      productId,
+      inventoryId,
+      quantity: 1,
+      status: 'paid',
+    });
+    await assignGroup({ order, shopId: seller.shopId });
+    const body = {
+      quote_id: `rq_${randomUUID()}`,
+      items: [{ order_item_id: order.orderItemId, quantity: 1 }],
+    };
+
+    carrierParcelGateway.purchaseLabel.mockReset();
+    carrierParcelGateway.purchaseLabel.mockRejectedValueOnce(
+      new CarrierLabelQuoteRejectedError(),
+    );
+    const expired = await purchaseLabelRequest(seller, order.orderPublicId, body)
+      .expect(409);
+    expect(expired.body).toMatchObject({
+      status_code: 409,
+      code: 'RATE_QUOTE_EXPIRED',
+      message: 'This rate quote has expired or was already used; request new rates',
+    });
+
+    carrierParcelGateway.purchaseLabel.mockReset();
+    carrierParcelGateway.purchaseLabel.mockRejectedValueOnce(
+      new CarrierLabelPurchaseUnavailableError(),
+    );
+    const unavailable = await purchaseLabelRequest(seller, order.orderPublicId, body)
+      .expect(503);
+    expect(unavailable.body).toMatchObject({
+      status_code: 503,
+      code: 'CARRIER_LABEL_UNAVAILABLE',
+      message: 'Carrier labels are temporarily unavailable',
+    });
+
+    const shipments = await sql.query<{ count: number }>(
+      'select count(*)::int as count from "shipments" where "order_id" = $1',
+      [order.orderId],
+    );
+    expect(shipments.rows[0]!.count).toBe(0);
+    const labels = await sql.query<{ count: number }>(
+      'select count(*)::int as count from "shipment_labels" where "order_id" = $1',
+      [order.orderId],
+    );
+    expect(labels.rows[0]!.count).toBe(0);
+  });
+
+  it('guards label downloads by shop, authentication, and existence', async () => {
+    const seller = await createSeller('seller-label-download');
+    const otherSeller = await createSeller('seller-label-download-other');
+    const buyer = await createBuyer();
+    const { productId, inventoryId } = await createProduct({
+      seller,
+      title: 'Label Download Parcel',
+      sku: `LABEL-DOWNLOAD-${Date.now()}`,
+      priceMinor: 1999,
+      stock: 4,
+    });
+    const order = await seedOrder({
+      seller,
+      buyer,
+      productId,
+      inventoryId,
+      quantity: 1,
+      status: 'paid',
+    });
+    await assignGroup({ order, shopId: seller.shopId });
+
+    const quoteId = `rq_${randomUUID()}`;
+    const label = purchasedLabelFixture(quoteId);
+    carrierParcelGateway.purchaseLabel.mockReset();
+    carrierParcelGateway.purchaseLabel.mockResolvedValueOnce(label);
+    const purchase = await purchaseLabelRequest(seller, order.orderPublicId, {
+      quote_id: quoteId,
+      items: [{ order_item_id: order.orderItemId, quantity: 1 }],
+    }).expect(201);
+    const shipment = (purchase.body.fulfillment as Fulfillment).groups[0]!.shipments[0]!;
+
+    const downloadPath = `${API_PREFIX}/shops/${seller.shopPublicId}/orders/${order.orderPublicId}/fulfillment/shipments/${shipment.id}/label.pdf`;
+    const download = await seller.agent
+      .get(downloadPath)
+      .buffer(true)
+      .parse((stream, callback) => {
+        const chunks: Buffer[] = [];
+        stream.on('data', (chunk: Buffer) => chunks.push(chunk));
+        stream.on('end', () => callback(null, Buffer.concat(chunks)));
+      })
+      .expect(200);
+
+    expect(download.headers['content-type']).toContain('application/pdf');
+    expect(download.headers['content-disposition'])
+      .toBe('attachment; filename="label.pdf"');
+    expect(download.body).toEqual(label.pdf);
+
+    await otherSeller.agent.get(downloadPath).expect(403);
+
+    await request(app.getHttpServer()).get(downloadPath).expect(401);
+
+    // A prepared shipment without a purchased label has no PDF to stream.
+    const unlabeledOrder = await seedOrder({
+      seller,
+      buyer,
+      productId,
+      inventoryId,
+      quantity: 1,
+      status: 'paid',
+    });
+    await assignGroup({ order: unlabeledOrder, shopId: seller.shopId });
+    const unlabeled = await prepareShipmentRequest(seller, unlabeledOrder.orderPublicId, {
+      items: [{ order_item_id: unlabeledOrder.orderItemId, quantity: 1 }],
+      carrier: 'usps',
+      tracking_number: uspsTrackingNumber(),
+    }).expect(201);
+    const unlabeledShipment = (unlabeled.body.fulfillment as Fulfillment)
+      .groups[0]!.shipments[0]!;
+
+    const missing = await seller.agent
+      .get(`${API_PREFIX}/shops/${seller.shopPublicId}/orders/${unlabeledOrder.orderPublicId}/fulfillment/shipments/${unlabeledShipment.id}/label.pdf`)
+      .expect(404);
+    expect(missing.body).toMatchObject({
+      code: 'SHIPMENT_LABEL_NOT_FOUND',
+    });
+  });
+
+  it('exposes the purchased label with carrier and tracking to the buyer', async () => {
+    const seller = await createSeller('seller-label-buyer-read');
+    const buyer = await createBuyer();
+    const { productId, inventoryId } = await createProduct({
+      seller,
+      title: 'Label Buyer Parcel',
+      sku: `LABEL-BUYER-${Date.now()}`,
+      priceMinor: 1999,
+      stock: 2,
+    });
+    const order = await seedOrder({
+      seller,
+      buyer,
+      productId,
+      inventoryId,
+      quantity: 1,
+      status: 'paid',
+    });
+    await assignGroup({ order, shopId: seller.shopId });
+
+    const quoteId = `rq_${randomUUID()}`;
+    const label = purchasedLabelFixture(quoteId);
+    carrierParcelGateway.purchaseLabel.mockReset();
+    carrierParcelGateway.purchaseLabel.mockResolvedValueOnce(label);
+    await purchaseLabelRequest(seller, order.orderPublicId, {
+      quote_id: quoteId,
+      items: [{ order_item_id: order.orderItemId, quantity: 1 }],
+    }).expect(201);
+
+    const buyerView = await buyer.agent
+      .get(`${API_PREFIX}/me/orders/${order.orderPublicId}`)
+      .expect(200);
+    const buyerShipment = buyerView.body.order_shop.fulfillment
+      .groups[0]!.shipments[0]! as Shipment;
+
+    expect(buyerShipment.carrier).toBe('usps');
+    expect(buyerShipment.tracking_number).toBe(label.trackingNumber);
+    // The buyer sees the parcel, not the seller's postage price.
+    expect(buyerShipment.label).toBeUndefined();
+
+    const buyerList = await buyer.agent
+      .get(`${API_PREFIX}/me/orders`)
+      .expect(200);
+    const listed = (buyerList.body.order_shops as Array<{
+      id: string;
+      fulfillment: { groups: Array<{ shipments: Shipment[] }> };
+    }>).find(entry => entry.id === order.orderPublicId);
+    expect(listed?.fulfillment.groups[0]?.shipments[0]?.label).toBeUndefined();
+  });
+
+  it('books a Label Charge against available Seller Payable and lists it as a label_charge transaction', async () => {
+    const seller = await createSeller('seller-label-charge');
+    const buyer = await createBuyer();
+    const { productId, inventoryId } = await createProduct({
+      seller,
+      title: 'Label Charge Parcel',
+      sku: `LABEL-CHARGE-${Date.now()}`,
+      priceMinor: 1999,
+      stock: 2,
+    });
+    const order = await seedOrder({
+      seller,
+      buyer,
+      productId,
+      inventoryId,
+      quantity: 1,
+      status: 'paid',
+    });
+    await assignGroup({ order, shopId: seller.shopId });
+
+    expect((await readSellerPayable(seller)).available_minor).toBe(0);
+
+    const { label, shipment } = await buyLabel(seller, order);
+
+    // The Local label id and the carrier's id are both retained: the seller
+    // faces the former, the carrier refunds by the latter.
+    const storedLabel = await sql.query<{ carrier_label_id: string }>(
+      'select "carrier_label_id" from "shipment_labels" where "public_id" = $1',
+      [shipment.label!.public_id],
+    );
+    expect(storedLabel.rows[0]!.carrier_label_id).toBe(label.labelId);
+
+    // The charge is a durable outbox fact, not an inline ledger write.
+    expect((await readSellerPayable(seller)).available_minor).toBe(0);
+    const pendingCharge = await sql.query<{ status: string }>(
+      `select "status" from "outbox_events"
+        where "event_name" = 'label.charged' and "aggregate_id" = $1`,
+      [shipment.label!.public_id],
+    );
+    expect(pendingCharge.rows).toEqual([{ status: 'pending' }]);
+
+    await financeMoneyEventProcessor.processPendingEvents();
+
+    const payable = await readSellerPayable(seller);
+    expect(payable.currency).toBe('USD');
+    expect(payable.available_minor).toBe(-980);
+
+    const rows = await listLabelChargeRows(seller);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      type: 'label_charge',
+      status: 'deducted',
+      reference: order.orderPublicId,
+      order_amount_minor: null,
+      fees_minor: null,
+      net_amount_minor: -980,
+      currency: 'USD',
+      payout_number: null,
+      source: null,
+    });
+    expect(rows[0]!.order_number).toEqual(expect.any(String));
+
+    const journal = await sql.query<{ count: number; money_event_kind: string }>(
+      `select count(*)::int as count, min("money_event_kind") as money_event_kind
+         from "journal_entries"
+        where "money_event_key" = $1`,
+      [`label.charge:${shipment.label!.public_id}`],
+    );
+    expect(journal.rows[0]).toEqual({ count: 1, money_event_kind: 'label.charged' });
+  });
+
+  it('marks a Label used at the first real carrier scan and rejects its refund', async () => {
+    const seller = await createSeller('seller-label-used');
+    const buyer = await createBuyer();
+    const { productId, inventoryId } = await createProduct({
+      seller,
+      title: 'Label Used Parcel',
+      sku: `LABEL-USED-${Date.now()}`,
+      priceMinor: 1999,
+      stock: 2,
+    });
+    const order = await seedOrder({
+      seller,
+      buyer,
+      productId,
+      inventoryId,
+      quantity: 1,
+      status: 'paid',
+    });
+    await assignGroup({ order, shopId: seller.shopId });
+
+    const { shipment } = await buyLabel(seller, order);
+
+    await reportCarrierEvent(seller, order.orderPublicId, shipment.id, 'LABEL_CREATED');
+    const afterLabelCreated = await sql.query<{ status: string }>(
+      'select "status" from "shipment_labels" where "public_id" = $1',
+      [shipment.label!.public_id],
+    );
+    expect(afterLabelCreated.rows[0]!.status).toBe('purchased');
+
+    await reportCarrierEvent(seller, order.orderPublicId, shipment.id, 'PICKED_UP');
+
+    const afterScan = await sql.query<{ status: string }>(
+      'select "status" from "shipment_labels" where "public_id" = $1',
+      [shipment.label!.public_id],
+    );
+    expect(afterScan.rows[0]!.status).toBe('used');
+
+    carrierParcelGateway.refundLabel.mockReset();
+    const refund = await refundLabelRequest(seller, order.orderPublicId, shipment.id);
+
+    expect(refund.status).toBe(409);
+    expect(refund.body.code).toBe('SHIPMENT_LABEL_ALREADY_USED');
+    expect(carrierParcelGateway.refundLabel).not.toHaveBeenCalled();
+
+    const persisted = await sql.query<{ shipment_status: string; label_status: string }>(
+      `select s."status" as shipment_status, l."status" as label_status
+         from "shipments" s
+         join "shipment_labels" l on l."shipment_id" = s."id"
+        where s."public_id" = $1`,
+      [shipment.id],
+    );
+    expect(persisted.rows[0]).toEqual({
+      shipment_status: 'dispatched',
+      label_status: 'used',
+    });
+    const refundEvents = await sql.query<{ count: number }>(
+      `select count(*)::int as count from "outbox_events"
+        where "event_name" = 'label.refunded' and "aggregate_id" = $1`,
+      [shipment.label!.public_id],
+    );
+    expect(refundEvents.rows[0]!.count).toBe(0);
+  });
+
+  it('refunds an unused Label exactly once, voids its Shipment, and restores the charge', async () => {
+    const seller = await createSeller('seller-label-refund');
+    const buyer = await createBuyer();
+    const { productId, inventoryId } = await createProduct({
+      seller,
+      title: 'Label Refund Parcel',
+      sku: `LABEL-REFUND-${Date.now()}`,
+      priceMinor: 1999,
+      stock: 2,
+    });
+    const order = await seedOrder({
+      seller,
+      buyer,
+      productId,
+      inventoryId,
+      quantity: 1,
+      status: 'paid',
+    });
+    await assignGroup({ order, shopId: seller.shopId });
+
+    const { label, shipment } = await buyLabel(seller, order);
+    await financeMoneyEventProcessor.processPendingEvents();
+    expect((await readSellerPayable(seller)).available_minor).toBe(-980);
+
+    const chargeRows = await listLabelChargeRows(seller);
+    expect(chargeRows.find((row) => row.net_amount_minor === -980)).toBeDefined();
+
+    carrierParcelGateway.refundLabel.mockReset();
+    carrierParcelGateway.refundLabel.mockResolvedValue(undefined);
+
+    const response = await refundLabelRequest(seller, order.orderPublicId, shipment.id)
+      .expect(200);
+
+    expect(carrierParcelGateway.refundLabel).toHaveBeenCalledWith({
+      labelId: label.labelId,
+    });
+
+    const refunded = (response.body.fulfillment as Fulfillment).groups[0]!.shipments[0]!;
+    expect(refunded.status).toBe('voided');
+    expect(refunded.label!.status).toBe('voided');
+    expect(refunded.items).toEqual([{ order_item_id: order.orderItemId, quantity: 1 }]);
+    expect(refunded.updates.map((update) => update.status)).toEqual(['prepared', 'voided']);
+    expect((response.body.fulfillment as Fulfillment).status).toBe('unfulfilled');
+    expect((response.body.fulfillment as Fulfillment).progress).toMatchObject({
+      prepared: 0,
+      outstanding: 1,
+    });
+
+    // A repeated refund returns the same view without a second carrier call or
+    // a second reversal event.
+    const replay = await refundLabelRequest(seller, order.orderPublicId, shipment.id)
+      .expect(200);
+    expect(replay.body.fulfillment).toEqual(response.body.fulfillment);
+    expect(carrierParcelGateway.refundLabel).toHaveBeenCalledTimes(1);
+
+    const refundEvents = await sql.query<{ count: number, status: string }>(
+      `select count(*)::int as count, min("status") as status from "outbox_events"
+        where "event_name" = 'label.refunded' and "aggregate_id" = $1`,
+      [shipment.label!.public_id],
+    );
+    expect(refundEvents.rows[0]).toEqual({ count: 1, status: 'pending' });
+
+    // The buyer no longer sees the refunded parcel; the seller keeps its history.
+    const buyerView = await buyer.agent
+      .get(`${API_PREFIX}/me/orders/${order.orderPublicId}`)
+      .expect(200);
+    expect(buyerView.body.order_shop.fulfillment.groups[0]!.shipments).toEqual([]);
+    expect((await readShipment(seller, order.orderPublicId, shipment.id)).status).toBe('voided');
+
+    await financeMoneyEventProcessor.processPendingEvents();
+
+    expect((await readSellerPayable(seller)).available_minor).toBe(0);
+    const journal = await sql.query<{ count: number }>(
+      `select count(*)::int as count from "journal_entries"
+        where "money_event_key" = $1`,
+      [`label.refund:${shipment.label!.public_id}`],
+    );
+    expect(journal.rows[0]!.count).toBe(1);
+
+    const processedRefund = await sql.query<{ status: string }>(
+      `select "status" from "outbox_events"
+        where "event_name" = 'label.refunded' and "aggregate_id" = $1`,
+      [shipment.label!.public_id],
+    );
+    expect(processedRefund.rows).toEqual([{ status: 'processed' }]);
+
+    const refundRows = await listLabelChargeRows(seller);
+    expect(refundRows).toHaveLength(2);
+    expect(refundRows.map((row) => row.net_amount_minor).sort((left, right) => left - right)).toEqual([-980, 980]);
+    expect(refundRows).toEqual(expect.arrayContaining([
+      expect.objectContaining({ type: 'label_charge', status: 'deducted', net_amount_minor: -980 }),
+      expect.objectContaining({ type: 'label_refund', status: 'refunded', net_amount_minor: 980 }),
+    ]));
+
+    // The voided quantities are free to prepare again.
+    const reprepared = await prepareShipmentRequest(seller, order.orderPublicId, {
+      items: [{ order_item_id: order.orderItemId, quantity: 1 }],
+    }).expect(201);
+    const newShipment = (reprepared.body.fulfillment as Fulfillment).groups[0]!.shipments
+      .find((candidate) => candidate.status === 'prepared');
+    expect(newShipment).toBeDefined();
+    expect(newShipment!.id).not.toBe(shipment.id);
+  });
+
+  it('leaves the Label and Shipment untouched when the carrier fails or refuses the refund', async () => {
+    const seller = await createSeller('seller-label-refund-errors');
+    const buyer = await createBuyer();
+    const { productId, inventoryId } = await createProduct({
+      seller,
+      title: 'Label Refund Error Parcel',
+      sku: `LABEL-REFUND-ERR-${Date.now()}`,
+      priceMinor: 1999,
+      stock: 2,
+    });
+    const order = await seedOrder({
+      seller,
+      buyer,
+      productId,
+      inventoryId,
+      quantity: 1,
+      status: 'paid',
+    });
+    await assignGroup({ order, shopId: seller.shopId });
+
+    const { shipment } = await buyLabel(seller, order);
+
+    carrierParcelGateway.refundLabel.mockReset();
+    carrierParcelGateway.refundLabel.mockRejectedValueOnce(
+      new CarrierLabelRefundUnavailableError(),
+    );
+    const unavailable = await refundLabelRequest(seller, order.orderPublicId, shipment.id);
+    expect(unavailable.status).toBe(503);
+    expect(unavailable.body.code).toBe('CARRIER_LABEL_UNAVAILABLE');
+
+    carrierParcelGateway.refundLabel.mockRejectedValueOnce(
+      new CarrierLabelAlreadyUsedError(),
+    );
+    const refused = await refundLabelRequest(seller, order.orderPublicId, shipment.id);
+    expect(refused.status).toBe(409);
+    expect(refused.body.code).toBe('SHIPMENT_LABEL_ALREADY_USED');
+
+    carrierParcelGateway.refundLabel.mockRejectedValueOnce(
+      new CarrierLabelNotFoundError(),
+    );
+    const missing = await refundLabelRequest(seller, order.orderPublicId, shipment.id);
+    expect(missing.status).toBe(404);
+    expect(missing.body.code).toBe('SHIPMENT_LABEL_NOT_FOUND');
+
+    const persisted = await sql.query<{ shipment_status: string; label_status: string }>(
+      `select s."status" as shipment_status, l."status" as label_status
+         from "shipments" s
+         join "shipment_labels" l on l."shipment_id" = s."id"
+        where s."public_id" = $1`,
+      [shipment.id],
+    );
+    expect(persisted.rows[0]).toEqual({
+      shipment_status: 'prepared',
+      label_status: 'purchased',
+    });
+
+    const refundEvents = await sql.query<{ count: number }>(
+      `select count(*)::int as count from "outbox_events"
+        where "event_name" = 'label.refunded' and "aggregate_id" = $1`,
+      [shipment.label!.public_id],
+    );
+    expect(refundEvents.rows[0]!.count).toBe(0);
+    const refundJournal = await sql.query<{ count: number }>(
+      `select count(*)::int as count from "journal_entries"
+        where "money_event_key" = $1`,
+      [`label.refund:${shipment.label!.public_id}`],
+    );
+    expect(refundJournal.rows[0]!.count).toBe(0);
+  });
+
+  it('refunds a purchased label after the order was canceled', async () => {
+    const seller = await createSeller('seller-label-canceled-refund');
+    const buyer = await createBuyer();
+    const { productId, inventoryId } = await createProduct({
+      seller,
+      title: 'Canceled Label Parcel',
+      sku: `LABEL-CANCEL-${Date.now()}`,
+      priceMinor: 1999,
+      stock: 2,
+    });
+    const order = await seedOrder({
+      seller,
+      buyer,
+      productId,
+      inventoryId,
+      quantity: 1,
+      status: 'paid',
+    });
+    await assignGroup({ order, shopId: seller.shopId });
+
+    const { shipment } = await buyLabel(seller, order);
+    await financeMoneyEventProcessor.processPendingEvents();
+    expect((await readSellerPayable(seller)).available_minor).toBe(-980);
+
+    await cancelOrderRequest(seller, order.orderPublicId, 'seller cannot ship').expect(200);
+
+    const refund = await refundLabelRequest(seller, order.orderPublicId, shipment.id).expect(200);
+    expect((refund.body.fulfillment as Fulfillment).groups[0]!.shipments[0]!.label!.status)
+      .toBe('voided');
+
+    await financeMoneyEventProcessor.processPendingEvents();
+
+    expect((await readSellerPayable(seller)).available_minor).toBe(0);
+    const reversal = await sql.query<{ count: number }>(
+      'select count(*)::int as count from "journal_entries" where "money_event_key" = $1',
+      [`label.refund:${shipment.label!.public_id}`],
+    );
+    expect(reversal.rows[0]!.count).toBe(1);
+  });
+
+  it('issues a distinct label id for every purchase', async () => {
+    const seller = await createSeller('seller-label-unique');
+    const buyer = await createBuyer();
+    const { productId, inventoryId } = await createProduct({
+      seller,
+      title: 'Label Uniqueness Parcel',
+      sku: `LABEL-UNIQUE-${Date.now()}`,
+      priceMinor: 1999,
+      stock: 4,
+    });
+
+    const publicIds: string[] = [];
+
+    for (const quantity of [1, 1]) {
+      const order = await seedOrder({
+        seller,
+        buyer,
+        productId,
+        inventoryId,
+        quantity,
+        status: 'paid',
+      });
+      await assignGroup({ order, shopId: seller.shopId });
+      const quoteId = `rq_${randomUUID()}`;
+      carrierParcelGateway.purchaseLabel.mockReset();
+      carrierParcelGateway.purchaseLabel.mockResolvedValueOnce(
+        purchasedLabelFixture(quoteId),
+      );
+
+      const response = await purchaseLabelRequest(seller, order.orderPublicId, {
+        quote_id: quoteId,
+        items: [{ order_item_id: order.orderItemId, quantity }],
+      }).expect(201);
+      publicIds.push(
+        (response.body.fulfillment as Fulfillment).groups[0]!.shipments[0]!.label!.public_id,
+      );
+    }
+
+    expect(new Set(publicIds).size).toBe(2);
+  });
+
 
   it('validates carrier tracking numbers and reports the resolved carrier', async () => {
     const seller = await createSeller('seller-carrier-codes');
