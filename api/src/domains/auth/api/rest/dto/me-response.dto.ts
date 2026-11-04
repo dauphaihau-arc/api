@@ -1,20 +1,28 @@
 import { Expose, Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
+import {
+  MARKETPLACE_CURRENCIES,
+  MARKETPLACE_LANGUAGES,
+  MARKETPLACE_REGIONS,
+  type MarketplaceCurrency,
+  type MarketplaceLanguage,
+  type MarketplaceRegion,
+} from '~/platform/config/marketplace.config';
 import type { UserStatus } from '../../../domain/enums/user-status.enum';
 import type { UserProfile } from '../../../app/auth.types';
 
 class MePreferencesResponseDto {
-  @ApiProperty()
+  @ApiProperty({ enum: MARKETPLACE_REGIONS })
   @Expose()
-  region!: string;
+  region!: MarketplaceRegion;
 
-  @ApiProperty()
+  @ApiProperty({ enum: MARKETPLACE_LANGUAGES })
   @Expose()
-  language!: string;
+  language!: MarketplaceLanguage;
 
-  @ApiProperty()
+  @ApiProperty({ enum: MARKETPLACE_CURRENCIES })
   @Expose()
-  currency!: string;
+  currency!: MarketplaceCurrency;
 }
 
 class CurrentUserShopResponseDto {

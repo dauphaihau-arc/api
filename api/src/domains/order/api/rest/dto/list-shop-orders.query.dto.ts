@@ -1,3 +1,4 @@
+import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Expose, Transform, Type } from 'class-transformer';
 import {
   IsArray,
@@ -32,11 +33,24 @@ function toOptionalStringArray(value: unknown): string[] | undefined {
 }
 
 export class ListShopOrdersQueryDto {
+  @ApiPropertyOptional({
+    description: 'One-based page number.',
+    type: Number,
+    minimum: 1,
+    default: SHOP_ORDER_LIST_DEFAULT_PAGE,
+  })
   @IsOptional()
   @Type(() => Number)
   @Min(1)
   page: number = SHOP_ORDER_LIST_DEFAULT_PAGE;
 
+  @ApiPropertyOptional({
+    description: 'Maximum number of orders to return.',
+    type: Number,
+    minimum: 1,
+    maximum: SHOP_ORDER_LIST_MAX_LIMIT,
+    default: SHOP_ORDER_LIST_DEFAULT_LIMIT,
+  })
   @IsOptional()
   @Type(() => Number)
   @Min(1)

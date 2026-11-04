@@ -1,3 +1,4 @@
+import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
   IsOptional, IsString, Max, Min, 
@@ -8,6 +9,13 @@ export class SuggestCategoriesQueryDto {
   @IsString()
   name!: string;
 
+  @ApiPropertyOptional({
+    description: 'Maximum number of category suggestions to return.',
+    type: Number,
+    minimum: 1,
+    maximum: 20,
+    default: CATEGORY_SUGGESTIONS_DEFAULT_LIMIT,
+  })
   @IsOptional()
   @Type(() => Number)
   @Min(1)

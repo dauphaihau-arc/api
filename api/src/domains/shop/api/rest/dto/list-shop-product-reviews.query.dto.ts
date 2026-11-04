@@ -1,3 +1,4 @@
+import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Expose, Transform, Type } from 'class-transformer';
 import {
   IsEnum, IsIn, IsOptional, Matches, Max, Min,
@@ -10,11 +11,24 @@ import {
 import { ProductReviewStatus } from '~/domains/product/domain/enums/product-review-status.enum';
 
 export class ListShopProductReviewsQueryDto {
+  @ApiPropertyOptional({
+    description: 'One-based page number.',
+    type: Number,
+    minimum: 1,
+    default: SHOP_PRODUCT_REVIEW_LIST_DEFAULT_PAGE,
+  })
   @IsOptional()
   @Type(() => Number)
   @Min(1)
   page: number = SHOP_PRODUCT_REVIEW_LIST_DEFAULT_PAGE;
 
+  @ApiPropertyOptional({
+    description: 'Maximum number of product reviews to return.',
+    type: Number,
+    minimum: 1,
+    maximum: SHOP_PRODUCT_REVIEW_LIST_MAX_LIMIT,
+    default: SHOP_PRODUCT_REVIEW_LIST_DEFAULT_LIMIT,
+  })
   @IsOptional()
   @Type(() => Number)
   @Min(1)
