@@ -35,16 +35,23 @@ export class ListShopProductReviewsQueryDto {
   @Max(SHOP_PRODUCT_REVIEW_LIST_MAX_LIMIT)
   limit: number = SHOP_PRODUCT_REVIEW_LIST_DEFAULT_LIMIT;
 
+  @ApiPropertyOptional({ type: String, enum: ProductReviewStatus })
   @IsOptional()
   @IsEnum(ProductReviewStatus)
   status?: ProductReviewStatus;
 
+  @ApiPropertyOptional({ type: String, pattern: '^prod_[0-9a-f]{12}$' })
   @IsOptional()
   @Expose({ name: 'product_id' })
   @Transform(({ value, obj: source }) => value ?? source.product_id)
   @Matches(/^prod_[0-9a-f]{12}$/)
   productId?: string;
 
+  @ApiPropertyOptional({
+    type: String,
+    default: 'newest',
+    enum: ['newest', 'oldest', 'highest_rating', 'lowest_rating'],
+  })
   @IsOptional()
   @Expose({ name: 'sort' })
   @Transform(({ value }) => value ?? 'newest')
