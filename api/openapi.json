@@ -15498,7 +15498,7 @@
           },
           {
             "name": "sort",
-            "required": true,
+            "required": false,
             "in": "query",
             "schema": {
               "default": "newest",
@@ -23513,7 +23513,7 @@
           },
           {
             "name": "timezone",
-            "required": true,
+            "required": false,
             "in": "query",
             "schema": {
               "pattern": "^UTC$|^[A-Za-z_]+\\/[A-Za-z_/-]+$",
@@ -23523,7 +23523,7 @@
           },
           {
             "name": "columnPreset",
-            "required": true,
+            "required": false,
             "in": "query",
             "schema": {
               "default": "default",
@@ -39905,11 +39905,7 @@
           "search": {
             "type": "string"
           }
-        },
-        "required": [
-          "timezone",
-          "columnPreset"
-        ]
+        }
       },
       "ShopOrderStatusCountsResponseDto": {
         "type": "object",

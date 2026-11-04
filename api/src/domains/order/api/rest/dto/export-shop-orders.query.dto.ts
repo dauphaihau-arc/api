@@ -1,3 +1,4 @@
+import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Expose, Transform } from 'class-transformer';
 import {
   IsArray,
@@ -24,17 +25,28 @@ export enum ShopOrderExportColumnPreset {
 }
 
 export class ExportShopOrdersQueryDto extends ListShopOrdersQueryDto {
+  @ApiPropertyOptional({ type: String, enum: ShopOrderExportDateRange })
   @IsOptional()
   @Expose({ name: 'date_range' })
   @Transform(({ value, obj: source }) => value ?? source.date_range)
   @IsEnum(ShopOrderExportDateRange)
   dateRange?: ShopOrderExportDateRange;
 
+  @ApiPropertyOptional({
+    type: String,
+    default: 'UTC',
+    pattern: '^UTC$|^[A-Za-z_]+\\/[A-Za-z_/-]+$',
+  })
   @IsOptional()
   @IsString()
   @Matches(/^UTC$|^[A-Za-z_]+\/[A-Za-z_/-]+$/)
   timezone: string = 'UTC';
 
+  @ApiPropertyOptional({
+    type: String,
+    default: ShopOrderExportColumnPreset.DEFAULT,
+    enum: ShopOrderExportColumnPreset,
+  })
   @IsOptional()
   @Expose({ name: 'column_preset' })
   @Transform(({ value, obj: source }) => value ?? source.column_preset)
