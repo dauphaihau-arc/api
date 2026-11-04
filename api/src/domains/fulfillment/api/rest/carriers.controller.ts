@@ -8,8 +8,13 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { RequirePermissions } from '~/platform/decorators/require-permissions.decorator';
+import { ApiErrorResponses } from '~/platform/http/api-error-responses.decorator';
 import { JwtAuthGuard } from '~/domains/auth/api/guard/jwt-auth.guard';
 import { PermissionsGuard } from '~/domains/auth/api/guard/permissions.guard';
+import {
+  missingRequiredPermissionsErrorExample,
+  unauthorizedErrorExamples,
+} from '~/domains/auth/api/rest/errors/auth-error-examples';
 import {
   CarrierListResponseDto,
   toCarrierListResponse,
@@ -25,6 +30,10 @@ import {
 @RequirePermissions('shops.manage')
 @ApiTags('Carriers')
 @ApiCookieAuth('accessCookie')
+@ApiErrorResponses({
+  401: unauthorizedErrorExamples,
+  403: [missingRequiredPermissionsErrorExample],
+})
 export class CarriersController {
   @Get()
   @Header('Cache-Control', 'private, no-store')
