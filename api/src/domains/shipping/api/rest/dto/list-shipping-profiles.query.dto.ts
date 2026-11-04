@@ -16,12 +16,25 @@ import {
 } from '../../../app/shipping.constants';
 
 export class ListShippingProfilesQueryDto {
+  @ApiPropertyOptional({
+    description: 'One-based page number.',
+    type: Number,
+    minimum: 1,
+    default: SHIPPING_PROFILE_LIST_DEFAULT_PAGE,
+  })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
   page = SHIPPING_PROFILE_LIST_DEFAULT_PAGE;
 
+  @ApiPropertyOptional({
+    description: 'Maximum number of shipping profiles to return.',
+    type: Number,
+    minimum: 1,
+    maximum: SHIPPING_PROFILE_LIST_MAX_LIMIT,
+    default: SHIPPING_PROFILE_LIST_DEFAULT_LIMIT,
+  })
   @IsOptional()
   @Type(() => Number)
   @IsInt()

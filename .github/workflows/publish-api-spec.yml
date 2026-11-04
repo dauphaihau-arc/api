@@ -184,16 +184,50 @@ jobs:
           describe_spec "${OLD_SPEC}" "Baseline ${PACKAGE_NAME}@${LAST_VERSION}"
           describe_spec "${NEW_SPEC}" "Candidate"
 
-          echo "Diffing baseline -> candidate (ERR-level changes fail, WARN-level additive changes pass)."
+          # The gate compares documents, not versions, so it cannot tell an
+          # accidental break from a deliberate major release on its own. The
+          # versions come from the manifests: the candidate is the version this
+          # workflow is about to publish, and the baseline is the one inside the
+          # published tarball. An unparsable version fails closed.
+          BASELINE_PACKAGE="${WORK_DIR}/previous/package/package.json"
+          CANDIDATE_VERSION="$(node -p "require('./${PACKAGE_DIR}/package.json').version" 2>/dev/null || true)"
+          BASELINE_VERSION=""
+          if [ -f "${BASELINE_PACKAGE}" ]; then
+            BASELINE_VERSION="$(node -p "require('${BASELINE_PACKAGE}').version" 2>/dev/null || true)"
+          fi
+          resolve_major() {
+            printf '%s' "$1" | sed -E 's/^v?([0-9]+)\..*$/\1/'
+          }
+          CANDIDATE_MAJOR="$(resolve_major "${CANDIDATE_VERSION}")"
+          BASELINE_MAJOR="$(resolve_major "${BASELINE_VERSION}")"
+          if ! [[ "${CANDIDATE_MAJOR}" =~ ^[0-9]+$ ]] || ! [[ "${BASELINE_MAJOR}" =~ ^[0-9]+$ ]]; then
+            echo "::error::Could not resolve versions to compare: candidate '${CANDIDATE_VERSION}' from ${PACKAGE_DIR}/package.json (major '${CANDIDATE_MAJOR}'), baseline '${BASELINE_VERSION}' from ${BASELINE_PACKAGE} (major '${BASELINE_MAJOR}'). Refusing to publish an unchecked contract."
+            exit 1
+          fi
+          echo "Stacking candidate ${CANDIDATE_VERSION} (major ${CANDIDATE_MAJOR}) against baseline ${BASELINE_VERSION} (major ${BASELINE_MAJOR})."
+
+          echo "Diffing baseline -> candidate (ERR-level changes fail unless the major version increases, WARN-level additive changes pass)."
           set +e
           "${OASDIFF}" breaking "${OLD_SPEC}" "${NEW_SPEC}" --fail-on ERR
           DIFF_STATUS=$?
           set -e
-          if [ "${DIFF_STATUS}" -ne 0 ]; then
-            echo "::error::api/openapi.json is a breaking change against the published ${PACKAGE_NAME}@${LAST_VERSION}. A breaking contract change requires a major version bump: raise \"version\" in ${PACKAGE_DIR}/package.json to the next major, or restore the removed/narrowed contract. The breaking changes are the ERR-level entries in the oasdiff diff printed above."
-            exit 1
-          fi
-          echo "No breaking changes (ERR level) against ${PACKAGE_NAME}@${LAST_VERSION}."
+          case "${DIFF_STATUS}" in
+            0)
+              echo "No breaking changes (ERR level) against ${PACKAGE_NAME}@${LAST_VERSION}."
+              ;;
+            1)
+              if [ "${CANDIDATE_MAJOR}" -gt "${BASELINE_MAJOR}" ]; then
+                echo "::notice::The major bump ${BASELINE_VERSION} -> ${CANDIDATE_VERSION} authorises the ERR-level contract changes printed above; publishing as a new major."
+                exit 0
+              fi
+              echo "::error::api/openapi.json is a breaking change against the published ${PACKAGE_NAME}@${LAST_VERSION} (candidate major ${CANDIDATE_MAJOR}, baseline major ${BASELINE_MAJOR}). Either raise \"version\" in ${PACKAGE_DIR}/package.json to the next major, or restore the removed/narrowed contract. The breaking changes are the ERR-level entries in the oasdiff diff printed above."
+              exit 1
+              ;;
+            *)
+              echo "::error::oasdiff could not compare ${PACKAGE_NAME}@${LAST_VERSION} with api/openapi.json (exit ${DIFF_STATUS}). Refusing to publish an unchecked contract."
+              exit 1
+              ;;
+          esac
 
       - name: Refuse to overwrite a published version
         working-directory: packages/api-spec

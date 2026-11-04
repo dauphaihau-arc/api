@@ -1,18 +1,34 @@
 import 'reflect-metadata';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import {
+  mkdir, readFile, readdir, stat, writeFile, 
+} from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { NestFactory } from '@nestjs/core';
 import type { OpenAPIObject } from '@nestjs/swagger';
+import type * as ApiDocsTypes from '~/platform/docs/setup-api-docs';
+import type * as ApiGlobalPrefixTypes from '~/platform/http/api-global-prefix';
 import type * as AppModuleTypes from '~/bootstrap/app.module';
-import {
-  API_GLOBAL_PREFIX,
-  API_GLOBAL_PREFIX_OPTIONS,
-} from '~/platform/http/api-global-prefix';
-import { createApiDocument } from '~/platform/docs/setup-api-docs';
 
 const APP_ROOT = path.resolve(__dirname, '..');
 const DEFAULT_OUTPUT_PATH = path.join(APP_ROOT, 'openapi.json');
+const SRC_ROOT = path.join(APP_ROOT, 'src');
+const DIST_ROOT = path.join(APP_ROOT, 'dist');
+const DIST_APP_MODULE = path.join(DIST_ROOT, 'src', 'bootstrap', 'app.module.js');
+const DIST_API_GLOBAL_PREFIX = path.join(
+  DIST_ROOT,
+  'src',
+  'platform',
+  'http',
+  'api-global-prefix.js',
+);
+const DIST_SETUP_API_DOCS = path.join(
+  DIST_ROOT,
+  'src',
+  'platform',
+  'docs',
+  'setup-api-docs.js',
+);
 
 /**
  * Placeholder configuration consumed at AppModule import time.
@@ -83,14 +99,88 @@ function parseArgs(argv: string[]): Options {
   return { check, outPath };
 }
 
+async function newestMtimeMs(root: string): Promise<number> {
+  let newest = 0;
+
+  async function walk(directory: string): Promise<void> {
+    for (const entry of await readdir(directory, { withFileTypes: true })) {
+      const entryPath = path.join(directory, entry.name);
+      if (entry.isDirectory()) {
+        await walk(entryPath);
+        continue;
+      }
+      if (!entry.isFile()) {
+        continue;
+      }
+      const { mtimeMs } = await stat(entryPath);
+      if (mtimeMs > newest) {
+        newest = mtimeMs;
+      }
+    }
+  }
+
+  await walk(root);
+  return newest;
+}
+
+/**
+ * The document must be derived from the compiled application, not from
+ * `ts-node`: the `@nestjs/swagger` CLI plugin configured in `nest-cli.json`
+ * only runs as part of `nest build`, so DTOs that rely on implicit inference
+ * from class-validator decorators are incomplete when a TS loader boots them.
+ *
+ * `pnpm spec:generate` chains `pnpm build` before this script for exactly that
+ * reason. When the script is invoked directly, refuse to build a document from
+ * a missing or stale `dist/` instead of silently emitting the previous build.
+ */
+async function findBuildFreshnessProblem(): Promise<string | undefined> {
+  try {
+    await stat(DIST_APP_MODULE);
+  }
+  catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+      throw error;
+    }
+    return (
+      `Compiled build is missing at ${path.relative(APP_ROOT, DIST_APP_MODULE)}. ` +
+      'The OpenAPI document is generated from the compiled application because ' +
+      'the @nestjs/swagger CLI plugin only runs during `nest build`. ' +
+      'Run `pnpm build`, or use `pnpm spec:generate` (which builds first).'
+    );
+  }
+
+  const buildMtime = (await stat(DIST_APP_MODULE)).mtimeMs;
+  const sourceMtime = await newestMtimeMs(SRC_ROOT);
+
+  if (sourceMtime > buildMtime) {
+    return (
+      `Compiled build is stale: ${path.relative(APP_ROOT, DIST_APP_MODULE)} is older ` +
+      'than the newest file under src/. Refusing to generate or verify the ' +
+      'OpenAPI document from an out-of-date build. ' +
+      'Run `pnpm build`, or use `pnpm spec:generate` (which builds first).'
+    );
+  }
+
+  return undefined;
+}
+
+function requireCompiled<T>(modulePath: string): T {
+  // Absolute path so `tsconfig-paths/register` (loaded for this script) never
+  // rewrites resolution inside the compiled graph, which tsc-alias already
+  // emits with relative specifiers.
+  const requireFromScript = createRequire(__filename);
+  return requireFromScript(modulePath) as T;
+}
+
 async function buildDocument(): Promise<OpenAPIObject> {
   applyPlaceholderEnv();
 
-  // Dynamic loading is required: AppModule validates process.env at import
-  // time, so the static module graph of this script cannot own it. `require`
-  // (rather than `import()`) keeps tsconfig-paths' `~/*` resolution active.
-  const requireFromScript = createRequire(__filename);
-  const { AppModule } = requireFromScript('../src/bootstrap/app.module') as typeof AppModuleTypes;
+  // Dynamic loading keeps AppModule's process.env validation after the
+  // placeholders above. The compiled modules are required by absolute path.
+  const { AppModule } = requireCompiled<typeof AppModuleTypes>(DIST_APP_MODULE);
+  const { API_GLOBAL_PREFIX, API_GLOBAL_PREFIX_OPTIONS } =
+    requireCompiled<typeof ApiGlobalPrefixTypes>(DIST_API_GLOBAL_PREFIX);
+  const { createApiDocument } = requireCompiled<typeof ApiDocsTypes>(DIST_SETUP_API_DOCS);
 
   // Preview mode builds the module graph without instantiating providers, so
   // no database, Redis, Mongo, or queue connection is opened (and `init` is
@@ -178,6 +268,14 @@ function summarizeDiff(expected: string, committed: string): DiffSummary {
 
 async function main(): Promise<void> {
   const options = parseArgs(process.argv.slice(2));
+
+  const freshnessProblem = await findBuildFreshnessProblem();
+  if (freshnessProblem) {
+    console.error(freshnessProblem);
+    process.exitCode = 1;
+    return;
+  }
+
   const document = await buildDocument();
   const serialized = serialize(document);
 
