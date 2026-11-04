@@ -89,22 +89,25 @@ stack-down:
 api-install:
   @cd {{ api_dir }} && pnpm install
 
+# Default host-run mode: mirrors JSON logs into logs/api.log for Promtail/Loki
+# while keeping stdout in the terminal.
 api-up environment='':
   just _api-db-preflight "{{ environment }}"
-  just _api-with-default-env "pnpm start:dev" "{{ environment }}"
-
-api-up-observability environment='':
-  just _api-db-preflight "{{ environment }}"
   just _api-with-default-env "mkdir -p logs && LOG_PRETTY=false pnpm start:dev 2>&1 | tee logs/api.log" "{{ environment }}"
+
+# Host-run mode without log mirroring; nothing reaches Loki from the host.
+api-up-plain environment='':
+  just _api-db-preflight "{{ environment }}"
+  just _api-with-default-env "pnpm start:dev" "{{ environment }}"
 
 api-up-infisical project_id *env_name:
   just _api-with-infisical "{{ project_id }}" "{{ env_name }}" "pnpm start:dev"
 
 api-worker-up environment='':
-  just _api-with-default-env "pnpm start:worker:dev" "{{ environment }}"
-
-api-worker-up-observability environment='':
   just _api-with-default-env "mkdir -p logs && LOG_PRETTY=false pnpm start:worker:dev 2>&1 | tee logs/worker.log" "{{ environment }}"
+
+api-worker-up-plain environment='':
+  just _api-with-default-env "pnpm start:worker:dev" "{{ environment }}"
 
 api-worker-up-infisical project_id *env_name:
   just _api-with-infisical "{{ project_id }}" "{{ env_name }}" "pnpm start:worker:dev"

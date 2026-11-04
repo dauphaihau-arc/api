@@ -17,8 +17,8 @@ For normal feature work and bug fixing:
 
 ```bash
 just infra-up
-just api-up-observability
-just api-worker-up-observability
+just api-up
+just api-worker-up
 just inventory-service-up
 ```
 
@@ -143,5 +143,5 @@ Use `Full Compose stack` when:
 
 - `just infra-up` starts infra plus observability only.
 - `just stack-up` starts infra plus the `api` and `worker` services.
-- `just api-up` and `just api-worker-up` still exist if you want host-run processes without log mirroring into Loki.
-- `just api-up-observability` and `just api-worker-up-observability` are the preferred host-run commands when you want Grafana/Loki/Tempo/Prometheus in the loop.
+- `just api-up` and `just api-worker-up` are the default host-run commands and mirror logs into `api/logs/*.log` for Promtail/Loki.
+- `just api-up-plain` and `just api-worker-up-plain` run the same processes without log mirroring, so nothing reaches Loki from the host.

@@ -24,8 +24,8 @@ Use this for normal development:
 
 ```bash
 just infra-up
-just api-up-observability
-just api-worker-up-observability
+just api-up
+just api-worker-up
 ```
 
 In this mode:
@@ -213,6 +213,6 @@ Open Grafana Explore, select the `Tempo` datasource, and search recent traces af
 ## Known Limitations
 
 - Prometheus has two scrape targets for the same job so both runtime modes work. One target is expected to be down when only one runtime mode is active.
-- Host-run Loki ingestion depends on using `just api-up-observability` and `just api-worker-up-observability`; plain `just api-up` and `just api-worker-up` do not mirror logs into `api/logs/*.log`.
+- Host-run Loki ingestion depends on using `just api-up` and `just api-worker-up`, which mirror logs into `api/logs/*.log`; `just api-up-plain` and `just api-worker-up-plain` do not.
 - Tempo retention is local and short-lived. The current local Tempo config keeps blocks for 24 hours.
 - Sentry is optional and only sends errors when `SENTRY_DSN` is configured.

@@ -133,8 +133,8 @@ Update values as needed for your local environment.
 For the fastest edit/debug loop with the observability stack still available:
 
 ```bash
-just api-up-observability
-just api-worker-up-observability
+just api-up
+just api-worker-up
 ```
 
 These commands keep the API and worker on the host, mirror structured JSON logs into
@@ -178,11 +178,12 @@ The local observability stack is prewired as follows:
 - `just infra-up` starts infra plus observability without binding port `3000`
 - Container env for `api` and `worker` is centralized in `api/.env.docker`, with only small Compose overrides where the services differ
 
-Host-run commands remain available if you do not want log mirroring:
+Host-run commands mirror logs into `api/logs/*.log` by default. If you do not want log
+mirroring, use the plain variants:
 
 ```bash
-just api-up
-just api-worker-up
+just api-up-plain
+just api-worker-up-plain
 ```
 
 For local SQL debugging, you can enable structured query logs in `api/.env`:
