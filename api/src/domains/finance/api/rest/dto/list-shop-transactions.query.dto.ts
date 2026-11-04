@@ -74,6 +74,7 @@ export class ListShopTransactionsQueryDto {
   status?: TransactionStatus;
 
   @ApiPropertyOptional({
+    name: 'date_from',
     description: 'Inclusive lower bound on the row date, as an ISO instant.',
     example: '2026-10-01T00:00:00.000Z',
   })
@@ -85,6 +86,7 @@ export class ListShopTransactionsQueryDto {
   dateFrom?: Date;
 
   @ApiPropertyOptional({
+    name: 'date_to',
     description: 'Inclusive upper bound on the row date, as an ISO instant.',
     example: '2026-10-31T23:59:59.999Z',
   })

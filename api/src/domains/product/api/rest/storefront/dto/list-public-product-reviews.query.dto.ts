@@ -62,7 +62,7 @@ export class ListPublicProductReviewsQueryDto {
   @Max(5)
   rating?: 1 | 2 | 3 | 4 | 5;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ name: 'has_images' })
   @Expose({ name: 'has_images' })
   @Transform(({ value }) => {
     if (value == null || value === '') {
@@ -79,7 +79,7 @@ export class ListPublicProductReviewsQueryDto {
   @IsBoolean()
   hasImages?: boolean;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ name: 'has_comment' })
   @Expose({ name: 'has_comment' })
   @Transform(({ value }) => {
     if (value == null || value === '') {

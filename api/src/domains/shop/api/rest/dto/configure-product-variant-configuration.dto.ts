@@ -16,6 +16,7 @@ export class ProductOptionValueConfigurationDto {
   id?: string;
 
   @IsOptional()
+  @ApiPropertyOptional({ name: 'client_ref' })
   @Expose({ name: 'client_ref' })
   @Transform(({ value, obj }) => blankStringToUndefined(value ?? obj.client_ref))
   @IsString()
@@ -39,6 +40,7 @@ export class ProductOptionConfigurationDto {
   id?: string;
 
   @IsOptional()
+  @ApiPropertyOptional({ name: 'client_ref' })
   @Expose({ name: 'client_ref' })
   @Transform(({ value, obj }) => blankStringToUndefined(value ?? obj.client_ref))
   @IsString()
@@ -65,12 +67,14 @@ export class ProductOptionConfigurationDto {
 
 export class ProductVariantSelectionConfigurationDto {
   @IsOptional()
+  @ApiPropertyOptional({ name: 'option_id' })
   @Expose({ name: 'option_id' })
   @Transform(({ value, obj }) => value ?? obj.option_id)
   @IsUUID()
   optionId?: string;
 
   @IsOptional()
+  @ApiPropertyOptional({ name: 'option_ref' })
   @Expose({ name: 'option_ref' })
   @Transform(({ value, obj }) => blankStringToUndefined(value ?? obj.option_ref))
   @IsString()
@@ -79,12 +83,14 @@ export class ProductVariantSelectionConfigurationDto {
   optionRef?: string;
 
   @IsOptional()
+  @ApiPropertyOptional({ name: 'value_id' })
   @Expose({ name: 'value_id' })
   @Transform(({ value, obj }) => value ?? obj.value_id)
   @IsUUID()
   valueId?: string;
 
   @IsOptional()
+  @ApiPropertyOptional({ name: 'value_ref' })
   @Expose({ name: 'value_ref' })
   @Transform(({ value, obj }) => blankStringToUndefined(value ?? obj.value_ref))
   @IsString()
@@ -95,6 +101,7 @@ export class ProductVariantSelectionConfigurationDto {
 
 export class ProductVariantInventoryConfigurationDto {
   @IsOptional()
+  @ApiPropertyOptional({ name: 'on_hand_quantity' })
   @Expose({ name: 'on_hand_quantity' })
   @Transform(({ value, obj }) => value ?? obj.on_hand_quantity)
   @IsNumber()
@@ -103,6 +110,7 @@ export class ProductVariantInventoryConfigurationDto {
   onHandQuantity?: number;
 
   @IsOptional()
+  @ApiPropertyOptional({ name: 'expected_on_hand_version' })
   @Expose({ name: 'expected_on_hand_version' })
   @Transform(({ value, obj }) => value ?? obj.expected_on_hand_version)
   @IsNumber()
@@ -116,6 +124,7 @@ export class ProductVariantInventoryConfigurationDto {
   sku?: string | null;
 
   @IsOptional()
+  @ApiPropertyOptional({ name: 'amount_minor' })
   @Expose({ name: 'amount_minor' })
   @Transform(({ value, obj }) => value ?? obj.amount_minor)
   @IsNumber()
@@ -135,6 +144,7 @@ export class ProductVariantConfigurationDto {
   id?: string;
 
   @IsOptional()
+  @ApiPropertyOptional({ name: 'client_ref' })
   @Expose({ name: 'client_ref' })
   @Transform(({ value, obj }) => blankStringToUndefined(value ?? obj.client_ref))
   @IsString()
@@ -147,6 +157,7 @@ export class ProductVariantConfigurationDto {
   @Type(() => ProductVariantSelectionConfigurationDto)
   selections!: ProductVariantSelectionConfigurationDto[];
 
+  @ApiProperty({ name: 'lifecycle_state', enum: ProductVariantLifecycleState })
   @Expose({ name: 'lifecycle_state' })
   @Transform(({ value, obj }) => value ?? obj.lifecycle_state)
   @IsEnum(ProductVariantLifecycleState)

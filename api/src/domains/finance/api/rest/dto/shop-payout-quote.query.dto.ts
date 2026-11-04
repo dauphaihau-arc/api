@@ -9,6 +9,7 @@ import { IsInt, Min } from 'class-validator';
  */
 export class ShopPayoutQuoteQueryDto {
   @ApiProperty({
+    name: 'amount_minor',
     description:
       'Amount to quote in the shop Settlement Currency minor units.',
     example: 12_500,

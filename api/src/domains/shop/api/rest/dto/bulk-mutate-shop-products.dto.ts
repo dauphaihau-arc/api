@@ -1,4 +1,5 @@
 import { Expose, Transform } from 'class-transformer';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 import {
   ArrayNotEmpty,
   IsArray,
@@ -23,6 +24,7 @@ export class BulkMutateShopProductsDto {
   action!: BulkMutateShopProductsAction;
 
   @IsOptional()
+  @ApiPropertyOptional({ name: 'idempotency_key' })
   @Expose({ name: 'idempotency_key' })
   @Transform(({ value, obj: source }) => value ?? source.idempotency_key)
   @IsString()

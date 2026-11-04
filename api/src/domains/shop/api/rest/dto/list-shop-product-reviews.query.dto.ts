@@ -40,7 +40,7 @@ export class ListShopProductReviewsQueryDto {
   @IsEnum(ProductReviewStatus)
   status?: ProductReviewStatus;
 
-  @ApiPropertyOptional({ type: String, pattern: '^prod_[0-9a-f]{12}$' })
+  @ApiPropertyOptional({ name: 'product_id', type: String, pattern: '^prod_[0-9a-f]{12}$' })
   @IsOptional()
   @Expose({ name: 'product_id' })
   @Transform(({ value, obj: source }) => value ?? source.product_id)

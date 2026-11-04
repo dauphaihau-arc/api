@@ -58,12 +58,14 @@ export class ListShopOrdersQueryDto {
   limit: number = SHOP_ORDER_LIST_DEFAULT_LIMIT;
 
   @IsOptional()
+  @ApiPropertyOptional({ enum: OrderStatus, isArray: true })
   @Transform(({ value, obj: source }) => toOptionalStringArray(value ?? source.status))
   @IsArray()
   @IsEnum(OrderStatus, { each: true })
   status?: OrderStatus[];
 
   @IsOptional()
+  @ApiPropertyOptional({ name: 'fulfillment_status', enum: FulfillmentAggregateStatus, isArray: true })
   @Expose({ name: 'fulfillment_status' })
   @Transform(({ value, obj: source }) => toOptionalStringArray(value ?? source.fulfillment_status))
   @IsArray()
@@ -71,6 +73,7 @@ export class ListShopOrdersQueryDto {
   fulfillmentStatus?: FulfillmentAggregateStatus[];
 
   @IsOptional()
+  @ApiPropertyOptional({ name: 'created_from', type: String, format: 'date-time' })
   @Expose({ name: 'created_from' })
   @Transform(({ value, obj: source }) => value ?? source.created_from)
   @Type(() => Date)
@@ -78,6 +81,7 @@ export class ListShopOrdersQueryDto {
   createdFrom?: Date;
 
   @IsOptional()
+  @ApiPropertyOptional({ name: 'created_to', type: String, format: 'date-time' })
   @Expose({ name: 'created_to' })
   @Transform(({ value, obj: source }) => value ?? source.created_to)
   @Type(() => Date)
@@ -85,6 +89,7 @@ export class ListShopOrdersQueryDto {
   createdTo?: Date;
 
   @IsOptional()
+  @ApiPropertyOptional({ name: 'amount_min', type: Number, minimum: 0 })
   @Expose({ name: 'amount_min' })
   @Transform(({ value, obj: source }) => value ?? source.amount_min)
   @Type(() => Number)
@@ -93,6 +98,7 @@ export class ListShopOrdersQueryDto {
   amountMin?: number;
 
   @IsOptional()
+  @ApiPropertyOptional({ name: 'amount_max', type: Number, minimum: 0 })
   @Expose({ name: 'amount_max' })
   @Transform(({ value, obj: source }) => value ?? source.amount_max)
   @Type(() => Number)
@@ -101,12 +107,14 @@ export class ListShopOrdersQueryDto {
   amountMax?: number;
 
   @IsOptional()
+  @ApiPropertyOptional()
   @Transform(({ value, obj: source }) => toOptionalStringArray(value ?? source.currency))
   @IsArray()
   @IsString({ each: true })
   currency?: string[];
 
   @IsOptional()
+  @ApiPropertyOptional({ name: 'payment_type', enum: PaymentType, isArray: true })
   @Expose({ name: 'payment_type' })
   @Transform(({ value, obj: source }) => toOptionalStringArray(value ?? source.payment_type))
   @IsArray()
@@ -114,6 +122,7 @@ export class ListShopOrdersQueryDto {
   paymentType?: PaymentType[];
 
   @IsOptional()
+  @ApiPropertyOptional()
   @IsString()
   search?: string;
 }

@@ -10,6 +10,7 @@ import { IsInt, IsOptional, Min } from 'class-validator';
  */
 export class RequestManualPayoutDto {
   @ApiPropertyOptional({
+    name: 'amount_minor',
     description:
       'Amount to withdraw in the shop Settlement Currency minor units. ' +
       'Omitted withdraws all of the net available balance.',
