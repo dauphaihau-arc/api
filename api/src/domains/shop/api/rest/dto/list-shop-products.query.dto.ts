@@ -42,16 +42,19 @@ export class ListShopProductsQueryDto {
   limit: number = SHOP_PRODUCT_LIST_DEFAULT_LIMIT;
 
   @IsOptional()
+  @ApiPropertyOptional()
   @IsEnum(ProductState)
   state?: ProductState;
 
   @IsOptional()
+  @ApiPropertyOptional({ name: 'category_id' })
   @Expose({ name: 'category_id' })
   @Transform(({ value, obj: source }) => value ?? source.category_id)
   @Matches(CATEGORY_PUBLIC_ID_PATTERN)
   categoryId?: string;
 
   @IsOptional()
+  @ApiPropertyOptional()
   @Transform(({ value, obj: source }) => value ?? source.s)
   @IsString()
   search?: string;

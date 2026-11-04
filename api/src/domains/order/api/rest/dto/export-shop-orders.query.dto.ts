@@ -25,7 +25,7 @@ export enum ShopOrderExportColumnPreset {
 }
 
 export class ExportShopOrdersQueryDto extends ListShopOrdersQueryDto {
-  @ApiPropertyOptional({ type: String, enum: ShopOrderExportDateRange })
+  @ApiPropertyOptional({ name: 'date_range', type: String, enum: ShopOrderExportDateRange })
   @IsOptional()
   @Expose({ name: 'date_range' })
   @Transform(({ value, obj: source }) => value ?? source.date_range)
@@ -43,6 +43,7 @@ export class ExportShopOrdersQueryDto extends ListShopOrdersQueryDto {
   timezone: string = 'UTC';
 
   @ApiPropertyOptional({
+    name: 'column_preset',
     type: String,
     default: ShopOrderExportColumnPreset.DEFAULT,
     enum: ShopOrderExportColumnPreset,

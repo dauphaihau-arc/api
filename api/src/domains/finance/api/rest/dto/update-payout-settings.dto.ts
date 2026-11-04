@@ -9,6 +9,7 @@ import { IsBoolean } from 'class-validator';
  */
 export class UpdatePayoutSettingsDto {
   @ApiProperty({
+    name: 'auto_payout_enabled',
     description:
       'Whether automatic Payout Runs may pay this shop without a manual request.',
     example: true,

@@ -9557,7 +9557,7 @@
             }
           },
           {
-            "name": "hasImages",
+            "name": "has_images",
             "required": false,
             "in": "query",
             "schema": {
@@ -9565,7 +9565,7 @@
             }
           },
           {
-            "name": "hasComment",
+            "name": "has_comment",
             "required": false,
             "in": "query",
             "schema": {
@@ -11404,7 +11404,7 @@
             }
           },
           {
-            "name": "categoryId",
+            "name": "category_id",
             "required": false,
             "in": "query",
             "schema": {
@@ -15488,7 +15488,7 @@
             }
           },
           {
-            "name": "productId",
+            "name": "product_id",
             "required": false,
             "in": "query",
             "schema": {
@@ -23495,7 +23495,121 @@
             }
           },
           {
-            "name": "dateRange",
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "canceled",
+                  "pending",
+                  "checkout_pending",
+                  "awaiting_payment",
+                  "expired",
+                  "paid",
+                  "refunded",
+                  "completed",
+                  "archived"
+                ]
+              }
+            }
+          },
+          {
+            "name": "fulfillment_status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "unfulfilled",
+                  "prepared",
+                  "partially_shipped",
+                  "shipped",
+                  "partially_delivered",
+                  "delivered",
+                  "canceled",
+                  "dispatched",
+                  "in_transit"
+                ]
+              }
+            }
+          },
+          {
+            "name": "created_from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "name": "created_to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "name": "amount_min",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 0,
+              "type": "number"
+            }
+          },
+          {
+            "name": "amount_max",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 0,
+              "type": "number"
+            }
+          },
+          {
+            "name": "currency",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "payment_type",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "cash",
+                  "card"
+                ]
+              }
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "date_range",
             "required": false,
             "in": "query",
             "schema": {
@@ -23522,7 +23636,7 @@
             }
           },
           {
-            "name": "columnPreset",
+            "name": "column_preset",
             "required": false,
             "in": "query",
             "schema": {
@@ -23543,120 +23657,6 @@
               "items": {
                 "type": "string"
               }
-            }
-          },
-          {
-            "name": "status",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "type": "array",
-              "items": {
-                "type": "string",
-                "enum": [
-                  "canceled",
-                  "pending",
-                  "checkout_pending",
-                  "awaiting_payment",
-                  "expired",
-                  "paid",
-                  "refunded",
-                  "completed",
-                  "archived"
-                ]
-              }
-            }
-          },
-          {
-            "name": "fulfillmentStatus",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "type": "array",
-              "items": {
-                "type": "string",
-                "enum": [
-                  "unfulfilled",
-                  "prepared",
-                  "partially_shipped",
-                  "shipped",
-                  "partially_delivered",
-                  "delivered",
-                  "canceled",
-                  "dispatched",
-                  "in_transit"
-                ]
-              }
-            }
-          },
-          {
-            "name": "createdFrom",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "format": "date-time",
-              "type": "string"
-            }
-          },
-          {
-            "name": "createdTo",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "format": "date-time",
-              "type": "string"
-            }
-          },
-          {
-            "name": "amountMin",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "minimum": 0,
-              "type": "number"
-            }
-          },
-          {
-            "name": "amountMax",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "minimum": 0,
-              "type": "number"
-            }
-          },
-          {
-            "name": "currency",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            }
-          },
-          {
-            "name": "paymentType",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "type": "array",
-              "items": {
-                "type": "string",
-                "enum": [
-                  "cash",
-                  "card"
-                ]
-              }
-            }
-          },
-          {
-            "name": "search",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "type": "string"
             }
           }
         ],
@@ -24473,7 +24473,7 @@
             }
           },
           {
-            "name": "fulfillmentStatus",
+            "name": "fulfillment_status",
             "required": false,
             "in": "query",
             "schema": {
@@ -24495,7 +24495,7 @@
             }
           },
           {
-            "name": "createdFrom",
+            "name": "created_from",
             "required": false,
             "in": "query",
             "schema": {
@@ -24504,7 +24504,7 @@
             }
           },
           {
-            "name": "createdTo",
+            "name": "created_to",
             "required": false,
             "in": "query",
             "schema": {
@@ -24513,7 +24513,7 @@
             }
           },
           {
-            "name": "amountMin",
+            "name": "amount_min",
             "required": false,
             "in": "query",
             "schema": {
@@ -24522,7 +24522,7 @@
             }
           },
           {
-            "name": "amountMax",
+            "name": "amount_max",
             "required": false,
             "in": "query",
             "schema": {
@@ -24542,7 +24542,7 @@
             }
           },
           {
-            "name": "paymentType",
+            "name": "payment_type",
             "required": false,
             "in": "query",
             "schema": {
@@ -26106,7 +26106,7 @@
             }
           },
           {
-            "name": "dateFrom",
+            "name": "date_from",
             "required": false,
             "in": "query",
             "description": "Inclusive lower bound on the row date, as an ISO instant.",
@@ -26117,7 +26117,7 @@
             }
           },
           {
-            "name": "dateTo",
+            "name": "date_to",
             "required": false,
             "in": "query",
             "description": "Inclusive upper bound on the row date, as an ISO instant.",
@@ -26317,7 +26317,7 @@
             }
           },
           {
-            "name": "amountMinor",
+            "name": "amount_minor",
             "required": true,
             "in": "query",
             "description": "Amount to quote in the shop Settlement Currency minor units.",
@@ -34020,17 +34020,17 @@
       "IssueReviewImageUploadDto": {
         "type": "object",
         "properties": {
-          "contentType": {
+          "content_type": {
             "type": "string"
           },
-          "sizeBytes": {
+          "size_bytes": {
             "type": "number",
             "minimum": 1
           }
         },
         "required": [
-          "contentType",
-          "sizeBytes"
+          "content_type",
+          "size_bytes"
         ]
       },
       "ReviewImageUploadUrlResponseDto": {
@@ -34067,10 +34067,10 @@
       "IssueProductImageUploadDto": {
         "type": "object",
         "properties": {
-          "contentType": {
+          "content_type": {
             "type": "string"
           },
-          "assetType": {
+          "asset_type": {
             "type": "string",
             "default": "original",
             "enum": [
@@ -34079,8 +34079,8 @@
           }
         },
         "required": [
-          "contentType",
-          "assetType"
+          "content_type",
+          "asset_type"
         ]
       },
       "ProductImageUploadUrlResponseDto": {
@@ -34973,14 +34973,14 @@
       "ProductOptionValueConfigurationDto": {
         "type": "object",
         "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "clientRef": {
+          "client_ref": {
             "type": "string",
             "minLength": 1,
             "maxLength": 100
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
           },
           "value": {
             "type": "string",
@@ -35000,14 +35000,14 @@
       "ProductOptionConfigurationDto": {
         "type": "object",
         "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "clientRef": {
+          "client_ref": {
             "type": "string",
             "minLength": 1,
             "maxLength": 100
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
           },
           "name": {
             "type": "string",
@@ -35036,20 +35036,20 @@
       "ProductVariantSelectionConfigurationDto": {
         "type": "object",
         "properties": {
-          "optionId": {
+          "option_id": {
             "type": "string",
             "format": "uuid"
           },
-          "optionRef": {
+          "option_ref": {
             "type": "string",
             "minLength": 1,
             "maxLength": 100
           },
-          "valueId": {
+          "value_id": {
             "type": "string",
             "format": "uuid"
           },
-          "valueRef": {
+          "value_ref": {
             "type": "string",
             "minLength": 1,
             "maxLength": 100
@@ -35059,24 +35059,24 @@
       "ProductVariantInventoryConfigurationDto": {
         "type": "object",
         "properties": {
-          "onHandQuantity": {
+          "on_hand_quantity": {
             "type": "number",
             "minimum": 0,
             "maximum": 999
           },
-          "expectedOnHandVersion": {
+          "expected_on_hand_version": {
             "type": "number",
             "minimum": 1
+          },
+          "amount_minor": {
+            "type": "number",
+            "minimum": 50,
+            "maximum": 5000000
           },
           "sku": {
             "type": "string",
             "nullable": true,
             "maxLength": 255
-          },
-          "amountMinor": {
-            "type": "number",
-            "minimum": 50,
-            "maximum": 5000000
           },
           "currency": {
             "type": "string",
@@ -35088,14 +35088,22 @@
       "ProductVariantConfigurationDto": {
         "type": "object",
         "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "clientRef": {
+          "client_ref": {
             "type": "string",
             "minLength": 1,
             "maxLength": 100
+          },
+          "lifecycle_state": {
+            "enum": [
+              "active",
+              "inactive",
+              "removed"
+            ],
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
           },
           "selections": {
             "type": "array",
@@ -35103,21 +35111,13 @@
               "$ref": "#/components/schemas/ProductVariantSelectionConfigurationDto"
             }
           },
-          "lifecycleState": {
-            "type": "string",
-            "enum": [
-              "active",
-              "inactive",
-              "removed"
-            ]
-          },
           "inventory": {
             "$ref": "#/components/schemas/ProductVariantInventoryConfigurationDto"
           }
         },
         "required": [
-          "selections",
-          "lifecycleState"
+          "lifecycle_state",
+          "selections"
         ]
       },
       "CreateProductDraftFacadeInventoryDto": {
@@ -35334,6 +35334,9 @@
       "BulkMutateShopProductsDto": {
         "type": "object",
         "properties": {
+          "idempotency_key": {
+            "type": "string"
+          },
           "ids": {
             "minItems": 1,
             "type": "array",
@@ -35348,9 +35351,6 @@
               "deactivate",
               "remove"
             ],
-            "type": "string"
-          },
-          "idempotencyKey": {
             "type": "string"
           }
         },
@@ -39805,37 +39805,6 @@
             "maximum": 100,
             "description": "Maximum number of orders to return."
           },
-          "dateRange": {
-            "enum": [
-              "today",
-              "current_month",
-              "last_7_days",
-              "last_4_weeks",
-              "last_month",
-              "all",
-              "custom"
-            ],
-            "type": "string"
-          },
-          "timezone": {
-            "type": "string",
-            "default": "UTC",
-            "pattern": "^UTC$|^[A-Za-z_]+\\/[A-Za-z_/-]+$"
-          },
-          "columnPreset": {
-            "default": "default",
-            "enum": [
-              "default",
-              "custom"
-            ],
-            "type": "string"
-          },
-          "columns": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
           "status": {
             "type": "array",
             "items": {
@@ -39853,7 +39822,7 @@
               ]
             }
           },
-          "fulfillmentStatus": {
+          "fulfillment_status": {
             "type": "array",
             "items": {
               "type": "string",
@@ -39870,19 +39839,19 @@
               ]
             }
           },
-          "createdFrom": {
-            "format": "date-time",
-            "type": "string"
+          "created_from": {
+            "type": "string",
+            "format": "date-time"
           },
-          "createdTo": {
-            "format": "date-time",
-            "type": "string"
+          "created_to": {
+            "type": "string",
+            "format": "date-time"
           },
-          "amountMin": {
+          "amount_min": {
             "type": "number",
             "minimum": 0
           },
-          "amountMax": {
+          "amount_max": {
             "type": "number",
             "minimum": 0
           },
@@ -39892,7 +39861,7 @@
               "type": "string"
             }
           },
-          "paymentType": {
+          "payment_type": {
             "type": "array",
             "items": {
               "type": "string",
@@ -39904,6 +39873,37 @@
           },
           "search": {
             "type": "string"
+          },
+          "date_range": {
+            "enum": [
+              "today",
+              "current_month",
+              "last_7_days",
+              "last_4_weeks",
+              "last_month",
+              "all",
+              "custom"
+            ],
+            "type": "string"
+          },
+          "timezone": {
+            "type": "string",
+            "default": "UTC",
+            "pattern": "^UTC$|^[A-Za-z_]+\\/[A-Za-z_/-]+$"
+          },
+          "column_preset": {
+            "default": "default",
+            "enum": [
+              "default",
+              "custom"
+            ],
+            "type": "string"
+          },
+          "columns": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         }
       },
@@ -41016,20 +41016,20 @@
       "UpdatePayoutSettingsDto": {
         "type": "object",
         "properties": {
-          "autoPayoutEnabled": {
+          "auto_payout_enabled": {
             "type": "boolean",
             "description": "Whether automatic Payout Runs may pay this shop without a manual request.",
             "example": true
           }
         },
         "required": [
-          "autoPayoutEnabled"
+          "auto_payout_enabled"
         ]
       },
       "RequestManualPayoutDto": {
         "type": "object",
         "properties": {
-          "amountMinor": {
+          "amount_minor": {
             "type": "number",
             "minimum": 1,
             "description": "Amount to withdraw in the shop Settlement Currency minor units. Omitted withdraws all of the net available balance.",

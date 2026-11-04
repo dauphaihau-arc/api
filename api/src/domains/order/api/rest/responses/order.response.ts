@@ -21,6 +21,9 @@ import type { CheckoutConfig } from '~/platform/config/checkout.config';
 import { getMaxOrderTotalMinor } from '~/platform/config/checkout.config';
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
+import { ProductReviewStatus } from '../../../../product/domain/enums/product-review-status.enum';
+import { SHOP_DASHBOARD_TIME_RANGES } from '../dto/get-shop-dashboard.query.dto';
+import type { ShopDashboardTimeRange } from '../../../app/order.types';
 
 export class OrderShopRefResponseDto {
   @ApiProperty({ description: 'Shop public id (shop_…).' })
@@ -129,8 +132,8 @@ export class OrderReviewResponseDto {
   @ApiProperty({ required: false })
   body?: string;
 
-  @ApiProperty({ enum: ['published', 'hidden'] })
-  status!: string;
+  @ApiProperty({ enum: ProductReviewStatus })
+  status!: ProductReviewStatus;
 
   @ApiProperty({ type: String, format: 'date-time' })
   created_at!: Date;
@@ -1010,8 +1013,8 @@ export class ShopOrderDetailResponseDto {
 }
 
 export class ShopDashboardPeriodResponseDto {
-  @ApiProperty({ enum: ['today', 'yesterday', 'last_7_days', 'last_30_days', 'this_month', 'last_month', 'all_time'] })
-  range!: string;
+  @ApiProperty({ enum: SHOP_DASHBOARD_TIME_RANGES })
+  range!: ShopDashboardTimeRange;
 
   @ApiProperty({ type: String, format: 'date-time' })
   from!: Date;
