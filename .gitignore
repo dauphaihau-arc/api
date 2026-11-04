@@ -48,3 +48,8 @@ seed-data/images/*-local/
 api/database/migrations/.snapshot-*.json
 !api/database/migrations/.snapshot-app.json
 api/api-tests/hurl.variables
+
+# API spec package artifact: `api/openapi.json` is the committed source of
+# truth; the package copy and tarballs are produced by `pnpm spec:package`.
+packages/api-spec/openapi.json
+packages/api-spec/*.tgz

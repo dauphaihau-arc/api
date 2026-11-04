@@ -42,6 +42,9 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
+      - name: Verify OpenAPI spec is current
+        run: pnpm spec:generate -- --check
+
       - name: Test
         run: pnpm test -- --runInBand
 

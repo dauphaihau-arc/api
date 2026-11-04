@@ -3,6 +3,14 @@ import {
   ApiOkResponse, ApiOperation, ApiProperty, ApiTags, 
 } from '@nestjs/swagger';
 import { SkipThrottle } from '@nestjs/throttler';
+import {
+  MARKETPLACE_CURRENCIES,
+  MARKETPLACE_LOCALES,
+  MARKETPLACE_REGIONS,
+  type MarketplaceCurrency,
+  type MarketplaceLocale,
+  type MarketplaceRegion,
+} from '~/platform/config/marketplace.config';
 import { ApiErrorResponses } from '~/platform/http/api-error-responses.decorator';
 import { marketplaceErrorResponses } from './marketplace-error-responses';
 
@@ -14,20 +22,20 @@ class MarketplaceMarketResponseDto {
   @ApiProperty()
   code!: string;
 
-  @ApiProperty()
-  name!: string;
+  @ApiProperty({ enum: MARKETPLACE_REGIONS })
+  name!: MarketplaceRegion;
 
-  @ApiProperty()
-  defaultCurrency!: string;
+  @ApiProperty({ enum: MARKETPLACE_CURRENCIES })
+  defaultCurrency!: MarketplaceCurrency;
 
-  @ApiProperty({ type: [String] })
-  supportedCurrencies!: string[];
+  @ApiProperty({ enum: MARKETPLACE_CURRENCIES, isArray: true })
+  supportedCurrencies!: MarketplaceCurrency[];
 
-  @ApiProperty()
-  defaultLocale!: string;
+  @ApiProperty({ enum: MARKETPLACE_LOCALES })
+  defaultLocale!: MarketplaceLocale;
 
-  @ApiProperty({ type: [String] })
-  supportedLocales!: string[];
+  @ApiProperty({ enum: MARKETPLACE_LOCALES, isArray: true })
+  supportedLocales!: MarketplaceLocale[];
 
   @ApiProperty()
   enabled!: boolean;

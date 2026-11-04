@@ -1,0 +1,135 @@
+name: Publish API Spec
+
+on:
+  push:
+    branches:
+      - production
+    paths:
+      - "api/src/**"
+      - "api/openapi.json"
+      - "api/package.json"
+      - "api/pnpm-lock.yaml"
+      - "api/scripts/generate-openapi.ts"
+      - "api/scripts/sync-api-spec-package.ts"
+      - "packages/api-spec/**"
+      - ".github/workflows/publish-api-spec.yml"
+      - ".npmrc"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Run every publish step but stop before uploading the package."
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: publish-api-spec-${{ github.ref }}
+  # A cancelled publish can leave a half-uploaded version behind.
+  cancel-in-progress: false
+
+env:
+  PACKAGE_NAME: "@dauphaihau-arc/api-spec"
+  PACKAGE_DIR: packages/api-spec
+  SPEC_PACKAGE_REGISTRY: https://npm.pkg.github.com
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 9.3.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22.0.0
+          registry-url: https://npm.pkg.github.com
+          scope: "@dauphaihau-arc"
+          cache: pnpm
+          cache-dependency-path: api/pnpm-lock.yaml
+
+      - name: Install dependencies
+        working-directory: api
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify committed spec is current
+        working-directory: api
+        run: pnpm spec:generate -- --check
+
+      - name: Regenerate spec
+        working-directory: api
+        run: pnpm spec:generate
+
+      - name: Assert regeneration matches the committed spec
+        run: git diff --exit-code -- api/openapi.json
+
+      - name: Sync spec into the package
+        working-directory: api
+        run: pnpm spec:package
+
+      - name: Assert package spec matches the source spec
+        run: cmp api/openapi.json packages/api-spec/openapi.json
+
+      - name: Assert tarball contents
+        working-directory: packages/api-spec
+        run: |
+          REPORT="${RUNNER_TEMP}/api-spec-pack.json"
+          npm pack --dry-run --json > "${REPORT}"
+          node -e '
+            const fs = require("node:fs");
+            const [reportPath] = process.argv.slice(1);
+            const report = JSON.parse(fs.readFileSync(reportPath, "utf8"));
+            const entry = Object.values(report)[0];
+            const paths = entry.files.map((file) => file.path).sort();
+            // npm always ships package.json; openapi.json is the only payload.
+            const expected = ["openapi.json", "package.json"];
+            if (JSON.stringify(paths) !== JSON.stringify(expected)) {
+              console.error(`Unexpected tarball contents: ${paths.join(", ")}`);
+              process.exit(1);
+            }
+            console.log(
+              `Tarball contains exactly ${paths.join(", ")} `
+              + `(${entry.entryCount} entries, ${entry.unpackedSize} bytes unpacked).`,
+            );
+          ' "${REPORT}"
+
+      - name: Refuse to overwrite a published version
+        working-directory: packages/api-spec
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          echo "Checking ${PACKAGE_NAME}@${VERSION} on ${SPEC_PACKAGE_REGISTRY}."
+          set +e
+          OUTPUT="$(npm view "${PACKAGE_NAME}@${VERSION}" version --registry "${SPEC_PACKAGE_REGISTRY}" 2>&1)"
+          STATUS=$?
+          set -e
+          if [ "${STATUS}" -eq 0 ]; then
+            echo "::error::${PACKAGE_NAME}@${VERSION} is already published. Bump \"version\" in ${PACKAGE_DIR}/package.json and merge again. Versions are never auto-incremented: patch = descriptions/examples only, minor = additive (new optional field or endpoint), major = breaking or newly required field."
+            exit 1
+          fi
+          if ! grep -q "E404" <<< "${OUTPUT}"; then
+            echo "::error::Could not confirm ${PACKAGE_NAME}@${VERSION} is unpublished. Refusing to guess. npm output: ${OUTPUT}"
+            exit 1
+          fi
+          echo "Version ${VERSION} is available."
+
+      - name: Publish package
+        working-directory: packages/api-spec
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            echo "::notice::Dry run: every step ran, nothing will be uploaded. Re-dispatch with dry_run=false to release."
+            npm publish --dry-run
+            exit 0
+          fi
+          npm publish

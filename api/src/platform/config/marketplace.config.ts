@@ -52,7 +52,7 @@ export type MarketplaceLocale = (typeof MARKETPLACE_LOCALES)[number];
 
 export interface MarketplaceMarket {
   code: string;
-  name: string;
+  name: MarketplaceRegion;
   defaultCurrency: MarketplaceCurrency;
   supportedCurrencies: MarketplaceCurrency[];
   defaultLocale: MarketplaceLocale;

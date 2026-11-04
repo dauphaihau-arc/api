@@ -1,8 +1,4 @@
-import {
-  ClassSerializerInterceptor,
-  RequestMethod,
-  ValidationPipe,
-} from '@nestjs/common';
+import { ClassSerializerInterceptor, ValidationPipe } from '@nestjs/common';
 import { NestFactory, Reflector } from '@nestjs/core';
 import type { Queue } from 'bullmq';
 import express from 'express';
@@ -11,7 +7,10 @@ import { setupApiDocs } from '~/platform/docs/setup-api-docs';
 import { setupBullBoard } from '~/platform/docs/setup-bull-board';
 import { GlobalExceptionFilter } from '~/platform/filters/global-exception.filter';
 import { CategoryIdentityGenerationInterceptor } from '~/domains/category/api/rest/category-identity-generation.interceptor';
-import { API_GLOBAL_PREFIX } from '~/platform/http/api-global-prefix';
+import {
+  API_GLOBAL_PREFIX,
+  API_GLOBAL_PREFIX_OPTIONS,
+} from '~/platform/http/api-global-prefix';
 import { RequestLoggingInterceptor } from '~/platform/logging/request-logging.interceptor';
 import { captureException, initializeSentry } from '~/platform/sentry/sentry';
 import { parseCorsAllowedOrigins } from '~/platform/config/cors.config';
@@ -76,22 +75,7 @@ async function bootstrap() {
       requestLogger,
     ),
   );
-  app.setGlobalPrefix(API_PREFIX, {
-    exclude: [
-      {
-        path: 'health',
-        method: RequestMethod.GET,
-      },
-      {
-        path: 'health/ready',
-        method: RequestMethod.GET,
-      },
-      {
-        path: 'metrics',
-        method: RequestMethod.GET,
-      },
-    ],
-  });
+  app.setGlobalPrefix(API_PREFIX, API_GLOBAL_PREFIX_OPTIONS);
   setupApiDocs(app);
   setupBullBoard(
     app,

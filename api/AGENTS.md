@@ -23,6 +23,47 @@ Load only the files relevant to the task:
 - Use cases or orchestration: `agent-skills/use-case-boundaries.md`
 - Behavior changes and bug fixes: `agent-skills/testing.md`
 
+## API Contract
+
+`openapi.json` in this directory is a committed artifact generated from Nest in
+preview mode. It must not require a database, Redis, or Mongo.
+
+```bash
+pnpm spec:generate
+pnpm spec:generate -- --check
+```
+
+- Run `pnpm spec:generate` after any DTO or controller change; `-- --check` must
+  be clean before merge. `./scripts/verify spec` runs it from the repo root.
+- Every business endpoint under `/v1` declares its error responses with
+  `@ApiErrorResponses` from `src/platform/http/api-error-responses.decorator.ts`.
+- The spec is emitted verbatim, so wire casing follows the DTO declarations.
+
+## Spec Package Publishing
+
+The web apps consume the contract as `@dauphaihau-arc/api-spec`, published to
+GitHub Packages (`https://npm.pkg.github.com`). The package ships one file,
+`openapi.json`, at the package root.
+
+- `openapi.json` in this directory stays the source of truth. The package copy
+  at `packages/api-spec/openapi.json` is generated and gitignored; never edit it
+  by hand.
+- Sync the package after regenerating the spec:
+
+  ```bash
+  pnpm spec:generate
+  pnpm spec:package            # copies api/openapi.json byte for byte
+  pnpm spec:package -- --check # fails when the package copy is stale
+  ```
+
+- `version` in `packages/api-spec/package.json` is authoritative and is bumped
+  by hand. Patch: descriptions or examples only. Minor: additive (new optional
+  field, new endpoint). Major: breaking changes or a newly `required` field.
+- Publishing happens in CI from `.github/workflows/publish-api-spec.yml` on
+  merge to the default branch. The workflow fails when the manifest version is
+  already published, so merging without a version bump is a deliberate failure,
+  not a silent republish.
+
 ## Architecture Check
 
 Run the executable API boundary check when touching domain, shared, or

@@ -137,10 +137,17 @@ function completeDeclaredErrorResponses(document: OpenAPIObject): void {
   }
 }
 
-export function setupApiDocs(app: INestApplication): void {
+/**
+ * Builds the published OpenAPI document.
+ *
+ * Kept separate from route mounting so the same document can be written to disk
+ * by `scripts/generate-openapi.ts` without starting the HTTP listener. Route
+ * scanning reads Nest module metadata only, which lets the generator run in
+ * Nest's preview mode (no providers, no database or queue connections).
+ */
+export function createApiDocument(app: INestApplication): OpenAPIObject {
   const accessCookieName = process.env.AUTH_COOKIE_ACCESS_NAME ?? 'accessToken';
   const refreshCookieName = process.env.AUTH_COOKIE_REFRESH_NAME ?? 'refreshToken';
-  const httpAdapter = app.getHttpAdapter().getInstance();
   const document = SwaggerModule.createDocument(
     app,
     new DocumentBuilder()
@@ -162,13 +169,24 @@ export function setupApiDocs(app: INestApplication): void {
       .build(),
     {
       deepScanRoutes: true,
-      operationIdFactory: (_controllerKey: string, methodKey: string) => methodKey,
+      // Controller method names repeat across domains (`create`, `list`,
+      // `cancel`), so a bare method key is not unique. Consumers key on
+      // operation IDs (generated clients, diffs), which requires uniqueness.
+      operationIdFactory: (controllerKey: string, methodKey: string) =>
+        `${controllerKey.replace(/_?Controller$/, '')}_${methodKey}`,
       extraModels: [ApiErrorResponseDto],
     },
   );
 
   sortDocumentTags(document);
   completeDeclaredErrorResponses(document);
+
+  return document;
+}
+
+export function setupApiDocs(app: INestApplication): void {
+  const httpAdapter = app.getHttpAdapter().getInstance();
+  const document = createApiDocument(app);
 
   SwaggerModule.setup(DOCS_PATH, app, document, {
     ui: false,
