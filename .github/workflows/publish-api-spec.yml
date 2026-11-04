@@ -12,7 +12,6 @@ on:
       - "api/scripts/generate-openapi.ts"
       - "api/scripts/sync-api-spec-package.ts"
       - "packages/api-spec/**"
-      - ".github/workflows/publish-api-spec.yml"
       - ".npmrc"
   workflow_dispatch:
     inputs:
@@ -100,6 +99,101 @@ jobs:
               + `(${entry.entryCount} entries, ${entry.unpackedSize} bytes unpacked).`,
             );
           ' "${REPORT}"
+
+      # Breaking-change gate. The baseline is the contract in the last
+      # published tarball, so a contract that removes a field, narrows an enum,
+      # or adds a required property cannot ship as a patch or minor.
+      #
+      # Tool pin: the official oasdiff release binary from a fixed tag
+      # (v1.35.0) with a hard-coded SHA-256 for the linux/amd64 archive. That is
+      # preferred over `curl ... | sh` (unverifiable, floats to whatever the
+      # script serves) and over a floating docker tag such as
+      # `ghcr.io/oasdiff/oasdiff:latest` (the diff semantics could change under
+      # us). Pinning the tag and the checksum here makes a tool upgrade an
+      # explicit, reviewable diff. Only ERR-level changes fail the gate, so
+      # additive WARN-level changes keep flowing through minor releases.
+      - name: Check for breaking contract changes
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OASDIFF_VERSION: v1.35.0
+          OASDIFF_LINUX_AMD64_SHA256: a8023002fcb2eaa7f5758148a9303cb63d33b939886df312268bc0fc7b939140
+        run: |
+          set -euo pipefail
+
+          TOOL_DIR="${RUNNER_TEMP}/oasdiff"
+          ARCHIVE="oasdiff_${OASDIFF_VERSION#v}_linux_amd64.tar.gz"
+          RELEASE_URL="https://github.com/oasdiff/oasdiff/releases/download/${OASDIFF_VERSION}/${ARCHIVE}"
+          mkdir -p "${TOOL_DIR}"
+          curl -fsSL --retry 3 --retry-all-errors \
+            -o "${TOOL_DIR}/${ARCHIVE}" "${RELEASE_URL}"
+          echo "${OASDIFF_LINUX_AMD64_SHA256}  ${TOOL_DIR}/${ARCHIVE}" \
+            | sha256sum --check --status
+          tar -xzf "${TOOL_DIR}/${ARCHIVE}" -C "${TOOL_DIR}"
+          OASDIFF="${TOOL_DIR}/oasdiff"
+          echo "Using $("${OASDIFF}" --version) (${OASDIFF_VERSION}, checksum verified)."
+
+          # Baseline: the newest version published under the `latest` tag.
+          set +e
+          VIEW_OUTPUT="$(npm view "${PACKAGE_NAME}" version --registry "${SPEC_PACKAGE_REGISTRY}" 2>&1)"
+          VIEW_STATUS=$?
+          set -e
+          if [ "${VIEW_STATUS}" -ne 0 ]; then
+            if grep -q "E404" <<< "${VIEW_OUTPUT}"; then
+              echo "::notice::${PACKAGE_NAME} has never been published (E404). This is the first publication, so there is no baseline to compare against; skipping the breaking-change gate."
+              exit 0
+            fi
+            echo "::error::Could not resolve the last published ${PACKAGE_NAME} version. Refusing to ship an unchecked contract. npm output: ${VIEW_OUTPUT}"
+            exit 1
+          fi
+          LAST_VERSION="$(printf '%s\n' "${VIEW_OUTPUT}" | sed -n '$p' | tr -d '[:space:]"')"
+          if [ -z "${LAST_VERSION}" ]; then
+            echo "::error::npm view returned no version for ${PACKAGE_NAME}. Output: ${VIEW_OUTPUT}"
+            exit 1
+          fi
+          echo "Last published version: ${PACKAGE_NAME}@${LAST_VERSION}"
+
+          # Fetch the published tarball, not the working tree: that is exactly
+          # the contract consumers compiled against.
+          WORK_DIR="${RUNNER_TEMP}/contract-diff"
+          rm -rf "${WORK_DIR}"
+          mkdir -p "${WORK_DIR}/previous"
+          (cd "${WORK_DIR}" && npm pack "${PACKAGE_NAME}@${LAST_VERSION}" \
+            --registry "${SPEC_PACKAGE_REGISTRY}" --silent > /dev/null)
+          TARBALLS=("${WORK_DIR}"/*.tgz)
+          if [ "${#TARBALLS[@]}" -ne 1 ] || [ ! -f "${TARBALLS[0]}" ]; then
+            echo "::error::Expected exactly one tarball for ${PACKAGE_NAME}@${LAST_VERSION} in ${WORK_DIR}."
+            exit 1
+          fi
+          tar -xzf "${TARBALLS[0]}" -C "${WORK_DIR}/previous"
+          OLD_SPEC="${WORK_DIR}/previous/package/openapi.json"
+          NEW_SPEC="api/openapi.json"
+          if [ ! -f "${OLD_SPEC}" ]; then
+            echo "::error::${PACKAGE_NAME}@${LAST_VERSION} does not ship openapi.json, so no baseline can be established."
+            exit 1
+          fi
+
+          describe_spec() {
+            node -e '
+              const fs = require("node:fs");
+              const [specPath, label] = process.argv.slice(1);
+              const spec = JSON.parse(fs.readFileSync(specPath, "utf8"));
+              const pathCount = Object.keys(spec.paths ?? {}).length;
+              console.log(`${label}: ${specPath} (openapi ${spec.openapi}, info.version ${spec.info?.version}, ${pathCount} paths)`);
+            ' "$1" "$2"
+          }
+          describe_spec "${OLD_SPEC}" "Baseline ${PACKAGE_NAME}@${LAST_VERSION}"
+          describe_spec "${NEW_SPEC}" "Candidate"
+
+          echo "Diffing baseline -> candidate (ERR-level changes fail, WARN-level additive changes pass)."
+          set +e
+          "${OASDIFF}" breaking "${OLD_SPEC}" "${NEW_SPEC}" --fail-on ERR
+          DIFF_STATUS=$?
+          set -e
+          if [ "${DIFF_STATUS}" -ne 0 ]; then
+            echo "::error::api/openapi.json is a breaking change against the published ${PACKAGE_NAME}@${LAST_VERSION}. A breaking contract change requires a major version bump: raise \"version\" in ${PACKAGE_DIR}/package.json to the next major, or restore the removed/narrowed contract. The breaking changes are the ERR-level entries in the oasdiff diff printed above."
+            exit 1
+          fi
+          echo "No breaking changes (ERR level) against ${PACKAGE_NAME}@${LAST_VERSION}."
 
       - name: Refuse to overwrite a published version
         working-directory: packages/api-spec
