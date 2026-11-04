@@ -39,6 +39,8 @@ export interface ChatMessageSummary {
 export interface ChatConversationListQuery {
   page: number;
   limit: number;
+  unread?: boolean;
+  q?: string;
 }
 
 export interface ChatMessageListQuery {

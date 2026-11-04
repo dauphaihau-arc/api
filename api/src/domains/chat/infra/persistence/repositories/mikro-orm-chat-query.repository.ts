@@ -1,3 +1,4 @@
+import type { FilterQuery } from '@mikro-orm/core';
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
 import { ProductEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product.entity';
@@ -25,6 +26,7 @@ import type {
 import { ChatQueryRepository } from '../../../app/ports/chat-query.repository';
 import { ChatConversationEntity } from '../entities/chat-conversation.entity';
 import { ChatMessageEntity } from '../entities/chat-message.entity';
+import { buildChatConversationSearchPattern } from './chat-conversation-search-term';
 
 const CHAT_CONVERSATION_SUMMARY_POPULATE = [
   'buyerUser',
@@ -47,9 +49,23 @@ export class MikroOrmChatQueryRepository implements ChatQueryRepository {
     query: ChatConversationListQuery,
   ): Promise<ChatConversationListResult> {
     const repository = this.entityManager.fork().getRepository(ChatConversationEntity);
+    const where: FilterQuery<ChatConversationEntity> = { buyerUser: buyerUserId };
+
+    if (query.unread === true) {
+      where.buyerUnreadCount = { $gt: 0 };
+    }
+
+    if (query.q) {
+      const pattern = buildChatConversationSearchPattern(query.q);
+
+      where.$or = [
+        { shop: { shopName: { $ilike: pattern } } },
+        { lastMessageBodyPreview: { $ilike: pattern } },
+      ];
+    }
 
     const [conversations, total] = await repository.findAndCount(
-      { buyerUser: buyerUserId },
+      where,
       {
         populate: CHAT_CONVERSATION_SUMMARY_POPULATE,
         orderBy: {
@@ -69,9 +85,23 @@ export class MikroOrmChatQueryRepository implements ChatQueryRepository {
     query: ChatConversationListQuery,
   ): Promise<ChatConversationListResult> {
     const repository = this.entityManager.fork().getRepository(ChatConversationEntity);
+    const where: FilterQuery<ChatConversationEntity> = { shop: shopId };
+
+    if (query.unread === true) {
+      where.sellerUnreadCount = { $gt: 0 };
+    }
+
+    if (query.q) {
+      const pattern = buildChatConversationSearchPattern(query.q);
+
+      where.$or = [
+        { buyerUser: { displayName: { $ilike: pattern } } },
+        { lastMessageBodyPreview: { $ilike: pattern } },
+      ];
+    }
 
     const [conversations, total] = await repository.findAndCount(
-      { shop: shopId },
+      where,
       {
         populate: CHAT_CONVERSATION_SUMMARY_POPULATE,
         orderBy: {

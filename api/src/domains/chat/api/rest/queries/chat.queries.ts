@@ -11,6 +11,8 @@ export function buildChatConversationListQuery(
   return {
     page: input?.page ?? CHAT_LIST_DEFAULT_PAGE,
     limit: input?.limit ?? CHAT_LIST_DEFAULT_LIMIT,
+    unread: input?.unread,
+    q: input?.q,
   };
 }
 
