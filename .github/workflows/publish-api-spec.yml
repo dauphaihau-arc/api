@@ -132,4 +132,10 @@ jobs:
             npm publish --dry-run
             exit 0
           fi
-          npm publish
+          VERSION="$(node -p "require('./package.json').version")"
+          case "${VERSION}" in
+            *-*) TAG="next" ;;
+            *) TAG="latest" ;;
+          esac
+          echo "Publishing ${PACKAGE_NAME}@${VERSION} under the ${TAG} tag."
+          npm publish --tag "${TAG}"
