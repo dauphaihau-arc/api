@@ -28,6 +28,13 @@ export class ShopPayoutSettingsResponseDto {
     description:
       'Why automatic payouts cannot be enabled, or null when eligible.',
     example: 'no_payout_account',
+    enum: [
+      'no_payout_account',
+      'payout_account_unverified',
+      'payout_account_disabled',
+      'payout_account_country_unsupported',
+      'settlement_currency_unresolved',
+    ],
     nullable: true,
   })
   auto_payout_ineligible_reason!: string | null;
@@ -37,6 +44,7 @@ export class ShopPayoutSettingsResponseDto {
       '1 while the shop may still withdraw manually this month, 0 once it has, ' +
       'and null when manual withdrawals are unlimited.',
     example: 1,
+    type: Number,
     nullable: true,
   })
   manual_withdrawals_remaining!: number | null;

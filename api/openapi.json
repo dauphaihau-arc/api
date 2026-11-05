@@ -9181,49 +9181,73 @@
         "operationId": "Product_listProducts",
         "parameters": [
           {
-            "name": "attr_{attribute_id}",
+            "name": "page",
             "required": false,
             "in": "query",
-            "description": "Attribute filter, one parameter per attribute where `{attribute_id}` is the attribute id. Repeat the parameter (or pass a comma-separated value) to match any of several option values. Dynamic name: any `attr_*` parameter is accepted, and other unknown parameters are rejected.",
+            "description": "Page number, 1-based.",
             "schema": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
             }
           },
           {
-            "name": "order",
+            "name": "limit",
             "required": false,
             "in": "query",
-            "description": "Sort order.",
+            "description": "Page size.",
             "schema": {
-              "enum": [
-                "newest",
-                "price_asc",
-                "price_desc"
-              ],
+              "minimum": 1,
+              "maximum": 50,
+              "default": 12,
+              "type": "number"
+            }
+          },
+          {
+            "name": "category_id",
+            "required": false,
+            "in": "query",
+            "description": "Category public id; matches products in that category and its descendants.",
+            "schema": {
+              "pattern": "^[1-9][0-9]*$",
               "type": "string"
             }
           },
           {
-            "name": "max_price",
+            "name": "search",
             "required": false,
             "in": "query",
-            "description": "Maximum price in minor units, inclusive.",
+            "description": "Free-text search over product titles.",
             "schema": {
-              "minimum": 0,
-              "type": "integer"
+              "type": "string"
             }
           },
           {
-            "name": "min_price",
+            "name": "s",
             "required": false,
             "in": "query",
-            "description": "Minimum price in minor units, inclusive.",
+            "deprecated": true,
+            "description": "Deprecated alias of `search`; when supplied it takes precedence over `search`.",
             "schema": {
-              "minimum": 0,
-              "type": "integer"
+              "type": "string"
+            }
+          },
+          {
+            "name": "title",
+            "required": false,
+            "in": "query",
+            "description": "Title substring filter.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "is_digital",
+            "required": false,
+            "in": "query",
+            "description": "Restrict to digital (`true`) or physical (`false`) products.",
+            "schema": {
+              "type": "boolean"
             }
           },
           {
@@ -9241,73 +9265,49 @@
             }
           },
           {
-            "name": "is_digital",
+            "name": "min_price",
             "required": false,
             "in": "query",
-            "description": "Restrict to digital (`true`) or physical (`false`) products.",
+            "description": "Minimum price in minor units, inclusive.",
             "schema": {
-              "type": "boolean"
+              "minimum": 0,
+              "type": "integer"
             }
           },
           {
-            "name": "title",
+            "name": "max_price",
             "required": false,
             "in": "query",
-            "description": "Title substring filter.",
+            "description": "Maximum price in minor units, inclusive.",
             "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "order",
+            "required": false,
+            "in": "query",
+            "description": "Sort order.",
+            "schema": {
+              "enum": [
+                "newest",
+                "price_asc",
+                "price_desc"
+              ],
               "type": "string"
             }
           },
           {
-            "name": "s",
+            "name": "attr_{attribute_id}",
             "required": false,
             "in": "query",
-            "deprecated": true,
-            "description": "Deprecated alias of `search`; when supplied it takes precedence over `search`.",
+            "description": "Attribute filter, one parameter per attribute where `{attribute_id}` is the attribute id. Repeat the parameter (or pass a comma-separated value) to match any of several option values. Dynamic name: any `attr_*` parameter is accepted, and other unknown parameters are rejected.",
             "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "search",
-            "required": false,
-            "in": "query",
-            "description": "Free-text search over product titles.",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "category_id",
-            "required": false,
-            "in": "query",
-            "description": "Category public id; matches products in that category and its descendants.",
-            "schema": {
-              "pattern": "^[1-9][0-9]*$",
-              "type": "string"
-            }
-          },
-          {
-            "name": "limit",
-            "required": false,
-            "in": "query",
-            "description": "Page size.",
-            "schema": {
-              "minimum": 1,
-              "maximum": 50,
-              "default": 12,
-              "type": "number"
-            }
-          },
-          {
-            "name": "page",
-            "required": false,
-            "in": "query",
-            "description": "Page number, 1-based.",
-            "schema": {
-              "minimum": 1,
-              "default": 1,
-              "type": "number"
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             }
           }
         ],
@@ -9423,7 +9423,138 @@
       "get": {
         "description": "Returns facets for filtering public products.",
         "operationId": "Product_listProductFacets",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "Page number, 1-based.",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Page size.",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "default": 12,
+              "type": "number"
+            }
+          },
+          {
+            "name": "category_id",
+            "required": false,
+            "in": "query",
+            "description": "Category public id; matches products in that category and its descendants.",
+            "schema": {
+              "pattern": "^[1-9][0-9]*$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "description": "Free-text search over product titles.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "s",
+            "required": false,
+            "in": "query",
+            "deprecated": true,
+            "description": "Deprecated alias of `search`; when supplied it takes precedence over `search`.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "title",
+            "required": false,
+            "in": "query",
+            "description": "Title substring filter.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "is_digital",
+            "required": false,
+            "in": "query",
+            "description": "Restrict to digital (`true`) or physical (`false`) products.",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "who_made",
+            "required": false,
+            "in": "query",
+            "description": "Maker attribution filter.",
+            "schema": {
+              "enum": [
+                "i_did",
+                "collective",
+                "someone_else"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "min_price",
+            "required": false,
+            "in": "query",
+            "description": "Minimum price in minor units, inclusive.",
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "max_price",
+            "required": false,
+            "in": "query",
+            "description": "Maximum price in minor units, inclusive.",
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "order",
+            "required": false,
+            "in": "query",
+            "description": "Sort order.",
+            "schema": {
+              "enum": [
+                "newest",
+                "price_asc",
+                "price_desc"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "attr_{attribute_id}",
+            "required": false,
+            "in": "query",
+            "description": "Attribute filter, one parameter per attribute where `{attribute_id}` is the attribute id. Repeat the parameter (or pass a comma-separated value) to match any of several option values. Dynamic name: any `attr_*` parameter is accepted, and other unknown parameters are rejected.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Public product facets.",
@@ -14821,7 +14952,23 @@
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "XLSX workbook the seller fills in and uploads back.",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            },
+            "headers": {
+              "Content-Disposition": {
+                "description": "Attachment filename for the template workbook.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "401": {
             "description": "Authentication is required",
@@ -15417,7 +15564,22 @@
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "CSV report of the import outcome.",
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "headers": {
+              "Content-Disposition": {
+                "description": "Attachment filename for the report.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "401": {
             "description": "Authentication is required",
@@ -36720,7 +36882,8 @@
             }
           },
           "shipping": {
-            "type": "object"
+            "type": "object",
+            "description": "Reserved; always an empty object."
           }
         },
         "required": [
@@ -40413,7 +40576,7 @@
             "$ref": "#/components/schemas/OrderShippingAddressResponseDto"
           },
           "platform_commission_minor": {
-            "type": "object",
+            "type": "number",
             "nullable": true,
             "description": "Platform Commission the ledger charged on this Order, in the Order currency."
           }
@@ -40572,7 +40735,7 @@
             "example": "2026-10-22T09:30:00.000Z"
           },
           "previous_currency": {
-            "type": "object",
+            "type": "string",
             "description": "The Settlement Currency this one replaced, or null for the shop's opening currency.",
             "example": "USD",
             "nullable": true
@@ -40583,7 +40746,7 @@
             "example": 90
           },
           "next_change_allowed_at": {
-            "type": "object",
+            "type": "string",
             "description": "When the shop may change Settlement Currency again, or null when it never changed.",
             "example": "2027-01-20T09:30:00.000Z",
             "nullable": true
@@ -40729,13 +40892,13 @@
             "example": "ord_2f5a91c4b7de"
           },
           "order_number": {
-            "type": "object",
+            "type": "string",
             "description": "Human Order number for Order income, Refund, and Label Charge rows; null on Payout rows.",
             "example": "ORD-1042",
             "nullable": true
           },
           "payout_number": {
-            "type": "object",
+            "type": "string",
             "description": "Human Payout number for Payout rows; null on Order income, Refund, and Label Charge rows.",
             "example": "PAY-20261019-000042",
             "nullable": true
@@ -40757,13 +40920,13 @@
             "example": "released"
           },
           "order_amount_minor": {
-            "type": "object",
+            "type": "number",
             "description": "Gross Order amount in integer minor units of the Settlement Currency: what the buyer paid for Order income (positive), the refunded amount for a Refund (negative); null on Label Charge and Payout rows.",
             "example": 12500,
             "nullable": true
           },
           "fees_minor": {
-            "type": "object",
+            "type": "number",
             "description": "Platform Commission in integer minor units of the Settlement Currency: negative on Order income (fee charged), positive on a Refund (pro-rata reversal); null on Label Charge and Payout rows.",
             "example": -2500,
             "nullable": true
@@ -40903,49 +41066,49 @@
             "example": "USD"
           },
           "source_currency": {
-            "type": "object",
+            "type": "string",
             "description": "The shop Settlement Currency the amount left the balance in; equal to `currency`, kept explicit for the frozen quote.",
             "example": "USD",
             "nullable": true
           },
           "transfer_currency": {
-            "type": "object",
+            "type": "string",
             "description": "The currency the provider actually transfers in: the platform balance currency this Payout was converted into. Null on Payouts claimed before platform-currency transfers.",
             "example": "USD",
             "nullable": true
           },
           "transfer_amount_minor": {
-            "type": "object",
+            "type": "number",
             "description": "The amount the provider transferred, in `transfer_currency` minor units. Null on Payouts claimed before platform-currency transfers.",
             "example": 12500,
             "nullable": true
           },
           "target_currency": {
-            "type": "object",
+            "type": "string",
             "description": "The currency that landed in the Payout Account; equal to `currency` for a same-currency payout.",
             "example": "VND",
             "nullable": true
           },
           "fx_rate": {
-            "type": "object",
+            "type": "string",
             "description": "The claim-time rate that converted `amount_minor` into `transfer_amount_minor`, as text; `1` for an identity conversion. The provider rate into the account currency is in `provider_fx_rate`.",
             "example": "1",
             "nullable": true
           },
           "target_amount_minor": {
-            "type": "object",
+            "type": "number",
             "description": "The amount that landed in `target_currency` minor units: what the provider derived when it converted. Null until the provider reports one.",
             "example": 317500000,
             "nullable": true
           },
           "provider_fx_rate": {
-            "type": "object",
+            "type": "string",
             "description": "The conversion rate the provider applied, as text exactly as reported. This is authoritative and supersedes `fx_rate`. Null when no conversion happened.",
             "example": "25400.0000000000",
             "nullable": true
           },
           "fx_fee_minor": {
-            "type": "object",
+            "type": "number",
             "description": "The historical conversion fee in `source_currency` minor units. The platform charges none, so new Payouts record zero.",
             "example": 0,
             "nullable": true
@@ -40965,19 +41128,19 @@
             ]
           },
           "period": {
-            "type": "object",
+            "type": "string",
             "description": "The platform month the Payout belongs to, as YYYY-MM; null on Payouts that predate the monthly allowance.",
             "example": "2026-10",
             "nullable": true
           },
           "reason": {
-            "type": "object",
+            "type": "string",
             "description": "Why a Blocked or Failed Payout ended as it did; null while pending or paid.",
             "example": "no_payout_account",
             "nullable": true
           },
           "paid_at": {
-            "type": "object",
+            "type": "string",
             "description": "Instant the provider accepted the transfer, or null while it has not.",
             "example": "2026-10-19T09:15:00.000Z",
             "nullable": true
@@ -41194,6 +41357,29 @@
           "countries"
         ]
       },
+      "PayoutAccountRequirementsResponse": {
+        "type": "object",
+        "properties": {
+          "currently_due": {
+            "description": "The requirement keys the provider still expects.",
+            "example": [],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "disabled_reason": {
+            "type": "string",
+            "description": "Why the provider disabled the account, or null when it has not.",
+            "example": "requirements.past_due",
+            "nullable": true
+          }
+        },
+        "required": [
+          "currently_due",
+          "disabled_reason"
+        ]
+      },
       "PayoutAccountResponseDto": {
         "type": "object",
         "properties": {
@@ -41208,7 +41394,7 @@
             "example": "stripe_connect"
           },
           "provider_account_id": {
-            "type": "object",
+            "type": "string",
             "description": "The provider's connected account id, or null for manual_bank.",
             "example": "acct_1Q2w3e4r5t6y7u8i",
             "nullable": true
@@ -41246,34 +41432,39 @@
             "example": true
           },
           "transfers_capability": {
-            "type": "object",
+            "type": "string",
             "description": "The provider transfers capability, or null when unrequested.",
             "example": "active",
             "nullable": true
           },
           "requirements": {
-            "type": "object",
             "description": "Summary of the requirements still due and why the account is disabled.",
             "example": {
               "currently_due": [],
               "disabled_reason": null
             },
-            "nullable": true
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PayoutAccountRequirementsResponse"
+              }
+            ]
           },
           "default_currency": {
-            "type": "object",
+            "type": "string",
             "description": "The provider's default currency for the account.",
             "example": "USD",
             "nullable": true
           },
           "bank_name": {
-            "type": "object",
+            "type": "string",
             "description": "The bank's display name as the provider reports it.",
             "example": "Chase",
             "nullable": true
           },
           "last4": {
-            "type": "object",
+            "type": "string",
             "description": "The last four digits of the payout account number.",
             "example": "6789",
             "nullable": true
@@ -41332,13 +41523,20 @@
             "example": true
           },
           "auto_payout_ineligible_reason": {
-            "type": "object",
+            "type": "string",
             "description": "Why automatic payouts cannot be enabled, or null when eligible.",
             "example": "no_payout_account",
+            "enum": [
+              "no_payout_account",
+              "payout_account_unverified",
+              "payout_account_disabled",
+              "payout_account_country_unsupported",
+              "settlement_currency_unresolved"
+            ],
             "nullable": true
           },
           "manual_withdrawals_remaining": {
-            "type": "object",
+            "type": "number",
             "description": "1 while the shop may still withdraw manually this month, 0 once it has, and null when manual withdrawals are unlimited.",
             "example": 1,
             "nullable": true
@@ -41404,7 +41602,7 @@
         "type": "object",
         "properties": {
           "url": {
-            "type": "object",
+            "type": "string",
             "description": "Stripe-hosted onboarding URL, or null when the manual_bank adapter is active.",
             "example": "https://connect.stripe.com/setup/e/acct_1Q2w3e4r5t6y7u8i/abc",
             "nullable": true

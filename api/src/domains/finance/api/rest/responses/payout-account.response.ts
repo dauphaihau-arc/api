@@ -2,9 +2,21 @@ import { ApiProperty } from '@nestjs/swagger';
 import type { PayoutAccountRecord } from '../../../app/ports/payout-account.repository';
 
 /** The requirements summary as the HTTP surface names it. */
-export interface PayoutAccountRequirementsResponse {
-  currently_due: string[];
-  disabled_reason: string | null;
+export class PayoutAccountRequirementsResponse {
+  @ApiProperty({
+    description: 'The requirement keys the provider still expects.',
+    type: [String],
+    example: [],
+  })
+  currently_due!: string[];
+
+  @ApiProperty({
+    description: 'Why the provider disabled the account, or null when it has not.',
+    example: 'requirements.past_due',
+    type: String,
+    nullable: true,
+  })
+  disabled_reason!: string | null;
 }
 
 /**
@@ -29,6 +41,7 @@ export class PayoutAccountResponseDto {
   @ApiProperty({
     description: 'The provider\'s connected account id, or null for manual_bank.',
     example: 'acct_1Q2w3e4r5t6y7u8i',
+    type: String,
     nullable: true,
   })
   provider_account_id!: string | null;
@@ -64,6 +77,7 @@ export class PayoutAccountResponseDto {
   @ApiProperty({
     description: 'The provider transfers capability, or null when unrequested.',
     example: 'active',
+    type: String,
     nullable: true,
   })
   transfers_capability!: string | null;
@@ -72,6 +86,7 @@ export class PayoutAccountResponseDto {
     description:
       'Summary of the requirements still due and why the account is disabled.',
     example: { currently_due: [], disabled_reason: null },
+    type: PayoutAccountRequirementsResponse,
     nullable: true,
   })
   requirements!: PayoutAccountRequirementsResponse | null;
@@ -79,6 +94,7 @@ export class PayoutAccountResponseDto {
   @ApiProperty({
     description: 'The provider\'s default currency for the account.',
     example: 'USD',
+    type: String,
     nullable: true,
   })
   default_currency!: string | null;
@@ -86,6 +102,7 @@ export class PayoutAccountResponseDto {
   @ApiProperty({
     description: 'The bank\'s display name as the provider reports it.',
     example: 'Chase',
+    type: String,
     nullable: true,
   })
   bank_name!: string | null;
@@ -93,6 +110,7 @@ export class PayoutAccountResponseDto {
   @ApiProperty({
     description: 'The last four digits of the payout account number.',
     example: '6789',
+    type: String,
     nullable: true,
   })
   last4!: string | null;
@@ -128,6 +146,7 @@ export class PayoutAccountOnboardingResponseDto {
     description:
       'Stripe-hosted onboarding URL, or null when the manual_bank adapter is active.',
     example: 'https://connect.stripe.com/setup/e/acct_1Q2w3e4r5t6y7u8i/abc',
+    type: String,
     nullable: true,
   })
   url!: string | null;

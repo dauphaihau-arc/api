@@ -29,6 +29,7 @@ export class ShopTransactionResponseDto {
     description:
       'Human Order number for Order income, Refund, and Label Charge rows; null on Payout rows.',
     example: 'ORD-1042',
+    type: String,
     nullable: true,
   })
   order_number!: string | null;
@@ -37,6 +38,7 @@ export class ShopTransactionResponseDto {
     description:
       'Human Payout number for Payout rows; null on Order income, Refund, and Label Charge rows.',
     example: 'PAY-20261019-000042',
+    type: String,
     nullable: true,
   })
   payout_number!: string | null;
@@ -62,6 +64,7 @@ export class ShopTransactionResponseDto {
       'what the buyer paid for Order income (positive), the refunded amount for ' +
       'a Refund (negative); null on Label Charge and Payout rows.',
     example: 12_500,
+    type: Number,
     nullable: true,
   })
   order_amount_minor!: number | null;
@@ -72,6 +75,7 @@ export class ShopTransactionResponseDto {
       'negative on Order income (fee charged), positive on a Refund (pro-rata ' +
       'reversal); null on Label Charge and Payout rows.',
     example: -2_500,
+    type: Number,
     nullable: true,
   })
   fees_minor!: number | null;

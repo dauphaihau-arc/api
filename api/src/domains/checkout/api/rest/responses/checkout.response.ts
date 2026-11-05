@@ -504,7 +504,7 @@ export class CheckoutOrderProductDetailsResponseDto {
   selected_options!: CheckoutQuoteSelectedOptionResponseDto[];
 
   /** Empty placeholder object retained for transport shape compatibility. */
-  @ApiProperty({ type: Object })
+  @ApiProperty({ type: Object, description: 'Reserved; always an empty object.' })
   shipping!: Record<string, never>;
 }
 
