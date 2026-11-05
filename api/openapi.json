@@ -2840,6 +2840,9 @@
             "name": "action",
             "required": false,
             "in": "query",
+            "style": "form",
+            "explode": false,
+            "description": "Action filter. Send a comma-separated list (`action=user.created,user.updated`); repeating the parameter is also accepted.",
             "schema": {
               "maxLength": 200,
               "type": "array",
@@ -2870,6 +2873,9 @@
             "name": "entity_type",
             "required": false,
             "in": "query",
+            "style": "form",
+            "explode": false,
+            "description": "Entity type filter. Send a comma-separated list (`entity_type=user,order`); repeating the parameter is also accepted.",
             "schema": {
               "maxLength": 200,
               "type": "array",
@@ -3823,6 +3829,30 @@
         "requestBody": {
           "required": true,
           "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "version"
+                ],
+                "properties": {
+                  "version": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "display_name": {
+                    "type": "string"
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "active",
+                      "disabled"
+                    ]
+                  }
+                }
+              }
+            },
             "multipart/form-data": {
               "schema": {
                 "type": "object",
@@ -24632,6 +24662,9 @@
             "name": "status",
             "required": false,
             "in": "query",
+            "style": "form",
+            "explode": false,
+            "description": "Order status filter. Send a comma-separated list (`status=paid,completed`); repeating the parameter (`status=paid&status=completed`) is also accepted.",
             "schema": {
               "type": "array",
               "items": {
@@ -35419,6 +35452,7 @@
           },
           "summary": {
             "type": "object",
+            "additionalProperties": true,
             "description": "Metadata-only audit summary."
           },
           "created_at": {

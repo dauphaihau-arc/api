@@ -13,8 +13,6 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import {
-  ApiBody,
-  ApiConsumes,
   ApiCookieAuth,
   ApiNotFoundResponse,
   ApiOkResponse,
@@ -29,6 +27,7 @@ import { CurrentUser } from '~/platform/decorators/current-user.decorator';
 import { RequirePermissions } from '~/platform/decorators/require-permissions.decorator';
 import { ParseSortPipe } from '~/platform/pipes/parse-sort.pipe';
 import { ApiErrorResponses } from '~/platform/http/api-error-responses.decorator';
+import { ApiMediaTypesBody } from '~/platform/docs/api-media-types-body';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import { CreateUserUseCase } from '~/domains/user/app/use-cases/create-user/create-user.use-case';
 import { AssignUserRolesUseCase } from '~/domains/user/app/use-cases/assign-user-roles/assign-user-roles.use-case';
@@ -57,6 +56,12 @@ import {
   toUserListResponse,
   toUserResponse,
 } from './responses/user.response';
+
+const updateUserBodyProperties = {
+  version: { type: 'integer', minimum: 1 },
+  display_name: { type: 'string' },
+  status: { type: 'string', enum: ['active', 'disabled'] },
+};
 
 @Controller('users')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -147,15 +152,17 @@ export class UserController {
   @RequirePermissions('users.manage')
   @Header('Cache-Control', 'private, no-store')
   @UseInterceptors(FileInterceptor('avatar'))
-  @ApiConsumes('multipart/form-data')
-  @ApiBody({
-    schema: {
+  @ApiMediaTypesBody({
+    'application/json': {
+      type: 'object',
+      required: ['version'],
+      properties: updateUserBodyProperties,
+    },
+    'multipart/form-data': {
       type: 'object',
       required: ['version'],
       properties: {
-        version: { type: 'integer', minimum: 1 },
-        display_name: { type: 'string' },
-        status: { type: 'string', enum: ['active', 'disabled'] },
+        ...updateUserBodyProperties,
         avatar: { type: 'string', format: 'binary' },
       },
     },

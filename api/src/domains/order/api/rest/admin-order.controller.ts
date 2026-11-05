@@ -14,6 +14,7 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiParam,
+  ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
 import { RequirePermissions } from '~/platform/decorators/require-permissions.decorator';
@@ -62,6 +63,14 @@ export class AdminOrderController {
   @Get()
   @Header('Cache-Control', 'private, no-cache')
   @ApiOperation({ summary: 'List admin orders' })
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    style: 'form',
+    explode: false,
+    description:
+      'Order status filter. Send a comma-separated list (`status=paid,completed`); repeating the parameter (`status=paid&status=completed`) is also accepted.',
+  })
   @ApiOkResponse({
     description: 'Paginated admin order list.',
     type: AdminOrderListResponseDto,

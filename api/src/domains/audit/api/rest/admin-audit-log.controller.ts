@@ -12,6 +12,7 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiProduces,
+  ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
 import { RequirePermissions } from '~/platform/decorators/require-permissions.decorator';
@@ -43,6 +44,22 @@ export class AdminAuditLogController {
   @Get()
   @Header('Cache-Control', 'private, no-cache')
   @ApiOperation({ summary: 'List audit logs' })
+  @ApiQuery({
+    name: 'action',
+    required: false,
+    style: 'form',
+    explode: false,
+    description:
+      'Action filter. Send a comma-separated list (`action=user.created,user.updated`); repeating the parameter is also accepted.',
+  })
+  @ApiQuery({
+    name: 'entity_type',
+    required: false,
+    style: 'form',
+    explode: false,
+    description:
+      'Entity type filter. Send a comma-separated list (`entity_type=user,order`); repeating the parameter is also accepted.',
+  })
   @ApiOkResponse({
     description: 'Paginated audit trail across audited entity types.',
     type: AuditLogListResponseDto,
