@@ -1,12 +1,9 @@
+import type { PublicProductRecommendationSectionType } from '../../../../app/product.types';
 import type { PublicProductRecommendationsResponse } from './public-product-recommendations.response';
 
 export type PublicProductRecommendationSectionsResponse = {
   sections: Array<{
-    type:
-      | 'similar_products'
-      | 'from_same_seller'
-      | 'customers_also_viewed'
-      | 'frequently_bought_together';
+    type: PublicProductRecommendationSectionType;
     title: string;
     items: PublicProductRecommendationsResponse['items'];
   }>;

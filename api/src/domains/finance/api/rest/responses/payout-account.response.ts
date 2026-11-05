@@ -1,5 +1,9 @@
 import { ApiProperty } from '@nestjs/swagger';
 import type { PayoutAccountRecord } from '../../../app/ports/payout-account.repository';
+import {
+  PAYOUT_ACCOUNT_STATUSES,
+  type PayoutAccountStatus,
+} from '../../../domain/rules/payout-account';
 
 /** The requirements summary as the HTTP surface names it. */
 export class PayoutAccountRequirementsResponse {
@@ -57,10 +61,10 @@ export class PayoutAccountResponseDto {
 
   @ApiProperty({
     description: 'Lifecycle status.',
-    enum: ['onboarding', 'action_required', 'active', 'restricted', 'disabled'],
+    enum: PAYOUT_ACCOUNT_STATUSES,
     example: 'active',
   })
-  status!: string;
+  status!: PayoutAccountStatus;
 
   @ApiProperty({
     description: 'Whether the provider reports it can pay this account.',
@@ -153,10 +157,10 @@ export class PayoutAccountOnboardingResponseDto {
 
   @ApiProperty({
     description: 'The Payout Account status after starting onboarding.',
-    enum: ['onboarding', 'action_required', 'active', 'restricted', 'disabled'],
+    enum: PAYOUT_ACCOUNT_STATUSES,
     example: 'onboarding',
   })
-  status!: string;
+  status!: PayoutAccountStatus;
 }
 
 /** Serializes one Payout Account for the HTTP surface. */
@@ -224,7 +228,7 @@ export function toPayoutAccountCountriesResponse(
 }
 
 export function toPayoutAccountOnboardingResponse(
-  result: { url: string | null; status: string },
+  result: { url: string | null; status: PayoutAccountStatus },
 ): PayoutAccountOnboardingResponseDto {
   return {
     url: result.url,

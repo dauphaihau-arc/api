@@ -5,6 +5,7 @@ import {
   OrderPayoutQueryRepository,
   type OrderPayoutFacts,
 } from '../../../app/ports/order-payout-query.repository';
+import type { PayoutAttributionState } from '../../../domain/rules/payout';
 
 /** One row of the Order payout-facts read, as Postgres returns it. */
 interface OrderPayoutRow {
@@ -14,7 +15,7 @@ interface OrderPayoutRow {
   availableAt: Date | null;
   availableAmountMinor: number | null;
   payoutId: string | null;
-  payoutState: 'pending' | 'paid' | null;
+  payoutState: PayoutAttributionState | null;
   payoutAmountMinor: number | null;
   payoutPaidAt: Date | null;
 }

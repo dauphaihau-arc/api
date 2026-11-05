@@ -12,8 +12,8 @@ import {
   type ListShopTransactionsQuery,
   type ShopTransactionsPage,
   type TransactionRecord,
+  type TransactionRowType,
   type TransactionStatus,
-  type TransactionType,
 } from '../../../app/ports/transactions-query.repository';
 
 /** One row of the unioned transaction timeline, as Postgres returns it. */
@@ -23,7 +23,7 @@ interface TransactionRow {
   reference: string;
   order_number: string | null;
   payout_number: string | null;
-  type: TransactionType;
+  type: TransactionRowType;
   status: TransactionStatus;
   order_amount_minor: number | string | null;
   fees_minor: number | string | null;

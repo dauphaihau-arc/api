@@ -1,4 +1,8 @@
 import { ApiProperty } from '@nestjs/swagger';
+import {
+  CARRIER_RATE_SERVICES,
+  type CarrierRateService,
+} from '~/integrations/carrier/app/ports/carrier-parcel.gateway';
 import type { ShipmentRateView } from '../../../app/use-cases/quote-shipment-rates/quote-shipment-rates.use-case';
 
 export class ShipmentRateEstimatedDaysDto {
@@ -16,8 +20,8 @@ export class ShipmentRateDto {
   @ApiProperty()
   carrier!: string;
 
-  @ApiProperty({ enum: ['standard', 'express'] })
-  service!: string;
+  @ApiProperty({ enum: CARRIER_RATE_SERVICES })
+  service!: CarrierRateService;
 
   @ApiProperty()
   price_minor!: number;

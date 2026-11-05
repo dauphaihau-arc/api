@@ -1,10 +1,31 @@
 import type { PayoutSource, PayoutState } from '../../domain/rules/payout';
 
 /**
+ * Every kind of row the seller timeline can return, in wire order. A
+ * `label_refund` row lists but is not offered by the list filter: the filter
+ * names the kinds a seller can ask for, and a label refund is the same money
+ * event as a label charge with the opposite sign.
+ */
+export const TRANSACTION_ROW_TYPES = [
+  'order_income',
+  'refund',
+  'label_charge',
+  'label_refund',
+  'payout',
+] as const;
+
+export type TransactionRowType = (typeof TRANSACTION_ROW_TYPES)[number];
+
+/**
  * The kinds of row the seller transaction timeline shows. Manual Adjustments
  * are deliberately absent: they are not a seller-visible money event yet.
  */
-export const TRANSACTION_TYPES = ['order_income', 'refund', 'label_charge', 'payout'] as const;
+export const TRANSACTION_TYPES = [
+  'order_income',
+  'refund',
+  'label_charge',
+  'payout',
+] as const satisfies readonly TransactionRowType[];
 
 export type TransactionType = (typeof TRANSACTION_TYPES)[number];
 
@@ -41,7 +62,7 @@ export interface TransactionRecord {
   orderNumber: string | null;
   /** Human Payout number; null on Order income, Refund, and Label Charge rows. */
   payoutNumber: string | null;
-  type: TransactionType;
+  type: TransactionRowType;
   status: TransactionStatus;
   /**
    * Gross Order amount: positive for Order income (what the buyer paid) and

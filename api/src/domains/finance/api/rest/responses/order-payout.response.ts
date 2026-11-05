@@ -1,7 +1,15 @@
 import { ApiProperty } from '@nestjs/swagger';
 import type { OrderPayoutAttribution } from '../../../app/ports/order-payout-query.repository';
-import type { OrderPayoutMethod } from '../../../app/services/order-payout-method.service';
+import {
+  ORDER_PAYOUT_ACCOUNT_STATUSES,
+  type OrderPayoutAccountStatus,
+  type OrderPayoutMethod,
+} from '../../../app/services/order-payout-method.service';
 import type { ShopOrderPayout } from '../../../app/use-cases/get-shop-order-payout/get-shop-order-payout.use-case';
+import {
+  PAYOUT_ATTRIBUTION_STATES,
+  type PayoutAttributionState,
+} from '../../../domain/rules/payout';
 
 export class OrderPayoutAvailabilityResponseDto {
   @ApiProperty({
@@ -35,10 +43,10 @@ export class OrderPayoutAttributionResponseDto {
     description:
       '`pending` while the Payout provider transfer may still move the money, ' +
       '`paid` once it settled.',
-    enum: ['pending', 'paid'],
+    enum: PAYOUT_ATTRIBUTION_STATES,
     example: 'paid',
   })
-  state!: 'pending' | 'paid';
+  state!: PayoutAttributionState;
 
   @ApiProperty({
     description:
@@ -63,17 +71,10 @@ export class OrderPayoutMethodResponseDto {
     description:
       'The shop Payout Account state. `missing` means the shop has no open ' +
       'Payout Account yet; the other values are the provider-reported status.',
-    enum: [
-      'missing',
-      'onboarding',
-      'action_required',
-      'active',
-      'restricted',
-      'disabled',
-    ],
+    enum: ORDER_PAYOUT_ACCOUNT_STATUSES,
     example: 'active',
   })
-  account_status!: OrderPayoutMethod['accountStatus'];
+  account_status!: OrderPayoutAccountStatus;
 
   @ApiProperty({
     description:

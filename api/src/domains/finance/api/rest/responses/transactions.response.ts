@@ -1,7 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
-import type { TransactionRecord } from '../../../app/ports/transactions-query.repository';
+import {
+  TRANSACTION_ROW_TYPES,
+  type TransactionRecord,
+  type TransactionRowType,
+} from '../../../app/ports/transactions-query.repository';
+import { PAYOUT_SOURCES, type PayoutSource } from '../../../domain/rules/payout';
 
-export type ShopTransactionTypeDto = 'order_income' | 'refund' | 'label_charge' | 'label_refund' | 'payout';
+export type ShopTransactionTypeDto = TransactionRowType;
 export type ShopTransactionStatusDto =
   | 'released'
   | 'pending'
@@ -45,7 +50,7 @@ export class ShopTransactionResponseDto {
 
   @ApiProperty({
     description: 'What moved the money.',
-    enum: ['order_income', 'refund', 'label_charge', 'label_refund', 'payout'],
+    enum: TRANSACTION_ROW_TYPES,
   })
   type!: ShopTransactionTypeDto;
 
@@ -100,10 +105,10 @@ export class ShopTransactionResponseDto {
       'Whether a scheduled run or a manual withdrawal created the Payout; ' +
       'null on Order income, Refund, and Label Charge rows.',
     example: 'manual',
-    enum: ['scheduled', 'manual'],
+    enum: PAYOUT_SOURCES,
     nullable: true,
   })
-  source!: 'scheduled' | 'manual' | null;
+  source!: PayoutSource | null;
 }
 
 export class ShopTransactionsResponseDto {

@@ -5,15 +5,25 @@ import {
   type PayoutConfig,
 } from '~/platform/config/payout.config';
 import { nextPayoutRunDate } from '../../domain/rules/payout';
-import type { PayoutAccountStatus } from '../../domain/rules/payout-account';
+import {
+  PAYOUT_ACCOUNT_STATUSES,
+  type PayoutAccountStatus,
+} from '../../domain/rules/payout-account';
 import { PayoutAccountRepository } from '../ports/payout-account.repository';
 import { PayoutSettingsRepository } from '../ports/payout-settings.repository';
 
 /**
- * The Payout Account state a seller or admin timeline shows. `missing` is not a
- * provider status: it means the shop has no open Payout Account at all.
+ * The Payout Account state a seller or admin timeline shows: the Payout
+ * Account's own status, or `missing` when the shop has no open Payout Account
+ * at all.
  */
-export type OrderPayoutAccountStatus = PayoutAccountStatus | 'missing';
+export const ORDER_PAYOUT_ACCOUNT_STATUSES = [
+  'missing',
+  ...PAYOUT_ACCOUNT_STATUSES,
+] as const;
+
+export type OrderPayoutAccountStatus =
+  (typeof ORDER_PAYOUT_ACCOUNT_STATUSES)[number];
 
 /**
  * How this Order's money will reach the shop: the account it will be sent to
