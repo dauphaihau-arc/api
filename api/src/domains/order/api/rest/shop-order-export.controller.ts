@@ -13,6 +13,8 @@ import {
 import type { Response } from 'express';
 import {
   ApiCookieAuth,
+  ApiCreatedResponse,
+  ApiOkResponse,
   ApiOperation,
   ApiParam,
   ApiTags,
@@ -32,7 +34,7 @@ import { GetShopOrderExportUseCase } from '../../app/use-cases/get-shop-order-ex
 import { DownloadShopOrderExportUseCase } from '../../app/use-cases/download-shop-order-export/download-shop-order-export.use-case';
 import { ExportShopOrdersQueryDto } from './dto/export-shop-orders.query.dto';
 
-import { toShopOrderExportResponse } from './responses/order-export.response';
+import { ShopOrderExportResponseDto, toShopOrderExportResponse } from './responses/order-export.response';
 import { OrderExceptionsFilter } from './errors/order-exceptions.filter';
 import { shopOrderExportControllerErrorResponses } from './errors/order-error-responses';
 
@@ -57,6 +59,20 @@ export class ShopOrderExportController {
   @Header('Cache-Control', 'private, no-store')
   @ApiOperation({ summary: 'Export shop orders as CSV' })
   @ApiParam({ name: 'shop_id', type: String })
+  @ApiOkResponse({
+    description: 'Shop orders as a UTF-8 CSV attachment.',
+    headers: {
+      'Content-Disposition': {
+        description: 'Attachment filename suggested for the download.',
+        schema: { type: 'string' },
+      },
+    },
+    content: {
+      'text/csv': {
+        schema: { type: 'string' },
+      },
+    },
+  })
   @ApiErrorResponses(shopOrderExportControllerErrorResponses.exportCsv)
   async exportCsv(
     @CurrentUser() currentUser: AuthenticatedUser,
@@ -80,6 +96,10 @@ export class ShopOrderExportController {
     description: 'Starts an asynchronous CSV export of shop orders.',
   })
   @ApiParam({ name: 'shop_id', type: String })
+  @ApiCreatedResponse({
+    description: 'The queued order export.',
+    type: ShopOrderExportResponseDto,
+  })
   @ApiErrorResponses(shopOrderExportControllerErrorResponses.startExport)
   async startExport(
     @CurrentUser() currentUser: AuthenticatedUser,
@@ -98,6 +118,10 @@ export class ShopOrderExportController {
   @ApiOperation({ summary: 'Get shop order export status' })
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'export_id', type: String })
+  @ApiOkResponse({
+    description: 'The order export and its progress.',
+    type: ShopOrderExportResponseDto,
+  })
   @ApiErrorResponses(shopOrderExportControllerErrorResponses.exportDetail)
   async exportDetail(
     @CurrentUser() currentUser: AuthenticatedUser,
@@ -120,6 +144,20 @@ export class ShopOrderExportController {
   })
   @ApiParam({ name: 'shop_id', type: String })
   @ApiParam({ name: 'export_id', type: String })
+  @ApiOkResponse({
+    description: 'The exported orders as a UTF-8 CSV attachment.',
+    headers: {
+      'Content-Disposition': {
+        description: 'Attachment filename suggested for the download.',
+        schema: { type: 'string' },
+      },
+    },
+    content: {
+      'text/csv': {
+        schema: { type: 'string' },
+      },
+    },
+  })
   @ApiErrorResponses(shopOrderExportControllerErrorResponses.downloadExport)
   async downloadExport(
     @CurrentUser() currentUser: AuthenticatedUser,

@@ -24,7 +24,12 @@ export class NotificationResponseDto {
   @ApiProperty()
   body!: string;
 
-  @ApiProperty({ type: Object, nullable: true })
+  @ApiProperty({
+    type: 'object',
+    additionalProperties: true,
+    nullable: true,
+    description: 'Free-form notification payload; null when the notification carries none.',
+  })
   data!: Record<string, unknown> | null;
 
   @ApiProperty({ type: String, format: 'date-time', nullable: true })

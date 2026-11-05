@@ -19,7 +19,9 @@ import {
 import { toMinorUnits } from '~/platform/money/money';
 import type { CheckoutConfig } from '~/platform/config/checkout.config';
 import { getMaxOrderTotalMinor } from '~/platform/config/checkout.config';
-import { ApiProperty } from '@nestjs/swagger';
+import {
+  ApiExtraModels, ApiProperty, ApiPropertyOptional, getSchemaPath,
+} from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { ProductReviewStatus } from '../../../../product/domain/enums/product-review-status.enum';
 import { SHOP_DASHBOARD_TIME_RANGES } from '../dto/get-shop-dashboard.query.dto';
@@ -93,6 +95,7 @@ export class OrderReviewImageVariantResponseDto {
   format?: string;
 }
 
+@ApiExtraModels(OrderReviewImageVariantResponseDto)
 export class OrderReviewImageResponseDto {
   @ApiProperty()
   id!: string;
@@ -115,7 +118,11 @@ export class OrderReviewImageResponseDto {
   @ApiProperty({ type: String, format: 'date-time', required: false })
   variants_generated_at?: Date;
 
-  @ApiProperty({ type: Object, required: false })
+  @ApiPropertyOptional({
+    type: 'object',
+    additionalProperties: { $ref: getSchemaPath(OrderReviewImageVariantResponseDto) },
+    description: 'Named image variants keyed by variant name.',
+  })
   variants?: Record<string, OrderReviewImageVariantResponseDto>;
 }
 
@@ -717,7 +724,11 @@ export class OrderTimelineEventResponseDto {
   @ApiProperty({ required: false })
   source?: string;
 
-  @ApiProperty({ type: Object, required: false })
+  @ApiPropertyOptional({
+    type: 'object',
+    additionalProperties: true,
+    description: 'Event-specific detail, shape varies by event type.',
+  })
   payload?: Record<string, unknown>;
 }
 

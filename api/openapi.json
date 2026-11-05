@@ -9177,9 +9177,140 @@
     },
     "/v1/products": {
       "get": {
-        "description": "Returns public products matching the supplied filters.",
+        "description": "Returns public products matching the supplied filters. Any query parameter other than those listed here is rejected with `VALIDATION_FAILED`; attribute filters are passed as `attr_<attribute_id>` parameters.",
         "operationId": "Product_listProducts",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "attr_{attribute_id}",
+            "required": false,
+            "in": "query",
+            "description": "Attribute filter, one parameter per attribute where `{attribute_id}` is the attribute id. Repeat the parameter (or pass a comma-separated value) to match any of several option values. Dynamic name: any `attr_*` parameter is accepted, and other unknown parameters are rejected.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "order",
+            "required": false,
+            "in": "query",
+            "description": "Sort order.",
+            "schema": {
+              "enum": [
+                "newest",
+                "price_asc",
+                "price_desc"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "max_price",
+            "required": false,
+            "in": "query",
+            "description": "Maximum price in minor units, inclusive.",
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "min_price",
+            "required": false,
+            "in": "query",
+            "description": "Minimum price in minor units, inclusive.",
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "who_made",
+            "required": false,
+            "in": "query",
+            "description": "Maker attribution filter.",
+            "schema": {
+              "enum": [
+                "i_did",
+                "collective",
+                "someone_else"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "is_digital",
+            "required": false,
+            "in": "query",
+            "description": "Restrict to digital (`true`) or physical (`false`) products.",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "title",
+            "required": false,
+            "in": "query",
+            "description": "Title substring filter.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "s",
+            "required": false,
+            "in": "query",
+            "deprecated": true,
+            "description": "Deprecated alias of `search`; when supplied it takes precedence over `search`.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "description": "Free-text search over product titles.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "category_id",
+            "required": false,
+            "in": "query",
+            "description": "Category public id; matches products in that category and its descendants.",
+            "schema": {
+              "pattern": "^[1-9][0-9]*$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Page size.",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "default": 12,
+              "type": "number"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "Page number, 1-based.",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Public product list.",
@@ -23662,7 +23793,22 @@
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "Shop orders as a UTF-8 CSV attachment.",
+            "headers": {
+              "Content-Disposition": {
+                "description": "Attachment filename suggested for the download.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "400": {
             "description": "Validation failed",
@@ -23864,7 +24010,14 @@
         },
         "responses": {
           "201": {
-            "description": ""
+            "description": "The queued order export.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShopOrderExportResponseDto"
+                }
+              }
+            }
           },
           "400": {
             "description": "Validation failed",
@@ -24063,7 +24216,14 @@
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "The order export and its progress.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShopOrderExportResponseDto"
+                }
+              }
+            }
           },
           "401": {
             "description": "Authentication is required",
@@ -24241,7 +24401,22 @@
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "The exported orders as a UTF-8 CSV attachment.",
+            "headers": {
+              "Content-Disposition": {
+                "description": "Attachment filename suggested for the download.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "401": {
             "description": "Authentication is required",
@@ -30476,7 +30651,9 @@
           },
           "data": {
             "type": "object",
-            "nullable": true
+            "additionalProperties": true,
+            "nullable": true,
+            "description": "Free-form notification payload; null when the notification carries none."
           },
           "read_at": {
             "type": "string",
@@ -33025,6 +33202,14 @@
           "items"
         ]
       },
+      "PublicProductListItemImageVariantResponseDto": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          }
+        }
+      },
       "PublicProductListItemImageResponseDto": {
         "type": "object",
         "properties": {
@@ -33036,6 +33221,9 @@
           },
           "variants": {
             "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/PublicProductListItemImageVariantResponseDto"
+            },
             "description": "Named image variants keyed by variant name."
           }
         }
@@ -33276,6 +33464,26 @@
           "count"
         ]
       },
+      "PublicProductImageVariantResponseDto": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "width": {
+            "type": "number"
+          },
+          "height": {
+            "type": "number"
+          },
+          "format": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ]
+      },
       "PublicProductImageResponseDto": {
         "type": "object",
         "properties": {
@@ -33300,6 +33508,9 @@
           },
           "variants": {
             "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/PublicProductImageVariantResponseDto"
+            },
             "description": "Named image variants keyed by variant name."
           }
         },
@@ -33662,6 +33873,9 @@
           },
           "variants": {
             "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/PublicProductImageVariantResponseDto"
+            },
             "description": "Named image variants keyed by variant name."
           }
         },
@@ -33770,6 +33984,9 @@
           },
           "variants": {
             "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/PublicProductImageVariantResponseDto"
+            },
             "description": "Named image variants keyed by variant name."
           },
           "author": {
@@ -33950,6 +34167,9 @@
           },
           "variants": {
             "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/PublicProductImageVariantResponseDto"
+            },
             "description": "Named image variants keyed by variant name."
           }
         },
@@ -35550,6 +35770,26 @@
           }
         }
       },
+      "ShopProductReviewImageVariantResponseDto": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "width": {
+            "type": "number"
+          },
+          "height": {
+            "type": "number"
+          },
+          "format": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ]
+      },
       "ShopProductReviewImageResponseDto": {
         "type": "object",
         "properties": {
@@ -35574,6 +35814,9 @@
           },
           "variants": {
             "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ShopProductReviewImageVariantResponseDto"
+            },
             "description": "Generated variant urls keyed by variant name."
           }
         },
@@ -38392,6 +38635,26 @@
           }
         }
       },
+      "OrderReviewImageVariantResponseDto": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "width": {
+            "type": "number"
+          },
+          "height": {
+            "type": "number"
+          },
+          "format": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ]
+      },
       "OrderReviewImageResponseDto": {
         "type": "object",
         "properties": {
@@ -38418,7 +38681,11 @@
             "format": "date-time"
           },
           "variants": {
-            "type": "object"
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/OrderReviewImageVariantResponseDto"
+            },
+            "description": "Named image variants keyed by variant name."
           }
         },
         "required": [
@@ -39907,6 +40174,76 @@
           }
         }
       },
+      "ShopOrderExportResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Export public id (exp_…)."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "processing",
+              "completed",
+              "failed",
+              "expired"
+            ]
+          },
+          "filename": {
+            "type": "string",
+            "description": "File name the completed export is downloaded as."
+          },
+          "total_rows": {
+            "type": "number",
+            "description": "Number of rows the export will contain once complete."
+          },
+          "processed_rows": {
+            "type": "number",
+            "description": "Number of rows written so far."
+          },
+          "percent": {
+            "type": "number",
+            "description": "Progress percentage, 0–100; 100 once completed."
+          },
+          "error_message": {
+            "type": "string",
+            "nullable": true,
+            "description": "Failure reason when the export failed."
+          },
+          "completed_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "When the export completed."
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the generated file stops being downloadable."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "filename",
+          "total_rows",
+          "processed_rows",
+          "percent",
+          "expires_at",
+          "created_at",
+          "updated_at"
+        ]
+      },
       "ShopOrderStatusCountsResponseDto": {
         "type": "object",
         "properties": {
@@ -40125,7 +40462,9 @@
             "type": "string"
           },
           "payload": {
-            "type": "object"
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Event-specific detail, shape varies by event type."
           }
         },
         "required": [
@@ -41315,7 +41654,9 @@
           },
           "metadata": {
             "type": "object",
-            "nullable": true
+            "additionalProperties": true,
+            "nullable": true,
+            "description": "Free-form message metadata; null when the message carries none."
           },
           "edited_at": {
             "type": "string",
@@ -41404,7 +41745,9 @@
             "maxLength": 5000
           },
           "metadata": {
-            "type": "object"
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Free-form message metadata."
           }
         },
         "required": [

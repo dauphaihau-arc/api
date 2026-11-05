@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsObject, IsOptional, IsString, MaxLength, 
 } from 'class-validator';
@@ -9,7 +9,12 @@ export class SendChatMessageDto {
   @MaxLength(5000)
   body!: string;
 
-  @ApiProperty({ name: 'metadata', required: false })
+  @ApiPropertyOptional({
+    name: 'metadata',
+    type: 'object',
+    additionalProperties: true,
+    description: 'Free-form message metadata.',
+  })
   @IsOptional()
   @IsObject()
   metadata?: Record<string, unknown>;

@@ -1,4 +1,6 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  ApiExtraModels, ApiProperty, ApiPropertyOptional, getSchemaPath,
+} from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { ProductWhoMade } from '~/domains/product/domain/enums/product-who-made.enum';
 
@@ -46,6 +48,7 @@ export class PublicProductImageVariantResponseDto {
   format?: string;
 }
 
+@ApiExtraModels(PublicProductImageVariantResponseDto)
 export class PublicProductImageResponseDto {
   @ApiProperty()
   id!: string;
@@ -66,7 +69,8 @@ export class PublicProductImageResponseDto {
   variants_generated_at?: Date;
 
   @ApiPropertyOptional({
-    type: Object,
+    type: 'object',
+    additionalProperties: { $ref: getSchemaPath(PublicProductImageVariantResponseDto) },
     description: 'Named image variants keyed by variant name.',
   })
   variants?: Record<string, PublicProductImageVariantResponseDto>;
@@ -248,6 +252,7 @@ export class PublicProductListItemImageVariantResponseDto {
   url?: string;
 }
 
+@ApiExtraModels(PublicProductListItemImageVariantResponseDto)
 export class PublicProductListItemImageResponseDto {
   @ApiProperty({ required: false })
   url?: string;
@@ -256,7 +261,8 @@ export class PublicProductListItemImageResponseDto {
   variant?: string;
 
   @ApiPropertyOptional({
-    type: Object,
+    type: 'object',
+    additionalProperties: { $ref: getSchemaPath(PublicProductListItemImageVariantResponseDto) },
     description: 'Named image variants keyed by variant name.',
   })
   variants?: Record<string, PublicProductListItemImageVariantResponseDto>;
@@ -456,6 +462,7 @@ export class PublicProductReviewSummaryResponseDto {
   filters!: PublicProductReviewSummaryFiltersResponseDto;
 }
 
+@ApiExtraModels(PublicProductImageVariantResponseDto)
 export class PublicProductReviewImageResponseDto {
   @ApiProperty()
   id!: string;
@@ -467,7 +474,8 @@ export class PublicProductReviewImageResponseDto {
   rank!: number;
 
   @ApiPropertyOptional({
-    type: Object,
+    type: 'object',
+    additionalProperties: { $ref: getSchemaPath(PublicProductImageVariantResponseDto) },
     description: 'Named image variants keyed by variant name.',
   })
   variants?: Record<string, PublicProductImageVariantResponseDto>;
@@ -523,6 +531,7 @@ export class PublicProductReviewListResponseDto {
   meta!: PaginationMetaResponseDto;
 }
 
+@ApiExtraModels(PublicProductImageVariantResponseDto)
 export class PublicProductReviewImageListItemResponseDto {
   @ApiProperty()
   id!: string;
@@ -543,7 +552,8 @@ export class PublicProductReviewImageListItemResponseDto {
   created_at!: Date;
 
   @ApiPropertyOptional({
-    type: Object,
+    type: 'object',
+    additionalProperties: { $ref: getSchemaPath(PublicProductImageVariantResponseDto) },
     description: 'Named image variants keyed by variant name.',
   })
   variants?: Record<string, PublicProductImageVariantResponseDto>;
