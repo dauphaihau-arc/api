@@ -1,5 +1,6 @@
 import type { ShopPromoCodeSummary } from './shop.types';
 import { PromotionMinOrderType } from '~/domains/promotion/domain/enums/promotion-min-order-type.enum';
+import { PromotionVisibility } from '~/domains/promotion/domain/enums/promotion-visibility.enum';
 import { resolvePromotionStatus } from '~/domains/promotion/domain/promotion-lifecycle';
 import type { PromotionEntity } from '~/domains/promotion/infra/persistence/entities/promotion.entity';
 
@@ -25,7 +26,7 @@ export function toShopPromoCodeSummary(
     percentOff: promotion.percentOff ?? 0,
     amountOff: promotion.amountOff == null ? null : Number(promotion.amountOff),
     currency: promotion.currency,
-    visibility: promotion.visibility ?? 'code_only',
+    visibility: promotion.visibility ?? PromotionVisibility.CODE_ONLY,
     productScope: promotion.productScope,
     productIds: products.map((product) => product.id),
     productPublicIds: products.map((product) => product.publicId),

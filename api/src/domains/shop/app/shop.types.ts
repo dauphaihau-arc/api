@@ -1,6 +1,9 @@
 import type { MarketplaceCurrency } from '~/platform/config/marketplace.config';
 import type { PromotionBenefitType } from '../../promotion/domain/enums/promotion-benefit-type.enum';
 import type { PromotionMinOrderType } from '../../promotion/domain/enums/promotion-min-order-type.enum';
+import type { PromotionProductScope } from '../../promotion/domain/enums/promotion-product-scope.enum';
+import type { PromotionStatus } from '../../promotion/domain/enums/promotion-status.enum';
+import type { PromotionVisibility } from '../../promotion/domain/enums/promotion-visibility.enum';
 
 export interface ShopSummary {
   id: string;
@@ -21,16 +24,16 @@ export interface ShopSaleSummary {
   shopPublicId: string;
   name: string;
   percentOff: number;
-  productScope: string;
+  productScope: PromotionProductScope;
   productIds: string[];
   productPublicIds: string[];
   currency: string;
   startAt: Date;
   endAt: Date;
   timezone: string;
-  status: string;
-  cancelledAt?: Date | null;
-  endedAt?: Date | null;
+  status: PromotionStatus;
+  cancelledAt: Date | null;
+  endedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -54,8 +57,8 @@ export interface ShopPromoCodeSummary {
   percentOff: number;
   amountOff: number | null;
   currency: string;
-  visibility: string;
-  productScope: string;
+  visibility: PromotionVisibility;
+  productScope: PromotionProductScope;
   productIds: string[];
   productPublicIds: string[];
   minOrderType: PromotionMinOrderType;
@@ -72,9 +75,9 @@ export interface ShopPromoCodeSummary {
   startAt: Date;
   endAt: Date;
   timezone: string;
-  status: string;
-  cancelledAt?: Date | null;
-  endedAt?: Date | null;
+  status: PromotionStatus;
+  cancelledAt: Date | null;
+  endedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
