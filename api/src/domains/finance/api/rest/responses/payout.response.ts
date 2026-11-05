@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import type { PayoutRecord } from '../../../app/ports/payout.types';
+import { PAYOUT_SOURCES, type PayoutSource } from '../../../domain/rules/payout';
 import type { PayoutQuote } from '../../../domain/rules/payout-quote';
 
 export class ShopPayoutResponseDto {
@@ -120,9 +121,9 @@ export class ShopPayoutResponseDto {
     description:
       'Whether an automatic run or a seller manual withdrawal created the Payout.',
     example: 'manual',
-    enum: ['scheduled', 'manual'],
+    enum: PAYOUT_SOURCES,
   })
-  source!: string;
+  source!: PayoutSource;
 
   @ApiProperty({
     description:

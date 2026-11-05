@@ -3,7 +3,9 @@
  * about a parcel it already recorded. Implementations are best-effort: a
  * carrier outage must never make the seller command fail.
  */
-export type CarrierRateService = 'standard' | 'express';
+export const CARRIER_RATE_SERVICES = ['standard', 'express'] as const;
+
+export type CarrierRateService = (typeof CARRIER_RATE_SERVICES)[number];
 
 export type CarrierParcelIdentity = {
   carrier: string;

@@ -616,11 +616,15 @@ export interface ListPublicProductsByShopSlugInput {
   excludeProductSlug?: string;
 }
 
+export const PUBLIC_PRODUCT_RECOMMENDATION_SECTION_TYPES = [
+  'similar_products',
+  'from_same_seller',
+  'customers_also_viewed',
+  'frequently_bought_together',
+] as const;
+
 export type PublicProductRecommendationSectionType =
-  | 'similar_products'
-  | 'from_same_seller'
-  | 'customers_also_viewed'
-  | 'frequently_bought_together';
+  (typeof PUBLIC_PRODUCT_RECOMMENDATION_SECTION_TYPES)[number];
 
 export interface PublicProductRecommendationSection {
   type: PublicProductRecommendationSectionType;

@@ -1,3 +1,4 @@
+import type { PayoutAttributionState } from '../../domain/rules/payout';
 import type { FinanceRepositoryContext } from './finance-repository-context';
 
 /**
@@ -25,7 +26,7 @@ export interface OrderPayoutAttribution {
    * `paid` once the Payout settled, `pending` while its provider transfer may
    * still move the money.
    */
-  state: 'pending' | 'paid';
+  state: PayoutAttributionState;
 
   /** This Order's share of the Payout, in the shop's Settlement Currency. */
   amountMinor: number;

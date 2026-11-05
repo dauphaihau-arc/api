@@ -8,7 +8,27 @@ import type { Posting } from '../value-objects/posting';
  * `blocked` (no usable Payout Account) or `failed` (the provider refused) by the
  * guards that later slices add. Only a `paid` Payout discharges Seller Payable.
  */
-export type PayoutState = 'pending' | 'paid' | 'blocked' | 'failed';
+export const PAYOUT_STATES = [
+  'pending',
+  'paid',
+  'blocked',
+  'failed',
+] as const;
+
+export type PayoutState = (typeof PAYOUT_STATES)[number];
+
+/**
+ * The states an Order's Payout attribution may report: `pending` while the
+ * provider transfer may still move the money, `paid` once it settled. A
+ * `blocked` or `failed` Payout never claimed the Order's balance.
+ */
+export const PAYOUT_ATTRIBUTION_STATES = [
+  'pending',
+  'paid',
+] as const satisfies readonly PayoutState[];
+
+export type PayoutAttributionState =
+  (typeof PAYOUT_ATTRIBUTION_STATES)[number];
 
 /**
  * Why a Payout Run did not send a Payout. A Blocked Payout is a recorded fact,
@@ -89,7 +109,9 @@ export function allocatePayoutOrders(
  * withdrawal. The two have separate monthly allowances, so the same shop can use
  * both in one platform month.
  */
-export type PayoutSource = 'scheduled' | 'manual';
+export const PAYOUT_SOURCES = ['scheduled', 'manual'] as const;
+
+export type PayoutSource = (typeof PAYOUT_SOURCES)[number];
 
 /** How many provider attempts one Payout gets before it is recorded as `failed`. */
 export const MAX_PAYOUT_ATTEMPTS = 4;

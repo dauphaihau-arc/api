@@ -2,6 +2,7 @@ import { Logger } from '@nestjs/common';
 import ms from 'ms';
 import { z } from 'zod';
 import {
+  CARRIER_RATE_SERVICES,
   CarrierLabelAlreadyUsedError,
   CarrierLabelNotFoundError,
   CarrierLabelPurchaseUnavailableError,
@@ -242,7 +243,7 @@ export class MockCarrierParcelGateway extends CarrierParcelGateway {
 const rateQuoteWireSchema = z.object({
   quote_id: z.string(),
   carrier: z.string(),
-  service: z.enum(['standard', 'express']),
+  service: z.enum(CARRIER_RATE_SERVICES),
   price_minor: z.number().int(),
   currency: z.string(),
   estimated_days: z.object({ min: z.number().int(), max: z.number().int() }),

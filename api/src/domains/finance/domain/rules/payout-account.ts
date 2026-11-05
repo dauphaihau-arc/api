@@ -17,12 +17,15 @@ export const STRIPE_CONNECT_PROVIDER = 'stripe_connect';
  * has disabled a capability; `disabled` closes a destination without replacing
  * it.
  */
-export type PayoutAccountStatus =
-  | 'onboarding'
-  | 'action_required'
-  | 'active'
-  | 'restricted'
-  | 'disabled';
+export const PAYOUT_ACCOUNT_STATUSES = [
+  'onboarding',
+  'action_required',
+  'active',
+  'restricted',
+  'disabled',
+] as const;
+
+export type PayoutAccountStatus = (typeof PAYOUT_ACCOUNT_STATUSES)[number];
 
 /**
  * The subset of Stripe's requirements that Arc stores. It is a summary, never

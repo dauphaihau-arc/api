@@ -4,11 +4,11 @@ on:
   push:
     branches:
       - production
+    # Only a changed artifact needs publishing. Source edits that leave the
+    # committed document untouched are a type-level change, and CI already
+    # fails when a DTO change ships without a regenerated document.
     paths:
-      - "api/src/**"
       - "api/openapi.json"
-      - "api/package.json"
-      - "api/pnpm-lock.yaml"
       - "api/scripts/generate-openapi.ts"
       - "api/scripts/sync-api-spec-package.ts"
       - "packages/api-spec/**"

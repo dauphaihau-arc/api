@@ -1,5 +1,9 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
+import {
+  PUBLIC_PRODUCT_RECOMMENDATION_SECTION_TYPES,
+  type PublicProductRecommendationSectionType,
+} from '../../../../app/product.types';
 import { PublicProductListItemResponseDto } from '../../storefront/responses/public-product-response.dto';
 
 export class PublicProductRecommendationsResponseDto {
@@ -10,18 +14,9 @@ export class PublicProductRecommendationsResponseDto {
 
 export class PublicProductRecommendationSectionResponseDto {
   @ApiProperty({
-    enum: [
-      'similar_products',
-      'from_same_seller',
-      'customers_also_viewed',
-      'frequently_bought_together',
-    ],
+    enum: PUBLIC_PRODUCT_RECOMMENDATION_SECTION_TYPES,
   })
-  type!:
-    | 'similar_products'
-    | 'from_same_seller'
-    | 'customers_also_viewed'
-    | 'frequently_bought_together';
+  type!: PublicProductRecommendationSectionType;
 
   @ApiProperty()
   title!: string;
