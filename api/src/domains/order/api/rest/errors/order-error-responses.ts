@@ -163,3 +163,59 @@ export const shopDashboardControllerErrorResponses = {
     404: [...shopNotFound],
   },
 };
+
+/**
+ * Public error response sets for the admin order controller. Every endpoint is
+ * gated by `orders.manage`; the detail, status and refund routes resolve the
+ * Order by its public id first, and the status and refund routes can refuse the
+ * requested transition.
+ */
+export const adminOrderControllerErrorResponses = {
+  controller: {
+    401: unauthorizedErrorExamples,
+    403: [missingRequiredPermissionsErrorExample],
+    429: [rateLimitErrorExample],
+    500: [internalServerErrorExample],
+  },
+  list: {
+    400: [validationErrorExample([{ field: 'status', messages: ['status must be a valid enum value'] }])],
+  },
+  financialBreakdown: {
+    404: [...orderNotFound],
+  },
+  detail: {
+    404: [...orderNotFound],
+  },
+  updateStatus: {
+    400: [
+      validationErrorExample([{ field: 'status', messages: ['status must be a valid enum value'] }]),
+      {
+        code: 'ADMIN_ORDER_STATUS_OVERRIDE_NOT_ALLOWED',
+        message: 'Admin overrides only support canceled, refunded, or archived',
+      },
+      {
+        code: 'ADMIN_REFUND_NOT_ALLOWED',
+        message: 'Unpaid or expired orders cannot be marked refunded',
+      },
+    ],
+    404: [...orderNotFound],
+  },
+  updateRefund: {
+    400: [
+      validationErrorExample([{ field: 'action', messages: ['action must be a valid enum value'] }]),
+      {
+        code: 'ADMIN_REFUND_REQUIRES_CARD_PAYMENT',
+        message: 'Only card orders support refund actions',
+      },
+      {
+        code: 'ADMIN_REFUND_NOT_ALLOWED',
+        message: 'Unpaid or expired orders cannot be marked refunded',
+      },
+      {
+        code: 'ADMIN_REFUND_ACTION_NOT_ALLOWED',
+        message: 'This refund action is not allowed for the current order state',
+      },
+    ],
+    404: [...orderNotFound],
+  },
+};

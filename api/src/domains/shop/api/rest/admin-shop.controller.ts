@@ -3,7 +3,6 @@ import {
 } from '@nestjs/common';
 import {
   ApiCookieAuth,
-  ApiExcludeController,
   ApiOkResponse,
   ApiOperation,
   ApiTags,
@@ -11,8 +10,10 @@ import {
 import { JwtAuthGuard } from '~/domains/auth/api/guard/jwt-auth.guard';
 import { PermissionsGuard } from '~/domains/auth/api/guard/permissions.guard';
 import { RequirePermissions } from '~/platform/decorators/require-permissions.decorator';
+import { ApiErrorResponses } from '~/platform/http/api-error-responses.decorator';
 import { ListAdminShopsUseCase } from '../../app/use-cases/list-admin-shops/list-admin-shops.use-case';
 import { ListAdminShopsQueryDto } from './dto/list-admin-shops.query.dto';
+import { adminShopControllerErrorResponses } from './errors/shop-error-responses';
 import {
   AdminShopListResponseDto,
   toAdminShopListResponse,
@@ -26,9 +27,9 @@ import {
 @Controller('admin/shops')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @RequirePermissions('orders.manage')
-@ApiExcludeController()
 @ApiTags('Admin Shops')
 @ApiCookieAuth('accessCookie')
+@ApiErrorResponses(adminShopControllerErrorResponses.controller)
 export class AdminShopController {
   constructor(private readonly listAdminShopsUseCase: ListAdminShopsUseCase) {}
 
@@ -39,6 +40,7 @@ export class AdminShopController {
     description: 'Paginated admin shop directory.',
     type: AdminShopListResponseDto,
   })
+  @ApiErrorResponses(adminShopControllerErrorResponses.list)
   async list(@Query() query: ListAdminShopsQueryDto) {
     return toAdminShopListResponse(
       await this.listAdminShopsUseCase.execute(query),

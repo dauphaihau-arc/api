@@ -61,7 +61,9 @@ export class AdminShopListResponseDto {
   total_results!: number;
 }
 
-export function toAdminShopListResponse(result: AdminShopListResult) {
+export function toAdminShopListResponse(
+  result: AdminShopListResult,
+): AdminShopListResponseDto {
   return {
     results: result.results.map((shop) => ({
       id: shop.id,

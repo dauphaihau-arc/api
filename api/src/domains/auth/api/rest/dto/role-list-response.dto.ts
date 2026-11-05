@@ -19,10 +19,6 @@ export class RoleListResponseDto {
   roles!: RoleResponseDto[];
 }
 
-export type RoleListResponse = {
-  roles: RoleSummary[];
-};
-
-export function toRoleListResponse(roles: RoleSummary[]): RoleListResponse {
+export function toRoleListResponse(roles: RoleSummary[]): RoleListResponseDto {
   return { roles };
 }

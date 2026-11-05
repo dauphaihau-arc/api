@@ -1,6 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import type { PaginatedResult } from '~/platform/application/pagination';
+import { UserStatus } from '~/domains/auth/domain/enums/user-status.enum';
 import type { UserSummary } from '../../../app/user.types';
 
 export class UserResponseDto {
@@ -19,8 +20,8 @@ export class UserResponseDto {
   @ApiProperty({ required: false })
   avatar?: string;
 
-  @ApiProperty()
-  status!: string;
+  @ApiProperty({ description: 'Lifecycle status.', enum: UserStatus })
+  status!: UserStatus;
 
   @ApiProperty({ type: [String] })
   roles!: string[];
@@ -56,29 +57,7 @@ export class UserListResponseDto {
   meta!: UserListMetaResponseDto;
 }
 
-export type UserResponse = {
-  id: string;
-  version: number;
-  email: string;
-  display_name?: string;
-  avatar?: string;
-  status: string;
-  roles: string[];
-};
-
-export type UserListResponse = {
-  items: UserResponse[];
-  meta: {
-    page: number;
-    limit: number;
-    total: number;
-    total_pages: number;
-    has_next_page: boolean;
-    has_previous_page: boolean;
-  };
-};
-
-export function toUserResponse(user: UserSummary): UserResponse {
+export function toUserResponse(user: UserSummary): UserResponseDto {
   return {
     id: user.id,
     version: user.version,
@@ -90,7 +69,9 @@ export function toUserResponse(user: UserSummary): UserResponse {
   };
 }
 
-export function toUserListResponse(result: PaginatedResult<UserSummary>): UserListResponse {
+export function toUserListResponse(
+  result: PaginatedResult<UserSummary>,
+): UserListResponseDto {
   return {
     items: result.items.map(toUserResponse),
     meta: {

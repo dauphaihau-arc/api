@@ -404,3 +404,20 @@ export const shopProductReviewsControllerErrorResponses = {
     404: [notFoundShopExample],
   },
 } as const;
+
+/**
+ * Public error responses for the admin shop directory controller. The list is
+ * gated by `orders.manage` (sellers hold `shops.manage` for their own shop) and
+ * only reads paginated rows.
+ */
+export const adminShopControllerErrorResponses = {
+  controller: {
+    401: unauthorizedErrorExamples,
+    403: [missingRequiredPermissionsErrorExample],
+    429: [rateLimitErrorExample],
+    500: [internalServerErrorExample],
+  },
+  list: {
+    400: [validationErrorExample([{ field: 'page', messages: ['page must be an integer number'] }])],
+  },
+} as const;

@@ -47,7 +47,9 @@ export class AuditLogListResponseDto {
   total_results!: number;
 }
 
-export function toAuditLogListResponse(result: AuditLogListResult) {
+export function toAuditLogListResponse(
+  result: AuditLogListResult,
+): AuditLogListResponseDto {
   return {
     results: result.results.map((entry) => ({
       id: entry.id,

@@ -13,8 +13,9 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import {
+  ApiBody,
   ApiConsumes,
-  ApiCookieAuth, ApiExcludeController,
+  ApiCookieAuth,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
@@ -27,6 +28,7 @@ import { resolveOrThrow } from '~/platform/application/result';
 import { CurrentUser } from '~/platform/decorators/current-user.decorator';
 import { RequirePermissions } from '~/platform/decorators/require-permissions.decorator';
 import { ParseSortPipe } from '~/platform/pipes/parse-sort.pipe';
+import { ApiErrorResponses } from '~/platform/http/api-error-responses.decorator';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import { CreateUserUseCase } from '~/domains/user/app/use-cases/create-user/create-user.use-case';
 import { AssignUserRolesUseCase } from '~/domains/user/app/use-cases/assign-user-roles/assign-user-roles.use-case';
@@ -47,21 +49,20 @@ import { AssignUserRolesDto } from './dto/assign-user-roles.dto';
 import { ListUsersQueryDto } from './dto/list-users.query.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { mapUserAppErrorToHttpException } from './errors/user-http-error-mapper';
+import { userControllerErrorResponses } from './errors/user-error-responses';
 import { JwtAuthGuard } from '~/domains/auth/api/guard/jwt-auth.guard';
 import {
   UserListResponseDto,
   UserResponseDto,
   toUserListResponse,
   toUserResponse,
-  type UserListResponse,
-  type UserResponse,
 } from './responses/user.response';
 
 @Controller('users')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
-@ApiExcludeController()
-@ApiTags('Users')
+@ApiTags('Admin Users')
 @ApiCookieAuth('accessCookie')
+@ApiErrorResponses(userControllerErrorResponses.controller)
 export class UserController {
   constructor(
     private readonly createUserUseCase: CreateUserUseCase,
@@ -74,11 +75,16 @@ export class UserController {
   @Get()
   @RequirePermissions('users.read')
   @Header('Cache-Control', 'private, no-store')
-  @ApiOperation({ summary: 'List users' })
+  @ApiOperation({
+    summary: 'List users',
+    description:
+      'Paginated user directory. `sort` accepts `field:direction` with the fields createdAt, email, displayName and status.',
+  })
   @ApiOkResponse({
     description: 'Paginated user list.',
     type: UserListResponseDto,
   })
+  @ApiErrorResponses(userControllerErrorResponses.list)
   users(
     @Query() query: ListUsersQueryDto,
     @Query(
@@ -86,7 +92,7 @@ export class UserController {
       new ParseSortPipe(USER_LIST_SORT_FIELDS, DEFAULT_USER_LIST_SORT),
     )
     sort = DEFAULT_USER_LIST_SORT,
-  ): Promise<UserListResponse> {
+  ): Promise<UserListResponseDto> {
     return this.listUsersUseCase.execute(buildListUsersQuery({
       page: query.page,
       limit: query.limit,
@@ -105,7 +111,8 @@ export class UserController {
     type: UserResponseDto,
   })
   @ApiNotFoundResponse({ description: 'User was not found.' })
-  async user(@Param('id') id: string): Promise<UserResponse> {
+  @ApiErrorResponses(userControllerErrorResponses.detail)
+  async user(@Param('id') id: string): Promise<UserResponseDto> {
     const user = await this.getUserByIdUseCase.execute(id);
 
     if (!user) {
@@ -125,10 +132,11 @@ export class UserController {
     description: 'Created user.',
     type: UserResponseDto,
   })
+  @ApiErrorResponses(userControllerErrorResponses.create)
   createUser(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() body: CreateUserDto,
-  ): Promise<UserResponse> {
+  ): Promise<UserResponseDto> {
     return this.createUserUseCase
       .execute(currentUser, body)
       .then((result) => resolveOrThrow(result, mapUserAppErrorToHttpException))
@@ -140,18 +148,35 @@ export class UserController {
   @Header('Cache-Control', 'private, no-store')
   @UseInterceptors(FileInterceptor('avatar'))
   @ApiConsumes('multipart/form-data')
-  @ApiOperation({ summary: 'Update a user' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['version'],
+      properties: {
+        version: { type: 'integer', minimum: 1 },
+        display_name: { type: 'string' },
+        status: { type: 'string', enum: ['active', 'disabled'] },
+        avatar: { type: 'string', format: 'binary' },
+      },
+    },
+  })
+  @ApiOperation({
+    summary: 'Update a user',
+    description:
+      'Updates the profile fields and, when sent, replaces the avatar image. The version guards against a stale write.',
+  })
   @ApiParam({ name: 'id', type: String })
   @ApiOkResponse({
     description: 'Updated user.',
     type: UserResponseDto,
   })
+  @ApiErrorResponses(userControllerErrorResponses.update)
   updateUser(
     @Param('id') id: string,
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() body: UpdateUserDto,
     @UploadedFile() avatarFile?: UploadedAvatarFile,
-  ): Promise<UserResponse> {
+  ): Promise<UserResponseDto> {
     this.validateAvatarFile(avatarFile);
 
     return this.updateUserUseCase.execute(currentUser, id, {
@@ -166,18 +191,23 @@ export class UserController {
   @Patch(':id/roles')
   @RequirePermissions('roles.manage')
   @Header('Cache-Control', 'private, no-store')
-  @ApiOperation({ summary: 'Replace the roles assigned to a user' })
+  @ApiOperation({
+    summary: 'Replace the roles assigned to a user',
+    description:
+      'Replaces the whole role set. An empty array removes every role; the last admin and super admin keep their role.',
+  })
   @ApiParam({ name: 'id', type: String })
   @ApiOkResponse({
     description: 'Updated user.',
     type: UserResponseDto,
   })
   @ApiNotFoundResponse({ description: 'User was not found.' })
+  @ApiErrorResponses(userControllerErrorResponses.assignRoles)
   assignRoles(
     @Param('id') id: string,
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() body: AssignUserRolesDto,
-  ): Promise<UserResponse> {
+  ): Promise<UserResponseDto> {
     return this.assignUserRolesUseCase.execute(currentUser, id, {
       roles: body.roles,
     }).then((result) => resolveOrThrow(result, mapUserAppErrorToHttpException))
