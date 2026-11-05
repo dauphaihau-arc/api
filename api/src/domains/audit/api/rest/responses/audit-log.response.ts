@@ -23,7 +23,11 @@ export class AuditLogEntryResponseDto {
   @ApiProperty({ required: false })
   request_id?: string;
 
-  @ApiProperty({ type: Object, description: 'Metadata-only audit summary.' })
+  @ApiProperty({
+    type: 'object',
+    additionalProperties: true,
+    description: 'Metadata-only audit summary.',
+  })
   summary!: Record<string, unknown>;
 
   @ApiProperty({ type: String, format: 'date-time' })

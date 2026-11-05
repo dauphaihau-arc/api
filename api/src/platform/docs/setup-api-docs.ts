@@ -4,6 +4,7 @@ import type { Request, Response } from 'express';
 import { DocumentBuilder, getSchemaPath, SwaggerModule } from '@nestjs/swagger';
 import { ApiErrorResponseDto } from '~/platform/http/api-error-response.dto';
 import { defaultHttpErrorMessage, fallbackHttpErrorCode } from '~/platform/errors/http-error-response';
+import { expandMediaTypeRequestBodies } from './api-media-types-body';
 
 const DOCS_PATH = '/docs';
 const OPENAPI_JSON_PATH = `${DOCS_PATH}/openapi.json`;
@@ -180,6 +181,7 @@ export function createApiDocument(app: INestApplication): OpenAPIObject {
 
   sortDocumentTags(document);
   completeDeclaredErrorResponses(document);
+  expandMediaTypeRequestBodies(document);
 
   return document;
 }
