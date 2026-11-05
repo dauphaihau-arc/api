@@ -2,6 +2,8 @@ import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import type { ShopSaleListResult, ShopSaleSummary } from '../../../app/shop.types';
 import type { BulkStopShopSalesResult } from '../../../app/use-cases/bulk-stop-shop-sales/bulk-stop-shop-sales.use-case';
+import { PromotionProductScope } from '~/domains/promotion/domain/enums/promotion-product-scope.enum';
+import { PromotionStatus } from '~/domains/promotion/domain/enums/promotion-status.enum';
 import { BulkItemFailureResponseDto } from './shop-bulk.response';
 
 export class ShopSaleResponseDto {
@@ -17,8 +19,8 @@ export class ShopSaleResponseDto {
   @ApiProperty()
   percent_off!: number;
 
-  @ApiProperty()
-  product_scope!: string;
+  @ApiProperty({ enum: PromotionProductScope })
+  product_scope!: PromotionProductScope;
 
   @ApiProperty({ type: [String], description: 'Product public ids (prod_…).' })
   product_ids!: string[];
@@ -35,8 +37,8 @@ export class ShopSaleResponseDto {
   @ApiProperty()
   timezone!: string;
 
-  @ApiProperty()
-  status!: string;
+  @ApiProperty({ enum: PromotionStatus })
+  status!: PromotionStatus;
 
   @ApiProperty({ type: String, format: 'date-time', nullable: true })
   cancelled_at!: Date | null;
@@ -88,7 +90,7 @@ export class ShopSaleStopListResponseDto {
   failed!: BulkItemFailureResponseDto[];
 }
 
-export function toShopSaleResponse(sale: ShopSaleSummary) {
+export function toShopSaleResponse(sale: ShopSaleSummary): ShopSaleResponseDto {
   return {
     id: sale.publicId,
     shop: sale.shopPublicId,
@@ -108,7 +110,7 @@ export function toShopSaleResponse(sale: ShopSaleSummary) {
   };
 }
 
-export function toShopSaleListResponse(result: ShopSaleListResult) {
+export function toShopSaleListResponse(result: ShopSaleListResult): ShopSaleListResponseDto {
   return {
     results: result.results.map(toShopSaleResponse),
     page: result.page,
@@ -120,7 +122,7 @@ export function toShopSaleListResponse(result: ShopSaleListResult) {
 
 export function toShopSaleStopListResponse(
   result: BulkStopShopSalesResult,
-) {
+): ShopSaleStopListResponseDto {
   return {
     results: result.results.map(toShopSaleResponse),
     succeeded_ids: result.succeededIds,

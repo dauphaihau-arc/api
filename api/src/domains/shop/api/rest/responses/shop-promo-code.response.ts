@@ -2,6 +2,9 @@ import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import type { ShopPromoCodeListResult, ShopPromoCodeSummary } from '../../../app/shop.types';
 import type { BulkStopShopPromoCodesResult } from '../../../app/use-cases/bulk-stop-shop-promo-codes/bulk-stop-shop-promo-codes.use-case';
+import { PromotionProductScope } from '~/domains/promotion/domain/enums/promotion-product-scope.enum';
+import { PromotionStatus } from '~/domains/promotion/domain/enums/promotion-status.enum';
+import { PromotionVisibility } from '~/domains/promotion/domain/enums/promotion-visibility.enum';
 import { BulkItemFailureResponseDto } from './shop-bulk.response';
 
 export class ShopPromoCodeResponseDto {
@@ -29,11 +32,11 @@ export class ShopPromoCodeResponseDto {
   @ApiProperty()
   currency!: string;
 
-  @ApiProperty()
-  visibility!: string;
+  @ApiProperty({ enum: PromotionVisibility })
+  visibility!: PromotionVisibility;
 
-  @ApiProperty()
-  product_scope!: string;
+  @ApiProperty({ enum: PromotionProductScope })
+  product_scope!: PromotionProductScope;
 
   @ApiProperty({ type: [String], description: 'Product public ids (prod_…).' })
   product_ids!: string[];
@@ -68,8 +71,8 @@ export class ShopPromoCodeResponseDto {
   @ApiProperty()
   timezone!: string;
 
-  @ApiProperty()
-  status!: string;
+  @ApiProperty({ enum: PromotionStatus })
+  status!: PromotionStatus;
 
   @ApiProperty({ type: String, format: 'date-time', nullable: true })
   cancelled_at!: Date | null;
@@ -121,7 +124,7 @@ export class ShopPromoCodeStopListResponseDto {
   failed!: BulkItemFailureResponseDto[];
 }
 
-export function toShopPromoCodeResponse(promoCode: ShopPromoCodeSummary) {
+export function toShopPromoCodeResponse(promoCode: ShopPromoCodeSummary): ShopPromoCodeResponseDto {
   return {
     id: promoCode.publicId,
     shop: promoCode.shopPublicId,
@@ -152,7 +155,7 @@ export function toShopPromoCodeResponse(promoCode: ShopPromoCodeSummary) {
   };
 }
 
-export function toShopPromoCodeListResponse(result: ShopPromoCodeListResult) {
+export function toShopPromoCodeListResponse(result: ShopPromoCodeListResult): ShopPromoCodeListResponseDto {
   return {
     results: result.results.map(toShopPromoCodeResponse),
     page: result.page,
@@ -164,7 +167,7 @@ export function toShopPromoCodeListResponse(result: ShopPromoCodeListResult) {
 
 export function toShopPromoCodeStopListResponse(
   result: BulkStopShopPromoCodesResult,
-) {
+): ShopPromoCodeStopListResponseDto {
   return {
     results: result.results.map(toShopPromoCodeResponse),
     succeeded_ids: result.succeededIds,

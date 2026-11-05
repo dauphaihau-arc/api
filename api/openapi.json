@@ -15150,7 +15150,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/ShopProductImportResponseDto"
                 }
               }
             }
@@ -15383,7 +15383,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/ShopProductImportResponseDto"
                 }
               }
             }
@@ -32030,7 +32030,11 @@
             "type": "number"
           },
           "product_scope": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "all",
+              "specific"
+            ]
           },
           "product_ids": {
             "description": "Product public ids (prod_…).",
@@ -32054,7 +32058,13 @@
             "type": "string"
           },
           "status": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "scheduled",
+              "active",
+              "ended",
+              "cancelled"
+            ]
           },
           "cancelled_at": {
             "type": "string",
@@ -32352,10 +32362,18 @@
             "type": "string"
           },
           "visibility": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "public",
+              "code_only"
+            ]
           },
           "product_scope": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "all",
+              "specific"
+            ]
           },
           "product_ids": {
             "description": "Product public ids (prod_…).",
@@ -32405,7 +32423,13 @@
             "type": "string"
           },
           "status": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "scheduled",
+              "active",
+              "ended",
+              "cancelled"
+            ]
           },
           "cancelled_at": {
             "type": "string",
@@ -35931,6 +35955,73 @@
             "format": "uuid"
           }
         }
+      },
+      "ShopProductImportResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Import public id (imp_…)."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "processing",
+              "completed",
+              "failed"
+            ]
+          },
+          "filename": {
+            "type": "string"
+          },
+          "template_version": {
+            "type": "string"
+          },
+          "total_rows": {
+            "type": "number"
+          },
+          "processed_rows": {
+            "type": "number"
+          },
+          "created_rows": {
+            "type": "number"
+          },
+          "failed_rows": {
+            "type": "number"
+          },
+          "unprocessed_rows": {
+            "type": "number"
+          },
+          "error_message": {
+            "type": "string"
+          },
+          "completed_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "filename",
+          "template_version",
+          "total_rows",
+          "processed_rows",
+          "created_rows",
+          "failed_rows",
+          "unprocessed_rows",
+          "created_at",
+          "updated_at"
+        ]
       },
       "ShopProductReviewImageVariantResponseDto": {
         "type": "object",

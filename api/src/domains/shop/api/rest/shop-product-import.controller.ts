@@ -41,8 +41,8 @@ import {
 import { ProductImportExceptionsFilter } from './errors/product-import-exceptions.filter';
 import { shopProductImportControllerErrorResponses } from './errors/shop-error-responses';
 import {
+  ShopProductImportResponseDto,
   toShopProductImportResponse,
-  type ShopProductImportResponse,
 } from './responses/product-import.response';
 
 @Controller('shops/:shop_id/products/imports')
@@ -127,7 +127,7 @@ export class ShopProductImportController {
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('shop_id') shopPublicId: string,
     @UploadedFile() file?: UploadedProductImportFile,
-  ): Promise<ShopProductImportResponse> {
+  ): Promise<ShopProductImportResponseDto> {
     const shopId = (await this.shopAccessService.resolveManageableShopByPublicId(currentUser, shopPublicId)).id;
 
     return toShopProductImportResponse(
@@ -148,7 +148,7 @@ export class ShopProductImportController {
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('shop_id') shopPublicId: string,
     @Param('import_id') importPublicId: string,
-  ): Promise<ShopProductImportResponse> {
+  ): Promise<ShopProductImportResponseDto> {
     const shopId = (await this.shopAccessService.resolveManageableShopByPublicId(currentUser, shopPublicId)).id;
     const importId = await this.productImportLookupService.resolvePublicId(importPublicId);
 

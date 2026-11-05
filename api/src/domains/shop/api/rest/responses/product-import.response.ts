@@ -1,24 +1,51 @@
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import type { ProductImportSummary } from '~/domains/product/app/ports/product-import.types';
+import { ProductImportStatus } from '~/domains/product/domain/enums/product-import-status.enum';
 
-export interface ShopProductImportResponse {
-  id: string;
-  status: string;
-  filename: string;
-  template_version: string;
-  total_rows: number;
-  processed_rows: number;
-  created_rows: number;
-  failed_rows: number;
-  unprocessed_rows: number;
+export class ShopProductImportResponseDto {
+  @ApiProperty({ description: 'Import public id (imp_…).' })
+  id!: string;
+
+  @ApiProperty({ enum: ProductImportStatus })
+  status!: ProductImportStatus;
+
+  @ApiProperty()
+  filename!: string;
+
+  @ApiProperty()
+  template_version!: string;
+
+  @ApiProperty()
+  total_rows!: number;
+
+  @ApiProperty()
+  processed_rows!: number;
+
+  @ApiProperty()
+  created_rows!: number;
+
+  @ApiProperty()
+  failed_rows!: number;
+
+  @ApiProperty()
+  unprocessed_rows!: number;
+
+  @ApiPropertyOptional()
   error_message?: string;
+
+  @ApiPropertyOptional({ type: String, format: 'date-time' })
   completed_at?: string;
-  created_at: string;
-  updated_at: string;
+
+  @ApiProperty({ type: String, format: 'date-time' })
+  created_at!: string;
+
+  @ApiProperty({ type: String, format: 'date-time' })
+  updated_at!: string;
 }
 
 export function toShopProductImportResponse(
   productImport: ProductImportSummary,
-): ShopProductImportResponse {
+): ShopProductImportResponseDto {
   return {
     id: productImport.publicId,
     status: productImport.status,
