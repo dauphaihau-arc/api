@@ -1,4 +1,6 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  ApiExtraModels, ApiProperty, ApiPropertyOptional, getSchemaPath,
+} from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { ProductReviewStatus } from '~/domains/product/domain/enums/product-review-status.enum';
 import { PublicProductImageVariantResponseDto } from '../../storefront/responses/public-product-response.dto';
@@ -17,6 +19,7 @@ export class MyProductReviewProductResponseDto {
   shop_slug!: string;
 }
 
+@ApiExtraModels(PublicProductImageVariantResponseDto)
 export class MyProductReviewImageResponseDto {
   @ApiProperty()
   id!: string;
@@ -40,7 +43,8 @@ export class MyProductReviewImageResponseDto {
   variants_generated_at?: Date;
 
   @ApiPropertyOptional({
-    type: Object,
+    type: 'object',
+    additionalProperties: { $ref: getSchemaPath(PublicProductImageVariantResponseDto) },
     description: 'Named image variants keyed by variant name.',
   })
   variants?: Record<string, PublicProductImageVariantResponseDto>;

@@ -6,11 +6,19 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiParam,
+  ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
 import { SkipThrottle } from '@nestjs/throttler';
 import { ApiErrorResponses } from '~/platform/http/api-error-responses.decorator';
 import { OptionalJwtAuthGuard } from '~/domains/auth/api/guard/optional-jwt-auth.guard';
+import {
+  PRODUCT_PUBLIC_LIST_DEFAULT_LIMIT,
+  PRODUCT_PUBLIC_LIST_DEFAULT_PAGE,
+  PRODUCT_PUBLIC_LIST_MAX_LIMIT,
+} from '~/domains/product/app/product.constants';
+import { ProductWhoMade } from '~/domains/product/domain/enums/product-who-made.enum';
+import { CATEGORY_PUBLIC_ID_PATTERN } from '~/domains/category/app/category-public-id';
 import { productControllerErrorResponses } from '../errors/product-error-responses';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import type { Request, Response } from 'express';
@@ -21,7 +29,7 @@ import { ListPublicProductsUseCase } from '../../../app/use-cases/list-public-pr
 import { SuggestPublicProductsUseCase } from '../../../app/use-cases/suggest-public-products/suggest-public-products.use-case';
 import { ListPublicProductReviewsUseCase } from '../../../app/use-cases/list-public-product-reviews/list-public-product-reviews.use-case';
 import { ListPublicProductReviewImagesQueryDto } from './dto/list-public-product-review-images.query.dto';
-import { ListPublicProductsQueryDto } from './dto/list-public-products.query.dto';
+import { ListPublicProductsQueryDto, PUBLIC_PRODUCT_SORT_ORDERS } from './dto/list-public-products.query.dto';
 import { ListPublicProductReviewsQueryDto } from './dto/list-public-product-reviews.query.dto';
 import { ListPublicProductsQueryPipe } from './pipes/list-public-products-query.pipe';
 import { SuggestPublicProductsQueryDto } from './dto/suggest-public-products.query.dto';
@@ -101,7 +109,102 @@ export class ProductController {
   @Header('Vary', STOREFRONT_CACHE_VARY_HEADER)
   @ApiOperation({
     summary: 'List products',
-    description: 'Returns public products matching the supplied filters.',
+    description:
+      'Returns public products matching the supplied filters. Any query ' +
+      'parameter other than those listed here is rejected with ' +
+      '`VALIDATION_FAILED`; attribute filters are passed as ' +
+      '`attr_<attribute_id>` parameters.',
+  })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    type: 'number',
+    minimum: 1,
+    default: PRODUCT_PUBLIC_LIST_DEFAULT_PAGE,
+    description: 'Page number, 1-based.',
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    type: 'number',
+    minimum: 1,
+    maximum: PRODUCT_PUBLIC_LIST_MAX_LIMIT,
+    default: PRODUCT_PUBLIC_LIST_DEFAULT_LIMIT,
+    description: 'Page size.',
+  })
+  @ApiQuery({
+    name: 'category_id',
+    required: false,
+    type: 'string',
+    pattern: CATEGORY_PUBLIC_ID_PATTERN.source,
+    description:
+      'Category public id; matches products in that category and its descendants.',
+  })
+  @ApiQuery({
+    name: 'search',
+    required: false,
+    type: 'string',
+    description: 'Free-text search over product titles.',
+  })
+  @ApiQuery({
+    name: 's',
+    required: false,
+    type: 'string',
+    deprecated: true,
+    description:
+      'Deprecated alias of `search`; when supplied it takes precedence over `search`.',
+  })
+  @ApiQuery({
+    name: 'title',
+    required: false,
+    type: 'string',
+    description: 'Title substring filter.',
+  })
+  @ApiQuery({
+    name: 'is_digital',
+    required: false,
+    type: 'boolean',
+    description: 'Restrict to digital (`true`) or physical (`false`) products.',
+  })
+  @ApiQuery({
+    name: 'who_made',
+    required: false,
+    type: 'string',
+    enum: ProductWhoMade,
+    description: 'Maker attribution filter.',
+  })
+  @ApiQuery({
+    name: 'min_price',
+    required: false,
+    type: 'integer',
+    minimum: 0,
+    description: 'Minimum price in minor units, inclusive.',
+  })
+  @ApiQuery({
+    name: 'max_price',
+    required: false,
+    type: 'integer',
+    minimum: 0,
+    description: 'Maximum price in minor units, inclusive.',
+  })
+  @ApiQuery({
+    name: 'order',
+    required: false,
+    type: 'string',
+    enum: PUBLIC_PRODUCT_SORT_ORDERS,
+    description: 'Sort order.',
+  })
+  @ApiQuery({
+    name: 'attr_{attribute_id}',
+    required: false,
+    type: 'string',
+    isArray: true,
+    description:
+      'Attribute filter, one parameter per attribute where `{attribute_id}` is ' +
+      'the attribute id. Repeat the parameter (or pass a comma-separated ' +
+      'value) to match any of several option values. Dynamic name: any ' +
+      '`attr_*` parameter is accepted, and other unknown parameters are ' +
+      'rejected.',
   })
   @ApiErrorResponses(productControllerErrorResponses.list)
   @ApiOkResponse({

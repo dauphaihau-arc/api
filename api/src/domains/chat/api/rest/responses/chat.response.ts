@@ -103,7 +103,12 @@ export class ChatMessageResponseDto {
   @ApiProperty()
   message_type!: string;
 
-  @ApiProperty({ type: Object, nullable: true })
+  @ApiProperty({
+    type: 'object',
+    additionalProperties: true,
+    nullable: true,
+    description: 'Free-form message metadata; null when the message carries none.',
+  })
   metadata!: Record<string, unknown> | null;
 
   @ApiProperty({ type: String, format: 'date-time', nullable: true })

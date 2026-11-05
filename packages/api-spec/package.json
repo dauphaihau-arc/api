@@ -1,6 +1,6 @@
 {
   "name": "@dauphaihau-arc/api-spec",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "description": "Arc API OpenAPI contract (generated from the Nest API in preview mode)",
   "license": "UNLICENSED",
   "private": false,

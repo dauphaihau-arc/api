@@ -21,7 +21,7 @@ import {
 } from '../../../../app/product.constants';
 import type { PublicProductSortOrder } from '../../../../app/product.types';
 
-const PUBLIC_PRODUCT_SORT_ORDERS: PublicProductSortOrder[] = [
+export const PUBLIC_PRODUCT_SORT_ORDERS: PublicProductSortOrder[] = [
   'newest',
   'price_asc',
   'price_desc',
