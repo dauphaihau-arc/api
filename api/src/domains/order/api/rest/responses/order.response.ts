@@ -1114,10 +1114,54 @@ export class ShopDashboardResponseDto {
   top_selling_products!: ShopDashboardTopProductResponseDto[];
 }
 
+/**
+ * The admin order surface keeps its own product snapshot so a legacy selection
+ * without option ids can be documented truthfully without loosening the
+ * storefront contract.
+ */
+export class AdminOrderSelectedOptionResponseDto {
+  @ApiProperty({
+    required: false,
+    description: 'Option id. Omitted on snapshots that predate option ids.',
+  })
+  option_id?: string;
+
+  @ApiProperty()
+  option_name!: string;
+
+  @ApiProperty({
+    required: false,
+    description: 'Option value id. Omitted on snapshots that predate option ids.',
+  })
+  value_id?: string;
+
+  @ApiProperty()
+  value!: string;
+}
+
+export class AdminOrderProductRefResponseDto {
+  @ApiProperty({ description: 'Product public id (prod_…).' })
+  id!: string;
+
+  @ApiProperty()
+  slug!: string;
+
+  @ApiProperty({ type: OrderProductShopRefResponseDto })
+  @Type(() => OrderProductShopRefResponseDto)
+  shop!: OrderProductShopRefResponseDto;
+
+  @ApiProperty({ type: [AdminOrderSelectedOptionResponseDto] })
+  @Type(() => AdminOrderSelectedOptionResponseDto)
+  selected_options!: AdminOrderSelectedOptionResponseDto[];
+
+  @ApiProperty({ type: Object, description: 'Reserved; always an empty object.' })
+  shipping!: Record<string, never>;
+}
+
 export class AdminOrderProductLineResponseDto {
-  @ApiProperty({ type: OrderProductRefResponseDto })
-  @Type(() => OrderProductRefResponseDto)
-  product!: OrderProductRefResponseDto;
+  @ApiProperty({ type: AdminOrderProductRefResponseDto })
+  @Type(() => AdminOrderProductRefResponseDto)
+  product!: AdminOrderProductRefResponseDto;
 
   @ApiProperty({ type: OrderInventorySkuResponseDto })
   @Type(() => OrderInventorySkuResponseDto)
@@ -1138,8 +1182,13 @@ export class AdminOrderProductLineResponseDto {
   @ApiProperty()
   amount_minor!: number;
 
-  @ApiProperty()
-  original_amount_minor!: number;
+  @ApiProperty({
+    type: Number,
+    nullable: true,
+    description:
+      'Pre-discount amount in minor units, or null when the Order item recorded none.',
+  })
+  original_amount_minor!: number | null;
 
   @ApiProperty()
   promo_discount_minor!: number;
@@ -1911,7 +1960,9 @@ export function toMyOrderDetailResponse(order: MyOrderDetail) {
   };
 }
 
-export function toAdminOrderDetailResponse(order: AdminOrderDetail) {
+export function toAdminOrderDetailResponse(
+  order: AdminOrderDetail,
+): AdminOrderDetailResponseDto {
   return {
     order: {
       id: order.publicId,
@@ -1982,7 +2033,9 @@ export function toAdminOrderDetailResponse(order: AdminOrderDetail) {
   };
 }
 
-export function toAdminOrderListResponse(result: AdminOrderListResult) {
+export function toAdminOrderListResponse(
+  result: AdminOrderListResult,
+): AdminOrderListResponseDto {
   return {
     results: result.results.map((order) => ({
       id: order.publicId,

@@ -1,6 +1,7 @@
 import {
   internalServerErrorExample,
   rateLimitErrorExample,
+  validationErrorExample,
 } from '~/platform/http/api-error-examples';
 import {
   missingRequiredPermissionsErrorExample,
@@ -276,6 +277,12 @@ export const adminCommissionScheduleControllerErrorResponses = {
   },
   record: {
     400: [
+      validationErrorExample([
+        {
+          field: 'rate_basis_points',
+          messages: ['rate_basis_points must be an integer number'],
+        },
+      ]),
       {
         code: 'INVALID_COMMISSION_RATE',
         message:

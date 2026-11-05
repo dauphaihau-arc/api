@@ -10,13 +10,14 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import {
-  ApiCookieAuth, ApiExcludeController,
+  ApiCookieAuth,
   ApiOkResponse,
   ApiOperation,
   ApiParam,
   ApiTags,
 } from '@nestjs/swagger';
 import { RequirePermissions } from '~/platform/decorators/require-permissions.decorator';
+import { ApiErrorResponses } from '~/platform/http/api-error-responses.decorator';
 import { JwtAuthGuard } from '~/domains/auth/api/guard/jwt-auth.guard';
 import { PermissionsGuard } from '~/domains/auth/api/guard/permissions.guard';
 import { ListAdminOrdersUseCase } from '../../app/use-cases/list-admin-orders/list-admin-orders.use-case';
@@ -29,6 +30,7 @@ import { UpdateAdminOrderRefundDto } from './dto/update-admin-order-refund.dto';
 import { UpdateAdminOrderStatusDto } from './dto/update-admin-order-status.dto';
 import { OrderPublicIdLookup } from '../../app/services/order-public-id-lookup.service';
 import { OrderExceptionsFilter } from './errors/order-exceptions.filter';
+import { adminOrderControllerErrorResponses } from './errors/order-error-responses';
 import {
   AdminOrderDetailResponseDto,
   AdminOrderListResponseDto,
@@ -44,9 +46,9 @@ import {
 @UseFilters(OrderExceptionsFilter)
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @RequirePermissions('orders.manage')
-@ApiExcludeController()
 @ApiTags('Admin Orders')
 @ApiCookieAuth('accessCookie')
+@ApiErrorResponses(adminOrderControllerErrorResponses.controller)
 export class AdminOrderController {
   constructor(
     private readonly listAdminOrdersUseCase: ListAdminOrdersUseCase,
@@ -64,6 +66,7 @@ export class AdminOrderController {
     description: 'Paginated admin order list.',
     type: AdminOrderListResponseDto,
   })
+  @ApiErrorResponses(adminOrderControllerErrorResponses.list)
   async list(@Query() query: ListAdminOrdersQueryDto) {
     return toAdminOrderListResponse(
       await this.listAdminOrdersUseCase.execute(query),
@@ -78,6 +81,7 @@ export class AdminOrderController {
     description: 'Per-order financial breakdown.',
     type: AdminOrderFinancialBreakdownResponseDto,
   })
+  @ApiErrorResponses(adminOrderControllerErrorResponses.financialBreakdown)
   async financialBreakdown(@Param('order_id') publicId: string) {
     const orderId = await this.orderPublicIdLookup.resolveOrderPublicId(publicId);
     return toAdminOrderFinancialBreakdownResponse(
@@ -93,6 +97,7 @@ export class AdminOrderController {
     description: 'Admin order detail.',
     type: AdminOrderDetailResponseDto,
   })
+  @ApiErrorResponses(adminOrderControllerErrorResponses.detail)
   async detail(@Param('order_id') publicId: string) {
     const orderId = await this.orderPublicIdLookup.resolveOrderPublicId(publicId);
     return toAdminOrderDetailResponse(
@@ -108,6 +113,7 @@ export class AdminOrderController {
     description: 'Updated admin order detail.',
     type: AdminOrderDetailResponseDto,
   })
+  @ApiErrorResponses(adminOrderControllerErrorResponses.updateStatus)
   async updateStatus(
     @Param('order_id') publicId: string,
     @Body() body: UpdateAdminOrderStatusDto,
@@ -126,6 +132,7 @@ export class AdminOrderController {
     description: 'Updated admin order detail.',
     type: AdminOrderDetailResponseDto,
   })
+  @ApiErrorResponses(adminOrderControllerErrorResponses.updateRefund)
   async updateRefund(
     @Param('order_id') publicId: string,
     @Body() body: UpdateAdminOrderRefundDto,

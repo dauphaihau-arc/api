@@ -2670,6 +2670,1647 @@
         ]
       }
     },
+    "/v1/roles": {
+      "get": {
+        "description": "Returns every role key an operator may assign to a user, sorted by key.",
+        "operationId": "Roles_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Roles sorted by key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleListResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "AUTH_REQUIRED": {
+                    "summary": "Authentication is required",
+                    "value": {
+                      "status_code": 401,
+                      "code": "AUTH_REQUIRED",
+                      "message": "Authentication is required"
+                    }
+                  },
+                  "ACCESS_TOKEN_MISSING": {
+                    "summary": "Access token is missing",
+                    "value": {
+                      "status_code": 401,
+                      "code": "ACCESS_TOKEN_MISSING",
+                      "message": "Access token is missing"
+                    }
+                  },
+                  "ACCESS_TOKEN_EXPIRED": {
+                    "summary": "Access token has expired",
+                    "value": {
+                      "status_code": 401,
+                      "code": "ACCESS_TOKEN_EXPIRED",
+                      "message": "Access token has expired"
+                    }
+                  },
+                  "ACCESS_TOKEN_INVALID": {
+                    "summary": "Access token is invalid",
+                    "value": {
+                      "status_code": 401,
+                      "code": "ACCESS_TOKEN_INVALID",
+                      "message": "Access token is invalid"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing required permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "MISSING_REQUIRED_PERMISSIONS": {
+                    "summary": "Missing required permissions",
+                    "value": {
+                      "status_code": 403,
+                      "code": "MISSING_REQUIRED_PERMISSIONS",
+                      "message": "Missing required permissions"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "RATE_LIMIT_EXCEEDED": {
+                    "summary": "Too Many Requests",
+                    "value": {
+                      "status_code": 429,
+                      "code": "RATE_LIMIT_EXCEEDED",
+                      "message": "Too Many Requests"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "INTERNAL_SERVER_ERROR": {
+                    "summary": "Internal server error",
+                    "value": {
+                      "status_code": 500,
+                      "code": "INTERNAL_SERVER_ERROR",
+                      "message": "Internal server error"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "summary": "List assignable roles",
+        "tags": [
+          "Admin Roles"
+        ]
+      }
+    },
+    "/v1/admin/audit-logs": {
+      "get": {
+        "operationId": "AdminAuditLog_list",
+        "parameters": [
+          {
+            "name": "page",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 200,
+              "type": "string"
+            }
+          },
+          {
+            "name": "action",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 200,
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "actor_email",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 200,
+              "type": "string"
+            }
+          },
+          {
+            "name": "entity_id",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 200,
+              "type": "string"
+            }
+          },
+          {
+            "name": "entity_type",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 200,
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated audit trail across audited entity types.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditLogListResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "VALIDATION_FAILED": {
+                    "summary": "Validation failed",
+                    "value": {
+                      "status_code": 400,
+                      "code": "VALIDATION_FAILED",
+                      "message": "Validation failed",
+                      "details": {
+                        "fields": [
+                          {
+                            "field": "action",
+                            "messages": [
+                              "action must be an array"
+                            ]
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "AUTH_REQUIRED": {
+                    "summary": "Authentication is required",
+                    "value": {
+                      "status_code": 401,
+                      "code": "AUTH_REQUIRED",
+                      "message": "Authentication is required"
+                    }
+                  },
+                  "ACCESS_TOKEN_MISSING": {
+                    "summary": "Access token is missing",
+                    "value": {
+                      "status_code": 401,
+                      "code": "ACCESS_TOKEN_MISSING",
+                      "message": "Access token is missing"
+                    }
+                  },
+                  "ACCESS_TOKEN_EXPIRED": {
+                    "summary": "Access token has expired",
+                    "value": {
+                      "status_code": 401,
+                      "code": "ACCESS_TOKEN_EXPIRED",
+                      "message": "Access token has expired"
+                    }
+                  },
+                  "ACCESS_TOKEN_INVALID": {
+                    "summary": "Access token is invalid",
+                    "value": {
+                      "status_code": 401,
+                      "code": "ACCESS_TOKEN_INVALID",
+                      "message": "Access token is invalid"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing required permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "MISSING_REQUIRED_PERMISSIONS": {
+                    "summary": "Missing required permissions",
+                    "value": {
+                      "status_code": 403,
+                      "code": "MISSING_REQUIRED_PERMISSIONS",
+                      "message": "Missing required permissions"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "RATE_LIMIT_EXCEEDED": {
+                    "summary": "Too Many Requests",
+                    "value": {
+                      "status_code": 429,
+                      "code": "RATE_LIMIT_EXCEEDED",
+                      "message": "Too Many Requests"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "INTERNAL_SERVER_ERROR": {
+                    "summary": "Internal server error",
+                    "value": {
+                      "status_code": 500,
+                      "code": "INTERNAL_SERVER_ERROR",
+                      "message": "Internal server error"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "summary": "List audit logs",
+        "tags": [
+          "Admin Audit Logs"
+        ]
+      }
+    },
+    "/v1/admin/audit-logs/export": {
+      "get": {
+        "description": "Returns up to the newest 10,000 entries matching the filters as a CSV attachment.",
+        "operationId": "AdminAuditLog_export",
+        "parameters": [
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 200,
+              "type": "string"
+            }
+          },
+          {
+            "name": "action",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 200,
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "actor_email",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 200,
+              "type": "string"
+            }
+          },
+          {
+            "name": "entity_id",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 200,
+              "type": "string"
+            }
+          },
+          {
+            "name": "entity_type",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 200,
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Audit log entries as a UTF-8 CSV attachment.",
+            "headers": {
+              "Content-Disposition": {
+                "description": "Attachment filename suggested for the download.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "VALIDATION_FAILED": {
+                    "summary": "Validation failed",
+                    "value": {
+                      "status_code": 400,
+                      "code": "VALIDATION_FAILED",
+                      "message": "Validation failed",
+                      "details": {
+                        "fields": [
+                          {
+                            "field": "entity_type",
+                            "messages": [
+                              "entity_type must be an array"
+                            ]
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "AUTH_REQUIRED": {
+                    "summary": "Authentication is required",
+                    "value": {
+                      "status_code": 401,
+                      "code": "AUTH_REQUIRED",
+                      "message": "Authentication is required"
+                    }
+                  },
+                  "ACCESS_TOKEN_MISSING": {
+                    "summary": "Access token is missing",
+                    "value": {
+                      "status_code": 401,
+                      "code": "ACCESS_TOKEN_MISSING",
+                      "message": "Access token is missing"
+                    }
+                  },
+                  "ACCESS_TOKEN_EXPIRED": {
+                    "summary": "Access token has expired",
+                    "value": {
+                      "status_code": 401,
+                      "code": "ACCESS_TOKEN_EXPIRED",
+                      "message": "Access token has expired"
+                    }
+                  },
+                  "ACCESS_TOKEN_INVALID": {
+                    "summary": "Access token is invalid",
+                    "value": {
+                      "status_code": 401,
+                      "code": "ACCESS_TOKEN_INVALID",
+                      "message": "Access token is invalid"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing required permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "MISSING_REQUIRED_PERMISSIONS": {
+                    "summary": "Missing required permissions",
+                    "value": {
+                      "status_code": 403,
+                      "code": "MISSING_REQUIRED_PERMISSIONS",
+                      "message": "Missing required permissions"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "RATE_LIMIT_EXCEEDED": {
+                    "summary": "Too Many Requests",
+                    "value": {
+                      "status_code": 429,
+                      "code": "RATE_LIMIT_EXCEEDED",
+                      "message": "Too Many Requests"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "INTERNAL_SERVER_ERROR": {
+                    "summary": "Internal server error",
+                    "value": {
+                      "status_code": 500,
+                      "code": "INTERNAL_SERVER_ERROR",
+                      "message": "Internal server error"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "summary": "Export audit logs as CSV",
+        "tags": [
+          "Admin Audit Logs"
+        ]
+      }
+    },
+    "/v1/users": {
+      "get": {
+        "description": "Paginated user directory. `sort` accepts `field:direction` with the fields createdAt, email, displayName and status.",
+        "operationId": "User_users",
+        "parameters": [
+          {
+            "name": "page",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "sort",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 200,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated user list.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserListResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "VALIDATION_FAILED": {
+                    "summary": "Validation failed",
+                    "value": {
+                      "status_code": 400,
+                      "code": "VALIDATION_FAILED",
+                      "message": "Validation failed",
+                      "details": {
+                        "fields": [
+                          {
+                            "field": "page",
+                            "messages": [
+                              "page must be an integer number"
+                            ]
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "AUTH_REQUIRED": {
+                    "summary": "Authentication is required",
+                    "value": {
+                      "status_code": 401,
+                      "code": "AUTH_REQUIRED",
+                      "message": "Authentication is required"
+                    }
+                  },
+                  "ACCESS_TOKEN_MISSING": {
+                    "summary": "Access token is missing",
+                    "value": {
+                      "status_code": 401,
+                      "code": "ACCESS_TOKEN_MISSING",
+                      "message": "Access token is missing"
+                    }
+                  },
+                  "ACCESS_TOKEN_EXPIRED": {
+                    "summary": "Access token has expired",
+                    "value": {
+                      "status_code": 401,
+                      "code": "ACCESS_TOKEN_EXPIRED",
+                      "message": "Access token has expired"
+                    }
+                  },
+                  "ACCESS_TOKEN_INVALID": {
+                    "summary": "Access token is invalid",
+                    "value": {
+                      "status_code": 401,
+                      "code": "ACCESS_TOKEN_INVALID",
+                      "message": "Access token is invalid"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing required permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "MISSING_REQUIRED_PERMISSIONS": {
+                    "summary": "Missing required permissions",
+                    "value": {
+                      "status_code": 403,
+                      "code": "MISSING_REQUIRED_PERMISSIONS",
+                      "message": "Missing required permissions"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "RATE_LIMIT_EXCEEDED": {
+                    "summary": "Too Many Requests",
+                    "value": {
+                      "status_code": 429,
+                      "code": "RATE_LIMIT_EXCEEDED",
+                      "message": "Too Many Requests"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "INTERNAL_SERVER_ERROR": {
+                    "summary": "Internal server error",
+                    "value": {
+                      "status_code": 500,
+                      "code": "INTERNAL_SERVER_ERROR",
+                      "message": "Internal server error"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "summary": "List users",
+        "tags": [
+          "Admin Users"
+        ]
+      },
+      "post": {
+        "operationId": "User_createUser",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateUserDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Created user.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "VALIDATION_FAILED": {
+                    "summary": "Validation failed",
+                    "value": {
+                      "status_code": 400,
+                      "code": "VALIDATION_FAILED",
+                      "message": "Validation failed",
+                      "details": {
+                        "fields": [
+                          {
+                            "field": "email",
+                            "messages": [
+                              "email must be an email"
+                            ]
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "AUTH_REQUIRED": {
+                    "summary": "Authentication is required",
+                    "value": {
+                      "status_code": 401,
+                      "code": "AUTH_REQUIRED",
+                      "message": "Authentication is required"
+                    }
+                  },
+                  "ACCESS_TOKEN_MISSING": {
+                    "summary": "Access token is missing",
+                    "value": {
+                      "status_code": 401,
+                      "code": "ACCESS_TOKEN_MISSING",
+                      "message": "Access token is missing"
+                    }
+                  },
+                  "ACCESS_TOKEN_EXPIRED": {
+                    "summary": "Access token has expired",
+                    "value": {
+                      "status_code": 401,
+                      "code": "ACCESS_TOKEN_EXPIRED",
+                      "message": "Access token has expired"
+                    }
+                  },
+                  "ACCESS_TOKEN_INVALID": {
+                    "summary": "Access token is invalid",
+                    "value": {
+                      "status_code": 401,
+                      "code": "ACCESS_TOKEN_INVALID",
+                      "message": "Access token is invalid"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Only admins can create users",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "ACTOR_NOT_ALLOWED_TO_CREATE_USERS": {
+                    "summary": "Only admins can create users",
+                    "value": {
+                      "status_code": 403,
+                      "code": "ACTOR_NOT_ALLOWED_TO_CREATE_USERS",
+                      "message": "Only admins can create users"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Email is already registered",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "EMAIL_ALREADY_REGISTERED": {
+                    "summary": "Email is already registered",
+                    "value": {
+                      "status_code": 409,
+                      "code": "EMAIL_ALREADY_REGISTERED",
+                      "message": "Email is already registered"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "RATE_LIMIT_EXCEEDED": {
+                    "summary": "Too Many Requests",
+                    "value": {
+                      "status_code": 429,
+                      "code": "RATE_LIMIT_EXCEEDED",
+                      "message": "Too Many Requests"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "INTERNAL_SERVER_ERROR": {
+                    "summary": "Internal server error",
+                    "value": {
+                      "status_code": 500,
+                      "code": "INTERNAL_SERVER_ERROR",
+                      "message": "Internal server error"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "summary": "Create a user",
+        "tags": [
+          "Admin Users"
+        ]
+      }
+    },
+    "/v1/users/{id}": {
+      "get": {
+        "operationId": "User_user",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User detail.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "AUTH_REQUIRED": {
+                    "summary": "Authentication is required",
+                    "value": {
+                      "status_code": 401,
+                      "code": "AUTH_REQUIRED",
+                      "message": "Authentication is required"
+                    }
+                  },
+                  "ACCESS_TOKEN_MISSING": {
+                    "summary": "Access token is missing",
+                    "value": {
+                      "status_code": 401,
+                      "code": "ACCESS_TOKEN_MISSING",
+                      "message": "Access token is missing"
+                    }
+                  },
+                  "ACCESS_TOKEN_EXPIRED": {
+                    "summary": "Access token has expired",
+                    "value": {
+                      "status_code": 401,
+                      "code": "ACCESS_TOKEN_EXPIRED",
+                      "message": "Access token has expired"
+                    }
+                  },
+                  "ACCESS_TOKEN_INVALID": {
+                    "summary": "Access token is invalid",
+                    "value": {
+                      "status_code": 401,
+                      "code": "ACCESS_TOKEN_INVALID",
+                      "message": "Access token is invalid"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing required permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "MISSING_REQUIRED_PERMISSIONS": {
+                    "summary": "Missing required permissions",
+                    "value": {
+                      "status_code": 403,
+                      "code": "MISSING_REQUIRED_PERMISSIONS",
+                      "message": "Missing required permissions"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "User was not found\n\nUser was not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "USER_NOT_FOUND": {
+                    "summary": "User was not found",
+                    "value": {
+                      "status_code": 404,
+                      "code": "USER_NOT_FOUND",
+                      "message": "User was not found"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "RATE_LIMIT_EXCEEDED": {
+                    "summary": "Too Many Requests",
+                    "value": {
+                      "status_code": 429,
+                      "code": "RATE_LIMIT_EXCEEDED",
+                      "message": "Too Many Requests"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "INTERNAL_SERVER_ERROR": {
+                    "summary": "Internal server error",
+                    "value": {
+                      "status_code": 500,
+                      "code": "INTERNAL_SERVER_ERROR",
+                      "message": "Internal server error"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "summary": "Get a user by id",
+        "tags": [
+          "Admin Users"
+        ]
+      },
+      "patch": {
+        "description": "Updates the profile fields and, when sent, replaces the avatar image. The version guards against a stale write.",
+        "operationId": "User_updateUser",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "version"
+                ],
+                "properties": {
+                  "version": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "display_name": {
+                    "type": "string"
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "active",
+                      "disabled"
+                    ]
+                  },
+                  "avatar": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated user.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "VALIDATION_FAILED": {
+                    "summary": "Validation failed",
+                    "value": {
+                      "status_code": 400,
+                      "code": "VALIDATION_FAILED",
+                      "message": "Validation failed",
+                      "details": {
+                        "fields": [
+                          {
+                            "field": "version",
+                            "messages": [
+                              "version must be a number"
+                            ]
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "AVATAR_IMAGE_INVALID_TYPE": {
+                    "summary": "Avatar file must be an image",
+                    "value": {
+                      "status_code": 400,
+                      "code": "AVATAR_IMAGE_INVALID_TYPE",
+                      "message": "Avatar file must be an image"
+                    }
+                  },
+                  "AVATAR_IMAGE_EMPTY": {
+                    "summary": "Avatar file is empty",
+                    "value": {
+                      "status_code": 400,
+                      "code": "AVATAR_IMAGE_EMPTY",
+                      "message": "Avatar file is empty"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "AUTH_REQUIRED": {
+                    "summary": "Authentication is required",
+                    "value": {
+                      "status_code": 401,
+                      "code": "AUTH_REQUIRED",
+                      "message": "Authentication is required"
+                    }
+                  },
+                  "ACCESS_TOKEN_MISSING": {
+                    "summary": "Access token is missing",
+                    "value": {
+                      "status_code": 401,
+                      "code": "ACCESS_TOKEN_MISSING",
+                      "message": "Access token is missing"
+                    }
+                  },
+                  "ACCESS_TOKEN_EXPIRED": {
+                    "summary": "Access token has expired",
+                    "value": {
+                      "status_code": 401,
+                      "code": "ACCESS_TOKEN_EXPIRED",
+                      "message": "Access token has expired"
+                    }
+                  },
+                  "ACCESS_TOKEN_INVALID": {
+                    "summary": "Access token is invalid",
+                    "value": {
+                      "status_code": 401,
+                      "code": "ACCESS_TOKEN_INVALID",
+                      "message": "Access token is invalid"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Only admins can update users",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "ACTOR_NOT_ALLOWED_TO_UPDATE_USERS": {
+                    "summary": "Only admins can update users",
+                    "value": {
+                      "status_code": 403,
+                      "code": "ACTOR_NOT_ALLOWED_TO_UPDATE_USERS",
+                      "message": "Only admins can update users"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "User was not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "USER_NOT_FOUND": {
+                    "summary": "User was not found",
+                    "value": {
+                      "status_code": 404,
+                      "code": "USER_NOT_FOUND",
+                      "message": "User was not found"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "User was updated by another request. Refresh and retry with the latest version.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "USER_VERSION_CONFLICT": {
+                    "summary": "User was updated by another request. Refresh and retry with the latest version.",
+                    "value": {
+                      "status_code": 409,
+                      "code": "USER_VERSION_CONFLICT",
+                      "message": "User was updated by another request. Refresh and retry with the latest version."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "RATE_LIMIT_EXCEEDED": {
+                    "summary": "Too Many Requests",
+                    "value": {
+                      "status_code": 429,
+                      "code": "RATE_LIMIT_EXCEEDED",
+                      "message": "Too Many Requests"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "INTERNAL_SERVER_ERROR": {
+                    "summary": "Internal server error",
+                    "value": {
+                      "status_code": 500,
+                      "code": "INTERNAL_SERVER_ERROR",
+                      "message": "Internal server error"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "summary": "Update a user",
+        "tags": [
+          "Admin Users"
+        ]
+      }
+    },
+    "/v1/users/{id}/roles": {
+      "patch": {
+        "description": "Replaces the whole role set. An empty array removes every role; the last admin and super admin keep their role.",
+        "operationId": "User_assignRoles",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignUserRolesDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated user.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "VALIDATION_FAILED": {
+                    "summary": "Validation failed",
+                    "value": {
+                      "status_code": 400,
+                      "code": "VALIDATION_FAILED",
+                      "message": "Validation failed",
+                      "details": {
+                        "fields": [
+                          {
+                            "field": "roles",
+                            "messages": [
+                              "roles must be an array"
+                            ]
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "UNKNOWN_ROLE": {
+                    "summary": "Unknown role keys: owner",
+                    "value": {
+                      "status_code": 400,
+                      "code": "UNKNOWN_ROLE",
+                      "message": "Unknown role keys: owner"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "AUTH_REQUIRED": {
+                    "summary": "Authentication is required",
+                    "value": {
+                      "status_code": 401,
+                      "code": "AUTH_REQUIRED",
+                      "message": "Authentication is required"
+                    }
+                  },
+                  "ACCESS_TOKEN_MISSING": {
+                    "summary": "Access token is missing",
+                    "value": {
+                      "status_code": 401,
+                      "code": "ACCESS_TOKEN_MISSING",
+                      "message": "Access token is missing"
+                    }
+                  },
+                  "ACCESS_TOKEN_EXPIRED": {
+                    "summary": "Access token has expired",
+                    "value": {
+                      "status_code": 401,
+                      "code": "ACCESS_TOKEN_EXPIRED",
+                      "message": "Access token has expired"
+                    }
+                  },
+                  "ACCESS_TOKEN_INVALID": {
+                    "summary": "Access token is invalid",
+                    "value": {
+                      "status_code": 401,
+                      "code": "ACCESS_TOKEN_INVALID",
+                      "message": "Access token is invalid"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Only admins can assign user roles",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "ACTOR_NOT_ALLOWED_TO_ASSIGN_ROLES": {
+                    "summary": "Only admins can assign user roles",
+                    "value": {
+                      "status_code": 403,
+                      "code": "ACTOR_NOT_ALLOWED_TO_ASSIGN_ROLES",
+                      "message": "Only admins can assign user roles"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "User was not found\n\nUser was not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "USER_NOT_FOUND": {
+                    "summary": "User was not found",
+                    "value": {
+                      "status_code": 404,
+                      "code": "USER_NOT_FOUND",
+                      "message": "User was not found"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Actors cannot change their own roles",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "SELF_ROLE_CHANGE_NOT_ALLOWED": {
+                    "summary": "Actors cannot change their own roles",
+                    "value": {
+                      "status_code": 409,
+                      "code": "SELF_ROLE_CHANGE_NOT_ALLOWED",
+                      "message": "Actors cannot change their own roles"
+                    }
+                  },
+                  "LAST_ADMIN_ROLE_REQUIRED": {
+                    "summary": "At least one user must keep the admin role",
+                    "value": {
+                      "status_code": 409,
+                      "code": "LAST_ADMIN_ROLE_REQUIRED",
+                      "message": "At least one user must keep the admin role"
+                    }
+                  },
+                  "LAST_SUPER_ADMIN_ROLE_REQUIRED": {
+                    "summary": "At least one user must keep the super admin role",
+                    "value": {
+                      "status_code": 409,
+                      "code": "LAST_SUPER_ADMIN_ROLE_REQUIRED",
+                      "message": "At least one user must keep the super admin role"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "RATE_LIMIT_EXCEEDED": {
+                    "summary": "Too Many Requests",
+                    "value": {
+                      "status_code": 429,
+                      "code": "RATE_LIMIT_EXCEEDED",
+                      "message": "Too Many Requests"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "INTERNAL_SERVER_ERROR": {
+                    "summary": "Internal server error",
+                    "value": {
+                      "status_code": 500,
+                      "code": "INTERNAL_SERVER_ERROR",
+                      "message": "Internal server error"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "summary": "Replace the roles assigned to a user",
+        "tags": [
+          "Admin Users"
+        ]
+      }
+    },
     "/v1/me/addresses": {
       "get": {
         "operationId": "MeAddresses_list",
@@ -6233,6 +7874,197 @@
         "summary": "Stop promo codes",
         "tags": [
           "Shop Promo Codes"
+        ]
+      }
+    },
+    "/v1/admin/shops": {
+      "get": {
+        "operationId": "AdminShop_list",
+        "parameters": [
+          {
+            "name": "page",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated admin shop directory.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminShopListResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "VALIDATION_FAILED": {
+                    "summary": "Validation failed",
+                    "value": {
+                      "status_code": 400,
+                      "code": "VALIDATION_FAILED",
+                      "message": "Validation failed",
+                      "details": {
+                        "fields": [
+                          {
+                            "field": "page",
+                            "messages": [
+                              "page must be an integer number"
+                            ]
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "AUTH_REQUIRED": {
+                    "summary": "Authentication is required",
+                    "value": {
+                      "status_code": 401,
+                      "code": "AUTH_REQUIRED",
+                      "message": "Authentication is required"
+                    }
+                  },
+                  "ACCESS_TOKEN_MISSING": {
+                    "summary": "Access token is missing",
+                    "value": {
+                      "status_code": 401,
+                      "code": "ACCESS_TOKEN_MISSING",
+                      "message": "Access token is missing"
+                    }
+                  },
+                  "ACCESS_TOKEN_EXPIRED": {
+                    "summary": "Access token has expired",
+                    "value": {
+                      "status_code": 401,
+                      "code": "ACCESS_TOKEN_EXPIRED",
+                      "message": "Access token has expired"
+                    }
+                  },
+                  "ACCESS_TOKEN_INVALID": {
+                    "summary": "Access token is invalid",
+                    "value": {
+                      "status_code": 401,
+                      "code": "ACCESS_TOKEN_INVALID",
+                      "message": "Access token is invalid"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing required permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "MISSING_REQUIRED_PERMISSIONS": {
+                    "summary": "Missing required permissions",
+                    "value": {
+                      "status_code": 403,
+                      "code": "MISSING_REQUIRED_PERMISSIONS",
+                      "message": "Missing required permissions"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "RATE_LIMIT_EXCEEDED": {
+                    "summary": "Too Many Requests",
+                    "value": {
+                      "status_code": 429,
+                      "code": "RATE_LIMIT_EXCEEDED",
+                      "message": "Too Many Requests"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "INTERNAL_SERVER_ERROR": {
+                    "summary": "Internal server error",
+                    "value": {
+                      "status_code": 500,
+                      "code": "INTERNAL_SERVER_ERROR",
+                      "message": "Internal server error"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "summary": "List admin shops",
+        "tags": [
+          "Admin Shops"
         ]
       }
     },
@@ -22771,6 +24603,1011 @@
         ]
       }
     },
+    "/v1/admin/orders": {
+      "get": {
+        "operationId": "AdminOrder_list",
+        "parameters": [
+          {
+            "name": "page",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "canceled",
+                  "pending",
+                  "checkout_pending",
+                  "awaiting_payment",
+                  "expired",
+                  "paid",
+                  "refunded",
+                  "completed",
+                  "archived"
+                ]
+              }
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated admin order list.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminOrderListResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "VALIDATION_FAILED": {
+                    "summary": "Validation failed",
+                    "value": {
+                      "status_code": 400,
+                      "code": "VALIDATION_FAILED",
+                      "message": "Validation failed",
+                      "details": {
+                        "fields": [
+                          {
+                            "field": "status",
+                            "messages": [
+                              "status must be a valid enum value"
+                            ]
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "AUTH_REQUIRED": {
+                    "summary": "Authentication is required",
+                    "value": {
+                      "status_code": 401,
+                      "code": "AUTH_REQUIRED",
+                      "message": "Authentication is required"
+                    }
+                  },
+                  "ACCESS_TOKEN_MISSING": {
+                    "summary": "Access token is missing",
+                    "value": {
+                      "status_code": 401,
+                      "code": "ACCESS_TOKEN_MISSING",
+                      "message": "Access token is missing"
+                    }
+                  },
+                  "ACCESS_TOKEN_EXPIRED": {
+                    "summary": "Access token has expired",
+                    "value": {
+                      "status_code": 401,
+                      "code": "ACCESS_TOKEN_EXPIRED",
+                      "message": "Access token has expired"
+                    }
+                  },
+                  "ACCESS_TOKEN_INVALID": {
+                    "summary": "Access token is invalid",
+                    "value": {
+                      "status_code": 401,
+                      "code": "ACCESS_TOKEN_INVALID",
+                      "message": "Access token is invalid"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing required permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "MISSING_REQUIRED_PERMISSIONS": {
+                    "summary": "Missing required permissions",
+                    "value": {
+                      "status_code": 403,
+                      "code": "MISSING_REQUIRED_PERMISSIONS",
+                      "message": "Missing required permissions"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "RATE_LIMIT_EXCEEDED": {
+                    "summary": "Too Many Requests",
+                    "value": {
+                      "status_code": 429,
+                      "code": "RATE_LIMIT_EXCEEDED",
+                      "message": "Too Many Requests"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "INTERNAL_SERVER_ERROR": {
+                    "summary": "Internal server error",
+                    "value": {
+                      "status_code": 500,
+                      "code": "INTERNAL_SERVER_ERROR",
+                      "message": "Internal server error"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "summary": "List admin orders",
+        "tags": [
+          "Admin Orders"
+        ]
+      }
+    },
+    "/v1/admin/orders/{order_id}/financial-breakdown": {
+      "get": {
+        "operationId": "AdminOrder_financialBreakdown",
+        "parameters": [
+          {
+            "name": "order_id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Per-order financial breakdown.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminOrderFinancialBreakdownResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "AUTH_REQUIRED": {
+                    "summary": "Authentication is required",
+                    "value": {
+                      "status_code": 401,
+                      "code": "AUTH_REQUIRED",
+                      "message": "Authentication is required"
+                    }
+                  },
+                  "ACCESS_TOKEN_MISSING": {
+                    "summary": "Access token is missing",
+                    "value": {
+                      "status_code": 401,
+                      "code": "ACCESS_TOKEN_MISSING",
+                      "message": "Access token is missing"
+                    }
+                  },
+                  "ACCESS_TOKEN_EXPIRED": {
+                    "summary": "Access token has expired",
+                    "value": {
+                      "status_code": 401,
+                      "code": "ACCESS_TOKEN_EXPIRED",
+                      "message": "Access token has expired"
+                    }
+                  },
+                  "ACCESS_TOKEN_INVALID": {
+                    "summary": "Access token is invalid",
+                    "value": {
+                      "status_code": 401,
+                      "code": "ACCESS_TOKEN_INVALID",
+                      "message": "Access token is invalid"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing required permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "MISSING_REQUIRED_PERMISSIONS": {
+                    "summary": "Missing required permissions",
+                    "value": {
+                      "status_code": 403,
+                      "code": "MISSING_REQUIRED_PERMISSIONS",
+                      "message": "Missing required permissions"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Order was not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Order was not found",
+                    "value": {
+                      "status_code": 404,
+                      "code": "NOT_FOUND",
+                      "message": "Order was not found"
+                    }
+                  },
+                  "ORDER_NOT_FOUND": {
+                    "summary": "Order was not found",
+                    "value": {
+                      "status_code": 404,
+                      "code": "ORDER_NOT_FOUND",
+                      "message": "Order was not found"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "RATE_LIMIT_EXCEEDED": {
+                    "summary": "Too Many Requests",
+                    "value": {
+                      "status_code": 429,
+                      "code": "RATE_LIMIT_EXCEEDED",
+                      "message": "Too Many Requests"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "INTERNAL_SERVER_ERROR": {
+                    "summary": "Internal server error",
+                    "value": {
+                      "status_code": 500,
+                      "code": "INTERNAL_SERVER_ERROR",
+                      "message": "Internal server error"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "summary": "Get admin order financial breakdown",
+        "tags": [
+          "Admin Orders"
+        ]
+      }
+    },
+    "/v1/admin/orders/{order_id}": {
+      "get": {
+        "operationId": "AdminOrder_detail",
+        "parameters": [
+          {
+            "name": "order_id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Admin order detail.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminOrderDetailResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "AUTH_REQUIRED": {
+                    "summary": "Authentication is required",
+                    "value": {
+                      "status_code": 401,
+                      "code": "AUTH_REQUIRED",
+                      "message": "Authentication is required"
+                    }
+                  },
+                  "ACCESS_TOKEN_MISSING": {
+                    "summary": "Access token is missing",
+                    "value": {
+                      "status_code": 401,
+                      "code": "ACCESS_TOKEN_MISSING",
+                      "message": "Access token is missing"
+                    }
+                  },
+                  "ACCESS_TOKEN_EXPIRED": {
+                    "summary": "Access token has expired",
+                    "value": {
+                      "status_code": 401,
+                      "code": "ACCESS_TOKEN_EXPIRED",
+                      "message": "Access token has expired"
+                    }
+                  },
+                  "ACCESS_TOKEN_INVALID": {
+                    "summary": "Access token is invalid",
+                    "value": {
+                      "status_code": 401,
+                      "code": "ACCESS_TOKEN_INVALID",
+                      "message": "Access token is invalid"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing required permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "MISSING_REQUIRED_PERMISSIONS": {
+                    "summary": "Missing required permissions",
+                    "value": {
+                      "status_code": 403,
+                      "code": "MISSING_REQUIRED_PERMISSIONS",
+                      "message": "Missing required permissions"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Order was not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Order was not found",
+                    "value": {
+                      "status_code": 404,
+                      "code": "NOT_FOUND",
+                      "message": "Order was not found"
+                    }
+                  },
+                  "ORDER_NOT_FOUND": {
+                    "summary": "Order was not found",
+                    "value": {
+                      "status_code": 404,
+                      "code": "ORDER_NOT_FOUND",
+                      "message": "Order was not found"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "RATE_LIMIT_EXCEEDED": {
+                    "summary": "Too Many Requests",
+                    "value": {
+                      "status_code": 429,
+                      "code": "RATE_LIMIT_EXCEEDED",
+                      "message": "Too Many Requests"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "INTERNAL_SERVER_ERROR": {
+                    "summary": "Internal server error",
+                    "value": {
+                      "status_code": 500,
+                      "code": "INTERNAL_SERVER_ERROR",
+                      "message": "Internal server error"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "summary": "Get admin order detail",
+        "tags": [
+          "Admin Orders"
+        ]
+      }
+    },
+    "/v1/admin/orders/{order_id}/status": {
+      "patch": {
+        "operationId": "AdminOrder_updateStatus",
+        "parameters": [
+          {
+            "name": "order_id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAdminOrderStatusDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated admin order detail.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminOrderDetailResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "VALIDATION_FAILED": {
+                    "summary": "Validation failed",
+                    "value": {
+                      "status_code": 400,
+                      "code": "VALIDATION_FAILED",
+                      "message": "Validation failed",
+                      "details": {
+                        "fields": [
+                          {
+                            "field": "status",
+                            "messages": [
+                              "status must be a valid enum value"
+                            ]
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "ADMIN_ORDER_STATUS_OVERRIDE_NOT_ALLOWED": {
+                    "summary": "Admin overrides only support canceled, refunded, or archived",
+                    "value": {
+                      "status_code": 400,
+                      "code": "ADMIN_ORDER_STATUS_OVERRIDE_NOT_ALLOWED",
+                      "message": "Admin overrides only support canceled, refunded, or archived"
+                    }
+                  },
+                  "ADMIN_REFUND_NOT_ALLOWED": {
+                    "summary": "Unpaid or expired orders cannot be marked refunded",
+                    "value": {
+                      "status_code": 400,
+                      "code": "ADMIN_REFUND_NOT_ALLOWED",
+                      "message": "Unpaid or expired orders cannot be marked refunded"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "AUTH_REQUIRED": {
+                    "summary": "Authentication is required",
+                    "value": {
+                      "status_code": 401,
+                      "code": "AUTH_REQUIRED",
+                      "message": "Authentication is required"
+                    }
+                  },
+                  "ACCESS_TOKEN_MISSING": {
+                    "summary": "Access token is missing",
+                    "value": {
+                      "status_code": 401,
+                      "code": "ACCESS_TOKEN_MISSING",
+                      "message": "Access token is missing"
+                    }
+                  },
+                  "ACCESS_TOKEN_EXPIRED": {
+                    "summary": "Access token has expired",
+                    "value": {
+                      "status_code": 401,
+                      "code": "ACCESS_TOKEN_EXPIRED",
+                      "message": "Access token has expired"
+                    }
+                  },
+                  "ACCESS_TOKEN_INVALID": {
+                    "summary": "Access token is invalid",
+                    "value": {
+                      "status_code": 401,
+                      "code": "ACCESS_TOKEN_INVALID",
+                      "message": "Access token is invalid"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing required permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "MISSING_REQUIRED_PERMISSIONS": {
+                    "summary": "Missing required permissions",
+                    "value": {
+                      "status_code": 403,
+                      "code": "MISSING_REQUIRED_PERMISSIONS",
+                      "message": "Missing required permissions"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Order was not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Order was not found",
+                    "value": {
+                      "status_code": 404,
+                      "code": "NOT_FOUND",
+                      "message": "Order was not found"
+                    }
+                  },
+                  "ORDER_NOT_FOUND": {
+                    "summary": "Order was not found",
+                    "value": {
+                      "status_code": 404,
+                      "code": "ORDER_NOT_FOUND",
+                      "message": "Order was not found"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "RATE_LIMIT_EXCEEDED": {
+                    "summary": "Too Many Requests",
+                    "value": {
+                      "status_code": 429,
+                      "code": "RATE_LIMIT_EXCEEDED",
+                      "message": "Too Many Requests"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "INTERNAL_SERVER_ERROR": {
+                    "summary": "Internal server error",
+                    "value": {
+                      "status_code": 500,
+                      "code": "INTERNAL_SERVER_ERROR",
+                      "message": "Internal server error"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "summary": "Update admin order status",
+        "tags": [
+          "Admin Orders"
+        ]
+      }
+    },
+    "/v1/admin/orders/{order_id}/refund": {
+      "patch": {
+        "operationId": "AdminOrder_updateRefund",
+        "parameters": [
+          {
+            "name": "order_id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAdminOrderRefundDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated admin order detail.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminOrderDetailResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "VALIDATION_FAILED": {
+                    "summary": "Validation failed",
+                    "value": {
+                      "status_code": 400,
+                      "code": "VALIDATION_FAILED",
+                      "message": "Validation failed",
+                      "details": {
+                        "fields": [
+                          {
+                            "field": "action",
+                            "messages": [
+                              "action must be a valid enum value"
+                            ]
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "ADMIN_REFUND_REQUIRES_CARD_PAYMENT": {
+                    "summary": "Only card orders support refund actions",
+                    "value": {
+                      "status_code": 400,
+                      "code": "ADMIN_REFUND_REQUIRES_CARD_PAYMENT",
+                      "message": "Only card orders support refund actions"
+                    }
+                  },
+                  "ADMIN_REFUND_NOT_ALLOWED": {
+                    "summary": "Unpaid or expired orders cannot be marked refunded",
+                    "value": {
+                      "status_code": 400,
+                      "code": "ADMIN_REFUND_NOT_ALLOWED",
+                      "message": "Unpaid or expired orders cannot be marked refunded"
+                    }
+                  },
+                  "ADMIN_REFUND_ACTION_NOT_ALLOWED": {
+                    "summary": "This refund action is not allowed for the current order state",
+                    "value": {
+                      "status_code": 400,
+                      "code": "ADMIN_REFUND_ACTION_NOT_ALLOWED",
+                      "message": "This refund action is not allowed for the current order state"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "AUTH_REQUIRED": {
+                    "summary": "Authentication is required",
+                    "value": {
+                      "status_code": 401,
+                      "code": "AUTH_REQUIRED",
+                      "message": "Authentication is required"
+                    }
+                  },
+                  "ACCESS_TOKEN_MISSING": {
+                    "summary": "Access token is missing",
+                    "value": {
+                      "status_code": 401,
+                      "code": "ACCESS_TOKEN_MISSING",
+                      "message": "Access token is missing"
+                    }
+                  },
+                  "ACCESS_TOKEN_EXPIRED": {
+                    "summary": "Access token has expired",
+                    "value": {
+                      "status_code": 401,
+                      "code": "ACCESS_TOKEN_EXPIRED",
+                      "message": "Access token has expired"
+                    }
+                  },
+                  "ACCESS_TOKEN_INVALID": {
+                    "summary": "Access token is invalid",
+                    "value": {
+                      "status_code": 401,
+                      "code": "ACCESS_TOKEN_INVALID",
+                      "message": "Access token is invalid"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing required permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "MISSING_REQUIRED_PERMISSIONS": {
+                    "summary": "Missing required permissions",
+                    "value": {
+                      "status_code": 403,
+                      "code": "MISSING_REQUIRED_PERMISSIONS",
+                      "message": "Missing required permissions"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Order was not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Order was not found",
+                    "value": {
+                      "status_code": 404,
+                      "code": "NOT_FOUND",
+                      "message": "Order was not found"
+                    }
+                  },
+                  "ORDER_NOT_FOUND": {
+                    "summary": "Order was not found",
+                    "value": {
+                      "status_code": 404,
+                      "code": "ORDER_NOT_FOUND",
+                      "message": "Order was not found"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "RATE_LIMIT_EXCEEDED": {
+                    "summary": "Too Many Requests",
+                    "value": {
+                      "status_code": 429,
+                      "code": "RATE_LIMIT_EXCEEDED",
+                      "message": "Too Many Requests"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "INTERNAL_SERVER_ERROR": {
+                    "summary": "Internal server error",
+                    "value": {
+                      "status_code": 500,
+                      "code": "INTERNAL_SERVER_ERROR",
+                      "message": "Internal server error"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "summary": "Update admin order refund state",
+        "tags": [
+          "Admin Orders"
+        ]
+      }
+    },
     "/v1/me/orders": {
       "get": {
         "operationId": "MeOrder_list",
@@ -28468,6 +31305,852 @@
         ]
       }
     },
+    "/v1/admin/shops/{shop_id}/commission-schedule": {
+      "get": {
+        "operationId": "AdminCommissionSchedule_read",
+        "parameters": [
+          {
+            "name": "shop_id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminShopCommissionScheduleResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "AUTH_REQUIRED": {
+                    "summary": "Authentication is required",
+                    "value": {
+                      "status_code": 401,
+                      "code": "AUTH_REQUIRED",
+                      "message": "Authentication is required"
+                    }
+                  },
+                  "ACCESS_TOKEN_MISSING": {
+                    "summary": "Access token is missing",
+                    "value": {
+                      "status_code": 401,
+                      "code": "ACCESS_TOKEN_MISSING",
+                      "message": "Access token is missing"
+                    }
+                  },
+                  "ACCESS_TOKEN_EXPIRED": {
+                    "summary": "Access token has expired",
+                    "value": {
+                      "status_code": 401,
+                      "code": "ACCESS_TOKEN_EXPIRED",
+                      "message": "Access token has expired"
+                    }
+                  },
+                  "ACCESS_TOKEN_INVALID": {
+                    "summary": "Access token is invalid",
+                    "value": {
+                      "status_code": 401,
+                      "code": "ACCESS_TOKEN_INVALID",
+                      "message": "Access token is invalid"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing required permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "MISSING_REQUIRED_PERMISSIONS": {
+                    "summary": "Missing required permissions",
+                    "value": {
+                      "status_code": 403,
+                      "code": "MISSING_REQUIRED_PERMISSIONS",
+                      "message": "Missing required permissions"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Shop was not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Shop was not found",
+                    "value": {
+                      "status_code": 404,
+                      "code": "NOT_FOUND",
+                      "message": "Shop was not found"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "RATE_LIMIT_EXCEEDED": {
+                    "summary": "Too Many Requests",
+                    "value": {
+                      "status_code": 429,
+                      "code": "RATE_LIMIT_EXCEEDED",
+                      "message": "Too Many Requests"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "INTERNAL_SERVER_ERROR": {
+                    "summary": "Internal server error",
+                    "value": {
+                      "status_code": 500,
+                      "code": "INTERNAL_SERVER_ERROR",
+                      "message": "Internal server error"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "summary": "Get the Commission Schedule in force for a shop",
+        "tags": [
+          "Admin Finance"
+        ]
+      },
+      "put": {
+        "operationId": "AdminCommissionSchedule_record",
+        "parameters": [
+          {
+            "name": "shop_id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordCommissionScheduleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommissionScheduleResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "VALIDATION_FAILED": {
+                    "summary": "Validation failed",
+                    "value": {
+                      "status_code": 400,
+                      "code": "VALIDATION_FAILED",
+                      "message": "Validation failed",
+                      "details": {
+                        "fields": [
+                          {
+                            "field": "rate_basis_points",
+                            "messages": [
+                              "rate_basis_points must be an integer number"
+                            ]
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "INVALID_COMMISSION_RATE": {
+                    "summary": "Commission rate 20000 basis points is outside the allowed range 0 to 10000",
+                    "value": {
+                      "status_code": 400,
+                      "code": "INVALID_COMMISSION_RATE",
+                      "message": "Commission rate 20000 basis points is outside the allowed range 0 to 10000"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "AUTH_REQUIRED": {
+                    "summary": "Authentication is required",
+                    "value": {
+                      "status_code": 401,
+                      "code": "AUTH_REQUIRED",
+                      "message": "Authentication is required"
+                    }
+                  },
+                  "ACCESS_TOKEN_MISSING": {
+                    "summary": "Access token is missing",
+                    "value": {
+                      "status_code": 401,
+                      "code": "ACCESS_TOKEN_MISSING",
+                      "message": "Access token is missing"
+                    }
+                  },
+                  "ACCESS_TOKEN_EXPIRED": {
+                    "summary": "Access token has expired",
+                    "value": {
+                      "status_code": 401,
+                      "code": "ACCESS_TOKEN_EXPIRED",
+                      "message": "Access token has expired"
+                    }
+                  },
+                  "ACCESS_TOKEN_INVALID": {
+                    "summary": "Access token is invalid",
+                    "value": {
+                      "status_code": 401,
+                      "code": "ACCESS_TOKEN_INVALID",
+                      "message": "Access token is invalid"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing required permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "MISSING_REQUIRED_PERMISSIONS": {
+                    "summary": "Missing required permissions",
+                    "value": {
+                      "status_code": 403,
+                      "code": "MISSING_REQUIRED_PERMISSIONS",
+                      "message": "Missing required permissions"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Shop was not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Shop was not found",
+                    "value": {
+                      "status_code": 404,
+                      "code": "NOT_FOUND",
+                      "message": "Shop was not found"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "RATE_LIMIT_EXCEEDED": {
+                    "summary": "Too Many Requests",
+                    "value": {
+                      "status_code": 429,
+                      "code": "RATE_LIMIT_EXCEEDED",
+                      "message": "Too Many Requests"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "INTERNAL_SERVER_ERROR": {
+                    "summary": "Internal server error",
+                    "value": {
+                      "status_code": 500,
+                      "code": "INTERNAL_SERVER_ERROR",
+                      "message": "Internal server error"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "summary": "Record or replace a shop commission schedule",
+        "tags": [
+          "Admin Finance"
+        ]
+      }
+    },
+    "/v1/admin/shops/{shop_id}/finance/payout-account": {
+      "get": {
+        "operationId": "AdminPayoutAccount_read",
+        "parameters": [
+          {
+            "name": "shop_id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminShopPayoutAccountResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "AUTH_REQUIRED": {
+                    "summary": "Authentication is required",
+                    "value": {
+                      "status_code": 401,
+                      "code": "AUTH_REQUIRED",
+                      "message": "Authentication is required"
+                    }
+                  },
+                  "ACCESS_TOKEN_MISSING": {
+                    "summary": "Access token is missing",
+                    "value": {
+                      "status_code": 401,
+                      "code": "ACCESS_TOKEN_MISSING",
+                      "message": "Access token is missing"
+                    }
+                  },
+                  "ACCESS_TOKEN_EXPIRED": {
+                    "summary": "Access token has expired",
+                    "value": {
+                      "status_code": 401,
+                      "code": "ACCESS_TOKEN_EXPIRED",
+                      "message": "Access token has expired"
+                    }
+                  },
+                  "ACCESS_TOKEN_INVALID": {
+                    "summary": "Access token is invalid",
+                    "value": {
+                      "status_code": 401,
+                      "code": "ACCESS_TOKEN_INVALID",
+                      "message": "Access token is invalid"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing required permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "MISSING_REQUIRED_PERMISSIONS": {
+                    "summary": "Missing required permissions",
+                    "value": {
+                      "status_code": 403,
+                      "code": "MISSING_REQUIRED_PERMISSIONS",
+                      "message": "Missing required permissions"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Shop was not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Shop was not found",
+                    "value": {
+                      "status_code": 404,
+                      "code": "NOT_FOUND",
+                      "message": "Shop was not found"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "RATE_LIMIT_EXCEEDED": {
+                    "summary": "Too Many Requests",
+                    "value": {
+                      "status_code": 429,
+                      "code": "RATE_LIMIT_EXCEEDED",
+                      "message": "Too Many Requests"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "INTERNAL_SERVER_ERROR": {
+                    "summary": "Internal server error",
+                    "value": {
+                      "status_code": 500,
+                      "code": "INTERNAL_SERVER_ERROR",
+                      "message": "Internal server error"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "summary": "Get a shop Payout Account",
+        "tags": [
+          "Admin Finance"
+        ]
+      }
+    },
+    "/v1/admin/shops/{shop_id}/finance/payable": {
+      "get": {
+        "operationId": "AdminShopFinance_payable",
+        "parameters": [
+          {
+            "name": "shop_id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShopSellerPayableResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "AUTH_REQUIRED": {
+                    "summary": "Authentication is required",
+                    "value": {
+                      "status_code": 401,
+                      "code": "AUTH_REQUIRED",
+                      "message": "Authentication is required"
+                    }
+                  },
+                  "ACCESS_TOKEN_MISSING": {
+                    "summary": "Access token is missing",
+                    "value": {
+                      "status_code": 401,
+                      "code": "ACCESS_TOKEN_MISSING",
+                      "message": "Access token is missing"
+                    }
+                  },
+                  "ACCESS_TOKEN_EXPIRED": {
+                    "summary": "Access token has expired",
+                    "value": {
+                      "status_code": 401,
+                      "code": "ACCESS_TOKEN_EXPIRED",
+                      "message": "Access token has expired"
+                    }
+                  },
+                  "ACCESS_TOKEN_INVALID": {
+                    "summary": "Access token is invalid",
+                    "value": {
+                      "status_code": 401,
+                      "code": "ACCESS_TOKEN_INVALID",
+                      "message": "Access token is invalid"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing required permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "MISSING_REQUIRED_PERMISSIONS": {
+                    "summary": "Missing required permissions",
+                    "value": {
+                      "status_code": 403,
+                      "code": "MISSING_REQUIRED_PERMISSIONS",
+                      "message": "Missing required permissions"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Shop was not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Shop was not found",
+                    "value": {
+                      "status_code": 404,
+                      "code": "NOT_FOUND",
+                      "message": "Shop was not found"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "RATE_LIMIT_EXCEEDED": {
+                    "summary": "Too Many Requests",
+                    "value": {
+                      "status_code": 429,
+                      "code": "RATE_LIMIT_EXCEEDED",
+                      "message": "Too Many Requests"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "INTERNAL_SERVER_ERROR": {
+                    "summary": "Internal server error",
+                    "value": {
+                      "status_code": 500,
+                      "code": "INTERNAL_SERVER_ERROR",
+                      "message": "Internal server error"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "summary": "Get a shop Seller Payable",
+        "tags": [
+          "Admin Finance"
+        ]
+      }
+    },
+    "/v1/admin/shops/{shop_id}/finance/payouts": {
+      "get": {
+        "operationId": "AdminShopFinance_payouts",
+        "parameters": [
+          {
+            "name": "shop_id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShopPayoutHistoryResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "AUTH_REQUIRED": {
+                    "summary": "Authentication is required",
+                    "value": {
+                      "status_code": 401,
+                      "code": "AUTH_REQUIRED",
+                      "message": "Authentication is required"
+                    }
+                  },
+                  "ACCESS_TOKEN_MISSING": {
+                    "summary": "Access token is missing",
+                    "value": {
+                      "status_code": 401,
+                      "code": "ACCESS_TOKEN_MISSING",
+                      "message": "Access token is missing"
+                    }
+                  },
+                  "ACCESS_TOKEN_EXPIRED": {
+                    "summary": "Access token has expired",
+                    "value": {
+                      "status_code": 401,
+                      "code": "ACCESS_TOKEN_EXPIRED",
+                      "message": "Access token has expired"
+                    }
+                  },
+                  "ACCESS_TOKEN_INVALID": {
+                    "summary": "Access token is invalid",
+                    "value": {
+                      "status_code": 401,
+                      "code": "ACCESS_TOKEN_INVALID",
+                      "message": "Access token is invalid"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing required permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "MISSING_REQUIRED_PERMISSIONS": {
+                    "summary": "Missing required permissions",
+                    "value": {
+                      "status_code": 403,
+                      "code": "MISSING_REQUIRED_PERMISSIONS",
+                      "message": "Missing required permissions"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Shop was not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "Shop was not found",
+                    "value": {
+                      "status_code": 404,
+                      "code": "NOT_FOUND",
+                      "message": "Shop was not found"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "RATE_LIMIT_EXCEEDED": {
+                    "summary": "Too Many Requests",
+                    "value": {
+                      "status_code": 429,
+                      "code": "RATE_LIMIT_EXCEEDED",
+                      "message": "Too Many Requests"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "INTERNAL_SERVER_ERROR": {
+                    "summary": "Internal server error",
+                    "value": {
+                      "status_code": 500,
+                      "code": "INTERNAL_SERVER_ERROR",
+                      "message": "Internal server error"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "summary": "Get a shop Payout history, including Blocked Payouts",
+        "tags": [
+          "Admin Finance"
+        ]
+      }
+    },
     "/v1/webhooks/stripe": {
       "post": {
         "operationId": "StripeWebhook_handle",
@@ -30530,6 +34213,24 @@
   },
   "tags": [
     {
+      "name": "Admin Audit Logs"
+    },
+    {
+      "name": "Admin Finance"
+    },
+    {
+      "name": "Admin Orders"
+    },
+    {
+      "name": "Admin Roles"
+    },
+    {
+      "name": "Admin Shops"
+    },
+    {
+      "name": "Admin Users"
+    },
+    {
       "name": "Auth"
     },
     {
@@ -31654,6 +35355,242 @@
           "preferences"
         ]
       },
+      "RoleResponseDto": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "Stable role key."
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "name"
+        ]
+      },
+      "RoleListResponseDto": {
+        "type": "object",
+        "properties": {
+          "roles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RoleResponseDto"
+            }
+          }
+        },
+        "required": [
+          "roles"
+        ]
+      },
+      "AuditLogEntryResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Audit log entry id."
+          },
+          "action": {
+            "type": "string",
+            "description": "Recorded action, e.g. order.status.overridden."
+          },
+          "entity_type": {
+            "type": "string",
+            "description": "Audited entity type, e.g. order or product."
+          },
+          "entity_id": {
+            "type": "string",
+            "description": "Internal audited entity id."
+          },
+          "entity_public_id": {
+            "type": "string",
+            "description": "Audited entity public id (ord_…)."
+          },
+          "actor_email": {
+            "type": "string"
+          },
+          "request_id": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "object",
+            "description": "Metadata-only audit summary."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "action",
+          "entity_type",
+          "entity_id",
+          "summary",
+          "created_at"
+        ]
+      },
+      "AuditLogListResponseDto": {
+        "type": "object",
+        "properties": {
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AuditLogEntryResponseDto"
+            }
+          },
+          "page": {
+            "type": "number"
+          },
+          "limit": {
+            "type": "number"
+          },
+          "total_pages": {
+            "type": "number"
+          },
+          "total_results": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "results",
+          "page",
+          "limit",
+          "total_pages",
+          "total_results"
+        ]
+      },
+      "UserResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Internal user id."
+          },
+          "version": {
+            "type": "number"
+          },
+          "email": {
+            "type": "string"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "avatar": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "description": "Lifecycle status.",
+            "enum": [
+              "active",
+              "disabled"
+            ]
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "email",
+          "status",
+          "roles"
+        ]
+      },
+      "UserListMetaResponseDto": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "number"
+          },
+          "limit": {
+            "type": "number"
+          },
+          "total": {
+            "type": "number"
+          },
+          "total_pages": {
+            "type": "number"
+          },
+          "has_next_page": {
+            "type": "boolean"
+          },
+          "has_previous_page": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "page",
+          "limit",
+          "total",
+          "total_pages",
+          "has_next_page",
+          "has_previous_page"
+        ]
+      },
+      "UserListResponseDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UserResponseDto"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/UserListMetaResponseDto"
+          }
+        },
+        "required": [
+          "items",
+          "meta"
+        ]
+      },
+      "CreateUserDto": {
+        "type": "object",
+        "properties": {
+          "display_name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 8
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ]
+      },
+      "AssignUserRolesDto": {
+        "type": "object",
+        "properties": {
+          "roles": {
+            "description": "Role keys to assign. An empty array removes all roles.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "roles"
+        ]
+      },
       "MyAddressResponseDto": {
         "type": "object",
         "properties": {
@@ -32562,6 +36499,86 @@
           "results",
           "succeeded_ids",
           "failed"
+        ]
+      },
+      "AdminShopListEntryResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Shop public id (shop_…)."
+          },
+          "shop_name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "product_count": {
+            "type": "number",
+            "description": "Number of products in the shop, all statuses included."
+          },
+          "owner_email": {
+            "type": "string",
+            "description": "Owner email address used for support and triage."
+          },
+          "owner_name": {
+            "type": "string",
+            "nullable": true,
+            "description": "Owner display name; null when the account has none."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO-8601 instant the shop was created."
+          }
+        },
+        "required": [
+          "id",
+          "shop_name",
+          "slug",
+          "status",
+          "currency",
+          "product_count",
+          "owner_email",
+          "owner_name",
+          "created_at"
+        ]
+      },
+      "AdminShopListResponseDto": {
+        "type": "object",
+        "properties": {
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminShopListEntryResponseDto"
+            }
+          },
+          "page": {
+            "type": "number"
+          },
+          "limit": {
+            "type": "number"
+          },
+          "total_pages": {
+            "type": "number"
+          },
+          "total_results": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "results",
+          "page",
+          "limit",
+          "total_pages",
+          "total_results"
         ]
       },
       "ShippingRateResponseDto": {
@@ -38785,34 +42802,286 @@
           "slug"
         ]
       },
-      "OrderPaymentResponseDto": {
+      "MyOrderCustomerResponseDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "email"
+        ]
+      },
+      "AdminOrderPaymentTypeResponseDto": {
         "type": "object",
         "properties": {
           "type": {
             "type": "string"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "AdminOrderFulfillmentStatusResponseDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "AdminOrderListEntryResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Order public id (ord_…)."
           },
-          "refund_status": {
+          "order_number": {
+            "type": "string"
+          },
+          "shop": {
+            "$ref": "#/components/schemas/OrderShopRefResponseDto"
+          },
+          "customer": {
+            "$ref": "#/components/schemas/MyOrderCustomerResponseDto"
+          },
+          "payment": {
+            "$ref": "#/components/schemas/AdminOrderPaymentTypeResponseDto"
+          },
+          "status": {
+            "type": "string"
+          },
+          "fulfillment": {
+            "$ref": "#/components/schemas/AdminOrderFulfillmentStatusResponseDto"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "total_minor": {
+            "type": "number"
+          },
+          "cancel_reason": {
             "type": "string"
           },
           "refunded_at": {
             "type": "string",
             "format": "date-time"
           },
-          "refund_failed_reason": {
-            "type": "string"
-          },
-          "card_brand": {
-            "type": "string"
-          },
-          "card_last4": {
-            "type": "string"
-          },
-          "card_funding": {
-            "type": "string"
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
           }
         },
         "required": [
-          "type"
+          "id",
+          "order_number",
+          "shop",
+          "customer",
+          "payment",
+          "status",
+          "fulfillment",
+          "currency",
+          "total_minor",
+          "created_at"
+        ]
+      },
+      "AdminOrderListResponseDto": {
+        "type": "object",
+        "properties": {
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminOrderListEntryResponseDto"
+            }
+          },
+          "page": {
+            "type": "number"
+          },
+          "limit": {
+            "type": "number"
+          },
+          "total_pages": {
+            "type": "number"
+          },
+          "total_results": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "results",
+          "page",
+          "limit",
+          "total_pages",
+          "total_results"
+        ]
+      },
+      "OrderPayoutAvailabilityResponseDto": {
+        "type": "object",
+        "properties": {
+          "recorded": {
+            "type": "boolean",
+            "description": "Whether Finance recorded that this Order Seller Payable became available, i.e. that every required unit was delivered.",
+            "example": true
+          },
+          "available_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "The delivery the availability followed. Null until it is recorded; never derived from the Order status.",
+            "example": "2026-11-02T10:00:00.000Z"
+          }
+        },
+        "required": [
+          "recorded",
+          "available_at"
+        ]
+      },
+      "OrderPayoutAttributionResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Public id of the Payout (pay_…).",
+            "example": "pay_2f5a91c4b7de"
+          },
+          "state": {
+            "type": "string",
+            "description": "`pending` while the Payout provider transfer may still move the money, `paid` once it settled.",
+            "enum": [
+              "pending",
+              "paid"
+            ],
+            "example": "paid"
+          },
+          "amount_minor": {
+            "type": "number",
+            "description": "This Order share of the Payout, in minor units of the shop Settlement Currency.",
+            "example": 2500
+          },
+          "paid_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Instant the Payout settled. Null while it is still `pending`.",
+            "example": "2026-11-03T09:00:00.000Z"
+          }
+        },
+        "required": [
+          "id",
+          "state",
+          "amount_minor",
+          "paid_at"
+        ]
+      },
+      "OrderPayoutMethodResponseDto": {
+        "type": "object",
+        "properties": {
+          "account_status": {
+            "type": "string",
+            "description": "The shop Payout Account state. `missing` means the shop has no open Payout Account yet; the other values are the provider-reported status.",
+            "enum": [
+              "missing",
+              "onboarding",
+              "action_required",
+              "active",
+              "restricted",
+              "disabled"
+            ],
+            "example": "active"
+          },
+          "auto_payout_enabled": {
+            "type": "boolean",
+            "description": "Whether automatic Payout Runs may pay this shop without a manual request.",
+            "example": true
+          },
+          "auto_payout_day_of_month": {
+            "type": "number",
+            "description": "The platform day of month (UTC) on which automatic payouts run.",
+            "example": 15
+          },
+          "next_payout_date": {
+            "type": "string",
+            "format": "date",
+            "nullable": true,
+            "description": "The next automatic run date (UTC, day precision) for an active account with automatic payouts enabled; null otherwise. Never derived from the Order status.",
+            "example": "2026-11-15"
+          }
+        },
+        "required": [
+          "account_status",
+          "auto_payout_enabled",
+          "auto_payout_day_of_month",
+          "next_payout_date"
+        ]
+      },
+      "AdminOrderFinancialBreakdownResponseDto": {
+        "type": "object",
+        "properties": {
+          "order_id": {
+            "type": "string",
+            "description": "Order public id (ord_…)."
+          },
+          "currency": {
+            "type": "string",
+            "description": "Order currency (ISO 4217)."
+          },
+          "platform_commission_minor": {
+            "type": "number",
+            "nullable": true,
+            "description": "Platform commission frozen in the ledger for this Order, in minor units. Null when no Journal Entry basis exists."
+          },
+          "seller_payable_minor": {
+            "type": "number",
+            "nullable": true,
+            "description": "Seller Payable this Order still holds in the ledger, in minor units, refunds already netted. Null when no paid Journal Entry basis exists."
+          },
+          "availability": {
+            "$ref": "#/components/schemas/OrderPayoutAvailabilityResponseDto"
+          },
+          "payout": {
+            "nullable": true,
+            "description": "The newest Payout that claimed or paid this Order, or null when no Payout has claimed it yet.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/OrderPayoutAttributionResponseDto"
+              }
+            ]
+          },
+          "payout_method": {
+            "$ref": "#/components/schemas/OrderPayoutMethodResponseDto"
+          }
+        },
+        "required": [
+          "order_id",
+          "currency",
+          "platform_commission_minor",
+          "seller_payable_minor",
+          "availability",
+          "payout",
+          "payout_method"
+        ]
+      },
+      "AdminOrderPaymentResponseDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "details": {
+            "type": "object",
+            "nullable": true
+          }
+        },
+        "required": [
+          "type",
+          "details"
         ]
       },
       "OrderProductShopRefResponseDto": {
@@ -38826,30 +43095,30 @@
           "slug"
         ]
       },
-      "OrderSelectedOptionResponseDto": {
+      "AdminOrderSelectedOptionResponseDto": {
         "type": "object",
         "properties": {
           "option_id": {
-            "type": "string"
+            "type": "string",
+            "description": "Option id. Omitted on snapshots that predate option ids."
           },
           "option_name": {
             "type": "string"
           },
           "value_id": {
-            "type": "string"
+            "type": "string",
+            "description": "Option value id. Omitted on snapshots that predate option ids."
           },
           "value": {
             "type": "string"
           }
         },
         "required": [
-          "option_id",
           "option_name",
-          "value_id",
           "value"
         ]
       },
-      "OrderProductRefResponseDto": {
+      "AdminOrderProductRefResponseDto": {
         "type": "object",
         "properties": {
           "id": {
@@ -38865,7 +43134,7 @@
           "selected_options": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/OrderSelectedOptionResponseDto"
+              "$ref": "#/components/schemas/AdminOrderSelectedOptionResponseDto"
             }
           },
           "shipping": {
@@ -38889,116 +43158,11 @@
           }
         }
       },
-      "OrderReviewImageVariantResponseDto": {
-        "type": "object",
-        "properties": {
-          "url": {
-            "type": "string"
-          },
-          "width": {
-            "type": "number"
-          },
-          "height": {
-            "type": "number"
-          },
-          "format": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "url"
-        ]
-      },
-      "OrderReviewImageResponseDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "url": {
-            "type": "string"
-          },
-          "size_bytes": {
-            "type": "number"
-          },
-          "rank": {
-            "type": "number"
-          },
-          "variant_status": {
-            "type": "string"
-          },
-          "variant_error": {
-            "type": "string"
-          },
-          "variants_generated_at": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "variants": {
-            "type": "object",
-            "additionalProperties": {
-              "$ref": "#/components/schemas/OrderReviewImageVariantResponseDto"
-            },
-            "description": "Named image variants keyed by variant name."
-          }
-        },
-        "required": [
-          "id",
-          "url",
-          "rank"
-        ]
-      },
-      "OrderReviewResponseDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "rating": {
-            "type": "number"
-          },
-          "title": {
-            "type": "string"
-          },
-          "body": {
-            "type": "string"
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "published",
-              "hidden"
-            ]
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "updated_at": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "images": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/OrderReviewImageResponseDto"
-            }
-          }
-        },
-        "required": [
-          "id",
-          "rating",
-          "status",
-          "created_at",
-          "updated_at",
-          "images"
-        ]
-      },
-      "OrderProductLineResponseDto": {
+      "AdminOrderProductLineResponseDto": {
         "type": "object",
         "properties": {
           "product": {
-            "$ref": "#/components/schemas/OrderProductRefResponseDto"
+            "$ref": "#/components/schemas/AdminOrderProductRefResponseDto"
           },
           "inventory": {
             "$ref": "#/components/schemas/OrderInventorySkuResponseDto"
@@ -39013,9 +43177,6 @@
           "image_url": {
             "type": "string"
           },
-          "image_reference": {
-            "type": "string"
-          },
           "quantity": {
             "type": "number"
           },
@@ -39023,16 +43184,15 @@
             "type": "number"
           },
           "original_amount_minor": {
-            "type": "number"
+            "type": "number",
+            "nullable": true,
+            "description": "Pre-discount amount in minor units, or null when the Order item recorded none."
           },
           "promo_discount_minor": {
             "type": "number"
           },
           "currency": {
             "type": "string"
-          },
-          "my_review": {
-            "$ref": "#/components/schemas/OrderReviewResponseDto"
           }
         },
         "required": [
@@ -39381,6 +43541,43 @@
           "legacy_shipping"
         ]
       },
+      "OrderShippingAddressResponseDto": {
+        "type": "object",
+        "properties": {
+          "full_name": {
+            "type": "string"
+          },
+          "address1": {
+            "type": "string"
+          },
+          "address2": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
+          },
+          "country": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "zip": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "full_name",
+          "address1",
+          "city",
+          "country",
+          "state",
+          "zip"
+        ]
+      },
       "OrderShippingQuoteChargeUnitResponseDto": {
         "type": "object",
         "properties": {
@@ -39722,6 +43919,416 @@
           "currency"
         ]
       },
+      "AdminOrderDetailOrderResponseDto": {
+        "type": "object",
+        "properties": {
+          "currency": {
+            "type": "string"
+          },
+          "subtotal_minor": {
+            "type": "number"
+          },
+          "shipping_minor": {
+            "type": "number"
+          },
+          "discount_minor": {
+            "type": "number"
+          },
+          "sale_discount_minor": {
+            "type": "number"
+          },
+          "total_minor": {
+            "type": "number"
+          },
+          "id": {
+            "type": "string",
+            "description": "Order public id (ord_…)."
+          },
+          "order_number": {
+            "type": "string"
+          },
+          "shop": {
+            "$ref": "#/components/schemas/OrderShopRefResponseDto"
+          },
+          "customer": {
+            "$ref": "#/components/schemas/MyOrderCustomerResponseDto"
+          },
+          "payment": {
+            "$ref": "#/components/schemas/AdminOrderPaymentResponseDto"
+          },
+          "status": {
+            "type": "string"
+          },
+          "products": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminOrderProductLineResponseDto"
+            }
+          },
+          "promo_codes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OrderPromoCodeResponseDto"
+            }
+          },
+          "fulfillment": {
+            "$ref": "#/components/schemas/OrderFulfillmentSummaryResponseDto"
+          },
+          "shipping_address": {
+            "$ref": "#/components/schemas/OrderShippingAddressResponseDto"
+          },
+          "shipping": {
+            "$ref": "#/components/schemas/OrderShippingQuoteResponseDto"
+          },
+          "shipping_discount_minor": {
+            "type": "number"
+          },
+          "shipping_discounts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OrderShippingDiscountResponseDto"
+            }
+          },
+          "note": {
+            "type": "string"
+          },
+          "canceled_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "cancel_reason": {
+            "type": "string"
+          },
+          "refunded_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "currency",
+          "subtotal_minor",
+          "shipping_minor",
+          "discount_minor",
+          "sale_discount_minor",
+          "total_minor",
+          "id",
+          "order_number",
+          "shop",
+          "customer",
+          "payment",
+          "status",
+          "products",
+          "promo_codes",
+          "fulfillment",
+          "shipping_address",
+          "created_at"
+        ]
+      },
+      "AdminOrderDetailResponseDto": {
+        "type": "object",
+        "properties": {
+          "order": {
+            "$ref": "#/components/schemas/AdminOrderDetailOrderResponseDto"
+          }
+        },
+        "required": [
+          "order"
+        ]
+      },
+      "UpdateAdminOrderStatusDto": {
+        "type": "object",
+        "properties": {
+          "cancel_reason": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "status": {
+            "enum": [
+              "canceled",
+              "pending",
+              "checkout_pending",
+              "awaiting_payment",
+              "expired",
+              "paid",
+              "refunded",
+              "completed",
+              "archived"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "UpdateAdminOrderRefundDto": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "enum": [
+              "retry",
+              "mark_succeeded",
+              "mark_failed",
+              "mark_not_required"
+            ],
+            "type": "string"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 1000
+          }
+        },
+        "required": [
+          "action"
+        ]
+      },
+      "OrderPaymentResponseDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "refund_status": {
+            "type": "string"
+          },
+          "refunded_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "refund_failed_reason": {
+            "type": "string"
+          },
+          "card_brand": {
+            "type": "string"
+          },
+          "card_last4": {
+            "type": "string"
+          },
+          "card_funding": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "OrderSelectedOptionResponseDto": {
+        "type": "object",
+        "properties": {
+          "option_id": {
+            "type": "string"
+          },
+          "option_name": {
+            "type": "string"
+          },
+          "value_id": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "option_id",
+          "option_name",
+          "value_id",
+          "value"
+        ]
+      },
+      "OrderProductRefResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Product public id (prod_…)."
+          },
+          "slug": {
+            "type": "string"
+          },
+          "shop": {
+            "$ref": "#/components/schemas/OrderProductShopRefResponseDto"
+          },
+          "selected_options": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OrderSelectedOptionResponseDto"
+            }
+          },
+          "shipping": {
+            "type": "object",
+            "description": "Reserved; always an empty object."
+          }
+        },
+        "required": [
+          "id",
+          "slug",
+          "shop",
+          "selected_options",
+          "shipping"
+        ]
+      },
+      "OrderReviewImageVariantResponseDto": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "width": {
+            "type": "number"
+          },
+          "height": {
+            "type": "number"
+          },
+          "format": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ]
+      },
+      "OrderReviewImageResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "size_bytes": {
+            "type": "number"
+          },
+          "rank": {
+            "type": "number"
+          },
+          "variant_status": {
+            "type": "string"
+          },
+          "variant_error": {
+            "type": "string"
+          },
+          "variants_generated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "variants": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/OrderReviewImageVariantResponseDto"
+            },
+            "description": "Named image variants keyed by variant name."
+          }
+        },
+        "required": [
+          "id",
+          "url",
+          "rank"
+        ]
+      },
+      "OrderReviewResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "rating": {
+            "type": "number"
+          },
+          "title": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "published",
+              "hidden"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "images": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OrderReviewImageResponseDto"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "rating",
+          "status",
+          "created_at",
+          "updated_at",
+          "images"
+        ]
+      },
+      "OrderProductLineResponseDto": {
+        "type": "object",
+        "properties": {
+          "product": {
+            "$ref": "#/components/schemas/OrderProductRefResponseDto"
+          },
+          "inventory": {
+            "$ref": "#/components/schemas/OrderInventorySkuResponseDto"
+          },
+          "id": {
+            "type": "string",
+            "description": "Order item internal id."
+          },
+          "title": {
+            "type": "string"
+          },
+          "image_url": {
+            "type": "string"
+          },
+          "image_reference": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "amount_minor": {
+            "type": "number"
+          },
+          "original_amount_minor": {
+            "type": "number"
+          },
+          "promo_discount_minor": {
+            "type": "number"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "my_review": {
+            "$ref": "#/components/schemas/OrderReviewResponseDto"
+          }
+        },
+        "required": [
+          "product",
+          "inventory",
+          "id",
+          "title",
+          "quantity",
+          "amount_minor",
+          "original_amount_minor",
+          "promo_discount_minor",
+          "currency"
+        ]
+      },
       "OrderShopEntryResponseDto": {
         "type": "object",
         "properties": {
@@ -39838,54 +44445,6 @@
         },
         "required": [
           "order_shops"
-        ]
-      },
-      "MyOrderCustomerResponseDto": {
-        "type": "object",
-        "properties": {
-          "email": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "email"
-        ]
-      },
-      "OrderShippingAddressResponseDto": {
-        "type": "object",
-        "properties": {
-          "full_name": {
-            "type": "string"
-          },
-          "address1": {
-            "type": "string"
-          },
-          "address2": {
-            "type": "string"
-          },
-          "city": {
-            "type": "string"
-          },
-          "country": {
-            "type": "string"
-          },
-          "state": {
-            "type": "string"
-          },
-          "zip": {
-            "type": "string"
-          },
-          "phone": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "full_name",
-          "address1",
-          "city",
-          "country",
-          "state",
-          "zip"
         ]
       },
       "MyOrderDetailOrderShopResponseDto": {
@@ -41278,105 +45837,6 @@
           "payouts"
         ]
       },
-      "OrderPayoutAvailabilityResponseDto": {
-        "type": "object",
-        "properties": {
-          "recorded": {
-            "type": "boolean",
-            "description": "Whether Finance recorded that this Order Seller Payable became available, i.e. that every required unit was delivered.",
-            "example": true
-          },
-          "available_at": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true,
-            "description": "The delivery the availability followed. Null until it is recorded; never derived from the Order status.",
-            "example": "2026-11-02T10:00:00.000Z"
-          }
-        },
-        "required": [
-          "recorded",
-          "available_at"
-        ]
-      },
-      "OrderPayoutAttributionResponseDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "description": "Public id of the Payout (pay_…).",
-            "example": "pay_2f5a91c4b7de"
-          },
-          "state": {
-            "type": "string",
-            "description": "`pending` while the Payout provider transfer may still move the money, `paid` once it settled.",
-            "enum": [
-              "pending",
-              "paid"
-            ],
-            "example": "paid"
-          },
-          "amount_minor": {
-            "type": "number",
-            "description": "This Order share of the Payout, in minor units of the shop Settlement Currency.",
-            "example": 2500
-          },
-          "paid_at": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true,
-            "description": "Instant the Payout settled. Null while it is still `pending`.",
-            "example": "2026-11-03T09:00:00.000Z"
-          }
-        },
-        "required": [
-          "id",
-          "state",
-          "amount_minor",
-          "paid_at"
-        ]
-      },
-      "OrderPayoutMethodResponseDto": {
-        "type": "object",
-        "properties": {
-          "account_status": {
-            "type": "string",
-            "description": "The shop Payout Account state. `missing` means the shop has no open Payout Account yet; the other values are the provider-reported status.",
-            "enum": [
-              "missing",
-              "onboarding",
-              "action_required",
-              "active",
-              "restricted",
-              "disabled"
-            ],
-            "example": "active"
-          },
-          "auto_payout_enabled": {
-            "type": "boolean",
-            "description": "Whether automatic Payout Runs may pay this shop without a manual request.",
-            "example": true
-          },
-          "auto_payout_day_of_month": {
-            "type": "number",
-            "description": "The platform day of month (UTC) on which automatic payouts run.",
-            "example": 15
-          },
-          "next_payout_date": {
-            "type": "string",
-            "format": "date",
-            "nullable": true,
-            "description": "The next automatic run date (UTC, day precision) for an active account with automatic payouts enabled; null otherwise. Never derived from the Order status.",
-            "example": "2026-11-15"
-          }
-        },
-        "required": [
-          "account_status",
-          "auto_payout_enabled",
-          "auto_payout_day_of_month",
-          "next_payout_date"
-        ]
-      },
       "ShopOrderPayoutResponseDto": {
         "type": "object",
         "properties": {
@@ -41714,6 +46174,117 @@
         "required": [
           "url",
           "status"
+        ]
+      },
+      "CurrentCommissionScheduleResponseDto": {
+        "type": "object",
+        "properties": {
+          "effective_from": {
+            "type": "string",
+            "description": "Instant from which the rate takes effect (ISO-8601).",
+            "example": "2026-10-01T00:00:00.000Z"
+          },
+          "rate_basis_points": {
+            "type": "number",
+            "description": "Commission rate in basis points (1500 is 15.00%).",
+            "example": 1500
+          }
+        },
+        "required": [
+          "effective_from",
+          "rate_basis_points"
+        ]
+      },
+      "AdminShopCommissionScheduleResponseDto": {
+        "type": "object",
+        "properties": {
+          "shop_id": {
+            "type": "string",
+            "description": "Public id of the shop the schedule belongs to.",
+            "example": "shp_01HZY4T2M8R6N3Q7W9K1V0B5CD"
+          },
+          "schedule": {
+            "description": "The schedule in force now, or null when the shop has no schedule that has taken effect yet.",
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CurrentCommissionScheduleResponseDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "shop_id",
+          "schedule"
+        ]
+      },
+      "RecordCommissionScheduleDto": {
+        "type": "object",
+        "properties": {
+          "effective_from": {
+            "type": "string",
+            "description": "Instant from which the rate takes effect, as an ISO-8601 date string.",
+            "example": "2026-11-01T00:00:00.000Z"
+          },
+          "rate_basis_points": {
+            "type": "number",
+            "description": "Commission rate in basis points (1500 is 15.00%). The 0..10000 range is owned by the domain rule, so an out-of-range rate surfaces as INVALID_COMMISSION_RATE.",
+            "example": 1500
+          }
+        },
+        "required": [
+          "effective_from",
+          "rate_basis_points"
+        ]
+      },
+      "CommissionScheduleResponseDto": {
+        "type": "object",
+        "properties": {
+          "shop_id": {
+            "type": "string",
+            "description": "Public id of the shop the schedule belongs to.",
+            "example": "shp_01HZY4T2M8R6N3Q7W9K1V0B5CD"
+          },
+          "effective_from": {
+            "type": "string",
+            "description": "Instant from which the rate takes effect (ISO-8601).",
+            "example": "2026-11-01T00:00:00.000Z"
+          },
+          "rate_basis_points": {
+            "type": "number",
+            "description": "Commission rate in basis points (1500 is 15.00%).",
+            "example": 1500
+          }
+        },
+        "required": [
+          "shop_id",
+          "effective_from",
+          "rate_basis_points"
+        ]
+      },
+      "AdminShopPayoutAccountResponseDto": {
+        "type": "object",
+        "properties": {
+          "shop_id": {
+            "type": "string",
+            "description": "Public id of the shop the Payout Account belongs to.",
+            "example": "shop_01HZY4T2M8R6N3Q7W9K1V0B5CD"
+          },
+          "payout_account": {
+            "description": "The shop Payout Account, or null when none is onboarded.",
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PayoutAccountResponseDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "shop_id",
+          "payout_account"
         ]
       },
       "StripeWebhookAckResponseDto": {

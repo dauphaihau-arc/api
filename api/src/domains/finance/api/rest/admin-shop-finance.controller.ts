@@ -8,7 +8,6 @@ import {
 } from '@nestjs/common';
 import {
   ApiCookieAuth,
-  ApiExcludeController,
   ApiOkResponse,
   ApiOperation,
   ApiParam,
@@ -41,7 +40,6 @@ import {
 @UseFilters(FinanceExceptionsFilter)
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @RequirePermissions('finance.manage')
-@ApiExcludeController()
 @ApiTags('Admin Finance')
 @ApiCookieAuth('accessCookie')
 @ApiErrorResponses(adminShopFinanceControllerErrorResponses.controller)
