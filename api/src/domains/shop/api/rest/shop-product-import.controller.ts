@@ -16,6 +16,7 @@ import {
   ApiBody,
   ApiConsumes,
   ApiCookieAuth,
+  ApiOkResponse,
   ApiOperation,
   ApiParam,
   ApiTags,
@@ -66,6 +67,20 @@ export class ShopProductImportController {
   @ApiOperation({
     summary: 'Download import template',
     description: 'Downloads the XLSX template for importing shop products.',
+  })
+  @ApiOkResponse({
+    description: 'XLSX workbook the seller fills in and uploads back.',
+    content: {
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': {
+        schema: { type: 'string', format: 'binary' },
+      },
+    },
+    headers: {
+      'Content-Disposition': {
+        description: 'Attachment filename for the template workbook.',
+        schema: { type: 'string' },
+      },
+    },
   })
   @ApiErrorResponses(shopProductImportControllerErrorResponses.template)
   @ApiParam({ name: 'shop_id', type: String })
@@ -147,6 +162,20 @@ export class ShopProductImportController {
   @ApiOperation({
     summary: 'Download import report',
     description: 'Downloads the CSV report for a product import.',
+  })
+  @ApiOkResponse({
+    description: 'CSV report of the import outcome.',
+    content: {
+      'text/csv': {
+        schema: { type: 'string' },
+      },
+    },
+    headers: {
+      'Content-Disposition': {
+        description: 'Attachment filename for the report.',
+        schema: { type: 'string' },
+      },
+    },
   })
   @ApiErrorResponses(shopProductImportControllerErrorResponses.report)
   @ApiParam({ name: 'shop_id', type: String })

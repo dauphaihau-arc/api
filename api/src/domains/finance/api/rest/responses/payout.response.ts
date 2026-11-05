@@ -32,6 +32,7 @@ export class ShopPayoutResponseDto {
       'The shop Settlement Currency the amount left the balance in; equal to ' +
       '`currency`, kept explicit for the frozen quote.',
     example: 'USD',
+    type: String,
     nullable: true,
   })
   source_currency!: string | null;
@@ -42,6 +43,7 @@ export class ShopPayoutResponseDto {
       'currency this Payout was converted into. Null on Payouts claimed before ' +
       'platform-currency transfers.',
     example: 'USD',
+    type: String,
     nullable: true,
   })
   transfer_currency!: string | null;
@@ -51,6 +53,7 @@ export class ShopPayoutResponseDto {
       'The amount the provider transferred, in `transfer_currency` minor units. ' +
       'Null on Payouts claimed before platform-currency transfers.',
     example: 12_500,
+    type: Number,
     nullable: true,
   })
   transfer_amount_minor!: number | null;
@@ -60,6 +63,7 @@ export class ShopPayoutResponseDto {
       'The currency that landed in the Payout Account; equal to `currency` ' +
       'for a same-currency payout.',
     example: 'VND',
+    type: String,
     nullable: true,
   })
   target_currency!: string | null;
@@ -70,6 +74,7 @@ export class ShopPayoutResponseDto {
       '`transfer_amount_minor`, as text; `1` for an identity conversion. ' +
       'The provider rate into the account currency is in `provider_fx_rate`.',
     example: '1',
+    type: String,
     nullable: true,
   })
   fx_rate!: string | null;
@@ -79,6 +84,7 @@ export class ShopPayoutResponseDto {
       'The amount that landed in `target_currency` minor units: what the ' +
       'provider derived when it converted. Null until the provider reports one.',
     example: 317_500_000,
+    type: Number,
     nullable: true,
   })
   target_amount_minor!: number | null;
@@ -89,6 +95,7 @@ export class ShopPayoutResponseDto {
       'This is authoritative and supersedes `fx_rate`. Null when no conversion ' +
       'happened.',
     example: '25400.0000000000',
+    type: String,
     nullable: true,
   })
   provider_fx_rate!: string | null;
@@ -98,6 +105,7 @@ export class ShopPayoutResponseDto {
       'The historical conversion fee in `source_currency` minor units. The ' +
       'platform charges none, so new Payouts record zero.',
     example: 0,
+    type: Number,
     nullable: true,
   })
   fx_fee_minor!: number | null;
@@ -121,6 +129,7 @@ export class ShopPayoutResponseDto {
       'The platform month the Payout belongs to, as YYYY-MM; null on Payouts ' +
       'that predate the monthly allowance.',
     example: '2026-10',
+    type: String,
     nullable: true,
   })
   period!: string | null;
@@ -129,6 +138,7 @@ export class ShopPayoutResponseDto {
     description:
       'Why a Blocked or Failed Payout ended as it did; null while pending or paid.',
     example: 'no_payout_account',
+    type: String,
     nullable: true,
   })
   reason!: string | null;
@@ -136,6 +146,7 @@ export class ShopPayoutResponseDto {
   @ApiProperty({
     description: 'Instant the provider accepted the transfer, or null while it has not.',
     example: '2026-10-19T09:15:00.000Z',
+    type: String,
     nullable: true,
   })
   paid_at!: string | null;

@@ -1007,6 +1007,7 @@ export class ShopOrderDetailOrderResponseDto extends ShopOrderSummaryResponseDto
 
   @ApiProperty({
     nullable: true,
+    type: Number,
     description:
       'Platform Commission the ledger charged on this Order, in the Order currency.',
   })

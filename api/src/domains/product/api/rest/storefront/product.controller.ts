@@ -1,5 +1,5 @@
 import {
-  Controller, Get, Header, NotFoundException, Param, Query, Req, Res, UseGuards,
+  Controller, Get, Header, NotFoundException, Param, Query, Req, Res, UseGuards, applyDecorators,
 } from '@nestjs/common';
 import {
   ApiNotFoundResponse,
@@ -66,6 +66,107 @@ function setStorefrontProductCacheControl(response: Response, request: ProductRe
   );
 }
 
+/**
+ * Documents the query surface `ListPublicProductsQueryPipe` accepts. Both the
+ * product list and the facet list run the same pipe, so they must advertise
+ * the same parameters.
+ */
+function ApiListPublicProductsQueries() {
+  return applyDecorators(
+    ApiQuery({
+      name: 'page',
+      required: false,
+      type: 'number',
+      minimum: 1,
+      default: PRODUCT_PUBLIC_LIST_DEFAULT_PAGE,
+      description: 'Page number, 1-based.',
+    }),
+    ApiQuery({
+      name: 'limit',
+      required: false,
+      type: 'number',
+      minimum: 1,
+      maximum: PRODUCT_PUBLIC_LIST_MAX_LIMIT,
+      default: PRODUCT_PUBLIC_LIST_DEFAULT_LIMIT,
+      description: 'Page size.',
+    }),
+    ApiQuery({
+      name: 'category_id',
+      required: false,
+      type: 'string',
+      pattern: CATEGORY_PUBLIC_ID_PATTERN.source,
+      description:
+        'Category public id; matches products in that category and its descendants.',
+    }),
+    ApiQuery({
+      name: 'search',
+      required: false,
+      type: 'string',
+      description: 'Free-text search over product titles.',
+    }),
+    ApiQuery({
+      name: 's',
+      required: false,
+      type: 'string',
+      deprecated: true,
+      description:
+        'Deprecated alias of `search`; when supplied it takes precedence over `search`.',
+    }),
+    ApiQuery({
+      name: 'title',
+      required: false,
+      type: 'string',
+      description: 'Title substring filter.',
+    }),
+    ApiQuery({
+      name: 'is_digital',
+      required: false,
+      type: 'boolean',
+      description: 'Restrict to digital (`true`) or physical (`false`) products.',
+    }),
+    ApiQuery({
+      name: 'who_made',
+      required: false,
+      type: 'string',
+      enum: ProductWhoMade,
+      description: 'Maker attribution filter.',
+    }),
+    ApiQuery({
+      name: 'min_price',
+      required: false,
+      type: 'integer',
+      minimum: 0,
+      description: 'Minimum price in minor units, inclusive.',
+    }),
+    ApiQuery({
+      name: 'max_price',
+      required: false,
+      type: 'integer',
+      minimum: 0,
+      description: 'Maximum price in minor units, inclusive.',
+    }),
+    ApiQuery({
+      name: 'order',
+      required: false,
+      type: 'string',
+      enum: PUBLIC_PRODUCT_SORT_ORDERS,
+      description: 'Sort order.',
+    }),
+    ApiQuery({
+      name: 'attr_{attribute_id}',
+      required: false,
+      type: 'string',
+      isArray: true,
+      description:
+        'Attribute filter, one parameter per attribute where `{attribute_id}` is ' +
+        'the attribute id. Repeat the parameter (or pass a comma-separated ' +
+        'value) to match any of several option values. Dynamic name: any ' +
+        '`attr_*` parameter is accepted, and other unknown parameters are ' +
+        'rejected.',
+    }),
+  );
+}
+
 @Controller('products')
 @ApiTags('Products')
 @UseGuards(OptionalJwtAuthGuard)
@@ -115,97 +216,7 @@ export class ProductController {
       '`VALIDATION_FAILED`; attribute filters are passed as ' +
       '`attr_<attribute_id>` parameters.',
   })
-  @ApiQuery({
-    name: 'page',
-    required: false,
-    type: 'number',
-    minimum: 1,
-    default: PRODUCT_PUBLIC_LIST_DEFAULT_PAGE,
-    description: 'Page number, 1-based.',
-  })
-  @ApiQuery({
-    name: 'limit',
-    required: false,
-    type: 'number',
-    minimum: 1,
-    maximum: PRODUCT_PUBLIC_LIST_MAX_LIMIT,
-    default: PRODUCT_PUBLIC_LIST_DEFAULT_LIMIT,
-    description: 'Page size.',
-  })
-  @ApiQuery({
-    name: 'category_id',
-    required: false,
-    type: 'string',
-    pattern: CATEGORY_PUBLIC_ID_PATTERN.source,
-    description:
-      'Category public id; matches products in that category and its descendants.',
-  })
-  @ApiQuery({
-    name: 'search',
-    required: false,
-    type: 'string',
-    description: 'Free-text search over product titles.',
-  })
-  @ApiQuery({
-    name: 's',
-    required: false,
-    type: 'string',
-    deprecated: true,
-    description:
-      'Deprecated alias of `search`; when supplied it takes precedence over `search`.',
-  })
-  @ApiQuery({
-    name: 'title',
-    required: false,
-    type: 'string',
-    description: 'Title substring filter.',
-  })
-  @ApiQuery({
-    name: 'is_digital',
-    required: false,
-    type: 'boolean',
-    description: 'Restrict to digital (`true`) or physical (`false`) products.',
-  })
-  @ApiQuery({
-    name: 'who_made',
-    required: false,
-    type: 'string',
-    enum: ProductWhoMade,
-    description: 'Maker attribution filter.',
-  })
-  @ApiQuery({
-    name: 'min_price',
-    required: false,
-    type: 'integer',
-    minimum: 0,
-    description: 'Minimum price in minor units, inclusive.',
-  })
-  @ApiQuery({
-    name: 'max_price',
-    required: false,
-    type: 'integer',
-    minimum: 0,
-    description: 'Maximum price in minor units, inclusive.',
-  })
-  @ApiQuery({
-    name: 'order',
-    required: false,
-    type: 'string',
-    enum: PUBLIC_PRODUCT_SORT_ORDERS,
-    description: 'Sort order.',
-  })
-  @ApiQuery({
-    name: 'attr_{attribute_id}',
-    required: false,
-    type: 'string',
-    isArray: true,
-    description:
-      'Attribute filter, one parameter per attribute where `{attribute_id}` is ' +
-      'the attribute id. Repeat the parameter (or pass a comma-separated ' +
-      'value) to match any of several option values. Dynamic name: any ' +
-      '`attr_*` parameter is accepted, and other unknown parameters are ' +
-      'rejected.',
-  })
+  @ApiListPublicProductsQueries()
   @ApiErrorResponses(productControllerErrorResponses.list)
   @ApiOkResponse({
     description: 'Public product list.',
@@ -234,6 +245,7 @@ export class ProductController {
     summary: 'List product facets',
     description: 'Returns facets for filtering public products.',
   })
+  @ApiListPublicProductsQueries()
   @ApiErrorResponses(productControllerErrorResponses.facets)
   @ApiOkResponse({
     description: 'Public product facets.',

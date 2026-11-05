@@ -20,6 +20,7 @@ export class ShopSettlementCurrencyResponseDto {
     description:
       'The Settlement Currency this one replaced, or null for the shop\'s opening currency.',
     example: 'USD',
+    type: String,
     nullable: true,
   })
   previous_currency!: string | null;
@@ -34,6 +35,7 @@ export class ShopSettlementCurrencyResponseDto {
     description:
       'When the shop may change Settlement Currency again, or null when it never changed.',
     example: '2027-01-20T09:30:00.000Z',
+    type: String,
     nullable: true,
   })
   next_change_allowed_at!: string | null;
