@@ -56,6 +56,8 @@ describe('UpdateMyAddressUseCase', () => {
     const locationRepository: jest.Mocked<LocationReferenceRepository> = {
       findCurrentDatasetVersion: jest.fn(),
       findActiveCountries: jest.fn().mockResolvedValue([]),
+      findActiveCountry: jest.fn().mockResolvedValue(null),
+      findAddressRuleOverride: jest.fn().mockResolvedValue(null),
       findActiveAdministrativeAreas: jest.fn().mockResolvedValue(null),
     };
     const useCase = new UpdateMyAddressUseCase(repository, locationRepository);

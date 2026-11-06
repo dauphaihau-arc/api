@@ -2,6 +2,7 @@ import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
 import { LocationReferenceRepository } from '../app/ports/location-reference.repository';
 import type {
+  CountryAddressRuleOverride,
   LocationAdministrativeArea,
   LocationCountry,
   LocationDatasetVersion,
@@ -69,6 +70,59 @@ implements LocationReferenceRepository {
       hasAdministrativeAreas: row.has_administrative_areas,
       postalCodeRequired: row.postal_code_required,
     }));
+  }
+
+  async findActiveCountry(
+    countryCode: string,
+  ): Promise<LocationCountry | null> {
+    const rows = await this.entityManager.getConnection().execute<CountryRow[]>(
+      `
+        select
+          country.code,
+          country.name,
+          country.postal_code_required,
+          exists (
+            select 1
+            from location_administrative_areas area
+            where area.country_code = country.code
+              and area.is_active = true
+          ) as has_administrative_areas
+        from location_countries country
+        where country.code = ?
+          and country.is_active = true
+        limit 1
+      `,
+      [countryCode],
+    );
+
+    const row = rows[0];
+
+    return row
+      ? {
+        code: row.code,
+        name: row.name,
+        hasAdministrativeAreas: row.has_administrative_areas,
+        postalCodeRequired: row.postal_code_required,
+      }
+      : null;
+  }
+
+  async findAddressRuleOverride(
+    countryCode: string,
+  ): Promise<CountryAddressRuleOverride | null> {
+    const rows = await this.entityManager.getConnection().execute<
+      Array<{ rules: CountryAddressRuleOverride }>
+    >(
+      `
+        select rules
+        from country_address_rules
+        where country_code = ?
+        limit 1
+      `,
+      [countryCode],
+    );
+
+    return rows[0]?.rules ?? null;
   }
 
   async findActiveAdministrativeAreas(

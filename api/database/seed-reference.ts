@@ -8,6 +8,7 @@ import { PermissionEntity } from '~/domains/auth/infra/persistence/entities/perm
 import { RolePermissionEntity } from '~/domains/auth/infra/persistence/entities/role-permission.entity';
 import { RoleEntity } from '~/domains/auth/infra/persistence/entities/role.entity';
 import { LocationAdministrativeAreaEntity } from '~/domains/location/infra/persistence/entities/location-administrative-area.entity';
+import { CountryAddressRuleEntity } from '~/domains/location/infra/persistence/entities/country-address-rule.entity';
 import { LocationCountryEntity } from '~/domains/location/infra/persistence/entities/location-country.entity';
 import { LocationDatasetVersionEntity } from '~/domains/location/infra/persistence/entities/location-dataset-version.entity';
 import { seedAuthReferenceData } from './seeds/auth.seed';
@@ -27,6 +28,7 @@ async function main() {
       LocationCountryEntity,
       LocationAdministrativeAreaEntity,
       LocationDatasetVersionEntity,
+      CountryAddressRuleEntity,
     ],
   });
 

@@ -7,6 +7,7 @@ import { createHash } from 'node:crypto';
 export const LOCATION_ETAG_ROUTES = {
   countries: 'locations.countries',
   administrativeAreas: 'locations.countries.administrative-areas',
+  addressRules: 'locations.countries.address-rules',
 } as const;
 
 export function buildLocationEtag(input: {

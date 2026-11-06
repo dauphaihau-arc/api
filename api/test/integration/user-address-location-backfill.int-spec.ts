@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { MikroORM } from '@mikro-orm/postgresql';
 import { buildDatabaseConfig } from '~/platform/config/database.config';
+import { CountryAddressRuleEntity } from '~/domains/location/infra/persistence/entities/country-address-rule.entity';
 import { LocationAdministrativeAreaEntity } from '~/domains/location/infra/persistence/entities/location-administrative-area.entity';
 import { LocationCountryEntity } from '~/domains/location/infra/persistence/entities/location-country.entity';
 import { LocationDatasetVersionEntity } from '~/domains/location/infra/persistence/entities/location-dataset-version.entity';
@@ -60,6 +61,7 @@ describe('saved address location backfill (integration)', () => {
         LocationCountryEntity,
         LocationAdministrativeAreaEntity,
         LocationDatasetVersionEntity,
+        CountryAddressRuleEntity,
       ],
       ensureDatabase: false,
     });

@@ -847,6 +847,10 @@ describe('CreateCheckoutQuoteService shipping', () => {
           code: 'US', name: 'United States', hasAdministrativeAreas: true, postalCodeRequired: true,
         },
       ]),
+      findActiveCountry: jest.fn().mockResolvedValue({
+        code: 'US', name: 'United States', hasAdministrativeAreas: true, postalCodeRequired: true,
+      }),
+      findAddressRuleOverride: jest.fn().mockResolvedValue(null),
       findActiveAdministrativeAreas: jest.fn().mockResolvedValue([
         { code: 'US-CA', name: 'California' },
       ]),
@@ -923,6 +927,8 @@ function locationReferenceRepository(): LocationReferenceRepository {
   return {
     findCurrentDatasetVersion: jest.fn().mockResolvedValue(null),
     findActiveCountries: jest.fn().mockResolvedValue([]),
+    findActiveCountry: jest.fn().mockResolvedValue(null),
+    findAddressRuleOverride: jest.fn().mockResolvedValue(null),
     findActiveAdministrativeAreas: jest.fn().mockResolvedValue([]),
   } as unknown as LocationReferenceRepository;
 }

@@ -1,4 +1,5 @@
 import type {
+  CountryAddressRuleOverride,
   LocationAdministrativeArea,
   LocationCountry,
   LocationDatasetVersion,
@@ -10,6 +11,16 @@ export abstract class LocationReferenceRepository {
 
   /** Active countries sorted by name, with active administrative-area availability. */
   abstract findActiveCountries(): Promise<LocationCountry[]>;
+
+  /** One active country by code, or null when it is unknown or inactive. */
+  abstract findActiveCountry(
+    countryCode: string,
+  ): Promise<LocationCountry | null>;
+
+  /** The stored Arc address-rule override for a country, or null when it has none. */
+  abstract findAddressRuleOverride(
+    countryCode: string,
+  ): Promise<CountryAddressRuleOverride | null>;
 
   /**
    * Active administrative areas for an active country, sorted by name.

@@ -257,6 +257,7 @@ describe('Checkout and order snapshots carry canonical codes (integration)', () 
   async function seedPublishedProduct(
     seller: TestSeller,
     stock: number,
+    destinationCountries: string[] = ['US'],
   ): Promise<{ inventoryId: string }> {
     const categoryResponse = await seller.agent
       .post(`${API_PREFIX}/categories`)
@@ -274,16 +275,14 @@ describe('Checkout and order snapshots carry canonical codes (integration)', () 
         ship_from_postal: '10001',
         processing_time_min_days: 1,
         processing_time_max_days: 3,
-        rates: [
-          {
-            destination_scope: 'country',
-            destination_country: 'US',
-            one_item_fee_minor: 599,
-            additional_item_fee_minor: 199,
-            delivery_time_min_days: 3,
-            delivery_time_max_days: 5,
-          },
-        ],
+        rates: destinationCountries.map((destinationCountry) => ({
+          destination_scope: 'country',
+          destination_country: destinationCountry,
+          one_item_fee_minor: 599,
+          additional_item_fee_minor: 199,
+          delivery_time_min_days: 3,
+          delivery_time_max_days: 5,
+        })),
       })
       .expect(201);
     const shippingProfileId = profileResponse.body.id as string;
@@ -720,7 +719,7 @@ describe('Checkout and order snapshots carry canonical codes (integration)', () 
 
   it('rejects guest checkout contact values that the country rules reject', async () => {
     const seller = await registerSeller();
-    const { inventoryId } = await seedPublishedProduct(seller, 2);
+    const { inventoryId } = await seedPublishedProduct(seller, 2, ['US', 'HK']);
 
     const agent = request.agent(app.getHttpServer());
     await addGuestItem(agent, inventoryId);
@@ -788,6 +787,28 @@ describe('Checkout and order snapshots carry canonical codes (integration)', () 
       .expect(400);
     expect(vnPostcode.body).toMatchObject({
       code: 'ADDRESS_POSTCODE_INVALID',
+    });
+
+    const hkHiddenPostcode = await agent
+      .post(`${API_PREFIX}/checkout/cart/quote`)
+      .set('Idempotency-Key', randomUUID())
+      .set('X-Forwarded-For', randomForwardedIp())
+      .send({
+        shipping_address: {
+          ...DESTINATION,
+          country_code: 'HK',
+          state_code: 'HK-HCW',
+          zip: 'ABC-123',
+          phone: '+14155552671',
+        },
+      })
+      .expect(201);
+
+    const hkQuote = await readQuote(hkHiddenPostcode.body.quote_id as string);
+    expect(hkQuote.shippingAddress).toMatchObject({
+      country_code: 'HK',
+      state_code: 'HK-HCW',
+      zip: '',
     });
   });
 });

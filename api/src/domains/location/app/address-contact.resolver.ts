@@ -8,7 +8,11 @@ import {
   postcodeValidatorExistsForCountry,
 } from 'postcode-validator';
 import { AddressContactError } from './errors/address-contact.error';
-import type { LocationCountry } from './location.types';
+import { mergeCountryAddressRules } from './address-rules.merge';
+import type {
+  CountryAddressRules,
+  LocationCountry,
+} from './location.types';
 import type { LocationReferenceRepository } from './ports/location-reference.repository';
 
 /** Contact fields accepted from clients when an address is written. */
@@ -86,18 +90,31 @@ function validatePhone(phone: string, country: LocationCountry | null): string {
   return parsed.number;
 }
 
+interface ResolvedCountryRules {
+  country: LocationCountry;
+  rules: CountryAddressRules;
+}
+
 function validatePostcode(
   postcode: string,
-  country: LocationCountry | null,
+  resolved: ResolvedCountryRules | null,
 ): string {
   const normalized = normalizePostcode(postcode);
 
-  if (!country) {
+  if (!resolved) {
     return normalized;
   }
 
+  const zipRule = resolved.rules.fields.find((field) => field.key === 'zip');
+
+  // A country whose format has no postal code accepts any client value but
+  // stores an empty string, so hidden postcodes never leak into addresses.
+  if (zipRule && !zipRule.visible) {
+    return '';
+  }
+
   if (normalized.length === 0) {
-    if (country.postalCodeRequired) {
+    if (zipRule?.required ?? resolved.country.postalCodeRequired) {
       throw invalidContact(
         'ADDRESS_POSTCODE_REQUIRED',
         'postcode is required for the selected country',
@@ -108,8 +125,8 @@ function validatePostcode(
   }
 
   if (
-    postcodeValidatorExistsForCountry(country.code)
-    && !postcodeValidator(normalized, country.code)
+    postcodeValidatorExistsForCountry(resolved.country.code)
+    && !postcodeValidator(normalized, resolved.country.code)
   ) {
     throw invalidContact(
       'ADDRESS_POSTCODE_INVALID',
@@ -120,17 +137,31 @@ function validatePostcode(
   return normalized;
 }
 
-async function loadCountry(
+async function loadCountryRules(
   repository: LocationReferenceRepository,
   countryCode: string | null,
-): Promise<LocationCountry | null> {
+): Promise<ResolvedCountryRules | null> {
   if (!countryCode) {
     return null;
   }
 
-  const countries = await repository.findActiveCountries();
+  const country = await repository.findActiveCountry(countryCode);
 
-  return countries.find((country) => country.code === countryCode) ?? null;
+  if (!country) {
+    return null;
+  }
+
+  const override = await repository.findAddressRuleOverride(country.code);
+
+  return {
+    country,
+    rules: mergeCountryAddressRules({
+      countryCode: country.code,
+      hasAdministrativeAreas: country.hasAdministrativeAreas,
+      postalCodeRequired: country.postalCodeRequired,
+      override,
+    }),
+  };
 }
 
 /**
@@ -143,11 +174,14 @@ export async function resolveCreateAddressContact(
   countryCode: string | null,
   selection: AddressContactSelection,
 ): Promise<ResolvedAddressContact> {
-  const country = await loadCountry(repository, normalizeCode(countryCode));
+  const resolved = await loadCountryRules(
+    repository,
+    normalizeCode(countryCode),
+  );
 
   return {
-    phone: validatePhone(selection.phone, country),
-    zip: validatePostcode(selection.zip, country),
+    phone: validatePhone(selection.phone, resolved?.country ?? null),
+    zip: validatePostcode(selection.zip, resolved),
   };
 }
 
@@ -176,14 +210,17 @@ export async function resolveUpdateAddressContact(
     return update;
   }
 
-  const country = await loadCountry(repository, normalizeCode(countryCode));
+  const resolved = await loadCountryRules(
+    repository,
+    normalizeCode(countryCode),
+  );
 
   if (phoneChanged && phone !== undefined) {
-    update.phone = validatePhone(phone, country);
+    update.phone = validatePhone(phone, resolved?.country ?? null);
   }
 
   if (zipChanged && zip !== undefined) {
-    update.zip = validatePostcode(zip, country);
+    update.zip = validatePostcode(zip, resolved);
   }
 
   return update;

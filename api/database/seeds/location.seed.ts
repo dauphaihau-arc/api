@@ -2,21 +2,43 @@ import type { EntityManager } from '@mikro-orm/postgresql';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import * as path from 'node:path';
+import { CountryAddressRuleEntity } from '~/domains/location/infra/persistence/entities/country-address-rule.entity';
 import { LocationAdministrativeAreaEntity } from '~/domains/location/infra/persistence/entities/location-administrative-area.entity';
 import { LocationCountryEntity } from '~/domains/location/infra/persistence/entities/location-country.entity';
 import { LocationDatasetVersionEntity } from '~/domains/location/infra/persistence/entities/location-dataset-version.entity';
+import type {
+  AddressRuleFieldKey,
+  CountryAddressRuleOverride,
+} from '~/domains/location/app/location.types';
 
 const REFERENCE_DIR = path.resolve(__dirname, '../reference/locations');
 
 const COUNTRY_FILE = 'countries.json';
 const ADMINISTRATIVE_AREA_FILE = 'administrative-areas.json';
 const POSTAL_CODE_REQUIREDNESS_FILE = 'postal-code-requiredness.json';
+const ADDRESS_RULE_OVERRIDES_FILE = 'address-rule-overrides.json';
 
 const CHECKSUM_FILES = [
   COUNTRY_FILE,
   ADMINISTRATIVE_AREA_FILE,
   POSTAL_CODE_REQUIREDNESS_FILE,
+  ADDRESS_RULE_OVERRIDES_FILE,
 ] as const;
+
+const ADDRESS_RULE_FIELD_KEYS: Partial<Record<AddressRuleFieldKey, true>> = {
+  full_name: true,
+  address_1: true,
+  address_2: true,
+  city: true,
+  subdivision: true,
+  zip: true,
+  phone: true,
+};
+
+const HIDEABLE_ADDRESS_RULE_FIELDS: Partial<Record<AddressRuleFieldKey, true>> = {
+  subdivision: true,
+  zip: true,
+};
 
 const EXPECTED_COUNTRY_COUNT = 250;
 const EXPECTED_ADMINISTRATIVE_AREA_COUNT = 3_863;
@@ -40,6 +62,11 @@ type AdministrativeAreaSeedRow = {
 
 type PostalCodeRequiredness = Record<string, boolean>;
 
+type AddressRuleOverrideSeedRow = {
+  country_code: string;
+  rules: CountryAddressRuleOverride;
+};
+
 export type LocationCountrySeed = {
   code: string;
   name: string;
@@ -56,8 +83,14 @@ export type LocationAdministrativeAreaSeed = {
 export type LocationSeedDataset = {
   countries: LocationCountrySeed[];
   administrativeAreas: LocationAdministrativeAreaSeed[];
+  addressRuleOverrides: LocationAddressRuleOverrideSeed[];
   countryCodes: Set<string>;
   checksum: string;
+};
+
+export type LocationAddressRuleOverrideSeed = {
+  countryCode: string;
+  rules: CountryAddressRuleOverride;
 };
 
 function resolveProgressInterval(total: number, maxSteps = 5): number {
@@ -103,6 +136,80 @@ function assertUniqueCodes(
   }
 }
 
+function assertValidAddressRuleOverrides(
+  rows: readonly AddressRuleOverrideSeedRow[],
+  countryCodes: ReadonlySet<string>,
+): LocationAddressRuleOverrideSeed[] {
+  const seen = new Set<string>();
+  const overrides: LocationAddressRuleOverrideSeed[] = [];
+
+  for (const row of rows) {
+    if (!/^[A-Z]{2}$/.test(row.country_code)) {
+      throw new Error(
+        `[seed][locations] Invalid address rule override country code "${row.country_code}"`,
+      );
+    }
+
+    if (seen.has(row.country_code)) {
+      throw new Error(
+        `[seed][locations] Duplicate address rule override for "${row.country_code}"`,
+      );
+    }
+
+    if (!countryCodes.has(row.country_code)) {
+      throw new Error(
+        `[seed][locations] Address rule override references unknown country ${row.country_code}`,
+      );
+    }
+
+    const rules = row.rules;
+    const unknownKey = Object.keys(rules).find(
+      (key) => key !== 'order' && key !== 'labels' && key !== 'hidden',
+    );
+
+    if (unknownKey) {
+      throw new Error(
+        `[seed][locations] Address rule override ${row.country_code} has unsupported key "${unknownKey}"`,
+      );
+    }
+
+    for (const field of rules.order ?? []) {
+      if (ADDRESS_RULE_FIELD_KEYS[field] !== true) {
+        throw new Error(
+          `[seed][locations] Address rule override ${row.country_code} orders unknown field "${field}"`,
+        );
+      }
+    }
+
+    for (const [field, label] of Object.entries(rules.labels ?? {})) {
+      if (ADDRESS_RULE_FIELD_KEYS[field as AddressRuleFieldKey] !== true) {
+        throw new Error(
+          `[seed][locations] Address rule override ${row.country_code} labels unknown field "${field}"`,
+        );
+      }
+
+      if (!label.trim()) {
+        throw new Error(
+          `[seed][locations] Address rule override ${row.country_code} has an empty label for "${field}"`,
+        );
+      }
+    }
+
+    for (const field of rules.hidden ?? []) {
+      if (HIDEABLE_ADDRESS_RULE_FIELDS[field] !== true) {
+        throw new Error(
+          `[seed][locations] Address rule override ${row.country_code} cannot hide field "${field}"`,
+        );
+      }
+    }
+
+    seen.add(row.country_code);
+    overrides.push({ countryCode: row.country_code, rules });
+  }
+
+  return overrides;
+}
+
 export function loadLocationDataset(): LocationSeedDataset {
   const countries = readReferenceJson<CountrySeedRow[]>(COUNTRY_FILE);
   const administrativeAreas = readReferenceJson<AdministrativeAreaSeedRow[]>(
@@ -110,6 +217,9 @@ export function loadLocationDataset(): LocationSeedDataset {
   );
   const postalCodeRequiredness = readReferenceJson<PostalCodeRequiredness>(
     POSTAL_CODE_REQUIREDNESS_FILE,
+  );
+  const addressRuleOverrides = readReferenceJson<AddressRuleOverrideSeedRow[]>(
+    ADDRESS_RULE_OVERRIDES_FILE,
   );
 
   if (countries.length !== EXPECTED_COUNTRY_COUNT) {
@@ -193,6 +303,10 @@ export function loadLocationDataset(): LocationSeedDataset {
       name: area.name,
       type: area.type ?? undefined,
     })),
+    addressRuleOverrides: assertValidAddressRuleOverrides(
+      addressRuleOverrides,
+      countryCodes,
+    ),
     countryCodes,
     checksum: computeDatasetChecksum(),
   };
@@ -325,10 +439,50 @@ export async function seedLocations(em: EntityManager): Promise<void> {
       }
     }
 
+    // Countries must exist before override rows reference them, and MikroORM
+    // cannot infer that order from the scalar foreign key.
+    await transactionalEm.flush();
+
+    const existingRules = await transactionalEm.find(
+      CountryAddressRuleEntity,
+      {},
+    );
+    const rulesByCountryCode = new Map(
+      existingRules.map((rule) => [rule.countryCode, rule]),
+    );
+    const seededRuleCountryCodes = new Set<string>();
+
+    for (const seed of dataset.addressRuleOverrides) {
+      seededRuleCountryCodes.add(seed.countryCode);
+
+      const existing = rulesByCountryCode.get(seed.countryCode);
+
+      if (existing) {
+        existing.rules = seed.rules;
+      }
+      else {
+        transactionalEm.persist(
+          transactionalEm.create(CountryAddressRuleEntity, {
+            countryCode: seed.countryCode,
+            rules: seed.rules,
+          }),
+        );
+      }
+    }
+
+    let deletedRuleCount = 0;
+
+    for (const rule of existingRules) {
+      if (!seededRuleCountryCodes.has(rule.countryCode)) {
+        transactionalEm.remove(rule);
+        deletedRuleCount += 1;
+      }
+    }
+
     await transactionalEm.flush();
 
     console.log(
-      `[seed][locations] Deactivated ${deactivatedCountryCount} countries and ${deactivatedAreaCount} administrative areas missing from the dataset`,
+      `[seed][locations] Deactivated ${deactivatedCountryCount} countries and ${deactivatedAreaCount} administrative areas missing from the dataset; upserted ${dataset.addressRuleOverrides.length} address rule overrides and deleted ${deletedRuleCount}`,
     );
 
     const existingVersion = await transactionalEm.findOne(

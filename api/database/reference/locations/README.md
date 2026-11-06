@@ -9,6 +9,7 @@ Pinned reference data for Arc's Location Reference Data. No runtime code reads a
 | `countries.json` | 250 countries: `code`, `name` |
 | `administrative-areas.json` | 3,863 first-level areas: `code`, `country_code`, `name`, `type` |
 | `postal-code-requiredness.json` | 250 countries: boolean, derived from libaddressinput `require` metadata |
+| `address-rule-overrides.json` | Arc deltas over `lib-address/lite` address fields: `country_code`, `rules` |
 
 ## Sources
 
@@ -43,6 +44,24 @@ Subdivision code is `iso3166_2` when present, otherwise `<country_code>-<iso2>`.
 - Derived checksum: `256a26a555c8a42037fafe28c0839ee92a37002ea5d48f70ef777361441b7cd5`.
 
 The derived map is committed so seeding and deployment never call the provider.
+
+### Address Rule Overrides
+
+`address-rule-overrides.json` stores only Arc-owned deltas on top of the
+`lib-address/lite` country metadata used by the API. The seed upserts these
+rows into `country_address_rules` and deletes rows that disappear from the
+file. Merged rules are generated per request, so the table never holds the
+full generated rule set. Supported keys:
+
+- `order`: optional field-key order for countries whose local-script format
+  differs from the lite Latin format (for example `JP`).
+- `labels`: field-key label overrides.
+- `hidden`: fields rendered with `visible: false`; only `subdivision` and
+  `zip` may be hidden because every other contract field must stay on the
+  form.
+
+The file participates in the dataset checksum, so changing it produces a new
+dataset version.
 
 ## Attribution
 

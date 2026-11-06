@@ -1,4 +1,6 @@
+import { createHash } from 'node:crypto';
 import { mkdtemp, rm } from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import type { INestApplication } from '@nestjs/common';
@@ -99,6 +101,14 @@ describe('location reference data (integration)', () => {
     expect(areas.body).toMatchObject({
       code: 'LOCATION_DATASET_UNAVAILABLE',
     });
+
+    const rules = await request(app.getHttpServer())
+      .get(`${LOCATIONS_PATH}/countries/US/address-rules`)
+      .expect(503);
+
+    expect(rules.body).toMatchObject({
+      code: 'LOCATION_DATASET_UNAVAILABLE',
+    });
   });
 
   it('seeds the pinned dataset with 250 countries and 3,863 administrative areas', async () => {
@@ -137,6 +147,53 @@ describe('location reference data (integration)', () => {
     expect(versions[0].checksum).toMatch(/^[a-f0-9]{64}$/);
     expect(versions[0].source).toContain('dr5hn');
     expect(versions[0].source).toContain('vietnam-administrative-divisions');
+
+    // The overrides file is part of the dataset checksum, so changing it
+    // produces a new version instead of silently reusing the old one.
+    const referenceDir = path.resolve(
+      __dirname,
+      '../../database/reference/locations',
+    );
+    const checksum = createHash('sha256');
+    for (const file of [
+      'countries.json',
+      'administrative-areas.json',
+      'postal-code-requiredness.json',
+      'address-rule-overrides.json',
+    ]) {
+      checksum.update(readFileSync(path.join(referenceDir, file)));
+    }
+    expect(versions[0].checksum).toBe(checksum.digest('hex'));
+
+    expect(
+      await countRows(
+        'select count(*)::int as count from country_address_rules',
+      ),
+    ).toBe(5);
+
+    const overrides = await entityManager.getConnection().execute<
+      Array<{ country_code: string; rules: unknown }>
+    >(
+      `
+        select country_code, rules
+        from country_address_rules
+        order by country_code asc
+      `,
+    );
+
+    expect(overrides.map((row) => row.country_code)).toEqual([
+      'GB',
+      'HK',
+      'JP',
+      'US',
+      'VN',
+    ]);
+    expect(
+      overrides.find((row) => row.country_code === 'US')?.rules,
+    ).toEqual({ labels: { subdivision: 'State', zip: 'ZIP code' } });
+    expect(
+      overrides.find((row) => row.country_code === 'HK')?.rules,
+    ).toEqual({ hidden: ['zip'], labels: { subdivision: 'District' } });
   });
 
   it('is idempotent and deactivates rows the dataset no longer contains', async () => {
@@ -146,6 +203,15 @@ describe('location reference data (integration)', () => {
           (code, country_code, name, type, is_active, created_at, updated_at)
         values
           ('VN-999', 'VN', 'Removed Province', 'province', true, now(), now())
+      `,
+    );
+
+    await entityManager.getConnection().execute(
+      `
+        insert into country_address_rules
+          (country_code, rules, created_at, updated_at)
+        values
+          ('AS', '{"labels":{"zip":"Removed"}}'::jsonb, now(), now())
       `,
     );
 
@@ -172,6 +238,16 @@ describe('location reference data (integration)', () => {
         'select count(*)::int as count from location_dataset_versions',
       ),
     ).toBe(1);
+    expect(
+      await countRows(
+        'select count(*)::int as count from country_address_rules',
+      ),
+    ).toBe(5);
+    expect(
+      await countRows(
+        'select count(*)::int as count from country_address_rules where country_code = \'AS\'',
+      ),
+    ).toBe(0);
   });
 
   it('serves the pinned Vietnam override with 34 provincial units', async () => {
@@ -224,6 +300,107 @@ describe('location reference data (integration)', () => {
     ).toMatchObject({ has_administrative_areas: false });
   });
 
+  it('serves merged address rules for overridden countries without storing generated defaults', async () => {
+    const jp = await request(app.getHttpServer())
+      .get(`${LOCATIONS_PATH}/countries/jp/address-rules`)
+      .expect(200);
+
+    expect(jp.body).toEqual({
+      country_code: 'JP',
+      fields: [
+        {
+          key: 'zip',
+          label: 'Postal code',
+          visible: true,
+          required: true,
+          control: 'text',
+          autocomplete: 'postal-code',
+        },
+        {
+          key: 'subdivision',
+          label: 'Prefecture',
+          visible: true,
+          required: true,
+          control: 'select',
+          autocomplete: 'address-level1',
+        },
+        {
+          key: 'address_1',
+          label: 'Street',
+          visible: true,
+          required: true,
+          control: 'text',
+          autocomplete: 'address-line1',
+        },
+        {
+          key: 'address_2',
+          label: 'Apt / Suite / Other',
+          visible: true,
+          required: false,
+          control: 'text',
+          autocomplete: 'address-line2',
+        },
+        {
+          key: 'full_name',
+          label: 'Full Name',
+          visible: true,
+          required: true,
+          control: 'text',
+          autocomplete: 'name',
+        },
+        {
+          key: 'city',
+          label: 'City',
+          visible: true,
+          required: true,
+          control: 'text',
+          autocomplete: 'address-level2',
+        },
+        {
+          key: 'phone',
+          label: 'Phone',
+          visible: true,
+          required: true,
+          control: 'tel',
+          autocomplete: 'tel',
+        },
+      ],
+    });
+
+    const us = await request(app.getHttpServer())
+      .get(`${LOCATIONS_PATH}/countries/US/address-rules`)
+      .expect(200);
+    expect(us.body.fields.find((field: { key: string }) => field.key === 'subdivision'))
+      .toMatchObject({ label: 'State', required: true, control: 'select' });
+    expect(us.body.fields.find((field: { key: string }) => field.key === 'zip'))
+      .toMatchObject({ label: 'ZIP code', required: true, visible: true });
+
+    const gb = await request(app.getHttpServer())
+      .get(`${LOCATIONS_PATH}/countries/GB/address-rules`)
+      .expect(200);
+    expect(gb.body.fields.find((field: { key: string }) => field.key === 'subdivision'))
+      .toMatchObject({ visible: false, required: false });
+    expect(gb.body.fields.find((field: { key: string }) => field.key === 'zip'))
+      .toMatchObject({ label: 'Postcode', visible: true, required: true });
+
+    const vn = await request(app.getHttpServer())
+      .get(`${LOCATIONS_PATH}/countries/VN/address-rules`)
+      .expect(200);
+    expect(vn.body.fields.find((field: { key: string }) => field.key === 'subdivision'))
+      .toMatchObject({ label: 'Province/City', required: true, control: 'select' });
+    expect(vn.body.fields.find((field: { key: string }) => field.key === 'zip'))
+      .toMatchObject({ visible: true, required: false });
+
+    const hk = await request(app.getHttpServer())
+      .get(`${LOCATIONS_PATH}/countries/HK/address-rules`)
+      .expect(200);
+    expect(hk.body.fields.find((field: { key: string }) => field.key === 'zip'))
+      .toMatchObject({ visible: false, required: false });
+    expect(hk.body.fields.find((field: { key: string }) => field.key === 'subdivision'))
+      .toMatchObject({ label: 'District', visible: true, required: true });
+    expect(hk.body.fields).toHaveLength(7);
+  });
+
   it('returns 404 for unknown and inactive countries, and 200 [] for a known country without areas', async () => {
     const unknown = await request(app.getHttpServer())
       .get(`${LOCATIONS_PATH}/countries/ZZ/administrative-areas`)
@@ -246,6 +423,23 @@ describe('location reference data (integration)', () => {
       .expect(404);
 
     expect(inactive.body).toMatchObject({ code: 'LOCATION_COUNTRY_NOT_FOUND' });
+
+    const unknownRules = await request(app.getHttpServer())
+      .get(`${LOCATIONS_PATH}/countries/ZZ/address-rules`)
+      .expect(404);
+
+    expect(unknownRules.body).toMatchObject({
+      code: 'LOCATION_COUNTRY_NOT_FOUND',
+    });
+    expect(unknownRules.headers['cache-control']).toBeUndefined();
+
+    const inactiveRules = await request(app.getHttpServer())
+      .get(`${LOCATIONS_PATH}/countries/zy/address-rules`)
+      .expect(404);
+
+    expect(inactiveRules.body).toMatchObject({
+      code: 'LOCATION_COUNTRY_NOT_FOUND',
+    });
 
     const empty = await request(app.getHttpServer())
       .get(`${LOCATIONS_PATH}/countries/as/administrative-areas`)
@@ -287,5 +481,23 @@ describe('location reference data (integration)', () => {
 
     expect(areasNotModified.headers.etag).toBe(areasEtag);
     expect(areasNotModified.text ?? '').toBe('');
+
+    const rules = await request(app.getHttpServer())
+      .get(`${LOCATIONS_PATH}/countries/JP/address-rules`)
+      .expect(200);
+
+    const rulesEtag = rules.headers.etag;
+    expect(rules.headers['cache-control']).toBe(EXPECTED_CACHE_CONTROL);
+    expect(rulesEtag).toMatch(/^"[a-f0-9]{64}"$/);
+    expect(rulesEtag).not.toBe(countriesEtag);
+    expect(rulesEtag).not.toBe(areasEtag);
+
+    const rulesNotModified = await request(app.getHttpServer())
+      .get(`${LOCATIONS_PATH}/countries/jp/address-rules`)
+      .set('If-None-Match', rulesEtag)
+      .expect(304);
+
+    expect(rulesNotModified.headers.etag).toBe(rulesEtag);
+    expect(rulesNotModified.text ?? '').toBe('');
   });
 });

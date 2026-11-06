@@ -624,7 +624,7 @@ describe('saved address location codes (integration)', () => {
     expect(required.body).toMatchObject({ code: 'ADDRESS_POSTCODE_REQUIRED' });
   });
 
-  it('accepts optional postcodes and validator-less country formats', async () => {
+  it('accepts optional postcodes and stores hidden postcodes as empty', async () => {
     const vn = await createAddress(buyer, {
       country_code: 'VN',
       state_code: 'VN-24',
@@ -638,9 +638,16 @@ describe('saved address location codes (integration)', () => {
       zip: ' abc-123 ',
     });
     expect(hk.body.address).toMatchObject({
-      zip: 'ABC-123',
+      zip: '',
       phone: '+14155552671',
     });
+
+    const updated = await updateAddress(
+      buyer,
+      hk.body.address.id as string,
+      { zip: 'XYZ-999' },
+    );
+    expect(updated.body.address).toMatchObject({ zip: '' });
   });
 
   it('preserves unchanged legacy phone and postcode on unrelated edits', async () => {

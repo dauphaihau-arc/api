@@ -1,6 +1,13 @@
-import type { LocationAdministrativeArea, LocationCountry } from '../../../app/location.types';
 import type {
+  AddressRuleField,
+  LocationAdministrativeArea,
+  LocationCountry,
+  CountryAddressRules,
+} from '../../../app/location.types';
+import type {
+  LocationAddressRuleResponseDto,
   LocationAdministrativeAreaResponseDto,
+  LocationCountryAddressRulesResponseDto,
   LocationCountryResponseDto,
 } from '../responses/location-response.dto';
 
@@ -18,4 +25,22 @@ export const toLocationAdministrativeAreaResponse = (
 ): LocationAdministrativeAreaResponseDto => ({
   code: area.code,
   name: area.name,
+});
+
+export const toLocationAddressRuleResponse = (
+  field: AddressRuleField,
+): LocationAddressRuleResponseDto => ({
+  key: field.key,
+  label: field.label,
+  visible: field.visible,
+  required: field.required,
+  control: field.control,
+  autocomplete: field.autocomplete,
+});
+
+export const toLocationCountryAddressRulesResponse = (
+  rules: CountryAddressRules,
+): LocationCountryAddressRulesResponseDto => ({
+  country_code: rules.countryCode,
+  fields: rules.fields.map(toLocationAddressRuleResponse),
 });

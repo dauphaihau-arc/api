@@ -24,4 +24,9 @@ export const locationErrorResponses = {
     500: [internalServerErrorExample],
     503: [locationDatasetUnavailableExample],
   },
+  getAddressRules: {
+    404: [locationCountryNotFoundExample],
+    500: [internalServerErrorExample],
+    503: [locationDatasetUnavailableExample],
+  },
 } satisfies Record<string, ErrorResponses>;

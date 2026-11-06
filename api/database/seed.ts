@@ -51,6 +51,7 @@ import { PayoutEntity } from '~/domains/finance/infra/persistence/entities/payou
 import { PostingEntity } from '~/domains/finance/infra/persistence/entities/posting.entity';
 import { SellerPayableBalanceEntity } from '~/domains/finance/infra/persistence/entities/seller-payable-balance.entity';
 import { UserAddressEntity } from '~/domains/user/infra/persistence/entities/user-address.entity';
+import { CountryAddressRuleEntity } from '~/domains/location/infra/persistence/entities/country-address-rule.entity';
 import { LocationAdministrativeAreaEntity } from '~/domains/location/infra/persistence/entities/location-administrative-area.entity';
 import { LocationCountryEntity } from '~/domains/location/infra/persistence/entities/location-country.entity';
 import { LocationDatasetVersionEntity } from '~/domains/location/infra/persistence/entities/location-dataset-version.entity';
@@ -153,6 +154,7 @@ async function main() {
       LocationCountryEntity,
       LocationAdministrativeAreaEntity,
       LocationDatasetVersionEntity,
+      CountryAddressRuleEntity,
     ],
   });
 
