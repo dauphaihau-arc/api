@@ -99,7 +99,7 @@ Content-Type: application/json
   "state": "OR",
   "zip": "97201",
   "country": "US",
-  "phone": "+15550000003",
+  "phone": "+14155550103",
   "is_primary": true
 }
 ```

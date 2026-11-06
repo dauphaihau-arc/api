@@ -406,7 +406,7 @@ describe('Platform Commission from a Commission Schedule (integration)', () => {
         state: 'CA',
         zip: '90001',
         country: 'US',
-        phone: '123456789',
+        phone: '+14155552671',
         is_primary: true,
       })
       .expect(201);

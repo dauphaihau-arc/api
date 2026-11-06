@@ -278,7 +278,7 @@ describe('Order accepted shipping facts (integration)', () => {
         state: addressOverrides.state ?? 'CA',
         zip: addressOverrides.zip ?? '90001',
         country: addressOverrides.country ?? 'US',
-        phone: '123456789',
+        phone: '+14155552671',
         is_primary: true,
       })
       .expect(201);

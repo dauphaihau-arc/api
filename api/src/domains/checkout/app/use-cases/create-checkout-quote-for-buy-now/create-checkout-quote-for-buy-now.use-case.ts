@@ -60,6 +60,7 @@ export class CreateCheckoutQuoteForBuyNowUseCase {
       },
       presentmentCurrency: body.presentmentCurrency,
       shopAdjustments,
+      shippingAddressSource: 'saved',
     });
   }
 }

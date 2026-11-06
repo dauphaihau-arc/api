@@ -39,7 +39,7 @@ Content-Type: application/json
   "country_code": "US",
   "state_code": "US-CA",
   "zip": "90001",
-  "phone": "+15550000012",
+  "phone": "+14155550112",
   "is_primary": true
 }
 ```

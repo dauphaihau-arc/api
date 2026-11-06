@@ -118,6 +118,8 @@ export class MikroOrmUserAddressCommandRepository implements UserAddressCommandR
       stateCode: address.stateCode ?? null,
       countryText: address.countryText ?? null,
       stateText: address.stateText ?? null,
+      phone: address.phone,
+      zip: address.zip,
     };
   }
 

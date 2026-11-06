@@ -34,7 +34,7 @@ export class UpdateMyAddressDto {
 
   @IsOptional()
   @IsString()
-  @MaxLength(50)
+  @MaxLength(20)
   zip?: string;
 
   @IsOptional()
@@ -59,7 +59,7 @@ export class UpdateMyAddressDto {
 
   @IsOptional()
   @IsString()
-  @MaxLength(50)
+  @MaxLength(20)
   phone?: string;
 
   @IsOptional()

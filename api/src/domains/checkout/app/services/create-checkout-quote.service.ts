@@ -37,7 +37,10 @@ import {
   toPersistedPricedShops,
 } from './checkout-quote-priced-shops';
 import { createCheckoutQuoteItem } from './checkout-quote-item.mapping';
-import { resolveCheckoutShippingAddress } from './checkout-shipping-address';
+import {
+  resolveCheckoutShippingAddress,
+  type ShippingAddressSource,
+} from './checkout-shipping-address';
 import {
   buildQuoteShopSummaries,
   toCheckoutQuoteResult,
@@ -64,12 +67,14 @@ export class CreateCheckoutQuoteService {
       | { type: 'guest'; guestSessionId: string };
     cart: CartSnapshot;
     shippingAddress: ShippingAddressSelection;
+    shippingAddressSource?: ShippingAddressSource;
     presentmentCurrency?: string;
     shopAdjustments?: ShopAdjustmentInput[];
   }): Promise<CheckoutQuoteResult> {
     const shippingAddress = await resolveCheckoutShippingAddress(
       this.locationReferenceRepository,
       input.shippingAddress,
+      { source: input.shippingAddressSource },
     );
     const storefrontMarketContext = await this.storefrontMarketContextService.resolveCurrentRequest();
 

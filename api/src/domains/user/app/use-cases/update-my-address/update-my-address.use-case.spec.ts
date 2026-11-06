@@ -25,6 +25,8 @@ describe('UpdateMyAddressUseCase', () => {
         stateCode: null,
         countryText: 'US',
         stateText: 'Texas',
+        phone: '1234567890',
+        zip: '73301',
       }),
       countOwnedByUserId: jest.fn(),
       clearPrimaryForUser: jest.fn().mockResolvedValue(undefined),

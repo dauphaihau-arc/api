@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import { LocationReferenceRepository } from '~/domains/location/app/ports/location-reference.repository';
 import { resolveCreateAddressLocation } from '~/domains/location/app/address-location.resolver';
+import { resolveCreateAddressContact } from '~/domains/location/app/address-contact.resolver';
 import { UserAddressRepository } from '../../ports/user-address.repository';
 import type {
   CreateMyAddressCommand,
@@ -24,6 +25,12 @@ export class CreateMyAddressUseCase {
       command,
     );
 
+    const contact = await resolveCreateAddressContact(
+      this.locationReferenceRepository,
+      location.countryCode,
+      { phone: command.phone, zip: command.zip },
+    );
+
     const ownedAddressCount =
       await this.userAddressRepository.countOwnedByUserId(actor.userId);
 
@@ -39,8 +46,8 @@ export class CreateMyAddressUseCase {
       address1: command.address1,
       address2: command.address2,
       city: command.city,
-      zip: command.zip,
-      phone: command.phone,
+      zip: contact.zip,
+      phone: contact.phone,
       isPrimary: shouldBePrimary,
       ...location,
     });

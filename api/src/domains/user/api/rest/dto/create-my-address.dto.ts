@@ -35,7 +35,7 @@ export class CreateMyAddressDto {
   state?: string;
 
   @IsString()
-  @MaxLength(50)
+  @MaxLength(20)
   zip!: string;
 
   /**
@@ -62,7 +62,7 @@ export class CreateMyAddressDto {
   state_text?: string | null;
 
   @IsString()
-  @MaxLength(50)
+  @MaxLength(20)
   phone!: string;
 
   @IsOptional()

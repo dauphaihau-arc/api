@@ -60,7 +60,7 @@ const baseAddress = {
   address_1: '123 Main St',
   city: 'Los Angeles',
   zip: '90001',
-  phone: '123456789',
+  phone: '+14155552671',
 };
 
 describe('saved address location codes (integration)', () => {
@@ -201,6 +201,17 @@ describe('saved address location codes (integration)', () => {
     await entityManager.getConnection().execute(
       'update location_administrative_areas set is_active = ? where code = ?',
       [isActive, code],
+    );
+  }
+
+  async function setAddressContact(
+    addressId: string,
+    phone: string,
+    zip: string,
+  ): Promise<void> {
+    await entityManager.getConnection().execute(
+      'update user_addresses set phone = ?, zip = ? where id = ?',
+      [phone, zip, addressId],
     );
   }
 
@@ -347,6 +358,7 @@ describe('saved address location codes (integration)', () => {
     const coded = await createAddress(buyer, {
       country_code: 'MC',
       state_text: 'Monte Carlo',
+      zip: '98000',
     });
     expect(coded.body.address).toMatchObject({
       country: 'Monaco',
@@ -521,6 +533,187 @@ describe('saved address location codes (integration)', () => {
       state_code: null,
       country_text: 'United States',
       state_text: null,
+    });
+  });
+
+  it('normalizes valid US, GB, and VN phones to E.164 and normalizes postcodes', async () => {
+    const us = await createAddress(buyer, {
+      country_code: 'US',
+      state_code: 'US-CA',
+      phone: '+1 (415) 555-2671',
+      zip: ' 90001 ',
+    });
+    expect(us.body.address).toMatchObject({
+      phone: '+14155552671',
+      zip: '90001',
+    });
+
+    const gb = await createAddress(buyer, {
+      country_code: 'GB',
+      state_code: 'GB-ENG',
+      phone: '020 7946 0958',
+      zip: ' sw1a 1aa ',
+    });
+    expect(gb.body.address).toMatchObject({
+      phone: '+442079460958',
+      zip: 'SW1A 1AA',
+    });
+
+    const vn = await createAddress(buyer, {
+      country_code: 'VN',
+      state_code: 'VN-24',
+      phone: '0912 345 678',
+      zip: '700000',
+    });
+    expect(vn.body.address).toMatchObject({
+      phone: '+84912345678',
+      zip: '700000',
+    });
+  });
+
+  it('rejects invalid phones for the resolved country', async () => {
+    const us = await createAddress(
+      buyer,
+      { country_code: 'US', state_code: 'US-CA', phone: '12345' },
+      400,
+    );
+    expect(us.body).toMatchObject({ code: 'ADDRESS_PHONE_INVALID' });
+
+    const gb = await createAddress(
+      buyer,
+      { country_code: 'GB', state_code: 'GB-ENG', phone: 'not-a-phone' },
+      400,
+    );
+    expect(gb.body).toMatchObject({ code: 'ADDRESS_PHONE_INVALID' });
+
+    const vn = await createAddress(
+      buyer,
+      { country_code: 'VN', state_code: 'VN-24', phone: '123' },
+      400,
+    );
+    expect(vn.body).toMatchObject({ code: 'ADDRESS_PHONE_INVALID' });
+  });
+
+  it('rejects invalid postcodes and requires them for postal countries', async () => {
+    const us = await createAddress(
+      buyer,
+      { country_code: 'US', state_code: 'US-CA', zip: 'ABCDE' },
+      400,
+    );
+    expect(us.body).toMatchObject({ code: 'ADDRESS_POSTCODE_INVALID' });
+
+    const gb = await createAddress(
+      buyer,
+      { country_code: 'GB', state_code: 'GB-ENG', zip: 'ZZZZ 1ZZ' },
+      400,
+    );
+    expect(gb.body).toMatchObject({ code: 'ADDRESS_POSTCODE_INVALID' });
+
+    const vn = await createAddress(
+      buyer,
+      { country_code: 'VN', state_code: 'VN-24', zip: 'ABCDE' },
+      400,
+    );
+    expect(vn.body).toMatchObject({ code: 'ADDRESS_POSTCODE_INVALID' });
+
+    const required = await createAddress(
+      buyer,
+      { country_code: 'US', state_code: 'US-CA', zip: '' },
+      400,
+    );
+    expect(required.body).toMatchObject({ code: 'ADDRESS_POSTCODE_REQUIRED' });
+  });
+
+  it('accepts optional postcodes and validator-less country formats', async () => {
+    const vn = await createAddress(buyer, {
+      country_code: 'VN',
+      state_code: 'VN-24',
+      zip: '',
+    });
+    expect(vn.body.address).toMatchObject({ zip: '' });
+
+    const hk = await createAddress(buyer, {
+      country_code: 'HK',
+      state_code: 'HK-HCW',
+      zip: ' abc-123 ',
+    });
+    expect(hk.body.address).toMatchObject({
+      zip: 'ABC-123',
+      phone: '+14155552671',
+    });
+  });
+
+  it('preserves unchanged legacy phone and postcode on unrelated edits', async () => {
+    const created = await createAddress(buyer, {
+      country_code: 'US',
+      state_code: 'US-CA',
+    });
+    const addressId = created.body.address.id as string;
+
+    await setAddressContact(addressId, '123456789', 'ABCDE');
+
+    const omitted = await updateAddress(buyer, addressId, { city: 'San Jose' });
+    expect(omitted.body.address).toMatchObject({
+      city: 'San Jose',
+      phone: '123456789',
+      zip: 'ABCDE',
+    });
+
+    const resent = await updateAddress(buyer, addressId, {
+      city: 'Oakland',
+      phone: '123456789',
+      zip: 'abcde',
+    });
+    expect(resent.body.address).toMatchObject({
+      city: 'Oakland',
+      phone: '123456789',
+      zip: 'ABCDE',
+    });
+
+    const changedPhone = await updateAddress(
+      buyer,
+      addressId,
+      { phone: '987654321' },
+      400,
+    );
+    expect(changedPhone.body).toMatchObject({
+      code: 'ADDRESS_PHONE_INVALID',
+    });
+
+    const changedZip = await updateAddress(
+      buyer,
+      addressId,
+      { zip: 'ZZZZZ' },
+      400,
+    );
+    expect(changedZip.body).toMatchObject({
+      code: 'ADDRESS_POSTCODE_INVALID',
+    });
+  });
+
+  it('enforces the 20 character phone and postcode request limit', async () => {
+    const phone = await createAddress(
+      buyer,
+      { country_code: 'US', state_code: 'US-CA', phone: '1'.repeat(21) },
+      400,
+    );
+    expect(phone.body).toMatchObject({
+      code: 'VALIDATION_FAILED',
+      details: {
+        fields: expect.arrayContaining([expect.objectContaining({ field: 'phone' })]),
+      },
+    });
+
+    const zip = await createAddress(
+      buyer,
+      { country_code: 'US', state_code: 'US-CA', zip: 'A'.repeat(21) },
+      400,
+    );
+    expect(zip.body).toMatchObject({
+      code: 'VALIDATION_FAILED',
+      details: {
+        fields: expect.arrayContaining([expect.objectContaining({ field: 'zip' })]),
+      },
     });
   });
 });

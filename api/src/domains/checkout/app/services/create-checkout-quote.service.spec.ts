@@ -130,7 +130,7 @@ describe('CreateCheckoutQuoteService', () => {
           country: 'VN',
           state: 'HCM',
           zip: '700000',
-          phone: '0123',
+          phone: '+14155552671',
         },
       }),
     ).rejects.toThrow(OrderTotalLimitExceededError);
@@ -325,7 +325,7 @@ describe('CreateCheckoutQuoteService', () => {
         country: 'VN',
         state: 'HCM',
         zip: '700000',
-        phone: '0123',
+        phone: '+14155552671',
       },
       presentmentCurrency: 'USD',
       shopAdjustments: [{ shopId: 'shop-1', promoCodes: ['SAVE10'] }],
@@ -476,7 +476,7 @@ describe('CreateCheckoutQuoteService', () => {
           country: 'VN',
           state: 'HCM',
           zip: '700000',
-          phone: '0123',
+          phone: '+14155552671',
         },
       }),
     ).resolves.toEqual(
@@ -583,7 +583,7 @@ describe('CreateCheckoutQuoteService', () => {
           country: 'VN',
           state: 'HCM',
           zip: '700000',
-          phone: '0123',
+          phone: '+14155552671',
         },
       }),
     ).rejects.toThrow('reservation is no longer available');
@@ -763,7 +763,7 @@ const QUOTE_CART_INPUT = {
     country: 'US',
     state: 'TX',
     zip: '73301',
-    phone: '0123',
+    phone: '+14155552671',
   },
 };
 

@@ -20,9 +20,9 @@ export interface PersistedShippingAddress {
 }
 
 /**
- * Canonical phone text for a snapshot. Full E.164 validation depends on the
- * selected country and lands with the phone-validation work; until then the
- * stored value is at least trimmed so cosmetic whitespace never changes it.
+ * Canonical phone text for a snapshot. E.164 validation happens at the address
+ * write and guest-submission boundaries; saved addresses keep whatever was
+ * stored so legacy values are never rewritten by checkout.
  */
 export function normalizeShippingPhone(phone: string): string {
   return phone.trim();

@@ -37,6 +37,7 @@ export class CreateCheckoutQuoteFromCartUseCase {
       cart,
       presentmentCurrency: body.presentmentCurrency,
       shopAdjustments: body.shopAdjustments,
+      shippingAddressSource: 'saved',
       shippingAddress: {
         fullName: address.fullName,
         address1: address.address1,

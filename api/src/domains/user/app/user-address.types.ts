@@ -23,7 +23,10 @@ export interface UserAddressSummary {
 }
 
 /** Internal location state of an owned address, used while validating updates. */
-export type UserAddressLocationSnapshot = AddressLocationSnapshot;
+export interface UserAddressLocationSnapshot extends AddressLocationSnapshot {
+  phone: string;
+  zip: string;
+}
 
 export type UserAddressListSortField =
   | 'isPrimary'

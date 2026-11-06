@@ -392,7 +392,7 @@ describe('Fulfillment flow (integration)', () => {
         state: 'OR',
         zip: '97201',
         country: 'US',
-        phone: '+15550000001',
+        phone: '+14155552671',
       })
       .expect(201);
 

@@ -79,11 +79,11 @@ export class ShippingAddressDto {
 
   @ApiProperty()
   @IsString()
-  @MaxLength(50)
+  @MaxLength(20)
   zip!: string;
 
   @ApiProperty()
   @IsString()
-  @MaxLength(50)
+  @MaxLength(20)
   phone!: string;
 }

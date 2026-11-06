@@ -58,7 +58,7 @@ POST {{base_url}}/v1/me/addresses
 Idempotency-Key: carrier-notifications-address-1
 Content-Type: application/json
 ```json
-{ "full_name": "Notify Buyer", "address_1": "1 Test Street", "city": "Portland", "state": "OR", "zip": "97201", "country": "US", "phone": "+15550000031", "is_primary": true }
+{ "full_name": "Notify Buyer", "address_1": "1 Test Street", "city": "Portland", "state": "OR", "zip": "97201", "country": "US", "phone": "+14155550031", "is_primary": true }
 ```
 HTTP 201
 [Captures]

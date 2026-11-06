@@ -44,6 +44,7 @@ import {
 } from './responses/me-address.response';
 import { ApiErrorResponses } from '~/platform/http/api-error-responses.decorator';
 import { AddressLocationError } from '~/domains/location/app/errors/address-location.error';
+import { AddressContactError } from '~/domains/location/app/errors/address-contact.error';
 import { meAddressesErrorResponses } from './errors/me-addresses-error-responses';
 
 @Controller('me/addresses')
@@ -115,7 +116,7 @@ export class MeAddressesController {
       return { address: toMyAddressResponse(address) };
     }
     catch (error) {
-      throw mapAddressLocationError(error);
+      throw mapAddressError(error);
     }
   }
 
@@ -178,7 +179,7 @@ export class MeAddressesController {
       return { address: toMyAddressResponse(address) };
     }
     catch (error) {
-      throw mapAddressLocationError(error);
+      throw mapAddressError(error);
     }
   }
 
@@ -197,8 +198,11 @@ export class MeAddressesController {
   }
 }
 
-function mapAddressLocationError(error: unknown): unknown {
-  if (error instanceof AddressLocationError) {
+function mapAddressError(error: unknown): unknown {
+  if (
+    error instanceof AddressLocationError
+    || error instanceof AddressContactError
+  ) {
     return new BadRequestException({
       code: error.code,
       message: error.message,

@@ -5,6 +5,7 @@ import {
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import { LocationReferenceRepository } from '~/domains/location/app/ports/location-reference.repository';
 import { resolveUpdateAddressLocation } from '~/domains/location/app/address-location.resolver';
+import { resolveUpdateAddressContact } from '~/domains/location/app/address-contact.resolver';
 import { UserAddressRepository } from '../../ports/user-address.repository';
 import type {
   UpdateMyAddressCommand,
@@ -39,6 +40,17 @@ export class UpdateMyAddressUseCase {
       command,
     );
 
+    const countryCode = locationUpdate === null
+      ? existingLocation.countryCode
+      : locationUpdate.countryCode ?? null;
+
+    const contactUpdate = await resolveUpdateAddressContact(
+      this.locationReferenceRepository,
+      countryCode,
+      { phone: existingLocation.phone, zip: existingLocation.zip },
+      { phone: command.phone, zip: command.zip },
+    );
+
     if (command.isPrimary === true) {
       await this.userAddressRepository.clearPrimaryForUser(
         actor.userId,
@@ -54,10 +66,9 @@ export class UpdateMyAddressUseCase {
         address1: command.address1,
         address2: command.address2,
         city: command.city,
-        zip: command.zip,
-        phone: command.phone,
         isPrimary: command.isPrimary,
         ...(locationUpdate ?? {}),
+        ...contactUpdate,
       },
     );
 

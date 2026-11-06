@@ -54,7 +54,7 @@ POST {{base_url}}/v1/me/addresses
 Idempotency-Key: carrier-label-refund-address
 Content-Type: application/json
 ```json
-{ "full_name": "Label Refund Buyer", "address_1": "1 Test Street", "city": "Portland", "state": "OR", "zip": "97201", "country": "US", "phone": "+15550000101", "is_primary": true }
+{ "full_name": "Label Refund Buyer", "address_1": "1 Test Street", "city": "Portland", "state": "OR", "zip": "97201", "country": "US", "phone": "+14155550101", "is_primary": true }
 ```
 HTTP 201
 [Captures]

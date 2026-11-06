@@ -89,7 +89,7 @@ const DESTINATION = {
   zip: '90001',
   country_code: 'US',
   state_code: 'US-CA',
-  phone: '  +1 555 000 0002  ',
+  phone: '  +1 415 555 2671  ',
 };
 
 const CANONICAL_DESTINATION = {
@@ -101,7 +101,7 @@ const CANONICAL_DESTINATION = {
   state: 'California',
   state_code: 'US-CA',
   zip: '90001',
-  phone: '+1 555 000 0002',
+  phone: '+14155552671',
 };
 
 // eslint-disable-next-line max-lines-per-function
@@ -462,7 +462,7 @@ describe('Checkout and order snapshots carry canonical codes (integration)', () 
           zip: '90001',
           country: 'United States',
           state: 'California',
-          phone: '+1 555 000 0002',
+          phone: '+14155552671',
         },
       })
       .expect(201);
@@ -473,7 +473,7 @@ describe('Checkout and order snapshots carry canonical codes (integration)', () 
       country_code: 'US',
       state: 'California',
       state_code: 'US-CA',
-      phone: '+1 555 000 0002',
+      phone: '+14155552671',
     });
   });
 
@@ -611,7 +611,7 @@ describe('Checkout and order snapshots carry canonical codes (integration)', () 
         country: 'United States',
         state: 'Atlantis',
         zip: '90001',
-        phone: '+15550000002',
+        phone: '+14155552671',
         is_primary: true,
       })
       .expect(201);
@@ -660,6 +660,134 @@ describe('Checkout and order snapshots carry canonical codes (integration)', () 
 
     expect(response.body).toMatchObject({
       code: 'ADDRESS_STATE_TEXT_NOT_ALLOWED',
+    });
+  });
+
+  it('quotes a saved address with legacy contact values without revalidating them', async () => {
+    const seller = await registerSeller();
+    const { inventoryId } = await seedPublishedProduct(seller, 2);
+
+    const buyerAgent = request.agent(app.getHttpServer());
+    const email = `legacy-contact-${Date.now()}@example.com`;
+    await buyerAgent
+      .post(`${API_PREFIX}/auth/register`)
+      .set('Idempotency-Key', randomUUID())
+      .set('X-Forwarded-For', randomForwardedIp())
+      .send({ email, password: VALID_TEST_PASSWORD, displayName: 'Legacy Buyer' })
+      .expect(201);
+
+    const addressResponse = await buyerAgent
+      .post(`${API_PREFIX}/me/addresses`)
+      .set('Idempotency-Key', randomUUID())
+      .send({
+        full_name: 'Legacy Buyer',
+        address_1: '1 Test Street',
+        city: 'Los Angeles',
+        zip: '90001',
+        country_code: 'US',
+        state_code: 'US-CA',
+        phone: '+14155552671',
+        is_primary: true,
+      })
+      .expect(201);
+    const addressId = addressResponse.body.address.id as string;
+
+    await sql.query(
+      'update user_addresses set phone = $1, zip = $2 where id = $3',
+      ['123456789', 'ABCDE', addressId],
+    );
+
+    await buyerAgent
+      .post(`${API_PREFIX}/cart/items`)
+      .set('Idempotency-Key', randomUUID())
+      .send({ inventory_id: inventoryId, quantity: 1 })
+      .expect(201);
+
+    const quoteResponse = await buyerAgent
+      .post(`${API_PREFIX}/me/checkout/quote`)
+      .set('Idempotency-Key', randomUUID())
+      .send({ user_address_id: addressId })
+      .expect(201);
+    const quote = await readQuote(quoteResponse.body.quote_id as string);
+
+    expect(quote.shippingAddress).toMatchObject({
+      country_code: 'US',
+      state_code: 'US-CA',
+      phone: '123456789',
+      zip: 'ABCDE',
+    });
+  });
+
+  it('rejects guest checkout contact values that the country rules reject', async () => {
+    const seller = await registerSeller();
+    const { inventoryId } = await seedPublishedProduct(seller, 2);
+
+    const agent = request.agent(app.getHttpServer());
+    await addGuestItem(agent, inventoryId);
+
+    const invalidPhone = await agent
+      .post(`${API_PREFIX}/checkout/cart/quote`)
+      .set('Idempotency-Key', randomUUID())
+      .set('X-Forwarded-For', randomForwardedIp())
+      .send({ shipping_address: { ...DESTINATION, phone: '12345' } })
+      .expect(400);
+    expect(invalidPhone.body).toMatchObject({
+      code: 'ADDRESS_PHONE_INVALID',
+    });
+
+    const invalidPostcode = await agent
+      .post(`${API_PREFIX}/checkout/cart/quote`)
+      .set('Idempotency-Key', randomUUID())
+      .set('X-Forwarded-For', randomForwardedIp())
+      .send({ shipping_address: { ...DESTINATION, zip: 'ABCDE' } })
+      .expect(400);
+    expect(invalidPostcode.body).toMatchObject({
+      code: 'ADDRESS_POSTCODE_INVALID',
+    });
+
+    const requiredPostcode = await agent
+      .post(`${API_PREFIX}/checkout/cart/quote`)
+      .set('Idempotency-Key', randomUUID())
+      .set('X-Forwarded-For', randomForwardedIp())
+      .send({ shipping_address: { ...DESTINATION, zip: '' } })
+      .expect(400);
+    expect(requiredPostcode.body).toMatchObject({
+      code: 'ADDRESS_POSTCODE_REQUIRED',
+    });
+
+    const gbPhone = await agent
+      .post(`${API_PREFIX}/checkout/cart/quote`)
+      .set('Idempotency-Key', randomUUID())
+      .set('X-Forwarded-For', randomForwardedIp())
+      .send({
+        shipping_address: {
+          ...DESTINATION,
+          country_code: 'GB',
+          state_code: 'GB-ENG',
+          phone: 'not-a-phone',
+        },
+      })
+      .expect(400);
+    expect(gbPhone.body).toMatchObject({
+      code: 'ADDRESS_PHONE_INVALID',
+    });
+
+    const vnPostcode = await agent
+      .post(`${API_PREFIX}/checkout/cart/quote`)
+      .set('Idempotency-Key', randomUUID())
+      .set('X-Forwarded-For', randomForwardedIp())
+      .send({
+        shipping_address: {
+          ...DESTINATION,
+          country_code: 'VN',
+          state_code: 'VN-24',
+          zip: 'ABCDE',
+          phone: '0912 345 678',
+        },
+      })
+      .expect(400);
+    expect(vnPostcode.body).toMatchObject({
+      code: 'ADDRESS_POSTCODE_INVALID',
     });
   });
 });

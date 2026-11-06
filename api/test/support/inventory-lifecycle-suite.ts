@@ -736,7 +736,7 @@ export function defineInventoryLifecycleSuite(
             state: 'OR',
             zip: '97201',
             country: 'US',
-            phone: '+15550000002',
+            phone: '+14155552671',
           },
         })
         .expect(201);
@@ -891,7 +891,7 @@ export function defineInventoryLifecycleSuite(
             state: 'OR',
             zip: '97201',
             country: 'US',
-            phone: '+15550000002',
+            phone: '+14155552671',
           },
         })
         .expect(400);
