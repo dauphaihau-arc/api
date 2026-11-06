@@ -96,9 +96,9 @@ Content-Type: application/json
   "full_name": "Paid Card Order Buyer",
   "address_1": "1 Test Street",
   "city": "Portland",
-  "state": "OR",
+  "state_code": "US-OR",
   "zip": "97201",
-  "country": "US",
+  "country_code": "US",
   "phone": "+14155550103",
   "is_primary": true
 }

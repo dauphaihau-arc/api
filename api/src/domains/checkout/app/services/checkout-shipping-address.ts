@@ -31,33 +31,43 @@ export async function resolveCheckoutShippingAddress(
   options: CheckoutShippingAddressOptions = {},
 ): Promise<ShippingAddressInput> {
   let location;
+
   try {
     location = await resolveCreateAddressLocation(repository, selection);
   }
   catch (error) {
-    const legacyState = selection.state?.trim();
+    const legacyStateText = selection.stateText?.trim();
 
-    // A saved address can carry a subdivision label that the dataset cannot
-    // match. Checkout must still price it from the preserved label instead of
-    // forcing the buyer to replace their address before quoting.
+    // A saved address can carry a preserved subdivision label that the dataset
+    // cannot match because the country later gained an area list. Checkout
+    // still prices it from the stored label instead of forcing the buyer to
+    // replace their address first. New and guest writes never take this path.
     if (
       !(error instanceof AddressLocationError)
-      || error.code !== 'ADDRESS_STATE_CODE_REQUIRED'
-      || !legacyState
-      || selection.stateCode
-      || selection.countryCode === null
-      || selection.countryCode === undefined
+      || (
+        error.code !== 'ADDRESS_STATE_CODE_REQUIRED'
+        && error.code !== 'ADDRESS_STATE_TEXT_NOT_ALLOWED'
+      )
+      || options.source !== 'saved'
+      || !legacyStateText
+      || !selection.countryCode
     ) {
       throw error;
     }
 
+    const country = await repository.findActiveCountry(selection.countryCode);
+
+    if (!country) {
+      throw error;
+    }
+
     location = {
-      country: selection.country ?? '',
-      state: legacyState,
-      countryCode: selection.countryCode,
+      country: country.name,
+      state: legacyStateText,
+      countryCode: country.code,
       stateCode: null,
       countryText: null,
-      stateText: legacyState,
+      stateText: legacyStateText,
     };
   }
 

@@ -36,13 +36,9 @@ type AddressResponse = {
   state_code: string | null;
   phone: string;
   is_primary: boolean;
-  country_text?: string;
-  state_text?: string;
 };
 
 type AddressLocationRow = {
-  country: string;
-  state: string;
   country_code: string | null;
   state_code: string | null;
   country_text: string | null;
@@ -180,7 +176,7 @@ describe('saved address location codes (integration)', () => {
   async function readLocationRow(addressId: string): Promise<AddressLocationRow> {
     const rows = await entityManager.getConnection().execute<AddressLocationRow[]>(
       `
-        select country, state, country_code, state_code, country_text, state_text
+        select country_code, state_code, country_text, state_text
         from user_addresses
         where id = ?
       `,
@@ -215,7 +211,42 @@ describe('saved address location codes (integration)', () => {
     );
   }
 
-  it('creates a coded address and derives the legacy display names', async () => {
+  async function insertLegacyAddress(location: {
+    countryCode?: string | null;
+    stateCode?: string | null;
+    countryText?: string | null;
+    stateText?: string | null;
+  }): Promise<string> {
+    const addressId = randomUUID();
+
+    await entityManager.getConnection().execute(
+      `
+        insert into user_addresses (
+          id, created_at, updated_at, user_id, full_name, address1, address2,
+          city, zip, phone, is_primary, country_code, state_code,
+          country_text, state_text
+        )
+        values (?, now(), now(), ?, ?, ?, null, ?, ?, ?, false, ?, ?, ?, ?)
+      `,
+      [
+        addressId,
+        buyer.userId,
+        baseAddress.full_name,
+        baseAddress.address_1,
+        baseAddress.city,
+        baseAddress.zip,
+        baseAddress.phone,
+        location.countryCode ?? null,
+        location.stateCode ?? null,
+        location.countryText ?? null,
+        location.stateText ?? null,
+      ],
+    );
+
+    return addressId;
+  }
+
+  it('creates a coded address and derives the display names', async () => {
     const response = await createAddress(buyer, {
       country_code: 'US',
       state_code: 'US-CA',
@@ -228,13 +259,8 @@ describe('saved address location codes (integration)', () => {
       country_code: 'US',
       state_code: 'US-CA',
     });
-    expect(address.country_text).toBeUndefined();
-    expect(address.state_text).toBeUndefined();
-
     const row = await readLocationRow(address.id);
     expect(row).toMatchObject({
-      country: 'United States',
-      state: 'California',
       country_code: 'US',
       state_code: 'US-CA',
       country_text: null,
@@ -368,51 +394,28 @@ describe('saved address location codes (integration)', () => {
     });
   });
 
-  it('creates name-only addresses and resolves known legacy names', async () => {
-    const resolved = await createAddress(buyer, {
-      country: 'United States',
-      state: 'California',
-    });
-    expect(resolved.body.address).toMatchObject({
-      country: 'United States',
-      state: 'California',
-      country_code: 'US',
-      state_code: 'US-CA',
-    });
+  it('rejects name-only country and subdivision fields', async () => {
+    const response = await createAddress(
+      buyer,
+      { country: 'United States', state: 'California' },
+      400,
+    );
 
-    const unresolvedSubdivision = await createAddress(buyer, {
-      country: 'United States',
-      state: 'Atlantis',
-    });
-    const addressId = unresolvedSubdivision.body.address.id as string;
-    expect(unresolvedSubdivision.body.address).toMatchObject({
-      country: 'United States',
-      state: 'Atlantis',
-      country_code: 'US',
-      state_code: null,
-    });
-
-    const row = await readLocationRow(addressId);
-    expect(row).toMatchObject({
-      country_code: 'US',
-      state_code: null,
-      country_text: null,
-      state_text: 'Atlantis',
+    expect(response.body).toMatchObject({
+      code: 'VALIDATION_FAILED',
+      details: {
+        fields: expect.arrayContaining([
+          expect.objectContaining({ field: 'country' }),
+          expect.objectContaining({ field: 'state' }),
+        ]),
+      },
     });
   });
 
-  it('keeps name-only rows with null codes readable', async () => {
-    const created = await createAddress(buyer, {
-      country: 'Narnia',
-      state: 'Nowhere',
-    });
-    const addressId = created.body.address.id as string;
-
-    expect(created.body.address).toMatchObject({
-      country: 'Narnia',
-      state: 'Nowhere',
-      country_code: null,
-      state_code: null,
+  it('keeps legacy text-only rows readable', async () => {
+    const addressId = await insertLegacyAddress({
+      countryText: 'Narnia',
+      stateText: 'Nowhere',
     });
 
     const read = await readAddress(buyer, addressId);
@@ -426,8 +429,6 @@ describe('saved address location codes (integration)', () => {
 
     const row = await readLocationRow(addressId);
     expect(row).toMatchObject({
-      country: 'Narnia',
-      state: 'Nowhere',
       country_code: null,
       state_code: null,
       country_text: 'Narnia',
@@ -436,11 +437,10 @@ describe('saved address location codes (integration)', () => {
   });
 
   it('preserves unchanged legacy values on unrelated edits', async () => {
-    const created = await createAddress(buyer, {
-      country: 'Narnia',
-      state: 'Nowhere',
+    const addressId = await insertLegacyAddress({
+      countryText: 'Narnia',
+      stateText: 'Nowhere',
     });
-    const addressId = created.body.address.id as string;
 
     const updated = await updateAddress(buyer, addressId, {
       city: 'Sacramento',
@@ -455,12 +455,92 @@ describe('saved address location codes (integration)', () => {
 
     const row = await readLocationRow(addressId);
     expect(row).toMatchObject({
-      country: 'Narnia',
-      state: 'Nowhere',
       country_code: null,
       state_code: null,
       country_text: 'Narnia',
       state_text: 'Nowhere',
+    });
+  });
+
+  it('clears preserved legacy text when a row converts to canonical codes', async () => {
+    const addressId = await insertLegacyAddress({
+      countryText: 'Narnia',
+      stateText: 'Nowhere',
+    });
+
+    const updated = await updateAddress(buyer, addressId, {
+      country_code: 'US',
+      state_code: 'US-CA',
+    });
+    expect(updated.body.address).toMatchObject({
+      country: 'United States',
+      state: 'California',
+      country_code: 'US',
+      state_code: 'US-CA',
+    });
+
+    const row = await readLocationRow(addressId);
+    expect(row).toMatchObject({
+      country_code: 'US',
+      state_code: 'US-CA',
+      country_text: null,
+      state_text: null,
+    });
+  });
+
+  it('keeps a preserved legacy subdivision resubmittable but rejects a new one', async () => {
+    const addressId = await insertLegacyAddress({
+      countryCode: 'US',
+      countryText: null,
+      stateText: 'Atlantis',
+    });
+
+    const resent = await updateAddress(buyer, addressId, {
+      city: 'San Diego',
+      state_text: 'Atlantis',
+    });
+    expect(resent.body.address).toMatchObject({
+      city: 'San Diego',
+      country: 'United States',
+      state: 'Atlantis',
+      country_code: 'US',
+      state_code: null,
+    });
+
+    const replaced = await updateAddress(
+      buyer,
+      addressId,
+      { state_text: 'Elsewhere' },
+      400,
+    );
+    expect(replaced.body).toMatchObject({
+      code: 'ADDRESS_STATE_TEXT_NOT_ALLOWED',
+    });
+  });
+
+  it('requires a country code when an update clears it', async () => {
+    const created = await createAddress(buyer, {
+      country_code: 'US',
+      state_code: 'US-CA',
+    });
+    const addressId = created.body.address.id as string;
+
+    const cleared = await updateAddress(
+      buyer,
+      addressId,
+      { country_code: null },
+      400,
+    );
+    expect(cleared.body).toMatchObject({
+      code: 'ADDRESS_COUNTRY_CODE_REQUIRED',
+    });
+
+    const row = await readLocationRow(addressId);
+    expect(row).toMatchObject({
+      country_code: 'US',
+      state_code: 'US-CA',
+      country_text: null,
+      state_text: null,
     });
   });
 
@@ -506,34 +586,6 @@ describe('saved address location codes (integration)', () => {
       await setAreaActive('US-CA', true);
       await setAreaActive('US-WY', true);
     }
-  });
-
-  it('clears nullable codes without breaking the legacy name columns', async () => {
-    const created = await createAddress(buyer, {
-      country_code: 'US',
-      state_code: 'US-CA',
-    });
-    const addressId = created.body.address.id as string;
-
-    const updated = await updateAddress(buyer, addressId, {
-      country_code: null,
-    });
-    expect(updated.body.address).toMatchObject({
-      country: 'United States',
-      state: 'California',
-      country_code: null,
-      state_code: null,
-    });
-
-    const row = await readLocationRow(addressId);
-    expect(row).toMatchObject({
-      country: 'United States',
-      state: 'California',
-      country_code: null,
-      state_code: null,
-      country_text: 'United States',
-      state_text: null,
-    });
   });
 
   it('normalizes valid US, GB, and VN phones to E.164 and normalizes postcodes', async () => {

@@ -30,34 +30,13 @@ export class ShippingAddressDto {
   @MaxLength(255)
   city!: string;
 
-  /**
-   * Legacy display name, accepted during the expand release. Ignored by the
-   * server when `country_code` is present.
-   */
-  @IsOptional()
-  @ApiPropertyOptional()
-  @IsString()
-  @MaxLength(255)
-  country?: string;
-
   /** Canonical ISO alpha-2 country code; names are derived from it. */
-  @IsOptional()
-  @ApiPropertyOptional({ name: 'country_code' })
+  @ApiProperty({ name: 'country_code' })
   @Expose({ name: 'country_code' })
   @Transform(({ value, obj: source }) => value ?? source.country_code)
   @IsString()
   @MaxLength(2)
-  countryCode?: string;
-
-  /**
-   * Legacy subdivision display name, accepted during the expand release.
-   * Ignored by the server when `state_code` is present.
-   */
-  @IsOptional()
-  @ApiPropertyOptional()
-  @IsString()
-  @MaxLength(255)
-  state?: string;
+  countryCode!: string;
 
   /** Canonical administrative-area code; the display name is derived from it. */
   @IsOptional()

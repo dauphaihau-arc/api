@@ -29,18 +29,8 @@ export class UpdateMyAddressDto {
 
   @IsOptional()
   @IsString()
-  @MaxLength(255)
-  state?: string;
-
-  @IsOptional()
-  @IsString()
   @MaxLength(20)
   zip?: string;
-
-  @IsOptional()
-  @IsString()
-  @MaxLength(255)
-  country?: string;
 
   @IsOptional()
   @IsString()

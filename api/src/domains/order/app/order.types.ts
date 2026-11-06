@@ -8,17 +8,14 @@ import type { FulfillmentGroupView } from '../../fulfillment/app/fulfillment.typ
 import type { CheckoutShippingShopQuote } from '../../shipping/app/shipping.types';
 
 /**
- * Client-provided shipping address. Country and subdivision names remain
- * accepted during the expand release, but canonical codes win when present and
- * display names are then derived server-side.
+ * Client-provided shipping address. Canonical codes identify the destination;
+ * display names are always derived server-side.
  */
 export interface ShippingAddressSelection {
   fullName: string;
   address1: string;
   address2?: string;
   city: string;
-  country?: string;
-  state?: string;
   countryCode?: string | null;
   stateCode?: string | null;
   stateText?: string | null;

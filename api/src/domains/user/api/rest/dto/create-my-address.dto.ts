@@ -25,37 +25,22 @@ export class CreateMyAddressDto {
   @MaxLength(255)
   city!: string;
 
-  /**
-   * Legacy subdivision label. Required when no subdivision code is supplied;
-   * resolved to a code when the reference dataset knows it.
-   */
-  @IsOptional()
-  @IsString()
-  @MaxLength(255)
-  state?: string;
-
   @IsString()
   @MaxLength(20)
   zip!: string;
 
-  /**
-   * Legacy country label. Required when country_code is omitted.
-   */
-  @IsOptional()
-  @IsString()
-  @MaxLength(255)
-  country?: string;
-
-  @IsOptional()
+  /** Canonical ISO alpha-2 country code. The only country identity. */
   @IsString()
   @Length(2, 2)
-  country_code?: string | null;
+  country_code!: string;
 
+  /** Canonical administrative-area code; required when the country publishes areas. */
   @IsOptional()
   @IsString()
   @MaxLength(16)
   state_code?: string | null;
 
+  /** Free-text subdivision, allowed only for countries with no area list. */
   @IsOptional()
   @IsString()
   @MaxLength(255)

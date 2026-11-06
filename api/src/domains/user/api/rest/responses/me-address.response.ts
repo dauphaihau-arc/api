@@ -33,10 +33,20 @@ export class MyAddressResponseDto {
   @ApiProperty()
   country!: string;
 
-  @ApiProperty({ required: false, nullable: true, description: 'Canonical ISO country code.' })
+  @ApiProperty({
+    type: String,
+    required: false,
+    nullable: true,
+    description: 'Canonical ISO country code.',
+  })
   country_code?: string | null;
 
-  @ApiProperty({ required: false, nullable: true, description: 'Canonical administrative area code.' })
+  @ApiProperty({
+    type: String,
+    required: false,
+    nullable: true,
+    description: 'Canonical administrative area code.',
+  })
   state_code?: string | null;
 
   @ApiProperty()

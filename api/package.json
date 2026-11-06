@@ -25,7 +25,6 @@
     "db:clear": "ts-node -r tsconfig-paths/register ./database/clear.ts",
     "db:reset:promotions": "ts-node -r tsconfig-paths/register ./database/reset-promotions.ts",
     "db:seed:demo": "ts-node -r tsconfig-paths/register ./database/seed.ts",
-    "db:backfill:user-address-locations": "ts-node -r tsconfig-paths/register ./scripts/backfill-user-address-locations.ts",
     "db:seed": "ts-node -r tsconfig-paths/register ./database/seed-reference.ts",
     "catalog:indexes:sync": "ts-node -r tsconfig-paths/register ./scripts/sync-catalog-indexes.ts",
     "migration:verify:stable-product-mutation": "ts-node -r tsconfig-paths/register ./scripts/verify-stable-product-mutation-migration.ts",

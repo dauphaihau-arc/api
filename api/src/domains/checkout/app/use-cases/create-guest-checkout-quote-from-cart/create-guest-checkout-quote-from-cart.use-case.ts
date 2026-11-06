@@ -34,8 +34,6 @@ export class CreateGuestCheckoutQuoteFromCartUseCase {
         address1: body.shippingAddress.address1,
         address2: body.shippingAddress.address2,
         city: body.shippingAddress.city,
-        country: body.shippingAddress.country,
-        state: body.shippingAddress.state,
         countryCode: body.shippingAddress.countryCode,
         stateCode: body.shippingAddress.stateCode,
         stateText: body.shippingAddress.stateText,

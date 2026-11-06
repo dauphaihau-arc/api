@@ -7,6 +7,7 @@ import type {
   UserAddressSummary,
 } from '../app/user-address.types';
 import { UserAddressEntity } from './persistence/entities/user-address.entity';
+import { loadUserAddressLocationDisplays } from './user-address-location-display';
 import { toUserAddressSummary } from './user-address-summary.mapper';
 
 const USER_ADDRESS_SORT_FIELD_MAP = {
@@ -23,7 +24,9 @@ export class MikroOrmUserAddressQueryRepository implements UserAddressQueryRepos
     userId: string,
     query: ListMyAddressesQuery,
   ): Promise<ListMyAddressesRepositoryResult> {
-    const repository = this.entityManager.fork().getRepository(UserAddressEntity);
+    const entityManager = this.entityManager.fork();
+    const repository = entityManager.getRepository(UserAddressEntity);
+
     const [addresses, total] = await repository.findAndCount(
       { user: userId },
       {
@@ -39,8 +42,10 @@ export class MikroOrmUserAddressQueryRepository implements UserAddressQueryRepos
       },
     );
 
+    const displayFor = await loadUserAddressLocationDisplays(entityManager, addresses);
+
     return {
-      items: addresses.map(toUserAddressSummary),
+      items: addresses.map((address) => toUserAddressSummary(address, displayFor(address))),
       total,
     };
   }
@@ -49,10 +54,17 @@ export class MikroOrmUserAddressQueryRepository implements UserAddressQueryRepos
     userId: string,
     addressId: string,
   ): Promise<UserAddressSummary | null> {
-    const repository = this.entityManager.fork().getRepository(UserAddressEntity);
+    const entityManager = this.entityManager.fork();
+    const repository = entityManager.getRepository(UserAddressEntity);
     const address = await repository.findOne({ id: addressId, user: userId });
 
-    return address ? toUserAddressSummary(address) : null;
+    if (!address) {
+      return null;
+    }
+
+    const displayFor = await loadUserAddressLocationDisplays(entityManager, [address]);
+
+    return toUserAddressSummary(address, displayFor(address));
   }
 
   countOwnedByUserId(userId: string): Promise<number> {

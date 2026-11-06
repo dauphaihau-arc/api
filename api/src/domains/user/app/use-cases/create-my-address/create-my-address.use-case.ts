@@ -49,7 +49,9 @@ export class CreateMyAddressUseCase {
       zip: contact.zip,
       phone: contact.phone,
       isPrimary: shouldBePrimary,
-      ...location,
+      countryCode: location.countryCode,
+      stateCode: location.stateCode,
+      stateText: location.stateText,
     });
   }
 }

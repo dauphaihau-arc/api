@@ -28,11 +28,12 @@ describe('CreateMyAddressUseCase', () => {
         address1: input.address1,
         address2: input.address2,
         city: input.city,
-        state: input.state,
+        state: input.stateText ?? '',
         zip: input.zip,
-        country: input.country,
+        country: 'United States',
         countryCode: input.countryCode,
         stateCode: input.stateCode,
+        stateText: input.stateText,
         phone: input.phone,
         isPrimary: input.isPrimary ?? false,
         createdAt: new Date(),
@@ -46,7 +47,14 @@ describe('CreateMyAddressUseCase', () => {
   function buildLocationRepository(): jest.Mocked<LocationReferenceRepository> {
     return {
       findCurrentDatasetVersion: jest.fn(),
-      findActiveCountries: jest.fn().mockResolvedValue([]),
+      findActiveCountries: jest.fn().mockResolvedValue([
+        {
+          code: 'US',
+          name: 'United States',
+          hasAdministrativeAreas: false,
+          postalCodeRequired: true,
+        },
+      ]),
       findActiveCountry: jest.fn().mockResolvedValue(null),
       findAddressRuleOverride: jest.fn().mockResolvedValue(null),
       findActiveAdministrativeAreas: jest.fn().mockResolvedValue(null),
@@ -64,9 +72,8 @@ describe('CreateMyAddressUseCase', () => {
       fullName: 'Taylor',
       address1: '123 Main St',
       city: 'Austin',
-      state: 'Texas',
       zip: '73301',
-      country: 'US',
+      countryCode: 'US',
       phone: '1234567890',
     });
 
@@ -90,9 +97,8 @@ describe('CreateMyAddressUseCase', () => {
       fullName: 'Taylor',
       address1: '123 Main St',
       city: 'Austin',
-      state: 'Texas',
       zip: '73301',
-      country: 'US',
+      countryCode: 'US',
       phone: '1234567890',
       isPrimary: true,
     });

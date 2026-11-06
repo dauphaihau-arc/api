@@ -375,7 +375,7 @@ describe('Checkout and order snapshots carry canonical codes (integration)', () 
     return result.rows[0].shipping_address as PersistedShippingAddress;
   }
 
-  it('resolves guest codes, reuses the quote across display-name changes, and snapshots the order', async () => {
+  it('resolves guest codes, reuses the quote across equivalent code casing, and snapshots the order', async () => {
     const seller = await registerSeller();
     const { inventoryId } = await seedPublishedProduct(seller, 20);
 
@@ -387,12 +387,7 @@ describe('Checkout and order snapshots carry canonical codes (integration)', () 
       .set('Idempotency-Key', randomUUID())
       .set('X-Forwarded-For', randomForwardedIp())
       .send({
-        shipping_address: {
-          ...DESTINATION,
-          // Display names are deliberately wrong: codes win.
-          country: 'Nowhere',
-          state: 'Nowhere Province',
-        },
+        shipping_address: DESTINATION,
       })
       .expect(201);
 
@@ -402,10 +397,6 @@ describe('Checkout and order snapshots carry canonical codes (integration)', () 
     expect(first.shippingAddress).toMatchObject({
       ...CANONICAL_DESTINATION,
     });
-    expect(first.shippingAddress).not.toMatchObject({
-      country: 'Nowhere',
-      state: 'Nowhere Province',
-    });
 
     const reQuote = await agent
       .post(`${API_PREFIX}/checkout/cart/quote`)
@@ -414,8 +405,8 @@ describe('Checkout and order snapshots carry canonical codes (integration)', () 
       .send({
         shipping_address: {
           ...DESTINATION,
-          country: 'Different Label',
-          state: 'Different Province',
+          country_code: 'us',
+          state_code: 'us-ca',
         },
       })
       .expect(201);
@@ -440,40 +431,6 @@ describe('Checkout and order snapshots carry canonical codes (integration)', () 
     expect(snapshot).toEqual(expect.objectContaining({
       ...CANONICAL_DESTINATION,
     }));
-  });
-
-  it('accepts a legacy name-only guest payload and derives the canonical codes', async () => {
-    const seller = await registerSeller();
-    const { inventoryId } = await seedPublishedProduct(seller, 5);
-
-    const agent = request.agent(app.getHttpServer());
-    await addGuestItem(agent, inventoryId);
-
-    const quoteResponse = await agent
-      .post(`${API_PREFIX}/checkout/cart/quote`)
-      .set('Idempotency-Key', randomUUID())
-      .set('X-Forwarded-For', randomForwardedIp())
-      .send({
-        shipping_address: {
-          full_name: 'Guest Buyer',
-          address_1: '1 Test Street',
-          city: 'Los Angeles',
-          zip: '90001',
-          country: 'United States',
-          state: 'California',
-          phone: '+14155552671',
-        },
-      })
-      .expect(201);
-
-    const quote = await readQuote(quoteResponse.body.quote_id as string);
-    expect(quote.shippingAddress).toMatchObject({
-      country: 'United States',
-      country_code: 'US',
-      state: 'California',
-      state_code: 'US-CA',
-      phone: '+14155552671',
-    });
   });
 
   it('produces the same snapshot for saved-address, guest-cart, and buy-now checkout', async () => {
@@ -587,34 +544,40 @@ describe('Checkout and order snapshots carry canonical codes (integration)', () 
     expect(snapshots[2]).toEqual(snapshots[0]);
   });
 
-  it('quotes a saved address whose legacy subdivision label is not in the dataset', async () => {
+  it('quotes a saved address whose preserved legacy subdivision is not in the dataset', async () => {
     const seller = await registerSeller();
     const { inventoryId } = await seedPublishedProduct(seller, 2);
 
     const buyerAgent = request.agent(app.getHttpServer());
     const email = `legacy-address-${Date.now()}@example.com`;
-    await buyerAgent
+    const registerResponse = await buyerAgent
       .post(`${API_PREFIX}/auth/register`)
       .set('Idempotency-Key', randomUUID())
       .set('X-Forwarded-For', randomForwardedIp())
       .send({ email, password: VALID_TEST_PASSWORD, displayName: 'Legacy Buyer' })
       .expect(201);
 
-    const addressResponse = await buyerAgent
-      .post(`${API_PREFIX}/me/addresses`)
-      .set('Idempotency-Key', randomUUID())
-      .send({
-        full_name: 'Legacy Buyer',
-        address_1: '1 Test Street',
-        city: 'Los Angeles',
-        country: 'United States',
-        state: 'Atlantis',
-        zip: '90001',
-        phone: '+14155552671',
-        is_primary: true,
-      })
-      .expect(201);
-    const addressId = addressResponse.body.address.id as string;
+    const addressId = randomUUID();
+    await sql.query(
+      `
+        insert into user_addresses (
+          id, created_at, updated_at, user_id, full_name, address1, address2,
+          city, zip, phone, is_primary, country_code, state_code,
+          country_text, state_text
+        )
+        values ($1, now(), now(), $2, $3, $4, null, $5, $6, $7, true, 'US', null, null, $8)
+      `,
+      [
+        addressId,
+        registerResponse.body.user.id,
+        'Legacy Buyer',
+        '1 Test Street',
+        'Los Angeles',
+        '90001',
+        '+14155552671',
+        'Atlantis',
+      ],
+    );
 
     await buyerAgent
       .post(`${API_PREFIX}/cart/items`)

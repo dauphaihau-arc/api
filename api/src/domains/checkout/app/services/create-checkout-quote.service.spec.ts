@@ -127,8 +127,7 @@ describe('CreateCheckoutQuoteService', () => {
           address1: '123 Main',
           address2: '',
           city: 'HCMC',
-          country: 'VN',
-          state: 'HCM',
+          countryCode: 'VN',
           zip: '700000',
           phone: '+14155552671',
         },
@@ -322,8 +321,7 @@ describe('CreateCheckoutQuoteService', () => {
         address1: '123 Main',
         address2: '',
         city: 'HCMC',
-        country: 'VN',
-        state: 'HCM',
+        countryCode: 'VN',
         zip: '700000',
         phone: '+14155552671',
       },
@@ -473,8 +471,7 @@ describe('CreateCheckoutQuoteService', () => {
           address1: '123 Main',
           address2: '',
           city: 'HCMC',
-          country: 'VN',
-          state: 'HCM',
+          countryCode: 'VN',
           zip: '700000',
           phone: '+14155552671',
         },
@@ -580,8 +577,7 @@ describe('CreateCheckoutQuoteService', () => {
           fullName: 'Jane Doe',
           address1: '123 Main',
           city: 'HCMC',
-          country: 'VN',
-          state: 'HCM',
+          countryCode: 'VN',
           zip: '700000',
           phone: '+14155552671',
         },
@@ -760,8 +756,7 @@ const QUOTE_CART_INPUT = {
     address1: '123 Main',
     address2: '',
     city: 'Austin',
-    country: 'US',
-    state: 'TX',
+    countryCode: 'US',
     zip: '73301',
     phone: '+14155552671',
   },
@@ -839,7 +834,7 @@ describe('CreateCheckoutQuoteService shipping', () => {
     expect(requestedFingerprint(editedProfile.checkoutQuoteRepository)).not.toBe(fingerprintBase);
   });
 
-  it('keys the fingerprint on canonical codes and ignores client display names', async () => {
+  it('keys the fingerprint on normalized canonical codes', async () => {
     const codedRepository = {
       findCurrentDatasetVersion: jest.fn().mockResolvedValue(null),
       findActiveCountries: jest.fn().mockResolvedValue([
@@ -861,8 +856,6 @@ describe('CreateCheckoutQuoteService shipping', () => {
       ...QUOTE_CART_INPUT,
       shippingAddress: {
         ...QUOTE_CART_INPUT.shippingAddress,
-        country: 'Nowhere',
-        state: 'Nowhere Province',
         countryCode: 'us',
         stateCode: 'us-ca',
       },
@@ -883,9 +876,7 @@ describe('CreateCheckoutQuoteService shipping', () => {
       ...QUOTE_CART_INPUT,
       shippingAddress: {
         ...QUOTE_CART_INPUT.shippingAddress,
-        country: 'Different Label',
-        state: 'Different Province',
-        countryCode: 'US',
+        countryCode: ' US ',
         stateCode: 'US-CA',
       },
     });
@@ -893,27 +884,42 @@ describe('CreateCheckoutQuoteService shipping', () => {
     expect(requestedFingerprint(second.checkoutQuoteRepository)).toBe(firstFingerprint);
   });
 
-  it('falls back to normalized legacy destination text when no codes resolve', async () => {
-    const legacyAddress = {
-      ...QUOTE_CART_INPUT.shippingAddress,
-      country: 'Atlantis',
-      state: 'Old Town',
-    };
+  it('distinguishes different canonical destinations in the fingerprint', async () => {
+    const codedRepository = {
+      findCurrentDatasetVersion: jest.fn().mockResolvedValue(null),
+      findActiveCountries: jest.fn().mockResolvedValue([
+        {
+          code: 'US', name: 'United States', hasAdministrativeAreas: true, postalCodeRequired: true,
+        },
+      ]),
+      findActiveCountry: jest.fn().mockResolvedValue(null),
+      findAddressRuleOverride: jest.fn().mockResolvedValue(null),
+      findActiveAdministrativeAreas: jest.fn().mockResolvedValue([
+        { code: 'US-CA', name: 'California' },
+        { code: 'US-NY', name: 'New York' },
+      ]),
+    } as unknown as LocationReferenceRepository;
 
-    const first = buildQuoteCreationService(buildPricedSummary({}));
-    await first.service.createFromCart({
+    const california = buildQuoteCreationService(buildPricedSummary({}), codedRepository);
+    await california.service.createFromCart({
       ...QUOTE_CART_INPUT,
-      shippingAddress: legacyAddress,
+      shippingAddress: {
+        ...QUOTE_CART_INPUT.shippingAddress,
+        stateCode: 'US-CA',
+      },
     });
-    const firstFingerprint = requestedFingerprint(first.checkoutQuoteRepository);
 
-    const second = buildQuoteCreationService(buildPricedSummary({}));
-    await second.service.createFromCart({
+    const newYork = buildQuoteCreationService(buildPricedSummary({}), codedRepository);
+    await newYork.service.createFromCart({
       ...QUOTE_CART_INPUT,
-      shippingAddress: { ...legacyAddress, country: ' atlantis ', state: 'OLD TOWN' },
+      shippingAddress: {
+        ...QUOTE_CART_INPUT.shippingAddress,
+        stateCode: 'US-NY',
+      },
     });
 
-    expect(requestedFingerprint(second.checkoutQuoteRepository)).toBe(firstFingerprint);
+    expect(requestedFingerprint(newYork.checkoutQuoteRepository))
+      .not.toBe(requestedFingerprint(california.checkoutQuoteRepository));
   });
 });
 
@@ -926,7 +932,14 @@ function requestedFingerprint(repository: jest.Mocked<CheckoutQuoteRepository>):
 function locationReferenceRepository(): LocationReferenceRepository {
   return {
     findCurrentDatasetVersion: jest.fn().mockResolvedValue(null),
-    findActiveCountries: jest.fn().mockResolvedValue([]),
+    findActiveCountries: jest.fn().mockResolvedValue([
+      {
+        code: 'US', name: 'United States', hasAdministrativeAreas: false, postalCodeRequired: true,
+      },
+      {
+        code: 'VN', name: 'Vietnam', hasAdministrativeAreas: false, postalCodeRequired: false,
+      },
+    ]),
     findActiveCountry: jest.fn().mockResolvedValue(null),
     findAddressRuleOverride: jest.fn().mockResolvedValue(null),
     findActiveAdministrativeAreas: jest.fn().mockResolvedValue([]),

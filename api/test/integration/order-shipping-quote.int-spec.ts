@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { mkdtemp, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { MikroORM } from '@mikro-orm/postgresql';
+import { EntityManager, MikroORM } from '@mikro-orm/postgresql';
 import type { TestingModule } from '@nestjs/testing';
 import { Test } from '@nestjs/testing';
 import type { INestApplication } from '@nestjs/common';
@@ -14,6 +14,7 @@ import type { Agent } from 'supertest';
 import type { App } from 'supertest/types';
 import { Client } from 'pg';
 import type * as BootstrapAppModule from '~/bootstrap/app.module';
+import { seedLocations } from '../../database/seeds/location.seed';
 import { GlobalExceptionFilter } from '~/platform/filters/global-exception.filter';
 import { validationExceptionFactory } from '~/platform/pipes/validation-exception.factory';
 import { RequestLoggingInterceptor } from '~/platform/logging/request-logging.interceptor';
@@ -194,6 +195,7 @@ describe('Order accepted shipping facts (integration)', () => {
     );
     app.setGlobalPrefix(API_PREFIX);
     await app.init();
+    await seedLocations(app.get(EntityManager).fork());
   });
 
   afterAll(async () => {
@@ -253,9 +255,10 @@ describe('Order accepted shipping facts (integration)', () => {
     addressOverrides: Partial<{
       fullName: string;
       city: string;
-      state: string;
+      stateCode: string;
+      stateText: string;
       zip: string;
-      country: string;
+      countryCode: string;
     }> = {},
   ): Promise<TestBuyer> {
     const agent = request.agent(app.getHttpServer());
@@ -275,9 +278,10 @@ describe('Order accepted shipping facts (integration)', () => {
         full_name: addressOverrides.fullName ?? 'Buyer One',
         address_1: '123 Main St',
         city: addressOverrides.city ?? 'Los Angeles',
-        state: addressOverrides.state ?? 'CA',
+        state_code: addressOverrides.stateCode ?? 'US-CA',
+        state_text: addressOverrides.stateText,
         zip: addressOverrides.zip ?? '90001',
-        country: addressOverrides.country ?? 'US',
+        country_code: addressOverrides.countryCode ?? 'US',
         phone: '+14155552671',
         is_primary: true,
       })
@@ -644,7 +648,7 @@ describe('Order accepted shipping facts (integration)', () => {
     expect(detail.body.order_shop.shipping_discounts).toEqual([]);
   });
 
-  it('charges a country rate configured as a code for a buyer address holding the country name', async () => {
+  it('charges a country rate configured as a code for a coded buyer address', async () => {
     const seller = await registerSeller('ord-au');
     const profile = await createActiveProfile(seller, {
       destinationCountry: 'AU',
@@ -661,9 +665,9 @@ describe('Order accepted shipping facts (integration)', () => {
     const buyer = await registerBuyer('ord-au', {
       fullName: 'Australia Buyer',
       city: 'Melbourne',
-      state: 'VIC',
+      stateCode: 'AU-VIC',
       zip: '3000',
-      country: 'Australia',
+      countryCode: 'AU',
     });
     await addCartItem(buyer, product.inventoryId, 2);
 
@@ -915,7 +919,7 @@ describe('Order accepted shipping facts (integration)', () => {
       .patch(`${API_PREFIX}/me/addresses/${buyer.addressId}`)
       .set('Idempotency-Key', randomUUID())
       .send({
-        country: 'DE', state: 'BE', city: 'Berlin', zip: '10115', 
+        country_code: 'DE', state_code: 'DE-BE', city: 'Berlin', zip: '10115',
       })
       .expect(200);
 

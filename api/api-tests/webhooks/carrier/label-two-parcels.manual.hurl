@@ -49,7 +49,7 @@ POST {{base_url}}/v1/me/addresses
 Idempotency-Key: carrier-label-two-address
 Content-Type: application/json
 ```json
-{ "full_name": "Two Parcel Buyer", "address_1": "1 Test Street", "city": "Portland", "state": "OR", "zip": "97201", "country": "US", "phone": "+14155550103", "is_primary": true }
+{ "full_name": "Two Parcel Buyer", "address_1": "1 Test Street", "city": "Portland", "state_code": "US-OR", "zip": "97201", "country_code": "US", "phone": "+14155550103", "is_primary": true }
 ```
 HTTP 201
 [Captures]

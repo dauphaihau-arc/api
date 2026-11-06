@@ -11,11 +11,21 @@ export interface UserAddressSummary {
   address1: string;
   address2?: string;
   city: string;
+
+  /** Readable subdivision name derived from `stateCode` or preserved text. */
   state: string;
+
   zip: string;
+
+  /** Readable country name derived from `countryCode` or preserved text. */
   country: string;
+
   countryCode: string | null;
   stateCode: string | null;
+
+  /** Preserved free-text subdivision, used when checkout re-reads a legacy row. */
+  stateText: string | null;
+
   phone: string;
   isPrimary: boolean;
   createdAt: Date;
@@ -53,7 +63,7 @@ export interface UserAddressListResult {
   totalResults: number;
 }
 
-/** Location fields accepted from clients. Codes take precedence over legacy names. */
+/** Location fields accepted from clients. Codes are the only write identity. */
 export type UserAddressLocationSelection = AddressLocationSelection;
 
 /** Create payload before the location selection is resolved. */
@@ -84,12 +94,9 @@ export interface CreateMyAddressInput {
   address1: string;
   address2?: string;
   city: string;
-  state: string;
   zip: string;
-  country: string;
-  countryCode: string | null;
+  countryCode: string;
   stateCode: string | null;
-  countryText: string | null;
   stateText: string | null;
   phone: string;
   isPrimary?: boolean;
@@ -100,10 +107,8 @@ export interface UpdateMyAddressInput {
   address1?: string;
   address2?: string;
   city?: string;
-  state?: string;
   zip?: string;
-  country?: string;
-  countryCode?: string | null;
+  countryCode?: string;
   stateCode?: string | null;
   countryText?: string | null;
   stateText?: string | null;

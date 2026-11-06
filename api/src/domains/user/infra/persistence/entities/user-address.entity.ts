@@ -29,14 +29,8 @@ export class UserAddressEntity extends AbstractBaseEntity {
   @Property({ fieldName: 'city', length: 255 })
   city!: string;
 
-  @Property({ fieldName: 'state', length: 255 })
-  state!: string;
-
   @Property({ fieldName: 'zip', length: 50 })
   zip!: string;
-
-  @Property({ fieldName: 'country', length: 255 })
-  country!: string;
 
   @Property({
     fieldName: 'country_code', type: 'varchar', length: 2, nullable: true, 
