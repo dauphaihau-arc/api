@@ -7,6 +7,7 @@ import type {
   ListMyAddressesQuery,
   ListMyAddressesRepositoryResult,
   UpdateMyAddressInput,
+  UserAddressLocationSnapshot,
   UserAddressSummary,
 } from '../app/user-address.types';
 
@@ -33,6 +34,13 @@ export class DelegatingUserAddressRepository implements UserAddressRepository {
 
   countOwnedByUserId(userId: string): Promise<number> {
     return this.queryRepository.countOwnedByUserId(userId);
+  }
+
+  findOwnedLocationById(
+    userId: string,
+    addressId: string,
+  ): Promise<UserAddressLocationSnapshot | null> {
+    return this.commandRepository.findOwnedLocationById(userId, addressId);
   }
 
   clearPrimaryForUser(

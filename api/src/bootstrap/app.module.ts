@@ -18,6 +18,7 @@ import { CategoryModule } from '~/domains/category/category.module';
 import { CheckoutModule } from '~/domains/checkout/checkout.module';
 import { FulfillmentModule } from '~/domains/fulfillment/fulfillment.module';
 import { FinanceModule } from '~/domains/finance/finance.module';
+import { LocationModule } from '~/domains/location/location.module';
 import { PaymentsWebhookModule } from '~/domains/payments-webhook/payments-webhook.module';
 import { OrderModule } from '~/domains/order/order.module';
 import { ProductModule } from '~/domains/product/product.module';
@@ -86,6 +87,7 @@ import { WsModule } from '~/platform/ws/ws.module';
     FulfillmentModule,
     OrderModule,
     FinanceModule,
+    LocationModule,
     PaymentsWebhookModule,
     ChatModule,
   ],

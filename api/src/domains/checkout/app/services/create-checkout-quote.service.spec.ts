@@ -6,6 +6,7 @@ import type { CartPricingService } from '../../../cart/app/services/cart-pricing
 import type { StorefrontMarketContextService } from '../../../product/app/services/storefront-market-context.service';
 import type { OrderTotalPolicyService } from '../../../order/app/services/order-total-policy.service';
 import type { PurchaseEligibilityService } from '../../../product/app/services/purchase-eligibility.service';
+import type { LocationReferenceRepository } from '../../../location/app/ports/location-reference.repository';
 import { CartKind } from '../../../cart/domain/enums/cart-kind.enum';
 
 describe('CreateCheckoutQuoteService', () => {
@@ -105,6 +106,7 @@ describe('CreateCheckoutQuoteService', () => {
       storefrontMarketContextService,
       orderTotalPolicyService,
       purchaseEligibilityService,
+      locationReferenceRepository(),
     );
 
     await expect(
@@ -125,10 +127,9 @@ describe('CreateCheckoutQuoteService', () => {
           address1: '123 Main',
           address2: '',
           city: 'HCMC',
-          country: 'VN',
-          state: 'HCM',
+          countryCode: 'VN',
           zip: '700000',
-          phone: '0123',
+          phone: '+14155552671',
         },
       }),
     ).rejects.toThrow(OrderTotalLimitExceededError);
@@ -300,6 +301,7 @@ describe('CreateCheckoutQuoteService', () => {
       storefrontMarketContextService,
       orderTotalPolicyService,
       purchaseEligibilityService,
+      locationReferenceRepository(),
     );
 
     const result = await service.createFromCart({
@@ -319,10 +321,9 @@ describe('CreateCheckoutQuoteService', () => {
         address1: '123 Main',
         address2: '',
         city: 'HCMC',
-        country: 'VN',
-        state: 'HCM',
+        countryCode: 'VN',
         zip: '700000',
-        phone: '0123',
+        phone: '+14155552671',
       },
       presentmentCurrency: 'USD',
       shopAdjustments: [{ shopId: 'shop-1', promoCodes: ['SAVE10'] }],
@@ -449,6 +450,7 @@ describe('CreateCheckoutQuoteService', () => {
       storefrontMarketContextService,
       orderTotalPolicyService,
       purchaseEligibilityService,
+      locationReferenceRepository(),
     );
 
     await expect(
@@ -469,10 +471,9 @@ describe('CreateCheckoutQuoteService', () => {
           address1: '123 Main',
           address2: '',
           city: 'HCMC',
-          country: 'VN',
-          state: 'HCM',
+          countryCode: 'VN',
           zip: '700000',
-          phone: '0123',
+          phone: '+14155552671',
         },
       }),
     ).resolves.toEqual(
@@ -559,6 +560,7 @@ describe('CreateCheckoutQuoteService', () => {
       storefrontMarketContextService,
       orderTotalPolicyService,
       purchaseEligibilityService,
+      locationReferenceRepository(),
     );
 
     await expect(
@@ -575,10 +577,9 @@ describe('CreateCheckoutQuoteService', () => {
           fullName: 'Jane Doe',
           address1: '123 Main',
           city: 'HCMC',
-          country: 'VN',
-          state: 'HCM',
+          countryCode: 'VN',
           zip: '700000',
-          phone: '0123',
+          phone: '+14155552671',
         },
       }),
     ).rejects.toThrow('reservation is no longer available');
@@ -696,7 +697,10 @@ function buildPricedSummary(options: {
   };
 }
 
-function buildQuoteCreationService(pricedSummary: ReturnType<typeof buildPricedSummary>) {
+function buildQuoteCreationService(
+  pricedSummary: ReturnType<typeof buildPricedSummary>,
+  repository: LocationReferenceRepository = locationReferenceRepository(),
+) {
   const quoteRepository = {
     create: jest.fn((input: Record<string, unknown>) => ({ id: 'quote-1', ...input })),
   };
@@ -732,6 +736,7 @@ function buildQuoteCreationService(pricedSummary: ReturnType<typeof buildPricedS
     { resolveCurrentRequest: jest.fn().mockResolvedValue({ currency: 'USD', marketCode: 'US' }) } as unknown as StorefrontMarketContextService,
     { assertWithinLimit: jest.fn() } as unknown as OrderTotalPolicyService,
     { evaluate: jest.fn().mockResolvedValue({ eligible: true, failures: [] }) } as unknown as PurchaseEligibilityService,
+    repository,
   );
 
   return { service, quoteRepository, checkoutQuoteRepository };
@@ -751,10 +756,9 @@ const QUOTE_CART_INPUT = {
     address1: '123 Main',
     address2: '',
     city: 'Austin',
-    country: 'US',
-    state: 'TX',
+    countryCode: 'US',
     zip: '73301',
-    phone: '0123',
+    phone: '+14155552671',
   },
 };
 
@@ -829,10 +833,115 @@ describe('CreateCheckoutQuoteService shipping', () => {
     await editedProfile.service.createFromCart(QUOTE_CART_INPUT);
     expect(requestedFingerprint(editedProfile.checkoutQuoteRepository)).not.toBe(fingerprintBase);
   });
+
+  it('keys the fingerprint on normalized canonical codes', async () => {
+    const codedRepository = {
+      findCurrentDatasetVersion: jest.fn().mockResolvedValue(null),
+      findActiveCountries: jest.fn().mockResolvedValue([
+        {
+          code: 'US', name: 'United States', hasAdministrativeAreas: true, postalCodeRequired: true,
+        },
+      ]),
+      findActiveCountry: jest.fn().mockResolvedValue({
+        code: 'US', name: 'United States', hasAdministrativeAreas: true, postalCodeRequired: true,
+      }),
+      findAddressRuleOverride: jest.fn().mockResolvedValue(null),
+      findActiveAdministrativeAreas: jest.fn().mockResolvedValue([
+        { code: 'US-CA', name: 'California' },
+      ]),
+    } as unknown as LocationReferenceRepository;
+
+    const first = buildQuoteCreationService(buildPricedSummary({}), codedRepository);
+    await first.service.createFromCart({
+      ...QUOTE_CART_INPUT,
+      shippingAddress: {
+        ...QUOTE_CART_INPUT.shippingAddress,
+        countryCode: 'us',
+        stateCode: 'us-ca',
+      },
+    });
+    const firstFingerprint = requestedFingerprint(first.checkoutQuoteRepository);
+    const createdSnapshot = first.quoteRepository.create.mock.results[0]?.value as {
+      shippingAddress: Record<string, unknown>;
+    };
+    expect(createdSnapshot.shippingAddress).toMatchObject({
+      country: 'United States',
+      country_code: 'US',
+      state: 'California',
+      state_code: 'US-CA',
+    });
+
+    const second = buildQuoteCreationService(buildPricedSummary({}), codedRepository);
+    await second.service.createFromCart({
+      ...QUOTE_CART_INPUT,
+      shippingAddress: {
+        ...QUOTE_CART_INPUT.shippingAddress,
+        countryCode: ' US ',
+        stateCode: 'US-CA',
+      },
+    });
+
+    expect(requestedFingerprint(second.checkoutQuoteRepository)).toBe(firstFingerprint);
+  });
+
+  it('distinguishes different canonical destinations in the fingerprint', async () => {
+    const codedRepository = {
+      findCurrentDatasetVersion: jest.fn().mockResolvedValue(null),
+      findActiveCountries: jest.fn().mockResolvedValue([
+        {
+          code: 'US', name: 'United States', hasAdministrativeAreas: true, postalCodeRequired: true,
+        },
+      ]),
+      findActiveCountry: jest.fn().mockResolvedValue(null),
+      findAddressRuleOverride: jest.fn().mockResolvedValue(null),
+      findActiveAdministrativeAreas: jest.fn().mockResolvedValue([
+        { code: 'US-CA', name: 'California' },
+        { code: 'US-NY', name: 'New York' },
+      ]),
+    } as unknown as LocationReferenceRepository;
+
+    const california = buildQuoteCreationService(buildPricedSummary({}), codedRepository);
+    await california.service.createFromCart({
+      ...QUOTE_CART_INPUT,
+      shippingAddress: {
+        ...QUOTE_CART_INPUT.shippingAddress,
+        stateCode: 'US-CA',
+      },
+    });
+
+    const newYork = buildQuoteCreationService(buildPricedSummary({}), codedRepository);
+    await newYork.service.createFromCart({
+      ...QUOTE_CART_INPUT,
+      shippingAddress: {
+        ...QUOTE_CART_INPUT.shippingAddress,
+        stateCode: 'US-NY',
+      },
+    });
+
+    expect(requestedFingerprint(newYork.checkoutQuoteRepository))
+      .not.toBe(requestedFingerprint(california.checkoutQuoteRepository));
+  });
 });
 
 function requestedFingerprint(repository: jest.Mocked<CheckoutQuoteRepository>): string {
   const [input] = repository.findReusable.mock.calls[0] as unknown as [{ quoteFingerprint: string }];
 
   return input.quoteFingerprint;
+}
+
+function locationReferenceRepository(): LocationReferenceRepository {
+  return {
+    findCurrentDatasetVersion: jest.fn().mockResolvedValue(null),
+    findActiveCountries: jest.fn().mockResolvedValue([
+      {
+        code: 'US', name: 'United States', hasAdministrativeAreas: false, postalCodeRequired: true,
+      },
+      {
+        code: 'VN', name: 'Vietnam', hasAdministrativeAreas: false, postalCodeRequired: false,
+      },
+    ]),
+    findActiveCountry: jest.fn().mockResolvedValue(null),
+    findAddressRuleOverride: jest.fn().mockResolvedValue(null),
+    findActiveAdministrativeAreas: jest.fn().mockResolvedValue([]),
+  } as unknown as LocationReferenceRepository;
 }

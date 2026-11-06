@@ -16,6 +16,7 @@ import type { Agent } from 'supertest';
 import type { App } from 'supertest/types';
 import { Client } from 'pg';
 import type * as BootstrapAppModule from '~/bootstrap/app.module';
+import { seedLocations } from '../../database/seeds/location.seed';
 import { GlobalExceptionFilter } from '~/platform/filters/global-exception.filter';
 import { validationExceptionFactory } from '~/platform/pipes/validation-exception.factory';
 import { RequestLoggingInterceptor } from '~/platform/logging/request-logging.interceptor';
@@ -313,6 +314,7 @@ describe('Fulfillment flow (integration)', () => {
     );
     app.setGlobalPrefix(API_PREFIX);
     await app.init();
+    await seedLocations(app.get(EntityManager).fork());
 
     fulfillmentService = app.get(FulfillmentService);
     financeMoneyEventProcessor = app.get(FinanceMoneyEventProcessorService);
@@ -389,10 +391,10 @@ describe('Fulfillment flow (integration)', () => {
         full_name: 'Buyer One',
         address_1: '1 Test Street',
         city: 'Portland',
-        state: 'OR',
+        state_code: 'US-OR',
         zip: '97201',
-        country: 'US',
-        phone: '+15550000001',
+        country_code: 'US',
+        phone: '+14155552671',
       })
       .expect(201);
 

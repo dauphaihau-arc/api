@@ -6,6 +6,7 @@ import {
 } from '../../../order/app/errors/order-app.error';
 import { CheckoutQuoteRepository } from '../ports/checkout-quote.repository';
 import { parsePricedShops } from './checkout-quote-priced-shops';
+import { fromPersistedShippingAddress } from '../../../order/app/shipping-address-snapshot';
 import type {
   CheckoutQuoteItemSummary,
   CheckoutQuoteShopSummary,
@@ -66,16 +67,7 @@ export class LoadCheckoutQuoteService {
       throw new CheckoutQuoteExpiredError();
     }
 
-    const shippingAddress = quote.shippingAddress as {
-      full_name: string;
-      address1: string;
-      address2?: string;
-      city: string;
-      country: string;
-      state: string;
-      zip: string;
-      phone: string;
-    };
+    const shippingAddress = fromPersistedShippingAddress(quote.shippingAddress);
     const shopAdjustments = (quote.shopAdjustments as Array<{
       shop_id: string;
       promo_codes?: string[];
@@ -98,16 +90,7 @@ export class LoadCheckoutQuoteService {
       discountMinor: quote.discountMinor,
       saleDiscountMinor: quote.saleDiscountMinor,
       totalMinor: quote.totalMinor,
-      shippingAddress: {
-        fullName: shippingAddress.full_name,
-        address1: shippingAddress.address1,
-        address2: shippingAddress.address2,
-        city: shippingAddress.city,
-        country: shippingAddress.country,
-        state: shippingAddress.state,
-        zip: shippingAddress.zip,
-        phone: shippingAddress.phone,
-      },
+      shippingAddress,
       shopAdjustments,
       shops,
       items: shops.flatMap((shop) => shop.items),

@@ -21,6 +21,7 @@ import { ProductVariantEntity } from '../product/infra/persistence/mikro-orm/ent
 import { ShopModule } from '../shop/shop.module';
 import { ShopEntity } from '../shop/infra/persistence/entities/shop.entity';
 import { UserModule } from '../user/user.module';
+import { LocationModule } from '../location/location.module';
 import { NotificationModule } from '~/domains/notification/notification.module';
 import { PaymentModule } from '~/integrations/payment/payment.module';
 import { QueueModule } from '~/integrations/queue/queue.module';
@@ -73,6 +74,7 @@ import { OrderItemEntity } from '../order/infra/persistence/entities/order-item.
     forwardRef(() => QueueModule),
     StorageModule,
     UserModule,
+    LocationModule,
     ShopModule,
     MikroOrmModule.forFeature([
       CheckoutStockReservationEntity,

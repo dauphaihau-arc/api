@@ -3,7 +3,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { mkdtemp, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { MikroORM } from '@mikro-orm/postgresql';
+import { EntityManager, MikroORM } from '@mikro-orm/postgresql';
 import type { TestingModule } from '@nestjs/testing';
 import { Test } from '@nestjs/testing';
 import type { INestApplication } from '@nestjs/common';
@@ -15,6 +15,7 @@ import type { Agent } from 'supertest';
 import type { App } from 'supertest/types';
 import { Client } from 'pg';
 import type * as BootstrapAppModule from '~/bootstrap/app.module';
+import { seedLocations } from '../../database/seeds/location.seed';
 import { GlobalExceptionFilter } from '~/platform/filters/global-exception.filter';
 import { validationExceptionFactory } from '~/platform/pipes/validation-exception.factory';
 import { RequestLoggingInterceptor } from '~/platform/logging/request-logging.interceptor';
@@ -191,6 +192,7 @@ describe('Promo code redemption (integration)', () => {
     );
     app.setGlobalPrefix(API_PREFIX);
     await app.init();
+    await seedLocations(app.get(EntityManager).fork());
   });
 
   afterAll(async () => {
@@ -263,10 +265,10 @@ describe('Promo code redemption (integration)', () => {
         full_name: 'Buyer One',
         address_1: '123 Main St',
         city: 'Los Angeles',
-        state: 'CA',
+        state_code: 'US-CA',
         zip: '90001',
-        country: 'US',
-        phone: '123456789',
+        country_code: 'US',
+        phone: '+14155552671',
         is_primary: true,
       })
       .expect(201);

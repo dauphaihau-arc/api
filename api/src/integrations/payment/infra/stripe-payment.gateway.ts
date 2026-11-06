@@ -78,8 +78,8 @@ export class StripePaymentGateway extends PaymentGateway {
           name: input.shippingAddress.fullName,
           phone: input.shippingAddress.phone,
           address: {
-            country: input.shippingAddress.country,
-            state: input.shippingAddress.state,
+            country: input.shippingAddress.countryCode ?? input.shippingAddress.country,
+            state: input.shippingAddress.stateCode ?? input.shippingAddress.state,
             city: input.shippingAddress.city,
             line1: input.shippingAddress.address1,
             line2: input.shippingAddress.address2 ?? '',

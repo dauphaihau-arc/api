@@ -24,9 +24,9 @@ type UserAddressCsvRow = {
   address1: string;
   address2: string;
   city: string;
-  state: string;
+  state_text: string;
   zip: string;
-  country: string;
+  country_code: string;
   phone: string;
   is_primary: string;
 };
@@ -44,9 +44,9 @@ type UserAddressSeed = {
   address1: string;
   address2?: string;
   city: string;
-  state: string;
+  stateText?: string;
   zip: string;
-  country: string;
+  countryCode: string;
   phone: string;
   isPrimary: boolean;
 };
@@ -107,9 +107,8 @@ function loadUserAddressSeeds(): UserAddressSeed[] {
     if (!row.full_name.trim()) throw new Error(`Missing full_name for address seed ${seedKey}`);
     if (!row.address1.trim()) throw new Error(`Missing address1 for address seed ${seedKey}`);
     if (!row.city.trim()) throw new Error(`Missing city for address seed ${seedKey}`);
-    if (!row.state.trim()) throw new Error(`Missing state for address seed ${seedKey}`);
     if (!row.zip.trim()) throw new Error(`Missing zip for address seed ${seedKey}`);
-    if (!row.country.trim()) throw new Error(`Missing country for address seed ${seedKey}`);
+    if (!row.country_code?.trim()) throw new Error(`Missing country_code for address seed ${seedKey}`);
     if (!row.phone.trim()) throw new Error(`Missing phone for address seed ${seedKey}`);
 
     return {
@@ -118,9 +117,9 @@ function loadUserAddressSeeds(): UserAddressSeed[] {
       address1: row.address1.trim(),
       address2: row.address2.trim() || undefined,
       city: row.city.trim(),
-      state: row.state.trim(),
+      stateText: row.state_text?.trim() || undefined,
       zip: row.zip.trim(),
-      country: row.country.trim(),
+      countryCode: row.country_code.trim().toUpperCase(),
       phone: row.phone.trim(),
       isPrimary: parseBoolean(row.is_primary, seedKey, 'is_primary'),
     };
@@ -215,9 +214,9 @@ export async function seedUserProfiles(
         address1: seed.address1,
         address2: seed.address2,
         city: seed.city,
-        state: seed.state,
         zip: seed.zip,
-        country: seed.country,
+        countryCode: seed.countryCode,
+        stateText: seed.stateText ?? null,
         phone: seed.phone,
         isPrimary: seed.isPrimary,
       }));

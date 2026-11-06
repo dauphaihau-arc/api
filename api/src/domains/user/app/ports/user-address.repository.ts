@@ -3,6 +3,7 @@ import type {
   ListMyAddressesQuery,
   ListMyAddressesRepositoryResult,
   UpdateMyAddressInput,
+  UserAddressLocationSnapshot,
   UserAddressSummary,
 } from '../user-address.types';
 
@@ -18,6 +19,11 @@ export abstract class UserAddressRepository {
   ): Promise<UserAddressSummary | null>;
 
   abstract countOwnedByUserId(userId: string): Promise<number>;
+
+  abstract findOwnedLocationById(
+    userId: string,
+    addressId: string,
+  ): Promise<UserAddressLocationSnapshot | null>;
 
   abstract clearPrimaryForUser(
     userId: string,

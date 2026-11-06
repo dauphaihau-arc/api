@@ -30,23 +30,39 @@ export class ShippingAddressDto {
   @MaxLength(255)
   city!: string;
 
-  @ApiProperty()
+  /** Canonical ISO alpha-2 country code; names are derived from it. */
+  @ApiProperty({ name: 'country_code' })
+  @Expose({ name: 'country_code' })
+  @Transform(({ value, obj: source }) => value ?? source.country_code)
+  @IsString()
+  @MaxLength(2)
+  countryCode!: string;
+
+  /** Canonical administrative-area code; the display name is derived from it. */
+  @IsOptional()
+  @ApiPropertyOptional({ name: 'state_code' })
+  @Expose({ name: 'state_code' })
+  @Transform(({ value, obj: source }) => value ?? source.state_code)
   @IsString()
   @MaxLength(255)
-  country!: string;
+  stateCode?: string;
+
+  /** Free-text subdivision for countries with no administrative-area list. */
+  @IsOptional()
+  @ApiPropertyOptional({ name: 'state_text' })
+  @Expose({ name: 'state_text' })
+  @Transform(({ value, obj: source }) => value ?? source.state_text)
+  @IsString()
+  @MaxLength(255)
+  stateText?: string;
 
   @ApiProperty()
   @IsString()
-  @MaxLength(255)
-  state!: string;
-
-  @ApiProperty()
-  @IsString()
-  @MaxLength(50)
+  @MaxLength(20)
   zip!: string;
 
   @ApiProperty()
   @IsString()
-  @MaxLength(50)
+  @MaxLength(20)
   phone!: string;
 }

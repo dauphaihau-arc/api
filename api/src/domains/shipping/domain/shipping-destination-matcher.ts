@@ -1,4 +1,3 @@
-import { resolveCountryCode } from '~/shared/utils/country-code';
 import { ShippingDestinationScope } from './enums/shipping-destination-scope.enum';
 
 /**
@@ -35,11 +34,11 @@ const SCOPE_SPECIFICITY: Record<ShippingDestinationScope, number> = {
 
 /**
  * Canonical alpha-2 country code for a configured rate or a destination.
- * Buyer addresses carry display names while configured rates carry codes, so
- * both vocabularies resolve to the same canonical code here.
+ * Both sides store codes, so normalization only removes cosmetic padding and
+ * casing; a value that is not an alpha-2 code simply never matches.
  */
 export function normalizeCountryCode(value: string | undefined): string {
-  return resolveCountryCode(value);
+  return value?.trim().toUpperCase() ?? '';
 }
 
 /**

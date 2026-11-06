@@ -1,6 +1,7 @@
 import type {
   CreateMyAddressInput,
   UpdateMyAddressInput,
+  UserAddressLocationSnapshot,
   UserAddressSummary,
 } from '../user-address.types';
 
@@ -22,4 +23,9 @@ export abstract class UserAddressCommandRepository {
     userId: string,
     addressId: string
   ): Promise<boolean>;
+
+  abstract findOwnedLocationById(
+    userId: string,
+    addressId: string,
+  ): Promise<UserAddressLocationSnapshot | null>;
 }

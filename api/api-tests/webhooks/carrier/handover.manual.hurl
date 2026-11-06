@@ -56,7 +56,7 @@ POST {{base_url}}/v1/me/addresses
 Idempotency-Key: carrier-handover-address-1
 Content-Type: application/json
 ```json
-{ "full_name": "Handover Buyer 1", "address_1": "1 Test Street", "city": "Portland", "state": "OR", "zip": "97201", "country": "US", "phone": "+15550000011", "is_primary": true }
+{ "full_name": "Handover Buyer 1", "address_1": "1 Test Street", "city": "Portland", "state_code": "US-OR", "zip": "97201", "country_code": "US", "phone": "+14155550011", "is_primary": true }
 ```
 HTTP 201
 [Captures]

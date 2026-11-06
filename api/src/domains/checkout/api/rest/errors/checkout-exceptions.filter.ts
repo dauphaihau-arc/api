@@ -1,4 +1,6 @@
-import { Catch, Injectable } from '@nestjs/common';
+import { BadRequestException, Catch, Injectable } from '@nestjs/common';
+import { AddressLocationError } from '~/domains/location/app/errors/address-location.error';
+import { AddressContactError } from '~/domains/location/app/errors/address-contact.error';
 import { DomainExceptionFilter } from '~/platform/filters/domain-exception.filter';
 import { isPromotionAppError, mapPromotionAppErrorToHttpException } from '~/domains/promotion/api/rest/promotion-http-error-mapper';
 import { isCheckoutAppError, mapCheckoutAppErrorToHttpException } from './checkout-http-error-mapper';
@@ -19,6 +21,16 @@ export class CheckoutExceptionsFilter extends DomainExceptionFilter {
 
     if (isPromotionAppError(exception)) {
       return mapPromotionAppErrorToHttpException(exception);
+    }
+
+    if (
+      exception instanceof AddressLocationError
+      || exception instanceof AddressContactError
+    ) {
+      return new BadRequestException({
+        code: exception.code,
+        message: exception.message,
+      });
     }
 
     return null;

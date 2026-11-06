@@ -57,7 +57,7 @@ POST {{base_url}}/v1/me/addresses
 Idempotency-Key: carrier-mock-address
 Content-Type: application/json
 ```json
-{ "full_name": "Mock Parcel Buyer", "address_1": "1 Test Street", "city": "Portland", "state": "OR", "zip": "97201", "country": "US", "phone": "+15550000041", "is_primary": true }
+{ "full_name": "Mock Parcel Buyer", "address_1": "1 Test Street", "city": "Portland", "state_code": "US-OR", "zip": "97201", "country_code": "US", "phone": "+14155550041", "is_primary": true }
 ```
 HTTP 201
 [Captures]

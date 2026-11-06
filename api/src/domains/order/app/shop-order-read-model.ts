@@ -64,7 +64,9 @@ function toShippingAddress(
     ...(input?.address2 ? { address2: String(input.address2) } : {}),
     city: String(input?.city ?? ''),
     country: String(input?.country ?? ''),
+    countryCode: typeof input?.country_code === 'string' ? input.country_code : null,
     state: String(input?.state ?? ''),
+    stateCode: typeof input?.state_code === 'string' ? input.state_code : null,
     zip: String(input?.zip ?? ''),
     ...(input?.phone ? { phone: String(input.phone) } : {}),
   };

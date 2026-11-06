@@ -51,13 +51,15 @@ export class CreateCheckoutQuoteForBuyNowUseCase {
         address1: address.address1,
         address2: address.address2,
         city: address.city,
-        country: address.country,
-        state: address.state,
+        countryCode: address.countryCode,
+        stateCode: address.stateCode,
+        stateText: address.stateText,
         zip: address.zip,
         phone: address.phone,
       },
       presentmentCurrency: body.presentmentCurrency,
       shopAdjustments,
+      shippingAddressSource: 'saved',
     });
   }
 }

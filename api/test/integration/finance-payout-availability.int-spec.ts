@@ -14,6 +14,7 @@ import type { Agent } from 'supertest';
 import type { App } from 'supertest/types';
 import { Client } from 'pg';
 import type * as BootstrapAppModule from '~/bootstrap/app.module';
+import { seedLocations } from '../../database/seeds/location.seed';
 import { GlobalExceptionFilter } from '~/platform/filters/global-exception.filter';
 import { validationExceptionFactory } from '~/platform/pipes/validation-exception.factory';
 import { RequestLoggingInterceptor } from '~/platform/logging/request-logging.interceptor';
@@ -302,6 +303,7 @@ describe('Payout Availability from delivery (integration)', () => {
     );
     app.setGlobalPrefix(API_PREFIX);
     await app.init();
+    await seedLocations(app.get(EntityManager).fork());
   });
 
   afterAll(async () => {
@@ -377,10 +379,10 @@ describe('Payout Availability from delivery (integration)', () => {
         full_name: 'Payout Buyer',
         address_1: '123 Main St',
         city: 'Los Angeles',
-        state: 'CA',
+        state_code: 'US-CA',
         zip: '90001',
-        country: 'US',
-        phone: '123456789',
+        country_code: 'US',
+        phone: '+14155552671',
         is_primary: true,
       })
       .expect(201);

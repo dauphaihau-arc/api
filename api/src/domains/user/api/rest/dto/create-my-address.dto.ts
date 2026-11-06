@@ -2,6 +2,7 @@ import {
   IsBoolean,
   IsOptional,
   IsString,
+  Length,
   MaxLength,
 } from 'class-validator';
 
@@ -25,19 +26,28 @@ export class CreateMyAddressDto {
   city!: string;
 
   @IsString()
-  @MaxLength(255)
-  state!: string;
-
-  @IsString()
-  @MaxLength(50)
+  @MaxLength(20)
   zip!: string;
 
+  /** Canonical ISO alpha-2 country code. The only country identity. */
+  @IsString()
+  @Length(2, 2)
+  country_code!: string;
+
+  /** Canonical administrative-area code; required when the country publishes areas. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(16)
+  state_code?: string | null;
+
+  /** Free-text subdivision, allowed only for countries with no area list. */
+  @IsOptional()
   @IsString()
   @MaxLength(255)
-  country!: string;
+  state_text?: string | null;
 
   @IsString()
-  @MaxLength(50)
+  @MaxLength(20)
   phone!: string;
 
   @IsOptional()

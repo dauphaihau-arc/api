@@ -1,0 +1,47 @@
+[
+  {
+    "country_code": "US",
+    "rules": {
+      "labels": {
+        "subdivision": "State",
+        "zip": "ZIP code"
+      }
+    }
+  },
+  {
+    "country_code": "GB",
+    "rules": {
+      "hidden": ["subdivision"],
+      "labels": {
+        "zip": "Postcode"
+      }
+    }
+  },
+  {
+    "country_code": "VN",
+    "rules": {
+      "labels": {
+        "subdivision": "Province/City"
+      }
+    }
+  },
+  {
+    "country_code": "JP",
+    "rules": {
+      "order": ["zip", "subdivision", "address_1", "full_name"],
+      "labels": {
+        "subdivision": "Prefecture",
+        "zip": "Postal code"
+      }
+    }
+  },
+  {
+    "country_code": "HK",
+    "rules": {
+      "hidden": ["zip"],
+      "labels": {
+        "subdivision": "District"
+      }
+    }
+  }
+]

@@ -1,6 +1,7 @@
 import { UserStatus } from '~/domains/auth/domain/enums/user-status.enum';
 import { CreateMyAddressUseCase } from './create-my-address.use-case';
 import type { UserAddressRepository } from '../../ports/user-address.repository';
+import type { LocationReferenceRepository } from '~/domains/location/app/ports/location-reference.repository';
 
 describe('CreateMyAddressUseCase', () => {
   const actor = {
@@ -17,6 +18,7 @@ describe('CreateMyAddressUseCase', () => {
     return {
       findAllOwnedByUserId: jest.fn(),
       findOwnedById: jest.fn(),
+      findOwnedLocationById: jest.fn(),
       countOwnedByUserId: jest.fn().mockResolvedValue(0),
       clearPrimaryForUser: jest.fn().mockResolvedValue(undefined),
       create: jest.fn().mockImplementation(async (input) => ({
@@ -26,9 +28,12 @@ describe('CreateMyAddressUseCase', () => {
         address1: input.address1,
         address2: input.address2,
         city: input.city,
-        state: input.state,
+        state: input.stateText ?? '',
         zip: input.zip,
-        country: input.country,
+        country: 'United States',
+        countryCode: input.countryCode,
+        stateCode: input.stateCode,
+        stateText: input.stateText,
         phone: input.phone,
         isPrimary: input.isPrimary ?? false,
         createdAt: new Date(),
@@ -39,17 +44,36 @@ describe('CreateMyAddressUseCase', () => {
     };
   }
 
+  function buildLocationRepository(): jest.Mocked<LocationReferenceRepository> {
+    return {
+      findCurrentDatasetVersion: jest.fn(),
+      findActiveCountries: jest.fn().mockResolvedValue([
+        {
+          code: 'US',
+          name: 'United States',
+          hasAdministrativeAreas: false,
+          postalCodeRequired: true,
+        },
+      ]),
+      findActiveCountry: jest.fn().mockResolvedValue(null),
+      findAddressRuleOverride: jest.fn().mockResolvedValue(null),
+      findActiveAdministrativeAreas: jest.fn().mockResolvedValue(null),
+    };
+  }
+
   it('marks the first address as primary even when the client omits the flag', async () => {
     const repository = buildRepository();
-    const useCase = new CreateMyAddressUseCase(repository);
+    const useCase = new CreateMyAddressUseCase(
+      repository,
+      buildLocationRepository(),
+    );
 
     const result = await useCase.execute(actor, {
       fullName: 'Taylor',
       address1: '123 Main St',
       city: 'Austin',
-      state: 'Texas',
       zip: '73301',
-      country: 'US',
+      countryCode: 'US',
       phone: '1234567890',
     });
 
@@ -64,15 +88,17 @@ describe('CreateMyAddressUseCase', () => {
   it('clears the previous primary address when a new default is requested', async () => {
     const repository = buildRepository();
     repository.countOwnedByUserId.mockResolvedValue(2);
-    const useCase = new CreateMyAddressUseCase(repository);
+    const useCase = new CreateMyAddressUseCase(
+      repository,
+      buildLocationRepository(),
+    );
 
     await useCase.execute(actor, {
       fullName: 'Taylor',
       address1: '123 Main St',
       city: 'Austin',
-      state: 'Texas',
       zip: '73301',
-      country: 'US',
+      countryCode: 'US',
       phone: '1234567890',
       isPrimary: true,
     });

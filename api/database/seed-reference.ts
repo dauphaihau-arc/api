@@ -7,8 +7,13 @@ import { CategoryEntity } from '~/domains/category/infra/persistence/entities/ca
 import { PermissionEntity } from '~/domains/auth/infra/persistence/entities/permission.entity';
 import { RolePermissionEntity } from '~/domains/auth/infra/persistence/entities/role-permission.entity';
 import { RoleEntity } from '~/domains/auth/infra/persistence/entities/role.entity';
+import { LocationAdministrativeAreaEntity } from '~/domains/location/infra/persistence/entities/location-administrative-area.entity';
+import { CountryAddressRuleEntity } from '~/domains/location/infra/persistence/entities/country-address-rule.entity';
+import { LocationCountryEntity } from '~/domains/location/infra/persistence/entities/location-country.entity';
+import { LocationDatasetVersionEntity } from '~/domains/location/infra/persistence/entities/location-dataset-version.entity';
 import { seedAuthReferenceData } from './seeds/auth.seed';
 import { seedCategories } from './seeds/category.seed';
+import { seedLocations } from './seeds/location.seed';
 
 async function main() {
   const orm = await MikroORM.init({
@@ -20,6 +25,10 @@ async function main() {
       CategoryEntity,
       CategoryAttributeEntity,
       CategoryAttributeOptionEntity,
+      LocationCountryEntity,
+      LocationAdministrativeAreaEntity,
+      LocationDatasetVersionEntity,
+      CountryAddressRuleEntity,
     ],
   });
 
@@ -29,9 +38,12 @@ async function main() {
     await orm.getMigrator().up();
     await seedAuthReferenceData(em);
     await seedCategories(em);
+    await seedLocations(em);
 
     console.log('Production seed completed');
-    console.log('Seeded reference data only: roles, permissions, categories');
+    console.log(
+      'Seeded reference data only: roles, permissions, categories, locations',
+    );
   }
   finally {
     await orm.close(true);

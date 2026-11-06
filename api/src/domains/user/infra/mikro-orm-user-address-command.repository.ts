@@ -5,9 +5,11 @@ import { UserAddressCommandRepository } from '../app/ports/user-address-command.
 import type {
   CreateMyAddressInput,
   UpdateMyAddressInput,
+  UserAddressLocationSnapshot,
   UserAddressSummary,
 } from '../app/user-address.types';
 import { UserAddressEntity } from './persistence/entities/user-address.entity';
+import { loadUserAddressLocationDisplays } from './user-address-location-display';
 import { toUserAddressSummary } from './user-address-summary.mapper';
 
 @Injectable()
@@ -43,16 +45,18 @@ export class MikroOrmUserAddressCommandRepository implements UserAddressCommandR
       address1: input.address1,
       address2: input.address2,
       city: input.city,
-      state: input.state,
       zip: input.zip,
-      country: input.country,
+      countryCode: input.countryCode,
+      stateCode: input.stateCode,
+      stateText: input.stateText,
       phone: input.phone,
       isPrimary: input.isPrimary ?? false,
     });
 
     await entityManager.persistAndFlush(address);
+    const displayFor = await loadUserAddressLocationDisplays(entityManager, [address]);
 
-    return toUserAddressSummary(address);
+    return toUserAddressSummary(address, displayFor(address));
   }
 
   async updateOwnedById(
@@ -75,15 +79,44 @@ export class MikroOrmUserAddressCommandRepository implements UserAddressCommandR
     if (input.address1 !== undefined) address.address1 = input.address1;
     if (input.address2 !== undefined) address.address2 = input.address2;
     if (input.city !== undefined) address.city = input.city;
-    if (input.state !== undefined) address.state = input.state;
     if (input.zip !== undefined) address.zip = input.zip;
-    if (input.country !== undefined) address.country = input.country;
+    if (input.countryCode !== undefined) address.countryCode = input.countryCode;
+    if (input.stateCode !== undefined) address.stateCode = input.stateCode;
+    if (input.countryText !== undefined) address.countryText = input.countryText;
+    if (input.stateText !== undefined) address.stateText = input.stateText;
     if (input.phone !== undefined) address.phone = input.phone;
     if (input.isPrimary !== undefined) address.isPrimary = input.isPrimary;
 
     await entityManager.persistAndFlush(address);
+    const displayFor = await loadUserAddressLocationDisplays(entityManager, [address]);
 
-    return toUserAddressSummary(address);
+    return toUserAddressSummary(address, displayFor(address));
+  }
+
+  async findOwnedLocationById(
+    userId: string,
+    addressId: string,
+  ): Promise<UserAddressLocationSnapshot | null> {
+    const repository = this.entityManager
+      .fork()
+      .getRepository(UserAddressEntity);
+    const address = await repository.findOne({
+      id: addressId,
+      user: userId,
+    });
+
+    if (!address) {
+      return null;
+    }
+
+    return {
+      countryCode: address.countryCode ?? null,
+      stateCode: address.stateCode ?? null,
+      countryText: address.countryText ?? null,
+      stateText: address.stateText ?? null,
+      phone: address.phone,
+      zip: address.zip,
+    };
   }
 
   async deleteOwnedById(

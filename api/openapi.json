@@ -32184,6 +32184,267 @@
         ]
       }
     },
+    "/v1/locations/countries": {
+      "get": {
+        "operationId": "Location_listCountries",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Active countries sorted by name.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LocationCountryResponseDto"
+                  }
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Dataset unchanged for the supplied If-None-Match validator."
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "INTERNAL_SERVER_ERROR": {
+                    "summary": "Internal server error",
+                    "value": {
+                      "status_code": 500,
+                      "code": "INTERNAL_SERVER_ERROR",
+                      "message": "Internal server error"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Location reference dataset is unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "LOCATION_DATASET_UNAVAILABLE": {
+                    "summary": "Location reference dataset is unavailable",
+                    "value": {
+                      "status_code": 503,
+                      "code": "LOCATION_DATASET_UNAVAILABLE",
+                      "message": "Location reference dataset is unavailable"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "List countries with subdivision availability and postal requiredness",
+        "tags": [
+          "Locations"
+        ]
+      }
+    },
+    "/v1/locations/countries/{code}/administrative-areas": {
+      "get": {
+        "operationId": "Location_listAdministrativeAreas",
+        "parameters": [
+          {
+            "name": "code",
+            "required": true,
+            "in": "path",
+            "description": "ISO 3166-1 alpha-2 country code. Case-insensitive.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Active administrative areas sorted by name. Empty when the country has none.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LocationAdministrativeAreaResponseDto"
+                  }
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Dataset unchanged for the supplied If-None-Match validator."
+          },
+          "404": {
+            "description": "Location country \"XX\" was not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "LOCATION_COUNTRY_NOT_FOUND": {
+                    "summary": "Location country \"XX\" was not found",
+                    "value": {
+                      "status_code": 404,
+                      "code": "LOCATION_COUNTRY_NOT_FOUND",
+                      "message": "Location country \"XX\" was not found"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "INTERNAL_SERVER_ERROR": {
+                    "summary": "Internal server error",
+                    "value": {
+                      "status_code": 500,
+                      "code": "INTERNAL_SERVER_ERROR",
+                      "message": "Internal server error"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Location reference dataset is unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "LOCATION_DATASET_UNAVAILABLE": {
+                    "summary": "Location reference dataset is unavailable",
+                    "value": {
+                      "status_code": 503,
+                      "code": "LOCATION_DATASET_UNAVAILABLE",
+                      "message": "Location reference dataset is unavailable"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "List active level-1 administrative areas for a country",
+        "tags": [
+          "Locations"
+        ]
+      }
+    },
+    "/v1/locations/countries/{code}/address-rules": {
+      "get": {
+        "operationId": "Location_getCountryAddressRules",
+        "parameters": [
+          {
+            "name": "code",
+            "required": true,
+            "in": "path",
+            "description": "ISO 3166-1 alpha-2 country code. Case-insensitive.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Merged library defaults, Arc overrides, and Arc country flags in render order.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LocationCountryAddressRulesResponseDto"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Dataset unchanged for the supplied If-None-Match validator."
+          },
+          "404": {
+            "description": "Location country \"XX\" was not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "LOCATION_COUNTRY_NOT_FOUND": {
+                    "summary": "Location country \"XX\" was not found",
+                    "value": {
+                      "status_code": 404,
+                      "code": "LOCATION_COUNTRY_NOT_FOUND",
+                      "message": "Location country \"XX\" was not found"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "INTERNAL_SERVER_ERROR": {
+                    "summary": "Internal server error",
+                    "value": {
+                      "status_code": 500,
+                      "code": "INTERNAL_SERVER_ERROR",
+                      "message": "Internal server error"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Location reference dataset is unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "LOCATION_DATASET_UNAVAILABLE": {
+                    "summary": "Location reference dataset is unavailable",
+                    "value": {
+                      "status_code": 503,
+                      "code": "LOCATION_DATASET_UNAVAILABLE",
+                      "message": "Location reference dataset is unavailable"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Get merged address-form rules for a country",
+        "tags": [
+          "Locations"
+        ]
+      }
+    },
     "/v1/webhooks/stripe": {
       "post": {
         "operationId": "StripeWebhook_handle",
@@ -34285,6 +34546,9 @@
       "name": "Health"
     },
     {
+      "name": "Locations"
+    },
+    {
       "name": "Marketplace"
     },
     {
@@ -35657,6 +35921,16 @@
           "country": {
             "type": "string"
           },
+          "country_code": {
+            "type": "string",
+            "nullable": true,
+            "description": "Canonical ISO country code."
+          },
+          "state_code": {
+            "type": "string",
+            "nullable": true,
+            "description": "Canonical administrative area code."
+          },
           "phone": {
             "type": "string"
           },
@@ -35736,21 +36010,31 @@
             "type": "string",
             "maxLength": 255
           },
-          "state": {
-            "type": "string",
-            "maxLength": 255
-          },
           "zip": {
             "type": "string",
-            "maxLength": 50
+            "maxLength": 20
           },
-          "country": {
+          "country_code": {
             "type": "string",
+            "description": "Canonical ISO alpha-2 country code. The only country identity.",
+            "minLength": 2,
+            "maxLength": 2
+          },
+          "state_code": {
+            "type": "string",
+            "nullable": true,
+            "description": "Canonical administrative-area code; required when the country publishes areas.",
+            "maxLength": 16
+          },
+          "state_text": {
+            "type": "string",
+            "nullable": true,
+            "description": "Free-text subdivision, allowed only for countries with no area list.",
             "maxLength": 255
           },
           "phone": {
             "type": "string",
-            "maxLength": 50
+            "maxLength": 20
           },
           "is_primary": {
             "type": "boolean"
@@ -35760,9 +36044,8 @@
           "full_name",
           "address_1",
           "city",
-          "state",
           "zip",
-          "country",
+          "country_code",
           "phone"
         ]
       },
@@ -35796,21 +36079,29 @@
             "type": "string",
             "maxLength": 255
           },
-          "state": {
-            "type": "string",
-            "maxLength": 255
-          },
           "zip": {
             "type": "string",
-            "maxLength": 50
+            "maxLength": 20
           },
-          "country": {
+          "country_code": {
             "type": "string",
+            "nullable": true,
+            "minLength": 2,
+            "maxLength": 2
+          },
+          "state_code": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 16
+          },
+          "state_text": {
+            "type": "string",
+            "nullable": true,
             "maxLength": 255
           },
           "phone": {
             "type": "string",
-            "maxLength": 50
+            "maxLength": 20
           },
           "is_primary": {
             "type": "boolean"
@@ -41918,29 +42209,35 @@
             "type": "string",
             "maxLength": 255
           },
-          "country": {
+          "country_code": {
             "type": "string",
+            "description": "Canonical ISO alpha-2 country code; names are derived from it.",
+            "maxLength": 2
+          },
+          "state_code": {
+            "type": "string",
+            "description": "Canonical administrative-area code; the display name is derived from it.",
             "maxLength": 255
           },
-          "state": {
+          "state_text": {
             "type": "string",
+            "description": "Free-text subdivision for countries with no administrative-area list.",
             "maxLength": 255
           },
           "zip": {
             "type": "string",
-            "maxLength": 50
+            "maxLength": 20
           },
           "phone": {
             "type": "string",
-            "maxLength": 50
+            "maxLength": 20
           }
         },
         "required": [
           "full_name",
           "address_1",
           "city",
-          "country",
-          "state",
+          "country_code",
           "zip",
           "phone"
         ]
@@ -43593,8 +43890,16 @@
           "country": {
             "type": "string"
           },
+          "country_code": {
+            "type": "object",
+            "nullable": true
+          },
           "state": {
             "type": "string"
+          },
+          "state_code": {
+            "type": "object",
+            "nullable": true
           },
           "zip": {
             "type": "string"
@@ -46319,6 +46624,127 @@
         "required": [
           "shop_id",
           "payout_account"
+        ]
+      },
+      "LocationCountryResponseDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "example": "VN",
+            "description": "ISO 3166-1 alpha-2 country code."
+          },
+          "name": {
+            "type": "string",
+            "example": "Vietnam"
+          },
+          "has_administrative_areas": {
+            "type": "boolean",
+            "example": true,
+            "description": "Whether active level-1 administrative areas exist for this country."
+          },
+          "postal_code_required": {
+            "type": "boolean",
+            "example": false,
+            "description": "Whether a postal code is required for addresses in this country."
+          }
+        },
+        "required": [
+          "code",
+          "name",
+          "has_administrative_areas",
+          "postal_code_required"
+        ]
+      },
+      "LocationAdministrativeAreaResponseDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "example": "VN-01",
+            "description": "Level-1 administrative area code."
+          },
+          "name": {
+            "type": "string",
+            "example": "Hanoi"
+          }
+        },
+        "required": [
+          "code",
+          "name"
+        ]
+      },
+      "LocationAddressRuleResponseDto": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "enum": [
+              "full_name",
+              "address_1",
+              "address_2",
+              "city",
+              "subdivision",
+              "zip",
+              "phone"
+            ],
+            "type": "string",
+            "example": "zip"
+          },
+          "label": {
+            "type": "string",
+            "example": "Postal code"
+          },
+          "visible": {
+            "type": "boolean",
+            "example": true
+          },
+          "required": {
+            "type": "boolean",
+            "example": true,
+            "description": "Whether the field must be submitted. Hidden fields are never required."
+          },
+          "control": {
+            "enum": [
+              "text",
+              "select",
+              "tel"
+            ],
+            "type": "string",
+            "example": "text"
+          },
+          "autocomplete": {
+            "type": "string",
+            "example": "postal-code"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "visible",
+          "required",
+          "control",
+          "autocomplete"
+        ]
+      },
+      "LocationCountryAddressRulesResponseDto": {
+        "type": "object",
+        "properties": {
+          "country_code": {
+            "type": "string",
+            "example": "JP",
+            "description": "ISO 3166-1 alpha-2 country code."
+          },
+          "fields": {
+            "description": "Merged address fields in the order the form should render them.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LocationAddressRuleResponseDto"
+            }
+          }
+        },
+        "required": [
+          "country_code",
+          "fields"
         ]
       },
       "StripeWebhookAckResponseDto": {

@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -42,6 +43,8 @@ import {
   toMyAddressResponse,
 } from './responses/me-address.response';
 import { ApiErrorResponses } from '~/platform/http/api-error-responses.decorator';
+import { AddressLocationError } from '~/domains/location/app/errors/address-location.error';
+import { AddressContactError } from '~/domains/location/app/errors/address-contact.error';
 import { meAddressesErrorResponses } from './errors/me-addresses-error-responses';
 
 @Controller('me/addresses')
@@ -94,19 +97,25 @@ export class MeAddressesController {
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() body: CreateMyAddressDto,
   ) {
-    const address = await this.createMyAddressUseCase.execute(currentUser, {
-      fullName: body.full_name,
-      address1: body.address_1,
-      address2: body.address_2,
-      city: body.city,
-      state: body.state,
-      zip: body.zip,
-      country: body.country,
-      phone: body.phone,
-      isPrimary: body.is_primary,
-    });
+    try {
+      const address = await this.createMyAddressUseCase.execute(currentUser, {
+        fullName: body.full_name,
+        address1: body.address_1,
+        address2: body.address_2,
+        city: body.city,
+        zip: body.zip,
+        countryCode: body.country_code,
+        stateCode: body.state_code,
+        stateText: body.state_text,
+        phone: body.phone,
+        isPrimary: body.is_primary,
+      });
 
-    return { address: toMyAddressResponse(address) };
+      return { address: toMyAddressResponse(address) };
+    }
+    catch (error) {
+      throw mapAddressError(error);
+    }
   }
 
   @Get(':id')
@@ -149,19 +158,25 @@ export class MeAddressesController {
     @Param('id') id: string,
     @Body() body: UpdateMyAddressDto,
   ) {
-    const address = await this.updateMyAddressUseCase.execute(currentUser, id, {
-      fullName: body.full_name,
-      address1: body.address_1,
-      address2: body.address_2,
-      city: body.city,
-      state: body.state,
-      zip: body.zip,
-      country: body.country,
-      phone: body.phone,
-      isPrimary: body.is_primary,
-    });
+    try {
+      const address = await this.updateMyAddressUseCase.execute(currentUser, id, {
+        fullName: body.full_name,
+        address1: body.address_1,
+        address2: body.address_2,
+        city: body.city,
+        zip: body.zip,
+        countryCode: body.country_code,
+        stateCode: body.state_code,
+        stateText: body.state_text,
+        phone: body.phone,
+        isPrimary: body.is_primary,
+      });
 
-    return { address: toMyAddressResponse(address) };
+      return { address: toMyAddressResponse(address) };
+    }
+    catch (error) {
+      throw mapAddressError(error);
+    }
   }
 
   @Delete(':id')
@@ -177,4 +192,18 @@ export class MeAddressesController {
   ): Promise<void> {
     await this.deleteMyAddressUseCase.execute(currentUser, id);
   }
+}
+
+function mapAddressError(error: unknown): unknown {
+  if (
+    error instanceof AddressLocationError
+    || error instanceof AddressContactError
+  ) {
+    return new BadRequestException({
+      code: error.code,
+      message: error.message,
+    });
+  }
+
+  return error;
 }

@@ -51,10 +51,10 @@ Content-Type: application/json
   "full_name": "Carrier Voided Buyer",
   "address_1": "1 Test Street",
   "city": "Portland",
-  "state": "OR",
+  "state_code": "US-OR",
   "zip": "97201",
-  "country": "US",
-  "phone": "+15550000010",
+  "country_code": "US",
+  "phone": "+14155550010",
   "is_primary": true
 }
 ```

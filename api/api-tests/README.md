@@ -7,15 +7,41 @@ This directory contains HTTP-level smoke tests for the API using [Hurl](https://
 - Install Hurl: https://hurl.dev/docs/installation.html
 - Ensure the API is running locally
 
+## Formatting chained requests
+
+Number each logical step with a comment (`# 1.`, `# 2.`, …). Separate numbered
+steps with two blank lines. Within one step, separate each request with one
+blank line.
+
+```hurl
+# 1. Sign in.
+POST {{base_url}}/v1/auth/login
+HTTP 200
+
+
+# 2. Resolve the shop, then pick an inventory.
+GET {{base_url}}/v1/shops/me
+HTTP 200
+
+GET {{base_url}}/v1/shops/{{shop_public_id}}/products
+HTTP 200
+```
+
 ## Layout
 
 - `health.hurl` checks the public health endpoint.
 - `auth/login.hurl` checks login with seeded default credentials.
 - `products/best-sellers.hurl` checks the public storefront best-sellers endpoint.
+- `locations/countries.hurl` checks the seeded public country list and metadata.
+- `locations/administrative-areas.hurl` checks seeded subdivisions, the Vietnam override, empty-list countries, and unknown-country `404`.
+- `locations/caching.hurl` checks cache headers, distinct strong ETags, and conditional `304` for both endpoints.
 - `internal/catalog-status.hurl` checks the internal catalog status endpoint.
 - `internal/catalog-refresh.hurl` triggers a best-seller refresh on the internal catalog endpoint.
 - `finance/seller-payable.hurl` checks the shop-scoped Seller Payable endpoint as a signed-in seller.
 - `finance/commission-schedule.hurl` checks the admin Commission Schedule endpoint is 401 for anonymous, 403 for a seller, and 200 for a signed-in admin.
+- `addresses/create-update.hurl` creates a saved address, updates only the changed fields, and reads it back.
+- `checkout/address-cash-order.hurl` creates a coded saved address, then quotes and confirms a member cash Order with it. It needs seeded stock and creates one Order per run.
+- `checkout/guest-canonical-address.hurl` quotes and confirms a guest cash Order from canonical codes and asserts the coded order snapshot. It needs seeded stock and creates one guest Order per run.
 - `checkout/create-card-order.manual.hurl` + `finance/settle-paid-card-order.manual.hurl` are the two halves of one flow: open a card checkout, pay it in Stripe test mode, then assert the Seller Payable the paid Order credits. The `.manual.` infix keeps them out of `suite` and `pnpm test:hurl`.
 - `webhooks/carrier/` holds the static signed-carrier-webhook cases: missing signature (401) and wrong signature (401) run in `suite`; unknown tracking number (200 `{}`) and unsupported event code (400) are `.manual.hurl` because they need the API started with the signing secret. They need no Order or Shipment; their bodies live in `webhooks/carrier/bodies/` and their HMAC signatures are precomputed over those exact bytes.
 - `fulfillment/prepare-shipment.manual.hurl`, `webhooks/carrier/pickup.manual.hurl`, `webhooks/carrier/transit.manual.hurl` and `webhooks/carrier/delivery.manual.hurl` are the carrier journey steps: prepare resolves the paid Order behind `checkout_session_id` and prepares a USPS Shipment for `carrier_pickup_tracking`; pickup posts `PICKED_UP` and asserts `dispatched`; transit posts `IN_TRANSIT` then `OUT_FOR_DELIVERY` and asserts the Shipment stays `in_transit`; delivery posts `DELIVERED`, asserts the Shipment is `delivered`, the paid Order becomes `completed`, drains the finance outbox, and asserts Payout Availability is recorded. `webhooks/carrier/handover.manual.hurl`, `webhooks/carrier/handover-requirements.manual.hurl`, `webhooks/carrier/handover-unverified.manual.hurl`, `webhooks/carrier/amend-window.manual.hurl`, `webhooks/carrier/amend-locks.manual.hurl` and `webhooks/carrier/notifications.manual.hurl` cover handover and shipment notifications: the handover declaration, its invalid prerequisites and unverified carriers, the post-handover amend window and quantity lock, and buyer/seller notifications for pickup and delivery. Each builds its own cash Orders and needs no prior step. `webhooks/carrier/duplicate.manual.hurl` replays the same signed `PICKED_UP` body and asserts the Shipment keeps `dispatched` with two updates. `webhooks/carrier/cross-carrier.manual.hurl` creates a cash Order with a DHL Shipment and sends the USPS pickup's event id from DHL, asserting both carriers keep their evidence. `webhooks/carrier/voided.manual.hurl` builds its own cash Order, prepares and voids a Shipment, then sends a pickup for its number and asserts the event is ignored. `webhooks/carrier/out-of-order.manual.hurl` sends an in-transit scan that occurred before the delivery and asserts it is stored without regressing the Shipment. `webhooks/carrier/failure-return.manual.hurl` sends `DELIVERY_FAILED` then `RETURNED` and asserts both are recorded with their locations while the status stays `in_transit`. `webhooks/carrier/generate-pickup.mjs` creates a fresh tracking number, event ids, signed bodies and signatures per run.

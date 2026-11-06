@@ -45,7 +45,7 @@ describe('matchDestinationRate', () => {
     expect(match.matched && match.rate.id).toBe('everywhere');
   });
 
-  it('matches a buyer country name against a configured country code', () => {
+  it('does not treat display names as country identities', () => {
     const rates = [
       rate({
         id: 'au',
@@ -54,22 +54,16 @@ describe('matchDestinationRate', () => {
       }),
     ];
 
-    const match = matchDestinationRate(rates, { countryCode: 'Australia' });
-
-    expect(match).toMatchObject({ matched: true, rate: { id: 'au' } });
-  });
-
-  it('matches a configured country name against a buyer country code', () => {
-    const rates = [
-      rate({
+    expect(matchDestinationRate(rates, { countryCode: 'Australia' }).matched)
+      .toBe(false);
+    expect(matchDestinationRate(
+      [rate({
         id: 'germany',
         destinationScope: ShippingDestinationScope.COUNTRY,
         destinationCountry: 'Germany',
-      }),
-    ];
-
-    expect(matchDestinationRate(rates, { countryCode: 'DE' }))
-      .toMatchObject({ matched: true, rate: { id: 'germany' } });
+      })],
+      { countryCode: 'DE' },
+    ).matched).toBe(false);
   });
 
   it('treats an unmatched destination without an everywhere-else rate as unsupported', () => {
