@@ -1,6 +1,7 @@
 import { UserStatus } from '~/domains/auth/domain/enums/user-status.enum';
 import { CreateMyAddressUseCase } from './create-my-address.use-case';
 import type { UserAddressRepository } from '../../ports/user-address.repository';
+import type { LocationReferenceRepository } from '~/domains/location/app/ports/location-reference.repository';
 
 describe('CreateMyAddressUseCase', () => {
   const actor = {
@@ -17,6 +18,7 @@ describe('CreateMyAddressUseCase', () => {
     return {
       findAllOwnedByUserId: jest.fn(),
       findOwnedById: jest.fn(),
+      findOwnedLocationById: jest.fn(),
       countOwnedByUserId: jest.fn().mockResolvedValue(0),
       clearPrimaryForUser: jest.fn().mockResolvedValue(undefined),
       create: jest.fn().mockImplementation(async (input) => ({
@@ -29,6 +31,8 @@ describe('CreateMyAddressUseCase', () => {
         state: input.state,
         zip: input.zip,
         country: input.country,
+        countryCode: input.countryCode,
+        stateCode: input.stateCode,
         phone: input.phone,
         isPrimary: input.isPrimary ?? false,
         createdAt: new Date(),
@@ -39,9 +43,20 @@ describe('CreateMyAddressUseCase', () => {
     };
   }
 
+  function buildLocationRepository(): jest.Mocked<LocationReferenceRepository> {
+    return {
+      findCurrentDatasetVersion: jest.fn(),
+      findActiveCountries: jest.fn().mockResolvedValue([]),
+      findActiveAdministrativeAreas: jest.fn().mockResolvedValue(null),
+    };
+  }
+
   it('marks the first address as primary even when the client omits the flag', async () => {
     const repository = buildRepository();
-    const useCase = new CreateMyAddressUseCase(repository);
+    const useCase = new CreateMyAddressUseCase(
+      repository,
+      buildLocationRepository(),
+    );
 
     const result = await useCase.execute(actor, {
       fullName: 'Taylor',
@@ -64,7 +79,10 @@ describe('CreateMyAddressUseCase', () => {
   it('clears the previous primary address when a new default is requested', async () => {
     const repository = buildRepository();
     repository.countOwnedByUserId.mockResolvedValue(2);
-    const useCase = new CreateMyAddressUseCase(repository);
+    const useCase = new CreateMyAddressUseCase(
+      repository,
+      buildLocationRepository(),
+    );
 
     await useCase.execute(actor, {
       fullName: 'Taylor',

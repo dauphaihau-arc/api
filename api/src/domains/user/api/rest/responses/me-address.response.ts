@@ -33,6 +33,12 @@ export class MyAddressResponseDto {
   @ApiProperty()
   country!: string;
 
+  @ApiProperty({ required: false, nullable: true, description: 'Canonical ISO country code.' })
+  country_code?: string | null;
+
+  @ApiProperty({ required: false, nullable: true, description: 'Canonical administrative area code.' })
+  state_code?: string | null;
+
   @ApiProperty()
   phone!: string;
 
@@ -81,6 +87,8 @@ export function toMyAddressResponse(address: UserAddressSummary) {
     state: address.state,
     zip: address.zip,
     country: address.country,
+    country_code: address.countryCode,
+    state_code: address.stateCode,
     phone: address.phone,
     is_primary: address.isPrimary,
     created_at: address.createdAt,

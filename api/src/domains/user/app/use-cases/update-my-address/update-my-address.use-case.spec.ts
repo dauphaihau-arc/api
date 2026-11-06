@@ -1,6 +1,7 @@
 import { UserStatus } from '~/domains/auth/domain/enums/user-status.enum';
 import { UpdateMyAddressUseCase } from './update-my-address.use-case';
 import type { UserAddressRepository } from '../../ports/user-address.repository';
+import type { LocationReferenceRepository } from '~/domains/location/app/ports/location-reference.repository';
 
 describe('UpdateMyAddressUseCase', () => {
   const actor = {
@@ -17,6 +18,14 @@ describe('UpdateMyAddressUseCase', () => {
     return {
       findAllOwnedByUserId: jest.fn(),
       findOwnedById: jest.fn(),
+      findOwnedLocationById: jest.fn().mockResolvedValue({
+        country: 'US',
+        state: 'Texas',
+        countryCode: null,
+        stateCode: null,
+        countryText: 'US',
+        stateText: 'Texas',
+      }),
       countOwnedByUserId: jest.fn(),
       clearPrimaryForUser: jest.fn().mockResolvedValue(undefined),
       create: jest.fn(),
@@ -29,6 +38,8 @@ describe('UpdateMyAddressUseCase', () => {
         state: 'Texas',
         zip: '73301',
         country: 'US',
+        countryCode: null,
+        stateCode: null,
         phone: '1234567890',
         isPrimary: true,
         createdAt: new Date(),
@@ -40,7 +51,12 @@ describe('UpdateMyAddressUseCase', () => {
 
   it('clears the current primary before promoting another address', async () => {
     const repository = buildRepository();
-    const useCase = new UpdateMyAddressUseCase(repository);
+    const locationRepository: jest.Mocked<LocationReferenceRepository> = {
+      findCurrentDatasetVersion: jest.fn(),
+      findActiveCountries: jest.fn().mockResolvedValue([]),
+      findActiveAdministrativeAreas: jest.fn().mockResolvedValue(null),
+    };
+    const useCase = new UpdateMyAddressUseCase(repository, locationRepository);
 
     await useCase.execute(actor, 'address-1', { isPrimary: true });
 

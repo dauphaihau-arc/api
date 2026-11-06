@@ -4,6 +4,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AUTH_CONFIG, buildAuthConfig } from '~/platform/config/auth.config';
 import { CacheModule } from '~/integrations/cache/cache.module';
 import { StorageModule } from '~/integrations/storage/storage.module';
+import { LocationModule } from '~/domains/location/location.module';
 import { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
 import { UserCredentialEntity } from '~/domains/auth/infra/persistence/entities/user-credential.entity';
 import { PermissionEntity } from '../auth/infra/persistence/entities/permission.entity';
@@ -41,6 +42,7 @@ import { UserAddressEntity } from './infra/persistence/entities/user-address.ent
     ConfigModule,
     CacheModule,
     StorageModule,
+    LocationModule,
     MikroOrmModule.forFeature([
       UserEntity,
       UserCredentialEntity,

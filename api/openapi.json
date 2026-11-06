@@ -35826,6 +35826,16 @@
           "country": {
             "type": "string"
           },
+          "country_code": {
+            "type": "object",
+            "nullable": true,
+            "description": "Canonical ISO country code."
+          },
+          "state_code": {
+            "type": "object",
+            "nullable": true,
+            "description": "Canonical administrative area code."
+          },
           "phone": {
             "type": "string"
           },
@@ -35907,6 +35917,7 @@
           },
           "state": {
             "type": "string",
+            "description": "Legacy subdivision label. Required when no subdivision code is supplied;\nresolved to a code when the reference dataset knows it.",
             "maxLength": 255
           },
           "zip": {
@@ -35915,6 +35926,23 @@
           },
           "country": {
             "type": "string",
+            "description": "Legacy country label. Required when country_code is omitted.",
+            "maxLength": 255
+          },
+          "country_code": {
+            "type": "string",
+            "nullable": true,
+            "minLength": 2,
+            "maxLength": 2
+          },
+          "state_code": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 16
+          },
+          "state_text": {
+            "type": "string",
+            "nullable": true,
             "maxLength": 255
           },
           "phone": {
@@ -35929,9 +35957,7 @@
           "full_name",
           "address_1",
           "city",
-          "state",
           "zip",
-          "country",
           "phone"
         ]
       },
@@ -35975,6 +36001,22 @@
           },
           "country": {
             "type": "string",
+            "maxLength": 255
+          },
+          "country_code": {
+            "type": "string",
+            "nullable": true,
+            "minLength": 2,
+            "maxLength": 2
+          },
+          "state_code": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 16
+          },
+          "state_text": {
+            "type": "string",
+            "nullable": true,
             "maxLength": 255
           },
           "phone": {

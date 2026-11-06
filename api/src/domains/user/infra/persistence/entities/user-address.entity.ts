@@ -38,6 +38,22 @@ export class UserAddressEntity extends AbstractBaseEntity {
   @Property({ fieldName: 'country', length: 255 })
   country!: string;
 
+  @Property({
+    fieldName: 'country_code', type: 'varchar', length: 2, nullable: true, 
+  })
+  countryCode?: string | null;
+
+  @Property({
+    fieldName: 'state_code', type: 'varchar', length: 16, nullable: true, 
+  })
+  stateCode?: string | null;
+
+  @Property({ fieldName: 'country_text', length: 255, nullable: true })
+  countryText?: string | null;
+
+  @Property({ fieldName: 'state_text', length: 255, nullable: true })
+  stateText?: string | null;
+
   @Property({ fieldName: 'phone', length: 50 })
   phone!: string;
 

@@ -10,10 +10,22 @@ export interface UserAddressSummary {
   state: string;
   zip: string;
   country: string;
+  countryCode: string | null;
+  stateCode: string | null;
   phone: string;
   isPrimary: boolean;
   createdAt: Date;
   updatedAt: Date;
+}
+
+/** Internal location state of an owned address, used while validating updates. */
+export interface UserAddressLocationSnapshot {
+  country: string;
+  state: string;
+  countryCode: string | null;
+  stateCode: string | null;
+  countryText: string | null;
+  stateText: string | null;
 }
 
 export type UserAddressListSortField =
@@ -41,6 +53,37 @@ export interface UserAddressListResult {
   totalResults: number;
 }
 
+/** Location fields accepted from clients. Codes take precedence over legacy names. */
+export interface UserAddressLocationSelection {
+  country?: string;
+  state?: string;
+  countryCode?: string | null;
+  stateCode?: string | null;
+  stateText?: string | null;
+}
+
+/** Create payload before the location selection is resolved. */
+export interface CreateMyAddressCommand extends UserAddressLocationSelection {
+  fullName: string;
+  address1: string;
+  address2?: string;
+  city: string;
+  zip: string;
+  phone: string;
+  isPrimary?: boolean;
+}
+
+/** Update payload before the location selection is resolved. */
+export interface UpdateMyAddressCommand extends UserAddressLocationSelection {
+  fullName?: string;
+  address1?: string;
+  address2?: string;
+  city?: string;
+  zip?: string;
+  phone?: string;
+  isPrimary?: boolean;
+}
+
 export interface CreateMyAddressInput {
   userId: string;
   fullName: string;
@@ -50,6 +93,10 @@ export interface CreateMyAddressInput {
   state: string;
   zip: string;
   country: string;
+  countryCode: string | null;
+  stateCode: string | null;
+  countryText: string | null;
+  stateText: string | null;
   phone: string;
   isPrimary?: boolean;
 }
@@ -62,6 +109,10 @@ export interface UpdateMyAddressInput {
   state?: string;
   zip?: string;
   country?: string;
+  countryCode?: string | null;
+  stateCode?: string | null;
+  countryText?: string | null;
+  stateText?: string | null;
   phone?: string;
   isPrimary?: boolean;
 }

@@ -5,6 +5,7 @@ import { UserAddressCommandRepository } from '../app/ports/user-address-command.
 import type {
   CreateMyAddressInput,
   UpdateMyAddressInput,
+  UserAddressLocationSnapshot,
   UserAddressSummary,
 } from '../app/user-address.types';
 import { UserAddressEntity } from './persistence/entities/user-address.entity';
@@ -46,6 +47,10 @@ export class MikroOrmUserAddressCommandRepository implements UserAddressCommandR
       state: input.state,
       zip: input.zip,
       country: input.country,
+      countryCode: input.countryCode,
+      stateCode: input.stateCode,
+      countryText: input.countryText,
+      stateText: input.stateText,
       phone: input.phone,
       isPrimary: input.isPrimary ?? false,
     });
@@ -78,12 +83,42 @@ export class MikroOrmUserAddressCommandRepository implements UserAddressCommandR
     if (input.state !== undefined) address.state = input.state;
     if (input.zip !== undefined) address.zip = input.zip;
     if (input.country !== undefined) address.country = input.country;
+    if (input.countryCode !== undefined) address.countryCode = input.countryCode;
+    if (input.stateCode !== undefined) address.stateCode = input.stateCode;
+    if (input.countryText !== undefined) address.countryText = input.countryText;
+    if (input.stateText !== undefined) address.stateText = input.stateText;
     if (input.phone !== undefined) address.phone = input.phone;
     if (input.isPrimary !== undefined) address.isPrimary = input.isPrimary;
 
     await entityManager.persistAndFlush(address);
 
     return toUserAddressSummary(address);
+  }
+
+  async findOwnedLocationById(
+    userId: string,
+    addressId: string,
+  ): Promise<UserAddressLocationSnapshot | null> {
+    const repository = this.entityManager
+      .fork()
+      .getRepository(UserAddressEntity);
+    const address = await repository.findOne({
+      id: addressId,
+      user: userId,
+    });
+
+    if (!address) {
+      return null;
+    }
+
+    return {
+      country: address.country,
+      state: address.state,
+      countryCode: address.countryCode ?? null,
+      stateCode: address.stateCode ?? null,
+      countryText: address.countryText ?? null,
+      stateText: address.stateText ?? null,
+    };
   }
 
   async deleteOwnedById(

@@ -12,6 +12,8 @@ export function toUserAddressSummary(address: UserAddressEntity): UserAddressSum
     state: address.state,
     zip: address.zip,
     country: address.country,
+    countryCode: address.countryCode ?? null,
+    stateCode: address.stateCode ?? null,
     phone: address.phone,
     isPrimary: address.isPrimary,
     createdAt: address.createdAt,

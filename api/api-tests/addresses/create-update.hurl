@@ -27,7 +27,7 @@ HTTP 200
 cookie "accessToken" exists
 
 
-# 2. Create a saved address with the name-based contract.
+# 2. Create a saved address with canonical country and subdivision codes.
 POST {{base_url}}/v1/me/addresses
 Idempotency-Key: address-crud-buyer-address
 Content-Type: application/json
@@ -35,10 +35,10 @@ Content-Type: application/json
 {
   "full_name": "Address CRUD Buyer",
   "address_1": "1 Test Street",
-  "city": "Portland",
-  "state": "OR",
-  "zip": "97201",
-  "country": "US",
+  "city": "Los Angeles",
+  "country_code": "US",
+  "state_code": "US-CA",
+  "zip": "90001",
   "phone": "+15550000012",
   "is_primary": true
 }
@@ -47,9 +47,11 @@ HTTP 201
 [Captures]
 address_id: jsonpath "$.address.id"
 [Asserts]
-jsonpath "$.address.country" == "US"
-jsonpath "$.address.state" == "OR"
-jsonpath "$.address.city" == "Portland"
+jsonpath "$.address.country" == "United States"
+jsonpath "$.address.country_code" == "US"
+jsonpath "$.address.state" == "California"
+jsonpath "$.address.state_code" == "US-CA"
+jsonpath "$.address.city" == "Los Angeles"
 
 
 # 3. Update only the fields that changed; the untouched address line and country
@@ -57,14 +59,16 @@ jsonpath "$.address.city" == "Portland"
 PATCH {{base_url}}/v1/me/addresses/{{address_id}}
 Content-Type: application/json
 ```json
-{ "city": "Seattle", "state": "WA", "zip": "98101" }
+{ "city": "Seattle", "state_code": "US-WA", "zip": "98101" }
 ```
 HTTP 200
 [Asserts]
 jsonpath "$.address.address_1" == "1 Test Street"
-jsonpath "$.address.country" == "US"
+jsonpath "$.address.country" == "United States"
+jsonpath "$.address.country_code" == "US"
 jsonpath "$.address.city" == "Seattle"
-jsonpath "$.address.state" == "WA"
+jsonpath "$.address.state" == "Washington"
+jsonpath "$.address.state_code" == "US-WA"
 jsonpath "$.address.zip" == "98101"
 
 
@@ -74,5 +78,7 @@ HTTP 200
 [Asserts]
 jsonpath "$.address.id" == "{{address_id}}"
 jsonpath "$.address.city" == "Seattle"
-jsonpath "$.address.state" == "WA"
+jsonpath "$.address.country_code" == "US"
+jsonpath "$.address.state" == "Washington"
+jsonpath "$.address.state_code" == "US-WA"
 jsonpath "$.address.zip" == "98101"

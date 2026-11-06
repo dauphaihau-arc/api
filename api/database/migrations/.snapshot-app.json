@@ -5830,7 +5830,7 @@
           "autoincrement": false,
           "primary": false,
           "nullable": false,
-          "unique": false,
+          "unique": true,
           "length": 2,
           "precision": null,
           "scale": null,
@@ -5923,6 +5923,17 @@
       "name": "location_administrative_areas",
       "schema": "public",
       "indexes": [
+        {
+          "columnNames": [
+            "country_code",
+            "code"
+          ],
+          "composite": true,
+          "constraint": false,
+          "keyName": "location_administrative_areas_country_code_code_unique",
+          "unique": true,
+          "primary": false
+        },
         {
           "columnNames": [
             "country_code",
@@ -19287,11 +19298,85 @@
           "comment": null,
           "enumItems": [],
           "mappedType": "boolean"
+        },
+        "country_code": {
+          "name": "country_code",
+          "type": "varchar(2)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": 2,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "string"
+        },
+        "state_code": {
+          "name": "state_code",
+          "type": "varchar(16)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": 16,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "string"
+        },
+        "country_text": {
+          "name": "country_text",
+          "type": "varchar(255)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": 255,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "string"
+        },
+        "state_text": {
+          "name": "state_text",
+          "type": "varchar(255)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": 255,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "string"
         }
       },
       "name": "user_addresses",
       "schema": "public",
       "indexes": [
+        {
+          "columnNames": [
+            "country_code"
+          ],
+          "composite": false,
+          "constraint": false,
+          "keyName": "user_addresses_country_code_index",
+          "unique": false,
+          "primary": false
+        },
         {
           "columnNames": [
             "id"
@@ -19325,8 +19410,55 @@
           "primary": false
         }
       ],
-      "checks": [],
+      "checks": [
+        {
+          "name": "user_addresses_country_code_or_text_check",
+          "columnName": "country_code",
+          "definition": "CHECK (((country_code IS NULL) OR (country_text IS NULL)))",
+          "expression": "(country_code IS NULL) OR (country_text IS NULL)"
+        },
+        {
+          "name": "user_addresses_state_code_or_text_check",
+          "columnName": "state_text",
+          "definition": "CHECK (((state_code IS NULL) OR (state_text IS NULL)))",
+          "expression": "(state_code IS NULL) OR (state_text IS NULL)"
+        },
+        {
+          "name": "user_addresses_state_code_requires_country_check",
+          "columnName": "state_code",
+          "definition": "CHECK (((state_code IS NULL) OR (country_code IS NOT NULL)))",
+          "expression": "(state_code IS NULL) OR (country_code IS NOT NULL)"
+        }
+      ],
       "foreignKeys": {
+        "user_addresses_country_code_foreign": {
+          "columnNames": [
+            "country_code"
+          ],
+          "constraintName": "user_addresses_country_code_foreign",
+          "localTableName": "public.user_addresses",
+          "referencedTableName": "public.location_countries",
+          "referencedColumnNames": [
+            "code"
+          ],
+          "updateRule": "cascade",
+          "deleteRule": "restrict"
+        },
+        "user_addresses_state_code_foreign": {
+          "columnNames": [
+            "country_code",
+            "state_code"
+          ],
+          "constraintName": "user_addresses_state_code_foreign",
+          "localTableName": "public.user_addresses",
+          "referencedTableName": "public.location_administrative_areas",
+          "referencedColumnNames": [
+            "country_code",
+            "code"
+          ],
+          "updateRule": "cascade",
+          "deleteRule": "restrict"
+        },
         "user_addresses_user_id_foreign": {
           "columnNames": [
             "user_id"
