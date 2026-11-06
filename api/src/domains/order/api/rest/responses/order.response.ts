@@ -695,8 +695,14 @@ export class OrderShippingAddressResponseDto {
   @ApiProperty()
   country!: string;
 
+  @ApiProperty({ required: false, nullable: true })
+  country_code?: string | null;
+
   @ApiProperty()
   state!: string;
+
+  @ApiProperty({ required: false, nullable: true })
+  state_code?: string | null;
 
   @ApiProperty()
   zip!: string;
@@ -1871,7 +1877,9 @@ export function toShopOrderDetailResponse(order: ShopOrderDetail) {
         address2: order.shippingAddress.address2,
         city: order.shippingAddress.city,
         country: order.shippingAddress.country,
+        country_code: order.shippingAddress.countryCode ?? null,
         state: order.shippingAddress.state,
+        state_code: order.shippingAddress.stateCode ?? null,
         zip: order.shippingAddress.zip,
         phone: order.shippingAddress.phone,
       },
@@ -1944,7 +1952,9 @@ export function toMyOrderDetailResponse(order: MyOrderDetail) {
         address2: order.shippingAddress.address2,
         city: order.shippingAddress.city,
         country: order.shippingAddress.country,
+        country_code: order.shippingAddress.countryCode ?? null,
         state: order.shippingAddress.state,
+        state_code: order.shippingAddress.stateCode ?? null,
         zip: order.shippingAddress.zip,
         phone: order.shippingAddress.phone,
       },
@@ -2018,7 +2028,9 @@ export function toAdminOrderDetailResponse(
         address2: order.shippingAddress.address2,
         city: order.shippingAddress.city,
         country: order.shippingAddress.country,
+        country_code: order.shippingAddress.countryCode ?? null,
         state: order.shippingAddress.state,
+        state_code: order.shippingAddress.stateCode ?? null,
         zip: order.shippingAddress.zip,
         phone: order.shippingAddress.phone,
       },

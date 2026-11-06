@@ -11,7 +11,9 @@ export interface ShippingAddressInput {
   address2?: string;
   city: string;
   country: string;
+  countryCode?: string | null;
   state: string;
+  stateCode?: string | null;
   zip: string;
   phone?: string;
 }

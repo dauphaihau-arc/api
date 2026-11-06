@@ -42131,10 +42131,27 @@
           },
           "country": {
             "type": "string",
+            "description": "Legacy display name, accepted during the expand release. Ignored by the\nserver when `country_code` is present.",
             "maxLength": 255
+          },
+          "country_code": {
+            "type": "string",
+            "description": "Canonical ISO alpha-2 country code; names are derived from it.",
+            "maxLength": 2
           },
           "state": {
             "type": "string",
+            "description": "Legacy subdivision display name, accepted during the expand release.\nIgnored by the server when `state_code` is present.",
+            "maxLength": 255
+          },
+          "state_code": {
+            "type": "string",
+            "description": "Canonical administrative-area code; the display name is derived from it.",
+            "maxLength": 255
+          },
+          "state_text": {
+            "type": "string",
+            "description": "Free-text subdivision for countries with no administrative-area list.",
             "maxLength": 255
           },
           "zip": {
@@ -42150,8 +42167,6 @@
           "full_name",
           "address_1",
           "city",
-          "country",
-          "state",
           "zip",
           "phone"
         ]
@@ -43804,8 +43819,16 @@
           "country": {
             "type": "string"
           },
+          "country_code": {
+            "type": "object",
+            "nullable": true
+          },
           "state": {
             "type": "string"
+          },
+          "state_code": {
+            "type": "object",
+            "nullable": true
           },
           "zip": {
             "type": "string"

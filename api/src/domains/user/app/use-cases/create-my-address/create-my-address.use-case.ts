@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import { LocationReferenceRepository } from '~/domains/location/app/ports/location-reference.repository';
+import { resolveCreateAddressLocation } from '~/domains/location/app/address-location.resolver';
 import { UserAddressRepository } from '../../ports/user-address.repository';
-import { resolveCreateAddressLocation } from '../../user-address-location.resolver';
 import type {
   CreateMyAddressCommand,
   UserAddressSummary,

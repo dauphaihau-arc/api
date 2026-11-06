@@ -26,14 +26,18 @@ import type {
   PricedCartItem,
   PricedShopCart,
   ShippingAddressInput,
+  ShippingAddressSelection,
   ShopAdjustmentInput,
 } from '../../../order/app/order.types';
+import { toPersistedShippingAddress } from '../../../order/app/shipping-address-snapshot';
+import { LocationReferenceRepository } from '../../../location/app/ports/location-reference.repository';
 import { OrderTotalPolicyService } from '../../../order/app/services/order-total-policy.service';
 import {
   parsePricedShops,
   toPersistedPricedShops,
 } from './checkout-quote-priced-shops';
 import { createCheckoutQuoteItem } from './checkout-quote-item.mapping';
+import { resolveCheckoutShippingAddress } from './checkout-shipping-address';
 import {
   buildQuoteShopSummaries,
   toCheckoutQuoteResult,
@@ -51,6 +55,7 @@ export class CreateCheckoutQuoteService {
     private readonly storefrontMarketContextService: StorefrontMarketContextService,
     private readonly orderTotalPolicyService: OrderTotalPolicyService,
     private readonly purchaseEligibilityService: PurchaseEligibilityService,
+    private readonly locationReferenceRepository: LocationReferenceRepository,
   ) {}
 
   async createFromCart(input: {
@@ -58,10 +63,14 @@ export class CreateCheckoutQuoteService {
       | { type: 'user'; userId: string }
       | { type: 'guest'; guestSessionId: string };
     cart: CartSnapshot;
-    shippingAddress: ShippingAddressInput;
+    shippingAddress: ShippingAddressSelection;
     presentmentCurrency?: string;
     shopAdjustments?: ShopAdjustmentInput[];
   }): Promise<CheckoutQuoteResult> {
+    const shippingAddress = await resolveCheckoutShippingAddress(
+      this.locationReferenceRepository,
+      input.shippingAddress,
+    );
     const storefrontMarketContext = await this.storefrontMarketContextService.resolveCurrentRequest();
 
     const presentmentCurrency = normalizePresentmentCurrency(
@@ -75,7 +84,7 @@ export class CreateCheckoutQuoteService {
     const pricedCartSummary = await this.cartPricingService.buildPricedCartSummary({
       userId: input.actor.type === 'user' ? input.actor.userId : undefined,
       cart: input.cart,
-      shippingAddress: input.shippingAddress,
+      shippingAddress,
       shopAdjustments: input.shopAdjustments,
       anchorAt,
     });
@@ -128,7 +137,7 @@ export class CreateCheckoutQuoteService {
     const quoteFingerprint = buildQuoteFingerprint({
       presentmentCurrency,
       marketCode: storefrontMarketContext?.marketCode,
-      shippingAddress: input.shippingAddress,
+      shippingAddress,
       shopAdjustments: input.shopAdjustments,
       items: allItems,
       shipping: buildShippingFingerprint(pricedCartSummary.shops),
@@ -208,16 +217,7 @@ export class CreateCheckoutQuoteService {
         discountMinor,
         saleDiscountMinor,
         totalMinor,
-        shippingAddress: {
-          full_name: input.shippingAddress.fullName,
-          address1: input.shippingAddress.address1,
-          address2: input.shippingAddress.address2,
-          city: input.shippingAddress.city,
-          country: input.shippingAddress.country,
-          state: input.shippingAddress.state,
-          zip: input.shippingAddress.zip,
-          phone: input.shippingAddress.phone,
-        },
+        shippingAddress: toPersistedShippingAddress(shippingAddress),
         ...(input.shopAdjustments
           ? {
             shopAdjustments: input.shopAdjustments.map((adjustment) => ({
@@ -284,7 +284,9 @@ function buildShippingFingerprint(shops: PricedShopCart[]): unknown {
           charge: shop.shipping.charge,
           estimate: {
             ...shop.shipping.estimate,
-            anchorAt: shop.shipping.estimate.anchorAt.toISOString(),
+            // The estimate date is anchored to the UTC day, so the raw
+            // millisecond instant must not split an otherwise identical quote.
+            anchorAt: toUtcDayIso(shop.shipping.estimate.anchorAt),
             earliestDeliveryDate: shop.shipping.estimate.earliestDeliveryDate.toISOString(),
             latestDeliveryDate: shop.shipping.estimate.latestDeliveryDate.toISOString(),
           },
@@ -313,17 +315,15 @@ function buildQuoteFingerprint(input: {
     totalMinor: number;
   };
 }): string {
+  const countryCode = normalizeFingerprintCode(input.shippingAddress.countryCode);
+  const stateCode = normalizeFingerprintCode(input.shippingAddress.stateCode);
   const payload = {
     presentmentCurrency: input.presentmentCurrency ?? null,
     marketCode: input.marketCode ?? null,
     // The anchor is bound at UTC-day precision: identical requests reuse the
     // quote within the same UTC day, while a new day prices a fresh estimate.
     shippingAnchorDay: input.shippingAnchorAt
-      ? new Date(Date.UTC(
-        input.shippingAnchorAt.getUTCFullYear(),
-        input.shippingAnchorAt.getUTCMonth(),
-        input.shippingAnchorAt.getUTCDate(),
-      )).toISOString()
+      ? toUtcDayIso(input.shippingAnchorAt)
       : null,
     shipping: input.shipping,
     shippingAddress: {
@@ -331,10 +331,19 @@ function buildQuoteFingerprint(input: {
       address1: input.shippingAddress.address1,
       address2: input.shippingAddress.address2 ?? null,
       city: input.shippingAddress.city,
-      country: input.shippingAddress.country,
-      state: input.shippingAddress.state,
+      // Canonical codes identify the destination when present; a display-name
+      // only change then cannot invalidate a reusable quote. Legacy payloads
+      // fall back to normalized text.
+      countryCode,
+      stateCode,
+      country: countryCode
+        ? null
+        : normalizeFingerprintText(input.shippingAddress.country),
+      state: stateCode
+        ? null
+        : normalizeFingerprintText(input.shippingAddress.state),
       zip: input.shippingAddress.zip,
-      phone: input.shippingAddress.phone,
+      phone: normalizeFingerprintText(input.shippingAddress.phone),
     },
     shopAdjustments: [...(input.shopAdjustments ?? [])]
       .map((adjustment) => ({
@@ -364,6 +373,26 @@ function buildQuoteFingerprint(input: {
   };
 
   return createHash('sha256').update(JSON.stringify(payload)).digest('hex');
+}
+
+function toUtcDayIso(value: Date): string {
+  return new Date(Date.UTC(
+    value.getUTCFullYear(),
+    value.getUTCMonth(),
+    value.getUTCDate(),
+  )).toISOString();
+}
+
+function normalizeFingerprintCode(value: string | null | undefined): string | null {
+  const trimmed = value?.trim().toUpperCase() ?? '';
+
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function normalizeFingerprintText(value: string | null | undefined): string | null {
+  const trimmed = value?.trim().toLowerCase() ?? '';
+
+  return trimmed.length > 0 ? trimmed : null;
 }
 
 function normalizeFingerprintDate(value: Date | string | null | undefined): string | null {

@@ -4,8 +4,8 @@ import {
 } from '@nestjs/common';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import { LocationReferenceRepository } from '~/domains/location/app/ports/location-reference.repository';
+import { resolveUpdateAddressLocation } from '~/domains/location/app/address-location.resolver';
 import { UserAddressRepository } from '../../ports/user-address.repository';
-import { resolveUpdateAddressLocation } from '../../user-address-location.resolver';
 import type {
   UpdateMyAddressCommand,
   UserAddressSummary,

@@ -69,7 +69,7 @@ HTTP 200
 cookie "accessToken" exists
 
 
-# 4. Create the buyer's saved address with the name-based contract.
+# 4. Create the buyer's saved address with canonical codes.
 POST {{base_url}}/v1/me/addresses
 Idempotency-Key: address-cash-order-buyer-address
 Content-Type: application/json
@@ -77,10 +77,10 @@ Content-Type: application/json
 {
   "full_name": "Address Cash Order Buyer",
   "address_1": "1 Test Street",
-  "city": "Portland",
-  "state": "OR",
-  "zip": "97201",
-  "country": "US",
+  "city": "Los Angeles",
+  "country_code": "US",
+  "state_code": "US-CA",
+  "zip": "90001",
   "phone": "+15550000011",
   "is_primary": true
 }
@@ -89,8 +89,10 @@ HTTP 201
 [Captures]
 address_id: jsonpath "$.address.id"
 [Asserts]
-jsonpath "$.address.country" == "US"
-jsonpath "$.address.state" == "OR"
+jsonpath "$.address.country" == "United States"
+jsonpath "$.address.country_code" == "US"
+jsonpath "$.address.state" == "California"
+jsonpath "$.address.state_code" == "US-CA"
 
 
 # 5. Put exactly one unit of the inventory in the cart.
@@ -141,6 +143,8 @@ jsonpath "$.order_shops" count > 0
 GET {{base_url}}/v1/me/orders/{{order_public_id}}
 HTTP 200
 [Asserts]
-jsonpath "$.order_shop.shipping_address.country" == "US"
-jsonpath "$.order_shop.shipping_address.state" == "OR"
-jsonpath "$.order_shop.shipping_address.city" == "Portland"
+jsonpath "$.order_shop.shipping_address.country_code" == "US"
+jsonpath "$.order_shop.shipping_address.country" == "United States"
+jsonpath "$.order_shop.shipping_address.state_code" == "US-CA"
+jsonpath "$.order_shop.shipping_address.state" == "California"
+jsonpath "$.order_shop.shipping_address.city" == "Los Angeles"

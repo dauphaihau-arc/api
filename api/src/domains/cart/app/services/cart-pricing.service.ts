@@ -36,7 +36,9 @@ export class CartPricingService {
           inventoryId: item.inventory.inventoryId,
           quantity: item.quantity,
         })),
-        destination: { countryCode: input.shippingAddress.country },
+        destination: {
+          countryCode: input.shippingAddress.countryCode ?? input.shippingAddress.country,
+        },
         anchorAt: input.anchorAt ?? new Date(),
         checkoutCurrency,
       })

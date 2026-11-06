@@ -1,4 +1,8 @@
 import type { SortOption } from '~/platform/application/sort';
+import type {
+  AddressLocationSelection,
+  AddressLocationSnapshot,
+} from '~/domains/location/app/address-location.types';
 
 export interface UserAddressSummary {
   id: string;
@@ -19,14 +23,7 @@ export interface UserAddressSummary {
 }
 
 /** Internal location state of an owned address, used while validating updates. */
-export interface UserAddressLocationSnapshot {
-  country: string;
-  state: string;
-  countryCode: string | null;
-  stateCode: string | null;
-  countryText: string | null;
-  stateText: string | null;
-}
+export type UserAddressLocationSnapshot = AddressLocationSnapshot;
 
 export type UserAddressListSortField =
   | 'isPrimary'
@@ -54,13 +51,7 @@ export interface UserAddressListResult {
 }
 
 /** Location fields accepted from clients. Codes take precedence over legacy names. */
-export interface UserAddressLocationSelection {
-  country?: string;
-  state?: string;
-  countryCode?: string | null;
-  stateCode?: string | null;
-  stateText?: string | null;
-}
+export type UserAddressLocationSelection = AddressLocationSelection;
 
 /** Create payload before the location selection is resolved. */
 export interface CreateMyAddressCommand extends UserAddressLocationSelection {

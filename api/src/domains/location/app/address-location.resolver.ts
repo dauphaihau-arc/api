@@ -1,27 +1,18 @@
-import { UserAddressLocationError } from './errors/user-address-location.error';
+import { AddressLocationError } from './errors/address-location.error';
+import type {
+  AddressLocationSelection,
+  AddressLocationSnapshot,
+  AddressLocationUpdate,
+  ResolvedAddressLocation,
+} from './address-location.types';
 import type {
   LocationAdministrativeArea,
   LocationCountry,
 } from '~/domains/location/app/location.types';
 import type { LocationReferenceRepository } from '~/domains/location/app/ports/location-reference.repository';
-import type {
-  UserAddressLocationSelection,
-  UserAddressLocationSnapshot,
-} from './user-address.types';
 
-export interface ResolvedAddressLocation {
-  country: string;
-  state: string;
-  countryCode: string | null;
-  stateCode: string | null;
-  countryText: string | null;
-  stateText: string | null;
-}
-
-export type AddressLocationUpdate = Partial<ResolvedAddressLocation>;
-
-function invalidLocation(code: string, message: string): UserAddressLocationError {
-  return new UserAddressLocationError(code, message);
+function invalidLocation(code: string, message: string): AddressLocationError {
+  return new AddressLocationError(code, message);
 }
 
 function normalizeCode(value: string | null | undefined): string | null {
@@ -111,7 +102,7 @@ function codedLocation(
  */
 export async function resolveCreateAddressLocation(
   repository: LocationReferenceRepository,
-  selection: UserAddressLocationSelection,
+  selection: AddressLocationSelection,
 ): Promise<ResolvedAddressLocation> {
   const countryCode = normalizeCode(selection.countryCode);
   const stateCode = normalizeCode(selection.stateCode);
@@ -251,8 +242,8 @@ export async function resolveCreateAddressLocation(
  */
 export async function resolveUpdateAddressLocation(
   repository: LocationReferenceRepository,
-  existing: UserAddressLocationSnapshot,
-  selection: UserAddressLocationSelection,
+  existing: AddressLocationSnapshot,
+  selection: AddressLocationSelection,
 ): Promise<AddressLocationUpdate | null> {
   const hasCountryCode = selection.countryCode !== undefined;
   const hasStateCode = selection.stateCode !== undefined;

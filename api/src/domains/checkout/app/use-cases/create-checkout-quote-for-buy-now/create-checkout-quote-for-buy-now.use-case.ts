@@ -53,6 +53,8 @@ export class CreateCheckoutQuoteForBuyNowUseCase {
         city: address.city,
         country: address.country,
         state: address.state,
+        countryCode: address.countryCode,
+        stateCode: address.stateCode,
         zip: address.zip,
         phone: address.phone,
       },

@@ -120,7 +120,13 @@ export class GetMyOrderByIdUseCase {
           : {}),
         city: String((order.shippingAddress?.city ?? '')),
         country: String((order.shippingAddress?.country ?? '')),
+        countryCode: typeof order.shippingAddress?.country_code === 'string'
+          ? order.shippingAddress.country_code
+          : null,
         state: String((order.shippingAddress?.state ?? '')),
+        stateCode: typeof order.shippingAddress?.state_code === 'string'
+          ? order.shippingAddress.state_code
+          : null,
         zip: String((order.shippingAddress?.zip ?? '')),
         ...(order.shippingAddress?.phone
           ? { phone: String(order.shippingAddress.phone) }

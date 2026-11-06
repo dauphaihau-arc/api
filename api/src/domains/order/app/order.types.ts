@@ -7,6 +7,26 @@ import type { FulfillmentProgressSnapshot } from '../../fulfillment/domain/fulfi
 import type { FulfillmentGroupView } from '../../fulfillment/app/fulfillment.types';
 import type { CheckoutShippingShopQuote } from '../../shipping/app/shipping.types';
 
+/**
+ * Client-provided shipping address. Country and subdivision names remain
+ * accepted during the expand release, but canonical codes win when present and
+ * display names are then derived server-side.
+ */
+export interface ShippingAddressSelection {
+  fullName: string;
+  address1: string;
+  address2?: string;
+  city: string;
+  country?: string;
+  state?: string;
+  countryCode?: string | null;
+  stateCode?: string | null;
+  stateText?: string | null;
+  zip: string;
+  phone: string;
+}
+
+/** A resolved shipping destination carried through quotes and order snapshots. */
 export interface ShippingAddressInput {
   fullName: string;
   address1: string;
@@ -14,6 +34,8 @@ export interface ShippingAddressInput {
   city: string;
   country: string;
   state: string;
+  countryCode?: string | null;
+  stateCode?: string | null;
   zip: string;
   phone: string;
 }
@@ -269,7 +291,9 @@ export interface OrderShippingAddressSummary {
   address2?: string;
   city: string;
   country: string;
+  countryCode?: string | null;
   state: string;
+  stateCode?: string | null;
   zip: string;
   phone?: string;
 }

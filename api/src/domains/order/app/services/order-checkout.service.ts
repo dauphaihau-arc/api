@@ -66,6 +66,7 @@ import {
   getSellerOrderNotificationRecipientId,
 } from '../seller-order-notification';
 import { getRequiredOrderNumber } from '../order-number';
+import { toPersistedShippingAddress } from '../shipping-address-snapshot';
 import type {
   CheckoutActor,
   CreateOrderResult,
@@ -848,7 +849,7 @@ export class OrderCheckoutService {
     const resolutions = await this.shippingQuoteService.resolveForProducts({
       productIds: [...new Set(units.map((unit) => unit.productId))],
       destination: {
-        countryCode: shippingAddress.country,
+        countryCode: shippingAddress.countryCode ?? shippingAddress.country,
       },
     });
     const resolutionByProductId = new Map(
@@ -934,17 +935,4 @@ function normalizeCurrency(currency?: string): string {
   return currency && MARKETPLACE_CURRENCIES.includes(currency as (typeof MARKETPLACE_CURRENCIES)[number])
     ? currency
     : 'USD';
-}
-
-function toPersistedShippingAddress(input: ShippingAddressInput) {
-  return {
-    full_name: input.fullName,
-    address1: input.address1,
-    address2: input.address2,
-    city: input.city,
-    country: input.country,
-    state: input.state,
-    zip: input.zip,
-    phone: input.phone,
-  };
 }
