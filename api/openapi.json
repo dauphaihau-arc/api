@@ -32184,6 +32184,172 @@
         ]
       }
     },
+    "/v1/locations/countries": {
+      "get": {
+        "operationId": "Location_listCountries",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Active countries sorted by name.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LocationCountryResponseDto"
+                  }
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Dataset unchanged for the supplied If-None-Match validator."
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "INTERNAL_SERVER_ERROR": {
+                    "summary": "Internal server error",
+                    "value": {
+                      "status_code": 500,
+                      "code": "INTERNAL_SERVER_ERROR",
+                      "message": "Internal server error"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Location reference dataset is unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "LOCATION_DATASET_UNAVAILABLE": {
+                    "summary": "Location reference dataset is unavailable",
+                    "value": {
+                      "status_code": 503,
+                      "code": "LOCATION_DATASET_UNAVAILABLE",
+                      "message": "Location reference dataset is unavailable"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "List countries with subdivision availability and postal requiredness",
+        "tags": [
+          "Locations"
+        ]
+      }
+    },
+    "/v1/locations/countries/{code}/administrative-areas": {
+      "get": {
+        "operationId": "Location_listAdministrativeAreas",
+        "parameters": [
+          {
+            "name": "code",
+            "required": true,
+            "in": "path",
+            "description": "ISO 3166-1 alpha-2 country code. Case-insensitive.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Active administrative areas sorted by name. Empty when the country has none.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LocationAdministrativeAreaResponseDto"
+                  }
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Dataset unchanged for the supplied If-None-Match validator."
+          },
+          "404": {
+            "description": "Location country \"XX\" was not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "LOCATION_COUNTRY_NOT_FOUND": {
+                    "summary": "Location country \"XX\" was not found",
+                    "value": {
+                      "status_code": 404,
+                      "code": "LOCATION_COUNTRY_NOT_FOUND",
+                      "message": "Location country \"XX\" was not found"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "INTERNAL_SERVER_ERROR": {
+                    "summary": "Internal server error",
+                    "value": {
+                      "status_code": 500,
+                      "code": "INTERNAL_SERVER_ERROR",
+                      "message": "Internal server error"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Location reference dataset is unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponseDto"
+                },
+                "examples": {
+                  "LOCATION_DATASET_UNAVAILABLE": {
+                    "summary": "Location reference dataset is unavailable",
+                    "value": {
+                      "status_code": 503,
+                      "code": "LOCATION_DATASET_UNAVAILABLE",
+                      "message": "Location reference dataset is unavailable"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "List active level-1 administrative areas for a country",
+        "tags": [
+          "Locations"
+        ]
+      }
+    },
     "/v1/webhooks/stripe": {
       "post": {
         "operationId": "StripeWebhook_handle",
@@ -34283,6 +34449,9 @@
     },
     {
       "name": "Health"
+    },
+    {
+      "name": "Locations"
     },
     {
       "name": "Marketplace"
@@ -46319,6 +46488,54 @@
         "required": [
           "shop_id",
           "payout_account"
+        ]
+      },
+      "LocationCountryResponseDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "example": "VN",
+            "description": "ISO 3166-1 alpha-2 country code."
+          },
+          "name": {
+            "type": "string",
+            "example": "Vietnam"
+          },
+          "has_administrative_areas": {
+            "type": "boolean",
+            "example": true,
+            "description": "Whether active level-1 administrative areas exist for this country."
+          },
+          "postal_code_required": {
+            "type": "boolean",
+            "example": false,
+            "description": "Whether a postal code is required for addresses in this country."
+          }
+        },
+        "required": [
+          "code",
+          "name",
+          "has_administrative_areas",
+          "postal_code_required"
+        ]
+      },
+      "LocationAdministrativeAreaResponseDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "example": "VN-01",
+            "description": "Level-1 administrative area code."
+          },
+          "name": {
+            "type": "string",
+            "example": "Hanoi"
+          }
+        },
+        "required": [
+          "code",
+          "name"
         ]
       },
       "StripeWebhookAckResponseDto": {

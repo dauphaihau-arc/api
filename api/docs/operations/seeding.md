@@ -4,10 +4,16 @@ This project has two seed modes:
 
 - `db:seed`
   Seeds reference data only.
-  Includes roles, permissions, and category taxonomy.
+  Includes roles, permissions, category taxonomy, and Location reference data
+  (countries, level-1 administrative areas, dataset version).
 - `db:seed:demo`
   Seeds the full fake/demo dataset.
   Includes demo users, passwords, shops, products, promotions, and reference data.
+
+Location data is pinned in `database/reference/locations/` and carries ODbL
+1.0 obligations for the dr5hn country/area data plus CC-BY-4.0 attribution for
+the Vietnam override. See `database/reference/locations/NOTICE.md` and the
+dataset version and checksums in `database/reference/locations/README.md`.
 
 ## When to use which
 

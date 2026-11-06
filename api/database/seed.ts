@@ -51,6 +51,9 @@ import { PayoutEntity } from '~/domains/finance/infra/persistence/entities/payou
 import { PostingEntity } from '~/domains/finance/infra/persistence/entities/posting.entity';
 import { SellerPayableBalanceEntity } from '~/domains/finance/infra/persistence/entities/seller-payable-balance.entity';
 import { UserAddressEntity } from '~/domains/user/infra/persistence/entities/user-address.entity';
+import { LocationAdministrativeAreaEntity } from '~/domains/location/infra/persistence/entities/location-administrative-area.entity';
+import { LocationCountryEntity } from '~/domains/location/infra/persistence/entities/location-country.entity';
+import { LocationDatasetVersionEntity } from '~/domains/location/infra/persistence/entities/location-dataset-version.entity';
 import { VariantPriceEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/variant-price.entity';
 import { seedAuth } from './seeds/auth.seed';
 import { seedCategories } from './seeds/category.seed';
@@ -60,6 +63,7 @@ import { seedPayoutAccounts } from './seeds/payout-account.seed';
 import { seedPayouts } from './seeds/payout.seed';
 import { seedPromotions } from './seeds/promotion.seed';
 import { seedExchangeRates } from './seeds/exchange-rate.seed';
+import { seedLocations } from './seeds/location.seed';
 import { seedLocalOrderScenarios } from './seeds/local-order-scenario.seed';
 import { seedBulkOrderDemo } from './seeds/order-bulk.seed';
 import { seedOrderCartDemo } from './seeds/order-cart.seed';
@@ -146,6 +150,9 @@ async function main() {
       ProductViewHistoryEntity,
       ExchangeRateEntity,
       UserAddressEntity,
+      LocationCountryEntity,
+      LocationAdministrativeAreaEntity,
+      LocationDatasetVersionEntity,
     ],
   });
 
@@ -159,6 +166,7 @@ async function main() {
       seedUserProfiles(em, usersByEmail),
     );
     await runSeedStep('Seeding categories', async () => seedCategories(em));
+    await runSeedStep('Seeding locations', async () => seedLocations(em));
 
     const { shopsBySlug } = await runSeedStep('Seeding shops', async () =>
       seedShops(em, usersByEmail),
