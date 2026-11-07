@@ -163,12 +163,13 @@ async function main() {
 
     await runSeedStep('Applying migrations', async () => orm.getMigrator().up());
 
+    await runSeedStep('Seeding locations', async () => seedLocations(em));
+
     const { usersByEmail } = await runSeedStep('Seeding auth', async () => seedAuth(em));
     await runSeedStep('Seeding user profiles', async () =>
       seedUserProfiles(em, usersByEmail),
     );
     await runSeedStep('Seeding categories', async () => seedCategories(em));
-    await runSeedStep('Seeding locations', async () => seedLocations(em));
 
     const { shopsBySlug } = await runSeedStep('Seeding shops', async () =>
       seedShops(em, usersByEmail),
