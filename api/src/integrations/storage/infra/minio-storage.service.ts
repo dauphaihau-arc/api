@@ -9,13 +9,13 @@ import {
   NoSuchKey,
   PutBucketPolicyCommand,
   PutObjectCommand,
-  S3Client,
   S3ServiceException,
 } from '@aws-sdk/client-s3';
 import { Readable } from 'node:stream';
 import type { MinioStorageConfig } from '~/platform/config/storage.config';
 import type { StorageService } from '../app/ports/storage.service';
 import type { PutStorageObjectInput, StoredObject } from '../app/storage.types';
+import { createMinioS3Client } from './minio-s3-client.factory';
 import { normalizeStorageKey } from './storage-key.util';
 
 interface S3ClientLike {
@@ -30,15 +30,7 @@ export class MinioStorageService implements StorageService {
     private readonly storageConfig: MinioStorageConfig,
     client?: S3ClientLike,
   ) {
-    this.client = client ?? new S3Client({
-      region: this.storageConfig.region,
-      endpoint: this.storageConfig.endpoint,
-      forcePathStyle: this.storageConfig.forcePathStyle,
-      credentials: {
-        accessKeyId: this.storageConfig.accessKey,
-        secretAccessKey: this.storageConfig.secretKey,
-      },
-    });
+    this.client = client ?? createMinioS3Client(this.storageConfig);
   }
 
   async putObject(input: PutStorageObjectInput): Promise<StoredObject> {

@@ -89,6 +89,7 @@
     "@opentelemetry/sdk-trace-base": "^2.7.1",
     "@opentelemetry/semantic-conventions": "^1.41.1",
     "@sentry/nestjs": "^10.55.0",
+    "@smithy/node-http-handler": "^4.7.1",
     "@socket.io/redis-adapter": "^8.3.0",
     "amqplib": "^2.0.1",
     "bcrypt": "^6.0.0",

@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import { existsSync } from 'node:fs';
 import { readFile, readdir, stat } from 'node:fs/promises';
 import * as path from 'node:path';
-import { ListObjectsV2Command, S3Client } from '@aws-sdk/client-s3';
+import { ListObjectsV2Command } from '@aws-sdk/client-s3';
 import { TableNotFoundException } from '@mikro-orm/core';
 import { MikroORM, type EntityManager } from '@mikro-orm/postgresql';
 import { validateAppEnv } from '~/platform/config/app-env.config';
@@ -37,6 +37,7 @@ import {
   resolveStorageEnvironmentSegment,
 } from '~/integrations/storage/app/storage-key-builder';
 import { LocalFileStorageService } from '~/integrations/storage/infra/local-file-storage.service';
+import { createMinioS3Client } from '~/integrations/storage/infra/minio-s3-client.factory';
 import { MinioStorageService } from '~/integrations/storage/infra/minio-storage.service';
 import {
   resolveOptionalSeedProductAssetDirectory,
@@ -371,15 +372,7 @@ async function collectLocalStorageUsage(
 async function collectMinioStorageUsage(
   config: MinioStorageConfig,
 ): Promise<StorageUsageSummary> {
-  const client = new S3Client({
-    region: config.region,
-    endpoint: config.endpoint,
-    forcePathStyle: config.forcePathStyle,
-    credentials: {
-      accessKeyId: config.accessKey,
-      secretAccessKey: config.secretKey,
-    },
-  });
+  const client = createMinioS3Client(config);
 
   let objectCount = 0;
   let totalBytes = 0;
