@@ -27,8 +27,8 @@ Both endpoints use header `x-cron-secret` and are excluded from Swagger and thro
 | `FINANCE_MONEY_EVENT_BOOKING` | `drain` | `inline` books paid/delivered/refunded and label charge/refund events in their producer transaction; `outbox` (default) leaves them to the drain/worker |
 | `FX_RATE_SYNC_PROVIDER`, `FX_RATE_SYNC_BASE_CURRENCIES` | `fx-sync` | Unchanged by the cron setup |
 
-Production reads application environment variables through `infisical run` in the Render start command.
-Add or rotate these keys in the Infisical `prod` environment before deploying; the Render service only stores the Infisical project, environment, and token.
+Production reads application environment variables from Render's environment, which is populated by the Infisical sync (`prod` environment).
+Add or rotate these keys in Infisical; the change reaches the running service on its next redeploy (or next cold start on the free plan).
 
 Secrets must match on both sides: the API value and the value sent by the scheduler.
 Rotate by updating both at the same time; the API rejects the old value immediately.
