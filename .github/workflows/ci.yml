@@ -85,5 +85,10 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Trigger Render deploy
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
         run: |
-          curl -fsS "${{ secrets.RENDER_DEPLOY_HOOK_URL }}&imgURL=ghcr.io%2Fdauphaihau-arc%2Fapi%3A${GITHUB_SHA}"
+          # imgURL must be URL-encoded and match the service's image URL outside the tag.
+          curl -sS --fail-with-body \
+            "${RENDER_DEPLOY_HOOK_URL}&imgURL=ghcr.io%2Fdauphaihau-arc%2Fapi%3A${GITHUB_SHA}" \
+            -w '\nHTTP %{http_code}\n'
