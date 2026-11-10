@@ -1,11 +1,13 @@
 services:
   - name: arc-api
     type: web
-    runtime: node
+    runtime: image
     plan: free
     region: singapore
-    rootDir: api
-    buildCommand: pnpm install --prod=false && pnpm build
-    startCommand: sh -lc 'pnpm db:migration:up && exec pnpm start:prod'
+    image:
+      url: ghcr.io/dauphaihau-arc/api:latest
+      creds:
+        fromRegistryCreds:
+          name: ghcr-read
+    dockerCommand: sh -lc 'pnpm db:migration:up && exec pnpm start:prod'
     healthCheckPath: /health
-    autoDeployTrigger: checksPass
