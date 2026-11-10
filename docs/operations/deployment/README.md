@@ -24,14 +24,15 @@ push to production
 ## One-time setup
 
 1. **Registry credential** — Workspace Settings → *Container Registry Credentials* → add a
-   GitHub personal access token with `read:packages`, named `ghcr-read` (matches `render.yaml`).
+   GitHub personal access token with `read:packages`, named `ghcr-read.` (matches the credential name in Render, trailing period included).
    Skip this if the GHCR package is public.
 2. **Build source** — service *Settings* → *Build* → *Source* → *Edit* → choose the image
    source `ghcr.io/dauphaihau-arc/api:latest` with the credential from step 1. Switching the
    source is a Dashboard action; a Blueprint cannot do it for a service that was created
    from a Git repo. Render triggers a deploy with the new source.
 3. **Start command** — `sh -lc 'pnpm db:migration:up && exec pnpm start:prod'`
-   (`dockerCommand` in `render.yaml`), health check path `/health`.
+   (`dockerCommand` in `render.yaml`). Leaving it empty runs the image's `CMD`, which is the
+   same command; set the health check path to `/health` either way.
 4. **Deploy hook** — service *Settings* → *Deploy Hook* → store the URL as the GitHub repo
    secret `RENDER_DEPLOY_HOOK_URL`.
 5. **Image URL** — keep the service's default image URL at
