@@ -26,11 +26,21 @@ push to production
 1. **Registry credential** — Workspace Settings → *Container Registry Credentials* → add a
    GitHub personal access token with `read:packages`, named `ghcr-read` (matches `render.yaml`).
    Skip this if the GHCR package is public.
-2. **Deploy hook** — service *Settings* → *Deploy Hook* → store the URL as the GitHub repo
+2. **Build source** — service *Settings* → *Build* → *Source* → *Edit* → choose the image
+   source `ghcr.io/dauphaihau-arc/api:latest` with the credential from step 1. Switching the
+   source is a Dashboard action; a Blueprint cannot do it for a service that was created
+   from a Git repo. Render triggers a deploy with the new source.
+3. **Start command** — `sh -lc 'pnpm db:migration:up && exec pnpm start:prod'`
+   (`dockerCommand` in `render.yaml`), health check path `/health`.
+4. **Deploy hook** — service *Settings* → *Deploy Hook* → store the URL as the GitHub repo
    secret `RENDER_DEPLOY_HOOK_URL`.
-3. **Image URL** — keep the service's default image URL at
+5. **Image URL** — keep the service's default image URL at
    `ghcr.io/dauphaihau-arc/api:latest`. The deploy hook only validates the tag, so every
    component of `imgURL` besides the tag must match this URL.
+
+Until step 2 is done the deploy hook answers
+`{"badrequest":"node environment does not support image URLs"}`, because the service is
+still a native Node runtime and has no image to pull.
 
 Render has no Git connection to this service, so `autoDeployTrigger` no longer applies.
 
@@ -53,6 +63,8 @@ Render has no Git connection to this service, so `autoDeployTrigger` no longer a
 ## Diagnostics
 
 - Deploy fails with `Image Pull Failed` → registry credential or tag missing.
+- Deploy hook returns `{"badrequest":"node environment does not support image URLs"}` →
+  the service is still a native runtime; switch its build source to the image (step 2).
 - Deploy fails before the health check → read the instance logs for the migration output;
   the previous deploy keeps serving.
 - Verify a rollout: Render event log shows the image pull for the pushed SHA, logs show the
