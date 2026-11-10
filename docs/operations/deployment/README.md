@@ -30,9 +30,11 @@ push to production
    source `ghcr.io/dauphaihau-arc/api:latest` with the credential from step 1. Switching the
    source is a Dashboard action; a Blueprint cannot do it for a service that was created
    from a Git repo. Render triggers a deploy with the new source.
-3. **Start command** — `sh -lc 'pnpm db:migration:up && exec pnpm start:prod'`
-   (`dockerCommand` in `render.yaml`). Leaving it empty runs the image's `CMD`, which is the
-   same command; set the health check path to `/health` either way.
+3. **Start command — leave empty.** The image's `CMD` runs
+   `sh -lc 'pnpm db:migration:up && exec pnpm start:prod'`. Do not set a Render
+   `dockerCommand` for it: Render does not give that field shell semantics, and the value
+   `sh -lc '…'` fails with `Exited with status 127` / `not found`. Set the health check path
+   to `/health`.
 4. **Deploy hook** — service *Settings* → *Deploy Hook* → store the URL as the GitHub repo
    secret `RENDER_DEPLOY_HOOK_URL`.
 5. **Image URL** — keep the service's default image URL at
@@ -66,6 +68,8 @@ Render has no Git connection to this service, so `autoDeployTrigger` no longer a
 - Deploy fails with `Image Pull Failed` → registry credential or tag missing.
 - Deploy hook returns `{"badrequest":"node environment does not support image URLs"}` →
   the service is still a native runtime; switch its build source to the image (step 2).
+- Deploy exits with status 127 and the log shows the whole start string as one `not found`
+  command → a Render `dockerCommand` is set; clear it and let the image `CMD` run.
 - Deploy fails before the health check → read the instance logs for the migration output;
   the previous deploy keeps serving.
 - Verify a rollout: Render event log shows the image pull for the pushed SHA, logs show the
