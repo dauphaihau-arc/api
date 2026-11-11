@@ -24,6 +24,8 @@ services:
       RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
     ports:
       - "4000:4000"
+    # The production image no longer migrates on start; local stacks still do.
+    command: ["sh", "-lc", "pnpm db:migration:up && exec pnpm start:prod"]
 
   worker:
     profiles: ["app"]

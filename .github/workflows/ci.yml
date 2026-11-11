@@ -9,7 +9,8 @@ on:
 
 concurrency:
   group: api-ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # A production run must never be cancelled mid-deploy: migrations may already be applied.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/production' }}
 
 jobs:
   validate:
@@ -55,6 +56,9 @@ jobs:
     needs: validate
     if: github.ref == 'refs/heads/production'
     runs-on: ubuntu-24.04
+    concurrency:
+      group: api-deploy-production
+      cancel-in-progress: false
     permissions:
       contents: read
       packages: write
@@ -83,6 +87,27 @@ jobs:
             ghcr.io/dauphaihau-arc/api:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Run database migrations
+        timeout-minutes: 15
+        env:
+          INFISICAL_TOKEN: ${{ secrets.INFISICAL_TOKEN }}
+          INFISICAL_PROJECT_ID: ${{ vars.INFISICAL_PROJECT_ID || secrets.INFISICAL_PROJECT_ID }}
+        run: |
+          if [ -z "${INFISICAL_TOKEN}" ] || [ -z "${INFISICAL_PROJECT_ID}" ]; then
+            echo "::error::INFISICAL_TOKEN secret and INFISICAL_PROJECT_ID value are required"
+            exit 1
+          fi
+          # Same image that is about to be deployed, different entrypoint.
+          # DATABASE_URL comes from Infisical and is forwarded into the container.
+          npx --yes @infisical/cli@0.43.84 run \
+            --projectId="${INFISICAL_PROJECT_ID}" \
+            --env=prod \
+            --token="${INFISICAL_TOKEN}" \
+            -- docker run --rm \
+              -e DATABASE_URL \
+              "ghcr.io/dauphaihau-arc/api:${GITHUB_SHA}" \
+              pnpm db:migration:up
 
       - name: Trigger Render deploy
         env:
