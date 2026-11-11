@@ -11,3 +11,5 @@ services:
           # Name as stored in Render; the trailing period is part of it.
           name: ghcr-read.
     healthCheckPath: /health
+    # Deploys are triggered by the CI deploy hook, never by a commit.
+    autoDeployTrigger: 'off'
