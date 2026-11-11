@@ -27,4 +27,4 @@ COPY instrumentation.mjs ./
 RUN mkdir -p /app/storage && chown -R node:node /app/storage
 USER node
 EXPOSE 10000
-CMD ["sh", "-lc", "pnpm db:migration:up && exec pnpm start:prod"]
+CMD ["pnpm", "start:prod"]
