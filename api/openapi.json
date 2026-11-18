@@ -34745,6 +34745,7 @@
             "type": "string",
             "enum": [
               "en-US",
+              "vi-US",
               "vi-VN",
               "en-VN"
             ]
@@ -34755,6 +34756,7 @@
               "type": "string",
               "enum": [
                 "en-US",
+                "vi-US",
                 "vi-VN",
                 "en-VN"
               ]
@@ -35099,7 +35101,8 @@
             "enum": [
               "en",
               "la",
-              "fr"
+              "fr",
+              "vi"
             ]
           },
           "currency": {
@@ -35177,7 +35180,8 @@
             "enum": [
               "en",
               "la",
-              "fr"
+              "fr",
+              "vi"
             ],
             "type": "string"
           },
@@ -35600,7 +35604,8 @@
             "enum": [
               "en",
               "la",
-              "fr"
+              "fr",
+              "vi"
             ]
           },
           "currency": {
