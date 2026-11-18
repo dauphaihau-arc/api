@@ -35100,8 +35100,6 @@
             "type": "string",
             "enum": [
               "en",
-              "la",
-              "fr",
               "vi"
             ]
           },
@@ -35179,8 +35177,6 @@
           "language": {
             "enum": [
               "en",
-              "la",
-              "fr",
               "vi"
             ],
             "type": "string"
@@ -35603,8 +35599,6 @@
             "type": "string",
             "enum": [
               "en",
-              "la",
-              "fr",
               "vi"
             ]
           },

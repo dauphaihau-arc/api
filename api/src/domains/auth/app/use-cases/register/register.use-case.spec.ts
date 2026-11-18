@@ -97,7 +97,7 @@ describe('RegisterUseCase', () => {
         displayName: 'Member User',
         preferences: {
           region: 'Vietnam',
-          language: 'fr',
+          language: 'vi',
           currency: 'EUR',
         },
       },
@@ -108,7 +108,7 @@ describe('RegisterUseCase', () => {
       {
         userId: 'user-1',
         region: 'Vietnam',
-        language: 'fr',
+        language: 'vi',
         currency: 'EUR',
       } satisfies UserPreferences & { userId: string },
       expect.anything(),

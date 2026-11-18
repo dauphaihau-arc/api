@@ -1031,7 +1031,7 @@ describe('Platform Commission from a Commission Schedule (integration)', () => {
     expect(schedule.status).toBe(200);
 
     const fxBuyer = await registerBuyer('fin-commission-fx-buyer');
-    await setBuyerMarket(fxBuyer, { region: 'Vietnam', language: 'la', currency: 'VND' });
+    await setBuyerMarket(fxBuyer, { region: 'Vietnam', language: 'vi', currency: 'VND' });
 
     await addCartItem(fxBuyer, fxProduct.inventoryId, 1);
     const quote = await createQuote(fxBuyer);

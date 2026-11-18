@@ -166,7 +166,7 @@ describe('Auth flow (e2e)', () => {
         displayName: 'Member User',
         preferences: {
           region: 'Vietnam',
-          language: 'fr',
+          language: 'vi',
           currency: 'EUR',
         },
       })
@@ -192,7 +192,7 @@ describe('Auth flow (e2e)', () => {
     expect(userPreference).toBeTruthy();
     expect(userPreference).toMatchObject({
       region: 'Vietnam',
-      language: 'fr',
+      language: 'vi',
       currency: 'EUR',
     });
 

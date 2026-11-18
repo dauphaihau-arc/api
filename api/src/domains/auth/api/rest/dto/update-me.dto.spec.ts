@@ -12,13 +12,14 @@ async function validatePreferences(language: string) {
 }
 
 describe('UpdateMeDto preferences language', () => {
-  it('accepts Vietnamese during the expand step', async () => {
+  it('accepts the Storefront Languages', async () => {
+    await expect(validatePreferences('en')).resolves.toHaveLength(0);
     await expect(validatePreferences('vi')).resolves.toHaveLength(0);
   });
 
-  it('keeps the legacy language values accepted', async () => {
-    await expect(validatePreferences('la')).resolves.toHaveLength(0);
-    await expect(validatePreferences('fr')).resolves.toHaveLength(0);
+  it('rejects the retired languages', async () => {
+    await expect(validatePreferences('la')).resolves.toHaveLength(1);
+    await expect(validatePreferences('fr')).resolves.toHaveLength(1);
   });
 
   it('rejects an unknown language value', async () => {

@@ -1,11 +1,11 @@
 import type { EntityManager } from '@mikro-orm/postgresql';
 import {
   MARKETPLACE_CURRENCIES,
-  MARKETPLACE_LANGUAGES,
   MARKETPLACE_REGIONS,
+  STOREFRONT_LANGUAGES,
   type MarketplaceCurrency,
-  type MarketplaceLanguage,
   type MarketplaceRegion,
+  type StorefrontLanguage,
 } from '~/platform/config/marketplace.config';
 import type { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
 import { UserPreferenceEntity } from '~/domains/auth/infra/persistence/entities/user-preference.entity';
@@ -54,7 +54,7 @@ type UserAddressSeed = {
 type UserPreferenceSeed = {
   userEmail: string;
   region: MarketplaceRegion;
-  language: MarketplaceLanguage;
+  language: StorefrontLanguage;
   currency: MarketplaceCurrency;
 };
 
@@ -80,9 +80,9 @@ function parseRegion(value: string, seedKey: string): MarketplaceRegion {
   throw new Error(`Invalid region "${value}" for preference seed ${seedKey}`);
 }
 
-function parseLanguage(value: string, seedKey: string): MarketplaceLanguage {
-  if (MARKETPLACE_LANGUAGES.includes(value as MarketplaceLanguage)) {
-    return value as MarketplaceLanguage;
+function parseLanguage(value: string, seedKey: string): StorefrontLanguage {
+  if (STOREFRONT_LANGUAGES.includes(value as StorefrontLanguage)) {
+    return value as StorefrontLanguage;
   }
 
   throw new Error(`Invalid language "${value}" for preference seed ${seedKey}`);

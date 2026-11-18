@@ -996,7 +996,7 @@ describe('Seller Payable from a paid Order (integration)', () => {
     const settlingBuyer = await registerBuyer('fin-settling-buyer');
     await setBuyerMarket(settlingBuyer, {
       region: 'Vietnam',
-      language: 'la',
+      language: 'vi',
       currency: 'VND',
     });
 
