@@ -1227,7 +1227,7 @@ describe('Order accepted shipping facts (integration)', () => {
       amountMinor: 2500,
     });
     const buyer = await registerBuyer('ord-fx');
-    await setBuyerMarket(buyer, { region: 'Vietnam', language: 'la', currency: 'VND' });
+    await setBuyerMarket(buyer, { region: 'Vietnam', language: 'vi', currency: 'VND' });
     await addCartItem(buyer, product.inventoryId, 2);
 
     const quote = await createQuote(buyer);

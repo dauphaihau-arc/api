@@ -1283,7 +1283,7 @@ describe('Payout Availability from delivery (integration)', () => {
       stock: 5,
     });
     const buyer = await registerBuyer('pay-avail-fx-buyer');
-    await setBuyerMarket(buyer, { region: 'Vietnam', language: 'la', currency: 'VND' });
+    await setBuyerMarket(buyer, { region: 'Vietnam', language: 'vi', currency: 'VND' });
 
     await addCartItem(buyer, inventoryId, 1);
     const quote = await createQuote(buyer);

@@ -683,7 +683,7 @@ describe('Inline booking of a paid Order (integration)', () => {
     const crossBuyer = await registerBuyer('inline-cross-buyer');
     await setBuyerMarket(crossBuyer, {
       region: 'Vietnam',
-      language: 'la',
+      language: 'vi',
       currency: 'VND',
     });
 

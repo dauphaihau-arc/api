@@ -6,8 +6,8 @@ import {
 import { Type } from 'class-transformer';
 import {
   MARKETPLACE_CURRENCIES,
-  MARKETPLACE_LANGUAGES,
   MARKETPLACE_REGIONS,
+  STOREFRONT_LANGUAGES,
 } from '~/platform/config/marketplace.config';
 
 class UpdateMePreferencesDto {
@@ -16,8 +16,8 @@ class UpdateMePreferencesDto {
   region?: (typeof MARKETPLACE_REGIONS)[number];
 
   @IsOptional()
-  @IsIn(MARKETPLACE_LANGUAGES)
-  language?: (typeof MARKETPLACE_LANGUAGES)[number];
+  @IsIn(STOREFRONT_LANGUAGES)
+  language?: (typeof STOREFRONT_LANGUAGES)[number];
 
   @IsOptional()
   @IsIn(MARKETPLACE_CURRENCIES)

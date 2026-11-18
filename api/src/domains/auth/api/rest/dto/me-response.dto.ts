@@ -2,11 +2,11 @@ import { Expose, Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 import {
   MARKETPLACE_CURRENCIES,
-  MARKETPLACE_LANGUAGES,
   MARKETPLACE_REGIONS,
+  STOREFRONT_LANGUAGES,
   type MarketplaceCurrency,
-  type MarketplaceLanguage,
   type MarketplaceRegion,
+  type StorefrontLanguage,
 } from '~/platform/config/marketplace.config';
 import type { UserStatus } from '../../../domain/enums/user-status.enum';
 import type { UserProfile } from '../../../app/auth.types';
@@ -16,9 +16,9 @@ class MePreferencesResponseDto {
   @Expose()
   region!: MarketplaceRegion;
 
-  @ApiProperty({ enum: MARKETPLACE_LANGUAGES })
+  @ApiProperty({ enum: STOREFRONT_LANGUAGES })
   @Expose()
-  language!: MarketplaceLanguage;
+  language!: StorefrontLanguage;
 
   @ApiProperty({ enum: MARKETPLACE_CURRENCIES })
   @Expose()

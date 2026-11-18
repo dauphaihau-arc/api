@@ -3,7 +3,7 @@ export const MARKETPLACE_REGIONS = [
   'Vietnam',
 ] as const;
 
-export const MARKETPLACE_LANGUAGES = ['en', 'la', 'fr', 'vi'] as const;
+export const STOREFRONT_LANGUAGES = ['en', 'vi'] as const;
 
 export const MARKETPLACE_CURRENCIES = [
   'USD',
@@ -47,7 +47,7 @@ export const MARKETPLACE_LOCALES = [
 ] as const;
 
 export type MarketplaceRegion = (typeof MARKETPLACE_REGIONS)[number];
-export type MarketplaceLanguage = (typeof MARKETPLACE_LANGUAGES)[number];
+export type StorefrontLanguage = (typeof STOREFRONT_LANGUAGES)[number];
 export type MarketplaceCurrency = (typeof MARKETPLACE_CURRENCIES)[number];
 export type MarketplaceLocale = (typeof MARKETPLACE_LOCALES)[number];
 
@@ -84,13 +84,13 @@ export const MARKETPLACE_MARKETS: MarketplaceMarket[] = [
 
 export interface UserPreferencesInput {
   region?: MarketplaceRegion;
-  language?: MarketplaceLanguage;
+  language?: StorefrontLanguage;
   currency?: MarketplaceCurrency;
 }
 
 export interface UserPreferences {
   region: MarketplaceRegion;
-  language: MarketplaceLanguage;
+  language: StorefrontLanguage;
   currency: MarketplaceCurrency;
 }
 

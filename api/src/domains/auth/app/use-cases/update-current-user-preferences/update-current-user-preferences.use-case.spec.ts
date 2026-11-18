@@ -21,7 +21,7 @@ describe('UpdateCurrentUserPreferencesUseCase', () => {
       save: jest.fn(),
       findByUserId: jest.fn().mockResolvedValue({
         region: 'Vietnam',
-        language: 'fr',
+        language: 'vi',
         currency: 'VND',
       }),
     };
@@ -35,7 +35,7 @@ describe('UpdateCurrentUserPreferencesUseCase', () => {
       permissions: currentUser.permissions,
       preferences: {
         region: 'Vietnam',
-        language: 'fr',
+        language: 'vi',
         currency: 'USD',
       },
     };
@@ -56,7 +56,7 @@ describe('UpdateCurrentUserPreferencesUseCase', () => {
     expect(userPreferenceRepository.save).toHaveBeenCalledWith({
       userId: currentUser.userId,
       region: 'Vietnam',
-      language: 'fr',
+      language: 'vi',
       currency: 'USD',
     });
     expect(getCurrentUserUseCase.execute).toHaveBeenCalledWith(currentUser);

@@ -10,8 +10,8 @@ import { Expose, Transform, Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import {
   MARKETPLACE_CURRENCIES,
-  MARKETPLACE_LANGUAGES,
   MARKETPLACE_REGIONS,
+  STOREFRONT_LANGUAGES,
 } from '~/platform/config/marketplace.config';
 import { IsAuthPassword } from '../validation/password-validation';
 
@@ -21,8 +21,8 @@ class UserPreferencesDto {
   region?: (typeof MARKETPLACE_REGIONS)[number];
 
   @IsOptional()
-  @IsIn(MARKETPLACE_LANGUAGES)
-  language?: (typeof MARKETPLACE_LANGUAGES)[number];
+  @IsIn(STOREFRONT_LANGUAGES)
+  language?: (typeof STOREFRONT_LANGUAGES)[number];
 
   @IsOptional()
   @IsIn(MARKETPLACE_CURRENCIES)

@@ -1,6 +1,6 @@
 import {
-  MARKETPLACE_LANGUAGES,
   MARKETPLACE_LOCALES,
+  STOREFRONT_LANGUAGES,
   type MarketplaceMarket,
 } from '~/platform/config/marketplace.config';
 import { MarketplaceService } from './marketplace.service';
@@ -28,9 +28,7 @@ describe('MarketplaceService', () => {
     );
   });
 
-  it('includes vi in the marketplace language set', () => {
-    expect(MARKETPLACE_LANGUAGES).toEqual(
-      expect.arrayContaining(['en', 'la', 'fr', 'vi']),
-    );
+  it('reports only the Storefront Languages', () => {
+    expect(STOREFRONT_LANGUAGES).toEqual(['en', 'vi']);
   });
 });
