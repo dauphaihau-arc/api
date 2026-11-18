@@ -43,6 +43,11 @@ type CurrentUserHttpResponseBody = {
   display_name?: string;
   roles: string[];
   permissions: string[];
+  preferences?: {
+    region: string;
+    language: string;
+    currency: string;
+  };
 };
 
 describe('Auth flow (e2e)', () => {
@@ -249,6 +254,54 @@ describe('Auth flow (e2e)', () => {
     await agent
       .get(`${API_PREFIX}/auth/me`)
       .expect(401);
+  });
+
+  it('updates the storefront language preference to Vietnamese', async () => {
+    const email = `language-${Date.now()}@example.com`;
+    const agent = request.agent(app.getHttpServer());
+
+    await agent
+      .post(`${API_PREFIX}/auth/register`)
+      .set('Idempotency-Key', randomUUID())
+      .send({
+        email,
+        password: VALID_TEST_PASSWORD,
+        displayName: 'Language User',
+        preferences: {
+          region: 'United States',
+          language: 'en',
+          currency: 'USD',
+        },
+      })
+      .expect(201);
+
+    const updateResponse = await agent
+      .patch(`${API_PREFIX}/me`)
+      .send({
+        preferences: {
+          language: 'vi',
+        },
+      })
+      .expect(200);
+    const updateBody = updateResponse.body as CurrentUserHttpResponseBody;
+
+    expect(updateResponse.headers['cache-control']).toBe('no-store');
+    expect(updateBody.preferences).toMatchObject({
+      region: 'United States',
+      language: 'vi',
+      currency: 'USD',
+    });
+
+    const meResponse = await agent
+      .get(`${API_PREFIX}/auth/me`)
+      .expect(200);
+    const meBody = meResponse.body as CurrentUserHttpResponseBody;
+
+    expect(meBody.preferences).toMatchObject({
+      region: 'United States',
+      language: 'vi',
+      currency: 'USD',
+    });
   });
 });
 

@@ -3,7 +3,7 @@ export const MARKETPLACE_REGIONS = [
   'Vietnam',
 ] as const;
 
-export const MARKETPLACE_LANGUAGES = ['en', 'la', 'fr'] as const;
+export const MARKETPLACE_LANGUAGES = ['en', 'la', 'fr', 'vi'] as const;
 
 export const MARKETPLACE_CURRENCIES = [
   'USD',
@@ -41,6 +41,7 @@ export const MARKETPLACE_CURRENCIES = [
 
 export const MARKETPLACE_LOCALES = [
   'en-US',
+  'vi-US',
   'vi-VN',
   'en-VN',
 ] as const;
@@ -67,7 +68,7 @@ export const MARKETPLACE_MARKETS: MarketplaceMarket[] = [
     defaultCurrency: 'USD',
     supportedCurrencies: [...MARKETPLACE_CURRENCIES],
     defaultLocale: 'en-US',
-    supportedLocales: ['en-US'],
+    supportedLocales: ['en-US', 'vi-US'],
     enabled: true,
   },
   {
