@@ -17,6 +17,10 @@ Expected layout:
 - `seed-data/user-preferences.local.tsv` (optional, local-only)
 - `seed-data/products.tsv`
 - `seed-data/products.local.tsv` (optional, local-only)
+- `seed-data/product-translations.tsv`
+- `seed-data/product-translations.local.tsv` (optional, local-only)
+- `seed-data/category-translations.tsv`
+- `seed-data/category-translations.local.tsv` (optional, local-only)
 - `seed-data/product-inventory.tsv`
 - `seed-data/product-inventory.local.tsv` (optional, local-only)
 - `seed-data/product-view-history.tsv`
@@ -71,6 +75,18 @@ Rules:
 - `seed-data/products.tsv` may include a `state` column; blank defaults to `active`.
 - Product rows use `options_json`, a JSON array of `{ "key", "name", "values": [{ "key", "value" }] }` objects. Product option and value keys are stable seed identities; do not rename them for display-only label changes.
 - Optional local-only product rows can live in `seed-data/products.local.tsv`.
+- Curated product translations live in `seed-data/product-translations.tsv`.
+- Product translation rows are keyed by `shop_slug` + the base English `product_title`, plus `language`; they carry the translated `title` and `description`.
+- Only `en` and `vi` are supported languages. English reads the base product content, so seeded translation rows are normally `vi` only.
+- Optional local overrides can live in `seed-data/product-translations.local.tsv`. A local row with the same `shop_slug` + `product_title` + `language` replaces the shared row.
+- Curated category translations live in `seed-data/category-translations.tsv`.
+- Category translation rows are keyed by `category_path` (the `A > B > C` hierarchy path from [`category.data.ts`](../api/database/seeds/category.data.ts)) plus `language`; they carry the translated `name`.
+- Optional local overrides can live in `seed-data/category-translations.local.tsv`. A local row with the same `category_path` + `language` replaces the shared row.
+- Every shared active Product and every shared Category must have a `vi` row. Missing rows fail seed validation; the language falls back to English only for records listed as an explicit English-only exception below.
+- Product and category translation rows must reference seeded records. The seeder resolves records before writing and fails on an unknown `shop_slug` + `product_title` or `category_path`.
+- Duplicate `(record, language)` rows in one file fail seed validation, as do unsupported languages, empty keys, empty translated titles/descriptions, and empty category names.
+- Seeding translation rows only upserts `product_translations` / `category_translations`. It never enqueues translation work, calls an AI provider, or writes machine-translation metadata.
+- Shop names and descriptions are not localized seed content.
 - Product inventory and variant rows live in `seed-data/product-inventory.tsv`.
 - Each inventory row uses `selections_json`, a JSON object mapping option keys to selected value keys. Products with no options use `{}`.
 - `variant_state` is optional and defaults to `active`; use `inactive` for intentionally unavailable matrix combinations that still need stable Product Variant and Inventory identities.
@@ -136,6 +152,13 @@ Rules:
 - Keep filenames aligned with the relative keys referenced in [category.data.ts](../api/database/seeds/category.data.ts:62).
 - Hidden files like `.DS_Store` are ignored.
 
+English-only exceptions:
+
+- Every shared active Product and shared Category is expected to have curated Vietnamese content. Exceptions are deliberate and must be listed here before adding the matching constant in code.
+- Products: none currently. To add one, list it as `<shop_slug>::<base product title>` and add the same key to `ENGLISH_ONLY_PRODUCT_KEYS` in [product-translation.seed-loader.ts](../api/database/seeds/product-translation.seed-loader.ts).
+- Categories: none currently. To add one, list it as the `A > B > C` category path and add the same key to `ENGLISH_ONLY_CATEGORY_PATHS` in [category-translation.seed-loader.ts](../api/database/seeds/category-translation.seed-loader.ts).
+- An English-only exception has no translation row; storefront reads fall back to the base English content.
+
 Usage:
 
 ```bash
@@ -144,12 +167,14 @@ just r2-upload-assets
 
 Local-only workflow:
 
-- Run `just seed-validate` before seeding to confirm local-only auth-user emails, shop slugs, and products do not appear in shared TSV files.
+- Run `just seed-validate` before seeding to confirm local-only auth-user emails, shop slugs, and products do not appear in shared TSV files, and that localized content rows are valid and complete.
 - Add machine-specific ignore rules to `.git/info/exclude` instead of `.gitignore`.
 - Put extra local auth users in `seed-data/auth-users.local.tsv`.
 - Put local-only user address rows in `seed-data/user-addresses.local.tsv`.
 - Put local-only user preference rows in `seed-data/user-preferences.local.tsv`.
 - Put extra local products in `seed-data/products.local.tsv`.
+- Put local product translation overrides in `seed-data/product-translations.local.tsv`.
+- Put local category translation overrides in `seed-data/category-translations.local.tsv`.
 - Put matching local inventory rows in `seed-data/product-inventory.local.tsv`.
 - Put local-only product view-history rows in `seed-data/product-view-history.local.tsv`.
 - Put local-only bulk order scenarios in `seed-data/order-scenarios.local.tsv`.

@@ -4,6 +4,7 @@ import { buildDatabaseConfig } from '~/platform/config/database.config';
 import { CategoryAttributeOptionEntity } from '~/domains/category/infra/persistence/entities/category-attribute-option.entity';
 import { CategoryAttributeEntity } from '~/domains/category/infra/persistence/entities/category-attribute.entity';
 import { CategoryEntity } from '~/domains/category/infra/persistence/entities/category.entity';
+import { CategoryTranslationEntity } from '~/domains/category/infra/persistence/entities/category-translation.entity';
 import { PromotionCodeEntity } from '~/domains/promotion/infra/persistence/entities/promotion-code.entity';
 import { PromotionProductEntity } from '~/domains/promotion/infra/persistence/entities/promotion-product.entity';
 import { PromotionUsageEntity } from '~/domains/promotion/infra/persistence/entities/promotion-usage.entity';
@@ -36,6 +37,7 @@ import { ShippingProfileEntity } from '~/domains/shipping/infra/persistence/enti
 import { ShippingProfileRateEntity } from '~/domains/shipping/infra/persistence/entities/shipping-profile-rate.entity';
 import { ProductViewHistoryEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-view-history.entity';
 import { ProductEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product.entity';
+import { ProductTranslationEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-translation.entity';
 import { ExchangeRateEntity } from '~/integrations/currency/infra/persistence/entities/exchange-rate.entity';
 import { OrderEntity } from '~/domains/order/infra/persistence/entities/order.entity';
 import { OrderItemEntity } from '~/domains/order/infra/persistence/entities/order-item.entity';
@@ -70,6 +72,10 @@ import { seedBulkOrderDemo } from './seeds/order-bulk.seed';
 import { seedOrderCartDemo } from './seeds/order-cart.seed';
 import { seedLocalProductReviewOrders } from './seeds/product-review-local-order.seed';
 import { seedProducts } from './seeds/product.seed';
+import {
+  seedCategoryTranslations,
+  seedProductTranslations,
+} from './seeds/localized-content.seed';
 import { seedProductReviews } from './seeds/product-review.seed';
 import { seedProductViewHistory } from './seeds/product-view-history.seed';
 import { seedShops } from './seeds/shop.seed';
@@ -115,6 +121,7 @@ async function main() {
       ChatConversationEntity,
       ChatMessageEntity,
       CategoryEntity,
+      CategoryTranslationEntity,
       CategoryAttributeEntity,
       CategoryAttributeOptionEntity,
       PromotionEntity,
@@ -134,6 +141,7 @@ async function main() {
       PostingEntity,
       SellerPayableBalanceEntity,
       ProductEntity,
+      ProductTranslationEntity,
       ProductImageEntity,
       ProductAttributeValueEntity,
       ProductVariantEntity,
@@ -182,6 +190,12 @@ async function main() {
     );
     await runSeedStep('Seeding exchange rates', async () => seedExchangeRates(em));
     await runSeedStep('Seeding products', async () => seedProducts(em, shopsBySlug));
+    await runSeedStep('Seeding product translations', async () =>
+      seedProductTranslations(em),
+    );
+    await runSeedStep('Seeding category translations', async () =>
+      seedCategoryTranslations(em),
+    );
     await runSeedStep('Seeding chat conversations', async () =>
       seedChat(em, usersByEmail),
     );

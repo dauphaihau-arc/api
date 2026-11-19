@@ -28,7 +28,20 @@ describe('ResolveLegacyPathUseCase', () => {
     }
 
     expect(result.value).toEqual(resolution);
-    expect(repository.resolveLegacyPath).toHaveBeenCalledWith('/c/home/mugs');
+    expect(repository.resolveLegacyPath).toHaveBeenCalledWith('/c/home/mugs', 'en');
+  });
+
+  it('resolves the current category in the requested Storefront Language', async () => {
+    const repository = buildRepository();
+    repository.resolveLegacyPath.mockResolvedValue({
+      category: { id: '34', slug: 'ceramic-mugs', name: 'Cốc gốm' },
+      ancestry: [{ id: '34', slug: 'ceramic-mugs', name: 'Cốc gốm' }],
+    });
+    const useCase = new ResolveLegacyPathUseCase(repository);
+
+    await useCase.execute('/c/home/mugs', 'vi');
+
+    expect(repository.resolveLegacyPath).toHaveBeenCalledWith('/c/home/mugs', 'vi');
   });
 
   it('treats a missing path as not found without querying the repository', async () => {

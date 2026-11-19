@@ -4,6 +4,7 @@ import { buildDatabaseConfig } from '~/platform/config/database.config';
 import { CategoryAttributeOptionEntity } from '~/domains/category/infra/persistence/entities/category-attribute-option.entity';
 import { CategoryAttributeEntity } from '~/domains/category/infra/persistence/entities/category-attribute.entity';
 import { CategoryEntity } from '~/domains/category/infra/persistence/entities/category.entity';
+import { CategoryTranslationEntity } from '~/domains/category/infra/persistence/entities/category-translation.entity';
 import { PermissionEntity } from '~/domains/auth/infra/persistence/entities/permission.entity';
 import { RolePermissionEntity } from '~/domains/auth/infra/persistence/entities/role-permission.entity';
 import { RoleEntity } from '~/domains/auth/infra/persistence/entities/role.entity';
@@ -13,6 +14,7 @@ import { LocationCountryEntity } from '~/domains/location/infra/persistence/enti
 import { LocationDatasetVersionEntity } from '~/domains/location/infra/persistence/entities/location-dataset-version.entity';
 import { seedAuthReferenceData } from './seeds/auth.seed';
 import { seedCategories } from './seeds/category.seed';
+import { seedCategoryTranslations } from './seeds/localized-content.seed';
 import { seedLocations } from './seeds/location.seed';
 
 async function main() {
@@ -23,6 +25,7 @@ async function main() {
       PermissionEntity,
       RolePermissionEntity,
       CategoryEntity,
+      CategoryTranslationEntity,
       CategoryAttributeEntity,
       CategoryAttributeOptionEntity,
       LocationCountryEntity,
@@ -38,11 +41,12 @@ async function main() {
     await orm.getMigrator().up();
     await seedAuthReferenceData(em);
     await seedCategories(em);
+    await seedCategoryTranslations(em);
     await seedLocations(em);
 
     console.log('Production seed completed');
     console.log(
-      'Seeded reference data only: roles, permissions, categories, locations',
+      'Seeded reference data only: roles, permissions, categories with translations, locations',
     );
   }
   finally {

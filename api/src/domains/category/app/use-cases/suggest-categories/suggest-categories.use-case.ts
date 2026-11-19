@@ -1,4 +1,6 @@
 import { Injectable } from '@nestjs/common';
+import type { StorefrontLanguage } from '~/platform/config/marketplace.config';
+import { DEFAULT_STOREFRONT_LANGUAGE } from '~/platform/localization/storefront-language';
 import { CategoryRepository } from '../../ports/category.repository';
 import type { CategorySuggestion } from '../../category.types';
 
@@ -11,6 +13,7 @@ export class SuggestCategoriesUseCase {
   async execute(
     name: string,
     limit: number = CATEGORY_SUGGESTIONS_DEFAULT_LIMIT,
+    language: StorefrontLanguage = DEFAULT_STOREFRONT_LANGUAGE,
   ): Promise<CategorySuggestion[]> {
     const trimmedName = name.trim();
 
@@ -18,6 +21,10 @@ export class SuggestCategoriesUseCase {
       return [];
     }
 
-    return this.categoryRepository.searchSuggestions(trimmedName, limit);
+    return this.categoryRepository.searchSuggestions(
+      trimmedName,
+      limit,
+      language,
+    );
   }
 }

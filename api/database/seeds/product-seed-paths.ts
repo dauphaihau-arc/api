@@ -9,6 +9,22 @@ export const PRODUCT_INVENTORY_LOCAL_TSV_PATH = path.join(
   SEED_DATA_DIR,
   'product-inventory.local.tsv',
 );
+export const PRODUCT_TRANSLATIONS_TSV_PATH = path.join(
+  SEED_DATA_DIR,
+  'product-translations.tsv',
+);
+export const PRODUCT_TRANSLATIONS_LOCAL_TSV_PATH = path.join(
+  SEED_DATA_DIR,
+  'product-translations.local.tsv',
+);
+export const CATEGORY_TRANSLATIONS_TSV_PATH = path.join(
+  SEED_DATA_DIR,
+  'category-translations.tsv',
+);
+export const CATEGORY_TRANSLATIONS_LOCAL_TSV_PATH = path.join(
+  SEED_DATA_DIR,
+  'category-translations.local.tsv',
+);
 export const PRODUCT_ATTRIBUTES_TSV_PATH = path.join(SEED_DATA_DIR, 'product-attributes.tsv');
 export const PRODUCT_ATTRIBUTES_LOCAL_TSV_PATH = path.join(
   SEED_DATA_DIR,

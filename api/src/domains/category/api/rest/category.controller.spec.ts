@@ -12,6 +12,7 @@ describe('CategoryController', () => {
   const createCategoryAttributeUseCase = { execute: jest.fn() };
   const getCategoryAttributesUseCase = { execute: jest.fn() };
   const suggestCategoriesUseCase = { execute: jest.fn() };
+  const requestContextService = { get: jest.fn(() => ({})) };
 
   const controller = new CategoryController(
     createCategoryUseCase as never,
@@ -21,10 +22,12 @@ describe('CategoryController', () => {
     createCategoryAttributeUseCase as never,
     getCategoryAttributesUseCase as never,
     suggestCategoriesUseCase as never,
+    requestContextService as never,
   );
 
   beforeEach(() => {
     jest.clearAllMocks();
+    requestContextService.get.mockReturnValue({});
   });
 
   it('registers GET :id/attributes on the controller method', () => {
@@ -48,6 +51,57 @@ describe('CategoryController', () => {
     expect(Reflect.getMetadata(METHOD_METADATA, handler)).toBe(RequestMethod.GET);
   });
 
+  it.each([
+    ['vi-VN', 'vi'],
+    ['vi-US', 'vi'],
+    ['en-US', 'en'],
+    ['en-VN', 'en'],
+    [undefined, 'en'],
+    ['fr-FR', 'en'],
+  ])(
+    'resolves the %s Locale to the %s Storefront Language for category reads',
+    async (locale, expectedLanguage) => {
+      requestContextService.get.mockReturnValue({ locale });
+      listCategoriesUseCase.execute.mockResolvedValue([]);
+
+      await controller.categories({ parentId: undefined });
+
+      expect(listCategoriesUseCase.execute).toHaveBeenCalledWith(
+        undefined,
+        expectedLanguage,
+      );
+    },
+  );
+
+  it('does not change the category slug when the name is localized', async () => {
+    requestContextService.get.mockReturnValue({ locale: 'vi-VN' });
+    listCategoriesUseCase.execute.mockResolvedValue([
+      {
+        id: 'internal-category-1',
+        publicId: 'category-1',
+        slug: 'ceramic-mugs',
+        parentId: undefined,
+        name: 'Cốc gốm',
+        rank: 1,
+        attributes: [],
+      },
+    ]);
+
+    await expect(controller.categories({ parentId: undefined })).resolves.toEqual([
+      {
+        id: 'category-1',
+        parent_id: undefined,
+        slug: 'ceramic-mugs',
+        name: 'Cốc gốm',
+        rank: 1,
+        image_url: undefined,
+        image_url_1x1: undefined,
+        featured_facet_keys: undefined,
+        attributes: [],
+      },
+    ]);
+  });
+
   it('returns the current canonical resolution for an owned legacy path', async () => {
     resolveLegacyPathUseCase.execute.mockResolvedValue(ok({
       category: { id: '34', slug: 'ceramic-mugs', name: 'Mugs' },
@@ -65,7 +119,7 @@ describe('CategoryController', () => {
       ],
       canonical_path: '/c/ceramic-mugs-c34',
     });
-    expect(resolveLegacyPathUseCase.execute).toHaveBeenCalledWith('/c/home/mugs');
+    expect(resolveLegacyPathUseCase.execute).toHaveBeenCalledWith('/c/home/mugs', 'en');
   });
 
   it('throws not found for an unowned legacy path', async () => {
@@ -199,7 +253,7 @@ describe('CategoryController', () => {
         ],
       },
     ]);
-    expect(listCategoriesUseCase.execute).toHaveBeenCalledWith(undefined);
+    expect(listCategoriesUseCase.execute).toHaveBeenCalledWith(undefined, 'en');
   });
 
   it('returns suggested categories in snake_case for the HTTP boundary', async () => {
@@ -220,7 +274,7 @@ describe('CategoryController', () => {
         },
       ],
     });
-    expect(suggestCategoriesUseCase.execute).toHaveBeenCalledWith('mug', 3);
+    expect(suggestCategoriesUseCase.execute).toHaveBeenCalledWith('mug', 3, 'en');
   });
 
   it('returns the category attributes for an existing category', async () => {

@@ -29,6 +29,17 @@ describe('GetPublicProductBySlugsUseCase', () => {
     inventory: [],
   };
 
+  const categoryNamesByLanguage: Record<string, Record<string, string>> = {
+    en: {
+      'category-1': 'Mugs & Cups',
+      'category-root': 'Home & Living',
+    },
+    vi: {
+      'category-1': 'Cốc sứ',
+      'category-root': 'Nhà cửa',
+    },
+  };
+
   function buildRepository(): Pick<jest.Mocked<StorefrontProductQueryRepository>, 'findPublicByShopSlugAndProductSlug'> {
     return {
       findPublicByShopSlugAndProductSlug: jest.fn().mockResolvedValue(product),
@@ -37,7 +48,7 @@ describe('GetPublicProductBySlugsUseCase', () => {
 
   function buildCategoryRepository(): Pick<jest.Mocked<CategoryRepository>, 'findById'> {
     return {
-      findById: jest.fn(async (categoryId: string) => {
+      findById: jest.fn(async (categoryId: string, language = 'en') => {
         switch (categoryId) {
           case 'category-1':
             // Name deliberately differs from the persisted slug so the expected
@@ -47,7 +58,7 @@ describe('GetPublicProductBySlugsUseCase', () => {
               publicId: '11',
               slug: 'ceramic-mugs',
               parentId: 'category-root',
-              name: 'Mugs & Cups',
+              name: categoryNamesByLanguage[language]['category-1'],
               rank: 1,
               attributes: [],
             };
@@ -56,7 +67,7 @@ describe('GetPublicProductBySlugsUseCase', () => {
               id: 'category-root',
               publicId: '10',
               slug: 'home-decor',
-              name: 'Home & Living',
+              name: categoryNamesByLanguage[language]['category-root'],
               rank: 1,
               attributes: [],
             };
@@ -67,12 +78,20 @@ describe('GetPublicProductBySlugsUseCase', () => {
     };
   }
 
-  it('returns the public product when found by slugs', async () => {
+  function buildLocalizationService(language = 'en') {
+    return {
+      getStorefrontLanguage: jest.fn().mockReturnValue(language),
+    };
+  }
+
+  it('returns the public product with an English category path', async () => {
     const repository = buildRepository();
     const categoryRepository = buildCategoryRepository();
+    const localizationService = buildLocalizationService('en');
     const useCase = new GetPublicProductBySlugsUseCase(
       repository as never,
       categoryRepository as never,
+      localizationService as never,
     );
 
     const result = await useCase.execute(product.shop.slug, product.slug);
@@ -81,8 +100,8 @@ describe('GetPublicProductBySlugsUseCase', () => {
       product.shop.slug,
       product.slug,
     );
-    expect(categoryRepository.findById).toHaveBeenNthCalledWith(1, 'category-1');
-    expect(categoryRepository.findById).toHaveBeenNthCalledWith(2, 'category-root');
+    expect(categoryRepository.findById).toHaveBeenNthCalledWith(1, 'category-1', 'en');
+    expect(categoryRepository.findById).toHaveBeenNthCalledWith(2, 'category-root', 'en');
     expect(result).toEqual({
       ...product,
       categoryPath: [
@@ -98,5 +117,69 @@ describe('GetPublicProductBySlugsUseCase', () => {
         },
       ],
     });
+  });
+
+  it('resolves Vietnamese category names without changing identifiers or slugs', async () => {
+    const repository = buildRepository();
+    const categoryRepository = buildCategoryRepository();
+    const localizationService = buildLocalizationService('vi');
+    const useCase = new GetPublicProductBySlugsUseCase(
+      repository as never,
+      categoryRepository as never,
+      localizationService as never,
+    );
+
+    const result = await useCase.execute(product.shop.slug, product.slug);
+
+    expect(categoryRepository.findById).toHaveBeenNthCalledWith(1, 'category-1', 'vi');
+    expect(categoryRepository.findById).toHaveBeenNthCalledWith(2, 'category-root', 'vi');
+    expect(result?.categoryPath).toEqual([
+      {
+        id: '10',
+        name: 'Nhà cửa',
+        slug: 'home-decor',
+      },
+      {
+        id: '11',
+        name: 'Cốc sứ',
+        slug: 'ceramic-mugs',
+      },
+    ]);
+  });
+
+  it('returns a product without pulling a category path when it has no category', async () => {
+    const repository = buildRepository();
+    repository.findPublicByShopSlugAndProductSlug.mockResolvedValue({
+      ...product,
+      categoryId: undefined,
+    });
+    const categoryRepository = buildCategoryRepository();
+    const localizationService = buildLocalizationService('vi');
+    const useCase = new GetPublicProductBySlugsUseCase(
+      repository as never,
+      categoryRepository as never,
+      localizationService as never,
+    );
+
+    await expect(useCase.execute(product.shop.slug, product.slug)).resolves.toEqual({
+      ...product,
+      categoryId: undefined,
+    });
+    expect(categoryRepository.findById).not.toHaveBeenCalled();
+    expect(localizationService.getStorefrontLanguage).not.toHaveBeenCalled();
+  });
+
+  it('returns null when the product is not found', async () => {
+    const repository = buildRepository();
+    repository.findPublicByShopSlugAndProductSlug.mockResolvedValue(null);
+    const categoryRepository = buildCategoryRepository();
+    const localizationService = buildLocalizationService('vi');
+    const useCase = new GetPublicProductBySlugsUseCase(
+      repository as never,
+      categoryRepository as never,
+      localizationService as never,
+    );
+
+    await expect(useCase.execute(product.shop.slug, product.slug)).resolves.toBeNull();
   });
 });

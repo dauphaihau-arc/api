@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { err, ok, type Result } from '~/platform/application/result';
+import type { StorefrontLanguage } from '~/platform/config/marketplace.config';
+import { DEFAULT_STOREFRONT_LANGUAGE } from '~/platform/localization/storefront-language';
 import { isCategoryPublicId } from '../../category-public-id';
 import { CategoryNotFoundError } from '../../errors/category-app.error';
 import { CategoryRepository } from '../../ports/category.repository';
@@ -17,12 +19,16 @@ export class ResolveCategoryUseCase {
 
   async execute(
     publicId: string,
+    language: StorefrontLanguage = DEFAULT_STOREFRONT_LANGUAGE,
   ): Promise<Result<CategoryResolution, CategoryNotFoundError>> {
     if (!isCategoryPublicId(publicId)) {
       return err(new CategoryNotFoundError());
     }
 
-    const resolution = await this.categoryRepository.resolveByPublicId(publicId);
+    const resolution = await this.categoryRepository.resolveByPublicId(
+      publicId,
+      language,
+    );
 
     if (!resolution) {
       return err(new CategoryNotFoundError());

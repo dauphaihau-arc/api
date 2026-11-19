@@ -1,5 +1,5 @@
 import { RequestMethod } from '@nestjs/common';
-import { METHOD_METADATA, PATH_METADATA } from '@nestjs/common/constants';
+import { HEADERS_METADATA, METHOD_METADATA, PATH_METADATA } from '@nestjs/common/constants';
 import { GUARDS_METADATA } from '@nestjs/common/constants';
 import { OptionalJwtAuthGuard } from '~/domains/auth/api/guard/optional-jwt-auth.guard';
 import type { OptionalCacheService } from '~/integrations/cache/optional-cache.service';
@@ -91,6 +91,59 @@ describe('ProductRecommendationController', () => {
 
   it('applies optional auth to recommendation routes', () => {
     expect(Reflect.getMetadata(GUARDS_METADATA, ProductRecommendationController)).toEqual([OptionalJwtAuthGuard]);
+  });
+
+  it('varies shared recommendation responses by X-Locale', () => {
+    for (const handler of [
+      ProductRecommendationController.prototype.recommendProducts,
+      ProductRecommendationController.prototype.getRecommendationSections,
+      ProductRecommendationController.prototype.listTrendingProducts,
+      ProductRecommendationController.prototype.listBestSellingProducts,
+    ]) {
+      const headers = Reflect.getMetadata(HEADERS_METADATA, handler) as Array<{
+        name: string;
+        value: string;
+      }>;
+
+      expect(headers).toContainEqual({
+        name: 'Vary',
+        value: 'x-market-code, x-currency, x-locale, x-channel',
+      });
+    }
+  });
+
+  it('caches English and Vietnamese recommendation bodies separately', async () => {
+    recommendPublicProductsUseCase.execute.mockResolvedValue([]);
+    guestRequest.get.mockImplementation((name: string) =>
+      name === 'x-locale' ? 'vi-VN' : undefined,
+    );
+
+    await controller.recommendProducts(
+      guestRequest,
+      response,
+      'arc-store',
+      'handmade-bag',
+      { limit: 6 },
+    );
+
+    guestRequest.get.mockImplementation((name: string) =>
+      name === 'x-locale' ? 'en-US' : undefined,
+    );
+
+    await controller.recommendProducts(
+      guestRequest,
+      response,
+      'arc-store',
+      'handmade-bag',
+      { limit: 6 },
+    );
+
+    const cacheKeys = optionalCacheService.set.mock.calls.map((call) => call[1]);
+
+    expect(cacheKeys).toHaveLength(2);
+    expect(cacheKeys[0]).toContain('vi-VN');
+    expect(cacheKeys[1]).toContain('en-US');
+    expect(cacheKeys[0]).not.toBe(cacheKeys[1]);
   });
 
   it('returns recommended products for a PDP', async () => {

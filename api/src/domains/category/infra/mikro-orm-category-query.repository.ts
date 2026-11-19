@@ -1,5 +1,10 @@
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
+import type { StorefrontLanguage } from '~/platform/config/marketplace.config';
+import {
+  DEFAULT_STOREFRONT_LANGUAGE,
+  resolveLocalizedValue,
+} from '~/platform/localization/storefront-language';
 import { StorageService } from '~/integrations/storage/app/ports/storage.service';
 import { CategoryQueryRepository } from '../app/ports/category-query.repository';
 import { isCategoryPublicId } from '../app/category-public-id';
@@ -11,7 +16,10 @@ import type {
   CategorySummary,
 } from '../app/category.types';
 import { CategoryEntity } from './persistence/entities/category.entity';
-import { toCategorySummary } from './category-summary.projector';
+import {
+  resolveCategoryName,
+  toCategorySummary,
+} from './category-summary.projector';
 import { resolveCategoryImageVariantUrls } from './category-image-urls';
 
 type CategorySubtreeRow = {
@@ -19,6 +27,7 @@ type CategorySubtreeRow = {
   category_public_id: string;
   parent_id: string | null;
   category_name: string;
+  category_translation_name: string | null;
   category_slug: string;
   category_rank: number;
   depth: number;
@@ -38,6 +47,7 @@ type CategorySubtreeRow = {
 type CategoryAncestryRow = {
   public_id: string;
   name: string;
+  translation_name: string | null;
   slug: string;
   featured_facet_keys: string[] | string | null;
   depth: number;
@@ -75,7 +85,10 @@ export class MikroOrmCategoryQueryRepository implements CategoryQueryRepository 
       : null;
   }
 
-  async findSelfAndDescendants(id: string): Promise<CategorySummary[] | null> {
+  async findSelfAndDescendants(
+    id: string,
+    language: StorefrontLanguage = DEFAULT_STOREFRONT_LANGUAGE,
+  ): Promise<CategorySummary[] | null> {
     const rows = await this.entityManager.getConnection().execute<CategorySubtreeRow[]>(
       `
         with recursive category_tree as (
@@ -112,6 +125,7 @@ export class MikroOrmCategoryQueryRepository implements CategoryQueryRepository 
           category_tree.public_id as category_public_id,
           category_tree.parent_id,
           category_tree.name as category_name,
+          category_translation.name as category_translation_name,
           category_tree.slug as category_slug,
           category_tree.rank as category_rank,
           category_tree.depth,
@@ -127,6 +141,9 @@ export class MikroOrmCategoryQueryRepository implements CategoryQueryRepository 
           category_attribute_options.value as option_value,
           category_attribute_options.rank as option_rank
         from category_tree
+        left join category_translations category_translation
+          on category_translation.category_id = category_tree.id
+         and category_translation.language = ?
         left join category_attributes
           on category_attributes.category_id = category_tree.id
         left join category_attribute_options
@@ -140,40 +157,55 @@ export class MikroOrmCategoryQueryRepository implements CategoryQueryRepository 
           category_attribute_options.rank asc nulls last,
           category_attribute_options.value asc nulls last
       `,
-      [id],
+      [id, language],
     );
 
     if (rows.length === 0) {
       return null;
     }
 
-    return toCategorySummariesFromSubtreeRows(rows, this.storageService);
+    return toCategorySummariesFromSubtreeRows(rows, this.storageService, language);
   }
 
-  async findAllByParentId(parentId?: string): Promise<CategorySummary[]> {
+  async findAllByParentId(
+    parentId?: string,
+    language: StorefrontLanguage = DEFAULT_STOREFRONT_LANGUAGE,
+  ): Promise<CategorySummary[]> {
     const repository = this.entityManager.fork().getRepository(CategoryEntity);
     const categories = await repository.find(
       parentId ? { parent: parentId } : { parent: null },
       {
-        populate: ['parent', 'attributes', 'attributes.options'],
+        populate: ['parent', 'attributes', 'attributes.options', 'translations'],
         orderBy: { rank: 'asc' },
       },
     );
 
-    return categories.map((category) => toCategorySummary(category, this.storageService));
+    return categories.map((category) =>
+      toCategorySummary(category, this.storageService, language),
+    );
   }
 
-  async findById(id: string): Promise<CategorySummary | null> {
+  async findById(
+    id: string,
+    language: StorefrontLanguage = DEFAULT_STOREFRONT_LANGUAGE,
+  ): Promise<CategorySummary | null> {
     const repository = this.entityManager.fork().getRepository(CategoryEntity);
     const category = await repository.findOne(
       { id },
-      { populate: ['parent', 'attributes', 'attributes.options'] },
+      {
+        populate: ['parent', 'attributes', 'attributes.options', 'translations'],
+      },
     );
 
-    return category ? toCategorySummary(category, this.storageService) : null;
+    return category
+      ? toCategorySummary(category, this.storageService, language)
+      : null;
   }
 
-  async findByPublicId(publicId: string): Promise<CategorySummary | null> {
+  async findByPublicId(
+    publicId: string,
+    language: StorefrontLanguage = DEFAULT_STOREFRONT_LANGUAGE,
+  ): Promise<CategorySummary | null> {
     if (!isCategoryPublicId(publicId)) {
       return null;
     }
@@ -182,14 +214,19 @@ export class MikroOrmCategoryQueryRepository implements CategoryQueryRepository 
 
     const category = await repository.findOne(
       { publicId },
-      { populate: ['parent', 'attributes', 'attributes.options'] },
+      {
+        populate: ['parent', 'attributes', 'attributes.options', 'translations'],
+      },
     );
 
-    return category ? toCategorySummary(category, this.storageService) : null;
+    return category
+      ? toCategorySummary(category, this.storageService, language)
+      : null;
   }
 
   async resolveByPublicId(
     publicId: string,
+    language: StorefrontLanguage = DEFAULT_STOREFRONT_LANGUAGE,
   ): Promise<CategoryResolution | null> {
     if (!isCategoryPublicId(publicId)) {
       return null;
@@ -217,11 +254,20 @@ export class MikroOrmCategoryQueryRepository implements CategoryQueryRepository 
           from categories parent
           inner join ancestry child on parent.id = child.parent_id
         )
-        select public_id, name, slug, featured_facet_keys, depth
+        select
+          ancestry.public_id,
+          ancestry.name,
+          category_translation.name as translation_name,
+          ancestry.slug,
+          ancestry.featured_facet_keys,
+          ancestry.depth
         from ancestry
+        left join category_translations category_translation
+          on category_translation.category_id = ancestry.id
+         and category_translation.language = ?
         order by depth desc
       `,
-      [publicId],
+      [publicId, language],
     );
 
     if (rows.length === 0) {
@@ -231,7 +277,7 @@ export class MikroOrmCategoryQueryRepository implements CategoryQueryRepository 
     const ancestry: CategoryAncestor[] = rows.map((row) => ({
       id: row.public_id,
       slug: row.slug,
-      name: row.name,
+      name: resolveLocalizedValue(language, row.name, row.translation_name),
     }));
     const current = rows[rows.length - 1];
 
@@ -246,6 +292,7 @@ export class MikroOrmCategoryQueryRepository implements CategoryQueryRepository 
 
   async resolveLegacyPath(
     legacyPath: string,
+    language: StorefrontLanguage = DEFAULT_STOREFRONT_LANGUAGE,
   ): Promise<CategoryResolution | null> {
     if (!isCategoryLegacyPath(legacyPath)) {
       return null;
@@ -268,16 +315,17 @@ export class MikroOrmCategoryQueryRepository implements CategoryQueryRepository 
     // The alias table is immutable, so an owned path keeps resolving to the same
     // category identity; the canonical slug is read from the category, which is
     // why a later slug change converges on the new canonical URL.
-    return owner ? this.resolveByPublicId(owner.public_id) : null;
+    return owner ? this.resolveByPublicId(owner.public_id, language) : null;
   }
 
   async searchSuggestions(
     name: string,
     limit: number,
+    language: StorefrontLanguage = DEFAULT_STOREFRONT_LANGUAGE,
   ): Promise<CategorySuggestion[]> {
     const repository = this.entityManager.fork().getRepository(CategoryEntity);
     const categories = await repository.findAll({
-      populate: ['parent'],
+      populate: ['parent', 'translations'],
       orderBy: [{ rank: 'asc' }, { name: 'asc' }],
     });
     const normalizedQuery = name.trim().toLowerCase();
@@ -287,6 +335,12 @@ export class MikroOrmCategoryQueryRepository implements CategoryQueryRepository 
     }
 
     const byId = new Map(categories.map((category) => [category.id, category]));
+    const namesById = new Map(
+      categories.map((category) => [
+        category.id,
+        resolveCategoryName(category, language),
+      ]),
+    );
     const childrenByParentId = new Map<string, CategoryEntity[]>();
 
     for (const category of categories) {
@@ -301,11 +355,21 @@ export class MikroOrmCategoryQueryRepository implements CategoryQueryRepository 
     }
 
     for (const siblings of childrenByParentId.values()) {
-      siblings.sort((left, right) => left.rank - right.rank || left.name.localeCompare(right.name));
+      siblings.sort((left, right) =>
+        left.rank - right.rank
+        || (namesById.get(left.id) ?? '').localeCompare(namesById.get(right.id) ?? ''),
+      );
     }
 
+    // Matching reads the localized names only. Falling back to the English
+    // base per category is handled by `resolveCategoryName`, so an untranslated
+    // category stays discoverable without leaking an English-only filter.
     const matches = categories
-      .filter((category) => category.name.toLowerCase().includes(normalizedQuery))
+      .filter((category) =>
+        (namesById.get(category.id) ?? '')
+          .toLowerCase()
+          .includes(normalizedQuery),
+      )
       .slice(0, limit);
     const results: CategorySuggestion[] = [];
     const seenCategoryIds = new Set<string>();
@@ -315,12 +379,13 @@ export class MikroOrmCategoryQueryRepository implements CategoryQueryRepository 
         break;
       }
 
-      const pathToMatch = buildPathToCategory(match, byId);
+      const pathToMatch = buildPathToCategory(match, byId, namesById);
       const remaining = limit - results.length;
       const descendants = collectLeafSuggestions(
         match,
         pathToMatch,
         childrenByParentId,
+        namesById,
         remaining,
       );
 
@@ -348,7 +413,7 @@ export class MikroOrmCategoryQueryRepository implements CategoryQueryRepository 
       seenCategoryIds.add(match.id);
       results.push({
         id: match.publicId,
-        lastNameCategory: match.name,
+        lastNameCategory: namesById.get(match.id) ?? match.name,
         categoriesRelated: pathToMatch,
       });
     }
@@ -360,12 +425,13 @@ export class MikroOrmCategoryQueryRepository implements CategoryQueryRepository 
 function buildPathToCategory(
   category: CategoryEntity,
   byId: Map<string, CategoryEntity>,
+  namesById: Map<string, string>,
 ): string[] {
   const path: string[] = [];
   let currentCategory: CategoryEntity | undefined = category;
 
   while (currentCategory) {
-    path.unshift(currentCategory.name);
+    path.unshift(namesById.get(currentCategory.id) ?? currentCategory.name);
     currentCategory = currentCategory.parent
       ? byId.get(currentCategory.parent.id)
       : undefined;
@@ -378,6 +444,7 @@ function collectLeafSuggestions(
   category: CategoryEntity,
   pathToCategory: string[],
   childrenByParentId: Map<string, CategoryEntity[]>,
+  namesById: Map<string, string>,
   limit: number,
 ): CategorySuggestion[] {
   const directChildren = childrenByParentId.get(category.id) ?? [];
@@ -389,7 +456,10 @@ function collectLeafSuggestions(
   const results: CategorySuggestion[] = [];
   const queue = directChildren.map((child) => ({
     category: child,
-    path: [...pathToCategory, child.name],
+    path: [
+      ...pathToCategory,
+      namesById.get(child.id) ?? child.name,
+    ],
   }));
 
   while (queue.length > 0 && results.length < limit) {
@@ -404,7 +474,8 @@ function collectLeafSuggestions(
     if (children.length === 0) {
       results.push({
         id: current.category.publicId,
-        lastNameCategory: current.category.name,
+        lastNameCategory:
+          namesById.get(current.category.id) ?? current.category.name,
         categoriesRelated: current.path,
       });
       continue;
@@ -413,7 +484,10 @@ function collectLeafSuggestions(
     for (const child of children) {
       queue.push({
         category: child,
-        path: [...current.path, child.name],
+        path: [
+          ...current.path,
+          namesById.get(child.id) ?? child.name,
+        ],
       });
     }
   }
@@ -424,6 +498,7 @@ function collectLeafSuggestions(
 function toCategorySummariesFromSubtreeRows(
   rows: CategorySubtreeRow[],
   storageService: StorageService,
+  language: StorefrontLanguage,
 ): CategorySummary[] {
   const categories = new Map<string, CategorySummary>();
   const attributesByCategoryId = new Map<string, Set<string>>();
@@ -438,7 +513,11 @@ function toCategorySummariesFromSubtreeRows(
         publicId: row.category_public_id,
         slug: row.category_slug,
         parentId: row.parent_id ?? undefined,
-        name: row.category_name,
+        name: resolveLocalizedValue(
+          language,
+          row.category_name,
+          row.category_translation_name,
+        ),
         rank: Number(row.category_rank),
         imageStorageKey: row.image_storage_key ?? undefined,
         featuredFacetKeys: toFeaturedFacetKeys(row.featured_facet_keys),

@@ -4,6 +4,8 @@ import { OptionalCacheService } from '~/integrations/cache/optional-cache.servic
 import { CategoryRepository } from '../app/ports/category.repository';
 import { CategoryCommandRepository } from '../app/ports/category-command.repository';
 import { CategoryQueryRepository } from '../app/ports/category-query.repository';
+import type { StorefrontLanguage } from '~/platform/config/marketplace.config';
+import { DEFAULT_STOREFRONT_LANGUAGE } from '~/platform/localization/storefront-language';
 import type {
   CategoryResolution,
   CategorySuggestion,
@@ -38,8 +40,11 @@ export class DelegatingCategoryRepository implements CategoryRepository {
       : this.findSelfAndDescendantIdsByWalkingTree(id);
   }
 
-  async findSelfAndDescendants(id: string): Promise<CategorySummary[] | null> {
-    const cacheKey = buildCategoryTaxonomySubtreeCacheKey(id);
+  async findSelfAndDescendants(
+    id: string,
+    language: StorefrontLanguage = DEFAULT_STOREFRONT_LANGUAGE,
+  ): Promise<CategorySummary[] | null> {
+    const cacheKey = buildCategoryTaxonomySubtreeCacheKey(id, language);
 
     const cachedCategories = await this.optionalCacheService.get<CategorySummary[] | null>(
       'category.taxonomy-subtree',
@@ -51,8 +56,8 @@ export class DelegatingCategoryRepository implements CategoryRepository {
     }
 
     const categories = await (this.queryRepository.findSelfAndDescendants
-      ? this.queryRepository.findSelfAndDescendants(id)
-      : this.findSelfAndDescendantsByWalkingTree(id));
+      ? this.queryRepository.findSelfAndDescendants(id, language)
+      : this.findSelfAndDescendantsByWalkingTree(id, language));
 
     await this.optionalCacheService.set(
       'category.taxonomy-subtree',
@@ -64,28 +69,47 @@ export class DelegatingCategoryRepository implements CategoryRepository {
     return categories;
   }
 
-  findAllByParentId(parentId?: string): Promise<CategorySummary[]> {
-    return this.queryRepository.findAllByParentId(parentId);
+  findAllByParentId(
+    parentId?: string,
+    language?: StorefrontLanguage,
+  ): Promise<CategorySummary[]> {
+    return this.queryRepository.findAllByParentId(parentId, language);
   }
 
-  findById(id: string): Promise<CategorySummary | null> {
-    return this.queryRepository.findById(id);
+  findById(
+    id: string,
+    language?: StorefrontLanguage,
+  ): Promise<CategorySummary | null> {
+    return this.queryRepository.findById(id, language);
   }
 
-  findByPublicId(publicId: string): Promise<CategorySummary | null> {
-    return this.queryRepository.findByPublicId(publicId);
+  findByPublicId(
+    publicId: string,
+    language?: StorefrontLanguage,
+  ): Promise<CategorySummary | null> {
+    return this.queryRepository.findByPublicId(publicId, language);
   }
 
-  resolveByPublicId(publicId: string): Promise<CategoryResolution | null> {
-    return this.queryRepository.resolveByPublicId(publicId);
+  resolveByPublicId(
+    publicId: string,
+    language?: StorefrontLanguage,
+  ): Promise<CategoryResolution | null> {
+    return this.queryRepository.resolveByPublicId(publicId, language);
   }
 
-  resolveLegacyPath(legacyPath: string): Promise<CategoryResolution | null> {
-    return this.queryRepository.resolveLegacyPath(legacyPath);
+  resolveLegacyPath(
+    legacyPath: string,
+    language?: StorefrontLanguage,
+  ): Promise<CategoryResolution | null> {
+    return this.queryRepository.resolveLegacyPath(legacyPath, language);
   }
 
-  searchSuggestions(name: string, limit: number): Promise<CategorySuggestion[]> {
-    return this.queryRepository.searchSuggestions(name, limit);
+  searchSuggestions(
+    name: string,
+    limit: number,
+    language?: StorefrontLanguage,
+  ): Promise<CategorySuggestion[]> {
+    return this.queryRepository.searchSuggestions(name, limit, language);
   }
 
   private async findSelfAndDescendantIdsByWalkingTree(id: string): Promise<string[] | null> {
@@ -120,8 +144,11 @@ export class DelegatingCategoryRepository implements CategoryRepository {
     return Array.from(resolvedIds);
   }
 
-  private async findSelfAndDescendantsByWalkingTree(id: string): Promise<CategorySummary[] | null> {
-    const category = await this.findById(id);
+  private async findSelfAndDescendantsByWalkingTree(
+    id: string,
+    language: StorefrontLanguage,
+  ): Promise<CategorySummary[] | null> {
+    const category = await this.findById(id, language);
 
     if (!category) {
       return null;
@@ -137,7 +164,7 @@ export class DelegatingCategoryRepository implements CategoryRepository {
         continue;
       }
 
-      const children = await this.findAllByParentId(parentId);
+      const children = await this.findAllByParentId(parentId, language);
 
       for (const child of children) {
         if (resolvedCategories.has(child.id)) {
@@ -153,6 +180,9 @@ export class DelegatingCategoryRepository implements CategoryRepository {
   }
 }
 
-function buildCategoryTaxonomySubtreeCacheKey(id: string): string {
-  return `category:taxonomy-subtree:v1:${id}`;
+function buildCategoryTaxonomySubtreeCacheKey(
+  id: string,
+  language: StorefrontLanguage,
+): string {
+  return `category:taxonomy-subtree:v2:${language}:${id}`;
 }

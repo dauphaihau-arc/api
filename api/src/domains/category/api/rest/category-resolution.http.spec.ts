@@ -11,6 +11,7 @@ import { ListCategoriesUseCase } from '../../app/use-cases/list-categories/list-
 import { CreateCategoryAttributeUseCase } from '../../app/use-cases/create-category-attribute/create-category-attribute.use-case';
 import { GetCategoryAttributesUseCase } from '../../app/use-cases/get-category-attributes/get-category-attributes.use-case';
 import { SuggestCategoriesUseCase } from '../../app/use-cases/suggest-categories/suggest-categories.use-case';
+import { RequestContextService } from '~/platform/request-context/request-context.service';
 
 /**
  * Public category resolution HTTP seam: `GET /categories/:id` on the real
@@ -20,7 +21,9 @@ import { SuggestCategoriesUseCase } from '../../app/use-cases/suggest-categories
  */
 describe('Public category resolution HTTP', () => {
   let app: INestApplication<App>;
+  let currentLocale: string | undefined;
   const repository = { resolveByPublicId: jest.fn(), resolveLegacyPath: jest.fn() };
+  const requestContextService = { get: jest.fn(() => ({ locale: currentLocale })) };
 
   beforeAll(async () => {
     const module = await Test.createTestingModule({
@@ -29,6 +32,7 @@ describe('Public category resolution HTTP', () => {
         ResolveCategoryUseCase,
         ResolveLegacyPathUseCase,
         { provide: CategoryRepository, useValue: repository },
+        { provide: RequestContextService, useValue: requestContextService },
         ...[
           CreateCategoryUseCase,
           ListCategoriesUseCase,
@@ -47,6 +51,7 @@ describe('Public category resolution HTTP', () => {
   });
 
   beforeEach(() => {
+    currentLocale = undefined;
     repository.resolveByPublicId.mockReset();
     repository.resolveLegacyPath.mockReset();
   });
@@ -84,7 +89,7 @@ describe('Public category resolution HTTP', () => {
       ],
       canonical_path: '/c/ceramic-mugs-c9007199254740993',
     });
-    expect(repository.resolveByPublicId).toHaveBeenCalledWith('9007199254740993');
+    expect(repository.resolveByPublicId).toHaveBeenCalledWith('9007199254740993', 'en');
   });
 
   it('omits featured facets for a category without them', async () => {
@@ -123,7 +128,7 @@ describe('Public category resolution HTTP', () => {
     repository.resolveByPublicId.mockResolvedValue(null);
 
     await request(app.getHttpServer()).get('/categories/404').expect(404);
-    expect(repository.resolveByPublicId).toHaveBeenCalledWith('404');
+    expect(repository.resolveByPublicId).toHaveBeenCalledWith('404', 'en');
   });
 
   it('keeps backend failures as server errors', async () => {
@@ -154,7 +159,50 @@ describe('Public category resolution HTTP', () => {
       ],
       canonical_path: '/c/ceramic-mugs-c34',
     });
-    expect(repository.resolveLegacyPath).toHaveBeenCalledWith('/c/home/mugs');
+    expect(repository.resolveLegacyPath).toHaveBeenCalledWith('/c/home/mugs', 'en');
+  });
+
+  it.each(['vi-VN', 'vi-US'])(
+    'serves Vietnamese category names for the %s Locale with unchanged slugs',
+    async (locale) => {
+      currentLocale = locale;
+      repository.resolveByPublicId.mockResolvedValue({
+        category: { id: '34', slug: 'ceramic-mugs', name: 'Cốc gốm' },
+        ancestry: [
+          { id: '12', slug: 'home', name: 'Nhà cửa' },
+          { id: '34', slug: 'ceramic-mugs', name: 'Cốc gốm' },
+        ],
+      });
+
+      const response = await request(app.getHttpServer())
+        .get('/categories/34')
+        .expect(200);
+
+      expect(response.body).toEqual({
+        category: { id: '34', slug: 'ceramic-mugs', name: 'Cốc gốm' },
+        ancestry: [
+          { id: '12', slug: 'home', name: 'Nhà cửa' },
+          { id: '34', slug: 'ceramic-mugs', name: 'Cốc gốm' },
+        ],
+        canonical_path: '/c/ceramic-mugs-c34',
+      });
+      expect(repository.resolveByPublicId).toHaveBeenCalledWith('34', 'vi');
+    },
+  );
+
+  it('serves English category names for an unsupported Locale', async () => {
+    currentLocale = 'fr-FR';
+    repository.resolveByPublicId.mockResolvedValue({
+      category: { id: '34', slug: 'ceramic-mugs', name: 'Mugs' },
+      ancestry: [{ id: '34', slug: 'ceramic-mugs', name: 'Mugs' }],
+    });
+
+    const response = await request(app.getHttpServer())
+      .get('/categories/34')
+      .expect(200);
+
+    expect(response.body.category.name).toBe('Mugs');
+    expect(repository.resolveByPublicId).toHaveBeenCalledWith('34', 'en');
   });
 
   it('returns 404 for a malformed or unowned legacy path without a parent fallback', async () => {

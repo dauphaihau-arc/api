@@ -192,4 +192,13 @@ if [ "$has_leaks" -ne 0 ]; then
   exit 1
 fi
 
+if ! (
+  cd "$repo_root/api"
+  pnpm exec ts-node -r tsconfig-paths/register ./database/validate-localized-content.ts
+); then
+  echo "Localized content seed validation failed." >&2
+  exit 1
+fi
+
 echo "No local-only auth-user emails, shop slugs, or products found in non-local seed TSV files."
+echo "Localized content translations are valid."

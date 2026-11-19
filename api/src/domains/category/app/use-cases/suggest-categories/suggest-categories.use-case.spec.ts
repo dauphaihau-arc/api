@@ -34,7 +34,16 @@ describe('SuggestCategoriesUseCase', () => {
         categoriesRelated: ['Home', 'Kitchen', 'Mugs'],
       },
     ]);
-    expect(repository.searchSuggestions).toHaveBeenCalledWith('mug', 3);
+    expect(repository.searchSuggestions).toHaveBeenCalledWith('mug', 3, 'en');
+  });
+
+  it('searches suggestions in the requested Storefront Language', async () => {
+    const repository = buildRepository();
+    const useCase = new SuggestCategoriesUseCase(repository);
+
+    await useCase.execute('cốc', 3, 'vi');
+
+    expect(repository.searchSuggestions).toHaveBeenCalledWith('cốc', 3, 'vi');
   });
 
   it('returns an empty list for blank queries', async () => {
