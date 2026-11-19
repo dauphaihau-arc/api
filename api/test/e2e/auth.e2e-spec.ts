@@ -177,7 +177,7 @@ describe('Auth flow (e2e)', () => {
     expect(registerBody.user).toMatchObject({
       email,
       display_name: 'Member User',
-      roles: ['member'],
+      roles: ['customer'],
       permissions: expectedMemberPermissions,
     });
     expect(registerResponse.headers['cache-control']).toBe('no-store');
@@ -206,7 +206,7 @@ describe('Auth flow (e2e)', () => {
     expect(meBody).toMatchObject({
       email,
       display_name: 'Member User',
-      roles: ['member'],
+      roles: ['customer'],
       permissions: expectedMemberPermissions,
     });
     expect(meBody).not.toHaveProperty('session_id');
