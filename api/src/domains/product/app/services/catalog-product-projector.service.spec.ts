@@ -100,6 +100,13 @@ describe('CatalogProductProjectorService', () => {
       },
       category: {
         id: 'category-1',
+        name: 'Dresses',
+        translations: {
+          getItems: () => [{ language: 'vi', name: 'Váy đầm' }],
+        },
+      },
+      translations: {
+        getItems: () => [{ language: 'vi', title: 'Váy lanh', description: null }],
       },
       images: {
         getItems: () => [{
@@ -132,5 +139,15 @@ describe('CatalogProductProjectorService', () => {
     expect(productPriceDocumentRepository.upsert).toHaveBeenCalledTimes(1);
     expect(productSlugRepository.upsert).toHaveBeenCalledTimes(1);
     expect(searchDocumentRepository.upsert).toHaveBeenCalledTimes(1);
+
+    const projectedDocument = productDocumentRepository.upsert.mock.calls[0]?.[0];
+    expect(projectedDocument?.localized.vi).toMatchObject({
+      title: 'Váy lanh',
+      titleNormalized: 'vay lanh',
+      description: 'Relaxed linen dress',
+      categoryName: 'Váy đầm',
+    });
+    const projectedSearchDocument = searchDocumentRepository.upsert.mock.calls[0]?.[0];
+    expect(projectedSearchDocument?.localized.vi.title).toBe('Váy lanh');
   });
 });

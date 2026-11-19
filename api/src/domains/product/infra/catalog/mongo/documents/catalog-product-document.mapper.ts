@@ -4,6 +4,10 @@ import type { ProductEntity } from '~/domains/product/infra/persistence/mikro-or
 import { inferFacetSignalsFromText } from '../../../inferred-facets';
 import { toPublicShippingDestinations } from '../../../projection/assigned-shipping-profile.projector';
 import type { PublicProductShippingDestinationSummary } from '../../../../app/product.types';
+import {
+  buildCatalogLocalizedContent,
+  type CatalogLocalizedContentByLanguage,
+} from './catalog-localized-content';
 
 export interface CatalogProductDocument {
   _id: string;
@@ -99,6 +103,7 @@ export interface CatalogProductDocument {
     optionKey: string;
     value: string;
   }>;
+  localized: CatalogLocalizedContentByLanguage;
   search: {
     suggest: string[];
     keywords: string[];
@@ -274,6 +279,26 @@ export function toCatalogProductDocument(
     inferredFacets: inferFacetSignalsFromText({
       title: product.title,
       description: product.description,
+    }),
+    localized: buildCatalogLocalizedContent({
+      title: product.title,
+      description: product.description,
+      categoryName: product.category?.name,
+      suggestTerms: [
+        product.slug.replaceAll('-', ' '),
+        ...sortedVariants.map((variant) =>
+          variant.selections.getItems().map((selection) => selection.productOptionValue.value).join(' / ')),
+      ],
+      keywordTerms: [
+        product.shop.shopName,
+        product.slug.replaceAll('-', ' '),
+        ...sortedVariants.flatMap((variant) => variant.selections.getItems().flatMap((selection) => [
+          selection.productOption.name,
+          selection.productOptionValue.value,
+        ])),
+      ],
+      translations: product.translations.getItems(),
+      categoryTranslations: product.category?.translations.getItems() ?? [],
     }),
     search: {
       suggest: uniqueStrings([

@@ -4,4 +4,6 @@ export type CatalogProjectableProduct = Parameters<typeof toCatalogProductDocume
 
 export abstract class CatalogProductProjectorSourceRepository {
   abstract findById(productId: string): Promise<CatalogProjectableProduct | null>;
+
+  abstract findIdsByCategoryId(categoryId: string): Promise<string[]>;
 }

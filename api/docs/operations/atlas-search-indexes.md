@@ -28,8 +28,9 @@ The current Atlas implementation lives in:
 
 ## Create In Atlas
 
-`just refresh-catalog-products` creates missing Atlas Search indexes before it
-clears and rebuilds catalog projection collections. The script reads the index
+`just refresh-catalog-products` creates missing Atlas Search indexes and updates
+existing ones whose definition changed before it clears and rebuilds catalog
+projection collections. The script reads the index
 payloads from:
 
 - [product_search.index.json](../../infra/atlas-search/product_search.index.json)
@@ -67,6 +68,8 @@ Important indexed fields:
 - `description`
 - `keywords`
 - `suggest`
+- `localized.en.{titleNormalized,descriptionNormalized,keywords,suggest}`
+- `localized.vi.{titleNormalized,descriptionNormalized,keywords,suggest}`
 - `state`
 - `categoryId`
 - `isDigital`
@@ -74,6 +77,25 @@ Important indexed fields:
 - `flags.hasImages`
 - `price.minAmountMinor`
 - `ranking.createdAt`
+
+## Locale selection and verification
+
+Search documents carry resolved content for each Storefront Language under
+`localized`. `vi-VN` and `vi-US` both query `localized.vi`; English and
+unsupported locales query `localized.en`. Values in the localized fields
+already include per-field English fallback, so a product without a Vietnamese
+translation remains searchable.
+
+Rebuild and verify projected documents after translation changes:
+
+```bash
+just refresh-catalog-products
+just verify-catalog-localization
+```
+
+`refresh-catalog-products` logs a zero-stale verification line after rebuilding.
+The standalone verification command fails when any document lacks a language
+block or has a normalized field that no longer matches its display value.
 
 ## Notes
 

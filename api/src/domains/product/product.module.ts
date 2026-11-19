@@ -25,6 +25,7 @@ import { PublicProductLocalizationService } from './app/services/public-product-
 import { PurchaseEligibilityService } from './app/services/purchase-eligibility.service';
 import { CatalogStatusService } from './app/services/catalog-status.service';
 import { CatalogProductProjectorService } from './app/services/catalog-product-projector.service';
+import { CatalogContentReprojectionService } from './app/services/catalog-content-reprojection.service';
 import { StorefrontIndexedPriceProjectionService } from './app/services/storefront-indexed-price-projection.service';
 import { PublicProductOrderHistoryService } from './app/services/public-product-order-history.service';
 import { PublicProductBestSellerRankingService } from './app/services/public-product-best-seller-ranking.service';
@@ -377,6 +378,7 @@ import { STOREFRONT_PRICING_CONFIG, buildStorefrontPricingConfig } from '~/platf
 
     CatalogStatusService,
     CatalogProductProjectorService,
+    CatalogContentReprojectionService,
     StorefrontMarketContextService,
     PublicProductLocalizationService,
     StorefrontIndexedPriceProjectionService,
@@ -442,6 +444,7 @@ import { STOREFRONT_PRICING_CONFIG, buildStorefrontPricingConfig } from '~/platf
     ProductImageService,
     ReviewImageService,
     CatalogProductProjectorService,
+    CatalogContentReprojectionService,
     StorefrontMarketContextService,
     ResolvedStorefrontPriceService,
     PurchaseEligibilityService,

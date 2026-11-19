@@ -22,6 +22,53 @@
         },
         "state": {
           "type": "token"
+        },
+        "localized": {
+          "type": "document",
+          "fields": {
+            "en": {
+              "type": "document",
+              "fields": {
+                "suggest": [
+                  {
+                    "type": "autocomplete",
+                    "tokenization": "edgeGram",
+                    "minGrams": 2,
+                    "maxGrams": 20,
+                    "foldDiacritics": true
+                  }
+                ],
+                "titleNormalized": {
+                  "type": "string",
+                  "analyzer": "lucene.standard"
+                },
+                "keywords": {
+                  "type": "string"
+                }
+              }
+            },
+            "vi": {
+              "type": "document",
+              "fields": {
+                "suggest": [
+                  {
+                    "type": "autocomplete",
+                    "tokenization": "edgeGram",
+                    "minGrams": 2,
+                    "maxGrams": 20,
+                    "foldDiacritics": true
+                  }
+                ],
+                "titleNormalized": {
+                  "type": "string",
+                  "analyzer": "lucene.standard"
+                },
+                "keywords": {
+                  "type": "string"
+                }
+              }
+            }
+          }
         }
       }
     }

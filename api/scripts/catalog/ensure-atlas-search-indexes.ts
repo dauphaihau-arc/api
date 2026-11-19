@@ -5,6 +5,7 @@ import type { CatalogMongoAccess } from '~/domains/product/infra/catalog/mongo/a
 
 type SearchIndexDocument = {
   name?: string;
+  latestDefinition?: Record<string, unknown>;
 };
 
 type SearchIndexDefinition = {
@@ -25,6 +26,7 @@ type SearchIndexCursorLike = {
 type MongoSearchIndexCollectionLike = {
   listSearchIndexes(): SearchIndexCursorLike;
   createSearchIndexes(indexes: SearchIndexDefinition[]): Promise<string[]>;
+  updateSearchIndex(name: string, definition: Record<string, unknown>): Promise<void>;
 };
 
 const ATLAS_SEARCH_INDEX_FILES = [
@@ -49,15 +51,10 @@ export async function ensureAtlasSearchIndexes(
   );
   const expectedIndexes = await loadAtlasSearchIndexes();
 
-  let existingIndexNames: Set<string>;
+  let existingIndexes: SearchIndexDocument[] = [];
 
   try {
-    const existingIndexes = await collection.listSearchIndexes().toArray();
-    existingIndexNames = new Set(
-      existingIndexes
-        .map((index) => index.name)
-        .filter((name): name is string => typeof name === 'string'),
-    );
+    existingIndexes = await collection.listSearchIndexes().toArray();
   }
   catch (error) {
     if (isSearchIndexCommandUnsupportedError(error)) {
@@ -70,20 +67,42 @@ export async function ensureAtlasSearchIndexes(
     throw error;
   }
 
-  const missingIndexes = expectedIndexes.filter(
-    (index) => !existingIndexNames.has(index.name),
+  const existingIndexesByName = new Map(
+    existingIndexes
+      .filter((index): index is SearchIndexDocument & { name: string } =>
+        typeof index.name === 'string')
+      .map((index) => [index.name, index] as const),
   );
+  const missingIndexes = expectedIndexes.filter(
+    (index) => !existingIndexesByName.has(index.name),
+  );
+  const outdatedIndexes = expectedIndexes.filter((index) => {
+    const existing = existingIndexesByName.get(index.name);
 
-  if (missingIndexes.length === 0) {
+    if (!existing || existing.latestDefinition == null) {
+      return false;
+    }
+
+    return !definitionsEqual(existing.latestDefinition, index.definition);
+  });
+
+  if (missingIndexes.length === 0 && outdatedIndexes.length === 0) {
     console.log('Atlas Search indexes already exist');
     return;
   }
 
   try {
-    const createdIndexNames = await collection.createSearchIndexes(missingIndexes);
-    console.log(
-      `Created Atlas Search indexes: ${createdIndexNames.join(', ')}`,
-    );
+    if (missingIndexes.length > 0) {
+      const createdIndexNames = await collection.createSearchIndexes(missingIndexes);
+      console.log(
+        `Created Atlas Search indexes: ${createdIndexNames.join(', ')}`,
+      );
+    }
+
+    for (const index of outdatedIndexes) {
+      await collection.updateSearchIndex(index.name, index.definition);
+      console.log(`Updated Atlas Search index: ${index.name}`);
+    }
   }
   catch (error) {
     if (isSearchIndexAlreadyExistsError(error)) {
@@ -102,6 +121,28 @@ export async function ensureAtlasSearchIndexes(
 
     throw error;
   }
+}
+
+function definitionsEqual(
+  left: Record<string, unknown>,
+  right: Record<string, unknown>,
+): boolean {
+  return toStableJson(left) === toStableJson(right);
+}
+
+function toStableJson(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map(toStableJson).join(',')}]`;
+  }
+
+  if (value && typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .sort(([leftKey], [rightKey]) => leftKey.localeCompare(rightKey));
+
+    return `{${entries.map(([key, nested]) => `${JSON.stringify(key)}:${toStableJson(nested)}`).join(',')}}`;
+  }
+
+  return JSON.stringify(value) ?? 'null';
 }
 
 async function loadAtlasSearchIndexes(): Promise<SearchIndexDefinition[]> {

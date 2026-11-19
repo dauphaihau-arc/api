@@ -62,6 +62,28 @@ const baseDocument: CatalogProductDocument = {
   }],
   attributes: [],
   inferredFacets: [],
+  localized: {
+    en: {
+      title: 'Linen Shirt',
+      titleNormalized: 'linen shirt',
+      description: 'A linen shirt',
+      descriptionNormalized: 'a linen shirt',
+      categoryName: '',
+      categoryNameNormalized: '',
+      suggest: [],
+      keywords: [],
+    },
+    vi: {
+      title: 'Áo sơ mi lanh',
+      titleNormalized: 'ao so mi lanh',
+      description: 'Áo sơ mi lanh',
+      descriptionNormalized: 'ao so mi lanh',
+      categoryName: '',
+      categoryNameNormalized: '',
+      suggest: [],
+      keywords: [],
+    },
+  },
   search: { suggest: [], keywords: [] },
   sort: { createdAt: new Date('2026-01-01T00:00:00Z'), inStock: true, popularityScore: 0 },
   updatedAt: new Date('2026-01-01T00:00:00Z'),
@@ -70,8 +92,10 @@ const baseDocument: CatalogProductDocument = {
 
 describe('storefront search product detail option mapping', () => {
   it('keeps catalog options so the storefront renders option selectors', () => {
-    expect(toMongoBasicPublicProductDetail(baseDocument).options).toEqual(baseDocument.options);
-    expect(toAtlasPublicProductDetail(baseDocument).options).toEqual(baseDocument.options);
+    expect(toMongoBasicPublicProductDetail(baseDocument, undefined, undefined, 'vi').options)
+      .toEqual(baseDocument.options);
+    expect(toAtlasPublicProductDetail(baseDocument, undefined, undefined, 'vi').options)
+      .toEqual(baseDocument.options);
   });
 
   it('reconstructs options from variant selections for already indexed documents', () => {
@@ -82,5 +106,9 @@ describe('storefront search product detail option mapping', () => {
 
     expect(toMongoBasicPublicProductDetail(legacyDocument).options).toEqual(baseDocument.options);
     expect(toAtlasPublicProductDetail(legacyDocument).options).toEqual(baseDocument.options);
+    expect(toMongoBasicPublicProductDetail(baseDocument, undefined, undefined, 'vi').title)
+      .toBe('Áo sơ mi lanh');
+    expect(toAtlasPublicProductDetail(baseDocument, undefined, undefined, 'vi').title)
+      .toBe('Áo sơ mi lanh');
   });
 });

@@ -28,6 +28,20 @@ describe('catalog-product-document.mapper', () => {
       },
       category: {
         id: 'category-1',
+        name: 'Dresses',
+        translations: {
+          getItems: () => [{
+            language: 'vi',
+            name: 'Váy đầm',
+          }],
+        },
+      },
+      translations: {
+        getItems: () => [{
+          language: 'vi',
+          title: 'Váy lanh cuối tuần',
+          description: 'Váy lanh thoải mái',
+        }],
       },
       images: {
         getItems: () => [{
@@ -165,5 +179,15 @@ describe('catalog-product-document.mapper', () => {
     expect(document.search.suggest).toEqual(
       expect.arrayContaining(['linen weekend dress', 'small']),
     );
+    expect(document.localized.vi).toMatchObject({
+      title: 'Váy lanh cuối tuần',
+      titleNormalized: 'vay lanh cuoi tuan',
+      description: 'Váy lanh thoải mái',
+      descriptionNormalized: 'vay lanh thoai mai',
+      categoryName: 'Váy đầm',
+      categoryNameNormalized: 'vay dam',
+    });
+    expect(document.localized.en.title).toBe('Linen Weekend Dress');
+    expect(document.shopName).toBe('Olive Atelier');
   });
 });

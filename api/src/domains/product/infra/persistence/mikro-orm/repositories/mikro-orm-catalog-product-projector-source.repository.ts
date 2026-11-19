@@ -15,6 +15,8 @@ implements CatalogProductProjectorSourceRepository {
         populate: [
           'shop',
           'category',
+          'category.translations',
+          'translations',
           'images',
           'images.variants',
           'variants',
@@ -35,5 +37,14 @@ implements CatalogProductProjectorSourceRepository {
         ],
       },
     );
+  }
+
+  async findIdsByCategoryId(categoryId: string): Promise<string[]> {
+    const products = await this.entityManager.fork().getRepository(ProductEntity).find(
+      { category: { id: categoryId } },
+      { fields: ['id'] },
+    );
+
+    return products.map((product) => product.id);
   }
 }
