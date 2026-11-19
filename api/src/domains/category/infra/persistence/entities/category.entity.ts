@@ -9,6 +9,7 @@ import {
 import { AbstractBaseEntity } from '~/platform/database/abstract-base.entity';
 import { ProductEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product.entity';
 import { CategoryAttributeEntity } from './category-attribute.entity';
+import { CategoryTranslationEntity } from './category-translation.entity';
 
 @Entity({ tableName: 'categories' })
 @Index({ properties: ['parent'] })
@@ -47,6 +48,12 @@ export class CategoryEntity extends AbstractBaseEntity {
     (attribute) => attribute.category,
   )
   attributes = new Collection<CategoryAttributeEntity>(this);
+
+  @OneToMany(
+    () => CategoryTranslationEntity,
+    (translation) => translation.category,
+  )
+  translations = new Collection<CategoryTranslationEntity>(this);
 
   @OneToMany(() => ProductEntity, (product) => product.category)
   products = new Collection<ProductEntity>(this);

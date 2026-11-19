@@ -18,6 +18,7 @@ import { MikroOrmCategoryQueryRepository } from './infra/mikro-orm-category-quer
 import { CategoryAttributeOptionEntity } from './infra/persistence/entities/category-attribute-option.entity';
 import { CategoryAttributeEntity } from './infra/persistence/entities/category-attribute.entity';
 import { CategoryEntity } from './infra/persistence/entities/category.entity';
+import { CategoryTranslationEntity } from './infra/persistence/entities/category-translation.entity';
 import { StorageModule } from '~/integrations/storage/storage.module';
 import { CacheModule } from '~/integrations/cache/cache.module';
 import { AuthModule } from '../auth/auth.module';
@@ -30,6 +31,7 @@ import { AuthModule } from '../auth/auth.module';
     StorageModule,
     MikroOrmModule.forFeature([
       CategoryEntity,
+      CategoryTranslationEntity,
       CategoryAttributeEntity,
       CategoryAttributeOptionEntity,
     ]),
