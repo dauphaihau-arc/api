@@ -20,6 +20,7 @@ import { ProductImageEntity } from './product-image.entity';
 import { ProductInventoryEntity } from './product-inventory.entity';
 import { ProductVariantEntity } from './product-variant.entity';
 import { ProductOptionEntity } from './product-option.entity';
+import { ProductTranslationEntity } from './product-translation.entity';
 
 @Entity({ tableName: 'products' })
 @Index({ properties: ['category'] })
@@ -111,6 +112,9 @@ export class ProductEntity extends AbstractBaseEntity {
 
   @OneToMany(() => ProductOptionEntity, (option) => option.product)
   options = new Collection<ProductOptionEntity>(this);
+
+  @OneToMany(() => ProductTranslationEntity, (translation) => translation.product)
+  translations = new Collection<ProductTranslationEntity>(this);
 
   @OneToMany(() => ProductInventoryEntity, (inventory) => inventory.product)
   inventoryRecords = new Collection<ProductInventoryEntity>(this);

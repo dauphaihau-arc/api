@@ -7,6 +7,10 @@ import type {
 } from '../../../../app/storefront-indexed-pricing';
 import { inferFacetSignalsFromText } from '../../../inferred-facets';
 import { getInventoryPricingSnapshot } from '../../../persistence/mikro-orm/reads/variant-price-read';
+import {
+  buildCatalogLocalizedContent,
+  type CatalogLocalizedContentByLanguage,
+} from './catalog-localized-content';
 
 export interface CatalogSearchDocument {
   _id: string;
@@ -38,6 +42,7 @@ export interface CatalogSearchDocument {
     optionKey: string;
     value: string;
   }>;
+  localized: CatalogLocalizedContentByLanguage;
   suggest: string[];
   keywords: string[];
   image?: {
@@ -160,6 +165,26 @@ export function toCatalogSearchDocument(
     inferredFacets: inferFacetSignalsFromText({
       title: product.title,
       description: product.description,
+    }),
+    localized: buildCatalogLocalizedContent({
+      title: product.title,
+      description: product.description,
+      categoryName: product.category?.name,
+      suggestTerms: [
+        product.slug.replaceAll('-', ' '),
+        ...sortedVariants.map((variant) =>
+          variant.selections.getItems().map((selection) => selection.productOptionValue.value).join(' / ')),
+      ],
+      keywordTerms: [
+        product.shop.shopName,
+        product.slug.replaceAll('-', ' '),
+        ...sortedVariants.flatMap((variant) => variant.selections.getItems().flatMap((selection) => [
+          selection.productOption.name,
+          selection.productOptionValue.value,
+        ])),
+      ],
+      translations: product.translations.getItems(),
+      categoryTranslations: product.category?.translations.getItems() ?? [],
     }),
     suggest: uniqueStrings([
       product.title,

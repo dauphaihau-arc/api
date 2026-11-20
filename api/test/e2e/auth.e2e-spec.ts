@@ -11,6 +11,7 @@ import { Reflector } from '@nestjs/core';
 import { PinoLogger } from 'nestjs-pino';
 import request from 'supertest';
 import type { App } from 'supertest/types';
+import type * as AppModuleModule from '~/bootstrap/app.module';
 import { GlobalExceptionFilter } from '~/platform/filters/global-exception.filter';
 import { validationExceptionFactory } from '~/platform/pipes/validation-exception.factory';
 import { RequestLoggingInterceptor } from '~/platform/logging/request-logging.interceptor';
@@ -21,11 +22,16 @@ import { RequestContextService } from '~/platform/request-context/request-contex
 import { StorageService } from '~/integrations/storage/app/ports/storage.service';
 import { LocalFileStorageService } from '~/integrations/storage/infra/local-file-storage.service';
 import { createTestDatabase, dropTestDatabase } from '../support/test-postgres';
+import { seedAuthReferenceData } from '../../database/seeds/auth.seed';
 
 jest.setTimeout(30_000);
 
 const API_PREFIX = '/v1';
-const expectedMemberPermissions: string[] = [];
+const expectedMemberPermissions = [
+  'auth.me.read',
+  'auth.session.manage',
+  'shops.create',
+];
 const VALID_TEST_PASSWORD = 'Password123!';
 type AuthHttpResponseBody = {
   user: {
@@ -73,13 +79,22 @@ describe('Auth flow (e2e)', () => {
     process.env.JWT_ACCESS_TTL = '15m';
     process.env.JWT_REFRESH_TTL = '7d';
     process.env.BCRYPT_SALT_ROUNDS = '4';
+    // The repository .env enables Secure/SameSite=None cookies for HTTPS
+    // deployments; the supertest agent talks plain HTTP and would never replay
+    // a Secure cookie.
+    process.env.AUTH_COOKIE_SECURE = 'false';
+    process.env.AUTH_COOKIE_SAME_SITE = 'lax';
     process.env.CACHE_DRIVER = 'memory';
     process.env.RATE_LIMIT_DRIVER = 'memory';
     process.env.QUEUE_DRIVER = 'inline';
     process.env.MAIL_DRIVER = 'logger';
     process.env.STORAGE_DRIVER = 'local';
     process.env.STORAGE_LOCAL_ROOT = storageRoot;
-    const { AppModule } = await import('~/bootstrap/app.module.js');
+    // Resolved synchronously after the test environment is configured: the app
+    // module reads process.env while its decorators are evaluated, and Jest's
+    // CJS transform cannot execute a dynamic import without VM modules.
+    const { AppModule } =
+      jest.requireActual<typeof AppModuleModule>('~/bootstrap/app.module');
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
@@ -132,6 +147,9 @@ describe('Auth flow (e2e)', () => {
     app.setGlobalPrefix(API_PREFIX);
     await app.init();
     entityManager = app.get(EntityManager);
+    // Registration resolves role permissions from seeded reference data; the
+    // migrated test database starts empty, so seed it like production does.
+    await seedAuthReferenceData(entityManager.fork());
   });
 
   afterAll(async () => {
@@ -163,7 +181,7 @@ describe('Auth flow (e2e)', () => {
       .send({
         email,
         password: VALID_TEST_PASSWORD,
-        displayName: 'Member User',
+        display_name: 'Member User',
         preferences: {
           region: 'Vietnam',
           language: 'vi',
@@ -177,7 +195,7 @@ describe('Auth flow (e2e)', () => {
     expect(registerBody.user).toMatchObject({
       email,
       display_name: 'Member User',
-      roles: ['member'],
+      roles: ['customer'],
       permissions: expectedMemberPermissions,
     });
     expect(registerResponse.headers['cache-control']).toBe('no-store');
@@ -206,7 +224,7 @@ describe('Auth flow (e2e)', () => {
     expect(meBody).toMatchObject({
       email,
       display_name: 'Member User',
-      roles: ['member'],
+      roles: ['customer'],
       permissions: expectedMemberPermissions,
     });
     expect(meBody).not.toHaveProperty('session_id');
@@ -266,7 +284,7 @@ describe('Auth flow (e2e)', () => {
       .send({
         email,
         password: VALID_TEST_PASSWORD,
-        displayName: 'Language User',
+        display_name: 'Language User',
         preferences: {
           region: 'United States',
           language: 'en',

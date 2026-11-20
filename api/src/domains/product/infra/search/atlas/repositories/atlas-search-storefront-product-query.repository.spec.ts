@@ -19,7 +19,7 @@ function filtersAttributeKey(pipeline: unknown[], attributeKey: string): boolean
   return serialized.includes(`"path":"attributes.categoryAttributeKey","value":"${attributeKey}"`);
 }
 
-function createRepository(aggregate: jest.Mock) {
+function createRepository(aggregate: jest.Mock, locale?: string) {
   return new AtlasSearchStorefrontProductQueryRepository(
     {
       searchDriver: 'atlas',
@@ -31,7 +31,7 @@ function createRepository(aggregate: jest.Mock) {
     {} as never,
     { getCollection: async () => ({ aggregate }) } as never,
     { resolveCurrentRequest: async () => undefined } as never,
-    {} as never,
+    { get: () => ({ locale }) } as never,
     {} as never,
   );
 }
@@ -163,5 +163,62 @@ describe('AtlasSearchStorefrontProductQueryRepository facet variants', () => {
     // executed sequentially so the fanout never exceeds one query.
     expect(aggregate).toHaveBeenCalledTimes(5);
     expect(maxInFlight).toBe(1);
+  });
+});
+
+
+describe('AtlasSearchStorefrontProductQueryRepository locale selection', () => {
+  function buildLocaleRepository(locale?: string) {
+    const pipelines: Array<Record<string, unknown>> = [];
+    const aggregate = jest.fn((pipeline: Array<Record<string, unknown>>) => {
+      pipelines.push(pipeline[0] ?? {});
+      return {
+        toArray: async () => (
+          pipeline[0] && '$searchMeta' in pipeline[0]
+            ? [{ count: { total: 0 } }]
+            : []
+        ),
+      };
+    });
+
+    return { repository: createRepository(aggregate, locale), pipelines };
+  }
+
+  it.each(['vi-VN', 'vi-US'])(
+    'searches Vietnamese normalized fields for %s',
+    async (locale) => {
+      const { repository, pipelines } = buildLocaleRepository(locale);
+
+      await repository.listPublic({ page: 1, limit: 12, search: 'Váy' });
+
+      const searchMeta = pipelines[0]?.['$searchMeta'] as Record<string, unknown>;
+      const serialized = JSON.stringify(searchMeta);
+      expect(serialized).toContain('localized.vi.titleNormalized');
+      expect(serialized).toContain('localized.vi.descriptionNormalized');
+      expect(serialized).toContain('"query":"vay"');
+    },
+  );
+
+  it('searches English normalized fields for an English or absent locale', async () => {
+    for (const locale of [undefined, 'en-US']) {
+      const { repository, pipelines } = buildLocaleRepository(locale);
+
+      await repository.listPublic({ page: 1, limit: 12, search: 'linen' });
+
+      expect(JSON.stringify(pipelines[0]?.['$searchMeta'])).toContain(
+        'localized.en.titleNormalized',
+      );
+    }
+  });
+
+  it('suggests against the active language and folds diacritics', async () => {
+    const { repository, pipelines } = buildLocaleRepository('vi-US');
+
+    await repository.suggestPublic({ search: 'Váy', limit: 5 });
+
+    const serialized = JSON.stringify(pipelines[0]);
+    expect(serialized).toContain('localized.vi.suggest');
+    expect(serialized).toContain('"query":"vay"');
+    expect(serialized).not.toContain('localized.en.suggest');
   });
 });

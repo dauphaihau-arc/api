@@ -1,5 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { buildPaginationMeta } from '~/platform/application/pagination';
+import type { StorefrontLanguage } from '~/platform/config/marketplace.config';
+import { normalizeStorefrontLanguage, DEFAULT_STOREFRONT_LANGUAGE } from '~/platform/localization/storefront-language';
+import { RequestContextService } from '~/platform/request-context/request-context.service';
 import { CATALOG_CONFIG, type CatalogConfig } from '~/platform/config/catalog.config';
 import {
   STOREFRONT_PRICING_CONFIG,
@@ -33,6 +36,11 @@ import { CatalogMongoAccess } from '../../../catalog/mongo/access/catalog-mongo.
 import type { CatalogProductDocument } from '../../../catalog/mongo/documents/catalog-product-document.mapper';
 import type { CatalogProductPriceDocument } from '../../../catalog/mongo/documents/catalog-product-price-document.mapper';
 import type { CatalogSearchDocument } from '../../../catalog/mongo/documents/catalog-search-document.mapper';
+import {
+  normalizeCatalogSearchText,
+  resolveCatalogLocalizedContent,
+  toLocalizedContentPath,
+} from '../../../catalog/mongo/documents/catalog-localized-content';
 import { isInferredFacetSupported } from '../../../inferred-facets';
 import {
   buildFacetAggregationPipeline,
@@ -76,6 +84,7 @@ implements StorefrontProductQueryRepository {
     private readonly catalogProductPriceDocumentRepository: CatalogProductPriceDocumentRepository,
     private readonly catalogMongoAccess: CatalogMongoAccess,
     private readonly storefrontMarketContextService: StorefrontMarketContextService,
+    private readonly requestContextService: RequestContextService,
     private readonly liveStockOverlayService: LiveProductInventoryStockOverlayService,
   ) {}
 
@@ -104,7 +113,12 @@ implements StorefrontProductQueryRepository {
 
     return document
       ? this.liveStockOverlayService.overlayDetail(
-        toPublicProductDetail(document, priceDocument, pricingSelection),
+        toPublicProductDetail(
+          document,
+          priceDocument,
+          pricingSelection,
+          this.getStorefrontLanguage(),
+        ),
       )
       : null;
   }
@@ -117,6 +131,7 @@ implements StorefrontProductQueryRepository {
     const pricingSelection = this.toIndexedPricingSelection(resolveIndexedPricingSelection(
       await this.storefrontMarketContextService.resolveCurrentRequest(),
     ));
+    const language = this.getStorefrontLanguage();
     const searchCollection = await this.getSearchCollection();
     const documents = await searchCollection
       .find({
@@ -132,7 +147,7 @@ implements StorefrontProductQueryRepository {
     return productIds
       .map((productId) => documentsById.get(productId))
       .filter((document): document is CatalogSearchDocument => document != null)
-      .map((document) => toPublicProductListItemFromSearchDocument(document, pricingSelection));
+      .map((document) => toPublicProductListItemFromSearchDocument(document, pricingSelection, language));
   }
 
   async findPublicCardsByIds(productIds: string[]): Promise<PublicProductListItem[]> {
@@ -143,8 +158,9 @@ implements StorefrontProductQueryRepository {
     const pricingSelection = this.toIndexedPricingSelection(resolveIndexedPricingSelection(
       await this.storefrontMarketContextService.resolveCurrentRequest(),
     ));
+    const language = this.getStorefrontLanguage();
     const collection = await this.getSearchCollection();
-    const filter = this.buildFilter(input, pricingSelection);
+    const filter = this.buildFilter(input, pricingSelection, language);
     const totalPromise = collection.countDocuments(filter);
     const documentsPromise = collection
       .find(filter)
@@ -155,7 +171,7 @@ implements StorefrontProductQueryRepository {
     const [total, documents] = await Promise.all([totalPromise, documentsPromise]);
 
     return {
-      items: documents.map((document) => toPublicProductListItemFromSearchDocument(document, pricingSelection)),
+      items: documents.map((document) => toPublicProductListItemFromSearchDocument(document, pricingSelection, language)),
       meta: buildPaginationMeta(input.page, input.limit, total),
     };
   }
@@ -165,6 +181,7 @@ implements StorefrontProductQueryRepository {
       await this.storefrontMarketContextService.resolveCurrentRequest(),
     ));
 
+    const language = this.getStorefrontLanguage();
     const collection = await this.getSearchCollection();
     const variants = buildFacetFilterVariants(input);
     const rowsByVariant: FacetAggregationRow[][] = [];
@@ -174,7 +191,7 @@ implements StorefrontProductQueryRepository {
     // concurrent database work while keeping every active filter.
     for (const variant of variants) {
       rowsByVariant.push(
-        await this.aggregateFacetRows(collection, variant.input, pricingSelection),
+        await this.aggregateFacetRows(collection, variant.input, pricingSelection, language),
       );
     }
 
@@ -184,17 +201,18 @@ implements StorefrontProductQueryRepository {
   async suggestPublic(
     input: SuggestPublicProductsInput,
   ): Promise<PublicProductSuggestion[]> {
-    const normalizedSearch = input.search.trim();
+    const normalizedSearch = normalizeCatalogSearchText(input.search);
 
     if (!normalizedSearch) {
       return [];
     }
 
+    const language = this.getStorefrontLanguage();
     const collection = await this.getSearchCollection();
     const documents = await collection
       .find({
         state: ProductState.ACTIVE,
-        ...buildTextFilter(normalizedSearch),
+        ...buildTextFilter(normalizedSearch, language),
       })
       .sort({ 'ranking.createdAt': -1 })
       .limit(input.limit)
@@ -203,7 +221,7 @@ implements StorefrontProductQueryRepository {
     return documents.map((document) => ({
       id: document.productId,
       publicId: document.productPublicId,
-      title: document.title,
+      title: resolveCatalogLocalizedContent(document, language).title,
       slug: document.slug,
       shop: {
         id: document.shopId,
@@ -218,15 +236,19 @@ implements StorefrontProductQueryRepository {
     collection: MongoCollectionLike<CatalogSearchDocument>,
     input: ListPublicProductsInput,
     pricingSelection: StorefrontIndexedPricingSelection | undefined,
+    language: StorefrontLanguage,
   ): Promise<FacetAggregationRow[]> {
     return collection.aggregate<FacetAggregationRow>(
-      buildFacetAggregationPipeline({ $match: this.buildFilter(input, pricingSelection) }),
+      buildFacetAggregationPipeline({
+        $match: this.buildFilter(input, pricingSelection, language),
+      }),
     ).toArray();
   }
 
   private buildFilter(
     input: ListPublicProductsInput,
     pricingSelection: StorefrontIndexedPricingSelection | undefined,
+    language: StorefrontLanguage,
   ): Record<string, unknown> {
     const filters: Record<string, unknown>[] = [
       { state: ProductState.ACTIVE },
@@ -248,7 +270,7 @@ implements StorefrontProductQueryRepository {
     const textQuery = input.search?.trim() || input.title?.trim();
 
     if (textQuery) {
-      filters.push(buildTextFilter(textQuery));
+      filters.push(buildTextFilter(textQuery, language));
     }
 
     const minPriceField = pricingSelection
@@ -352,6 +374,10 @@ implements StorefrontProductQueryRepository {
     return { 'ranking.createdAt': -1 };
   }
 
+  private getStorefrontLanguage(): StorefrontLanguage {
+    return normalizeStorefrontLanguage(this.requestContextService.get().locale);
+  }
+
   private async getProductsCollection(): Promise<MongoCollectionLike<CatalogProductDocument>> {
     return this.catalogMongoAccess.getCollection<MongoCollectionLike<CatalogProductDocument>>(
       this.catalogConfig.mongodbProductsCollection,
@@ -373,15 +399,18 @@ implements StorefrontProductQueryRepository {
   }
 }
 
-function buildTextFilter(search: string): Record<string, unknown> {
-  const regex = new RegExp(escapeRegex(search.trim().toLowerCase()), 'i');
+function buildTextFilter(
+  search: string,
+  language: StorefrontLanguage,
+): Record<string, unknown> {
+  const regex = new RegExp(escapeRegex(normalizeCatalogSearchText(search)), 'i');
 
   return {
     $or: [
-      { title: regex },
-      { description: regex },
-      { keywords: regex },
-      { suggest: regex },
+      { [toLocalizedContentPath(language, 'titleNormalized')]: regex },
+      { [toLocalizedContentPath(language, 'descriptionNormalized')]: regex },
+      { [toLocalizedContentPath(language, 'keywords')]: regex },
+      { [toLocalizedContentPath(language, 'suggest')]: regex },
     ],
   };
 }
@@ -393,6 +422,7 @@ function escapeRegex(value: string): string {
 function toPublicProductListItemFromSearchDocument(
   document: CatalogSearchDocument,
   pricingSelection?: StorefrontIndexedPricingSelection,
+  language: StorefrontLanguage = DEFAULT_STOREFRONT_LANGUAGE,
 ): PublicProductListItem {
   const indexedPricing = getIndexedPriceSummary(document.pricingByMarket, pricingSelection);
 
@@ -407,7 +437,7 @@ function toPublicProductListItemFromSearchDocument(
     },
     categoryId: document.categoryId,
     categoryPublicId: document.categoryPublicId,
-    title: document.title,
+    title: resolveCatalogLocalizedContent(document, language).title,
     slug: document.slug,
     image: document.image
       ? {
@@ -465,6 +495,7 @@ export function toPublicProductDetail(
   document: CatalogProductDocument,
   priceDocument?: CatalogProductPriceDocument | null,
   pricingSelection?: StorefrontIndexedPricingSelection,
+  language: StorefrontLanguage = DEFAULT_STOREFRONT_LANGUAGE,
 ): PublicProductDetail {
 
   return {
@@ -478,9 +509,9 @@ export function toPublicProductDetail(
     },
     categoryId: document.categoryId,
     categoryPublicId: document.categoryPublicId,
-    title: document.title,
+    title: resolveCatalogLocalizedContent(document, language).title,
     slug: document.slug,
-    description: document.description,
+    description: resolveCatalogLocalizedContent(document, language).description,
     whoMade: document.whoMade,
     isDigital: document.isDigital,
     stockNoticeThreshold: PRODUCT_STOCK_NOTICE_THRESHOLD,

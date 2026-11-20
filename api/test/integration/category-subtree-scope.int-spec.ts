@@ -27,6 +27,7 @@ import { MikroOrmCategoryQueryRepository } from '~/domains/category/infra/mikro-
 import { CatalogSearchDocumentRepository } from '~/domains/product/app/ports/catalog-search-document.repository';
 import { CatalogMongoAccess } from '~/domains/product/infra/catalog/mongo/access/catalog-mongo.access';
 import type { CatalogSearchDocument } from '~/domains/product/infra/catalog/mongo/documents/catalog-search-document.mapper';
+import { buildCatalogLocalizedContent } from '~/domains/product/infra/catalog/mongo/documents/catalog-localized-content';
 import { ProductState } from '~/domains/product/domain/enums/product-state.enum';
 import { ProductWhoMade } from '~/domains/product/domain/enums/product-who-made.enum';
 import type * as BootstrapAppModule from '~/bootstrap/app.module';
@@ -210,6 +211,11 @@ describe('category subtree listing and facets (integration)', () => {
       slug: input.productId,
       title: input.title,
       description: `${input.title} description`,
+      localized: buildCatalogLocalizedContent({
+        title: input.title,
+        description: `${input.title} description`,
+        categoryName: input.category.name,
+      }),
       state: ProductState.ACTIVE,
       categoryId: input.category.id,
       categoryPublicId: input.category.publicId,

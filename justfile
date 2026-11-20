@@ -197,6 +197,12 @@ sync-catalog-indexes environment='':
 sync-catalog-indexes-infisical project_id *env_name:
   just _api-with-infisical "{{ project_id }}" "{{ env_name }}" "pnpm catalog:indexes:sync"
 
+verify-catalog-localization environment='':
+  just _api-with-env "pnpm catalog:verify-localization" "{{ environment }}"
+
+verify-catalog-localization-infisical project_id *env_name:
+  just _api-with-infisical "{{ project_id }}" "{{ env_name }}" "pnpm catalog:verify-localization"
+
 db-clear environment='':
   just _api-with-env "pnpm db:clear" "{{ environment }}"
 

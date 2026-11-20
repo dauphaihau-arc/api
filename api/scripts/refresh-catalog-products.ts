@@ -25,6 +25,7 @@ import { StorefrontIndexedPriceProjectionService } from '~/domains/product/app/s
 import { MikroOrmSaleProjectionReader } from '~/domains/promotion/infra/persistence/repositories/mikro-orm-sale-projection.reader';
 import { SystemClock } from '~/platform/time/clock';
 import { ensureAtlasSearchIndexes } from './catalog/ensure-atlas-search-indexes';
+import { verifyCatalogLocalizationCollections } from './catalog/verify-catalog-localization';
 
 type MongoDeleteManyCollectionLike = {
   deleteMany(filter: Record<string, never>): Promise<{ deletedCount?: number }>;
@@ -192,9 +193,26 @@ async function main() {
       }
     }
 
+    const verification = await verifyCatalogLocalizationCollections(
+      catalogMongoAccess,
+      catalogConfig,
+    );
+
     console.log(
       `Catalog backfill completed: projected ${processed}/${productIds.length} active products`,
     );
+    console.log(
+      `Catalog localization verification: ${verification.totalDocuments} documents, ` +
+      `${verification.staleFields} stale language fields`,
+    );
+
+    if (verification.staleFields > 0) {
+      console.error(
+        'Stale catalog localization fields detected:',
+        JSON.stringify(verification.issues.slice(0, 10)),
+      );
+      throw new Error('Catalog localization verification failed');
+    }
   }
   finally {
     console.log('Closing catalog MongoDB connection');

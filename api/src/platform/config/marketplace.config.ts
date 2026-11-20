@@ -51,6 +51,8 @@ export type StorefrontLanguage = (typeof STOREFRONT_LANGUAGES)[number];
 export type MarketplaceCurrency = (typeof MARKETPLACE_CURRENCIES)[number];
 export type MarketplaceLocale = (typeof MARKETPLACE_LOCALES)[number];
 
+export const DEFAULT_STOREFRONT_LANGUAGE: StorefrontLanguage = 'en';
+
 export interface MarketplaceMarket {
   code: string;
   name: MarketplaceRegion;
@@ -96,7 +98,7 @@ export interface UserPreferences {
 
 export const DEFAULT_USER_PREFERENCES: UserPreferences = {
   region: 'United States',
-  language: 'en',
+  language: DEFAULT_STOREFRONT_LANGUAGE,
   currency: 'USD',
 };
 

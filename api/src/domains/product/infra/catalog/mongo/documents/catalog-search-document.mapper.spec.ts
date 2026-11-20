@@ -26,6 +26,20 @@ describe('catalog-search-document.mapper', () => {
       },
       category: {
         id: 'category-1',
+        name: 'Dresses',
+        translations: {
+          getItems: () => [{
+            language: 'vi',
+            name: 'Váy đầm',
+          }],
+        },
+      },
+      translations: {
+        getItems: () => [{
+          language: 'vi',
+          title: 'Váy lanh cuối tuần',
+          description: 'Váy lanh thoải mái',
+        }],
       },
       images: {
         getItems: () => [{
@@ -140,5 +154,12 @@ describe('catalog-search-document.mapper', () => {
     expect(document.keywords).toEqual(
       expect.arrayContaining(['linen weekend dress', 'relaxed linen dress', 'olive atelier']),
     );
+    expect(document.localized.vi).toMatchObject({
+      title: 'Váy lanh cuối tuần',
+      titleNormalized: 'vay lanh cuoi tuan',
+      descriptionNormalized: 'vay lanh thoai mai',
+      categoryNameNormalized: 'vay dam',
+    });
+    expect(document.localized.en.title).toBe('Linen Weekend Dress');
   });
 });

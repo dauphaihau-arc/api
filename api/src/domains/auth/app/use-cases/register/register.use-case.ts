@@ -89,10 +89,13 @@ export class RegisterUseCase {
       return createdUser;
     });
 
+    // `create()` snapshots roles before `assignRole()` runs, so reload the
+    // persisted account to issue the session with the assigned role.
+    const sessionUser = await this.authUserRepository.findById(user.id) ?? user;
     const authResponse = await this.issueSessionUseCase.execute(
       user.id,
       undefined,
-      user,
+      sessionUser,
     );
 
     this.eventEmitter.emit(

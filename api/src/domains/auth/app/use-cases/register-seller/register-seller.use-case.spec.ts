@@ -25,8 +25,13 @@ describe('RegisterSellerUseCase', () => {
         '$2b$04$123456789012345678901u8QTs4lJx0pK7ydjXfQ6PS/UPTzQ0zQG',
       ),
       passwordUpdatedAt: new Date('2026-01-01T00:00:00.000Z'),
-      roles: [RoleKey.create('customer'), RoleKey.create('seller')],
+      // `create()` snapshots the account before `assignRole()` runs.
+      roles: [],
       permissions: [],
+    };
+    const persistedUser: UserAccount = {
+      ...createdUser,
+      roles: [RoleKey.create('customer'), RoleKey.create('seller')],
     };
     const entityManager = {
       transactional: jest.fn(async (callback: (em: EntityManager) => Promise<UserAccount>) =>
@@ -36,7 +41,7 @@ describe('RegisterSellerUseCase', () => {
     const authUserRepository: jest.Mocked<AuthUserRepository> = {
       findByEmail: jest.fn().mockResolvedValue(null),
       findLoginByEmail: jest.fn(),
-      findById: jest.fn(),
+      findById: jest.fn().mockResolvedValue(persistedUser),
       create: jest.fn().mockResolvedValue(createdUser),
       update: jest.fn(),
       updatePassword: jest.fn(),
@@ -118,6 +123,11 @@ describe('RegisterSellerUseCase', () => {
     });
 
     expect(result.isOk).toBe(true);
+    expect(issueSessionUseCase.execute).toHaveBeenCalledWith(
+      'user-1',
+      undefined,
+      persistedUser,
+    );
     expect(userPreferenceRepository.create).toHaveBeenCalledWith(
       {
         userId: 'user-1',

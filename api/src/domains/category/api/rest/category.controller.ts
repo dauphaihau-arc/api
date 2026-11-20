@@ -11,6 +11,9 @@ import {
 } from '@nestjs/swagger';
 import { SkipThrottle } from '@nestjs/throttler';
 import { resolveOrThrow } from '~/platform/application/result';
+import type { StorefrontLanguage } from '~/platform/config/marketplace.config';
+import { normalizeStorefrontLanguage } from '~/platform/localization/storefront-language';
+import { RequestContextService } from '~/platform/request-context/request-context.service';
 import { JwtAuthGuard } from '~/domains/auth/api/guard/jwt-auth.guard';
 import { PermissionsGuard } from '~/domains/auth/api/guard/permissions.guard';
 import { CreateCategoryAttributeUseCase } from '../../app/use-cases/create-category-attribute/create-category-attribute.use-case';
@@ -60,6 +63,7 @@ export class CategoryController {
     private readonly createCategoryAttributeUseCase: CreateCategoryAttributeUseCase,
     private readonly getCategoryAttributesUseCase: GetCategoryAttributesUseCase,
     private readonly suggestCategoriesUseCase: SuggestCategoriesUseCase,
+    private readonly requestContextService: RequestContextService,
   ) {}
 
   @Get('contract')
@@ -88,6 +92,7 @@ export class CategoryController {
     const categories = await this.suggestCategoriesUseCase.execute(
       query.name,
       query.limit,
+      this.resolveLanguage(),
     );
     return { categories: categories.map(toCategorySuggestionResponse) };
   }
@@ -105,7 +110,10 @@ export class CategoryController {
   categories(
     @Query() query: ListCategoriesQueryDto,
   ): Promise<CategoryResponse[]> {
-    return this.listCategoriesUseCase.execute(query.parentId)
+    return this.listCategoriesUseCase.execute(
+      query.parentId,
+      this.resolveLanguage(),
+    )
       .then((categories) => categories.map(toCategoryResponse));
   }
 
@@ -128,7 +136,7 @@ export class CategoryController {
   resolveLegacyPath(
     @Query('path') path: string,
   ): Promise<CategoryResolutionResponse> {
-    return this.resolveLegacyPathUseCase.execute(path)
+    return this.resolveLegacyPathUseCase.execute(path, this.resolveLanguage())
       .then((result) =>
         resolveOrThrow(result, mapCategoryAppErrorToHttpException),
       )
@@ -146,7 +154,7 @@ export class CategoryController {
     type: CategoryResolutionResponseDto,
   })
   getCategory(@Param('id') id: string): Promise<CategoryResolutionResponse> {
-    return this.resolveCategoryUseCase.execute(id)
+    return this.resolveCategoryUseCase.execute(id, this.resolveLanguage())
       .then((result) =>
         resolveOrThrow(result, mapCategoryAppErrorToHttpException),
       )
@@ -214,5 +222,13 @@ export class CategoryController {
     }).then((result) =>
       resolveOrThrow(result, mapCategoryAppErrorToHttpException),
     ).then(toCategoryResponse);
+  }
+
+  /**
+   * Localized Content is keyed by Storefront Language: `vi-VN` and `vi-US`
+   * both read Vietnamese, while an absent or unsupported Locale reads English.
+   */
+  private resolveLanguage(): StorefrontLanguage {
+    return normalizeStorefrontLanguage(this.requestContextService.get().locale);
   }
 }

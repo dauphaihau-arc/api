@@ -1,5 +1,5 @@
 import { NotFoundException, RequestMethod } from '@nestjs/common';
-import { METHOD_METADATA, PATH_METADATA } from '@nestjs/common/constants';
+import { HEADERS_METADATA, METHOD_METADATA, PATH_METADATA } from '@nestjs/common/constants';
 import { GUARDS_METADATA } from '@nestjs/common/constants';
 import { OptionalJwtAuthGuard } from '~/domains/auth/api/guard/optional-jwt-auth.guard';
 import type { GetPublicProductBySlugsUseCase } from '../../../app/use-cases/get-public-product-by-slugs/get-public-product-by-slugs.use-case';
@@ -58,6 +58,25 @@ describe('ProductController', () => {
 
   it('applies optional auth to public product routes', () => {
     expect(Reflect.getMetadata(GUARDS_METADATA, ProductController)).toEqual([OptionalJwtAuthGuard]);
+  });
+
+  it('varies shared public product responses by X-Locale', () => {
+    for (const handler of [
+      ProductController.prototype.listProducts,
+      ProductController.prototype.listProductFacets,
+      ProductController.prototype.suggestProducts,
+      ProductController.prototype.productBySlugs,
+    ]) {
+      const headers = Reflect.getMetadata(HEADERS_METADATA, handler) as Array<{
+        name: string;
+        value: string;
+      }>;
+
+      expect(headers).toContainEqual({
+        name: 'Vary',
+        value: 'x-market-code, x-currency, x-locale, x-channel',
+      });
+    }
   });
 
   it('registers GET suggestions on the controller method', () => {

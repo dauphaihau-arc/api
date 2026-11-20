@@ -21,9 +21,11 @@ import { ReviewImageService } from './app/services/review-image.service';
 import { PendingReviewImageUploadService } from './app/pending-review-image-upload.service';
 import { ResolvedStorefrontPriceService } from './app/services/resolved-storefront-price.service';
 import { StorefrontMarketContextService } from './app/services/storefront-market-context.service';
+import { PublicProductLocalizationService } from './app/services/public-product-localization.service';
 import { PurchaseEligibilityService } from './app/services/purchase-eligibility.service';
 import { CatalogStatusService } from './app/services/catalog-status.service';
 import { CatalogProductProjectorService } from './app/services/catalog-product-projector.service';
+import { CatalogContentReprojectionService } from './app/services/catalog-content-reprojection.service';
 import { StorefrontIndexedPriceProjectionService } from './app/services/storefront-indexed-price-projection.service';
 import { PublicProductOrderHistoryService } from './app/services/public-product-order-history.service';
 import { PublicProductBestSellerRankingService } from './app/services/public-product-best-seller-ranking.service';
@@ -80,6 +82,10 @@ import { ProductImportCommandRepository } from './app/ports/product-import-comma
 import { ProductImportQueryRepository } from './app/ports/product-import-query.repository';
 import { ProductImportValidationQueryRepository } from './app/ports/product-import-validation-query.repository';
 import { StorefrontProductQueryRepository } from './app/ports/storefront-product-query.repository';
+import { ProductTranslationQueryRepository } from './app/ports/product-translation-query.repository';
+import { LocalizedStorefrontProductQueryRepository } from './infra/search/localized-storefront-product-query.repository';
+import { LocalizedProductRecommendationQueryRepository } from './infra/search/localized-product-recommendation-query.repository';
+import { MikroOrmProductTranslationQueryRepository } from './infra/persistence/mikro-orm/repositories/mikro-orm-product-translation-query.repository';
 import { LiveProductInventoryStockRepository } from './app/ports/live-product-inventory-stock.repository';
 import { InventoryStockPoolPort } from './app/ports/inventory-stock-pool.port';
 import { MikroOrmInventoryStockPoolRepository } from './infra/persistence/mikro-orm/repositories/mikro-orm-inventory-stock-pool.repository';
@@ -136,6 +142,7 @@ import { ProductReviewImageEntity } from '~/domains/product/infra/persistence/mi
 import { ProductReviewImageVariantEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-review-image-variant.entity';
 import { ProductVariantEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-variant.entity';
 import { ProductOptionEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-option.entity';
+import { ProductTranslationEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-translation.entity';
 import { ProductOptionValueEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-option-value.entity';
 import { ProductVariantOptionValueEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-variant-option-value.entity';
 import { ProductViewHistoryEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-view-history.entity';
@@ -144,7 +151,7 @@ import { ProductEntity } from '~/domains/product/infra/persistence/mikro-orm/ent
 import { ProductImportEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-import.entity';
 import { ProductImportRowEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product-import-row.entity';
 import { VariantPriceEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/variant-price.entity';
-import { CATALOG_CONFIG, buildCatalogConfig } from '~/platform/config/catalog.config';
+import { CATALOG_CONFIG, buildCatalogConfig, type CatalogConfig } from '~/platform/config/catalog.config';
 import { STOREFRONT_PRICING_CONFIG, buildStorefrontPricingConfig } from '~/platform/config/storefront-pricing.config';
 
 @Module({
@@ -171,6 +178,7 @@ import { STOREFRONT_PRICING_CONFIG, buildStorefrontPricingConfig } from '~/platf
       ProductAttributeValueEntity,
       ProductVariantEntity,
       ProductOptionEntity,
+      ProductTranslationEntity,
       ProductOptionValueEntity,
       ProductVariantOptionValueEntity,
       ProductViewHistoryEntity,
@@ -217,14 +225,19 @@ import { STOREFRONT_PRICING_CONFIG, buildStorefrontPricingConfig } from '~/platf
         CATALOG_CONFIG,
         AtlasSearchStorefrontProductQueryRepository,
         MongoBasicStorefrontProductQueryRepository,
+        PublicProductLocalizationService,
       ],
       useFactory: (
-        catalogConfig: ReturnType<typeof buildCatalogConfig>,
+        catalogConfig: CatalogConfig,
         atlasRepository: AtlasSearchStorefrontProductQueryRepository,
         mongoBasicRepository: MongoBasicStorefrontProductQueryRepository,
-      ) => catalogConfig.searchDriver === 'mongo-basic'
-        ? mongoBasicRepository
-        : atlasRepository,
+        localizationService: PublicProductLocalizationService,
+      ) => new LocalizedStorefrontProductQueryRepository(
+        catalogConfig.searchDriver === 'mongo-basic'
+          ? mongoBasicRepository
+          : atlasRepository,
+        localizationService,
+      ),
     },
     {
       provide: ProductRecommendationQueryRepository,
@@ -232,14 +245,19 @@ import { STOREFRONT_PRICING_CONFIG, buildStorefrontPricingConfig } from '~/platf
         CATALOG_CONFIG,
         AtlasProductRecommendationQueryRepository,
         MongoBasicProductRecommendationQueryRepository,
+        PublicProductLocalizationService,
       ],
       useFactory: (
-        catalogConfig: ReturnType<typeof buildCatalogConfig>,
+        catalogConfig: CatalogConfig,
         atlasRepository: AtlasProductRecommendationQueryRepository,
         mongoBasicRepository: MongoBasicProductRecommendationQueryRepository,
-      ) => catalogConfig.searchDriver === 'mongo-basic'
-        ? mongoBasicRepository
-        : atlasRepository,
+        localizationService: PublicProductLocalizationService,
+      ) => new LocalizedProductRecommendationQueryRepository(
+        catalogConfig.searchDriver === 'mongo-basic'
+          ? mongoBasicRepository
+          : atlasRepository,
+        localizationService,
+      ),
     },
     {
       provide: SellerProductQueryRepository,
@@ -302,6 +320,10 @@ import { STOREFRONT_PRICING_CONFIG, buildStorefrontPricingConfig } from '~/platf
       useExisting: MikroOrmProductLookupRepository,
     },
     {
+      provide: ProductTranslationQueryRepository,
+      useExisting: MikroOrmProductTranslationQueryRepository,
+    },
+    {
       provide: ProductImportValidationQueryRepository,
       useExisting: MikroOrmProductImportValidationQueryRepository,
     },
@@ -351,11 +373,14 @@ import { STOREFRONT_PRICING_CONFIG, buildStorefrontPricingConfig } from '~/platf
     MikroOrmProductImportQueryRepository,
     MikroOrmProductImportValidationQueryRepository,
     MikroOrmProductLookupRepository,
+    MikroOrmProductTranslationQueryRepository,
     MikroOrmLiveProductInventoryStockRepository,
 
     CatalogStatusService,
     CatalogProductProjectorService,
+    CatalogContentReprojectionService,
     StorefrontMarketContextService,
+    PublicProductLocalizationService,
     StorefrontIndexedPriceProjectionService,
     ResolvedStorefrontPriceService,
     PurchaseEligibilityService,
@@ -419,6 +444,7 @@ import { STOREFRONT_PRICING_CONFIG, buildStorefrontPricingConfig } from '~/platf
     ProductImageService,
     ReviewImageService,
     CatalogProductProjectorService,
+    CatalogContentReprojectionService,
     StorefrontMarketContextService,
     ResolvedStorefrontPriceService,
     PurchaseEligibilityService,
