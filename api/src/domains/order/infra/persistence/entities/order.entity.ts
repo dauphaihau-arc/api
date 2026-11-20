@@ -2,6 +2,11 @@ import {
   ArrayType, Entity, Enum, Index, ManyToOne, Opt, Property, Unique,
 } from '@mikro-orm/core';
 import { AbstractBaseEntity } from '~/platform/database/abstract-base.entity';
+import {
+  DEFAULT_STOREFRONT_LANGUAGE,
+  STOREFRONT_LANGUAGES,
+  type StorefrontLanguage,
+} from '~/platform/config/marketplace.config';
 import { createPublicId } from '~/platform/ids/public-id';
 import { UserEntity } from '~/domains/user/infra/persistence/entities/user.entity';
 import { ShopEntity } from '~/domains/shop/infra/persistence/entities/shop.entity';
@@ -63,6 +68,14 @@ export class OrderEntity extends AbstractBaseEntity {
 
   @Property({ fieldName: 'market_code', length: 20, nullable: true })
   marketCode?: string;
+
+  /**
+   * The Storefront Language the buyer explicitly chose at checkout, snapshotted
+   * when the Order is confirmed. Later Buyer Language Preference changes never
+   * rewrite it. Order-bound email and future order SMS/PDF read this value.
+   */
+  @Enum({ items: () => STOREFRONT_LANGUAGES, fieldName: 'language' })
+  language: StorefrontLanguage = DEFAULT_STOREFRONT_LANGUAGE;
 
   @Property({ type: 'numeric', precision: 12, scale: 2 })
   subtotal!: number;
