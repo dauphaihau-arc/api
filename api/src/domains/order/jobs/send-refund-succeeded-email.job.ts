@@ -1,5 +1,10 @@
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable, Logger } from '@nestjs/common';
+import {
+  renderRefundSucceededEmail,
+  resolveRefundSucceededLanguage,
+} from '~/domains/order/app/outbound-messages/refund-emails.message';
+import { formatOutboundMoney } from '~/platform/localization/outbound-messages/format-outbound-money';
 import { OrderEntity } from '~/domains/order/infra/persistence/entities/order.entity';
 import { MailSender } from '~/integrations/mail/app/ports/mail-sender';
 import type { AppJobPayloadMap } from '~/platform/jobs/app-job.types';
@@ -30,16 +35,19 @@ export class SendRefundSucceededEmailJob {
     const refundAmount = typeof order.paymentDetails?.['refund_amount'] === 'number'
       ? order.paymentDetails['refund_amount']
       : order.total;
+    const language = resolveRefundSucceededLanguage(order.language);
+
+    const rendered = renderRefundSucceededEmail(language, {
+      orderPublicId: order.publicId,
+      shopName: order.shop.shopName,
+      refundAmount: formatOutboundMoney(language, refundAmount, order.currency),
+    });
 
     await this.mailSender.send({
       to: { email: order.customerEmail },
-      subject: `Refund completed for order ${order.publicId}`,
-      text:
-        `Your refund for order ${order.publicId} from ${order.shop.shopName} has completed. ` +
-        `Refund amount: ${refundAmount} ${order.currency}.`,
-      html:
-        `<p>Your refund for order <strong>${order.publicId}</strong> from ${order.shop.shopName} has completed.</p>` +
-        `<p>Refund amount: <strong>${refundAmount} ${order.currency}</strong>.</p>`,
+      subject: rendered.subject,
+      text: rendered.text,
+      html: rendered.html,
       tags: ['order-refund-succeeded'],
     });
 
