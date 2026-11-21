@@ -264,6 +264,7 @@ export class OrderCheckoutService {
       checkoutPending: result.checkoutPending && !checkoutSession?.url,
       checkoutSessionId: checkoutSession?.id,
       checkoutSessionUrl: checkoutSession?.url,
+      language: context.language,
       orderShops: result.orderShops,
     };
   }

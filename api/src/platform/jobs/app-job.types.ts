@@ -1,3 +1,5 @@
+import type { StorefrontLanguage } from '~/platform/config/marketplace.config';
+
 export interface AppJobPayloadMap {
   'fx.refresh-rates': {
     requestedAt: string;
@@ -18,6 +20,7 @@ export interface AppJobPayloadMap {
     orderIds: string[];
     trackingUrl: string;
     shopNames: string[];
+    language: StorefrontLanguage;
   };
   'order.process-refund': {
     orderId: string;
