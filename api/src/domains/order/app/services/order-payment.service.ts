@@ -5,6 +5,7 @@ import {
   FINANCE_CONFIG,
   type FinanceConfig,
 } from '../../../../platform/config/finance.config';
+import { DEFAULT_STOREFRONT_LANGUAGE } from '../../../../platform/config/marketplace.config';
 import { OutboxEventStatus } from '../../../../platform/outbox/outbox-event.entity';
 import { OrderEventActorType } from '../../domain/enums/order-event-actor-type.enum';
 import { OrderEventType } from '../../domain/enums/order-event-type.enum';
@@ -50,6 +51,7 @@ export class OrderPaymentService {
     );
 
     return {
+      language: orders[0]?.language ?? DEFAULT_STOREFRONT_LANGUAGE,
       orderShops: orders.map((order) => ({
         id: order.id,
         publicId: order.publicId,

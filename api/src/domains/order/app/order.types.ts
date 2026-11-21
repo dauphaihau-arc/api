@@ -1,4 +1,5 @@
 import type { CartSnapshot } from '../../cart/app/cart.types';
+import type { StorefrontLanguage } from '~/platform/config/marketplace.config';
 import type { PromoOffer } from '../../promotion/app/types/promotion.types';
 import type { PromotionMinOrderType } from '../../promotion/domain/enums/promotion-min-order-type.enum';
 import type { PromotionProductScope } from '../../promotion/domain/enums/promotion-product-scope.enum';
@@ -60,6 +61,8 @@ export interface CreatedOrderShopRef {
 
 export interface CreateOrderResult {
   orderShops: CreatedOrderShopRef[];
+  /** The Order Language snapshotted by this checkout request. */
+  language: StorefrontLanguage;
   checkoutSessionUrl?: string;
   checkoutSessionId?: string;
   checkoutPending?: boolean;

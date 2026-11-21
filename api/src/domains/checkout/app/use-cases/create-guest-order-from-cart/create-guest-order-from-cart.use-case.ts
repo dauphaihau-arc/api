@@ -76,6 +76,7 @@ export class CreateGuestOrderFromCartUseCase {
           orderIds: result.orderShops.map((orderShop) => orderShop.publicId),
           trackingUrl,
           shopNames: result.orderShops.map((orderShop) => orderShop.shopName),
+          language: result.language,
         },
         {
           deduplicationKey: appJobDeduplicationKey.sendGuestOrderConfirmationEmail(
