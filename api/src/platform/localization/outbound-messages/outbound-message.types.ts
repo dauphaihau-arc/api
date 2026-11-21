@@ -15,9 +15,14 @@ export interface OutboundEmailTemplate {
   };
 }
 
-export interface OutboundMessageTemplate {
-  email: OutboundEmailTemplate;
+export interface OutboundNotificationTemplate {
+  title: string;
+  body: string;
 }
+
+export type OutboundMessageTemplate =
+  | { email: OutboundEmailTemplate; notification?: OutboundNotificationTemplate }
+  | { email?: OutboundEmailTemplate; notification: OutboundNotificationTemplate };
 
 /**
  * English is the required source template; other Storefront Languages are
@@ -43,3 +48,8 @@ export type RenderedEmailMessage = RenderedOutboundMessage & {
   subject: string;
   html: string;
 };
+
+export interface RenderedNotificationMessage {
+  title: string;
+  body: string;
+}

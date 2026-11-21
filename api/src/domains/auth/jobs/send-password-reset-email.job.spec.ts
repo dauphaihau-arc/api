@@ -1,5 +1,5 @@
 import type { MailSender } from '~/integrations/mail/app/ports/mail-sender';
-import type { AccountEmailLanguageService } from '~/domains/auth/app/services/account-email-language.service';
+import type { BuyerLanguageService } from '~/domains/auth/app/services/buyer-language.service';
 import { SendPasswordResetEmailJob } from './send-password-reset-email.job';
 
 describe('SendPasswordResetEmailJob', () => {
@@ -7,14 +7,14 @@ describe('SendPasswordResetEmailJob', () => {
     const mailSender: jest.Mocked<MailSender> = {
       send: jest.fn().mockResolvedValue(undefined),
     };
-    const accountEmailLanguageService = {
-      resolve: jest.fn().mockResolvedValue(language),
-    } as unknown as AccountEmailLanguageService;
+    const buyerLanguageService = {
+      resolve: jest.fn().mockResolvedValue({ isBuyer: true, language }),
+    } as unknown as BuyerLanguageService;
 
     return {
-      job: new SendPasswordResetEmailJob(mailSender, accountEmailLanguageService),
+      job: new SendPasswordResetEmailJob(mailSender, buyerLanguageService),
       mailSender,
-      accountEmailLanguageService,
+      buyerLanguageService,
     };
   }
 
@@ -26,11 +26,11 @@ describe('SendPasswordResetEmailJob', () => {
   };
 
   it('sends the Vietnamese reset message with the reset link to a Vietnamese buyer', async () => {
-    const { job, mailSender, accountEmailLanguageService } = buildJob('vi');
+    const { job, mailSender, buyerLanguageService } = buildJob('vi');
 
     await job.run(payload);
 
-    expect(accountEmailLanguageService.resolve).toHaveBeenCalledWith('user-1');
+    expect(buyerLanguageService.resolve).toHaveBeenCalledWith('user-1');
     expect(mailSender.send).toHaveBeenCalledTimes(1);
     expect(mailSender.send).toHaveBeenCalledWith(
       expect.objectContaining({

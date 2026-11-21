@@ -1,5 +1,5 @@
 import type { MailSender } from '~/integrations/mail/app/ports/mail-sender';
-import type { AccountEmailLanguageService } from '~/domains/auth/app/services/account-email-language.service';
+import type { BuyerLanguageService } from '~/domains/auth/app/services/buyer-language.service';
 import { SendWelcomeEmailJob } from './send-welcome-email.job';
 
 describe('SendWelcomeEmailJob', () => {
@@ -7,19 +7,19 @@ describe('SendWelcomeEmailJob', () => {
     const mailSender: jest.Mocked<MailSender> = {
       send: jest.fn().mockResolvedValue(undefined),
     };
-    const accountEmailLanguageService = {
-      resolve: jest.fn().mockResolvedValue(language),
-    } as unknown as AccountEmailLanguageService;
+    const buyerLanguageService = {
+      resolve: jest.fn().mockResolvedValue({ isBuyer: true, language }),
+    } as unknown as BuyerLanguageService;
 
     return {
-      job: new SendWelcomeEmailJob(mailSender, accountEmailLanguageService),
+      job: new SendWelcomeEmailJob(mailSender, buyerLanguageService),
       mailSender,
-      accountEmailLanguageService,
+      buyerLanguageService,
     };
   }
 
   it('sends the Vietnamese welcome message to a Vietnamese buyer', async () => {
-    const { job, mailSender, accountEmailLanguageService } = buildJob('vi');
+    const { job, mailSender, buyerLanguageService } = buildJob('vi');
 
     await job.run({
       userId: 'user-1',
@@ -27,7 +27,7 @@ describe('SendWelcomeEmailJob', () => {
       displayName: 'Member User',
     });
 
-    expect(accountEmailLanguageService.resolve).toHaveBeenCalledWith('user-1');
+    expect(buyerLanguageService.resolve).toHaveBeenCalledWith('user-1');
     expect(mailSender.send).toHaveBeenCalledTimes(1);
     expect(mailSender.send).toHaveBeenCalledWith(
       expect.objectContaining({

@@ -8,6 +8,7 @@ import type {
   OutboundMessageCatalog,
   OutboundMessageData,
   RenderedEmailMessage,
+  RenderedNotificationMessage,
 } from './outbound-message.types';
 
 export class UnknownOutboundMessageError extends Error {
@@ -53,6 +54,12 @@ export function resolveOutboundMessageLanguage(
 }
 
 export interface RenderOutboundEmailRequest {
+  messageId: string;
+  language: string;
+  data: OutboundMessageData;
+}
+
+export interface RenderOutboundNotificationRequest {
   messageId: string;
   language: string;
   data: OutboundMessageData;
@@ -105,6 +112,24 @@ export class OutboundMessageRenderer {
         paragraphs,
         action,
       }),
+    };
+  }
+
+  renderNotification(
+    catalog: OutboundMessageCatalog,
+    request: RenderOutboundNotificationRequest,
+  ): RenderedNotificationMessage {
+    const { messageId, data } = request;
+    const language = resolveOutboundMessageLanguage(catalog, messageId, request.language);
+    const template = catalog[messageId][language]?.notification;
+
+    if (!template) {
+      throw new UnknownOutboundMessageError(messageId, request.language);
+    }
+
+    return {
+      title: this.interpolate(template.title, messageId, data),
+      body: this.interpolate(template.body, messageId, data),
     };
   }
 

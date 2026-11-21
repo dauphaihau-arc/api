@@ -22,6 +22,7 @@ import {
 } from '../../errors/order-app.error';
 import { dispatchBestSellerRankingRefresh } from '../../best-seller-ranking-refresh';
 import { ORDER_UPDATED_SSE_EVENT } from '../../events/order-sse.event';
+import { ORDER_CANCELED_NOTIFICATION_ID } from '../../outbound-messages/order-notifications.message';
 import { buildScopedOrderIdentifierWhere } from '../../order-identifier';
 import { FulfillmentService } from '../../../../fulfillment/app/services/fulfillment.service';
 import { OrderCancellationService } from '../../services/order-cancellation.service';
@@ -169,11 +170,12 @@ export class UpdateShopOrderStatusUseCase {
 
       await this.notifyUserUseCase.execute({
         userId: result.customerUserId,
-        type: 'order.canceled',
+        type: ORDER_CANCELED_NOTIFICATION_ID,
         title: 'Order canceled',
         body: `Your order ${result.detail.orderNumber} was canceled by the seller.`,
         data: {
           orderId: result.detail.id,
+          orderNumber: result.detail.orderNumber,
           shopId,
           actor: 'seller',
           status: OrderStatus.CANCELED,
