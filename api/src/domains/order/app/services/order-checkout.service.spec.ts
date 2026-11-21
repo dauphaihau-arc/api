@@ -20,6 +20,7 @@ import type { PurchaseEligibilityService } from '../../../product/app/services/p
 import type { ShippingQuoteService } from '../../../shipping/app/services/shipping-quote.service';
 import ms from 'ms';
 import type { PaymentConfig } from '../../../../platform/config/payment.config';
+import type { RequestContextService } from '../../../../platform/request-context/request-context.service';
 import {
   CheckoutShippingUnavailableError,
   OrderNoItemsError,
@@ -104,6 +105,7 @@ describe('OrderCheckoutService', () => {
     shippingResolutions?: Array<Record<string, unknown>>;
     pricedCartSummary?: PricedCartSummary;
     checkoutSessionTtlMs?: number;
+    locale?: string | null;
   }) {
     const orders: Array<Record<string, unknown>> = [];
     const inventory = {
@@ -244,6 +246,9 @@ describe('OrderCheckoutService', () => {
     const paymentConfig: PaymentConfig = {
       checkoutSessionTtlMs: options?.checkoutSessionTtlMs ?? ms('60m'),
     } as PaymentConfig;
+    const requestContextService = {
+      get: jest.fn().mockReturnValue({ locale: options?.locale }),
+    } as unknown as jest.Mocked<RequestContextService>;
 
     const service = new OrderCheckoutService(
       entityManager,
@@ -262,6 +267,7 @@ describe('OrderCheckoutService', () => {
       promotionRedemptionService,
       fulfillmentService,
       shippingQuoteService,
+      requestContextService,
       paymentConfig,
     );
 
@@ -283,6 +289,7 @@ describe('OrderCheckoutService', () => {
       purchaseEligibilityService,
       promotionRedemptionService,
       fulfillmentService,
+      requestContextService,
     };
   }
 
@@ -1111,6 +1118,116 @@ describe('OrderCheckoutService', () => {
       ],
     };
   }
+
+  describe('Order Language snapshot', () => {
+    const authenticatedActor = {
+      type: 'user' as const,
+      userId: 'user-1',
+      email: 'member@example.com',
+    };
+    const guestActor = {
+      type: 'guest' as const,
+      email: 'guest@example.com',
+    };
+    const guestCart: CartSnapshot = {
+      ...cart,
+      userId: null,
+      guestSessionId: 'guest-session-1',
+    };
+
+    const checkoutPaths = [
+      {
+        name: 'authenticated cart checkout',
+        actor: authenticatedActor,
+        cart,
+        isTempCart: false,
+      },
+      {
+        name: 'authenticated buy-now checkout',
+        actor: authenticatedActor,
+        cart: { ...cart, kind: CartKind.BUY_NOW },
+        isTempCart: true,
+      },
+      {
+        name: 'guest cart checkout',
+        actor: guestActor,
+        cart: guestCart,
+        isTempCart: false,
+      },
+      {
+        name: 'guest buy-now checkout',
+        actor: guestActor,
+        cart: { ...guestCart, kind: CartKind.BUY_NOW },
+        isTempCart: true,
+      },
+    ];
+
+    it.each(checkoutPaths)(
+      'captures the explicit request language on $name',
+      async ({ actor, cart: checkoutCart, isTempCart }) => {
+        const quote = buildQuotedCheckout();
+        const { service, orderRepository } = buildService({
+          locale: 'vi-VN',
+          pricedCartSummary: buildPricedCartSummaryMatchingQuote(quote),
+        });
+
+        await service.createOrders(actor, checkoutCart, {
+          paymentType: PaymentType.CASH,
+          shippingAddress,
+          quote: quote as never,
+          isTempCart,
+        });
+
+        expect(orderRepository.create).toHaveBeenCalledWith(
+          expect.objectContaining({ language: 'vi' }),
+        );
+      },
+    );
+
+    it.each([
+      { name: 'an absent request locale', locale: undefined },
+      { name: 'an unsupported request locale', locale: 'fr-FR' },
+    ])('falls back to English for $name', async ({ locale }) => {
+      const { service, orderRepository } = buildService({ locale });
+
+      await service.createOrders(authenticatedActor, cart, {
+        paymentType: PaymentType.CASH,
+        shippingAddress,
+        isTempCart: false,
+      });
+
+      expect(orderRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ language: 'en' }),
+      );
+    });
+
+    it('snapshots each new checkout request language independently', async () => {
+      const { service, orderRepository, requestContextService } = buildService({
+        locale: 'vi',
+      });
+
+      await service.createOrders(authenticatedActor, cart, {
+        paymentType: PaymentType.CASH,
+        shippingAddress,
+        isTempCart: false,
+      });
+
+      requestContextService.get.mockReturnValue({ locale: 'en' } as never);
+
+      await service.createOrders(authenticatedActor, cart, {
+        paymentType: PaymentType.CASH,
+        shippingAddress,
+        isTempCart: false,
+      });
+
+      const createdOrders = orderRepository.create.mock.results.map(
+        (result) => result.value as Record<string, unknown>,
+      );
+
+      expect(createdOrders[0].language).toBe('vi');
+      expect(createdOrders[1].language).toBe('en');
+    });
+  });
 
   describe('OrderCheckoutService accepted shipping facts', () => {
     it('persists the accepted per-shop shipping snapshot and estimate instead of a fabricated date', async () => {

@@ -6,7 +6,14 @@ import {
   Logger,
 } from '@nestjs/common';
 import { fromMinorUnits } from '../../../../platform/money/money';
-import { MARKETPLACE_CURRENCIES } from '../../../../platform/config/marketplace.config';
+import {
+  MARKETPLACE_CURRENCIES,
+  type StorefrontLanguage,
+} from '../../../../platform/config/marketplace.config';
+import {
+  normalizeStorefrontLanguage,
+} from '../../../../platform/localization/storefront-language';
+import { RequestContextService } from '../../../../platform/request-context/request-context.service';
 import { appJobDeduplicationKey } from '../../../../platform/jobs/app-job-deduplication';
 import { appJobName } from '../../../../platform/jobs/app-job.names';
 import {
@@ -108,6 +115,7 @@ interface CheckoutCommitContext {
   input: CreateOrdersInput;
   quote?: LoadedCheckoutQuote;
   currency: string;
+  language: StorefrontLanguage;
   resolved: ResolvedCheckout;
 }
 
@@ -166,6 +174,7 @@ export class OrderCheckoutService {
     private readonly promotionRedemptionService: PromotionRedemptionService,
     private readonly fulfillmentService: FulfillmentService,
     private readonly shippingQuoteService: ShippingQuoteService,
+    private readonly requestContextService: RequestContextService,
     @Inject(PAYMENT_CONFIG) paymentConfig: PaymentConfig,
   ) {
     this.checkoutHoldTtlMs =
@@ -225,6 +234,9 @@ export class OrderCheckoutService {
       input,
       quote,
       currency,
+      // Captured before the commitment transaction so every Order created by
+      // this checkout request snapshots the same explicit language choice.
+      language: normalizeStorefrontLanguage(this.requestContextService.get().locale),
       resolved,
     };
 
@@ -272,6 +284,7 @@ export class OrderCheckoutService {
       cartId,
       currency,
       input,
+      language,
       resolved,
     } = context;
 
@@ -332,6 +345,7 @@ export class OrderCheckoutService {
         status: isCash ? OrderStatus.PENDING : OrderStatus.CHECKOUT_PENDING,
         shippingStatus: OrderShippingStatus.PRE_TRANSIT,
         currency,
+        language,
         marketCode: shop.marketCode,
         subtotal: fromMinorUnits(shop.subtotalMinor, currency),
         subtotalMinor: shop.subtotalMinor,

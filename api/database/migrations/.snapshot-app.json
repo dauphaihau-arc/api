@@ -8728,6 +8728,25 @@
           "comment": null,
           "enumItems": [],
           "mappedType": "string"
+        },
+        "language": {
+          "name": "language",
+          "type": "varchar(10)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": false,
+          "length": 10,
+          "precision": null,
+          "scale": null,
+          "default": "'en'",
+          "comment": null,
+          "enumItems": [
+            "en",
+            "vi"
+          ],
+          "mappedType": "enum"
         }
       },
       "name": "orders",

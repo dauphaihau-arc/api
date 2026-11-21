@@ -375,6 +375,15 @@ describe('Checkout and order snapshots carry canonical codes (integration)', () 
     return result.rows[0].shipping_address as PersistedShippingAddress;
   }
 
+  async function readOrderLanguage(orderPublicId: string): Promise<string> {
+    const result = await sql.query(
+      'select "language" from "orders" where "public_id" = $1',
+      [orderPublicId],
+    );
+
+    return result.rows[0].language as string;
+  }
+
   it('resolves guest codes, reuses the quote across equivalent code casing, and snapshots the order', async () => {
     const seller = await registerSeller();
     const { inventoryId } = await seedPublishedProduct(seller, 20);
@@ -439,12 +448,13 @@ describe('Checkout and order snapshots carry canonical codes (integration)', () 
 
     const buyerAgent = request.agent(app.getHttpServer());
     const email = `codes-buyer-${Date.now()}@example.com`;
-    await buyerAgent
+    const buyerRegistration = await buyerAgent
       .post(`${API_PREFIX}/auth/register`)
       .set('Idempotency-Key', randomUUID())
       .set('X-Forwarded-For', randomForwardedIp())
       .send({ email, password: VALID_TEST_PASSWORD, displayName: 'Buyer' })
       .expect(201);
+    const buyerId = buyerRegistration.body.user.id as string;
 
     const addressResponse = await buyerAgent
       .post(`${API_PREFIX}/me/addresses`)
@@ -508,6 +518,7 @@ describe('Checkout and order snapshots carry canonical codes (integration)', () 
     const savedOrder = await buyerAgent
       .post(`${API_PREFIX}/me/checkout`)
       .set('Idempotency-Key', randomUUID())
+      .set('X-Locale', 'en-US')
       .send({ quote_id: savedQuoteId, payment_type: 'cash' })
       .expect(201);
 
@@ -515,6 +526,7 @@ describe('Checkout and order snapshots carry canonical codes (integration)', () 
       .post(`${API_PREFIX}/checkout/cart`)
       .set('Idempotency-Key', randomUUID())
       .set('X-Forwarded-For', randomForwardedIp())
+      .set('X-Locale', 'vi-VN')
       .send({
         payment_type: 'cash',
         quote_id: guestQuoteId,
@@ -526,6 +538,7 @@ describe('Checkout and order snapshots carry canonical codes (integration)', () 
       .post(`${API_PREFIX}/checkout/buy-now`)
       .set('Idempotency-Key', randomUUID())
       .set('X-Forwarded-For', randomForwardedIp())
+      .set('X-Locale', 'en-US')
       .send({
         payment_type: 'cash',
         quote_id: buyNowQuoteId,
@@ -542,6 +555,20 @@ describe('Checkout and order snapshots carry canonical codes (integration)', () 
     expect(snapshots[0]).toEqual(expect.objectContaining(CANONICAL_DESTINATION));
     expect(snapshots[1]).toEqual(snapshots[0]);
     expect(snapshots[2]).toEqual(snapshots[0]);
+
+    await expect(readOrderLanguage(savedOrder.body.order_shops[0].id as string))
+      .resolves.toBe('en');
+    await expect(readOrderLanguage(guestOrder.body.order_shops[0].id as string))
+      .resolves.toBe('vi');
+    await expect(readOrderLanguage(buyNowOrder.body.order_shops[0].id as string))
+      .resolves.toBe('en');
+
+    await sql.query(
+      'update "user_preferences" set "language" = $1 where "user_id" = $2',
+      ['vi', buyerId],
+    );
+    await expect(readOrderLanguage(savedOrder.body.order_shops[0].id as string))
+      .resolves.toBe('en');
   });
 
   it('quotes a saved address whose preserved legacy subdivision is not in the dataset', async () => {
