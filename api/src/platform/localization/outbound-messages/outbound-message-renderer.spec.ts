@@ -138,3 +138,93 @@ describe('OutboundMessageRenderer', () => {
     ).toThrow(MissingOutboundMessageDataError);
   });
 });
+
+describe('OutboundMessageRenderer notification channel', () => {
+  const renderer = new OutboundMessageRenderer();
+  const notificationCatalog: OutboundMessageCatalog = {
+    'test.notification': {
+      en: {
+        notification: {
+          title: 'Order {{orderNumber}} updated',
+          body: 'Order {{orderNumber}} for {{name}} was updated.',
+        },
+      },
+      vi: {
+        notification: {
+          title: 'Đơn hàng {{orderNumber}} đã cập nhật',
+          body: 'Đơn hàng {{orderNumber}} của {{name}} đã được cập nhật.',
+        },
+      },
+    },
+  };
+
+  it('renders title and body in the recipient language', () => {
+    const rendered = renderer.renderNotification(notificationCatalog, {
+      messageId: 'test.notification',
+      language: 'vi',
+      data: { orderNumber: 'ORD-1', name: 'Shop 1' },
+    });
+
+    expect(rendered).toEqual({
+      title: 'Đơn hàng ORD-1 đã cập nhật',
+      body: 'Đơn hàng ORD-1 của Shop 1 đã được cập nhật.',
+    });
+  });
+
+  it('renders English for an English recipient', () => {
+    const rendered = renderer.renderNotification(notificationCatalog, {
+      messageId: 'test.notification',
+      language: 'en-US',
+      data: { orderNumber: 'ORD-1', name: 'Shop 1' },
+    });
+
+    expect(rendered.title).toBe('Order ORD-1 updated');
+    expect(rendered.body).toBe('Order ORD-1 for Shop 1 was updated.');
+  });
+
+  it('falls the whole notification back to English when Vietnamese copy is missing', () => {
+    const englishOnlyCatalog: OutboundMessageCatalog = {
+      'test.notification': { en: notificationCatalog['test.notification'].en },
+    };
+
+    const rendered = renderer.renderNotification(englishOnlyCatalog, {
+      messageId: 'test.notification',
+      language: 'vi',
+      data: { orderNumber: 'ORD-1', name: 'Shop 1' },
+    });
+
+    expect(rendered.title).toBe('Order ORD-1 updated');
+    expect(rendered.body).toContain('was updated');
+    expect(rendered.body).not.toContain('đã được cập nhật');
+  });
+
+  it('throws for an unknown notification identity', () => {
+    expect(() =>
+      renderer.renderNotification(notificationCatalog, {
+        messageId: 'unknown.notification',
+        language: 'en',
+        data: { orderNumber: 'ORD-1' },
+      }),
+    ).toThrow(UnknownOutboundMessageError);
+  });
+
+  it('throws for missing notification template data', () => {
+    expect(() =>
+      renderer.renderNotification(notificationCatalog, {
+        messageId: 'test.notification',
+        language: 'en',
+        data: { orderNumber: 'ORD-1' },
+      }),
+    ).toThrow(MissingOutboundMessageDataError);
+  });
+
+  it('throws when a catalog entry has no notification template', () => {
+    expect(() =>
+      renderer.renderNotification(catalog, {
+        messageId: 'test.message',
+        language: 'en',
+        data,
+      }),
+    ).toThrow(UnknownOutboundMessageError);
+  });
+});

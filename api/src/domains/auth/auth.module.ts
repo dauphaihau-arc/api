@@ -13,7 +13,7 @@ import { PasswordHasher } from './app/ports/password-hasher';
 import { PasswordResetTokenRepository } from './app/ports/password-reset-token.repository';
 import { TokenHasher } from './app/ports/token-hasher';
 import { UserPreferenceRepository } from './app/ports/user-preference.repository';
-import { AccountEmailLanguageService } from './app/services/account-email-language.service';
+import { BuyerLanguageService } from './app/services/buyer-language.service';
 import { GetCurrentUserUseCase } from './app/use-cases/get-current-user/get-current-user.use-case';
 import { ListRolesUseCase } from './app/use-cases/list-roles/list-roles.use-case';
 import { LoadAuthenticatedUserUseCase } from './app/use-cases/load-authenticated-user/load-authenticated-user.use-case';
@@ -145,7 +145,7 @@ const authEntities = [
     UpdateCurrentUserPreferencesUseCase,
     LoadAuthenticatedUserUseCase,
     IssueSessionUseCase,
-    AccountEmailLanguageService,
+    BuyerLanguageService,
     AuthHttpExceptionFilter,
     AuthCookieService,
     JwtStrategy,
@@ -158,7 +158,7 @@ const authEntities = [
     AuthUserRepository,
     AuthTokenService,
     UserPreferenceRepository,
-    AccountEmailLanguageService,
+    BuyerLanguageService,
     LoadAuthenticatedUserUseCase,
     JwtAuthGuard,
     OptionalJwtAuthGuard,

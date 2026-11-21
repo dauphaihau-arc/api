@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { AccountEmailLanguageService } from '~/domains/auth/app/services/account-email-language.service';
+import { BuyerLanguageService } from '~/domains/auth/app/services/buyer-language.service';
 import { MailSender } from '~/integrations/mail/app/ports/mail-sender';
 import type { AppJobPayloadMap } from '~/platform/jobs/app-job.types';
 import { renderPasswordResetEmail } from '../app/outbound-messages/password-reset.message';
@@ -13,11 +13,11 @@ export class SendPasswordResetEmailJob {
 
   constructor(
     private readonly mailSender: MailSender,
-    private readonly accountEmailLanguageService: AccountEmailLanguageService,
+    private readonly buyerLanguageService: BuyerLanguageService,
   ) {}
 
   async run(payload: SendPasswordResetEmailPayload): Promise<void> {
-    const language = await this.accountEmailLanguageService.resolve(
+    const { language } = await this.buyerLanguageService.resolve(
       payload.userId,
     );
 

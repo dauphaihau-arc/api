@@ -9,6 +9,7 @@ import {
 } from '../../fulfillment/app/events/shipment-carrier-event-accepted.event';
 import { CarrierEventCode } from '../../fulfillment/domain/carrier-event';
 import { ORDER_UPDATED_SSE_EVENT } from '../app/events/order-sse.event';
+import { ORDER_SHIPMENT_UPDATED_NOTIFICATION_ID } from '../app/outbound-messages/order-notifications.message';
 import { getRequiredOrderNumber } from '../app/order-number';
 import { OrderEntity } from '../infra/persistence/entities/order.entity';
 
@@ -79,14 +80,16 @@ export class NotifyShipmentUpdateListener {
     }
 
     const copy = SHIPMENT_UPDATE_COPY[payload.eventCode];
+    const orderNumber = getRequiredOrderNumber(order);
     const trackingNumber = payload.trackingNumber.trim();
 
     const notification = {
-      type: 'order.shipment.updated',
+      type: ORDER_SHIPMENT_UPDATED_NOTIFICATION_ID,
       title: copy.title,
-      body: copy.body(getRequiredOrderNumber(order)),
+      body: copy.body(orderNumber),
       data: {
         orderId: order.publicId,
+        orderNumber,
         shopId: order.shop.publicId,
         eventCode: payload.eventCode,
         ...(trackingNumber ? { trackingNumber } : {}),

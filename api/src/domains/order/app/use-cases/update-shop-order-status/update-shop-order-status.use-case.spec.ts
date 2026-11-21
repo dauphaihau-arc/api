@@ -181,7 +181,20 @@ describe('UpdateShopOrderStatusUseCase', () => {
         delayMs: 5000,
       }),
     );
-    expect(notifyUserUseCase.execute).toHaveBeenCalled();
+    expect(notifyUserUseCase.execute).toHaveBeenCalledWith({
+      userId: 'user-1',
+      type: 'order.canceled',
+      title: 'Order canceled',
+      body: 'Your order ORD-20260604-000001 was canceled by the seller.',
+      data: {
+        orderId: 'order-1',
+        orderNumber: 'ORD-20260604-000001',
+        shopId: 'shop-1',
+        actor: 'seller',
+        status: OrderStatus.CANCELED,
+      },
+      channels: ['in_app', 'web_push'],
+    });
     expect(result.id).toBe('order-1');
   });
 

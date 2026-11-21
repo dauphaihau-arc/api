@@ -3,7 +3,7 @@ import type { AuthUserRepository } from '../ports/auth-user.repository';
 import type { UserPreferenceRepository } from '../ports/user-preference.repository';
 import type { UserAccount } from '../../domain/models/user-account';
 import { RoleKey } from '../../domain/value-objects/role-key';
-import { AccountEmailLanguageService } from './account-email-language.service';
+import { BuyerLanguageService } from './buyer-language.service';
 
 function buildAccount(roles: string[]): UserAccount {
   return {
@@ -21,10 +21,10 @@ function buildPreference(language: string): UserPreferences {
   } as unknown as UserPreferences;
 }
 
-describe('AccountEmailLanguageService', () => {
+describe('BuyerLanguageService', () => {
   let authUserRepository: jest.Mocked<AuthUserRepository>;
   let userPreferenceRepository: jest.Mocked<UserPreferenceRepository>;
-  let service: AccountEmailLanguageService;
+  let service: BuyerLanguageService;
 
   beforeEach(() => {
     authUserRepository = {
@@ -33,16 +33,19 @@ describe('AccountEmailLanguageService', () => {
     userPreferenceRepository = {
       findByUserId: jest.fn(),
     } as unknown as jest.Mocked<UserPreferenceRepository>;
-    service = new AccountEmailLanguageService(
+    service = new BuyerLanguageService(
       authUserRepository,
       userPreferenceRepository,
     );
   });
 
-  it('falls back to English when the account does not exist', async () => {
+  it('classifies a missing account as non-buyer and English', async () => {
     authUserRepository.findById.mockResolvedValue(null);
 
-    await expect(service.resolve('missing-user')).resolves.toBe('en');
+    await expect(service.resolve('missing-user')).resolves.toEqual({
+      isBuyer: false,
+      language: 'en',
+    });
     expect(userPreferenceRepository.findByUserId).not.toHaveBeenCalled();
   });
 
@@ -50,7 +53,10 @@ describe('AccountEmailLanguageService', () => {
     authUserRepository.findById.mockResolvedValue(buildAccount(['customer']));
     userPreferenceRepository.findByUserId.mockResolvedValue(buildPreference('vi'));
 
-    await expect(service.resolve('user-1')).resolves.toBe('vi');
+    await expect(service.resolve('user-1')).resolves.toEqual({
+      isBuyer: true,
+      language: 'vi',
+    });
     expect(userPreferenceRepository.findByUserId).toHaveBeenCalledWith('user-1');
   });
 
@@ -58,43 +64,71 @@ describe('AccountEmailLanguageService', () => {
     authUserRepository.findById.mockResolvedValue(buildAccount(['customer']));
     userPreferenceRepository.findByUserId.mockResolvedValue(buildPreference('vi-VN'));
 
-    await expect(service.resolve('user-1')).resolves.toBe('vi');
+    await expect(service.resolve('user-1')).resolves.toEqual({
+      isBuyer: true,
+      language: 'vi',
+    });
   });
 
   it('falls back to English when a buyer has no stored preference', async () => {
     authUserRepository.findById.mockResolvedValue(buildAccount(['customer']));
     userPreferenceRepository.findByUserId.mockResolvedValue(null);
 
-    await expect(service.resolve('user-1')).resolves.toBe('en');
+    await expect(service.resolve('user-1')).resolves.toEqual({
+      isBuyer: true,
+      language: 'en',
+    });
   });
 
   it('falls back to English when a buyer preference is unsupported', async () => {
     authUserRepository.findById.mockResolvedValue(buildAccount(['customer']));
     userPreferenceRepository.findByUserId.mockResolvedValue(buildPreference('fr'));
 
-    await expect(service.resolve('user-1')).resolves.toBe('en');
+    await expect(service.resolve('user-1')).resolves.toEqual({
+      isBuyer: true,
+      language: 'en',
+    });
   });
 
-  it('keeps seller emails English even when the preference is Vietnamese', async () => {
+  it('classifies an account without roles as non-buyer and English', async () => {
+    authUserRepository.findById.mockResolvedValue(buildAccount([]));
+
+    await expect(service.resolve('user-1')).resolves.toEqual({
+      isBuyer: false,
+      language: 'en',
+    });
+    expect(userPreferenceRepository.findByUserId).not.toHaveBeenCalled();
+  });
+
+  it('keeps seller accounts non-buyer and English', async () => {
     authUserRepository.findById.mockResolvedValue(buildAccount(['seller']));
 
-    await expect(service.resolve('user-1')).resolves.toBe('en');
+    await expect(service.resolve('user-1')).resolves.toEqual({
+      isBuyer: false,
+      language: 'en',
+    });
     expect(userPreferenceRepository.findByUserId).not.toHaveBeenCalled();
   });
 
-  it('keeps admin emails English even when the preference is Vietnamese', async () => {
+  it('keeps admin accounts non-buyer and English', async () => {
     authUserRepository.findById.mockResolvedValue(buildAccount(['admin']));
 
-    await expect(service.resolve('user-1')).resolves.toBe('en');
+    await expect(service.resolve('user-1')).resolves.toEqual({
+      isBuyer: false,
+      language: 'en',
+    });
     expect(userPreferenceRepository.findByUserId).not.toHaveBeenCalled();
   });
 
-  it('keeps mixed-role accounts English even when they hold customer access', async () => {
+  it('keeps mixed-role accounts non-buyer and English', async () => {
     authUserRepository.findById.mockResolvedValue(
       buildAccount(['customer', 'seller']),
     );
 
-    await expect(service.resolve('user-1')).resolves.toBe('en');
+    await expect(service.resolve('user-1')).resolves.toEqual({
+      isBuyer: false,
+      language: 'en',
+    });
     expect(userPreferenceRepository.findByUserId).not.toHaveBeenCalled();
   });
 });
