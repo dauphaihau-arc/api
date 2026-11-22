@@ -39,6 +39,13 @@ Top-level structure:
 - **Transactional outbox for checkout** - checkout session creation is decoupled from the write transaction through durable outbox events and retryable post-commit processing. See [`docs/outbox-pattern.md`](docs/outbox-pattern.md) and [`docs/checkout-transactional-outbox.md`](docs/checkout-transactional-outbox.md)
 - **Structured storage keys and asset processing** - uploaded product assets use predictable storage key conventions and image-processing flows. See [`docs/structured-storage-keys.md`](docs/structured-storage-keys.md)
 
+### Localization and Outbound Messages
+
+- **Storefront Language reads** - public Product and Category reads resolve the requested `en`/`vi` language from `X-Locale`, with per-field English fallback and language-scoped cache variation
+- **Order Language snapshot** - every confirmed Order stores the checkout Storefront Language, independent of later Buyer Language Preference changes
+- **Typed outbound catalogs** - buyer email, in-app notification, and Web Push copy lives in domain-owned English/Vietnamese catalogs rendered through one shared message renderer, with CI-enforced key parity and whole-message English fallback
+- **Recipient language rules** - order-bound email uses the Order Language; buyer account email, in-app reads, and Web Push use the current Buyer Language Preference; Seller/Admin messages remain English
+
 ### API and Security
 
 - **REST-first API** - the main application surface is versioned REST endpoints under `/v1`
