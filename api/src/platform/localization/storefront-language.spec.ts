@@ -1,5 +1,6 @@
 import {
   DEFAULT_STOREFRONT_LANGUAGE,
+  localizeStorefrontPath,
   normalizeStorefrontLanguage,
   resolveLocalizedValue,
 } from './storefront-language';
@@ -23,6 +24,18 @@ describe('normalizeStorefrontLanguage', () => {
     expect(normalizeStorefrontLanguage('')).toBe(DEFAULT_STOREFRONT_LANGUAGE);
     expect(normalizeStorefrontLanguage('fr-FR')).toBe(DEFAULT_STOREFRONT_LANGUAGE);
     expect(normalizeStorefrontLanguage('vi-VN-extra')).toBe('vi');
+  });
+});
+
+describe('localizeStorefrontPath', () => {
+  it('keeps English paths unprefixed', () => {
+    expect(localizeStorefrontPath('en', '/success')).toBe('/success');
+    expect(localizeStorefrontPath('en', '/')).toBe('/');
+  });
+
+  it('prefixes non-default languages', () => {
+    expect(localizeStorefrontPath('vi', '/success')).toBe('/vi/success');
+    expect(localizeStorefrontPath('vi', '/')).toBe('/vi');
   });
 });
 

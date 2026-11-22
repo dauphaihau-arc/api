@@ -95,6 +95,7 @@ Recommended payload:
   "cartId": "cart_123",
   "orderIds": ["order_a", "order_b"],
   "currency": "USD",
+  "language": "vi",
   "lineItems": [
     {
       "name": "Product title",
@@ -123,6 +124,10 @@ Important rule:
 - do not re-read mutable cart data in the worker to rebuild pricing
 
 The worker should operate from the persisted checkout snapshot.
+
+The payload also carries the Order Language. The worker uses it to build the
+localized `success_url` and `cancel_url` for Stripe, because the outbox runs
+outside the buyer's request and cannot read the request locale.
 
 ## Service Changes
 

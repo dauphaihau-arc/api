@@ -5,7 +5,11 @@ import { OrderCheckoutOutboxService } from './order-checkout-outbox.service';
 import { OutboxEventStatus } from '../../../../platform/outbox/outbox-event.entity';
 
 describe('OrderCheckoutOutboxService', () => {
-  function buildService(options?: { paymentFails?: boolean; attemptCount?: number }) {
+  function buildService(options?: {
+    paymentFails?: boolean;
+    attemptCount?: number;
+    language?: 'en' | 'vi' | null;
+  }) {
     const outboxEvent = {
       id: 'outbox-1',
       eventName: 'order.checkout-session-requested',
@@ -17,6 +21,9 @@ describe('OrderCheckoutOutboxService', () => {
         cartId: 'cart-1',
         orderIds: ['order-1'],
         currency: 'USD',
+        ...(options?.language === null
+          ? {}
+          : { language: options?.language ?? 'vi' }),
         lineItems: [
           {
             name: 'Product 1',
@@ -116,6 +123,8 @@ describe('OrderCheckoutOutboxService', () => {
         customerEmail: 'member@example.com',
         currency: 'USD',
         discountAmountMinor: 200,
+        successPath: '/vi/success',
+        cancelPath: '/vi/cart/checkout',
       }),
     );
     expect(result).toEqual({
@@ -131,6 +140,19 @@ describe('OrderCheckoutOutboxService', () => {
     );
     expect(outboxEvent.status).toBe(OutboxEventStatus.PROCESSED);
     expect(outboxEvent.processedAt).toBeInstanceOf(Date);
+  });
+
+  it('falls back to the default storefront path for a legacy payload', async () => {
+    const { service, paymentGateway } = buildService({ language: null });
+
+    await service.processEventById('outbox-1');
+
+    expect(paymentGateway.createCheckoutSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        successPath: '/success',
+        cancelPath: '/cart/checkout',
+      }),
+    );
   });
 
   it('reschedules the outbox event when Stripe session creation fails', async () => {

@@ -22,6 +22,23 @@ export function normalizeStorefrontLanguage(
 }
 
 /**
+ * Prefixes a language-neutral storefront path with its URL locale. English is
+ * the unprefixed default; every other Storefront Language is the prefix
+ * segment. Used where the storefront URL is built outside the browser, such as
+ * a payment provider's return URL.
+ */
+export function localizeStorefrontPath(
+  language: StorefrontLanguage,
+  path: `/${string}`,
+): string {
+  if (language === DEFAULT_STOREFRONT_LANGUAGE) {
+    return path;
+  }
+
+  return `/${language}${path === '/' ? '' : path}`;
+}
+
+/**
  * Resolves one translated field. This owns only the language boundary;
  * catalog projections decide which fields they expose. English always reads
  * the base source text, while other languages fall back per field.

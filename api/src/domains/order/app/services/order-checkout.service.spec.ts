@@ -1349,7 +1349,34 @@ describe('OrderCheckoutService', () => {
           ],
           shippingAmountMinor: 1150,
           discountAmountMinor: 0,
+          language: 'en',
         }),
+      );
+    });
+
+    it('carries the checkout language into the Stripe session outbox event', async () => {
+      const { service, orderCheckoutOutboxService } = buildService({
+        locale: 'vi-VN',
+        processResult: undefined,
+        pricedCartSummary: buildPricedCartSummaryMatchingQuote(buildQuotedCheckout()),
+      });
+
+      await service.createOrders(
+        { type: 'user', userId: 'user-1', email: 'member@example.com' },
+        cart,
+        {
+          paymentType: PaymentType.CARD,
+          shippingAddress,
+          quote: buildQuotedCheckout() as never,
+          isTempCart: false,
+        },
+      );
+
+      expect(
+        orderCheckoutOutboxService.createCheckoutSessionRequestedEvent,
+      ).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ language: 'vi' }),
       );
     });
 
