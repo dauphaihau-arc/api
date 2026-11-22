@@ -720,6 +720,7 @@ export class OrderCheckoutService {
         cartId: context.cartId,
         orderIds: args.createdOrders.map((order) => order.id),
         currency: context.currency,
+        language: context.language,
         lineItems,
         shippingAmountMinor,
         discountAmountMinor,

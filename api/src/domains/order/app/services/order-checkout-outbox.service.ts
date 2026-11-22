@@ -2,6 +2,11 @@ import { LockMode } from '@mikro-orm/core';
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable, Logger } from '@nestjs/common';
 import { PaymentGateway } from '../../../../integrations/payment/app/ports/payment-gateway';
+import type { StorefrontLanguage } from '../../../../platform/config/marketplace.config';
+import {
+  DEFAULT_STOREFRONT_LANGUAGE,
+  localizeStorefrontPath,
+} from '../../../../platform/localization/storefront-language';
 import {
   DURABLE_OUTBOX_BATCH_SIZE,
   DurableOutboxProcessor,
@@ -45,6 +50,11 @@ export interface CheckoutSessionRequestedPayload {
   cartId: string;
   orderIds: string[];
   currency: string;
+  /**
+   * The Order Language captured by the checkout request. Optional because
+   * events persisted before this field existed are still processed.
+   */
+  language?: StorefrontLanguage;
   lineItems: CheckoutSessionLineItemPayload[];
   shippingAmountMinor: number;
   discountAmountMinor: number;
@@ -108,6 +118,8 @@ export class OrderCheckoutOutboxService {
     }
 
     try {
+      const language =
+        claimed.payload.language ?? DEFAULT_STOREFRONT_LANGUAGE;
       const checkoutSession = await this.paymentGateway.createCheckoutSession({
         customerEmail: claimed.payload.customerEmail,
         currency: claimed.payload.currency,
@@ -119,6 +131,8 @@ export class OrderCheckoutOutboxService {
         shippingAmountMinor: claimed.payload.shippingAmountMinor,
         discountAmountMinor: claimed.payload.discountAmountMinor,
         shippingAddress: claimed.payload.shippingAddress,
+        successPath: localizeStorefrontPath(language, '/success'),
+        cancelPath: localizeStorefrontPath(language, '/cart/checkout'),
       });
 
       await this.entityManager.fork().transactional(async (entityManager) => {

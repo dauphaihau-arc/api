@@ -11,6 +11,7 @@ interface StubStripe {
   };
   checkout: {
     sessions: {
+      create?: (params: unknown) => Promise<unknown>;
       retrieve: (sessionId: string, params?: unknown) => Promise<unknown>;
     };
   };
@@ -44,6 +45,9 @@ function stubStripe(gateway: StripePaymentGateway, stripe: Partial<StubStripe>):
     },
     checkout: {
       sessions: {
+        create: async () => {
+          throw new Error('create was not expected');
+        },
         retrieve: async () => {
           throw new Error('retrieve was not expected');
         },
@@ -73,6 +77,44 @@ function mapObject(
 
   return gateway.constructWebhookEvent(Buffer.from('{}'), 'signature').data.object;
 }
+
+describe('StripePaymentGateway checkout session return URLs', () => {
+  it('uses the supplied localized success and cancel paths', async () => {
+    const gateway = buildGateway();
+    const create = jest.fn().mockResolvedValue({
+      id: 'cs_test_1',
+      url: 'https://checkout.stripe.test/cs_test_1',
+      expires_at: 1_800_000_000,
+    });
+    stubStripe(gateway, {
+      checkout: {
+        sessions: {
+          create,
+          retrieve: async () => {
+            throw new Error('retrieve was not expected');
+          },
+        },
+      },
+    });
+
+    await gateway.createCheckoutSession({
+      customerEmail: 'buyer@example.com',
+      currency: 'USD',
+      lineItems: [{ name: 'Product', unitAmountMinor: 1000, quantity: 1 }],
+      shippingAmountMinor: 0,
+      successPath: '/vi/success',
+      cancelPath: '/vi/cart/checkout',
+    });
+
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success_url:
+          'https://shop.example/vi/success?session_id={CHECKOUT_SESSION_ID}',
+        cancel_url: 'https://shop.example/vi/cart/checkout',
+      }),
+    );
+  });
+});
 
 describe('StripePaymentGateway webhook mapping', () => {
   it('maps a charge.succeeded charge to its balance transaction reference', () => {
