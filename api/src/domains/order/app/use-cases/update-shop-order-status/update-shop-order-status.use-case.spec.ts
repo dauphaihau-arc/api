@@ -15,6 +15,7 @@ describe('UpdateShopOrderStatusUseCase', () => {
   }) {
     const order = {
       id: 'order-1',
+      publicId: 'ord_order1',
       orderNumber: 'ORD-20260604-000001',
       shop: {
         id: 'shop-1',
@@ -187,7 +188,7 @@ describe('UpdateShopOrderStatusUseCase', () => {
       title: 'Order canceled',
       body: 'Your order ORD-20260604-000001 was canceled by the seller.',
       data: {
-        orderId: 'order-1',
+        orderId: 'ord_order1',
         orderNumber: 'ORD-20260604-000001',
         shopId: 'shop-1',
         actor: 'seller',

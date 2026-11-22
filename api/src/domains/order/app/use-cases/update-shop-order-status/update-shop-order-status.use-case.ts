@@ -174,7 +174,7 @@ export class UpdateShopOrderStatusUseCase {
         title: 'Order canceled',
         body: `Your order ${result.detail.orderNumber} was canceled by the seller.`,
         data: {
-          orderId: result.detail.id,
+          orderId: result.detail.publicId,
           orderNumber: result.detail.orderNumber,
           shopId,
           actor: 'seller',
