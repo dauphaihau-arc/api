@@ -1,4 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
+import {
+  renderGuestOrderConfirmationEmail,
+  resolveGuestOrderConfirmationLanguage,
+  resolveGuestOrderConfirmationShopSummary,
+} from '~/domains/order/app/outbound-messages/guest-order-confirmation.message';
 import { MailSender } from '~/integrations/mail/app/ports/mail-sender';
 import type { AppJobPayloadMap } from '~/platform/jobs/app-job.types';
 
@@ -13,26 +18,25 @@ export class SendGuestOrderConfirmationEmailJob {
 
   async run(payload: SendGuestOrderConfirmationEmailPayload): Promise<void> {
     const orderList = payload.orderIds.join(', ');
-    const shopSummary = payload.shopNames.length > 0
-      ? payload.shopNames.join(', ')
-      : 'our marketplace';
+    const language = resolveGuestOrderConfirmationLanguage(payload.language);
+
+    const rendered = renderGuestOrderConfirmationEmail(language, {
+      orderNumbers: orderList,
+      shopNames: resolveGuestOrderConfirmationShopSummary(payload.shopNames, language),
+      trackingUrl: payload.trackingUrl,
+    });
 
     await this.mailSender.send({
       to: { email: payload.email },
-      subject: 'Your guest order confirmation',
-      text:
-        `Thanks for your order from ${shopSummary}. ` +
-        `Order ID${payload.orderIds.length > 1 ? 's' : ''}: ${orderList}. ` +
-        `Track your order here: ${payload.trackingUrl}`,
-      html:
-        `<p>Thanks for your order from ${shopSummary}.</p>` +
-        `<p>Order ID${payload.orderIds.length > 1 ? 's' : ''}: ${orderList}</p>` +
-        `<p><a href="${payload.trackingUrl}">Track your order</a></p>`,
+      subject: rendered.subject,
+      text: rendered.text,
+      html: rendered.html,
       tags: ['guest-order-confirmation'],
     });
 
     this.logger.log(
-      `Processed guest order confirmation email for ${payload.email} (${orderList})`,
+      `Processed guest order confirmation email for ${payload.email} ` +
+        `(${payload.language}): ${orderList}`,
     );
   }
 }

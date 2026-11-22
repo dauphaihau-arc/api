@@ -71,6 +71,7 @@ describe('NotifyShipmentUpdateListener', () => {
           body,
           data: {
             orderId: 'ord_public1',
+            orderNumber: 'ORD-20261030-000001',
             shopId: 'shop_public1',
             eventCode,
             trackingNumber: 'TRACK-1',

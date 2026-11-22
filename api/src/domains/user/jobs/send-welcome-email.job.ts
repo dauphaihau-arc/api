@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { BuyerLanguageService } from '~/domains/auth/app/services/buyer-language.service';
 import { MailSender } from '~/integrations/mail/app/ports/mail-sender';
 import type { AppJobPayloadMap } from '~/platform/jobs/app-job.types';
+import { renderWelcomeEmail } from '../app/outbound-messages/welcome.message';
 
 type SendWelcomeEmailPayload =
   AppJobPayloadMap['user.send-welcome-email'];
@@ -9,14 +11,25 @@ type SendWelcomeEmailPayload =
 export class SendWelcomeEmailJob {
   private readonly logger = new Logger(SendWelcomeEmailJob.name);
 
-  constructor(private readonly mailSender: MailSender) {}
+  constructor(
+    private readonly mailSender: MailSender,
+    private readonly buyerLanguageService: BuyerLanguageService,
+  ) {}
 
   async run(payload: SendWelcomeEmailPayload): Promise<void> {
+    const { language } = await this.buyerLanguageService.resolve(
+      payload.userId,
+    );
+    const rendered = renderWelcomeEmail(language, {
+      displayName: payload.displayName ?? payload.email,
+      email: payload.email,
+    });
+
     await this.mailSender.send({
       to: { email: payload.email, name: payload.displayName },
-      subject: 'Welcome',
-      text: `Hello ${payload.displayName ?? payload.email}, your account was created.`,
-      html: `<p>Hello ${payload.displayName ?? payload.email}, your account was created.</p>`,
+      subject: rendered.subject,
+      text: rendered.text,
+      html: rendered.html,
       tags: ['user-created'],
     });
 

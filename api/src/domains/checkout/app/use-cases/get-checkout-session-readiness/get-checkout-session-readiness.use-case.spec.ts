@@ -27,6 +27,7 @@ describe('GetCheckoutSessionReadinessUseCase', () => {
       {
         id: 'order-1',
         orderNumber: 'ORD-20260604-000001',
+        language: 'vi',
         paymentDetails: {},
         shop: {
           id: 'shop-1',
@@ -41,6 +42,7 @@ describe('GetCheckoutSessionReadinessUseCase', () => {
       checkoutPending: true,
       checkoutSessionId: undefined,
       checkoutSessionUrl: undefined,
+      language: 'vi',
       orderShops: [
         {
           id: 'order-1',

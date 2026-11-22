@@ -1171,13 +1171,14 @@ describe('OrderCheckoutService', () => {
           pricedCartSummary: buildPricedCartSummaryMatchingQuote(quote),
         });
 
-        await service.createOrders(actor, checkoutCart, {
+        const result = await service.createOrders(actor, checkoutCart, {
           paymentType: PaymentType.CASH,
           shippingAddress,
           quote: quote as never,
           isTempCart,
         });
 
+        expect(result.language).toBe('vi');
         expect(orderRepository.create).toHaveBeenCalledWith(
           expect.objectContaining({ language: 'vi' }),
         );

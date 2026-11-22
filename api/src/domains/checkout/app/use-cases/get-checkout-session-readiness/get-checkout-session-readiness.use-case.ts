@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { EntityManager } from '@mikro-orm/postgresql';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
+import { DEFAULT_STOREFRONT_LANGUAGE } from '~/platform/config/marketplace.config';
 import { OrderEntity } from '~/domains/order/infra/persistence/entities/order.entity';
 import { getRequiredOrderNumber } from '~/domains/order/app/order-number';
 import type { CreateOrderResult } from '~/domains/order/app/order.types';
@@ -48,6 +49,7 @@ export class GetCheckoutSessionReadinessUseCase {
       checkoutPending: !checkoutSessionUrl,
       checkoutSessionId,
       checkoutSessionUrl,
+      language: orders[0]?.language ?? DEFAULT_STOREFRONT_LANGUAGE,
       orderShops: orders.map((order) => ({
         id: order.id,
         publicId: order.publicId,

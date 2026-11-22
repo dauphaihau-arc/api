@@ -111,6 +111,7 @@ describe('CreateGuestOrderForBuyNowUseCase', () => {
     } as unknown as jest.Mocked<LoadCheckoutQuoteService>;
     const orderCheckoutService = {
       createOrders: jest.fn().mockResolvedValue({
+        language: 'vi',
         orderShops: [{
           id: 'order-1', publicId: 'ord_public1', shopId: 'shop-1', shopPublicId: 'shop_public1', shopName: 'Shop 1', shopSlug: 'shop-1',
         }],
@@ -156,6 +157,15 @@ describe('CreateGuestOrderForBuyNowUseCase', () => {
         }),
         isTempCart: true,
       }),
+    );
+    expect(jobDispatcher.dispatch).toHaveBeenCalledWith(
+      'order.send-guest-confirmation-email',
+      expect.objectContaining({
+        language: 'vi',
+        orderIds: ['ord_public1'],
+        shopNames: ['Shop 1'],
+      }),
+      expect.anything(),
     );
   });
 });

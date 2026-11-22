@@ -1,5 +1,6 @@
 import { EntityManager } from '@mikro-orm/postgresql';
 import { Injectable, Logger } from '@nestjs/common';
+import { renderRefundFailedEmail } from '~/domains/order/app/outbound-messages/refund-emails.message';
 import { OrderEntity } from '~/domains/order/infra/persistence/entities/order.entity';
 import { MailSender } from '~/integrations/mail/app/ports/mail-sender';
 import type { AppJobPayloadMap } from '~/platform/jobs/app-job.types';
@@ -27,23 +28,25 @@ export class SendRefundFailedEmailJob {
       return;
     }
 
-    const failureReason = typeof order.paymentDetails?.['refund_failed_reason'] === 'string'
-      ? order.paymentDetails['refund_failed_reason']
-      : 'Our support team will review it.';
+    const failureReason = order.paymentDetails?.['refund_failed_reason'];
+    if (typeof failureReason === 'string') {
+      this.logger.warn(
+        `Refund failed email for order ${order.id}: ${failureReason}`,
+      );
+    }
+
+    const rendered = renderRefundFailedEmail(order.language, {
+      orderPublicId: order.publicId,
+      shopName: order.shop.shopName,
+    });
 
     await this.mailSender.send({
       to: { email: order.customerEmail },
-      subject: `Refund update for order ${order.publicId}`,
-      text:
-        `We could not complete the refund for order ${order.publicId} from ${order.shop.shopName}. ` +
-        `Reason: ${failureReason}. Our support team will follow up if needed.`,
-      html:
-        `<p>We could not complete the refund for order <strong>${order.publicId}</strong> from ${order.shop.shopName}.</p>` +
-        `<p>Reason: ${failureReason}</p>` +
-        '<p>Our support team will follow up if needed.</p>',
+      subject: rendered.subject,
+      text: rendered.text,
+      html: rendered.html,
       tags: ['order-refund-failed'],
     });
-
     this.logger.log(`Processed refund failed email for order ${order.id}`);
   }
 }

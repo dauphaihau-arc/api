@@ -16,6 +16,7 @@ import { FulfillmentAggregateStatus } from '../../fulfillment/domain/enums/fulfi
 import { OrderEntity } from '../infra/persistence/entities/order.entity';
 import { dispatchBestSellerRankingRefresh } from '../app/best-seller-ranking-refresh';
 import { ORDER_UPDATED_SSE_EVENT } from '../app/events/order-sse.event';
+import { ORDER_FULFILLMENT_UPDATED_NOTIFICATION_ID } from '../app/outbound-messages/order-notifications.message';
 import { buildOrderFulfillmentSummary, canceledFulfillmentOrderIds } from '../app/order-fulfillment';
 import { getRequiredOrderNumber } from '../app/order-number';
 import { OrderEventsService } from '../app/services/order-events.service';
@@ -180,11 +181,12 @@ export class ApplyOrderFulfillmentListener {
 
     await this.notifyUserUseCase.execute({
       userId: outcome.customerUserId,
-      type: 'order.fulfillment.updated',
+      type: ORDER_FULFILLMENT_UPDATED_NOTIFICATION_ID,
       title: copy.title,
       body: copy.body(outcome.orderNumber),
       data: {
         orderId: outcome.orderPublicId,
+        orderNumber: outcome.orderNumber,
         shopId: outcome.shopId,
         fulfillmentStatus: outcome.fulfillmentStatus,
       },
