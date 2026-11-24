@@ -1,6 +1,7 @@
 import type { ShippingDestinationScope } from '~/domains/shipping/domain/enums/shipping-destination-scope.enum';
 import type { ShippingProfileStatus } from '~/domains/shipping/domain/enums/shipping-profile-status.enum';
 import type { ShippingProfileReadinessIssue } from '~/domains/shipping/domain/shipping-profile-readiness';
+import type { ShippingPreview } from '~/domains/shipping/app/shipping.types';
 import type { ProductReviewStatus } from '../domain/enums/product-review-status.enum';
 import type { ProductState } from '../domain/enums/product-state.enum';
 import type { ProductVariantLifecycleState } from '../domain/enums/product-variant-lifecycle-state.enum';
@@ -419,6 +420,8 @@ export interface PublicProductDetail {
   options?: ProductOptionSummary[];
   inventory: PublicProductInventorySummary[];
   shipping?: PublicProductShippingSummary;
+  /** Live coverage and fee/estimate for the buyer's Preview Destination. */
+  shippingPreview?: ShippingPreview;
 }
 
 export type PublicProductReviewSortOrder = 'newest' | 'highest_rating' | 'lowest_rating';

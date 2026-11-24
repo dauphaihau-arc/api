@@ -115,12 +115,40 @@ export const toPublicProductDetailResponse = (
         }
         : {}),
     })),
-    shipping: product.shipping
+    shipping: product.shipping || product.shippingPreview
       ? {
-        destinations: product.shipping.destinations.map((destination) => ({
+        destinations: (product.shipping?.destinations ?? []).map((destination) => ({
           destination_scope: destination.destinationScope,
           destination_country: destination.destinationCountry,
         })),
+        ...(product.shippingPreview
+          ? {
+            preview: {
+              available: product.shippingPreview.available,
+              is_digital: product.shippingPreview.isDigital,
+              ...(product.shippingPreview.reason
+                ? { reason: product.shippingPreview.reason }
+                : {}),
+              ...(product.shippingPreview.oneItemFeeMinor !== undefined
+                ? { one_item_fee_minor: product.shippingPreview.oneItemFeeMinor }
+                : {}),
+              ...(product.shippingPreview.currency
+                ? { currency: product.shippingPreview.currency }
+                : {}),
+              ...(product.shippingPreview.shipFromCountry
+                ? { ship_from_country: product.shippingPreview.shipFromCountry }
+                : {}),
+              ...(product.shippingPreview.estimate
+                ? {
+                  estimate: {
+                    min_days: product.shippingPreview.estimate.minDays,
+                    max_days: product.shippingPreview.estimate.maxDays,
+                  },
+                }
+                : {}),
+            },
+          }
+          : {}),
       }
       : undefined,
   };

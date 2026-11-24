@@ -129,6 +129,7 @@ describe('ShippingQuoteService', () => {
         available: true,
         readinessIssues: [],
         currency: 'USD',
+        shipFromCountry: 'US',
         rate: expect.objectContaining({ destinationCountry: 'US', oneItemFeeMinor: 599 }),
         // Ticket 09 anchors these with its own quote timestamp through the
         // shared calculator instead of reading them from a Product fallback.
@@ -995,5 +996,159 @@ describe('ShippingQuoteService checkout currency conversion', () => {
         readinessIssues: [],
       },
     ]);
+  });
+});
+
+describe('ShippingQuoteService.resolvePreview', () => {
+  const previewAnchorAt = new Date('2026-09-22T10:15:00.000Z');
+
+  it('returns the converted one-item fee and combined delivery estimate', async () => {
+    const { service } = buildService({
+      assignments: [
+        { productId: 'product-1', shippingProfileId: 'profile-1', productState: ProductState.ACTIVE },
+      ],
+      profiles: [buildProfile('profile-1')],
+    });
+
+    const preview = await service.resolvePreview({
+      productId: 'product-1',
+      destination: { countryCode: 'US' },
+      displayCurrency: 'USD',
+      anchorAt: previewAnchorAt,
+    });
+
+    expect(preview).toEqual({
+      available: true,
+      isDigital: false,
+      currency: 'USD',
+      oneItemFeeMinor: 599,
+      shipFromCountry: 'US',
+      estimate: { minDays: 4, maxDays: 8 },
+    });
+  });
+
+  it('converts the fee into the buyer display currency', async () => {
+    const { service } = buildService({
+      assignments: [
+        { productId: 'product-1', shippingProfileId: 'profile-1', productState: ProductState.ACTIVE },
+      ],
+      profiles: [buildProfile('profile-1')],
+      rates: { 'USD:VND': '25000' },
+    });
+
+    const preview = await service.resolvePreview({
+      productId: 'product-1',
+      destination: { countryCode: 'US' },
+      displayCurrency: 'VND',
+      anchorAt: previewAnchorAt,
+    });
+
+    expect(preview).toMatchObject({
+      available: true,
+      currency: 'VND',
+      oneItemFeeMinor: 149_750,
+    });
+  });
+
+  it('uses an everywhere_else rate when no country rate matches', async () => {
+    const { service } = buildService({
+      assignments: [
+        { productId: 'product-1', shippingProfileId: 'profile-1', productState: ProductState.ACTIVE },
+      ],
+      profiles: [buildProfile('profile-1', {
+        rates: [{
+          id: 'profile-1-world',
+          position: 1,
+          destinationScope: ShippingDestinationScope.EVERYWHERE_ELSE,
+          oneItemFeeMinor: 1999,
+          additionalItemFeeMinor: 599,
+          deliveryTimeMinDays: 5,
+          deliveryTimeMaxDays: 10,
+        }],
+      })],
+    });
+
+    const preview = await service.resolvePreview({
+      productId: 'product-1',
+      destination: { countryCode: 'VN' },
+      displayCurrency: 'USD',
+      anchorAt: previewAnchorAt,
+    });
+
+    expect(preview).toEqual({
+      available: true,
+      isDigital: false,
+      currency: 'USD',
+      oneItemFeeMinor: 1999,
+      shipFromCountry: 'US',
+      estimate: { minDays: 6, maxDays: 13 },
+    });
+  });
+
+  it('marks an unsupported destination unavailable with its reason', async () => {
+    const { service } = buildService({
+      assignments: [
+        { productId: 'product-1', shippingProfileId: 'profile-1', productState: ProductState.ACTIVE },
+      ],
+      profiles: [buildProfile('profile-1')],
+    });
+
+    const preview = await service.resolvePreview({
+      productId: 'product-1',
+      destination: { countryCode: 'VN' },
+      displayCurrency: 'USD',
+      anchorAt: previewAnchorAt,
+    });
+
+    expect(preview).toEqual({
+      available: false,
+      isDigital: false,
+      reason: 'unsupported_destination',
+      shipFromCountry: 'US',
+    });
+  });
+
+  it('keeps a digital Product available without a fee or estimate', async () => {
+    const { service } = buildService({
+      assignments: [
+        { productId: 'product-1', productState: ProductState.ACTIVE, isDigital: true },
+      ],
+      profiles: [],
+    });
+
+    const preview = await service.resolvePreview({
+      productId: 'product-1',
+      destination: { countryCode: 'VN' },
+      displayCurrency: 'USD',
+      anchorAt: previewAnchorAt,
+    });
+
+    expect(preview).toEqual({
+      available: true,
+      isDigital: true,
+    });
+  });
+
+  it('marks the preview unavailable when the fee cannot be converted', async () => {
+    const { service } = buildService({
+      assignments: [
+        { productId: 'product-1', shippingProfileId: 'profile-1', productState: ProductState.ACTIVE },
+      ],
+      profiles: [buildProfile('profile-1')],
+    });
+
+    const preview = await service.resolvePreview({
+      productId: 'product-1',
+      destination: { countryCode: 'US' },
+      displayCurrency: 'VND',
+      anchorAt: previewAnchorAt,
+    });
+
+    expect(preview).toEqual({
+      available: false,
+      isDigital: false,
+      reason: 'unsupported_currency',
+      shipFromCountry: 'US',
+    });
   });
 });

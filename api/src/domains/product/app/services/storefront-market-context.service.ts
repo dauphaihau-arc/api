@@ -9,6 +9,8 @@ import { RequestContextService } from '~/platform/request-context/request-contex
 
 export interface StorefrontMarketContext {
   marketCode: string;
+  /** Country used as the buyer-facing Preview Destination for this Market. */
+  previewCountryCode: string;
   currency: string;
   locale: string;
   requestedCurrency?: string;
@@ -87,6 +89,7 @@ function resolveFromUserPreferences(
 
   return {
     marketCode: market.code,
+    previewCountryCode: market.previewCountryCode,
     currency: market.supportedCurrencies.includes(currency as never)
       ? currency ?? market.defaultCurrency
       : market.defaultCurrency,
@@ -121,6 +124,7 @@ function resolveFromRequestHeaders(context: {
 
   return {
     marketCode: market.code,
+    previewCountryCode: market.previewCountryCode,
     currency,
     locale,
     requestedCurrency,

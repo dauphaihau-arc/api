@@ -38225,6 +38225,58 @@
           "destination_scope"
         ]
       },
+      "PublicProductShippingPreviewEstimateResponseDto": {
+        "type": "object",
+        "properties": {
+          "min_days": {
+            "type": "number"
+          },
+          "max_days": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "min_days",
+          "max_days"
+        ]
+      },
+      "PublicProductShippingPreviewResponseDto": {
+        "type": "object",
+        "properties": {
+          "available": {
+            "type": "boolean"
+          },
+          "is_digital": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "missing_assignment",
+              "profile_not_found",
+              "profile_not_ready",
+              "unsupported_destination",
+              "unsupported_currency"
+            ]
+          },
+          "one_item_fee_minor": {
+            "type": "number"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "ship_from_country": {
+            "type": "string"
+          },
+          "estimate": {
+            "$ref": "#/components/schemas/PublicProductShippingPreviewEstimateResponseDto"
+          }
+        },
+        "required": [
+          "available",
+          "is_digital"
+        ]
+      },
       "PublicProductShippingResponseDto": {
         "type": "object",
         "properties": {
@@ -38233,6 +38285,9 @@
             "items": {
               "$ref": "#/components/schemas/PublicProductShippingDestinationResponseDto"
             }
+          },
+          "preview": {
+            "$ref": "#/components/schemas/PublicProductShippingPreviewResponseDto"
           }
         },
         "required": [

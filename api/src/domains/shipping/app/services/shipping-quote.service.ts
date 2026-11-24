@@ -22,6 +22,8 @@ import type {
   CheckoutShippingShopQuote,
   CheckoutShippingUnitInput,
   ProductShippingResolution,
+  ResolveShippingPreviewInput,
+  ShippingPreview,
   ShippingQuoteAdditionalComponent,
   ShippingQuoteEstimate,
   ShippingQuoteFxProvenance,
@@ -122,6 +124,7 @@ export class ShippingQuoteService {
           reason: 'profile_not_ready',
           readinessIssues,
           currency: profile.shopCurrency,
+          shipFromCountry: profile.shipFromCountry,
         };
       }
 
@@ -137,6 +140,7 @@ export class ShippingQuoteService {
           reason: 'unsupported_destination',
           readinessIssues,
           currency: profile.shopCurrency,
+          shipFromCountry: profile.shipFromCountry,
         };
       }
 
@@ -150,6 +154,7 @@ export class ShippingQuoteService {
         available: true,
         readinessIssues,
         currency: profile.shopCurrency,
+        shipFromCountry: profile.shipFromCountry,
         rate: match.rate,
         processingTime: toShippingDurationRange(
           profile.processingTimeMinDays,
@@ -161,6 +166,88 @@ export class ShippingQuoteService {
         ),
       };
     });
+  }
+
+  /**
+   * One Product's buyer-facing Shipping Preview for a Preview Destination.
+   * The seller's one-item fee is converted into the buyer display currency;
+   * a failed conversion is an unavailable preview, never a fabricated amount.
+   */
+  async resolvePreview(
+    input: ResolveShippingPreviewInput,
+  ): Promise<ShippingPreview> {
+    const [resolution] = await this.resolveForProducts({
+      productIds: [input.productId],
+      destination: input.destination,
+    });
+
+    if (!resolution) {
+      return unavailablePreview('missing_assignment');
+    }
+
+    if (resolution.isDigital) {
+      return {
+        available: true,
+        isDigital: true,
+      };
+    }
+
+    if (!resolution.available) {
+      return {
+        ...unavailablePreview(resolution.reason ?? 'missing_assignment'),
+        ...(resolution.shipFromCountry
+          ? { shipFromCountry: resolution.shipFromCountry }
+          : {}),
+      };
+    }
+
+    const rate = resolution.rate;
+    const processingTime = resolution.processingTime;
+    const deliveryTime = resolution.deliveryTime;
+    const sourceCurrency = resolution.currency;
+
+    if (!rate || !processingTime || !deliveryTime || !sourceCurrency) {
+      return unavailablePreview('profile_not_ready');
+    }
+
+    const convertedFee = await this.moneyConversionService.convert({
+      amountMinor: rate.oneItemFeeMinor,
+      fromCurrency: sourceCurrency,
+      toCurrency: input.displayCurrency,
+      at: input.anchorAt,
+      calculationType: 'shipping',
+    });
+
+    if (!convertedFee) {
+      return {
+        ...unavailablePreview('unsupported_currency'),
+        ...(resolution.shipFromCountry
+          ? { shipFromCountry: resolution.shipFromCountry }
+          : {}),
+      };
+    }
+
+    const estimate = calculateShippingEstimate({
+      processingTimeMinDays: processingTime.minDays,
+      processingTimeMaxDays: processingTime.maxDays,
+      deliveryTimeMinDays: deliveryTime.minDays,
+      deliveryTimeMaxDays: deliveryTime.maxDays,
+      anchorAt: input.anchorAt,
+    });
+
+    return {
+      available: true,
+      isDigital: false,
+      currency: input.displayCurrency,
+      oneItemFeeMinor: convertedFee.amountMinor,
+      ...(resolution.shipFromCountry
+        ? { shipFromCountry: resolution.shipFromCountry }
+        : {}),
+      estimate: {
+        minDays: estimate.combinedMinDays,
+        maxDays: estimate.combinedMaxDays,
+      },
+    };
   }
 
   /**
@@ -346,6 +433,16 @@ export class ShippingQuoteService {
 
     return converted;
   }
+}
+
+function unavailablePreview(
+  reason: NonNullable<ShippingPreview['reason']>,
+): ShippingPreview {
+  return {
+    available: false,
+    isDigital: false,
+    reason,
+  };
 }
 
 interface ResolvedCheckoutShippingUnit {
