@@ -28,6 +28,13 @@ describe('MarketplaceService', () => {
     );
   });
 
+  it('reports each Market preview country', () => {
+    const { markets } = service.getConfig();
+
+    expect(findMarket(markets, 'US').previewCountryCode).toBe('US');
+    expect(findMarket(markets, 'VN').previewCountryCode).toBe('VN');
+  });
+
   it('reports only the Storefront Languages', () => {
     expect(STOREFRONT_LANGUAGES).toEqual(['en', 'vi']);
   });

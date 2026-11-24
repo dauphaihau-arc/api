@@ -34666,6 +34666,11 @@
               "Vietnam"
             ]
           },
+          "preview_country_code": {
+            "type": "string",
+            "example": "US",
+            "description": "ISO 3166-1 alpha-2 country used as the buyer Preview Destination."
+          },
           "defaultCurrency": {
             "type": "string",
             "enum": [
@@ -34769,6 +34774,7 @@
         "required": [
           "code",
           "name",
+          "preview_country_code",
           "defaultCurrency",
           "supportedCurrencies",
           "defaultLocale",
