@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - production
+      - "integration/**"
     # Only a changed artifact needs publishing. Source edits that leave the
     # committed document untouched are a type-level change, and CI already
     # fails when a DTO change ships without a regenerated document.
@@ -99,6 +100,55 @@ jobs:
               + `(${entry.entryCount} entries, ${entry.unpackedSize} bytes unpacked).`,
             );
           ' "${REPORT}"
+
+      - name: Compute release channel
+        id: release
+        run: |
+          set -euo pipefail
+
+          if [ "${GITHUB_REF_NAME}" = "production" ]; then
+            VERSION="$(node -p "require('./packages/api-spec/package.json').version")"
+            if [[ "${VERSION}" == *-* ]]; then
+              echo "::error::production must publish a stable version, found prerelease '${VERSION}' in ${PACKAGE_DIR}/package.json."
+              exit 1
+            fi
+            echo "channel=stable" >> "$GITHUB_OUTPUT"
+            echo "dist_tag=latest" >> "$GITHUB_OUTPUT"
+            echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [[ "${GITHUB_REF_NAME}" != integration/* ]]; then
+            echo "::error::Refusing to publish from '${GITHUB_REF_NAME}'. Stable releases publish from production; previews publish from integration/<feature>."
+            exit 1
+          fi
+
+          BRANCH="${GITHUB_REF_NAME#integration/}"
+          SLUG="$(printf '%s' "${BRANCH}" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//' | cut -c1-64 | sed -E 's/-+$//')"
+          if [ -z "${SLUG}" ]; then
+            echo "::error::Cannot derive a dist-tag from branch '${GITHUB_REF_NAME}'."
+            exit 1
+          fi
+
+          BASE_VERSION="$(node -p "require('./packages/api-spec/package.json').version")"
+          if [[ "${BASE_VERSION}" == *-* ]]; then
+            echo "::error::An integration branch must carry the target stable version in ${PACKAGE_DIR}/package.json, found prerelease '${BASE_VERSION}'."
+            exit 1
+          fi
+
+          VERSION="${BASE_VERSION}-${SLUG}.${GITHUB_RUN_NUMBER}.${GITHUB_RUN_ATTEMPT}"
+          echo "channel=preview" >> "$GITHUB_OUTPUT"
+          echo "dist_tag=${SLUG}" >> "$GITHUB_OUTPUT"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Preparing preview ${PACKAGE_NAME}@${VERSION} under dist-tag '${SLUG}'."
+
+      - name: Apply preview version
+        if: steps.release.outputs.channel == 'preview'
+        working-directory: packages/api-spec
+        run: |
+          set -euo pipefail
+          npm pkg set "version=${{ steps.release.outputs.version }}"
+          echo "Prepared $(node -p "require('./package.json').version")."
 
       # Breaking-change gate. The baseline is the contract in the last
       # published tarball, so a contract that removes a field, narrows an enum,
@@ -255,15 +305,27 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          TAG="${{ steps.release.outputs.dist_tag }}"
+          if [ "${TAG}" = "latest" ] && [ "${GITHUB_REF_NAME}" != "production" ]; then
+            echo "::error::The latest tag may only be published from production."
+            exit 1
+          fi
+          if [ "${VERSION}" != "${{ steps.release.outputs.version }}" ]; then
+            echo "::error::Version drift: ${PACKAGE_DIR}/package.json has '${VERSION}', expected '${{ steps.release.outputs.version }}'."
+            exit 1
+          fi
           if [ "${{ inputs.dry_run }}" = "true" ]; then
             echo "::notice::Dry run: every step ran, nothing will be uploaded. Re-dispatch with dry_run=false to release."
-            npm publish --dry-run
+            npm publish --dry-run --tag "${TAG}"
             exit 0
           fi
-          VERSION="$(node -p "require('./package.json').version")"
-          case "${VERSION}" in
-            *-*) TAG="next" ;;
-            *) TAG="latest" ;;
-          esac
           echo "Publishing ${PACKAGE_NAME}@${VERSION} under the ${TAG} tag."
           npm publish --tag "${TAG}"
+          {
+            echo "### API spec published"
+            echo
+            echo "- Channel: \`${{ steps.release.outputs.channel }}\`"
+            echo "- Version: \`${VERSION}\`"
+            echo "- Dist-tag: \`${TAG}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
