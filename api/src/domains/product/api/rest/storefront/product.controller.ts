@@ -22,7 +22,7 @@ import { CATEGORY_PUBLIC_ID_PATTERN } from '~/domains/category/app/category-publ
 import { productControllerErrorResponses } from '../errors/product-error-responses';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import type { Request, Response } from 'express';
-import { GetPublicProductBySlugsUseCase } from '../../../app/use-cases/get-public-product-by-slugs/get-public-product-by-slugs.use-case';
+import { GetPublicProductDetailUseCase } from '../../../app/use-cases/get-public-product-detail/get-public-product-detail.use-case';
 import { ListPublicProductFacetsUseCase } from '../../../app/use-cases/list-public-product-facets/list-public-product-facets.use-case';
 import { ListPublicProductReviewImagesUseCase } from '../../../app/use-cases/list-public-product-review-images/list-public-product-review-images.use-case';
 import { ListPublicProductsUseCase } from '../../../app/use-cases/list-public-products/list-public-products.use-case';
@@ -177,7 +177,7 @@ export class ProductController {
   constructor(
     private readonly listPublicProductsUseCase: ListPublicProductsUseCase,
     private readonly listPublicProductFacetsUseCase: ListPublicProductFacetsUseCase,
-    private readonly getPublicProductBySlugsUseCase: GetPublicProductBySlugsUseCase,
+    private readonly getPublicProductDetailUseCase: GetPublicProductDetailUseCase,
     private readonly suggestPublicProductsUseCase: SuggestPublicProductsUseCase,
     private readonly listPublicProductReviewsUseCase: ListPublicProductReviewsUseCase,
     private readonly listPublicProductReviewImagesUseCase: ListPublicProductReviewImagesUseCase,
@@ -291,7 +291,7 @@ export class ProductController {
   ): Promise<PublicProductDetailResponse> {
     setStorefrontProductCacheControl(response, request);
 
-    const product = await this.getPublicProductBySlugsUseCase.execute(
+    const product = await this.getPublicProductDetailUseCase.execute(
       shopSlug,
       productSlug,
     );

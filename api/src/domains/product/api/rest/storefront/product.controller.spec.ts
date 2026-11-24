@@ -2,12 +2,13 @@ import { NotFoundException, RequestMethod } from '@nestjs/common';
 import { HEADERS_METADATA, METHOD_METADATA, PATH_METADATA } from '@nestjs/common/constants';
 import { GUARDS_METADATA } from '@nestjs/common/constants';
 import { OptionalJwtAuthGuard } from '~/domains/auth/api/guard/optional-jwt-auth.guard';
-import type { GetPublicProductBySlugsUseCase } from '../../../app/use-cases/get-public-product-by-slugs/get-public-product-by-slugs.use-case';
+import type { GetPublicProductDetailUseCase } from '../../../app/use-cases/get-public-product-detail/get-public-product-detail.use-case';
 import type { ListPublicProductFacetsUseCase } from '../../../app/use-cases/list-public-product-facets/list-public-product-facets.use-case';
 import type { ListPublicProductReviewImagesUseCase } from '../../../app/use-cases/list-public-product-review-images/list-public-product-review-images.use-case';
 import type { ListPublicProductReviewsUseCase } from '../../../app/use-cases/list-public-product-reviews/list-public-product-reviews.use-case';
 import type { ListPublicProductsUseCase } from '../../../app/use-cases/list-public-products/list-public-products.use-case';
 import type { SuggestPublicProductsUseCase } from '../../../app/use-cases/suggest-public-products/suggest-public-products.use-case';
+import { ShippingDestinationScope } from '~/domains/shipping/domain/enums/shipping-destination-scope.enum';
 import { ProductWhoMade } from '../../../domain/enums/product-who-made.enum';
 import { ProductController } from './product.controller';
 
@@ -17,7 +18,7 @@ const listPublicProductsUseCase: Pick<jest.Mocked<ListPublicProductsUseCase>, 'e
 const listPublicProductFacetsUseCase: Pick<jest.Mocked<ListPublicProductFacetsUseCase>, 'execute'> = {
   execute: jest.fn(),
 };
-const getPublicProductBySlugsUseCase: Pick<jest.Mocked<GetPublicProductBySlugsUseCase>, 'execute'> = {
+const getPublicProductDetailUseCase: Pick<jest.Mocked<GetPublicProductDetailUseCase>, 'execute'> = {
   execute: jest.fn(),
 };
 const suggestPublicProductsUseCase: Pick<jest.Mocked<SuggestPublicProductsUseCase>, 'execute'> = {
@@ -39,7 +40,7 @@ describe('ProductController', () => {
   const controller = new ProductController(
     listPublicProductsUseCase as never,
     listPublicProductFacetsUseCase as never,
-    getPublicProductBySlugsUseCase as never,
+    getPublicProductDetailUseCase as never,
     suggestPublicProductsUseCase as never,
     listPublicProductReviewsUseCase as never,
     listPublicProductReviewImagesUseCase as never,
@@ -232,7 +233,7 @@ describe('ProductController', () => {
   });
 
   it('returns product detail when looked up by shop slug and product slug', async () => {
-    getPublicProductBySlugsUseCase.execute.mockResolvedValue({
+    getPublicProductDetailUseCase.execute.mockResolvedValue({
       id: 'product-1',
       publicId: 'public-product-1',
       shop: {
@@ -311,15 +312,71 @@ describe('ProductController', () => {
       options: [],
       shipping: undefined,
     });
-    expect(getPublicProductBySlugsUseCase.execute).toHaveBeenCalledWith(
+    expect(getPublicProductDetailUseCase.execute).toHaveBeenCalledWith(
       'arc-store',
       'handmade-bag',
     );
     expect(response.setHeader).toHaveBeenCalledWith('Cache-Control', 'public, max-age=60');
   });
 
+  it('returns the live shipping preview beside destination coverage', async () => {
+    getPublicProductDetailUseCase.execute.mockResolvedValue({
+      id: 'product-1',
+      publicId: 'public-product-1',
+      shop: {
+        id: 'shop-1',
+        publicId: 'public-shop-1',
+        shopName: 'Arc Store',
+        slug: 'arc-store',
+      },
+      title: 'Handmade Bag',
+      slug: 'handmade-bag',
+      description: 'A detail page payload.',
+      whoMade: ProductWhoMade.I_DID,
+      isDigital: false,
+      stockNoticeThreshold: 10,
+      reviewSummary: { average: 0, count: 0 },
+      images: [],
+      variants: [],
+      inventory: [],
+      shipping: {
+        destinations: [{
+          destinationScope: ShippingDestinationScope.COUNTRY,
+          destinationCountry: 'US',
+        }],
+      },
+      shippingPreview: {
+        available: true,
+        isDigital: false,
+        currency: 'USD',
+        oneItemFeeMinor: 599,
+        shipFromCountry: 'US',
+        estimate: { minDays: 4, maxDays: 8 },
+      },
+    });
+
+    await expect(controller.productBySlugs(
+      guestRequest,
+      response,
+      'arc-store',
+      'handmade-bag',
+    )).resolves.toMatchObject({
+      shipping: {
+        destinations: [{ destination_scope: 'country', destination_country: 'US' }],
+        preview: {
+          available: true,
+          is_digital: false,
+          currency: 'USD',
+          one_item_fee_minor: 599,
+          ship_from_country: 'US',
+          estimate: { min_days: 4, max_days: 8 },
+        },
+      },
+    });
+  });
+
   it('throws when the product does not exist', async () => {
-    getPublicProductBySlugsUseCase.execute.mockResolvedValue(null);
+    getPublicProductDetailUseCase.execute.mockResolvedValue(null);
 
     await expect(controller.productBySlugs(
       guestRequest,
