@@ -61,6 +61,9 @@ export const toPublicProductListItemResponse = (
     low_stock: product.availability.lowStock,
     stock_total: product.availability.stockTotal,
   },
+  ...(product.shipping
+    ? { shipping: { available: product.shipping.available } }
+    : {}),
   variant_count: product.variantCount,
   created_at: product.createdAt,
 });

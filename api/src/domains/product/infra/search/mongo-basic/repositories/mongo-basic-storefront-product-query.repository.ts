@@ -21,6 +21,7 @@ import {
 } from '../../../../app/storefront-indexed-pricing';
 import { StorefrontMarketContextService } from '../../../../app/services/storefront-market-context.service';
 import { LiveProductInventoryStockOverlayService } from '../../../../app/services/live-product-inventory-stock-overlay.service';
+import { toCatalogShippingAvailability } from '../../../../app/shipping-coverage';
 import type {
   ListPublicProductsInput,
   PublicProductDetail,
@@ -128,9 +129,10 @@ implements StorefrontProductQueryRepository {
       return [];
     }
 
-    const pricingSelection = this.toIndexedPricingSelection(resolveIndexedPricingSelection(
-      await this.storefrontMarketContextService.resolveCurrentRequest(),
-    ));
+    const marketContext = await this.storefrontMarketContextService.resolveCurrentRequest();
+    const pricingSelection = this.toIndexedPricingSelection(
+      resolveIndexedPricingSelection(marketContext),
+    );
     const language = this.getStorefrontLanguage();
     const searchCollection = await this.getSearchCollection();
     const documents = await searchCollection
@@ -147,7 +149,12 @@ implements StorefrontProductQueryRepository {
     return productIds
       .map((productId) => documentsById.get(productId))
       .filter((document): document is CatalogSearchDocument => document != null)
-      .map((document) => toPublicProductListItemFromSearchDocument(document, pricingSelection, language));
+      .map((document) => toPublicProductListItemFromSearchDocument(
+        document,
+        pricingSelection,
+        language,
+        marketContext?.previewCountryCode,
+      ));
   }
 
   async findPublicCardsByIds(productIds: string[]): Promise<PublicProductListItem[]> {
@@ -155,9 +162,10 @@ implements StorefrontProductQueryRepository {
   }
 
   async listPublic(input: ListPublicProductsInput): Promise<PublicProductListResult> {
-    const pricingSelection = this.toIndexedPricingSelection(resolveIndexedPricingSelection(
-      await this.storefrontMarketContextService.resolveCurrentRequest(),
-    ));
+    const marketContext = await this.storefrontMarketContextService.resolveCurrentRequest();
+    const pricingSelection = this.toIndexedPricingSelection(
+      resolveIndexedPricingSelection(marketContext),
+    );
     const language = this.getStorefrontLanguage();
     const collection = await this.getSearchCollection();
     const filter = this.buildFilter(input, pricingSelection, language);
@@ -171,7 +179,12 @@ implements StorefrontProductQueryRepository {
     const [total, documents] = await Promise.all([totalPromise, documentsPromise]);
 
     return {
-      items: documents.map((document) => toPublicProductListItemFromSearchDocument(document, pricingSelection, language)),
+      items: documents.map((document) => toPublicProductListItemFromSearchDocument(
+        document,
+        pricingSelection,
+        language,
+        marketContext?.previewCountryCode,
+      )),
       meta: buildPaginationMeta(input.page, input.limit, total),
     };
   }
@@ -423,6 +436,7 @@ function toPublicProductListItemFromSearchDocument(
   document: CatalogSearchDocument,
   pricingSelection?: StorefrontIndexedPricingSelection,
   language: StorefrontLanguage = DEFAULT_STOREFRONT_LANGUAGE,
+  previewCountryCode?: string,
 ): PublicProductListItem {
   const indexedPricing = getIndexedPriceSummary(document.pricingByMarket, pricingSelection);
 
@@ -459,6 +473,7 @@ function toPublicProductListItemFromSearchDocument(
         && document.inventory.totalStock < PRODUCT_STOCK_NOTICE_THRESHOLD,
       stockTotal: document.inventory.totalStock,
     },
+    shipping: toCatalogShippingAvailability(document, previewCountryCode),
     variantCount: document.variantCount,
     createdAt: document.ranking.createdAt,
   };

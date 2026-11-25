@@ -196,6 +196,54 @@ describe('ProductController', () => {
     expect(response.setHeader).toHaveBeenCalledWith('Cache-Control', 'public, max-age=60');
   });
 
+  it('returns the server-derived shipping availability on list items', async () => {
+    listPublicProductsUseCase.execute.mockResolvedValue({
+      items: [{
+        id: 'product-1',
+        publicId: 'prod_1',
+        shop: {
+          id: 'shop-1',
+          publicId: 'shop_1',
+          shopName: 'Arc Store',
+          slug: 'arc-store',
+        },
+        title: 'Linen Dress',
+        slug: 'linen-dress',
+        availability: {
+          inStock: true,
+          lowStock: false,
+          stockTotal: 4,
+        },
+        shipping: {
+          available: false,
+        },
+        variantCount: 1,
+        createdAt: new Date('2026-01-01T00:00:00.000Z'),
+      }],
+      meta: {
+        page: 1,
+        limit: 16,
+        total: 1,
+        totalPages: 1,
+        hasNextPage: false,
+        hasPreviousPage: false,
+      },
+    });
+
+    const result = await controller.listProducts(
+      guestRequest,
+      response,
+      { page: '1', limit: '16' },
+    );
+
+    expect(result.items[0]).toMatchObject({
+      id: 'prod_1',
+      shipping: {
+        available: false,
+      },
+    });
+  });
+
   it('returns suggested products for typeahead', async () => {
     suggestPublicProductsUseCase.execute.mockResolvedValue([
       {

@@ -220,6 +220,10 @@ describe('category subtree listing and facets (integration)', () => {
       categoryId: input.category.id,
       categoryPublicId: input.category.publicId,
       isDigital: false,
+      shipping: {
+        shipsToCountryCodes: [],
+        shipsWorldwide: false,
+      },
       whoMade: ProductWhoMade.I_DID,
       attributes: attributes.map((attribute) => ({
         categoryAttributeId: attribute.id ?? attribute.key,

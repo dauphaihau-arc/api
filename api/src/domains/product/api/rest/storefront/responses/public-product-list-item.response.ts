@@ -31,6 +31,9 @@ export type PublicProductListItemResponse = {
     low_stock: boolean;
     stock_total: number;
   };
+  shipping?: {
+    available: boolean;
+  };
   variant_count: number;
   created_at: Date;
 };
