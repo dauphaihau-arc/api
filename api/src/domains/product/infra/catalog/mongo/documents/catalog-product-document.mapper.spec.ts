@@ -104,9 +104,13 @@ describe('catalog-product-document.mapper', () => {
         name: 'Standard shipping',
         status: ShippingProfileStatus.ACTIVE,
         version: 1,
-        currency: 'USD',
+        shop: {
+          currency: 'USD',
+        },
         shipFromCountry: 'US',
         shipFromPostal: '10001',
+        processingTimeMinDays: 1,
+        processingTimeMaxDays: 3,
         rates: {
           getItems: () => [{
             id: 'rate-1',
@@ -115,6 +119,8 @@ describe('catalog-product-document.mapper', () => {
             destinationCountry: 'US',
             oneItemFeeMinor: 599,
             additionalItemFeeMinor: 199,
+            deliveryTimeMinDays: 3,
+            deliveryTimeMaxDays: 5,
           }],
         },
       },
@@ -161,6 +167,8 @@ describe('catalog-product-document.mapper', () => {
           destinationScope: ShippingDestinationScope.COUNTRY,
           destinationCountry: 'US',
         }],
+        shipsToCountryCodes: ['US'],
+        shipsWorldwide: false,
       },
       attributes: [{
         categoryAttributeId: 'attribute-1',

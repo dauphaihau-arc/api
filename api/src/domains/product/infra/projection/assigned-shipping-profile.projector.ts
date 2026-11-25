@@ -1,9 +1,17 @@
-import type { ShippingDestinationRate } from '~/domains/shipping/domain/shipping-destination-matcher';
+import {
+  normalizeCountryCode,
+  type ShippingDestinationRate,
+} from '~/domains/shipping/domain/shipping-destination-matcher';
+import { ShippingDestinationScope } from '~/domains/shipping/domain/enums/shipping-destination-scope.enum';
 import {
   collectShippingProfileReadinessIssues,
   isShippingProfileCheckoutReady,
 } from '~/domains/shipping/domain/shipping-profile-readiness';
 import type { ShippingProfileEntity } from '~/domains/shipping/infra/persistence/entities/shipping-profile.entity';
+import {
+  EMPTY_CATALOG_SHIPPING_COVERAGE,
+  type CatalogShippingCoverage,
+} from '../../app/shipping-coverage';
 import type {
   ProductShippingSummary,
   PublicProductShippingDestinationSummary,
@@ -61,6 +69,45 @@ export function toPublicShippingDestinations(
       destinationScope: rate.destinationScope,
       destinationCountry: rate.destinationCountry ?? undefined,
     }));
+}
+
+/**
+ * Denormalized coverage for the catalog projection. Only a checkout-ready
+ * profile ships anywhere, and only explicit country rates add countries.
+ */
+export function toCatalogShippingCoverage(
+  profile: ShippingProfileEntity | undefined,
+): CatalogShippingCoverage {
+  if (!profile) {
+    return { ...EMPTY_CATALOG_SHIPPING_COVERAGE };
+  }
+
+  const summary = toProductShippingSummary(profile);
+
+  if (!summary.checkoutReady) {
+    return { ...EMPTY_CATALOG_SHIPPING_COVERAGE };
+  }
+
+  const countryCodes = new Set<string>();
+  let shipsWorldwide = false;
+
+  for (const rate of summary.rates) {
+    if (rate.destinationScope === ShippingDestinationScope.EVERYWHERE_ELSE) {
+      shipsWorldwide = true;
+      continue;
+    }
+
+    const countryCode = normalizeCountryCode(rate.destinationCountry);
+
+    if (countryCode) {
+      countryCodes.add(countryCode);
+    }
+  }
+
+  return {
+    shipsToCountryCodes: Array.from(countryCodes).sort(),
+    shipsWorldwide,
+  };
 }
 
 function toProfileRates(profile: ShippingProfileEntity): ShippingDestinationRate[] {

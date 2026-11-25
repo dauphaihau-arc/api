@@ -352,6 +352,13 @@ export class PublicProductAvailabilityResponseDto {
   stock_total!: number;
 }
 
+export class PublicProductListItemShippingResponseDto {
+  @ApiProperty({
+    description: 'Whether the product ships to the market preview destination.',
+  })
+  available!: boolean;
+}
+
 export class PublicProductListItemResponseDto {
   @ApiProperty()
   id!: string;
@@ -380,6 +387,10 @@ export class PublicProductListItemResponseDto {
   @ApiProperty({ type: PublicProductAvailabilityResponseDto })
   @Type(() => PublicProductAvailabilityResponseDto)
   availability!: PublicProductAvailabilityResponseDto;
+
+  @ApiPropertyOptional({ type: PublicProductListItemShippingResponseDto })
+  @Type(() => PublicProductListItemShippingResponseDto)
+  shipping?: PublicProductListItemShippingResponseDto;
 
   @ApiProperty()
   variant_count!: number;

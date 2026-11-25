@@ -1,4 +1,5 @@
 import { ProductState } from '../../../../product/domain/enums/product-state.enum';
+import { appJobName } from '~/platform/jobs/app-job.names';
 import { ShippingDestinationScope } from '../../../domain/enums/shipping-destination-scope.enum';
 import { ShippingProfileStatus } from '../../../domain/enums/shipping-profile-status.enum';
 import {
@@ -72,12 +73,21 @@ function buildUseCase(
   const productShippingAssignmentPort = {
     listByShippingProfileIds: jest.fn().mockResolvedValue([]),
   };
+  const jobDispatcher = {
+    dispatch: jest.fn().mockResolvedValue(undefined),
+  };
   const useCase = new UpdateShippingProfileUseCase(
     shippingProfileRepository as never,
     productShippingAssignmentPort as never,
+    jobDispatcher as never,
   );
 
-  return { useCase, shippingProfileRepository, productShippingAssignmentPort };
+  return {
+    useCase,
+    shippingProfileRepository,
+    productShippingAssignmentPort,
+    jobDispatcher,
+  };
 }
 
 describe('UpdateShippingProfileUseCase', () => {
@@ -191,5 +201,37 @@ describe('UpdateShippingProfileUseCase', () => {
       assignedProductCount: 2,
       publishedProductCount: 1,
     });
+  });
+
+  it('dispatches catalog reprojection for every assigned Product after an edit', async () => {
+    const { useCase, productShippingAssignmentPort, jobDispatcher } = buildUseCase(buildProfile());
+    productShippingAssignmentPort.listByShippingProfileIds.mockResolvedValue([
+      { productId: 'product-1', shippingProfileId: 'profile-1', productState: ProductState.ACTIVE },
+      { productId: 'product-2', shippingProfileId: 'profile-1', productState: ProductState.DRAFT },
+    ]);
+
+    await useCase.execute(shopId, 'profile-1', {
+      version: 3,
+      rates: [{
+        destinationScope: ShippingDestinationScope.COUNTRY,
+        destinationCountry: 'VN',
+        oneItemFeeMinor: 999,
+        additionalItemFeeMinor: 299,
+        deliveryTimeMinDays: 3,
+        deliveryTimeMaxDays: 5,
+      }],
+    });
+
+    expect(jobDispatcher.dispatch).toHaveBeenCalledTimes(2);
+    expect(jobDispatcher.dispatch).toHaveBeenCalledWith(
+      appJobName.projectCatalogProduct,
+      { productId: 'product-1' },
+      expect.anything(),
+    );
+    expect(jobDispatcher.dispatch).toHaveBeenCalledWith(
+      appJobName.projectCatalogProduct,
+      { productId: 'product-2' },
+      expect.anything(),
+    );
   });
 });

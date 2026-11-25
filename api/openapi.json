@@ -37818,6 +37818,18 @@
           "stock_total"
         ]
       },
+      "PublicProductListItemShippingResponseDto": {
+        "type": "object",
+        "properties": {
+          "available": {
+            "type": "boolean",
+            "description": "Whether the product ships to the market preview destination."
+          }
+        },
+        "required": [
+          "available"
+        ]
+      },
       "PublicProductListItemResponseDto": {
         "type": "object",
         "properties": {
@@ -37844,6 +37856,9 @@
           },
           "availability": {
             "$ref": "#/components/schemas/PublicProductAvailabilityResponseDto"
+          },
+          "shipping": {
+            "$ref": "#/components/schemas/PublicProductListItemShippingResponseDto"
           },
           "variant_count": {
             "type": "number"

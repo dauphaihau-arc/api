@@ -344,6 +344,14 @@ export interface PublicProductListItem {
     lowStock: boolean;
     stockTotal: number;
   };
+  /**
+   * Whether the Product can ship to the buyer's server-derived Preview
+   * Destination. Digital Products are always available. Omitted by responses
+   * that do not resolve the buyer's Market (recommendation rails until ticket 05).
+   */
+  shipping?: {
+    available: boolean;
+  };
   variantCount: number;
   createdAt: Date;
 }

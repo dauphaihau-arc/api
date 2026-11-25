@@ -26,6 +26,7 @@ import { MikroOrmSaleProjectionReader } from '~/domains/promotion/infra/persiste
 import { SystemClock } from '~/platform/time/clock';
 import { ensureAtlasSearchIndexes } from './catalog/ensure-atlas-search-indexes';
 import { verifyCatalogLocalizationCollections } from './catalog/verify-catalog-localization';
+import { verifyCatalogShippingCoverageCollections } from './catalog/verify-catalog-shipping-coverage';
 
 type MongoDeleteManyCollectionLike = {
   deleteMany(filter: Record<string, never>): Promise<{ deletedCount?: number }>;
@@ -140,33 +141,42 @@ async function main() {
     console.log('Ensuring catalog MongoDB collection indexes');
     await syncCatalogMongoIndexes(catalogConfig, catalogMongoAccess);
 
-    console.log('Clearing existing catalog projection collections');
-    const [
-      productsDeleteResult,
-      pricesDeleteResult,
-      slugsDeleteResult,
-      searchDeleteResult,
-    ] = await Promise.all([
-      catalogMongoAccess.getCollection<MongoDeleteManyCollectionLike>(
-        catalogConfig.mongodbProductsCollection,
-      ).then((collection) => collection.deleteMany({})),
-      catalogMongoAccess.getCollection<MongoDeleteManyCollectionLike>(
-        catalogConfig.mongodbPricesCollection,
-      ).then((collection) => collection.deleteMany({})),
-      catalogMongoAccess.getCollection<MongoDeleteManyCollectionLike>(
-        catalogConfig.mongodbSlugsCollection,
-      ).then((collection) => collection.deleteMany({})),
-      catalogMongoAccess.getCollection<MongoDeleteManyCollectionLike>(
-        catalogConfig.mongodbSearchCollection,
-      ).then((collection) => collection.deleteMany({})),
-    ]);
-    console.log(
-      'Cleared catalog collections:' +
-      ` products=${productsDeleteResult.deletedCount ?? 0}` +
-      ` prices=${pricesDeleteResult.deletedCount ?? 0}` +
-      ` slugs=${slugsDeleteResult.deletedCount ?? 0}` +
-      ` search=${searchDeleteResult.deletedCount ?? 0}`,
-    );
+    const skipClear = process.argv.includes('--skip-clear');
+
+    if (skipClear) {
+      console.log(
+        'Skipping the projection collection clear (--skip-clear); every active product is reprojected in place',
+      );
+    }
+    else {
+      console.log('Clearing existing catalog projection collections');
+      const [
+        productsDeleteResult,
+        pricesDeleteResult,
+        slugsDeleteResult,
+        searchDeleteResult,
+      ] = await Promise.all([
+        catalogMongoAccess.getCollection<MongoDeleteManyCollectionLike>(
+          catalogConfig.mongodbProductsCollection,
+        ).then((collection) => collection.deleteMany({})),
+        catalogMongoAccess.getCollection<MongoDeleteManyCollectionLike>(
+          catalogConfig.mongodbPricesCollection,
+        ).then((collection) => collection.deleteMany({})),
+        catalogMongoAccess.getCollection<MongoDeleteManyCollectionLike>(
+          catalogConfig.mongodbSlugsCollection,
+        ).then((collection) => collection.deleteMany({})),
+        catalogMongoAccess.getCollection<MongoDeleteManyCollectionLike>(
+          catalogConfig.mongodbSearchCollection,
+        ).then((collection) => collection.deleteMany({})),
+      ]);
+      console.log(
+        'Cleared catalog collections:' +
+        ` products=${productsDeleteResult.deletedCount ?? 0}` +
+        ` prices=${pricesDeleteResult.deletedCount ?? 0}` +
+        ` slugs=${slugsDeleteResult.deletedCount ?? 0}` +
+        ` search=${searchDeleteResult.deletedCount ?? 0}`,
+      );
+    }
 
     const productIds = await orm.em.fork().find(
       ProductEntity,
@@ -197,6 +207,10 @@ async function main() {
       catalogMongoAccess,
       catalogConfig,
     );
+    const shippingCoverageVerification = await verifyCatalogShippingCoverageCollections(
+      catalogMongoAccess,
+      catalogConfig,
+    );
 
     console.log(
       `Catalog backfill completed: projected ${processed}/${productIds.length} active products`,
@@ -205,6 +219,10 @@ async function main() {
       `Catalog localization verification: ${verification.totalDocuments} documents, ` +
       `${verification.staleFields} stale language fields`,
     );
+    console.log(
+      `Catalog shipping coverage verification: ${shippingCoverageVerification.totalDocuments} documents, ` +
+      `${shippingCoverageVerification.invalidDocuments} invalid documents`,
+    );
 
     if (verification.staleFields > 0) {
       console.error(
@@ -212,6 +230,14 @@ async function main() {
         JSON.stringify(verification.issues.slice(0, 10)),
       );
       throw new Error('Catalog localization verification failed');
+    }
+
+    if (shippingCoverageVerification.invalidDocuments > 0) {
+      console.error(
+        'Invalid catalog shipping coverage detected:',
+        JSON.stringify(shippingCoverageVerification.issues.slice(0, 10)),
+      );
+      throw new Error('Catalog shipping coverage verification failed');
     }
   }
   finally {

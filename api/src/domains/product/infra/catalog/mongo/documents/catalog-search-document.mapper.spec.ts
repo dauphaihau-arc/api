@@ -117,6 +117,10 @@ describe('catalog-search-document.mapper', () => {
       shopSlug: 'olive-atelier',
       title: 'Linen Weekend Dress',
       state: ProductState.ACTIVE,
+      shipping: {
+        shipsToCountryCodes: [],
+        shipsWorldwide: false,
+      },
       inventory: {
         inStock: true,
         totalStock: 12,

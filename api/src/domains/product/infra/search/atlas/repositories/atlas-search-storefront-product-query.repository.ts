@@ -27,6 +27,7 @@ import { RequestContextService } from '~/platform/request-context/request-contex
 import { getActiveTraceContext } from '~/platform/observability/tracing';
 import { CatalogMongoAccess } from '../../../catalog/mongo/access/catalog-mongo.access';
 import { LiveProductInventoryStockOverlayService } from '../../../../app/services/live-product-inventory-stock-overlay.service';
+import { toCatalogShippingAvailability } from '../../../../app/shipping-coverage';
 import type {
   ListPublicProductsInput,
   PublicProductFacet,
@@ -139,9 +140,8 @@ implements StorefrontProductQueryRepository {
       return [];
     }
 
-    const pricingSelection = resolveIndexedPricingSelection(
-      await this.storefrontMarketContextService.resolveCurrentRequest(),
-    );
+    const marketContext = await this.storefrontMarketContextService.resolveCurrentRequest();
+    const pricingSelection = resolveIndexedPricingSelection(marketContext);
     const language = this.getStorefrontLanguage();
 
     this.assertAtlasSearchEnabled();
@@ -170,6 +170,8 @@ implements StorefrontProductQueryRepository {
           categoryId: 1,
           categoryPublicId: 1,
           variantType: 1,
+          isDigital: 1,
+          shipping: 1,
           image: 1,
           price: 1,
           pricingByMarket: 1,
@@ -188,7 +190,12 @@ implements StorefrontProductQueryRepository {
     return productIds
       .map((productId) => documentsById.get(productId))
       .filter((document): document is CatalogSearchDocument => document != null)
-      .map((document) => toPublicProductListItemFromSearchDocument(document, pricingSelection, language));
+      .map((document) => toPublicProductListItemFromSearchDocument(
+        document,
+        pricingSelection,
+        language,
+        marketContext?.previewCountryCode,
+      ));
   }
 
   async findPublicCardsByIds(productIds: string[]): Promise<PublicProductListItem[]> {
@@ -202,9 +209,9 @@ implements StorefrontProductQueryRepository {
 
     const searchCollection = await this.getSearchCollection();
 
-    const pricingSelection = resolveIndexedPricingSelection(
-      await this.storefrontMarketContextService.resolveCurrentRequest(),
-    );
+    const marketContext = await this.storefrontMarketContextService.resolveCurrentRequest();
+    const pricingSelection = resolveIndexedPricingSelection(marketContext);
+    const previewCountryCode = marketContext?.previewCountryCode;
 
     const indexedPricingSelection = this.toIndexedPricingSelection(pricingSelection);
     const requestSummary = this.summarizeListPublicInput(input, indexedPricingSelection);
@@ -217,6 +224,7 @@ implements StorefrontProductQueryRepository {
         indexedPricingSelection,
         requestSummary,
         language,
+        previewCountryCode,
       );
     }
 
@@ -266,6 +274,8 @@ implements StorefrontProductQueryRepository {
           categoryId: 1,
           categoryPublicId: 1,
           variantType: 1,
+          isDigital: 1,
+          shipping: 1,
           image: 1,
           price: 1,
           pricingByMarket: 1,
@@ -278,7 +288,12 @@ implements StorefrontProductQueryRepository {
     ]).toArray();
 
     return {
-      items: documents.map((document) => toPublicProductListItemFromSearchDocument(document, indexedPricingSelection, language)),
+      items: documents.map((document) => toPublicProductListItemFromSearchDocument(
+        document,
+        indexedPricingSelection,
+        language,
+        previewCountryCode,
+      )),
       meta: buildPaginationMeta(input.page, input.limit, total),
     };
   }
@@ -427,6 +442,7 @@ implements StorefrontProductQueryRepository {
     pricingSelection: StorefrontIndexedPricingSelection | undefined,
     requestSummary: ReturnType<typeof this.summarizeListPublicInput>,
     language: StorefrontLanguage,
+    previewCountryCode?: string,
   ): Promise<PublicProductListResult> {
     const filter = this.buildDirectBrowseFilter(input);
     const countStartedAt = process.hrtime.bigint();
@@ -452,6 +468,8 @@ implements StorefrontProductQueryRepository {
           categoryId: 1,
           categoryPublicId: 1,
           variantType: 1,
+          isDigital: 1,
+          shipping: 1,
           image: 1,
           price: 1,
           pricingByMarket: 1,
@@ -496,7 +514,12 @@ implements StorefrontProductQueryRepository {
     }
 
     return {
-      items: documents.map((document) => toPublicProductListItemFromSearchDocument(document, pricingSelection, language)),
+      items: documents.map((document) => toPublicProductListItemFromSearchDocument(
+        document,
+        pricingSelection,
+        language,
+        previewCountryCode,
+      )),
       meta: buildPaginationMeta(input.page, input.limit, total),
     };
   }
@@ -915,6 +938,7 @@ function toPublicProductListItemFromSearchDocument(
   document: CatalogSearchDocument,
   pricingSelection?: StorefrontIndexedPricingSelection,
   language: StorefrontLanguage = DEFAULT_STOREFRONT_LANGUAGE,
+  previewCountryCode?: string,
 ): PublicProductListItem {
   const indexedPricing = getIndexedPriceSummary(document.pricingByMarket, pricingSelection);
 
@@ -951,6 +975,7 @@ function toPublicProductListItemFromSearchDocument(
         && document.inventory.totalStock < PRODUCT_STOCK_NOTICE_THRESHOLD,
       stockTotal: document.inventory.totalStock,
     },
+    shipping: toCatalogShippingAvailability(document, previewCountryCode),
     variantCount: document.variantCount,
     createdAt: document.ranking.createdAt,
   };
