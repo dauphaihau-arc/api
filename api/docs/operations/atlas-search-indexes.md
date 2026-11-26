@@ -108,7 +108,7 @@ assigned Shipping Profile (`shipping.shipsToCountryCodes`,
 Destination of the request's Market.
 
 Run the backfill and verification below before enabling the storefront
-`ships_to_only` filter. Without the projected fields, the filter fails closed
+`catalog_ship_to` filter. Without the projected fields, the filter fails closed
 and omits those products instead of showing them as unsupported.
 
 Rebuild every active Product in place, then verify every collection the
