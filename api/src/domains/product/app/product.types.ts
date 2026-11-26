@@ -346,8 +346,7 @@ export interface PublicProductListItem {
   };
   /**
    * Whether the Product can ship to the buyer's server-derived Preview
-   * Destination. Digital Products are always available. Omitted by responses
-   * that do not resolve the buyer's Market (recommendation rails until ticket 05).
+   * Destination. Digital Products are always available.
    */
   shipping?: {
     available: boolean;
@@ -584,6 +583,12 @@ export interface ListPublicProductsInput {
   search?: string;
   title?: string;
   isDigital?: boolean;
+  /**
+   * Catalog-only destination filter. An ISO 3166-1 alpha-2 country restricts
+   * results to products whose projected Shipping Coverage includes it; `all`
+   * disables coverage filtering. Absent follows the Market Preview Destination.
+   */
+  catalogShipTo?: string;
   whoMade?: ProductWhoMade;
   minPriceMinor?: number;
   maxPriceMinor?: number;

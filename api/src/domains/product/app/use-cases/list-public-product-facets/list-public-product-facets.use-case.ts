@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import type { CategorySummary } from '~/domains/category/app/category.types';
 import { CategoryRepository } from '~/domains/category/app/ports/category.repository';
 import { toCanonicalFacetOption } from '../../shoe-size-groups';
+import { CatalogShipToResolver } from '../../services/catalog-ship-to.resolver';
 import { StorefrontProductQueryRepository } from '../../ports/storefront-product-query.repository';
 import type {
   PublicProductFacet,
@@ -18,9 +19,13 @@ export class ListPublicProductFacetsUseCase {
   constructor(
     private readonly productRepository: StorefrontProductQueryRepository,
     private readonly categoryRepository: CategoryRepository,
+    private readonly catalogShipToResolver: CatalogShipToResolver,
   ) {}
 
   async execute(query: ListPublicProductsQuery): Promise<PublicProductFacet[]> {
+    const catalogShipTo = await this.catalogShipToResolver.resolve(
+      query.catalogShipTo,
+    );
     const anchorCategory = query.categoryId
       ? await this.categoryRepository.findByPublicId(query.categoryId)
       : null;
@@ -57,7 +62,7 @@ export class ListPublicProductFacetsUseCase {
     }
 
     const facets = await this.productRepository.listPublicFacets(
-      toListPublicProductsInput(query, categoryIds),
+      toListPublicProductsInput({ ...query, catalogShipTo }, categoryIds),
     );
 
     return this.mergeFeaturedFacets({

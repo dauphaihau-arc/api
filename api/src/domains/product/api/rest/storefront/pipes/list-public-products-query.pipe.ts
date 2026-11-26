@@ -43,11 +43,11 @@ implements PipeTransform<Record<string, unknown>, Promise<ListPublicProductsQuer
         delete normalizedValue[key];
       });
 
-    return this.validationPipe.transform(normalizedValue, {
+    return await this.validationPipe.transform(normalizedValue, {
       ...metadata,
       metatype: ListPublicProductsQueryDto,
       type: 'query',
-    });
+    }) as ListPublicProductsQueryDto;
   }
 
   private parseAttributeFilters(

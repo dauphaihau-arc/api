@@ -73,6 +73,40 @@ describe('PublicProductViewHistoryService', () => {
     });
   });
 
+  it('omits products without shipping coverage from view-history rails', async () => {
+    const { service, repository, storefrontProductQueryRepository } = buildDependencies();
+    repository.listRecentViewProductIds.mockResolvedValue(['product-1', 'product-2']);
+    storefrontProductQueryRepository.findPublicByIds.mockResolvedValue([
+      {
+        id: 'product-1',
+        shop: { id: 'shop-1', shopName: 'Arc Store', slug: 'arc-store' },
+        title: 'Unsupported',
+        slug: 'unsupported',
+        availability: { inStock: true, lowStock: false, stockTotal: 4 },
+        shipping: { available: false },
+        variantCount: 1,
+        createdAt: new Date('2026-01-01T00:00:00.000Z'),
+      },
+      {
+        id: 'product-2',
+        shop: { id: 'shop-1', shopName: 'Arc Store', slug: 'arc-store' },
+        title: 'Supported',
+        slug: 'supported',
+        availability: { inStock: true, lowStock: false, stockTotal: 4 },
+        shipping: { available: true },
+        variantCount: 1,
+        createdAt: new Date('2026-01-02T00:00:00.000Z'),
+      },
+    ] as never);
+
+    await expect(service.listRecentViews({
+      userId: 'user-1',
+      limit: 5,
+    })).resolves.toEqual([
+      expect.objectContaining({ id: 'product-2' }),
+    ]);
+  });
+
   it('filters trending products to in-stock items', async () => {
     const { service, repository, storefrontProductQueryRepository } = buildDependencies();
     repository.listTrendingProductIds.mockResolvedValue(['product-1', 'product-2']);

@@ -13,6 +13,7 @@ import { QueueModule } from '~/integrations/queue/queue.module';
 import { SseModule } from '~/platform/sse/sse.module';
 import { AuthModule } from '../auth/auth.module';
 import { CategoryModule } from '../category/category.module';
+import { LocationModule } from '../location/location.module';
 import { ShopModule } from '../shop/shop.module';
 import { ShippingModule } from '../shipping/shipping.module';
 import { PromotionModule } from '../promotion/promotion.module';
@@ -30,6 +31,7 @@ import { StorefrontIndexedPriceProjectionService } from './app/services/storefro
 import { PublicProductOrderHistoryService } from './app/services/public-product-order-history.service';
 import { PublicProductBestSellerRankingService } from './app/services/public-product-best-seller-ranking.service';
 import { LiveProductInventoryStockOverlayService } from './app/services/live-product-inventory-stock-overlay.service';
+import { CatalogShipToResolver } from './app/services/catalog-ship-to.resolver';
 import { CreateProductDraftFacadeUseCase } from './app/use-cases/create-product-draft-facade/create-product-draft-facade.use-case';
 import { ConsumeProductImageUploadTicketUseCase } from './app/use-cases/consume-product-image-upload-ticket/consume-product-image-upload-ticket.use-case';
 import { CreateProductDraftUseCase } from './app/use-cases/create-product-draft/create-product-draft.use-case';
@@ -163,6 +165,7 @@ import { STOREFRONT_PRICING_CONFIG, buildStorefrontPricingConfig } from '~/platf
     forwardRef(() => AuthModule),
     ShopModule,
     ShippingModule,
+    LocationModule,
     CategoryModule,
     PromotionModule,
     StorageModule,
@@ -389,6 +392,7 @@ import { STOREFRONT_PRICING_CONFIG, buildStorefrontPricingConfig } from '~/platf
     PublicProductBestSellerRankingService,
     PublicProductViewHistoryService,
     LiveProductInventoryStockOverlayService,
+    CatalogShipToResolver,
     ProductActivitySessionService,
     PendingReviewImageUploadService,
 

@@ -58,7 +58,8 @@ export class PublicProductOrderHistoryService {
     const products = await this.storefrontProductQueryRepository.findPublicByIds(productIds);
 
     return products
-      .filter((product) => product.availability.inStock)
+      .filter((product) =>
+        product.availability.inStock && product.shipping?.available !== false)
       .slice(0, limit);
   }
 
@@ -73,7 +74,8 @@ export class PublicProductOrderHistoryService {
     const products = await this.storefrontProductQueryRepository.findPublicCardsByIds(productIds);
 
     return products
-      .filter((product) => product.availability.inStock)
+      .filter((product) =>
+        product.availability.inStock && product.shipping?.available !== false)
       .slice(0, limit);
   }
 }

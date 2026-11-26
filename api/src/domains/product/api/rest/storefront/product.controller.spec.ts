@@ -1,4 +1,4 @@
-import { NotFoundException, RequestMethod } from '@nestjs/common';
+import { BadRequestException, NotFoundException, RequestMethod } from '@nestjs/common';
 import { HEADERS_METADATA, METHOD_METADATA, PATH_METADATA } from '@nestjs/common/constants';
 import { GUARDS_METADATA } from '@nestjs/common/constants';
 import { OptionalJwtAuthGuard } from '~/domains/auth/api/guard/optional-jwt-auth.guard';
@@ -10,6 +10,7 @@ import type { ListPublicProductsUseCase } from '../../../app/use-cases/list-publ
 import type { SuggestPublicProductsUseCase } from '../../../app/use-cases/suggest-public-products/suggest-public-products.use-case';
 import { ShippingDestinationScope } from '~/domains/shipping/domain/enums/shipping-destination-scope.enum';
 import { ProductWhoMade } from '../../../domain/enums/product-who-made.enum';
+import { CatalogShipToInvalidError } from '../../../app/errors/product-app.error';
 import { ProductController } from './product.controller';
 
 const listPublicProductsUseCase: Pick<jest.Mocked<ListPublicProductsUseCase>, 'execute'> = {
@@ -63,8 +64,6 @@ describe('ProductController', () => {
 
   it('varies shared public product responses by X-Locale', () => {
     for (const handler of [
-      ProductController.prototype.listProducts,
-      ProductController.prototype.listProductFacets,
       ProductController.prototype.suggestProducts,
       ProductController.prototype.productBySlugs,
     ]) {
@@ -76,6 +75,23 @@ describe('ProductController', () => {
       expect(headers).toContainEqual({
         name: 'Vary',
         value: 'x-market-code, x-currency, x-locale, x-channel',
+      });
+    }
+  });
+
+  it('varies catalog list and facet responses by catalog_ship_to', () => {
+    for (const handler of [
+      ProductController.prototype.listProducts,
+      ProductController.prototype.listProductFacets,
+    ]) {
+      const headers = Reflect.getMetadata(HEADERS_METADATA, handler) as Array<{
+        name: string;
+        value: string;
+      }>;
+
+      expect(headers).toContainEqual({
+        name: 'Vary',
+        value: 'x-market-code, x-currency, x-locale, x-channel, catalog_ship_to',
       });
     }
   });
@@ -244,6 +260,30 @@ describe('ProductController', () => {
     });
   });
 
+  it('maps an invalid catalog_ship_to country to VALIDATION_FAILED', async () => {
+    listPublicProductsUseCase.execute.mockRejectedValueOnce(
+      new CatalogShipToInvalidError('ZZ'),
+    );
+
+    const error = await controller.listProducts(
+      guestRequest,
+      response,
+      { page: '1', limit: '16', catalog_ship_to: 'ZZ' },
+    ).catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(BadRequestException);
+    expect((error as BadRequestException).getResponse()).toMatchObject({
+      code: 'VALIDATION_FAILED',
+      message: 'Validation failed',
+      details: {
+        fields: [{
+          field: 'catalog_ship_to',
+          messages: ['catalog_ship_to must be an active country code or `all`'],
+        }],
+      },
+    });
+  });
+
   it('returns suggested products for typeahead', async () => {
     suggestPublicProductsUseCase.execute.mockResolvedValue([
       {
@@ -260,10 +300,14 @@ describe('ProductController', () => {
       },
     ]);
 
-    await expect(controller.suggestProducts({
-      search: 'bag',
-      limit: 5,
-    })).resolves.toEqual({
+    await expect(controller.suggestProducts(
+      guestRequest,
+      response,
+      {
+        search: 'bag',
+        limit: 5,
+      },
+    )).resolves.toEqual({
       items: [
         {
           id: 'public-product-1',
@@ -278,6 +322,7 @@ describe('ProductController', () => {
       ],
     });
     expect(suggestPublicProductsUseCase.execute).toHaveBeenCalledWith('bag', 5);
+    expect(response.setHeader).toHaveBeenCalledWith('Cache-Control', 'public, max-age=60');
   });
 
   it('returns product detail when looked up by shop slug and product slug', async () => {

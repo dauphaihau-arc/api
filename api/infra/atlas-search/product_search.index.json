@@ -24,6 +24,17 @@
         "isDigital": {
           "type": "boolean"
         },
+        "shipping": {
+          "type": "document",
+          "fields": {
+            "shipsToCountryCodes": {
+              "type": "token"
+            },
+            "shipsWorldwide": {
+              "type": "boolean"
+            }
+          }
+        },
         "whoMade": {
           "type": "token"
         },

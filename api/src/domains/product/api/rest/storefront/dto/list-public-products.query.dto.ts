@@ -27,6 +27,24 @@ export const PUBLIC_PRODUCT_SORT_ORDERS: PublicProductSortOrder[] = [
   'price_desc',
 ];
 
+/** Accepted `catalog_ship_to` input: `all` (any case) or two letters (any case). */
+export const CATALOG_SHIP_TO_PATTERN = /^(?:all|[A-Za-z]{2})$/;
+
+function toOptionalCatalogShipTo(value: unknown): string | undefined {
+  if (typeof value !== 'string') {
+    // Leave non-strings untouched so `@IsString` rejects them.
+    return value as string | undefined;
+  }
+
+  const trimmed = value.trim();
+
+  if (!trimmed) {
+    return undefined;
+  }
+
+  return trimmed.toLowerCase() === 'all' ? 'all' : trimmed.toUpperCase();
+}
+
 function toOptionalBoolean(value: unknown): boolean | undefined {
   if (value === undefined || value === null || value === '') {
     return undefined;
@@ -91,6 +109,24 @@ export class ListPublicProductsQueryDto {
   )
   @IsBoolean()
   isDigital?: boolean;
+
+  @IsOptional()
+  @ApiPropertyOptional({
+    name: 'catalog_ship_to',
+    description:
+      'Catalog-only destination filter. An ISO 3166-1 alpha-2 country ' +
+      'restricts results to products that ship there; `all` disables coverage ' +
+      'filtering. Omit to follow the request Market\'s Preview Destination.',
+  })
+  @Expose({ name: 'catalog_ship_to' })
+  @Transform(({ value, obj: source }) =>
+    toOptionalCatalogShipTo(
+      value ?? source.catalog_ship_to ?? source.catalogShipTo,
+    ),
+  )
+  @IsString()
+  @Matches(CATALOG_SHIP_TO_PATTERN)
+  catalogShipTo?: string;
 
   @IsOptional()
   @ApiPropertyOptional({ name: 'who_made', enum: ProductWhoMade })

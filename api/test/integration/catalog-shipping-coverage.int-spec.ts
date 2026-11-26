@@ -137,6 +137,20 @@ describe('Catalog shipping coverage (integration)', () => {
     });
     await sql.connect();
 
+    // `catalog_ship_to` validates against the active location countries, so the
+    // reference rows must exist even though this suite never calls /locations.
+    await sql.query(
+      `insert into "location_countries"
+         ("code", "name", "postal_code_required", "is_active", "created_at", "updated_at")
+       values
+         ('US', 'United States', true, true, now(), now()),
+         ('VN', 'Vietnam', false, true, now(), now()),
+         ('CA', 'Canada', true, true, now(), now()),
+         ('ZY', 'Inactive Example', false, false, now(), now())
+       on conflict ("code") do update
+         set "is_active" = excluded."is_active"`,
+    );
+
     mongo = new MongoClient(process.env.CATALOG_MONGODB_URI ?? 'mongodb://127.0.0.1:27017');
     await mongo.connect();
 
@@ -304,17 +318,57 @@ describe('Catalog shipping coverage (integration)', () => {
     return { id: response.body.id as string, version: response.body.version as number };
   }
 
+  async function createCategoryWithMaterialOptions(
+    seller: TestSeller,
+    name: string,
+    options: string[],
+  ): Promise<{
+    categoryPublicId: string;
+    attributeId: string;
+    optionIds: Map<string, string>;
+  }> {
+    const categoryResponse = await seller.agent
+      .post(`${API_PREFIX}/categories`)
+      .set('Idempotency-Key', randomUUID())
+      .send({ name, rank: 1 })
+      .expect(201);
+    const categoryPublicId = categoryResponse.body.id as string;
+
+    const attributeResponse = await seller.agent
+      .post(`${API_PREFIX}/categories/${categoryPublicId}/attributes`)
+      .set('Idempotency-Key', randomUUID())
+      .send({
+        name: 'Material',
+        input_type: 'select',
+        options,
+      })
+      .expect(201);
+
+    const attribute = attributeResponse.body.attributes[0] as {
+      id: string;
+      options: Array<{ id: string; value: string }>;
+    };
+
+    return {
+      categoryPublicId,
+      attributeId: attribute.id,
+      optionIds: new Map(attribute.options.map((option) => [option.value, option.id])),
+    };
+  }
+
   async function createProduct(input: {
     seller: TestSeller;
     title: string;
     sku: string;
     isDigital?: boolean;
+    categoryId?: string;
+    attributes?: Array<{ categoryAttributeId: string; selectedOptionId: string }>;
   }): Promise<{ productId: string; inventoryId: string }> {
     const productResponse = await input.seller.agent
       .post(`${API_PREFIX}/shops/${input.seller.shopPublicId}/products`)
       .set('Idempotency-Key', randomUUID())
       .send({
-        category_id: await seedCategory(input.seller.agent),
+        category_id: input.categoryId ?? await seedCategory(input.seller.agent),
         title: input.title,
         description: 'Catalog shipping coverage product',
         who_made: ProductWhoMade.I_DID,
@@ -322,6 +376,19 @@ describe('Catalog shipping coverage (integration)', () => {
       })
       .expect(201);
     const productId = productResponse.body.id as string;
+
+    if (input.attributes?.length) {
+      await input.seller.agent
+        .put(`${API_PREFIX}/shops/${input.seller.shopPublicId}/products/${productId}/attributes`)
+        .set('Idempotency-Key', randomUUID())
+        .send({
+          attributes: input.attributes.map((attribute) => ({
+            category_attribute_id: attribute.categoryAttributeId,
+            selected_option_id: attribute.selectedOptionId,
+          })),
+        })
+        .expect(200);
+    }
 
     await input.seller.agent
       .put(`${API_PREFIX}/shops/${input.seller.shopPublicId}/products/${productId}/images`)
@@ -370,10 +437,25 @@ describe('Catalog shipping coverage (integration)', () => {
     await projector.projectProduct(await resolveProductId(sql, productId));
   }
 
-  function listProducts(marketCode: string) {
+  function listProducts(
+    marketCode: string,
+    extraQuery: Record<string, string | number> = {},
+  ) {
     return request(app.getHttpServer())
       .get(`${API_PREFIX}/products`)
-      .query({ limit: 50 })
+      .query({ limit: 50, ...extraQuery })
+      .set('X-Market-Code', marketCode)
+      .set('X-Forwarded-For', randomForwardedIp())
+      .expect(200);
+  }
+
+  function listFacets(
+    marketCode: string,
+    query: Record<string, string | number>,
+  ) {
+    return request(app.getHttpServer())
+      .get(`${API_PREFIX}/products/facets`)
+      .query(query)
       .set('X-Market-Code', marketCode)
       .set('X-Forwarded-For', randomForwardedIp())
       .expect(200);
@@ -446,9 +528,22 @@ describe('Catalog shipping coverage (integration)', () => {
         .map((item) => [item.id, item]),
     );
 
-    expect(vietnamItems.get(countryProduct.productId)?.shipping.available).toBe(false);
+    // Absent `catalog_ship_to` follows the Market Preview Destination, so the
+    // US-only product is not part of the VN list at all.
+    expect(vietnamItems.has(countryProduct.productId)).toBe(false);
     expect(vietnamItems.get(worldwideProduct.productId)?.shipping.available).toBe(true);
     expect(vietnamItems.get(digitalProduct.productId)?.shipping.available).toBe(true);
+
+    // `all` disables coverage filtering and keeps the unsupported badge.
+    const vietnamAllResponse = await listProducts('VN', { catalog_ship_to: 'all' });
+    const vietnamAllItems = new Map(
+      (vietnamAllResponse.body.items as Array<{ id: string; shipping: { available: boolean } }>)
+        .map((item) => [item.id, item]),
+    );
+
+    expect(vietnamAllItems.get(countryProduct.productId)?.shipping.available).toBe(false);
+    expect(vietnamAllItems.get(worldwideProduct.productId)?.shipping.available).toBe(true);
+    expect(vietnamAllItems.get(digitalProduct.productId)?.shipping.available).toBe(true);
   });
 
   it('reprojects profile edits so list availability follows the new coverage', async () => {
@@ -472,7 +567,7 @@ describe('Catalog shipping coverage (integration)', () => {
     await projectProduct(product.productId);
     jobDispatcher.dispatch.mockClear();
 
-    const before = await listProducts('US');
+    const before = await listProducts('US', { catalog_ship_to: 'all' });
     expect(before.body.items.find((item: { id: string }) => item.id === product.productId)?.shipping.available)
       .toBe(true);
 
@@ -500,8 +595,8 @@ describe('Catalog shipping coverage (integration)', () => {
 
     await projectProduct(product.productId);
 
-    const usAfter = await listProducts('US');
-    const vnAfter = await listProducts('VN');
+    const usAfter = await listProducts('US', { catalog_ship_to: 'all' });
+    const vnAfter = await listProducts('VN', { catalog_ship_to: 'all' });
     expect(usAfter.body.items.find((item: { id: string }) => item.id === product.productId)?.shipping.available)
       .toBe(false);
     expect(vnAfter.body.items.find((item: { id: string }) => item.id === product.productId)?.shipping.available)
@@ -536,21 +631,466 @@ describe('Catalog shipping coverage (integration)', () => {
     await publishProduct(seller, product.productId);
     await projectProduct(product.productId);
 
-    expect((await listProducts('US')).body.items.find(
+    expect((await listProducts('US', { catalog_ship_to: 'all' })).body.items.find(
       (item: { id: string }) => item.id === product.productId,
     )?.shipping.available).toBe(true);
-    expect((await listProducts('VN')).body.items.find(
+    expect((await listProducts('VN', { catalog_ship_to: 'all' })).body.items.find(
       (item: { id: string }) => item.id === product.productId,
     )?.shipping.available).toBe(false);
 
     await assignProfile(seller, product.productId, vnProfile.id);
     await projectProduct(product.productId);
 
-    expect((await listProducts('US')).body.items.find(
+    expect((await listProducts('US', { catalog_ship_to: 'all' })).body.items.find(
       (item: { id: string }) => item.id === product.productId,
     )?.shipping.available).toBe(false);
-    expect((await listProducts('VN')).body.items.find(
+    expect((await listProducts('VN', { catalog_ship_to: 'all' })).body.items.find(
       (item: { id: string }) => item.id === product.productId,
     )?.shipping.available).toBe(true);
+  });
+
+  describe('catalog_ship_to and suggestion/recommendation coverage', () => {
+    type CoverageListItem = {
+      id: string;
+      slug: string;
+      shop: { slug: string };
+      shipping: { available: boolean };
+    };
+
+    function countryProfileRates(destinationCountry: string): ShippingRateBody[] {
+      return [{
+        destination_scope: 'country',
+        destination_country: destinationCountry,
+        one_item_fee_minor: 599,
+        additional_item_fee_minor: 199,
+        delivery_time_min_days: 3,
+        delivery_time_max_days: 5,
+      }];
+    }
+
+    function worldwideProfileRates(): ShippingRateBody[] {
+      return [{
+        destination_scope: 'everywhere_else',
+        one_item_fee_minor: 1999,
+        additional_item_fee_minor: 599,
+        delivery_time_min_days: 5,
+        delivery_time_max_days: 10,
+      }];
+    }
+
+    it('filters catalog list, counts, and facets by catalog_ship_to', async () => {
+      const seller = await createSeller('catalog-shipping-filter');
+      const category = await createCategoryWithMaterialOptions(
+        seller,
+        `Coverage filter ${randomUUID().slice(0, 8)}`,
+        ['Ceramic', 'Linen', 'Digital'],
+      );
+      const countryProfile = await createActiveProfile(
+        seller,
+        'US only filter',
+        countryProfileRates('US'),
+      );
+      const worldwideProfile = await createActiveProfile(
+        seller,
+        'Worldwide filter',
+        worldwideProfileRates(),
+      );
+      const searchToken = `Filter${randomUUID().slice(0, 8)}`;
+
+      const countryProduct = await createProduct({
+        seller,
+        title: `Filter ${searchToken} Country Only Mug`,
+        sku: `FILTER-COUNTRY-${randomUUID().slice(0, 6)}`,
+        categoryId: category.categoryPublicId,
+        attributes: [{
+          categoryAttributeId: category.attributeId,
+          selectedOptionId: category.optionIds.get('Ceramic') as string,
+        }],
+      });
+      const worldwideProduct = await createProduct({
+        seller,
+        title: `Filter ${searchToken} Worldwide Mug`,
+        sku: `FILTER-WORLDWIDE-${randomUUID().slice(0, 6)}`,
+        categoryId: category.categoryPublicId,
+        attributes: [{
+          categoryAttributeId: category.attributeId,
+          selectedOptionId: category.optionIds.get('Linen') as string,
+        }],
+      });
+      const digitalProduct = await createProduct({
+        seller,
+        title: `Filter ${searchToken} Digital Pattern`,
+        sku: `FILTER-DIGITAL-${randomUUID().slice(0, 6)}`,
+        categoryId: category.categoryPublicId,
+        isDigital: true,
+        attributes: [{
+          categoryAttributeId: category.attributeId,
+          selectedOptionId: category.optionIds.get('Digital') as string,
+        }],
+      });
+
+      await assignProfile(seller, countryProduct.productId, countryProfile.id);
+      await assignProfile(seller, worldwideProduct.productId, worldwideProfile.id);
+      await publishProduct(seller, countryProduct.productId);
+      await publishProduct(seller, worldwideProduct.productId);
+      await publishProduct(seller, digitalProduct.productId);
+      await projectProduct(countryProduct.productId);
+      await projectProduct(worldwideProduct.productId);
+      await projectProduct(digitalProduct.productId);
+
+      const categoryQuery = { category_id: category.categoryPublicId };
+      const idsOf = (items: CoverageListItem[]): string[] =>
+        items.map((item) => item.id).sort();
+
+      // Absent `catalog_ship_to` follows the request Market's Preview Destination.
+      const usDefault = await listProducts('US', categoryQuery);
+      expect(usDefault.body.meta.total).toBe(3);
+      expect(idsOf(usDefault.body.items as CoverageListItem[])).toEqual([
+        countryProduct.productId,
+        worldwideProduct.productId,
+        digitalProduct.productId,
+      ].sort());
+      expect(usDefault.headers.vary).toContain('catalog_ship_to');
+      const usItems = new Map(
+        (usDefault.body.items as CoverageListItem[]).map((item) => [item.id, item]),
+      );
+      expect(usItems.get(countryProduct.productId)?.shipping.available).toBe(true);
+      expect(usItems.get(worldwideProduct.productId)?.shipping.available).toBe(true);
+      expect(usItems.get(digitalProduct.productId)?.shipping.available).toBe(true);
+
+      const vnDefault = await listProducts('VN', categoryQuery);
+      expect(vnDefault.body.meta.total).toBe(2);
+      expect(idsOf(vnDefault.body.items as CoverageListItem[])).toEqual(
+        [worldwideProduct.productId, digitalProduct.productId].sort(),
+      );
+
+      // An explicit ISO country overrides the Market in both directions.
+      const vnForcedUs = await listProducts('VN', {
+        ...categoryQuery,
+        catalog_ship_to: 'us',
+      });
+      expect(vnForcedUs.body.meta.total).toBe(3);
+      expect(idsOf(vnForcedUs.body.items as CoverageListItem[])).toEqual([
+        countryProduct.productId,
+        worldwideProduct.productId,
+        digitalProduct.productId,
+      ].sort());
+
+      const usForcedCa = await listProducts('US', {
+        ...categoryQuery,
+        catalog_ship_to: 'CA',
+      });
+      expect(usForcedCa.body.meta.total).toBe(2);
+      expect(idsOf(usForcedCa.body.items as CoverageListItem[])).toEqual(
+        [worldwideProduct.productId, digitalProduct.productId].sort(),
+      );
+
+      // `all` disables coverage filtering while keeping the unsupported badge.
+      const vnAll = await listProducts('VN', {
+        ...categoryQuery,
+        catalog_ship_to: 'all',
+      });
+      expect(vnAll.body.meta.total).toBe(3);
+      const vnAllItems = new Map(
+        (vnAll.body.items as CoverageListItem[]).map((item) => [item.id, item]),
+      );
+      expect(vnAllItems.get(countryProduct.productId)?.shipping.available).toBe(false);
+      expect(vnAllItems.get(worldwideProduct.productId)?.shipping.available).toBe(true);
+      expect(vnAllItems.get(digitalProduct.productId)?.shipping.available).toBe(true);
+
+      const usAll = await listProducts('US', {
+        ...categoryQuery,
+        catalog_ship_to: 'all',
+      });
+      expect(usAll.body.meta.total).toBe(3);
+      expect((usAll.body.items as CoverageListItem[])).toHaveLength(3);
+      const usAllItems = new Map(
+        (usAll.body.items as CoverageListItem[]).map((item) => [item.id, item]),
+      );
+      expect(usAllItems.get(countryProduct.productId)?.shipping.available).toBe(true);
+
+      // Facets use the same effective destination and are cached separately.
+      const materialValues = (facets: {
+        facets: Array<{ facet_key: string; options: Array<{ value: string }> }>;
+      }): string[] => facets.facets
+        .find((facet) => facet.facet_key === 'material')
+        ?.options.map((option) => option.value)
+        .sort() ?? [];
+
+      const vnDefaultFacets = await listFacets('VN', categoryQuery);
+      expect(materialValues(vnDefaultFacets.body)).toEqual(['Digital', 'Linen']);
+      expect(vnDefaultFacets.headers.vary).toContain('catalog_ship_to');
+
+      const vnAllFacets = await listFacets('VN', {
+        ...categoryQuery,
+        catalog_ship_to: 'all',
+      });
+      expect(materialValues(vnAllFacets.body)).toEqual(
+        ['Ceramic', 'Digital', 'Linen'],
+      );
+
+      const usForcedCaFacets = await listFacets('US', {
+        ...categoryQuery,
+        catalog_ship_to: 'CA',
+      });
+      expect(materialValues(usForcedCaFacets.body)).toEqual(['Digital', 'Linen']);
+
+      // The text-search branch combines the keyword with the same coverage
+      // predicate; only the category branch was covered above.
+      const vnSearchDefault = await listProducts('VN', { search: searchToken });
+      expect(vnSearchDefault.body.meta.total).toBe(2);
+      expect(idsOf(vnSearchDefault.body.items as CoverageListItem[])).toEqual(
+        [worldwideProduct.productId, digitalProduct.productId].sort(),
+      );
+
+      const usSearchForcedCa = await listProducts('US', {
+        search: searchToken,
+        catalog_ship_to: 'CA',
+      });
+      expect(usSearchForcedCa.body.meta.total).toBe(2);
+
+      const vnSearchAll = await listProducts('VN', {
+        search: searchToken,
+        catalog_ship_to: 'all',
+      });
+      expect(vnSearchAll.body.meta.total).toBe(3);
+      expect((vnSearchAll.body.items as CoverageListItem[])).toHaveLength(3);
+
+      // Unknown, inactive, and malformed values fail with the standard envelope.
+      const invalid = await request(app.getHttpServer())
+        .get(`${API_PREFIX}/products`)
+        .query({ catalog_ship_to: 'ZZ' })
+        .set('X-Market-Code', 'US')
+        .set('X-Forwarded-For', randomForwardedIp())
+        .expect(400);
+      expect(invalid.body).toMatchObject({
+        code: 'VALIDATION_FAILED',
+        details: { fields: [{ field: 'catalog_ship_to' }] },
+      });
+
+      const inactive = await request(app.getHttpServer())
+        .get(`${API_PREFIX}/products/facets`)
+        .query({ catalog_ship_to: 'ZY' })
+        .set('X-Market-Code', 'US')
+        .set('X-Forwarded-For', randomForwardedIp())
+        .expect(400);
+      expect(inactive.body).toMatchObject({
+        code: 'VALIDATION_FAILED',
+        details: { fields: [{ field: 'catalog_ship_to' }] },
+      });
+
+      const malformed = await request(app.getHttpServer())
+        .get(`${API_PREFIX}/products`)
+        .query({ catalog_ship_to: 'USA' })
+        .set('X-Market-Code', 'US')
+        .set('X-Forwarded-For', randomForwardedIp())
+        .expect(400);
+      expect(malformed.body).toMatchObject({
+        code: 'VALIDATION_FAILED',
+        details: { fields: [{ field: 'catalog_ship_to' }] },
+      });
+
+      // Product detail stays Market-scoped even though the catalog can browse
+      // to another country: the same product is listed for US but its detail
+      // preview refuses VN.
+      const countryItem = vnAllItems.get(countryProduct.productId) as CoverageListItem;
+      const detailPath = `${API_PREFIX}/products/by-slug/${countryItem.shop.slug}/${countryItem.slug}`;
+      const vnDetail = await request(app.getHttpServer())
+        .get(detailPath)
+        .set('X-Market-Code', 'VN')
+        .set('X-Forwarded-For', randomForwardedIp())
+        .expect(200);
+      expect(vnDetail.body.shipping.preview.available).toBe(false);
+
+      const usDetail = await request(app.getHttpServer())
+        .get(detailPath)
+        .set('X-Market-Code', 'US')
+        .set('X-Forwarded-For', randomForwardedIp())
+        .expect(200);
+      expect(usDetail.body.shipping.preview.available).toBe(true);
+    });
+
+    it('excludes unsupported products from search suggestions', async () => {
+      const seller = await createSeller('catalog-shipping-suggest');
+      const searchToken = `zephyr${randomUUID().replace(/-/g, '').slice(0, 8)}`;
+      const countryProfile = await createActiveProfile(
+        seller,
+        'US only suggest',
+        countryProfileRates('US'),
+      );
+      const worldwideProfile = await createActiveProfile(
+        seller,
+        'Worldwide suggest',
+        worldwideProfileRates(),
+      );
+
+      const countryProduct = await createProduct({
+        seller,
+        title: `${searchToken} Country Mug`,
+        sku: `SUGGEST-COUNTRY-${randomUUID().slice(0, 6)}`,
+      });
+      const worldwideProduct = await createProduct({
+        seller,
+        title: `${searchToken} Worldwide Mug`,
+        sku: `SUGGEST-WORLDWIDE-${randomUUID().slice(0, 6)}`,
+      });
+      const digitalProduct = await createProduct({
+        seller,
+        title: `${searchToken} Digital Pattern`,
+        sku: `SUGGEST-DIGITAL-${randomUUID().slice(0, 6)}`,
+        isDigital: true,
+      });
+
+      await assignProfile(seller, countryProduct.productId, countryProfile.id);
+      await assignProfile(seller, worldwideProduct.productId, worldwideProfile.id);
+      await publishProduct(seller, countryProduct.productId);
+      await publishProduct(seller, worldwideProduct.productId);
+      await publishProduct(seller, digitalProduct.productId);
+      await projectProduct(countryProduct.productId);
+      await projectProduct(worldwideProduct.productId);
+      await projectProduct(digitalProduct.productId);
+
+      const suggest = (marketCode: string) => request(app.getHttpServer())
+        .get(`${API_PREFIX}/products/suggestions`)
+        .query({ search: searchToken, limit: 10 })
+        .set('X-Market-Code', marketCode)
+        .set('X-Forwarded-For', randomForwardedIp())
+        .expect(200);
+
+      const usSuggestions = (await suggest('US')).body.items as Array<{ id: string }>;
+      expect(usSuggestions.map((item) => item.id).sort()).toEqual([
+        countryProduct.productId,
+        worldwideProduct.productId,
+        digitalProduct.productId,
+      ].sort());
+
+      const vnSuggestions = (await suggest('VN')).body.items as Array<{ id: string }>;
+      expect(vnSuggestions.map((item) => item.id).sort()).toEqual([
+        worldwideProduct.productId,
+        digitalProduct.productId,
+      ].sort());
+    });
+
+    it('excludes unsupported products from recommendation rails', async () => {
+      const seller = await createSeller('catalog-shipping-recommend');
+      const category = await createCategoryWithMaterialOptions(
+        seller,
+        `Coverage recommend ${randomUUID().slice(0, 8)}`,
+        ['Ceramic', 'Linen'],
+      );
+      const countryProfile = await createActiveProfile(
+        seller,
+        'US only recommend',
+        countryProfileRates('US'),
+      );
+      const worldwideProfile = await createActiveProfile(
+        seller,
+        'Worldwide recommend',
+        worldwideProfileRates(),
+      );
+
+      const anchorProduct = await createProduct({
+        seller,
+        title: 'Recommend Anchor Mug',
+        sku: `RECOMMEND-ANCHOR-${randomUUID().slice(0, 6)}`,
+        categoryId: category.categoryPublicId,
+      });
+      const countryProduct = await createProduct({
+        seller,
+        title: 'Recommend Country Only Mug',
+        sku: `RECOMMEND-COUNTRY-${randomUUID().slice(0, 6)}`,
+        categoryId: category.categoryPublicId,
+      });
+      const worldwideProduct = await createProduct({
+        seller,
+        title: 'Recommend Worldwide Tote',
+        sku: `RECOMMEND-WORLDWIDE-${randomUUID().slice(0, 6)}`,
+        categoryId: category.categoryPublicId,
+      });
+      const digitalProduct = await createProduct({
+        seller,
+        title: 'Recommend Digital Pattern',
+        sku: `RECOMMEND-DIGITAL-${randomUUID().slice(0, 6)}`,
+        categoryId: category.categoryPublicId,
+        isDigital: true,
+      });
+
+      await assignProfile(seller, anchorProduct.productId, worldwideProfile.id);
+      await assignProfile(seller, countryProduct.productId, countryProfile.id);
+      await assignProfile(seller, worldwideProduct.productId, worldwideProfile.id);
+      await publishProduct(seller, anchorProduct.productId);
+      await publishProduct(seller, countryProduct.productId);
+      await publishProduct(seller, worldwideProduct.productId);
+      await publishProduct(seller, digitalProduct.productId);
+      await projectProduct(anchorProduct.productId);
+      await projectProduct(countryProduct.productId);
+      await projectProduct(worldwideProduct.productId);
+      await projectProduct(digitalProduct.productId);
+
+      const anchor = (await listProducts('US', {
+        category_id: category.categoryPublicId,
+      })).body.items.find(
+        (item: CoverageListItem) => item.id === anchorProduct.productId,
+      ) as CoverageListItem;
+
+      const recommendations = (marketCode: string) => request(app.getHttpServer())
+        .get(`${API_PREFIX}/products/by-slug/${anchor.shop.slug}/${anchor.slug}/recommendations`)
+        .query({ limit: 12 })
+        .set('X-Market-Code', marketCode)
+        .set('X-Forwarded-For', randomForwardedIp())
+        .expect(200);
+
+      // The shared suite catalog also contains products from earlier tests, so
+      // assert over this test's fixtures instead of the whole response array.
+      const fixtureProductIds = new Set([
+        anchorProduct.productId,
+        countryProduct.productId,
+        worldwideProduct.productId,
+        digitalProduct.productId,
+      ]);
+      const fixtureIdsIn = (items: Array<{ id: string }>): string[] => items
+        .map((item) => item.id)
+        .filter((id) => fixtureProductIds.has(id))
+        .sort();
+
+      const usRecommendations = (await recommendations('US')).body.items as Array<{ id: string }>;
+      expect(fixtureIdsIn(usRecommendations)).toEqual([
+        countryProduct.productId,
+        worldwideProduct.productId,
+        digitalProduct.productId,
+      ].sort());
+
+      const vnRecommendations = (await recommendations('VN')).body.items as Array<{ id: string }>;
+      expect(vnRecommendations.map((item) => item.id))
+        .not.toContain(countryProduct.productId);
+      expect(fixtureIdsIn(vnRecommendations)).toEqual([
+        worldwideProduct.productId,
+        digitalProduct.productId,
+      ].sort());
+
+      const sections = (await request(app.getHttpServer())
+        .get(`${API_PREFIX}/products/by-slug/${anchor.shop.slug}/${anchor.slug}/recommendation-sections`)
+        .query({ limit: 12 })
+        .set('X-Market-Code', 'VN')
+        .set('X-Forwarded-For', randomForwardedIp())
+        .expect(200)).body.sections as Array<{
+        type: string;
+        items: Array<{ id: string }>;
+      }>;
+
+      const allSectionItemIds = sections.flatMap((section) =>
+        section.items.map((item) => item.id));
+      expect(allSectionItemIds).not.toContain(countryProduct.productId);
+      expect(allSectionItemIds).toContain(worldwideProduct.productId);
+      expect(allSectionItemIds).toContain(digitalProduct.productId);
+
+      const sameSellerSection = sections.find(
+        (section) => section.type === 'from_same_seller',
+      );
+      expect(fixtureIdsIn(sameSellerSection?.items ?? [])).toEqual([
+        worldwideProduct.productId,
+        digitalProduct.productId,
+      ].sort());
+    });
   });
 });
