@@ -40789,7 +40789,14 @@
             "type": "boolean"
           },
           "reason": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "missing_assignment",
+              "profile_not_found",
+              "profile_not_ready",
+              "unsupported_destination",
+              "unsupported_currency"
+            ]
           }
         },
         "required": [

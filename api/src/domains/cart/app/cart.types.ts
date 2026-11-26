@@ -1,11 +1,23 @@
 import type { CartKind } from '../domain/enums/cart-kind.enum';
-import type { ShippingPreview } from '~/domains/shipping/app/shipping.types';
+
+/** Stable wire vocabulary for a cart line's shipping unavailable reason. */
+export const CART_SHIPPING_UNAVAILABLE_REASONS = [
+  'missing_assignment',
+  'profile_not_found',
+  'profile_not_ready',
+  'unsupported_destination',
+  'unsupported_currency',
+] as const;
+
+export type CartShippingUnavailableReason =
+  (typeof CART_SHIPPING_UNAVAILABLE_REASONS)[number];
 
 /** Buyer-facing shipping state attached to a cart line. */
-export type CartItemShipping = Pick<
-  ShippingPreview,
-  'available' | 'isDigital' | 'reason'
->;
+export interface CartItemShipping {
+  available: boolean;
+  isDigital: boolean;
+  reason?: CartShippingUnavailableReason;
+}
 
 export interface CartPricingSnapshot {
   amountMinor: number;

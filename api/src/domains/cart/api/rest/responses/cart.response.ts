@@ -1,5 +1,9 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
+import {
+  CART_SHIPPING_UNAVAILABLE_REASONS,
+  type CartShippingUnavailableReason,
+} from '../../../app/cart.types';
 
 export class CartProductShopRefResponseDto {
   @ApiProperty()
@@ -27,8 +31,11 @@ export class CartItemShippingResponseDto {
   @ApiProperty()
   is_digital!: boolean;
 
-  @ApiProperty({ type: String, required: false })
-  reason?: string;
+  @ApiProperty({
+    enum: CART_SHIPPING_UNAVAILABLE_REASONS,
+    required: false,
+  })
+  reason?: CartShippingUnavailableReason;
 }
 
 export class CartProductResponseDto {
