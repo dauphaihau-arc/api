@@ -11113,6 +11113,16 @@
             }
           },
           {
+            "name": "catalog_ship_to",
+            "required": false,
+            "in": "query",
+            "description": "Catalog-only destination filter. An ISO 3166-1 alpha-2 country restricts results, counts, and facets to products that ship there; `all` disables coverage filtering. Omit to follow the request Market's Preview Destination. Only product list and facet responses use this value; product detail, suggestions, recommendations, cart, and checkout remain Market-scoped.",
+            "schema": {
+              "pattern": "^(?:all|[A-Za-z]{2})$",
+              "type": "string"
+            }
+          },
+          {
             "name": "who_made",
             "required": false,
             "in": "query",
@@ -11354,6 +11364,16 @@
             "description": "Restrict to digital (`true`) or physical (`false`) products.",
             "schema": {
               "type": "boolean"
+            }
+          },
+          {
+            "name": "catalog_ship_to",
+            "required": false,
+            "in": "query",
+            "description": "Catalog-only destination filter. An ISO 3166-1 alpha-2 country restricts results, counts, and facets to products that ship there; `all` disables coverage filtering. Omit to follow the request Market's Preview Destination. Only product list and facet responses use this value; product detail, suggestions, recommendations, cart, and checkout remain Market-scoped.",
+            "schema": {
+              "pattern": "^(?:all|[A-Za-z]{2})$",
+              "type": "string"
             }
           },
           {

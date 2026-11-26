@@ -57,15 +57,25 @@ function toSnakeCasePath(path: string): string {
 }
 
 /**
+ * Standard `VALIDATION_FAILED` error envelope for a validation decision that
+ * class-validator cannot express (e.g. an async reference-data lookup).
+ */
+export function validationFailedException(
+  fields: ValidationFieldError[],
+): BadRequestException {
+  return new BadRequestException({
+    code: VALIDATION_FAILED_CODE,
+    message: VALIDATION_FAILED_MESSAGE,
+    details: { fields },
+  });
+}
+
+/**
  * `ValidationPipe` exception factory producing the standard `VALIDATION_FAILED`
  * error with a `details.fields` array instead of Nest's bare message array.
  */
 export function validationExceptionFactory(
   errors: ValidationError[],
 ): BadRequestException {
-  return new BadRequestException({
-    code: VALIDATION_FAILED_CODE,
-    message: VALIDATION_FAILED_MESSAGE,
-    details: { fields: flattenValidationFields(errors) },
-  });
+  return validationFailedException(flattenValidationFields(errors));
 }

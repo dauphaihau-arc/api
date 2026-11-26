@@ -84,7 +84,11 @@ export class PublicProductViewHistoryService {
       return [];
     }
 
-    return this.storefrontProductQueryRepository.findPublicByIds(productIds);
+    const products = await this.storefrontProductQueryRepository.findPublicByIds(productIds);
+
+    // Every view-history rail omits Products that cannot ship to the buyer's
+    // Preview Destination; the rail has no room to explain the reason.
+    return products.filter((product) => product.shipping?.available !== false);
   }
 
   private async listVisibleProducts(

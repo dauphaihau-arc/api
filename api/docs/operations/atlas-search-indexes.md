@@ -73,6 +73,8 @@ Important indexed fields:
 - `state`
 - `categoryId`
 - `isDigital`
+- `shipping.shipsToCountryCodes`
+- `shipping.shipsWorldwide`
 - `whoMade`
 - `flags.hasImages`
 - `price.minAmountMinor`
@@ -104,6 +106,10 @@ assigned Shipping Profile (`shipping.shipsToCountryCodes`,
 `shipping.shipsWorldwide`). The storefront list derives each item's
 `shipping.available` from that projection and the server-owned Preview
 Destination of the request's Market.
+
+Run the backfill and verification below before enabling the storefront
+`catalog_ship_to` filter. Without the projected fields, the filter fails closed
+and omits those products instead of showing them as unsupported.
 
 Rebuild every active Product in place, then verify every collection the
 storefront reads (run from `apps/api/api`):

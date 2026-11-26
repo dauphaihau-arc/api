@@ -12,6 +12,7 @@ export interface ListPublicProductsQuery {
   search?: string;
   title?: string;
   isDigital?: boolean;
+  catalogShipTo?: string;
   whoMade?: ListPublicProductsInput['whoMade'];
   minPrice?: number;
   maxPrice?: number;
@@ -36,6 +37,7 @@ export function toListPublicProductsInput(
     search: query.search?.trim() || undefined,
     title: query.title?.trim() || undefined,
     isDigital: query.isDigital,
+    catalogShipTo: query.catalogShipTo,
     whoMade: query.whoMade,
     minPriceMinor: query.minPrice,
     maxPriceMinor: query.maxPrice,

@@ -23,6 +23,20 @@
         "state": {
           "type": "token"
         },
+        "isDigital": {
+          "type": "boolean"
+        },
+        "shipping": {
+          "type": "document",
+          "fields": {
+            "shipsToCountryCodes": {
+              "type": "token"
+            },
+            "shipsWorldwide": {
+              "type": "boolean"
+            }
+          }
+        },
         "localized": {
           "type": "document",
           "fields": {

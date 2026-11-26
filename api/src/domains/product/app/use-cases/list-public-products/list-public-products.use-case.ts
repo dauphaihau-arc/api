@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { buildPaginationMeta } from '~/platform/application/pagination';
 import { CategoryRepository } from '~/domains/category/app/ports/category.repository';
+import { CatalogShipToResolver } from '../../services/catalog-ship-to.resolver';
 import { StorefrontProductQueryRepository } from '../../ports/storefront-product-query.repository';
 import type { PublicProductListResult } from '../../product.types';
 import {
@@ -14,9 +15,13 @@ export class ListPublicProductsUseCase {
   constructor(
     private readonly productRepository: StorefrontProductQueryRepository,
     private readonly categoryRepository: CategoryRepository,
+    private readonly catalogShipToResolver: CatalogShipToResolver,
   ) {}
 
   async execute(query: ListPublicProductsQuery): Promise<PublicProductListResult> {
+    const catalogShipTo = await this.catalogShipToResolver.resolve(
+      query.catalogShipTo,
+    );
     const categoryIds = await resolveQueryCategoryIds(
       this.categoryRepository,
       query.categoryId,
@@ -30,7 +35,7 @@ export class ListPublicProductsUseCase {
     }
 
     const result = await this.productRepository.listPublic(
-      toListPublicProductsInput(query, categoryIds),
+      toListPublicProductsInput({ ...query, catalogShipTo }, categoryIds),
     );
 
     return {

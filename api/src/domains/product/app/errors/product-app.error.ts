@@ -148,3 +148,10 @@ export class StockPoolNotFoundError extends ProductAppError {
     super(`No Stock Pool exists for inventory "${inventoryId}"`);
   }
 }
+
+/** `catalog_ship_to` is malformed or names an unknown/inactive country. */
+export class CatalogShipToInvalidError extends ProductAppError {
+  constructor(public readonly catalogShipTo: string) {
+    super(`Catalog ship-to value "${catalogShipTo}" is not an active country`);
+  }
+}

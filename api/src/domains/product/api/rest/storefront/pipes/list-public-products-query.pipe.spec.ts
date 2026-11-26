@@ -1,4 +1,4 @@
-import type { ArgumentMetadata } from '@nestjs/common';
+import { BadRequestException, type ArgumentMetadata } from '@nestjs/common';
 import { ListPublicProductsQueryPipe } from './list-public-products-query.pipe';
 import { ListPublicProductsQueryDto } from '../dto/list-public-products.query.dto';
 
@@ -16,6 +16,7 @@ describe('ListPublicProductsQueryPipe', () => {
       page: '1',
       limit: '16',
       is_digital: 'true',
+      catalog_ship_to: 'us',
       who_made: 'i_did',
       min_price: '20000',
       max_price: '50000',
@@ -27,6 +28,7 @@ describe('ListPublicProductsQueryPipe', () => {
       page: 1,
       limit: 16,
       isDigital: true,
+      catalogShipTo: 'US',
       whoMade: 'i_did',
       minPrice: 20000,
       maxPrice: 50000,
@@ -41,6 +43,32 @@ describe('ListPublicProductsQueryPipe', () => {
     }, metadata)).resolves.toMatchObject({
       categoryId: '9007199254740993',
       isDigital: true,
+    });
+  });
+
+  it('keeps `all` and treats an empty value as absent', async () => {
+    await expect(pipe.transform({
+      catalog_ship_to: 'ALL',
+    }, metadata)).resolves.toMatchObject({
+      catalogShipTo: 'all',
+    });
+
+    await expect(pipe.transform({
+      catalog_ship_to: '',
+    }, metadata)).resolves.toMatchObject({
+      catalogShipTo: undefined,
+    });
+  });
+
+  it('rejects a malformed country code with the standard envelope', async () => {
+    const error = await pipe
+      .transform({ catalog_ship_to: 'USA' }, metadata)
+      .catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(BadRequestException);
+    expect((error as BadRequestException).getResponse()).toMatchObject({
+      code: 'VALIDATION_FAILED',
+      details: { fields: [{ field: 'catalog_ship_to' }] },
     });
   });
 
