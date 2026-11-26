@@ -40779,6 +40779,24 @@
           "selected_options"
         ]
       },
+      "CartItemShippingResponseDto": {
+        "type": "object",
+        "properties": {
+          "available": {
+            "type": "boolean"
+          },
+          "is_digital": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "available",
+          "is_digital"
+        ]
+      },
       "CartProductItemResponseDto": {
         "type": "object",
         "properties": {
@@ -40799,6 +40817,9 @@
           },
           "inventory": {
             "$ref": "#/components/schemas/CartItemInventoryResponseDto"
+          },
+          "shipping": {
+            "$ref": "#/components/schemas/CartItemShippingResponseDto"
           }
         },
         "required": [
@@ -40959,6 +40980,9 @@
           },
           "total_quantity": {
             "type": "number"
+          },
+          "unavailable_quantity": {
+            "type": "number"
           }
         },
         "required": [
@@ -40969,7 +40993,8 @@
           "shipping_minor",
           "total_minor",
           "total_selected_quantity",
-          "total_quantity"
+          "total_quantity",
+          "unavailable_quantity"
         ]
       },
       "CartResponseDto": {

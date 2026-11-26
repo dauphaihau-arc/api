@@ -18,6 +18,7 @@ import { CartRepository } from './app/ports/cart.repository';
 import { CartUpdatePricingService } from './app/services/cart-update-pricing.service';
 import { CartPricingService } from './app/services/cart-pricing.service';
 import { CartPublicShopResolver } from './app/services/cart-public-shop-resolver.service';
+import { CartShippingPreviewService } from './app/services/cart-shipping-preview.service';
 import { ShippingModule } from '../shipping/shipping.module';
 import { AddCartItemUseCase } from './app/use-cases/add-cart-item/add-cart-item.use-case';
 import { ApplyPromoCodeUseCase } from './app/use-cases/apply-promo-code/apply-promo-code.use-case';
@@ -71,6 +72,7 @@ import { CartItemEntity } from './infra/persistence/entities/cart-item.entity';
     CartUpdatePricingService,
     CartPublicShopResolver,
     CartPricingService,
+    CartShippingPreviewService,
     GetCartUseCase,
     MergeGuestCartUseCase,
     AddCartItemUseCase,
@@ -89,6 +91,7 @@ import { CartItemEntity } from './infra/persistence/entities/cart-item.entity';
     RemoveCartItemUseCase,
     GuestCartSessionService,
     CartPricingService,
+    CartShippingPreviewService,
   ],
 })
 export class CartModule {}

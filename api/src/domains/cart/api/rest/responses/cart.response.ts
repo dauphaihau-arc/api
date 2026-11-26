@@ -20,6 +20,17 @@ export class CartSelectedOptionResponseDto {
   value!: string;
 }
 
+export class CartItemShippingResponseDto {
+  @ApiProperty()
+  available!: boolean;
+
+  @ApiProperty()
+  is_digital!: boolean;
+
+  @ApiProperty({ type: String, required: false })
+  reason?: string;
+}
+
 export class CartProductResponseDto {
   @ApiProperty()
   id!: string;
@@ -82,6 +93,10 @@ export class CartProductItemResponseDto {
   @ApiProperty({ type: CartItemInventoryResponseDto })
   @Type(() => CartItemInventoryResponseDto)
   inventory!: CartItemInventoryResponseDto;
+
+  @ApiProperty({ type: CartItemShippingResponseDto, required: false })
+  @Type(() => CartItemShippingResponseDto)
+  shipping?: CartItemShippingResponseDto;
 }
 
 export class CartShopRefResponseDto {
@@ -185,6 +200,9 @@ export class CartSummaryResponseDto {
 
   @ApiProperty()
   total_quantity!: number;
+
+  @ApiProperty()
+  unavailable_quantity!: number;
 }
 
 export class CartCheckoutPolicyResponseDto {

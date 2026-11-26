@@ -1,4 +1,11 @@
 import type { CartKind } from '../domain/enums/cart-kind.enum';
+import type { ShippingPreview } from '~/domains/shipping/app/shipping.types';
+
+/** Buyer-facing shipping state attached to a cart line. */
+export type CartItemShipping = Pick<
+  ShippingPreview,
+  'available' | 'isDigital' | 'reason'
+>;
 
 export interface CartPricingSnapshot {
   amountMinor: number;
@@ -58,6 +65,8 @@ export interface CartItemSnapshot {
   isSelectOrder: boolean;
   updatedAt: Date;
   inventory: CartInventorySnapshot;
+  /** Resolved for the request's Market Preview Destination. */
+  shipping?: CartItemShipping;
 }
 
 export interface CartSnapshot {
@@ -95,6 +104,11 @@ export interface CartProductItemResponse {
       value_id: string;
       value: string;
     }>;
+  };
+  shipping?: {
+    available: boolean;
+    is_digital: boolean;
+    reason?: CartItemShipping['reason'];
   };
 }
 
@@ -159,6 +173,8 @@ export interface CartResponse {
     total_minor: number;
     total_selected_quantity: number;
     total_quantity: number;
+    /** Selected units whose line cannot ship to the Preview Destination. */
+    unavailable_quantity: number;
   };
 }
 

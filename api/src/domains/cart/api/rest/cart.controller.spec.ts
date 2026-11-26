@@ -2,6 +2,7 @@ import { CartController } from './cart.controller';
 import type { GuestCartSessionService } from './cookies/guest-cart-session.service';
 import type { CartUpdatePricingService } from '../../app/services/cart-update-pricing.service';
 import type { CartPublicShopResolver } from '../../app/services/cart-public-shop-resolver.service';
+import type { CartShippingPreviewService } from '../../app/services/cart-shipping-preview.service';
 import type { CartSnapshot } from '../../app/cart.types';
 import type { AddCartItemUseCase } from '../../app/use-cases/add-cart-item/add-cart-item.use-case';
 import type { ApplyPromoCodeUseCase } from '../../app/use-cases/apply-promo-code/apply-promo-code.use-case';
@@ -22,6 +23,9 @@ describe('CartController', () => {
     const cartUpdatePricingService = {
       buildPricedCartSummary: jest.fn(),
     } as unknown as jest.Mocked<CartUpdatePricingService>;
+    const cartShippingPreviewService = {
+      attach: jest.fn(async (cart) => cart),
+    } as unknown as jest.Mocked<CartShippingPreviewService>;
     const guestCartSessionService = {
       extractSessionId: jest.fn(),
       ensureSessionId: jest.fn(),
@@ -56,6 +60,7 @@ describe('CartController', () => {
     const controller = new CartController(
       checkoutConfig as never,
       cartUpdatePricingService,
+      cartShippingPreviewService,
       guestCartSessionService,
       cartPublicShopResolver as unknown as CartPublicShopResolver,
       getCartUseCase,
@@ -70,6 +75,7 @@ describe('CartController', () => {
     return {
       controller,
       cartUpdatePricingService,
+      cartShippingPreviewService,
       guestCartSessionService,
       cartPublicShopResolver,
       addCartItemUseCase,
@@ -102,6 +108,7 @@ describe('CartController', () => {
         total_minor: 0,
         total_selected_quantity: 0,
         total_quantity: 0,
+        unavailable_quantity: 0,
       },
     });
   });
