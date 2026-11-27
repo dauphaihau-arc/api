@@ -33,6 +33,7 @@ import { OptionalJwtAuthGuard } from '~/domains/auth/api/guard/optional-jwt-auth
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import type { PricedCartSummary } from '~/domains/order/app/order.types';
 import { CartUpdatePricingService } from '../../app/services/cart-update-pricing.service';
+import { CartShippingPreviewService } from '../../app/services/cart-shipping-preview.service';
 import { CartPublicShopResolver } from '../../app/services/cart-public-shop-resolver.service';
 import { AddCartItemUseCase } from '../../app/use-cases/add-cart-item/add-cart-item.use-case';
 import { ApplyPromoCodeUseCase } from '../../app/use-cases/apply-promo-code/apply-promo-code.use-case';
@@ -78,6 +79,7 @@ export class CartController {
     @Inject(CHECKOUT_CONFIG)
     private readonly checkoutConfig: CheckoutConfig,
     private readonly cartUpdatePricingService: CartUpdatePricingService,
+    private readonly cartShippingPreviewService: CartShippingPreviewService,
     private readonly guestCartSessionService: GuestCartSessionService,
     private readonly cartPublicShopResolver: CartPublicShopResolver,
     private readonly getCartUseCase: GetCartUseCase,
@@ -110,7 +112,9 @@ export class CartController {
       return this.buildResponse(null, undefined, { ownerType: 'guest' });
     }
 
-    const cart = await this.getCartUseCase.execute(actor, query.cartId);
+    const cart = await this.attachShipping(
+      await this.getCartUseCase.execute(actor, query.cartId),
+    );
     return this.buildResponse(cart);
   }
 
@@ -200,14 +204,14 @@ export class CartController {
     @Body() body: AddCartItemDto,
   ): Promise<CartResponse> {
     const actor = this.resolveWriteActor(request, response);
-    const cart = resolveOrThrow(
+    const cart = await this.attachShipping(resolveOrThrow(
       await this.addCartItemUseCase.execute(actor, {
         inventoryId: body.inventoryId,
         quantity: body.quantity,
         isTemp: body.isTemp,
       }),
       mapCartAppErrorToHttpException,
-    );
+    ));
 
     return this.buildResponse(cart);
   }
@@ -233,10 +237,10 @@ export class CartController {
     const guestSessionId = this.guestCartSessionService.extractSessionId(request);
 
     if (!guestSessionId) {
-      const cart = await this.getCartUseCase.execute({
+      const cart = await this.attachShipping(await this.getCartUseCase.execute({
         type: 'user',
         userId: request.user.userId,
-      });
+      }));
 
       return this.buildResponse(cart, undefined, {
         ownerType: 'user',
@@ -244,10 +248,10 @@ export class CartController {
       });
     }
 
-    const cart = await this.mergeGuestCartUseCase.execute(
+    const cart = await this.attachShipping(await this.mergeGuestCartUseCase.execute(
       guestSessionId,
       request.user.userId,
-    );
+    ));
 
     this.guestCartSessionService.clearSession(response);
 
@@ -276,7 +280,9 @@ export class CartController {
     const actor = this.resolveWriteActor(request, response);
 
     if (!body.inventoryId) {
-      const cart = await this.getCartUseCase.execute(actor, body.cartId);
+      const cart = await this.attachShipping(
+        await this.getCartUseCase.execute(actor, body.cartId),
+      );
 
       const priced = cart
         ? await this.buildPricedCartSummary(actor, cart, body)
@@ -289,7 +295,7 @@ export class CartController {
       );
     }
 
-    const cart = resolveOrThrow(
+    const cart = await this.attachShipping(resolveOrThrow(
       await this.updateCartItemUseCase.execute(actor, {
         cartId: body.cartId,
         inventoryId: body.inventoryId,
@@ -298,7 +304,7 @@ export class CartController {
         replaceWithInventoryId: body.replaceWithInventoryId,
       }),
       mapCartAppErrorToHttpException,
-    );
+    ));
 
     if (!cart) {
       return this.buildResponse(null, undefined, {
@@ -331,10 +337,10 @@ export class CartController {
     @Query() query: DeleteCartItemQueryDto,
   ): Promise<CartResponse> {
     const actor = this.resolveWriteActor(request, response);
-    const cart = resolveOrThrow(
+    const cart = await this.attachShipping(resolveOrThrow(
       await this.removeCartItemUseCase.execute(actor, query.inventoryId, query.cartId),
       mapCartAppErrorToHttpException,
-    );
+    ));
 
     return this.buildResponse(cart, undefined, {
       ownerType: actor.type,
@@ -361,6 +367,10 @@ export class CartController {
       discountMinor: toMinorUnits(shop.totalDiscount, priced.currency),
       saleDiscountMinor: toMinorUnits(shop.saleDiscount, priced.currency),
     }));
+  }
+
+  private attachShipping(cart: CartSnapshot | null): Promise<CartSnapshot | null> {
+    return this.cartShippingPreviewService.attach(cart);
   }
 
   private buildResponse(

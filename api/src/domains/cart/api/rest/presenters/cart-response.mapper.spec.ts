@@ -181,6 +181,7 @@ describe('buildCartResponse', () => {
         total_minor: 3000,
         total_selected_quantity: 2,
         total_quantity: 3,
+        unavailable_quantity: 0,
       },
     });
 

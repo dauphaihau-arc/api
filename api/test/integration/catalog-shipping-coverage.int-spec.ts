@@ -546,6 +546,143 @@ describe('Catalog shipping coverage (integration)', () => {
     expect(vietnamAllItems.get(digitalProduct.productId)?.shipping.available).toBe(true);
   });
 
+  it('keeps unsupported cart lines selected and excludes them from totals', async () => {
+    const seller = await createSeller('catalog-shipping-cart');
+    const usProfile = await createActiveProfile(seller, 'Cart US only', [{
+      destination_scope: 'country',
+      destination_country: 'US',
+      one_item_fee_minor: 599,
+      additional_item_fee_minor: 199,
+      delivery_time_min_days: 3,
+      delivery_time_max_days: 5,
+    }]);
+    const worldwideProfile = await createActiveProfile(seller, 'Cart worldwide', [{
+      destination_scope: 'everywhere_else',
+      one_item_fee_minor: 1999,
+      additional_item_fee_minor: 599,
+      delivery_time_min_days: 5,
+      delivery_time_max_days: 10,
+    }]);
+    const countryProduct = await createProduct({
+      seller,
+      title: 'Cart US Only Mug',
+      sku: `CART-US-${randomUUID().slice(0, 6)}`,
+    });
+    const worldwideProduct = await createProduct({
+      seller,
+      title: 'Cart Worldwide Mug',
+      sku: `CART-WORLD-${randomUUID().slice(0, 6)}`,
+    });
+
+    await assignProfile(seller, countryProduct.productId, usProfile.id);
+    await assignProfile(seller, worldwideProduct.productId, worldwideProfile.id);
+    await publishProduct(seller, countryProduct.productId);
+    await publishProduct(seller, worldwideProduct.productId);
+    await projectProduct(countryProduct.productId);
+    await projectProduct(worldwideProduct.productId);
+
+    const cartAgent = request.agent(app.getHttpServer());
+    const addToCart = (inventoryId: string) => cartAgent
+      .post(`${API_PREFIX}/cart/items`)
+      .set('X-Market-Code', 'VN')
+      .set('X-Forwarded-For', randomForwardedIp())
+      .send({ inventory_id: inventoryId, quantity: 1 })
+      .expect(201);
+
+    const first = await addToCart(countryProduct.inventoryId);
+    expect(first.body.summary).toMatchObject({
+      subtotal_minor: 0,
+      total_minor: 0,
+      total_selected_quantity: 1,
+      total_quantity: 1,
+      unavailable_quantity: 1,
+    });
+    expect(first.body.cart.shop_groups[0].items[0]).toMatchObject({
+      is_selected: true,
+      shipping: {
+        available: false,
+        is_digital: false,
+        reason: 'unsupported_destination',
+      },
+    });
+
+    const mixed = await addToCart(worldwideProduct.inventoryId);
+    expect(mixed.body.summary).toMatchObject({
+      subtotal_minor: 2500,
+      total_minor: 2500,
+      total_selected_quantity: 2,
+      total_quantity: 2,
+      unavailable_quantity: 1,
+    });
+
+    const items = mixed.body.cart.shop_groups.flatMap(
+      (group: { items: Array<{ id: string; is_selected: boolean; shipping: unknown }> }) => group.items,
+    ) as Array<{
+      id: string;
+      is_selected: boolean;
+      inventory: { id: string };
+      shipping: { available: boolean; is_digital: boolean; reason?: string };
+    }>;
+    expect(items.find(item => item.inventory.id === countryProduct.inventoryId)).toMatchObject({
+      is_selected: true,
+      shipping: { available: false, is_digital: false, reason: 'unsupported_destination' },
+    });
+    expect(items.find(item => item.inventory.id === worldwideProduct.inventoryId)).toMatchObject({
+      is_selected: true,
+      shipping: { available: true, is_digital: false },
+    });
+
+    const deselected = await cartAgent
+      .patch(`${API_PREFIX}/cart/items`)
+      .set('X-Market-Code', 'VN')
+      .set('X-Forwarded-For', randomForwardedIp())
+      .send({ inventory_id: countryProduct.inventoryId, is_select_order: false })
+      .expect(200);
+    expect(deselected.body.summary).toMatchObject({
+      subtotal_minor: 2500,
+      total_minor: 2500,
+      total_selected_quantity: 1,
+      total_quantity: 2,
+      unavailable_quantity: 0,
+    });
+
+    const reselected = await cartAgent
+      .patch(`${API_PREFIX}/cart/items`)
+      .set('X-Market-Code', 'VN')
+      .set('X-Forwarded-For', randomForwardedIp())
+      .send({ inventory_id: countryProduct.inventoryId, is_select_order: true })
+      .expect(200);
+    expect(reselected.body.summary).toMatchObject({
+      subtotal_minor: 2500,
+      total_minor: 2500,
+      total_selected_quantity: 2,
+      total_quantity: 2,
+      unavailable_quantity: 1,
+    });
+
+    const vietnamCart = await cartAgent
+      .get(`${API_PREFIX}/cart`)
+      .set('X-Market-Code', 'VN')
+      .set('X-Forwarded-For', randomForwardedIp())
+      .expect(200);
+    expect(vietnamCart.body.summary).toMatchObject({
+      subtotal_minor: 2500,
+      total_minor: 2500,
+      unavailable_quantity: 1,
+    });
+
+    const usCart = await cartAgent
+      .get(`${API_PREFIX}/cart`)
+      .set('X-Market-Code', 'US')
+      .set('X-Forwarded-For', randomForwardedIp())
+      .expect(200);
+    expect(usCart.body.summary).toMatchObject({
+      subtotal_minor: 5000,
+      total_minor: 5000,
+      unavailable_quantity: 0,
+    });
+  });
+
   it('reprojects profile edits so list availability follows the new coverage', async () => {
     const seller = await createSeller('catalog-shipping-edit');
     const profile = await createActiveProfile(seller, 'Editable', [{
