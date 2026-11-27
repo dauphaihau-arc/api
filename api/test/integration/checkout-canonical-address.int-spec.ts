@@ -442,6 +442,57 @@ describe('Checkout and order snapshots carry canonical codes (integration)', () 
     }));
   });
 
+  it('uses the shipping address over the Market preview and rejects a mixed cart that cannot ship there', async () => {
+    const seller = await registerSeller();
+    const shippedToUsAndVn = await seedPublishedProduct(seller, 20, ['US', 'VN']);
+    const usOnly = await seedPublishedProduct(seller, 20, ['US']);
+
+    const agent = request.agent(app.getHttpServer());
+    await addGuestItem(agent, shippedToUsAndVn.inventoryId);
+    await addGuestItem(agent, usOnly.inventoryId);
+
+    // The Market preview is VN, but the real address is US and every item ships
+    // there. The quote must succeed and charge shipping from the address.
+    const usQuoteResponse = await agent
+      .post(`${API_PREFIX}/checkout/cart/quote`)
+      .set('Idempotency-Key', randomUUID())
+      .set('X-Forwarded-For', randomForwardedIp())
+      .set('X-Market-Code', 'VN')
+      .send({ shipping_address: DESTINATION })
+      .expect(201);
+
+    expect(usQuoteResponse.body.shipping_minor).toBeGreaterThan(0);
+    const usQuoteId = usQuoteResponse.body.quote_id as string;
+    const quoteBefore = await readQuote(usQuoteId);
+    expect(quoteBefore.shippingAddress.country_code).toBe('US');
+
+    // Switch the address to VN. One selected line cannot ship there, so the
+    // whole quote is rejected instead of partially checking out the other line.
+    const rejected = await agent
+      .post(`${API_PREFIX}/checkout/cart/quote`)
+      .set('Idempotency-Key', randomUUID())
+      .set('X-Forwarded-For', randomForwardedIp())
+      .set('X-Market-Code', 'VN')
+      .send({
+        shipping_address: {
+          ...DESTINATION,
+          city: 'Hanoi',
+          country_code: 'VN',
+          state_code: 'VN-24',
+          zip: '100000',
+          phone: '0912 345 678',
+        },
+      })
+      .expect(409);
+
+    expect(rejected.body).toMatchObject({
+      code: 'CHECKOUT_SHIPPING_UNAVAILABLE',
+    });
+
+    const quoteAfter = await readQuote(usQuoteId);
+    expect(quoteAfter).toEqual(quoteBefore);
+  });
+
   it('produces the same snapshot for saved-address, guest-cart, and buy-now checkout', async () => {
     const seller = await registerSeller();
     const { inventoryId } = await seedPublishedProduct(seller, 20);
