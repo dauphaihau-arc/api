@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { ProductState } from '../../../product/domain/enums/product-state.enum';
 import { ShippingDestinationScope } from '../../domain/enums/shipping-destination-scope.enum';
 import { ShippingProfileStatus } from '../../domain/enums/shipping-profile-status.enum';
@@ -102,6 +103,17 @@ function buildService(input: {
   );
 
   return { service, shippingProfileRepository, fxRateService };
+}
+
+function captureLoggerWarnings() {
+  const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation();
+
+  return {
+    warn,
+    warnings(): Array<Record<string, unknown>> {
+      return warn.mock.calls.map(([message]) => JSON.parse(String(message)) as Record<string, unknown>);
+    },
+  };
 }
 
 describe('ShippingQuoteService', () => {
@@ -1150,5 +1162,212 @@ describe('ShippingQuoteService.resolvePreview', () => {
       reason: 'unsupported_currency',
       shipFromCountry: 'US',
     });
+  });
+});
+
+describe('ShippingQuoteService operational diagnostics', () => {
+  const anchorAt = new Date('2026-09-22T10:15:00.000Z');
+
+  it('logs every internal unavailability reason once with operational context', async () => {
+    const { service } = buildService({
+      assignments: [
+        { productId: 'product-gone', shippingProfileId: 'profile-gone', productState: ProductState.ACTIVE },
+        { productId: 'product-draft', shippingProfileId: 'profile-draft', productState: ProductState.ACTIVE },
+      ],
+      profiles: [
+        buildProfile('profile-draft', {
+          status: ShippingProfileStatus.DRAFT,
+          rates: [],
+        }),
+      ],
+    });
+    const { warn, warnings } = captureLoggerWarnings();
+
+    try {
+      const resolutions = await service.resolveForProducts({
+        productIds: ['product-missing', 'product-gone', 'product-draft'],
+        destination: { countryCode: 'US' },
+      });
+
+      // Public results keep exactly the same reasons as before diagnostics.
+      expect(resolutions.map(({ productId, available, reason }) => ({
+        productId,
+        available,
+        reason,
+      }))).toEqual([
+        { productId: 'product-missing', available: false, reason: 'missing_assignment' },
+        { productId: 'product-gone', available: false, reason: 'profile_not_found' },
+        { productId: 'product-draft', available: false, reason: 'profile_not_ready' },
+      ]);
+
+      expect(warn).toHaveBeenCalledTimes(3);
+      expect(warnings()).toEqual([
+        {
+          event: 'shipping.unavailable_internal_reason',
+          productId: 'product-missing',
+          destinationCountry: 'US',
+          reason: 'missing_assignment',
+        },
+        {
+          event: 'shipping.unavailable_internal_reason',
+          productId: 'product-gone',
+          profileId: 'profile-gone',
+          destinationCountry: 'US',
+          reason: 'profile_not_found',
+        },
+        {
+          event: 'shipping.unavailable_internal_reason',
+          productId: 'product-draft',
+          profileId: 'profile-draft',
+          readinessIssues: ['draft', 'missing_rates'],
+          destinationCountry: 'US',
+          reason: 'profile_not_ready',
+        },
+      ]);
+    }
+    finally {
+      warn.mockRestore();
+    }
+  });
+
+  it('does not log unsupported_destination because it is normal buyer input', async () => {
+    const { service } = buildService({
+      assignments: [
+        { productId: 'product-1', shippingProfileId: 'profile-1', productState: ProductState.ACTIVE },
+      ],
+      profiles: [buildProfile('profile-1')],
+    });
+    const { warn, warnings } = captureLoggerWarnings();
+
+    try {
+      const [resolution] = await service.resolveForProducts({
+        productIds: ['product-1'],
+        destination: { countryCode: 'DE' },
+      });
+
+      expect(resolution).toMatchObject({
+        available: false,
+        reason: 'unsupported_destination',
+      });
+      expect(warnings()).toEqual([]);
+      expect(warn).not.toHaveBeenCalled();
+    }
+    finally {
+      warn.mockRestore();
+    }
+  });
+
+  it('logs a preview currency conversion failure with both currencies', async () => {
+    const { service } = buildService({
+      assignments: [
+        { productId: 'product-1', shippingProfileId: 'profile-1', productState: ProductState.ACTIVE },
+      ],
+      profiles: [buildProfile('profile-1')],
+    });
+    const { warn, warnings } = captureLoggerWarnings();
+
+    try {
+      const preview = await service.resolvePreview({
+        productId: 'product-1',
+        destination: { countryCode: 'US' },
+        displayCurrency: 'VND',
+        anchorAt,
+      });
+
+      expect(preview).toEqual({
+        available: false,
+        isDigital: false,
+        reason: 'unsupported_currency',
+        shipFromCountry: 'US',
+      });
+      expect(warn).toHaveBeenCalledTimes(1);
+      expect(warnings()).toEqual([{
+        event: 'shipping.currency_conversion_failed',
+        surface: 'preview',
+        productId: 'product-1',
+        shopId: 'shop-1',
+        profileId: 'profile-1',
+        sourceCurrency: 'USD',
+        targetCurrency: 'VND',
+        destinationCountry: 'US',
+      }]);
+    }
+    finally {
+      warn.mockRestore();
+    }
+  });
+
+  it('logs one checkout conversion failure per unit, not per fee or quantity', async () => {
+    const { service } = buildService({
+      assignments: [
+        { productId: 'product-1', shippingProfileId: 'profile-1', productState: ProductState.ACTIVE },
+      ],
+      profiles: [buildProfile('profile-1')],
+    });
+    const { warn, warnings } = captureLoggerWarnings();
+
+    try {
+      const quote = await service.quoteForCheckout({
+        destination: { countryCode: 'US' },
+        anchorAt,
+        checkoutCurrency: 'VND',
+        units: [
+          {
+            shopId: 'shop-1', productId: 'product-1', inventoryId: 'inv-1', quantity: 3,
+          },
+        ],
+      });
+
+      expect(quote.shops).toEqual([]);
+      expect(quote.unavailable).toEqual([
+        {
+          productId: 'product-1',
+          inventoryId: 'inv-1',
+          quantity: 3,
+          reason: 'unsupported_currency',
+          readinessIssues: [],
+        },
+      ]);
+      expect(warn).toHaveBeenCalledTimes(1);
+      expect(warnings()).toEqual([{
+        event: 'shipping.currency_conversion_failed',
+        surface: 'checkout',
+        productId: 'product-1',
+        shopId: 'shop-1',
+        profileId: 'profile-1',
+        sourceCurrency: 'USD',
+        targetCurrency: 'VND',
+        destinationCountry: 'US',
+      }]);
+    }
+    finally {
+      warn.mockRestore();
+    }
+  });
+
+  it('does not log when shipping resolves and converts successfully', async () => {
+    const { service } = buildService({
+      assignments: [
+        { productId: 'product-1', shippingProfileId: 'profile-1', productState: ProductState.ACTIVE },
+      ],
+      profiles: [buildProfile('profile-1')],
+      rates: { 'USD:VND': '25000' },
+    });
+    const { warn, warnings } = captureLoggerWarnings();
+
+    try {
+      await expect(service.resolvePreview({
+        productId: 'product-1',
+        destination: { countryCode: 'US' },
+        displayCurrency: 'VND',
+        anchorAt,
+      })).resolves.toMatchObject({ available: true, currency: 'VND' });
+
+      expect(warnings()).toEqual([]);
+      expect(warn).not.toHaveBeenCalled();
+    }
+    finally {
+      warn.mockRestore();
+    }
   });
 });
