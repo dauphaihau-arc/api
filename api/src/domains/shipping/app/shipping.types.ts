@@ -159,6 +159,8 @@ export interface ProductShippingResolution {
   readinessIssues: ShippingProfileReadinessIssue[];
   /** Currency the matched rate amounts are denominated in (the Shop currency). */
   currency?: string;
+  /** Dispatch country from the assigned Shipping Profile. */
+  shipFromCountry?: string;
   rate?: ShippingDestinationRate;
   /**
    * Seller-configured handling range, matched-rate transit range, and the
@@ -167,6 +169,31 @@ export interface ProductShippingResolution {
    */
   processingTime?: ShippingDurationRange;
   deliveryTime?: ShippingDurationRange;
+}
+
+export interface ShippingPreview {
+  available: boolean;
+  /** True when the Product is delivered digitally and has no physical shipping. */
+  isDigital: boolean;
+  reason?: ProductShippingUnavailableReason;
+  /** Converted one-item fee in the buyer display currency. */
+  oneItemFeeMinor?: number;
+  /** Currency of `oneItemFeeMinor`. */
+  currency?: string;
+  /** Country the seller dispatches from, when a profile is resolved. */
+  shipFromCountry?: string;
+  /** Total estimate: Processing Time plus Delivery Time. */
+  estimate?: {
+    minDays: number;
+    maxDays: number;
+  };
+}
+
+export interface ResolveShippingPreviewInput {
+  productId: string;
+  destination: ShippingDestination;
+  displayCurrency: string;
+  anchorAt: Date;
 }
 
 /** One purchased unit of a Product Variant inside a shop's checkout quote. */

@@ -183,10 +183,54 @@ export class PublicProductShippingDestinationResponseDto {
   destination_country?: string;
 }
 
+export class PublicProductShippingPreviewEstimateResponseDto {
+  @ApiProperty()
+  min_days!: number;
+
+  @ApiProperty()
+  max_days!: number;
+}
+
+export class PublicProductShippingPreviewResponseDto {
+  @ApiProperty()
+  available!: boolean;
+
+  @ApiProperty()
+  is_digital!: boolean;
+
+  @ApiPropertyOptional({
+    enum: [
+      'missing_assignment',
+      'profile_not_found',
+      'profile_not_ready',
+      'unsupported_destination',
+      'unsupported_currency',
+    ],
+  })
+  reason?: string;
+
+  @ApiPropertyOptional()
+  one_item_fee_minor?: number;
+
+  @ApiPropertyOptional()
+  currency?: string;
+
+  @ApiPropertyOptional()
+  ship_from_country?: string;
+
+  @ApiPropertyOptional({ type: PublicProductShippingPreviewEstimateResponseDto })
+  @Type(() => PublicProductShippingPreviewEstimateResponseDto)
+  estimate?: PublicProductShippingPreviewEstimateResponseDto;
+}
+
 export class PublicProductShippingResponseDto {
   @ApiProperty({ type: [PublicProductShippingDestinationResponseDto] })
   @Type(() => PublicProductShippingDestinationResponseDto)
   destinations!: PublicProductShippingDestinationResponseDto[];
+
+  @ApiPropertyOptional({ type: PublicProductShippingPreviewResponseDto })
+  @Type(() => PublicProductShippingPreviewResponseDto)
+  preview?: PublicProductShippingPreviewResponseDto;
 }
 
 export class PublicProductDetailResponseDto {
@@ -308,6 +352,13 @@ export class PublicProductAvailabilityResponseDto {
   stock_total!: number;
 }
 
+export class PublicProductListItemShippingResponseDto {
+  @ApiProperty({
+    description: 'Whether the product ships to the market preview destination.',
+  })
+  available!: boolean;
+}
+
 export class PublicProductListItemResponseDto {
   @ApiProperty()
   id!: string;
@@ -336,6 +387,10 @@ export class PublicProductListItemResponseDto {
   @ApiProperty({ type: PublicProductAvailabilityResponseDto })
   @Type(() => PublicProductAvailabilityResponseDto)
   availability!: PublicProductAvailabilityResponseDto;
+
+  @ApiPropertyOptional({ type: PublicProductListItemShippingResponseDto })
+  @Type(() => PublicProductListItemShippingResponseDto)
+  shipping?: PublicProductListItemShippingResponseDto;
 
   @ApiProperty()
   variant_count!: number;

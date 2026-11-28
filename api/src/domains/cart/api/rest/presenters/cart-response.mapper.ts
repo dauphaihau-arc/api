@@ -29,7 +29,14 @@ function toSummaryResponse(
     total_minor: toMinorUnits(summary.totalPrice, currency),
     total_selected_quantity: summary.totalSelectedQuantity,
     total_quantity: summary.totalQuantity,
+    unavailable_quantity: 0,
   };
+}
+
+function countUnavailableQuantity(cart: CartSnapshot): number {
+  return cart.items
+    .filter((item) => item.isSelectOrder && item.shipping?.available === false)
+    .reduce((sum, item) => sum + item.quantity, 0);
 }
 
 function resolveCartItemPricing(item: CartItemSnapshot): {
@@ -64,6 +71,7 @@ export function buildCartResponse(
   },
 ): CartResponse {
   const currency = resolveCartCurrency(cart);
+  const unavailableQuantity = cart ? countUnavailableQuantity(cart) : 0;
   const emptySummary = {
     currency,
     subtotal_minor: 0,
@@ -73,6 +81,7 @@ export function buildCartResponse(
     total_minor: 0,
     total_selected_quantity: 0,
     total_quantity: 0,
+    unavailable_quantity: 0,
   };
 
   const ownerType = options?.ownerType ?? (cart?.userId ? 'user' : 'guest');
@@ -91,7 +100,10 @@ export function buildCartResponse(
         }
         : {}),
       summary: summaryOverride
-        ? toSummaryResponse(summaryOverride, summaryOverride.currency ?? currency)
+        ? {
+          ...toSummaryResponse(summaryOverride, summaryOverride.currency ?? currency),
+          unavailable_quantity: unavailableQuantity,
+        }
         : emptySummary,
     };
   }
@@ -109,7 +121,7 @@ export function buildCartResponse(
 
     const resolvedPricing = resolveCartItemPricing(item);
 
-    if (item.isSelectOrder) {
+    if (item.isSelectOrder && item.shipping?.available !== false) {
       subtotalPrice += resolvedPricing.unitPriceMajor * item.quantity;
     }
 
@@ -156,9 +168,18 @@ export function buildCartResponse(
           value: selection.value,
         })),
       },
+      ...(item.shipping
+        ? {
+          shipping: {
+            available: item.shipping.available,
+            is_digital: item.shipping.isDigital,
+            ...(item.shipping.reason ? { reason: item.shipping.reason } : {}),
+          },
+        }
+        : {}),
     });
 
-    if (item.isSelectOrder) {
+    if (item.isSelectOrder && item.shipping?.available !== false) {
       existingShopGroup.total_minor += resolvedPricing.unitPriceMinor * item.quantity;
     }
 
@@ -218,7 +239,10 @@ export function buildCartResponse(
       }
       : {}),
     summary: summaryOverride
-      ? toSummaryResponse(summaryOverride, summaryOverride.currency ?? currency)
+      ? {
+        ...toSummaryResponse(summaryOverride, summaryOverride.currency ?? currency),
+        unavailable_quantity: unavailableQuantity,
+      }
       : {
         currency,
         subtotal_minor: toMinorUnits(subtotalPrice, currency),
@@ -230,6 +254,7 @@ export function buildCartResponse(
           .filter((item) => item.isSelectOrder)
           .reduce((sum, item) => sum + item.quantity, 0),
         total_quantity: totalQuantity,
+        unavailable_quantity: unavailableQuantity,
       },
   };
 }

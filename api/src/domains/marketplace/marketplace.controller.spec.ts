@@ -29,6 +29,7 @@ describe('MarketplaceController', () => {
         {
           code: 'VN',
           name: 'Vietnam',
+          previewCountryCode: 'VN',
           defaultCurrency: 'VND',
           supportedCurrencies: ['VND'],
           defaultLocale: 'vi-VN',
@@ -48,6 +49,7 @@ describe('MarketplaceController', () => {
           defaultLocale: 'vi-VN',
           supportedLocales: ['vi-VN', 'en-VN'],
           enabled: true,
+          preview_country_code: 'VN',
         },
       ],
     });

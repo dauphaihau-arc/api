@@ -71,10 +71,39 @@ GitHub Packages (`https://npm.pkg.github.com`). The package ships one file,
 - `version` in `packages/api-spec/package.json` is authoritative and is bumped
   by hand. Patch: descriptions or examples only. Minor: additive (new optional
   field, new endpoint). Major: breaking changes or a newly `required` field.
-- Publishing happens in CI from `.github/workflows/publish-api-spec.yml` on
-  merge to the default branch. The workflow fails when the manifest version is
-  already published, so merging without a version bump is a deliberate failure,
-  not a silent republish.
+- Publishing happens in CI from `.github/workflows/publish-api-spec.yml`.
+  `production` publishes the manifest version under `latest`. An
+  `integration/<feature>` branch publishes a prerelease under a per-feature
+  dist-tag; task branches never publish. The workflow fails when the manifest
+  version is already published, so merging without a version bump is a
+  deliberate failure, not a silent republish.
+- On an integration branch, `packages/api-spec/package.json` carries the target
+  stable version, for example `8.0.0`. The workflow derives
+  `<version>-<feature>.<run>.<attempt>` and publishes with `--tag <feature>`.
+  A branch named `integration/feat-a` publishes
+  `8.0.0-feat-a.<run>.<attempt>` under `feat-a`, never under `latest`.
+  Do not commit the derived preview version; it exists only in the workflow
+  checkout.
+- Consumers pin the exact preview version, not the dist-tag. The web
+  contract-update bot ignores prereleases, so a preview never reaches production
+  automatically. When the feature is ready, merge it to `production` to publish
+  the stable version under `latest`.
+- Preview versions accumulate. Remove one only after no integration branch or
+  web pin references it; deleting a pinned version breaks that branch.
+
+### Contract preview flow
+
+- `production` is the stable branch. Only a merge to `production` publishes
+  `latest`.
+- `integration/<feature>` is the feature integration branch. Task branches
+  target it with their pull requests; only merges into it publish a preview.
+- The integration branch carries the target stable version in
+  `packages/api-spec/package.json`; the workflow derives the preview version and
+  dist-tag from the branch name.
+- The web integration branch pins the exact preview version and regenerates its
+  types. Production web stays on the stable `latest` release.
+- Protect `integration/**` and limit who can push: a preview publish runs with
+  `packages: write`. Task branches never publish.
 - Breaking changes are gated in CI. Before `npm publish`, the `Check for
   breaking contract changes` step resolves the last published version, downloads
   its tarball, and runs a pinned `oasdiff breaking <published> api/openapi.json

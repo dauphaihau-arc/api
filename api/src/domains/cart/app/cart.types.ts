@@ -1,5 +1,24 @@
 import type { CartKind } from '../domain/enums/cart-kind.enum';
 
+/** Stable wire vocabulary for a cart line's shipping unavailable reason. */
+export const CART_SHIPPING_UNAVAILABLE_REASONS = [
+  'missing_assignment',
+  'profile_not_found',
+  'profile_not_ready',
+  'unsupported_destination',
+  'unsupported_currency',
+] as const;
+
+export type CartShippingUnavailableReason =
+  (typeof CART_SHIPPING_UNAVAILABLE_REASONS)[number];
+
+/** Buyer-facing shipping state attached to a cart line. */
+export interface CartItemShipping {
+  available: boolean;
+  isDigital: boolean;
+  reason?: CartShippingUnavailableReason;
+}
+
 export interface CartPricingSnapshot {
   amountMinor: number;
   originalAmountMinor?: number;
@@ -58,6 +77,8 @@ export interface CartItemSnapshot {
   isSelectOrder: boolean;
   updatedAt: Date;
   inventory: CartInventorySnapshot;
+  /** Resolved for the request's Market Preview Destination. */
+  shipping?: CartItemShipping;
 }
 
 export interface CartSnapshot {
@@ -95,6 +116,11 @@ export interface CartProductItemResponse {
       value_id: string;
       value: string;
     }>;
+  };
+  shipping?: {
+    available: boolean;
+    is_digital: boolean;
+    reason?: CartItemShipping['reason'];
   };
 }
 
@@ -159,6 +185,8 @@ export interface CartResponse {
     total_minor: number;
     total_selected_quantity: number;
     total_quantity: number;
+    /** Selected units whose line cannot ship to the Preview Destination. */
+    unavailable_quantity: number;
   };
 }
 

@@ -1,4 +1,5 @@
 import type { CategoryRepository } from '~/domains/category/app/ports/category.repository';
+import type { CatalogShipToResolver } from '../../services/catalog-ship-to.resolver';
 import type { StorefrontProductQueryRepository } from '../../ports/storefront-product-query.repository';
 import { ListPublicProductFacetsUseCase } from '../list-public-product-facets/list-public-product-facets.use-case';
 import { ListPublicProductsUseCase } from './list-public-products.use-case';
@@ -32,20 +33,31 @@ const createCategoryRepositoryMock = (): CategoryRepositoryMock => {
   };
 };
 
+const createCatalogShipToResolverMock = (): Pick<
+  jest.Mocked<CatalogShipToResolver>,
+  'resolve'
+> => ({
+  resolve: jest.fn(async (catalogShipTo?: string) => catalogShipTo),
+});
+
 const createUseCaseHarness = () => {
   const productRepository = createProductRepositoryMock();
   const categoryRepository = createCategoryRepositoryMock();
+  const catalogShipToResolver = createCatalogShipToResolverMock();
 
   return {
     productRepository,
     categoryRepository,
+    catalogShipToResolver,
     useCase: new ListPublicProductsUseCase(
       productRepository as never,
       categoryRepository as never,
+      catalogShipToResolver as never,
     ),
     facetsUseCase: new ListPublicProductFacetsUseCase(
       productRepository as never,
       categoryRepository as never,
+      catalogShipToResolver as never,
     ),
   };
 };
@@ -84,15 +96,53 @@ describe('ListPublicProductsUseCase', function () {
   const {
     productRepository,
     categoryRepository,
+    catalogShipToResolver,
     useCase,
     facetsUseCase,
   } = createUseCaseHarness();
 
   beforeEach(() => {
     jest.clearAllMocks();
+    catalogShipToResolver.resolve.mockImplementation(
+      async (catalogShipTo?: string) => catalogShipTo,
+    );
   });
 
   registerMissingCategorySpec({ categoryRepository, productRepository, useCase });
+
+  it('validates catalog_ship_to before listing products', async () => {
+    catalogShipToResolver.resolve.mockResolvedValueOnce('CA');
+    productRepository.listPublic.mockResolvedValue({
+      items: [],
+      meta: {
+        page: 1,
+        limit: 12,
+        total: 0,
+        totalPages: 0,
+        hasNextPage: false,
+        hasPreviousPage: false,
+      },
+    });
+
+    await useCase.execute({ page: 1, limit: 12, catalogShipTo: 'ca' });
+
+    expect(catalogShipToResolver.resolve).toHaveBeenCalledWith('ca');
+    expect(productRepository.listPublic).toHaveBeenCalledWith(
+      expect.objectContaining({ catalogShipTo: 'CA' }),
+    );
+  });
+
+  it('validates catalog_ship_to before listing facets', async () => {
+    catalogShipToResolver.resolve.mockResolvedValueOnce('CA');
+    productRepository.listPublicFacets.mockResolvedValue([]);
+
+    await facetsUseCase.execute({ page: 1, limit: 12, catalogShipTo: 'ca' });
+
+    expect(catalogShipToResolver.resolve).toHaveBeenCalledWith('ca');
+    expect(productRepository.listPublicFacets).toHaveBeenCalledWith(
+      expect.objectContaining({ catalogShipTo: 'CA' }),
+    );
+  });
 
   it('uses the batched category subtree lookup when the repository supports it', async () => {
     const batchedCategoryRepository: CategoryRepositoryMock = {
@@ -114,6 +164,7 @@ describe('ListPublicProductsUseCase', function () {
     const localUseCase = new ListPublicProductsUseCase(
       productRepository as never,
       batchedCategoryRepository as never,
+      catalogShipToResolver as never,
     );
     productRepository.listPublic.mockResolvedValue({
       items: [],
@@ -320,6 +371,7 @@ describe('ListPublicProductsUseCase', function () {
     const localFacetsUseCase = new ListPublicProductFacetsUseCase(
       productRepository as never,
       batchedCategoryRepository as never,
+      catalogShipToResolver as never,
     );
     productRepository.listPublicFacets.mockResolvedValue([
       {

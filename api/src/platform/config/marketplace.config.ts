@@ -1,3 +1,5 @@
+import { isValidCountryCode } from 'lib-address';
+
 export const MARKETPLACE_REGIONS = [
   'United States',
   'Vietnam',
@@ -56,6 +58,8 @@ export const DEFAULT_STOREFRONT_LANGUAGE: StorefrontLanguage = 'en';
 export interface MarketplaceMarket {
   code: string;
   name: MarketplaceRegion;
+  /** The country used as the buyer-facing Preview Destination for this Market. */
+  previewCountryCode: string;
   defaultCurrency: MarketplaceCurrency;
   supportedCurrencies: MarketplaceCurrency[];
   defaultLocale: MarketplaceLocale;
@@ -63,10 +67,36 @@ export interface MarketplaceMarket {
   enabled: boolean;
 }
 
+/**
+ * A Market's preview country is buyer-facing configuration, so a broken value
+ * must fail deployment rather than silently disabling shipping previews.
+ * Disabled Markets are not validated because no buyer can select them.
+ */
+export function validateMarketplaceMarkets(markets: readonly MarketplaceMarket[]): void {
+  for (const market of markets) {
+    if (!market.enabled) {
+      continue;
+    }
+
+    const previewCountryCode = market.previewCountryCode;
+
+    if (
+      typeof previewCountryCode !== 'string'
+      || previewCountryCode !== previewCountryCode.trim().toUpperCase()
+      || !isValidCountryCode(previewCountryCode)
+    ) {
+      throw new Error(
+        `Market "${market.name}" (${market.code}) must declare a valid ISO 3166-1 alpha-2 preview country, received "${String(previewCountryCode ?? '')}"`,
+      );
+    }
+  }
+}
+
 export const MARKETPLACE_MARKETS: MarketplaceMarket[] = [
   {
     code: 'US',
     name: 'United States',
+    previewCountryCode: 'US',
     defaultCurrency: 'USD',
     supportedCurrencies: [...MARKETPLACE_CURRENCIES],
     defaultLocale: 'en-US',
@@ -76,6 +106,7 @@ export const MARKETPLACE_MARKETS: MarketplaceMarket[] = [
   {
     code: 'VN',
     name: 'Vietnam',
+    previewCountryCode: 'VN',
     defaultCurrency: 'VND',
     supportedCurrencies: [...MARKETPLACE_CURRENCIES],
     defaultLocale: 'vi-VN',
@@ -83,6 +114,8 @@ export const MARKETPLACE_MARKETS: MarketplaceMarket[] = [
     enabled: true,
   },
 ] as const;
+
+validateMarketplaceMarkets(MARKETPLACE_MARKETS);
 
 export interface UserPreferencesInput {
   region?: MarketplaceRegion;

@@ -2,7 +2,11 @@ import { ProductImageVariant } from '../../../../domain/enums/product-image-vari
 import type { ProductState } from '../../../../domain/enums/product-state.enum';
 import type { ProductEntity } from '~/domains/product/infra/persistence/mikro-orm/entities/product.entity';
 import { inferFacetSignalsFromText } from '../../../inferred-facets';
-import { toPublicShippingDestinations } from '../../../projection/assigned-shipping-profile.projector';
+import {
+  toCatalogShippingCoverage,
+  toPublicShippingDestinations,
+} from '../../../projection/assigned-shipping-profile.projector';
+import type { CatalogShippingCoverage } from '../../../../app/shipping-coverage';
 import type { PublicProductShippingDestinationSummary } from '../../../../app/product.types';
 import {
   buildCatalogLocalizedContent,
@@ -88,7 +92,7 @@ export interface CatalogProductDocument {
   };
   shipping?: {
     destinations: PublicProductShippingDestinationSummary[];
-  };
+  } & CatalogShippingCoverage;
   attributes: Array<{
     categoryAttributeId: string;
     categoryAttributeKey: string;
@@ -257,7 +261,10 @@ export function toCatalogProductDocument(
     inventory,
     primaryInventory: inventory[0],
     shipping: product.shippingProfile
-      ? { destinations: toPublicShippingDestinations(product.shippingProfile) }
+      ? {
+        destinations: toPublicShippingDestinations(product.shippingProfile),
+        ...toCatalogShippingCoverage(product.shippingProfile),
+      }
       : undefined,
     attributes: product.attributeValues
       .getItems()

@@ -1,5 +1,9 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
+import {
+  CART_SHIPPING_UNAVAILABLE_REASONS,
+  type CartShippingUnavailableReason,
+} from '../../../app/cart.types';
 
 export class CartProductShopRefResponseDto {
   @ApiProperty()
@@ -18,6 +22,20 @@ export class CartSelectedOptionResponseDto {
 
   @ApiProperty()
   value!: string;
+}
+
+export class CartItemShippingResponseDto {
+  @ApiProperty()
+  available!: boolean;
+
+  @ApiProperty()
+  is_digital!: boolean;
+
+  @ApiProperty({
+    enum: CART_SHIPPING_UNAVAILABLE_REASONS,
+    required: false,
+  })
+  reason?: CartShippingUnavailableReason;
 }
 
 export class CartProductResponseDto {
@@ -82,6 +100,10 @@ export class CartProductItemResponseDto {
   @ApiProperty({ type: CartItemInventoryResponseDto })
   @Type(() => CartItemInventoryResponseDto)
   inventory!: CartItemInventoryResponseDto;
+
+  @ApiProperty({ type: CartItemShippingResponseDto, required: false })
+  @Type(() => CartItemShippingResponseDto)
+  shipping?: CartItemShippingResponseDto;
 }
 
 export class CartShopRefResponseDto {
@@ -185,6 +207,9 @@ export class CartSummaryResponseDto {
 
   @ApiProperty()
   total_quantity!: number;
+
+  @ApiProperty()
+  unavailable_quantity!: number;
 }
 
 export class CartCheckoutPolicyResponseDto {

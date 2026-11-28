@@ -73,6 +73,8 @@ Important indexed fields:
 - `state`
 - `categoryId`
 - `isDigital`
+- `shipping.shipsToCountryCodes`
+- `shipping.shipsWorldwide`
 - `whoMade`
 - `flags.hasImages`
 - `price.minAmountMinor`
@@ -96,6 +98,44 @@ just verify-catalog-localization
 `refresh-catalog-products` logs a zero-stale verification line after rebuilding.
 The standalone verification command fails when any document lacks a language
 block or has a normalized field that no longer matches its display value.
+
+## Shipping Coverage Backfill and Verification
+
+Search and product documents carry the derived Shipping Coverage of the
+assigned Shipping Profile (`shipping.shipsToCountryCodes`,
+`shipping.shipsWorldwide`). The storefront list derives each item's
+`shipping.available` from that projection and the server-owned Preview
+Destination of the request's Market.
+
+Run the backfill and verification below before enabling the storefront
+`catalog_ship_to` filter. Without the projected fields, the filter fails closed
+and omits those products instead of showing them as unsupported.
+
+Rebuild every active Product in place, then verify every collection the
+storefront reads (run from `apps/api/api`):
+
+```bash
+pnpm catalog:refresh-products -- --skip-clear
+pnpm catalog:verify-shipping-coverage
+```
+
+- `--skip-clear` reprojects active Products without deleting the projection
+  collections first, so the catalog stays readable while the backfill runs and
+  an interrupted run can simply be repeated.
+- `verify-catalog-shipping-coverage` fails when a document is missing
+  `shipping.shipsWorldwide` or valid uppercase alpha-2
+  `shipping.shipsToCountryCodes`. Empty coverage is valid and means the
+  Product's assigned profile is missing or not Checkout-ready, so the Product
+  is not shippable; only the projected fields must exist. Digital Products are
+  exempt because they never require a Shipping Profile.
+- `just refresh-catalog-products` also runs this verification after its normal
+  clear-and-rebuild and fails the run when the projected fields are absent or
+  malformed.
+
+Run these commands against the target environment's database only. Never point
+them at production to validate this feature; use the environment's own
+integration database and confirm the MongoDB URI and database name in the
+logged targets first.
 
 ## Notes
 

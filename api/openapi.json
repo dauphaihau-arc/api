@@ -11113,6 +11113,16 @@
             }
           },
           {
+            "name": "catalog_ship_to",
+            "required": false,
+            "in": "query",
+            "description": "Catalog-only destination filter. An ISO 3166-1 alpha-2 country restricts results, counts, and facets to products that ship there; `all` disables coverage filtering. Omit to follow the request Market's Preview Destination. Only product list and facet responses use this value; product detail, suggestions, recommendations, cart, and checkout remain Market-scoped.",
+            "schema": {
+              "pattern": "^(?:all|[A-Za-z]{2})$",
+              "type": "string"
+            }
+          },
+          {
             "name": "who_made",
             "required": false,
             "in": "query",
@@ -11354,6 +11364,16 @@
             "description": "Restrict to digital (`true`) or physical (`false`) products.",
             "schema": {
               "type": "boolean"
+            }
+          },
+          {
+            "name": "catalog_ship_to",
+            "required": false,
+            "in": "query",
+            "description": "Catalog-only destination filter. An ISO 3166-1 alpha-2 country restricts results, counts, and facets to products that ship there; `all` disables coverage filtering. Omit to follow the request Market's Preview Destination. Only product list and facet responses use this value; product detail, suggestions, recommendations, cart, and checkout remain Market-scoped.",
+            "schema": {
+              "pattern": "^(?:all|[A-Za-z]{2})$",
+              "type": "string"
             }
           },
           {
@@ -34666,6 +34686,11 @@
               "Vietnam"
             ]
           },
+          "preview_country_code": {
+            "type": "string",
+            "example": "US",
+            "description": "ISO 3166-1 alpha-2 country used as the buyer Preview Destination."
+          },
           "defaultCurrency": {
             "type": "string",
             "enum": [
@@ -34769,6 +34794,7 @@
         "required": [
           "code",
           "name",
+          "preview_country_code",
           "defaultCurrency",
           "supportedCurrencies",
           "defaultLocale",
@@ -37812,6 +37838,18 @@
           "stock_total"
         ]
       },
+      "PublicProductListItemShippingResponseDto": {
+        "type": "object",
+        "properties": {
+          "available": {
+            "type": "boolean",
+            "description": "Whether the product ships to the market preview destination."
+          }
+        },
+        "required": [
+          "available"
+        ]
+      },
       "PublicProductListItemResponseDto": {
         "type": "object",
         "properties": {
@@ -37838,6 +37876,9 @@
           },
           "availability": {
             "$ref": "#/components/schemas/PublicProductAvailabilityResponseDto"
+          },
+          "shipping": {
+            "$ref": "#/components/schemas/PublicProductListItemShippingResponseDto"
           },
           "variant_count": {
             "type": "number"
@@ -38219,6 +38260,58 @@
           "destination_scope"
         ]
       },
+      "PublicProductShippingPreviewEstimateResponseDto": {
+        "type": "object",
+        "properties": {
+          "min_days": {
+            "type": "number"
+          },
+          "max_days": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "min_days",
+          "max_days"
+        ]
+      },
+      "PublicProductShippingPreviewResponseDto": {
+        "type": "object",
+        "properties": {
+          "available": {
+            "type": "boolean"
+          },
+          "is_digital": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "missing_assignment",
+              "profile_not_found",
+              "profile_not_ready",
+              "unsupported_destination",
+              "unsupported_currency"
+            ]
+          },
+          "one_item_fee_minor": {
+            "type": "number"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "ship_from_country": {
+            "type": "string"
+          },
+          "estimate": {
+            "$ref": "#/components/schemas/PublicProductShippingPreviewEstimateResponseDto"
+          }
+        },
+        "required": [
+          "available",
+          "is_digital"
+        ]
+      },
       "PublicProductShippingResponseDto": {
         "type": "object",
         "properties": {
@@ -38227,6 +38320,9 @@
             "items": {
               "$ref": "#/components/schemas/PublicProductShippingDestinationResponseDto"
             }
+          },
+          "preview": {
+            "$ref": "#/components/schemas/PublicProductShippingPreviewResponseDto"
           }
         },
         "required": [
@@ -40703,6 +40799,31 @@
           "selected_options"
         ]
       },
+      "CartItemShippingResponseDto": {
+        "type": "object",
+        "properties": {
+          "available": {
+            "type": "boolean"
+          },
+          "is_digital": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "missing_assignment",
+              "profile_not_found",
+              "profile_not_ready",
+              "unsupported_destination",
+              "unsupported_currency"
+            ]
+          }
+        },
+        "required": [
+          "available",
+          "is_digital"
+        ]
+      },
       "CartProductItemResponseDto": {
         "type": "object",
         "properties": {
@@ -40723,6 +40844,9 @@
           },
           "inventory": {
             "$ref": "#/components/schemas/CartItemInventoryResponseDto"
+          },
+          "shipping": {
+            "$ref": "#/components/schemas/CartItemShippingResponseDto"
           }
         },
         "required": [
@@ -40883,6 +41007,9 @@
           },
           "total_quantity": {
             "type": "number"
+          },
+          "unavailable_quantity": {
+            "type": "number"
           }
         },
         "required": [
@@ -40893,7 +41020,8 @@
           "shipping_minor",
           "total_minor",
           "total_selected_quantity",
-          "total_quantity"
+          "total_quantity",
+          "unavailable_quantity"
         ]
       },
       "CartResponseDto": {

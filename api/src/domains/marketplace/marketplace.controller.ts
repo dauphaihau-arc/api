@@ -9,6 +9,7 @@ import {
   MARKETPLACE_REGIONS,
   type MarketplaceCurrency,
   type MarketplaceLocale,
+  type MarketplaceMarket,
   type MarketplaceRegion,
 } from '~/platform/config/marketplace.config';
 import { ApiErrorResponses } from '~/platform/http/api-error-responses.decorator';
@@ -24,6 +25,12 @@ class MarketplaceMarketResponseDto {
 
   @ApiProperty({ enum: MARKETPLACE_REGIONS })
   name!: MarketplaceRegion;
+
+  @ApiProperty({
+    example: 'US',
+    description: 'ISO 3166-1 alpha-2 country used as the buyer Preview Destination.',
+  })
+  preview_country_code!: string;
 
   @ApiProperty({ enum: MARKETPLACE_CURRENCIES })
   defaultCurrency!: MarketplaceCurrency;
@@ -46,6 +53,29 @@ class MarketplaceConfigResponseDto {
   markets!: MarketplaceMarketResponseDto[];
 }
 
+function toMarketplaceConfigResponse(
+  config: MarketplaceConfigResult,
+): MarketplaceConfigResponseDto {
+  return {
+    markets: config.markets.map((market) => toMarketplaceMarketResponse(market)),
+  };
+}
+
+function toMarketplaceMarketResponse(
+  market: MarketplaceMarket,
+): MarketplaceMarketResponseDto {
+  return {
+    code: market.code,
+    name: market.name,
+    preview_country_code: market.previewCountryCode,
+    defaultCurrency: market.defaultCurrency,
+    supportedCurrencies: [...market.supportedCurrencies],
+    defaultLocale: market.defaultLocale,
+    supportedLocales: [...market.supportedLocales],
+    enabled: market.enabled,
+  };
+}
+
 @Controller('marketplace')
 @SkipThrottle()
 @ApiTags('Marketplace')
@@ -63,7 +93,7 @@ export class MarketplaceController {
     description: 'Marketplace configuration.',
     type: MarketplaceConfigResponseDto,
   })
-  getConfig(): MarketplaceConfigResult {
-    return this.marketplaceService.getConfig();
+  getConfig(): MarketplaceConfigResponseDto {
+    return toMarketplaceConfigResponse(this.marketplaceService.getConfig());
   }
 }

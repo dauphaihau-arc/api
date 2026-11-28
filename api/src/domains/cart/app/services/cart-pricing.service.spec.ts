@@ -191,6 +191,38 @@ describe('CartPricingService', () => {
     expect(priced.totalPrice).toBe(10);
   });
 
+  it('excludes an unsupported selected line from money while keeping its selection', async () => {
+    const unavailableCart: CartSnapshot = {
+      ...cart,
+      items: cart.items.map(item => ({
+        ...item,
+        shipping: {
+          available: false,
+          isDigital: false,
+          reason: 'unsupported_destination',
+        },
+      })),
+    };
+    const applyToCart = jest.fn().mockResolvedValue([]);
+    const service = new CartPricingService(
+      buildPromotionPricingService({ applyToCart }),
+      { quoteForCheckout: jest.fn(), listOriginCountries: jest.fn() } as never,
+    );
+
+    const priced = await service.buildPricedCartSummary({ cart: unavailableCart });
+
+    expect(priced.subtotalPrice).toBe(0);
+    expect(priced.totalPrice).toBe(0);
+    expect(priced.totalSelectedQuantity).toBe(1);
+    expect(priced.totalQuantity).toBe(1);
+    expect(applyToCart).toHaveBeenCalledWith(expect.objectContaining({
+      cart: expect.objectContaining({
+        items: [expect.objectContaining({ id: 'item-1', isSelectOrder: false })],
+      }),
+    }));
+    expect(unavailableCart.items[0]?.isSelectOrder).toBe(true);
+  });
+
   it('rejects pricing when the destination cannot be served', async () => {
     const shippingQuoteService = {
       quoteForCheckout: jest.fn().mockResolvedValue({

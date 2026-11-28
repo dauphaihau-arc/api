@@ -19,6 +19,7 @@ import { validationExceptionFactory } from '~/platform/pipes/validation-exceptio
 import { RequestLoggingInterceptor } from '~/platform/logging/request-logging.interceptor';
 import { buildDatabaseConfig } from '~/platform/config/database.config';
 import { ProductWhoMade } from '~/domains/product/domain/enums/product-who-made.enum';
+import { ShippingQuoteService } from '~/domains/shipping/app/services/shipping-quote.service';
 import { PermissionEntity } from '~/domains/auth/infra/persistence/entities/permission.entity';
 import { RolePermissionEntity } from '~/domains/auth/infra/persistence/entities/role-permission.entity';
 import { RoleEntity } from '~/domains/auth/infra/persistence/entities/role.entity';
@@ -29,7 +30,11 @@ import { ObservabilityService } from '~/platform/observability/observability.ser
 import { RequestContextService } from '~/platform/request-context/request-context.service';
 import { createTestDatabase, dropTestDatabase } from '../support/test-postgres';
 import { seedAuthReferenceData } from '../../database/seeds/auth.seed';
-import { resolveShopId, seedPublishableInventory } from '../support/shipping-fixtures';
+import {
+  resolveProductId,
+  resolveShopId,
+  seedPublishableInventory,
+} from '../support/shipping-fixtures';
 
 jest.setTimeout(240_000);
 
@@ -1304,6 +1309,47 @@ describe('Reusable shipping profiles (integration)', () => {
         .expect(200);
 
       expect(afterClear.body.assigned_product_count).toBe(0);
+    });
+
+    it('resolves a buyer Shipping Preview from the assigned profile', async () => {
+      const seller = await createSeller('shipping-preview-service');
+      const profile = await createActiveProfile(seller, 'Standard shipping');
+      const product = await createProduct({
+        seller,
+        title: 'Preview service mug',
+        sku: 'PREVIEW-SVC-1',
+      });
+
+      expect((await assignProfile(seller, product.productId, profile.id)).status).toBe(204);
+      const internalProductId = await resolveProductId(sql, product.productId);
+      const service = app.get(ShippingQuoteService);
+      const anchorAt = new Date('2026-11-24T10:00:00.000Z');
+
+      await expect(service.resolvePreview({
+        productId: internalProductId,
+        destination: { countryCode: 'US' },
+        displayCurrency: 'USD',
+        anchorAt,
+      })).resolves.toEqual({
+        available: true,
+        isDigital: false,
+        currency: 'USD',
+        oneItemFeeMinor: 599,
+        shipFromCountry: 'US',
+        estimate: { minDays: 4, maxDays: 8 },
+      });
+
+      await expect(service.resolvePreview({
+        productId: internalProductId,
+        destination: { countryCode: 'US' },
+        displayCurrency: 'VND',
+        anchorAt,
+      })).resolves.toEqual({
+        available: false,
+        isDigital: false,
+        reason: 'unsupported_currency',
+        shipFromCountry: 'US',
+      });
     });
 
     it('refuses to assign an archived profile and refuses to archive a published product profile', async () => {

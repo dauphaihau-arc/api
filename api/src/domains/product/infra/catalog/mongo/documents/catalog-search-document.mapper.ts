@@ -5,6 +5,8 @@ import type {
   StorefrontIndexedPriceSummary,
   StorefrontIndexedPricingSummaryMatrix,
 } from '../../../../app/storefront-indexed-pricing';
+import type { CatalogShippingCoverage } from '../../../../app/shipping-coverage';
+import { toCatalogShippingCoverage } from '../../../projection/assigned-shipping-profile.projector';
 import { inferFacetSignalsFromText } from '../../../inferred-facets';
 import { getInventoryPricingSnapshot } from '../../../persistence/mikro-orm/reads/variant-price-read';
 import {
@@ -27,6 +29,8 @@ export interface CatalogSearchDocument {
   categoryId?: string;
   categoryPublicId?: string;
   isDigital: boolean;
+  /** Denormalized Shipping Coverage of the assigned profile for catalog badges/filters. */
+  shipping?: CatalogShippingCoverage;
   whoMade: ProductEntity['whoMade'];
   attributes: Array<{
     categoryAttributeId: string;
@@ -144,6 +148,7 @@ export function toCatalogSearchDocument(
     categoryId: product.category?.id,
     categoryPublicId: product.category?.publicId,
     isDigital: product.isDigital,
+    shipping: toCatalogShippingCoverage(product.shippingProfile),
     whoMade: product.whoMade,
     attributes: product.attributeValues
       .getItems()

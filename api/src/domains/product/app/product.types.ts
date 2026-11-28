@@ -1,6 +1,7 @@
 import type { ShippingDestinationScope } from '~/domains/shipping/domain/enums/shipping-destination-scope.enum';
 import type { ShippingProfileStatus } from '~/domains/shipping/domain/enums/shipping-profile-status.enum';
 import type { ShippingProfileReadinessIssue } from '~/domains/shipping/domain/shipping-profile-readiness';
+import type { ShippingPreview } from '~/domains/shipping/app/shipping.types';
 import type { ProductReviewStatus } from '../domain/enums/product-review-status.enum';
 import type { ProductState } from '../domain/enums/product-state.enum';
 import type { ProductVariantLifecycleState } from '../domain/enums/product-variant-lifecycle-state.enum';
@@ -343,6 +344,13 @@ export interface PublicProductListItem {
     lowStock: boolean;
     stockTotal: number;
   };
+  /**
+   * Whether the Product can ship to the buyer's server-derived Preview
+   * Destination. Digital Products are always available.
+   */
+  shipping?: {
+    available: boolean;
+  };
   variantCount: number;
   createdAt: Date;
 }
@@ -419,6 +427,8 @@ export interface PublicProductDetail {
   options?: ProductOptionSummary[];
   inventory: PublicProductInventorySummary[];
   shipping?: PublicProductShippingSummary;
+  /** Live coverage and fee/estimate for the buyer's Preview Destination. */
+  shippingPreview?: ShippingPreview;
 }
 
 export type PublicProductReviewSortOrder = 'newest' | 'highest_rating' | 'lowest_rating';
@@ -573,6 +583,12 @@ export interface ListPublicProductsInput {
   search?: string;
   title?: string;
   isDigital?: boolean;
+  /**
+   * Catalog-only destination filter. An ISO 3166-1 alpha-2 country restricts
+   * results to products whose projected Shipping Coverage includes it; `all`
+   * disables coverage filtering. Absent follows the Market Preview Destination.
+   */
+  catalogShipTo?: string;
   whoMade?: ProductWhoMade;
   minPriceMinor?: number;
   maxPriceMinor?: number;

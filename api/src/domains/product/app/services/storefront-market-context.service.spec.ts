@@ -35,6 +35,7 @@ describe('StorefrontMarketContextService', () => {
 
     await expect(service.resolveCurrentRequest()).resolves.toEqual({
       marketCode: 'VN',
+      previewCountryCode: 'VN',
       currency: 'VND',
       locale: 'en-VN',
       requestedCurrency: 'VND',
@@ -44,6 +45,7 @@ describe('StorefrontMarketContextService', () => {
     expect(userPreferenceRepository.findByUserId).toHaveBeenCalledWith('user-1');
     expect(requestContextService.setStorefrontMarketContext).toHaveBeenCalledWith({
       marketCode: 'VN',
+      previewCountryCode: 'VN',
       currency: 'VND',
       locale: 'en-VN',
       requestedCurrency: 'VND',
@@ -74,6 +76,7 @@ describe('StorefrontMarketContextService', () => {
 
     await expect(service.resolveCurrentRequest()).resolves.toEqual({
       marketCode: 'VN',
+      previewCountryCode: 'VN',
       currency: 'EUR',
       locale: 'en-VN',
       requestedCurrency: 'EUR',

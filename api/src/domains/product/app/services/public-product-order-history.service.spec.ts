@@ -74,6 +74,37 @@ describe('PublicProductOrderHistoryService', () => {
     ]);
   });
 
+  it('omits products without shipping coverage from best sellers', async () => {
+    const { service, repository, storefrontProductQueryRepository } = buildDependencies();
+    repository.listBestSellingProductIds.mockResolvedValue(['product-1', 'product-2']);
+    storefrontProductQueryRepository.findPublicCardsByIds.mockResolvedValue([
+      {
+        id: 'product-1',
+        shop: { id: 'shop-1', shopName: 'Arc Store', slug: 'arc-store' },
+        title: 'Unsupported',
+        slug: 'unsupported',
+        availability: { inStock: true, lowStock: false, stockTotal: 4 },
+        shipping: { available: false },
+        variantCount: 1,
+        createdAt: new Date('2026-01-01T00:00:00.000Z'),
+      },
+      {
+        id: 'product-2',
+        shop: { id: 'shop-1', shopName: 'Arc Store', slug: 'arc-store' },
+        title: 'Supported',
+        slug: 'supported',
+        availability: { inStock: true, lowStock: false, stockTotal: 4 },
+        shipping: { available: true },
+        variantCount: 1,
+        createdAt: new Date('2026-01-02T00:00:00.000Z'),
+      },
+    ] as never);
+
+    await expect(service.listBestSellingProducts({ limit: 2 })).resolves.toEqual([
+      expect.objectContaining({ id: 'product-2' }),
+    ]);
+  });
+
   it('resolves the anchor product before listing frequently bought together products', async () => {
     const {
       service,

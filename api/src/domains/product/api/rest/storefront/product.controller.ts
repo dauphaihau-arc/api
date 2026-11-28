@@ -1,5 +1,14 @@
 import {
-  Controller, Get, Header, NotFoundException, Param, Query, Req, Res, UseGuards, applyDecorators,
+  Controller,
+  Get,
+  Header,
+  NotFoundException,
+  Param,
+  Query,
+  Req,
+  Res,
+  UseGuards,
+  applyDecorators,
 } from '@nestjs/common';
 import {
   ApiNotFoundResponse,
@@ -12,6 +21,8 @@ import {
 import { SkipThrottle } from '@nestjs/throttler';
 import { ApiErrorResponses } from '~/platform/http/api-error-responses.decorator';
 import { OptionalJwtAuthGuard } from '~/domains/auth/api/guard/optional-jwt-auth.guard';
+import { validationFailedException } from '~/platform/pipes/validation-exception.factory';
+import { CatalogShipToInvalidError } from '../../../app/errors/product-app.error';
 import {
   PRODUCT_PUBLIC_LIST_DEFAULT_LIMIT,
   PRODUCT_PUBLIC_LIST_DEFAULT_PAGE,
@@ -22,14 +33,14 @@ import { CATEGORY_PUBLIC_ID_PATTERN } from '~/domains/category/app/category-publ
 import { productControllerErrorResponses } from '../errors/product-error-responses';
 import type { AuthenticatedUser } from '~/domains/auth/app/auth.types';
 import type { Request, Response } from 'express';
-import { GetPublicProductBySlugsUseCase } from '../../../app/use-cases/get-public-product-by-slugs/get-public-product-by-slugs.use-case';
+import { GetPublicProductDetailUseCase } from '../../../app/use-cases/get-public-product-detail/get-public-product-detail.use-case';
 import { ListPublicProductFacetsUseCase } from '../../../app/use-cases/list-public-product-facets/list-public-product-facets.use-case';
 import { ListPublicProductReviewImagesUseCase } from '../../../app/use-cases/list-public-product-review-images/list-public-product-review-images.use-case';
 import { ListPublicProductsUseCase } from '../../../app/use-cases/list-public-products/list-public-products.use-case';
 import { SuggestPublicProductsUseCase } from '../../../app/use-cases/suggest-public-products/suggest-public-products.use-case';
 import { ListPublicProductReviewsUseCase } from '../../../app/use-cases/list-public-product-reviews/list-public-product-reviews.use-case';
 import { ListPublicProductReviewImagesQueryDto } from './dto/list-public-product-review-images.query.dto';
-import { ListPublicProductsQueryDto, PUBLIC_PRODUCT_SORT_ORDERS } from './dto/list-public-products.query.dto';
+import { ListPublicProductsQueryDto, PUBLIC_PRODUCT_SORT_ORDERS, CATALOG_SHIP_TO_PATTERN } from './dto/list-public-products.query.dto';
 import { ListPublicProductReviewsQueryDto } from './dto/list-public-product-reviews.query.dto';
 import { ListPublicProductsQueryPipe } from './pipes/list-public-products-query.pipe';
 import { SuggestPublicProductsQueryDto } from './dto/suggest-public-products.query.dto';
@@ -55,6 +66,8 @@ import {
 } from './responses/public-product-response.dto';
 
 const STOREFRONT_CACHE_VARY_HEADER = 'x-market-code, x-currency, x-locale, x-channel';
+// Catalog list/facet responses also depend on the explicit destination filter.
+const CATALOG_LIST_CACHE_VARY_HEADER = `${STOREFRONT_CACHE_VARY_HEADER}, catalog_ship_to`;
 const PUBLIC_STOREFRONT_CACHE_CONTROL = 'public, max-age=60';
 const PRIVATE_STOREFRONT_CACHE_CONTROL = 'private, no-store';
 type ProductRequest = Request & { user?: AuthenticatedUser | null };
@@ -125,6 +138,19 @@ function ApiListPublicProductsQueries() {
       description: 'Restrict to digital (`true`) or physical (`false`) products.',
     }),
     ApiQuery({
+      name: 'catalog_ship_to',
+      required: false,
+      type: 'string',
+      pattern: CATALOG_SHIP_TO_PATTERN.source,
+      description:
+        'Catalog-only destination filter. An ISO 3166-1 alpha-2 country ' +
+        'restricts results, counts, and facets to products that ship there; ' +
+        '`all` disables coverage filtering. Omit to follow the request ' +
+        'Market\'s Preview Destination. Only product list and facet responses ' +
+        'use this value; product detail, suggestions, recommendations, cart, ' +
+        'and checkout remain Market-scoped.',
+    }),
+    ApiQuery({
       name: 'who_made',
       required: false,
       type: 'string',
@@ -177,14 +203,13 @@ export class ProductController {
   constructor(
     private readonly listPublicProductsUseCase: ListPublicProductsUseCase,
     private readonly listPublicProductFacetsUseCase: ListPublicProductFacetsUseCase,
-    private readonly getPublicProductBySlugsUseCase: GetPublicProductBySlugsUseCase,
+    private readonly getPublicProductDetailUseCase: GetPublicProductDetailUseCase,
     private readonly suggestPublicProductsUseCase: SuggestPublicProductsUseCase,
     private readonly listPublicProductReviewsUseCase: ListPublicProductReviewsUseCase,
     private readonly listPublicProductReviewImagesUseCase: ListPublicProductReviewImagesUseCase,
   ) {}
 
   @Get('suggestions')
-  @Header('Cache-Control', 'public, max-age=30')
   @Header('Vary', STOREFRONT_CACHE_VARY_HEADER)
   @ApiOperation({
     summary: 'Suggest products',
@@ -196,8 +221,12 @@ export class ProductController {
     type: PublicProductSuggestionListResponseDto,
   })
   async suggestProducts(
+    @Req() request: ProductRequest,
+    @Res({ passthrough: true }) response: Response,
     @Query() query: SuggestPublicProductsQueryDto,
   ): Promise<{ items: PublicProductSuggestionResponse[] }> {
+    setStorefrontProductCacheControl(response, request);
+
     const result = await this.suggestPublicProductsUseCase.execute(
       query.search,
       query.limit,
@@ -207,7 +236,7 @@ export class ProductController {
   }
 
   @Get()
-  @Header('Vary', STOREFRONT_CACHE_VARY_HEADER)
+  @Header('Vary', CATALOG_LIST_CACHE_VARY_HEADER)
   @ApiOperation({
     summary: 'List products',
     description:
@@ -234,13 +263,15 @@ export class ProductController {
       metatype: ListPublicProductsQueryDto,
       data: undefined,
     });
-    const result = await this.listPublicProductsUseCase.execute(query);
+    const result = await this.executeCatalogQuery(
+      () => this.listPublicProductsUseCase.execute(query),
+    );
 
     return toPublicProductListResponse(result);
   }
 
   @Get('facets')
-  @Header('Vary', STOREFRONT_CACHE_VARY_HEADER)
+  @Header('Vary', CATALOG_LIST_CACHE_VARY_HEADER)
   @ApiOperation({
     summary: 'List product facets',
     description: 'Returns facets for filtering public products.',
@@ -263,7 +294,9 @@ export class ProductController {
       metatype: ListPublicProductsQueryDto,
       data: undefined,
     });
-    const result = await this.listPublicProductFacetsUseCase.execute(query);
+    const result = await this.executeCatalogQuery(
+      () => this.listPublicProductFacetsUseCase.execute(query),
+    );
 
     return toPublicProductFacetResponse(result);
   }
@@ -291,7 +324,7 @@ export class ProductController {
   ): Promise<PublicProductDetailResponse> {
     setStorefrontProductCacheControl(response, request);
 
-    const product = await this.getPublicProductBySlugsUseCase.execute(
+    const product = await this.getPublicProductDetailUseCase.execute(
       shopSlug,
       productSlug,
     );
@@ -382,5 +415,25 @@ export class ProductController {
     }
 
     return toPublicProductReviewImageListResponse(result);
+  }
+
+  /**
+   * Catalog destination validation belongs to the application layer; this
+   * boundary translates its failure into the shared validation envelope.
+   */
+  private async executeCatalogQuery<T>(run: () => Promise<T>): Promise<T> {
+    try {
+      return await run();
+    }
+    catch (error) {
+      if (error instanceof CatalogShipToInvalidError) {
+        throw validationFailedException([{
+          field: 'catalog_ship_to',
+          messages: ['catalog_ship_to must be an active country code or `all`'],
+        }]);
+      }
+
+      throw error;
+    }
   }
 }

@@ -82,5 +82,17 @@ export type PublicProductDetailResponse = {
         : NonNullable<PublicProductDetail['shipping']>['destinations'][number]['destinationScope'];
       destination_country?: string;
     }>;
+    preview?: {
+      available: boolean;
+      is_digital: boolean;
+      reason?: NonNullable<PublicProductDetail['shippingPreview']>['reason'];
+      one_item_fee_minor?: number;
+      currency?: string;
+      ship_from_country?: string;
+      estimate?: {
+        min_days: number;
+        max_days: number;
+      };
+    };
   };
 };

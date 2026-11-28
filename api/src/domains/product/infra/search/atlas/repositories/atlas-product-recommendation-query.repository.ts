@@ -12,6 +12,8 @@ import {
   type StorefrontIndexedPricingSelection,
 } from '../../../../app/storefront-indexed-pricing';
 import { StorefrontMarketContextService } from '../../../../app/services/storefront-market-context.service';
+import { toCatalogShippingAvailability } from '../../../../app/shipping-coverage';
+import { buildCatalogShippingCoverageMongoMatch } from '../../catalog-shipping-coverage-filter';
 import type {
   ListPublicProductsByShopSlugInput,
   PublicProductListItem,
@@ -49,11 +51,12 @@ implements ProductRecommendationQueryRepository {
   async listPublicByShopSlug(
     input: ListPublicProductsByShopSlugInput,
   ): Promise<PublicProductListItem[]> {
-    const pricingSelection = resolveIndexedPricingSelection(
-      await this.storefrontMarketContextService.resolveCurrentRequest(),
-    );
+    const marketContext = await this.storefrontMarketContextService.resolveCurrentRequest();
+    const pricingSelection = resolveIndexedPricingSelection(marketContext);
 
     const indexedPricingSelection = this.toIndexedPricingSelection(pricingSelection);
+    const previewCountryCode = marketContext?.previewCountryCode;
+    const coverageMatch = buildCatalogShippingCoverageMongoMatch(previewCountryCode);
     const collection = await this.getSearchCollection();
 
     const documents = await collection.aggregate<CatalogSearchDocument>([
@@ -65,6 +68,7 @@ implements ProductRecommendationQueryRepository {
           ...(input.excludeProductSlug
             ? { slug: { $ne: input.excludeProductSlug } }
             : {}),
+          ...(coverageMatch ?? {}),
         },
       },
       {
@@ -80,6 +84,7 @@ implements ProductRecommendationQueryRepository {
     return documents.map((document) => toPublicProductListItemFromSearchDocument(
       document,
       indexedPricingSelection,
+      previewCountryCode,
     ));
   }
 
@@ -87,10 +92,10 @@ implements ProductRecommendationQueryRepository {
     input: RecommendPublicProductsInput,
   ): Promise<PublicProductListItem[]> {
     this.assertAtlasSearchEnabled();
-    const pricingSelection = resolveIndexedPricingSelection(
-      await this.storefrontMarketContextService.resolveCurrentRequest(),
-    );
+    const marketContext = await this.storefrontMarketContextService.resolveCurrentRequest();
+    const pricingSelection = resolveIndexedPricingSelection(marketContext);
     const indexedPricingSelection = this.toIndexedPricingSelection(pricingSelection);
+    const previewCountryCode = marketContext?.previewCountryCode;
 
     const searchCollection = await this.getSearchCollection();
 
@@ -105,7 +110,12 @@ implements ProductRecommendationQueryRepository {
       return [];
     }
 
-    const candidates = await this.findRecommendationCandidates(searchCollection, anchor, input.limit);
+    const candidates = await this.findRecommendationCandidates(
+      searchCollection,
+      anchor,
+      input.limit,
+      previewCountryCode,
+    );
 
     return candidates
       .sort((left, right) => compareRecommendationCandidates(
@@ -114,7 +124,11 @@ implements ProductRecommendationQueryRepository {
         toRecommendationScorableSearchProduct(right, indexedPricingSelection),
       ))
       .slice(0, input.limit)
-      .map((document) => toPublicProductListItemFromSearchDocument(document, indexedPricingSelection));
+      .map((document) => toPublicProductListItemFromSearchDocument(
+        document,
+        indexedPricingSelection,
+        previewCountryCode,
+      ));
   }
 
   private async getSearchCollection(): Promise<MongoCollectionLike<CatalogSearchDocument>> {
@@ -141,9 +155,11 @@ implements ProductRecommendationQueryRepository {
     collection: MongoCollectionLike<CatalogSearchDocument>,
     anchor: CatalogSearchDocument,
     limit: number,
+    previewCountryCode?: string,
   ): Promise<CatalogSearchDocument[]> {
     const candidates = new Map<string, CatalogSearchDocument>();
     const targetPoolSize = Math.max(limit * 4, 24);
+    const coverageMatch = buildCatalogShippingCoverageMongoMatch(previewCountryCode);
 
     if (anchor.categoryId) {
       const sameCategory = await collection.aggregate<CatalogSearchDocument>([
@@ -153,6 +169,7 @@ implements ProductRecommendationQueryRepository {
             'flags.hasImages': true,
             productId: { $ne: anchor.productId },
             categoryId: anchor.categoryId,
+            ...(coverageMatch ?? {}),
           },
         },
         {
@@ -178,6 +195,7 @@ implements ProductRecommendationQueryRepository {
             productId: { $ne: anchor.productId },
             whoMade: anchor.whoMade,
             isDigital: anchor.isDigital,
+            ...(coverageMatch ?? {}),
           },
         },
         {
@@ -201,6 +219,7 @@ implements ProductRecommendationQueryRepository {
             state: ProductState.ACTIVE,
             'flags.hasImages': true,
             productId: { $ne: anchor.productId },
+            ...(coverageMatch ?? {}),
           },
         },
         {
@@ -232,6 +251,7 @@ function toFacetKey(value: string): string {
 function toPublicProductListItemFromSearchDocument(
   document: CatalogSearchDocument,
   pricingSelection?: StorefrontIndexedPricingSelection,
+  previewCountryCode?: string,
 ): PublicProductListItem {
   const indexedPricing = getIndexedPriceSummary(document.pricingByMarket, pricingSelection);
 
@@ -267,6 +287,7 @@ function toPublicProductListItemFromSearchDocument(
         && document.inventory.totalStock < PRODUCT_STOCK_NOTICE_THRESHOLD,
       stockTotal: document.inventory.totalStock,
     },
+    shipping: toCatalogShippingAvailability(document, previewCountryCode),
     variantCount: document.variantCount,
     createdAt: document.ranking.createdAt,
   };

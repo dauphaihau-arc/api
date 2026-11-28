@@ -26,11 +26,24 @@ export class CartPricingService {
     anchorAt?: Date;
   }): Promise<PricedCartSummary> {
     const selectedItems = input.cart.items.filter((item) => item.isSelectOrder);
-    const checkoutCurrency = selectedItems[0]?.inventory.currency ?? 'USD';
+    const pricingCart = input.cart.items.some(
+      (item) => item.isSelectOrder && item.shipping?.available === false,
+    )
+      ? {
+        ...input.cart,
+        items: input.cart.items.map((item) =>
+          item.isSelectOrder && item.shipping?.available === false
+            ? { ...item, isSelectOrder: false }
+            : item,
+        ),
+      }
+      : input.cart;
+    const pricedItems = pricingCart.items.filter((item) => item.isSelectOrder);
+    const checkoutCurrency = pricedItems[0]?.inventory.currency ?? 'USD';
 
     const shippingQuote = input.shippingAddress
       ? await this.shippingQuoteService.quoteForCheckout({
-        units: selectedItems.map((item) => ({
+        units: pricedItems.map((item) => ({
           shopId: item.inventory.shopId,
           productId: item.inventory.productId,
           inventoryId: item.inventory.inventoryId,
@@ -46,7 +59,7 @@ export class CartPricingService {
 
     if (shippingQuote && shippingQuote.unavailable.length > 0) {
       const productPublicIds = new Map(
-        selectedItems.map((item) => [
+        pricedItems.map((item) => [
           item.inventory.productId,
           item.inventory.productPublicId,
         ]),
@@ -65,7 +78,7 @@ export class CartPricingService {
 
     const promoShops = await this.promotionPricingService.applyToCart({
       userId: input.userId,
-      cart: input.cart,
+      cart: pricingCart,
       shopAdjustments: input.shopAdjustments,
       validatePromoCodes: input.validatePromoCodes,
       checkoutCurrency,
@@ -79,7 +92,7 @@ export class CartPricingService {
     let totalShippingFee = 0;
 
     for (const promoShop of promoShops) {
-      const shopPublicId = selectedItems.find((item) => item.inventory.shopId === promoShop.shopId)?.inventory.shopPublicId;
+      const shopPublicId = pricedItems.find((item) => item.inventory.shopId === promoShop.shopId)?.inventory.shopPublicId;
       if (!shopPublicId) throw new Error('Priced shop public id is required');
       const uniqueOriginCountries = await this.shippingQuoteService.listOriginCountries(
         promoShop.items.map((item) => item.productId),
