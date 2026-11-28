@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import {
   matchDestinationRate,
   type ShippingDestination,
@@ -7,6 +7,7 @@ import {
 import {
   collectShippingProfileReadinessIssues,
   isShippingProfileCheckoutReady,
+  type ShippingProfileReadinessIssue,
 } from '../../domain/shipping-profile-readiness';
 import {
   calculateShippingEstimate,
@@ -22,6 +23,7 @@ import type {
   CheckoutShippingShopQuote,
   CheckoutShippingUnitInput,
   ProductShippingResolution,
+  ProductShippingUnavailableReason,
   ResolveShippingPreviewInput,
   ShippingPreview,
   ShippingQuoteAdditionalComponent,
@@ -37,6 +39,24 @@ export interface ResolveProductShippingInput {
 }
 
 /**
+ * Unavailability causes that indicate an operational shipping setup problem
+ * rather than normal buyer input. `unsupported_destination` is deliberately
+ * absent: a buyer shipping where the seller does not deliver is expected.
+ */
+type InternalShippingUnavailableReason = Extract<
+  ProductShippingUnavailableReason,
+  'missing_assignment' | 'profile_not_found' | 'profile_not_ready'
+>;
+
+function isInternalShippingUnavailableReason(
+  reason: ProductShippingUnavailableReason,
+): reason is InternalShippingUnavailableReason {
+  return reason === 'missing_assignment'
+    || reason === 'profile_not_found'
+    || reason === 'profile_not_ready';
+}
+
+/**
  * Shipping's published contract for downstream checkout work: it resolves each
  * purchased Product to its assigned Shipping Profile, checks readiness, and
  * matches exactly one destination rate through the shared matcher. Consumers
@@ -45,6 +65,8 @@ export interface ResolveProductShippingInput {
  */
 @Injectable()
 export class ShippingQuoteService {
+  private readonly logger = new Logger(ShippingQuoteService.name);
+
   constructor(
     private readonly shippingProfileRepository: ShippingProfileRepository,
     private readonly productShippingAssignmentPort: ProductShippingAssignmentPort,
@@ -90,19 +112,21 @@ export class ShippingQuoteService {
       }
 
       if (!assignment?.shippingProfileId) {
-        return {
+        const resolution: ProductShippingResolution = {
           productId,
           isDigital: false,
           available: false,
           reason: 'missing_assignment',
           readinessIssues: [],
         };
+
+        return this.warnIfInternalUnavailable(resolution, destination.countryCode);
       }
 
       const profile = profileById.get(assignment.shippingProfileId);
 
       if (!profile) {
-        return {
+        const resolution: ProductShippingResolution = {
           productId,
           profileId: assignment.shippingProfileId,
           isDigital: false,
@@ -110,12 +134,14 @@ export class ShippingQuoteService {
           reason: 'profile_not_found',
           readinessIssues: [],
         };
+
+        return this.warnIfInternalUnavailable(resolution, destination.countryCode);
       }
 
       const readinessIssues = collectShippingProfileReadinessIssues(profile);
 
       if (!isShippingProfileCheckoutReady(profile)) {
-        return {
+        const resolution: ProductShippingResolution = {
           productId,
           profileId: profile.id,
           profileName: profile.name,
@@ -126,6 +152,8 @@ export class ShippingQuoteService {
           currency: profile.shopCurrency,
           shipFromCountry: profile.shipFromCountry,
         };
+
+        return this.warnIfInternalUnavailable(resolution, destination.countryCode);
       }
 
       const match = matchDestinationRate(profile.rates, destination);
@@ -182,6 +210,13 @@ export class ShippingQuoteService {
     });
 
     if (!resolution) {
+      this.warnInternalUnavailable({
+        productId: input.productId,
+        reason: 'missing_assignment',
+        readinessIssues: [],
+        destinationCountry: input.destination.countryCode,
+      });
+
       return unavailablePreview('missing_assignment');
     }
 
@@ -207,6 +242,14 @@ export class ShippingQuoteService {
     const sourceCurrency = resolution.currency;
 
     if (!rate || !processingTime || !deliveryTime || !sourceCurrency) {
+      this.warnInternalUnavailable({
+        productId: resolution.productId,
+        profileId: resolution.profileId,
+        reason: 'profile_not_ready',
+        readinessIssues: resolution.readinessIssues,
+        destinationCountry: input.destination.countryCode,
+      });
+
       return unavailablePreview('profile_not_ready');
     }
 
@@ -219,6 +262,16 @@ export class ShippingQuoteService {
     });
 
     if (!convertedFee) {
+      this.warnCurrencyConversionFailed({
+        surface: 'preview',
+        productId: input.productId,
+        shopId: resolution.profileShopId,
+        profileId: resolution.profileId,
+        sourceCurrency,
+        targetCurrency: input.displayCurrency,
+        destinationCountry: input.destination.countryCode,
+      });
+
       return {
         ...unavailablePreview('unsupported_currency'),
         ...(resolution.shipFromCountry
@@ -330,6 +383,16 @@ export class ShippingQuoteService {
           // its units stay unavailable rather than being charged as if the
           // seller's minor units were already the buyer's currency.
           for (const unit of resolvedUnits) {
+            this.warnCurrencyConversionFailed({
+              surface: 'checkout',
+              productId: unit.input.productId,
+              shopId: unit.input.shopId,
+              profileId: unit.profileId,
+              sourceCurrency: unit.currency,
+              targetCurrency: input.checkoutCurrency,
+              destinationCountry: input.destination.countryCode,
+            });
+
             unavailable.push({
               productId: unit.input.productId,
               inventoryId: unit.input.inventoryId,
@@ -374,6 +437,77 @@ export class ShippingQuoteService {
           .filter((country): country is string => Boolean(country)),
       ),
     ].sort();
+  }
+
+  /**
+   * Resolutions that only an operator can fix are logged once per Product.
+   * Buyer-facing results stay untouched, and reasons are never exposed in API
+   * responses.
+   */
+  private warnIfInternalUnavailable(
+    resolution: ProductShippingResolution,
+    destinationCountry: string,
+  ): ProductShippingResolution {
+    const { reason } = resolution;
+
+    if (!reason || !isInternalShippingUnavailableReason(reason)) {
+      return resolution;
+    }
+
+    this.warnInternalUnavailable({
+      productId: resolution.productId,
+      profileId: resolution.profileId,
+      reason,
+      readinessIssues: resolution.readinessIssues,
+      destinationCountry,
+    });
+
+    return resolution;
+  }
+
+  private warnInternalUnavailable(input: {
+    productId: string;
+    reason: InternalShippingUnavailableReason;
+    profileId?: string;
+    readinessIssues: ShippingProfileReadinessIssue[];
+    destinationCountry: string;
+  }): void {
+    this.logger.warn(JSON.stringify({
+      event: 'shipping.unavailable_internal_reason',
+      productId: input.productId,
+      ...(input.profileId ? { profileId: input.profileId } : {}),
+      ...(input.readinessIssues.length > 0
+        ? { readinessIssues: input.readinessIssues }
+        : {}),
+      destinationCountry: input.destinationCountry,
+      reason: input.reason,
+    }));
+  }
+
+  /**
+   * A missing exchange rate makes shipping unavailable in either buyer surface.
+   * The caller emits this once per affected unit/shop outcome so one failed
+   * conversion never turns into one warning per fee component.
+   */
+  private warnCurrencyConversionFailed(input: {
+    surface: 'preview' | 'checkout';
+    productId: string;
+    shopId?: string;
+    profileId?: string;
+    sourceCurrency: string;
+    targetCurrency: string;
+    destinationCountry: string;
+  }): void {
+    this.logger.warn(JSON.stringify({
+      event: 'shipping.currency_conversion_failed',
+      surface: input.surface,
+      productId: input.productId,
+      ...(input.shopId ? { shopId: input.shopId } : {}),
+      ...(input.profileId ? { profileId: input.profileId } : {}),
+      sourceCurrency: input.sourceCurrency,
+      targetCurrency: input.targetCurrency,
+      destinationCountry: input.destinationCountry,
+    }));
   }
 
   /**
