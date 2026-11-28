@@ -155,7 +155,7 @@ function assertNoFormulaCells(sheet: XLSX.WorkSheet, label: string) {
 
 function assertHeaderCellsHaveNoFormulas(sheet: XLSX.WorkSheet, headerLength: number) {
   for (let columnIndex = 0; columnIndex < headerLength; columnIndex += 1) {
-    // eslint-disable-next-line id-length -- SheetJS encode_cell uses r/c field names.
+    // SheetJS encode_cell uses r/c field names.
     const address = XLSX.utils.encode_cell({ r: 0, c: columnIndex });
     const cell = sheet[address] as XLSX.CellObject | undefined;
     if (cell?.f) {
@@ -183,7 +183,7 @@ function parseRow(
     }
 
     rawByHeader.set(header, values[columnIndex]);
-    // eslint-disable-next-line id-length -- SheetJS encode_cell uses r/c field names.
+    // SheetJS encode_cell uses r/c field names.
     const address = XLSX.utils.encode_cell({ r: rowNumber - 1, c: columnIndex });
     const cell = sheet[address] as XLSX.CellObject | undefined;
     if (cell?.f) {

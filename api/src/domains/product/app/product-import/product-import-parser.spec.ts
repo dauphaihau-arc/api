@@ -53,13 +53,12 @@ describe('product import XLSX parser', () => {
       ['title', 'description', 'category_path', 'price', 'stock'],
       ['Formula price', 'Description', 'Accessories > Bags', 0, 3],
     ]);
-    /* eslint-disable id-length -- SheetJS cell objects use t/v/f field names. */
+    // SheetJS cell objects use t/v/f field names.
     products.D2 = {
       t: 'n',
       v: 10,
       f: '5+5',
     };
-    /* eslint-enable id-length */
 
     XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([
       ['template_version', PRODUCT_IMPORT_TEMPLATE_VERSION],

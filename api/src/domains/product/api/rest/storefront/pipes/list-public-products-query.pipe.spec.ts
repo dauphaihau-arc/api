@@ -21,7 +21,6 @@ describe('ListPublicProductsQueryPipe', () => {
       min_price: '20000',
       max_price: '50000',
       // Public API uses `s` as the search query parameter.
-      // eslint-disable-next-line id-length
       s: 'bag',
     }, metadata)).resolves.toMatchObject({
       categoryId: '9007199254740993',

@@ -21,6 +21,9 @@ export default defineConfig([
       "@typescript-eslint/no-explicit-any": "off",
       "@typescript-eslint/no-floating-promises": "warn",
       "@typescript-eslint/no-unsafe-argument": "warn",
+      // Off: min length flags idiomatic short aliases, max length flags verbose domain names.
+      // Naming is enforced by @typescript-eslint/naming-convention and id-denylist instead.
+      "id-length": "off",
       "id-denylist": ["warn", "tmp"],
     },
   },
